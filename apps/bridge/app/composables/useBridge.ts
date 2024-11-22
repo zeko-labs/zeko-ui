@@ -13,7 +13,7 @@ import {
 	urls
 } from "@zeko/sdk"
 import { createMinaClient } from "@zeko/sdk/vue"
-import { AccountUpdate, Mina, type PublicKey, Reducer, fetchAccount } from "o1js"
+import { AccountUpdate, Mina, type PublicKey, Reducer, TokenId, fetchAccount } from "o1js"
 
 // const getMinaClient = () => createMinaClient(urls["mina:testnet"])
 const getZekoClient = () => createMinaClient(urls["zeko:testnet"])
@@ -28,7 +28,9 @@ const pollForTransferAccountUpdate = async ({
 		.query(GetTransferAccountUpdateQuery, { key }, { requestPolicy: "network-only" })
 		.toPromise()
 	if (result.error) throw result.error
-	if (result.data?.transferAccountUpdate) return result.data.transferAccountUpdate
+	if (result.data?.transferAccountUpdate) {
+		return result.data.transferAccountUpdate
+	}
 	//Wait 5s and try again
 	await new Promise((resolve) => setTimeout(resolve, delay))
 	return pollForTransferAccountUpdate({ client, key })
@@ -62,7 +64,10 @@ export function useBridge() {
 		if (!key) throw new Error("Prove transfer failed")
 		const client = getZekoClient()
 		// Poll for transfer account update
-		const transferAccountUpdate = await pollForTransferAccountUpdate({ key, client })
+		const transferAccountUpdate = await pollForTransferAccountUpdate({
+			key,
+			client
+		})
 		return transferAccountUpdate
 	}
 
@@ -122,7 +127,8 @@ export function useBridge() {
 		transfer
 	}: { transfer: Transfer; afterAll: After }) => {
 		// Fetch synced deposit
-		const { account: innerAccount } = await fetchAccount({ publicKey: innerBridgePublicKey })
+		const { account: innerAccount, error } = await fetchAccount({ publicKey: innerBridgePublicKey })
+		if (error) throw error
 		const syncedDepositsState = innerAccount?.zkapp?.appState.at(0)
 		if (!syncedDepositsState) throw new Error("SyncedDepositsState not found")
 		console.log(syncedDepositsState.toString())
@@ -138,29 +144,35 @@ export function useBridge() {
 			transfer.actionState
 		)
 		console.log(expectedDepositsState.toString())
-		if (!expectedDepositsState.equals(syncedDepositsState))
+		if (!expectedDepositsState.equals(syncedDepositsState)) {
 			throw new Error("Deposits state mismatch")
+		}
 		return { after }
 	}
 
 	/**
 	 * Prove the transfer claim and return the proved account update.
+	 * TODO: The before argument will not be necessary anymore once the circuits are finished.
 	 */
 	const proveTransferClaim = async ({
-		isNew,
 		before = [],
 		after,
 		recipient,
 		amount,
-		direction = "DEPOSIT"
+		direction
 	}: {
-		isNew: boolean
 		before: { amount: string; recipient: string }[]
 		after: After
 		recipient: string
 		amount: string
 		direction: "DEPOSIT" | "WITHDRAW"
 	}) => {
+		const { account, error } = await fetchAccount({
+			publicKey: recipient,
+			tokenId: TokenId.derive(innerBridgePublicKey)
+		})
+		if (error) throw error
+		const isNew = !!account
 		const proveTransferResult = await proveTransferClaimMutation({
 			transferClaimInput: {
 				isNew,

@@ -22,6 +22,7 @@ export const useWalletStore = createSimpleStore("wallet", () => {
 	})
 
 	const currentNetwork = computed(() => snapshot.value.context.currentNetwork)
+	const minaBalances2 = computed(() => snapshot.value.context.minaBalances)
 
 	const minaBalances = useSelector(actorRef, (state) => state.context.minaBalances)
 	const zekoBalances = useSelector(actorRef, (state) => state.context.zekoBalances)
@@ -48,6 +49,7 @@ export const useWalletStore = createSimpleStore("wallet", () => {
 		displayAddress,
 		currentNetwork,
 		minaBalances,
+		minaBalances2,
 		zekoBalances,
 		walletLoaded
 	}

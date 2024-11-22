@@ -9,7 +9,9 @@ export default defineComponent({
 			const fallbackComponent = children.find((child) => (child.type as any).name === "Fallback")
 
 			const matched = matchComponents.filter((matchComponent) => {
-				const { when } = matchComponent.props as { when: boolean | (() => boolean) }
+				const { when } = matchComponent.props as {
+					when: boolean | (() => boolean)
+				}
 				const condition = typeof when === "function" ? when() : when
 				return condition
 			})

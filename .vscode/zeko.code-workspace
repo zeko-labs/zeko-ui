@@ -10,11 +10,21 @@
         "path": "../apps/sdk",
       },
       {
+        "path": "../apps/sdk-docs",
+      },
+      {
+        "path": "../apps/luminadex-docs",
+      },
+      {
+        "path": "../apps/luminadex-contracts",
+      },
+      {
         "path": "..",
       },
     ],
     "settings": {
-      "typescript.tsdk": "node_modules/typescript/lib"
+      "typescript.tsdk": "zeko-bridge/node_modules/typescript/lib",
+      "typescript.enablePromptUseWorkspaceTsdk": true
     },
   }
   

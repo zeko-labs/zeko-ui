@@ -1,6 +1,7 @@
 # Requirements
 
-- [] Page loads without JS and displays a message to install a mina wallet if none is found
+- [] Page loads without JS and displays a message to install a mina wallet if
+  none is found
 - [] Connect wallet UI for all supported wallet
   - [] Auro Wallet
   - [] Pallad

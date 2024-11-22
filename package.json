@@ -4,7 +4,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"format": "dprint fmt --verbose"
+		"format": "dprint fmt --verbose",
+		"contracts": "rm -rf apps/luminadex-contracts && bunx giget@latest gh:Lumina-DEX/lumina-v1-core/contracts#beta apps/luminadex-contracts"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.1",

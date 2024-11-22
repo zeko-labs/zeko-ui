@@ -2,7 +2,11 @@
 export default defineNuxtConfig({
 	compatibilityDate: "2024-04-03",
 	ssr: false,
-	css: ["@picocss/pico/css/pico.classless.blue.min.css"],
+	css: [
+		"@unocss/reset/sanitize/sanitize.css",
+		"@unocss/reset/sanitize/assets.css",
+		"~/assets/styles/fonts.css"
+	],
 	future: {
 		compatibilityVersion: 4
 	},
@@ -15,7 +19,16 @@ export default defineNuxtConfig({
 			}
 		}
 	},
-
-	postcss: { plugins: { "postcss-nested": {} } },
-	devtools: { enabled: true }
+	postcss: {
+		plugins: {
+			"postcss-nesting": {
+				edition: "2024-02"
+			}
+		}
+	},
+	devtools: { enabled: true },
+	modules: ["@nuxt/fonts"],
+	fonts: {
+		provider: "google"
+	}
 })

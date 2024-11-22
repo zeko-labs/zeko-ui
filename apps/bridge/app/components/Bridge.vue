@@ -144,19 +144,6 @@ const network = computed(() => snapshot.value.context.currentNetwork)
 const children = useSelector(actorRef, (state) => [
 	...state.context.operations.values()
 ])
-
-/**
- * Forward network changes to the bridge machine
- */
-walletActorRef.value.on("NetworkChanged", (emitted) => {
-	console.log("NetworkChanged received by actor", emitted)
-	const newSource = emitted.network === "zeko:testnet" ? "zeko" : "mina"
-	console.log({ newSource, source: source.value })
-	send({ type: "NetworkChanged", network: emitted.network })
-	if (source.value !== newSource) {
-		send({ type: "InvertDirection" })
-	}
-})
 </script>
 <template>
   <hr />
@@ -187,14 +174,14 @@ walletActorRef.value.on("NetworkChanged", (emitted) => {
     {{ minaBalances }}
     <hr />
     Source: {{ source }}
-    <button @click='send({ type: "InvertDirection" })'><==></button>
+    <Button @click='send({ type: "InvertDirection" })'><==></Button>
     Destination:
     {{ destination }}
     <hr />
     <div>
       <p>Amount to bridge :</p>
       <fieldset role="group">
-        <button disabled>Mina</button>
+        <Button disabled>Mina</Button>
         <input v-model="amountToBridge" type="text" />
         <input type="submit" disabled v-model="totalBalances" />
       </fieldset>
@@ -208,11 +195,11 @@ walletActorRef.value.on("NetworkChanged", (emitted) => {
         <!-- <button @click='send({ type: "BridgeToZeko" })'>BridgeToZeko</button> -->
       </div>
       <hr />
-      <button
+      <Button
         v-if='snapshot.matches("READY")'
         @click='send({ type: "StartOperation", amount: amountToBridge })'>
         Bridge
-      </button>
+      </Button>
     </div>
   </div>
 </template>

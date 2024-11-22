@@ -1,14 +1,16 @@
 import type { After, Direction, Transfer } from "@zeko/sdk"
 import type { walletMachine } from "@zeko/sdk/vue"
 import {
+	type ActorRef,
 	type ActorRefFromLogic,
-	type AnyActorRef,
+	type Snapshot,
 	assign,
 	enqueueActions,
 	fromPromise,
 	sendTo,
 	setup
 } from "xstate"
+import type { BridgeEvents } from "./bridge"
 const wait = (ms = 1000) => new Promise((res) => setTimeout(res, ms))
 
 type Network = "mina" | "zeko"
@@ -20,7 +22,8 @@ const isDefined = <T>(value: T) => {
 	return value
 }
 
-type Bridge = AnyActorRef
+type BridgeParent = ActorRef<Snapshot<unknown>, BridgeEvents>
+
 type Wallet = ActorRefFromLogic<typeof walletMachine>
 export type ReturnTo =
 	| false
@@ -31,7 +34,7 @@ export type ReturnTo =
 export const bridgeOperationMachine = setup({
 	types: {
 		context: {} as {
-			bridge: Bridge
+			bridge: BridgeParent
 			wallet: Wallet
 			returnTo: ReturnTo
 			requestAccountUpdates: string
@@ -50,7 +53,7 @@ export const bridgeOperationMachine = setup({
 			}
 		},
 		input: {} as {
-			bridge: Bridge
+			bridge: BridgeParent
 			wallet: Wallet
 			sourceNetwork: Network
 			destinationNetwork: Network
@@ -125,7 +128,7 @@ export const bridgeOperationMachine = setup({
 	on: {
 		SetCurrentNetwork: {
 			description:
-				"When the parent change the network, we receive the event and raise a return to action if we can.",
+				"When the parent change the network, we receive the event and raise a return to an action if we can.",
 			actions: enqueueActions(({ context, enqueue }) => {
 				enqueue.assign({ currentNetwork: ({ event }) => event.network })
 				if (context.returnTo !== false) enqueue.raise({ type: "ReturnTo" })
@@ -319,7 +322,6 @@ export const bridgeOperationMachine = setup({
 			type: "final",
 			exit: sendTo(
 				({ context }) => context.bridge,
-				//TODO: Find a way to type this event
 				({ self }) => ({ type: "OperationComplete", id: self.id })
 			)
 		}

@@ -14,7 +14,14 @@ import { getRetryExchange } from "./graphql/helpers"
 import { useActor } from "./machines/vue/useXstate"
 import { createWalletMachine } from "./machines/wallet"
 
+//xstate bindings
 export * from "./machines/vue/useXstate"
+
+/**
+ * GraphQL client
+ *___________________________________________________________*/
+
+const clientCache = new Map<string, Client>()
 
 export const createClientOptions = (url: string) =>
 	({
@@ -22,8 +29,6 @@ export const createClientOptions = (url: string) =>
 		requestPolicy: "network-only",
 		exchanges: [getRetryExchange(), fetchExchange]
 	}) as ClientOptions
-
-const clientCache = new Map<string, Client>()
 
 export const createMinaClient = (url: string) => {
 	const cached = clientCache.get(url)
@@ -33,8 +38,11 @@ export const createMinaClient = (url: string) => {
 	return client
 }
 
+/**
+ * Wallet
+ *___________________________________________________________*/
+
 const walletMachine = createWalletMachine({ createMinaClient })
-export { walletMachine }
 
 type WalletMachine = typeof walletMachine
 
@@ -54,3 +62,5 @@ export function useWallet(
 } {
 	return useActor(walletMachine, options)
 }
+
+export { walletMachine }

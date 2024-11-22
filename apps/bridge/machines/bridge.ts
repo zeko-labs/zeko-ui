@@ -1,7 +1,7 @@
 import type { Networks } from "@zeko/sdk"
 import type { walletMachine } from "@zeko/sdk/vue"
 import { nanoid } from "nanoid"
-import { type ActorRefFromLogic, assign, setup } from "xstate"
+import { type ActorRefFromLogic, type EventObject, assign, fromCallback, setup } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
 
 const wait = (ms = 1000) => new Promise((res) => setTimeout(res, ms))
@@ -14,6 +14,13 @@ type Operations = Map<
 	}
 >
 type Wallet = ActorRefFromLogic<typeof walletMachine>
+
+export type BridgeEvents =
+	| { type: "ApplyNetworkChange"; network: Networks }
+	| { type: "StartOperation"; amount: string }
+	| { type: "OperationComplete"; id: string }
+	| { type: "InvertDirection" }
+
 // Parent Bridge Machine
 export const bridgeMachine = setup({
 	types: {
@@ -25,15 +32,25 @@ export const bridgeMachine = setup({
 			wallet: Wallet
 		},
 		input: {} as { wallet: Wallet; currentNetwork: Networks },
-		events: {} as
-			| { type: "NetworkChanged"; network: Networks }
-			| { type: "StartOperation"; amount: string }
-			| { type: "OperationComplete"; id: string }
-			| { type: "InvertDirection" }
+		events: {} as BridgeEvents
 	},
-	actors: { bridgeOperationMachine },
+	actors: {
+		bridgeOperationMachine,
+		detectNetworkChange: fromCallback<EventObject, { wallet: Wallet }>(
+			({ sendBack, input: { wallet } }) => {
+				const sub = wallet.on("NetworkChanged", (emitted) => {
+					console.log("NetworkChanged received by actor", emitted)
+					sendBack({ type: "NetworkChanged", network: emitted.network })
+				})
+				return () => {
+					sub.unsubscribe()
+				}
+			}
+		)
+	},
 	actions: {
 		startOperation: assign({
+			//@ts-ignore there are some random errors
 			operations: ({ self, context, spawn }, params: { amount: string }) => {
 				const { amount } = params
 				const { wallet, sourceNetwork, destinationNetwork, currentNetwork: n } = context
@@ -56,6 +73,7 @@ export const bridgeMachine = setup({
 			}
 		}),
 		completeOperation: assign({
+			//@ts-ignore there are some random errors
 			operations: ({ context }, params: { id: string }) => {
 				const { id } = params
 				const currentOperation = context.operations.get(id)?.operation
@@ -87,18 +105,33 @@ export const bridgeMachine = setup({
 	}),
 	states: {
 		READY: {
+			invoke: {
+				src: "detectNetworkChange",
+				input: ({ context: { wallet } }) => ({ wallet })
+			},
 			on: {
-				NetworkChanged: {
-					actions: [
-						{
-							type: "changeOperationNetwork",
-							params: ({ event }) => ({
-								network: event.network.includes("mina") ? "mina" : "zeko"
-							})
-						},
-						assign({ currentNetwork: ({ event }) => event.network })
-					]
-				},
+				ApplyNetworkChange: [
+					{
+						description:
+							"Change the network of all operations and invert direction if the network is different.",
+						guard: ({ event, context }) => event.network !== context.currentNetwork,
+						//TODO: Handle networks that are not mina or zeko and testnet
+						actions: [
+							{
+								type: "changeOperationNetwork",
+								params: ({ event }) => ({
+									network: event.network.includes("mina") ? "mina" : "zeko"
+								})
+							},
+							//We assume the user wants to change direction
+							assign(({ event }) => ({
+								currentNetwork: event.network,
+								sourceNetwork: event.network.includes("mina") ? "mina" : "zeko",
+								destinationNetwork: event.network.includes("mina") ? "zeko" : "mina"
+							}))
+						]
+					}
+				],
 				InvertDirection: {
 					actions: assign(({ context: { sourceNetwork, destinationNetwork } }) => ({
 						sourceNetwork: destinationNetwork,
@@ -121,13 +154,3 @@ export const bridgeMachine = setup({
 		}
 	}
 })
-
-type Parent = {
-	children: Child[]
-	// other parent properties
-}
-
-type Child = {
-	parent: Parent
-	// other child properties
-}
