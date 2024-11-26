@@ -1,11 +1,12 @@
 # DEX
 
-- Implement LuminaDex machine
-- Write react bindings
-- cache dex state in localstorage/IndexedDB instead of remote location
-- Optimise worker code with rollup and OMT plugin
-- Test SDK with Eddie dex
-- Write SDK docs
-- Publish SDK
-- Publish docs
-- Merge contracts and zeko-bridge monorepo
+- [x] Implement LuminaDex machine
+- [x] Write react bindings
+- [x] Optimise worker code with rollup and OMT plugin
+- [] performance optimisation
+- [] Write SDK docs
+- [] Merge contracts and zeko-bridge monorepo
+- [] Test SDK with Eddie Dex
+- [] Publish SDK
+- [] Publish docs
+- [] CommonJS support ?

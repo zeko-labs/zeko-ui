@@ -151,7 +151,9 @@ export const createLuminaDexMachine = () => {
 		},
 		actors: {
 			initializeWorker: fromPromise(async () => {
-				const worker = new Worker(new URL("./luminaDexWorker.ts", import.meta.url))
+				const worker = new Worker(new URL("../dex/luminadex-worker.ts", import.meta.url), {
+					type: "module"
+				})
 				return Comlink.wrap<LuminaDexWorker>(worker)
 			}),
 			loadAndCompileContracts: fromPromise(

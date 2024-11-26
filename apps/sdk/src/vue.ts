@@ -11,6 +11,7 @@ import type {
 } from "xstate"
 
 import { getRetryExchange } from "./graphql/helpers"
+import { createLuminaDexMachine } from "./machines/luminadex"
 import { useActor } from "./machines/vue/useXstate"
 import { createWalletMachine } from "./machines/wallet"
 
@@ -43,6 +44,7 @@ export const createMinaClient = (url: string) => {
  *___________________________________________________________*/
 
 const walletMachine = createWalletMachine({ createMinaClient })
+export { walletMachine }
 
 type WalletMachine = typeof walletMachine
 
@@ -63,4 +65,28 @@ export function useWallet(
 	return useActor(walletMachine, options)
 }
 
-export { walletMachine }
+/**
+ * Dex
+ *___________________________________________________________*/
+
+const dexMachine = createLuminaDexMachine()
+export { dexMachine }
+
+export type DexMachine = typeof dexMachine
+
+export function useDex(
+	...[options]: ConditionalRequired<
+		[
+			options?: ActorOptions<DexMachine> & {
+				[K in RequiredActorOptionsKeys<DexMachine>]: unknown
+			}
+		],
+		IsNotNever<RequiredActorOptionsKeys<DexMachine>>
+	>
+): {
+	snapshot: Ref<SnapshotFrom<DexMachine>>
+	send: (event: EventFromLogic<DexMachine>) => void
+	actorRef: Actor<DexMachine>
+} {
+	return useActor(dexMachine, options)
+}

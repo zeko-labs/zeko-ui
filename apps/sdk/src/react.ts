@@ -10,6 +10,7 @@ import type {
 	SnapshotFrom
 } from "xstate"
 import { getRetryExchange } from "./graphql/helpers"
+import { createLuminaDexMachine } from "./machines/luminadex"
 import { createWalletMachine } from "./machines/wallet"
 
 export * from "@xstate/react"
@@ -42,8 +43,9 @@ export { Provider }
  *___________________________________________________________*/
 
 const walletMachine = createWalletMachine({ createMinaClient })
+export { walletMachine }
 
-type WalletMachine = typeof walletMachine
+export type WalletMachine = typeof walletMachine
 
 export function useWallet(
 	...[options]: ConditionalRequired<
@@ -62,4 +64,24 @@ export function useWallet(
 	return useActor(walletMachine, options)
 }
 
-export { walletMachine }
+/**
+ * Dex
+ *___________________________________________________________*/
+
+const dexMachine = createLuminaDexMachine()
+export { dexMachine }
+
+export type DexMachine = typeof dexMachine
+
+export function useDex(
+	...[options]: ConditionalRequired<
+		[
+			options?: ActorOptions<DexMachine> & {
+				[K in RequiredActorOptionsKeys<DexMachine>]: unknown
+			}
+		],
+		IsNotNever<RequiredActorOptionsKeys<DexMachine>>
+	>
+): [SnapshotFrom<DexMachine>, (event: EventFromLogic<DexMachine>) => void, Actor<DexMachine>] {
+	return useActor(dexMachine, options)
+}
