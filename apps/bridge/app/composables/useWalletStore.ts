@@ -1,21 +1,22 @@
-import { useSelector, useWallet } from "@zeko/sdk/vue"
-import { PublicKey } from "o1js"
-import { createSimpleStore } from "~~/helpers/store"
+import { PublicKey, walletMachine } from "@lumina-dex/sdk"
+import { useActor, useSelector } from "@lumina-dex/sdk/vue"
+import { defineStore } from "pinia"
 
 const getPublicKey = (address: string) => {
 	return PublicKey.fromBase58(address)
 }
 
-export const useWalletStore = createSimpleStore("wallet", () => {
-	const { send, snapshot, actorRef } = useWallet({
+export const useWalletStore = defineStore("wallet", () => {
+	console.log("Store !")
+	const { snapshot, send, actorRef } = useActor(walletMachine, {
 		inspect: (event) => {
 			if (event.type === "@xstate.event") {
-				console.log(event)
+				// console.log(event)
 			}
 		}
 	})
 
-	const address = computed(() => snapshot.value.context.accounts[0] ?? "")
+	const address = computed(() => snapshot.value.context.account ?? "")
 
 	const displayAddress = computed(() => {
 		return `${address?.value.slice(0, 6)}...${address?.value.slice(-4)}`

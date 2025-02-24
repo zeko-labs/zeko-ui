@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 const store = useWalletStore()
-const { send } = store
-const { address, displayAddress, snapshot, minaBalances, actorRef } =
-	toRefs(store)
+const { address, displayAddress, snapshot, actorRef, minaBalances } =
+	storeToRefs(store)
 </script>
 
 <template>
@@ -11,7 +10,7 @@ const { address, displayAddress, snapshot, minaBalances, actorRef } =
   {{ snapshot.value }}
   {{ snapshot.context }}
   <p>
-    {{ address }} {{ displayAddress }} | {{ snapshot.context.currentNetwork }}
+    {{ address }} {{ displayAddress }} | {{ snapshot.context?.currentNetwork }}
   </p>
   <fieldset>
     <label>
@@ -23,7 +22,7 @@ const { address, displayAddress, snapshot, minaBalances, actorRef } =
   {{ minaBalances }}
   <!-- <hr /> -->
   <div v-if='snapshot.matches("INIT")' role="group">
-    <button @click='send({ type: "Connect" })'>
+    <button @click='store.send({ type: "Connect" })'>
       Connect
     </button>
   </div>

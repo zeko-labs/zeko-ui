@@ -1,7 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
 	compatibilityDate: "2024-04-03",
-	ssr: false,
 	css: [
 		"@unocss/reset/sanitize/sanitize.css",
 		"@unocss/reset/sanitize/assets.css",
@@ -11,7 +10,8 @@ export default defineNuxtConfig({
 		compatibilityVersion: 4
 	},
 	routeRules: {
-		"/": {
+		"/bridge": {
+			ssr: false,
 			headers: {
 				"Cross-Origin-Embedder-Policy":
 					process.env.NODE_ENV === "development" ? "unsafe-none" : "require-corp",
@@ -27,7 +27,7 @@ export default defineNuxtConfig({
 		}
 	},
 	devtools: { enabled: true },
-	modules: ["@nuxt/fonts"],
+	modules: ["@nuxt/fonts", "@pinia/nuxt"],
 	fonts: {
 		provider: "google"
 	}

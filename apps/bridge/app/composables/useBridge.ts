@@ -1,4 +1,3 @@
-import { type Client, useMutation } from "@urql/vue"
 import {
 	type After,
 	GetTransferAccountUpdateQuery,
@@ -11,8 +10,9 @@ import {
 	innerBridgePublicKey,
 	sendTransaction,
 	urls
-} from "@zeko/sdk"
-import { createMinaClient } from "@zeko/sdk/vue"
+} from "@lumina-dex/sdk"
+import { createMinaClient } from "@lumina-dex/sdk"
+import { useMutation } from "@urql/vue"
 import { AccountUpdate, Mina, type PublicKey, Reducer, TokenId, fetchAccount } from "o1js"
 
 // const getMinaClient = () => createMinaClient(urls["mina:testnet"])
@@ -22,7 +22,7 @@ const pollForTransferAccountUpdate = async ({
 	client,
 	key,
 	delay = 5000
-}: { client: Client; key: string; delay?: number }) => {
+}: { client: ReturnType<typeof createMinaClient>; key: string; delay?: number }) => {
 	console.log("Polling GetTransfer ...")
 	const result = await client
 		.query(GetTransferAccountUpdateQuery, { key }, { requestPolicy: "network-only" })

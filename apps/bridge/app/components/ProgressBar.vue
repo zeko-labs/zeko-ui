@@ -17,7 +17,9 @@ const currentStepIndex = computed(() =>
 )
 
 const progressClass = (index: number) => {
-	const completed = index < currentStepIndex.value
+	const completed =
+		index < currentStepIndex.value ||
+		(index === steps.length - 1 && currentStepIndex.value === steps.length - 1)
 	const current = index === currentStepIndex.value
 	return { completed, current, future: !completed && !current }
 }
@@ -35,7 +37,6 @@ const nodeSize = {
 /**
  * Note: We are using grid-template-areas and margin tricks to reproduce the design as faithfully as possible.
  *
- *
  */
 </script>
 
@@ -52,18 +53,21 @@ const nodeSize = {
   <div class="progress-bar">
     <div class="progress-track">
       <template v-for="(step, index) of steps" :key="index">
-        <svg
-          class="progress-node"
-          :width="rawNodeSize"
-          :height="rawNodeSize"
-          :viewBox="`0 0 ${rawNodeSize} ${rawNodeSize}`">
-          <circle
-            :cx="rawNodeSize / 2"
-            :cy="rawNodeSize / 2"
-            r="11"
-            :class="progressClass(index)"
-          />
-        </svg>
+        <div class="node-wrapper">
+          <svg
+            class="progress-node"
+            :width="rawNodeSize"
+            :height="rawNodeSize"
+            :viewBox="`0 0 ${rawNodeSize} ${rawNodeSize}`">
+            <circle
+              :cx="rawNodeSize / 2"
+              :cy="rawNodeSize / 2"
+              r="11"
+              :class="progressClass(index)"
+            />
+          </svg>
+          <SvgCheck class="check" v-if="index === steps.length - 1" />
+        </div>
 
         <div
           v-if="index < steps.length - 1"
@@ -87,7 +91,7 @@ const nodeSize = {
 
 <style lang="postcss" scoped>
 .progress-bar {
-  width: 100%;
+  width: 75vw;
   display: grid;
   grid-template-areas:
     "progress progress ."
@@ -104,6 +108,22 @@ const nodeSize = {
   padding: 4px;
 }
 
+.node-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .check {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 2;
+  }
+}
+
 .legend {
   grid-area: legend;
   display: inline-flex;
@@ -117,7 +137,8 @@ const nodeSize = {
   color: v-bind("theme.config.colors.gray[500].value");
   &.current {
     color: v-bind("theme.config.colors.gray[950].value");
-    font-weight: 500;
+    font-weight: 400;
+    transform: scale(1.05);
   }
 }
 
@@ -130,7 +151,8 @@ const nodeSize = {
 .progress-line {
   flex-grow: 1;
   height: 2px;
-  background-color: v-bind("gray");
+  background: v-bind("gray");
+  transition: background 0.6s ease-out;
   &.completed {
     background: v-bind(
       "theme.config.gradients.goldGradient[3].inversedBackground.value"
@@ -139,20 +161,23 @@ const nodeSize = {
 }
 
 .progress-node {
+  position: relative;
   flex-shrink: 0;
   z-index: 1;
   circle {
     fill: transparent;
     stroke: v-bind("gray");
     stroke-width: 2;
-    &.completed {
-      fill: url(#goldenGradient);
-      stroke: url(#goldenGradient);
-    }
+    transition: fill 0.5s ease-out, stroke 0.5s ease-out; 
     &.current {
       fill: transparent;
       stroke: url(#goldenGradient);
       stroke-width: 2;
+    }
+    &.completed {
+      fill: url(#goldenGradient);
+      stroke: url(#goldenGradient);
+      transition-delay: 0.3s;
     }
     &.future {
       fill: transparent;

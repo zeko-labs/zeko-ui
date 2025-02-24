@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useSelector } from "@zeko/sdk/vue"
+import { useSelector } from "@lumina-dex/sdk/vue"
 import type { ActorRefFromLogic } from "xstate"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 

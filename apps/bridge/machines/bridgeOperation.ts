@@ -1,5 +1,5 @@
-import type { After, Direction, Transfer } from "@zeko/sdk"
-import type { walletMachine } from "@zeko/sdk/vue"
+import type { After, Direction, Networks, Transfer } from "@lumina-dex/sdk"
+import type { walletMachine } from "@lumina-dex/sdk"
 import {
 	type ActorRef,
 	type ActorRefFromLogic,
@@ -12,8 +12,6 @@ import {
 } from "xstate"
 import type { BridgeEvents } from "./bridge"
 const wait = (ms = 1000) => new Promise((res) => setTimeout(res, ms))
-
-type Network = "mina" | "zeko"
 
 type SyncedTransfers = { after: After }
 type AllTransfers = { transfer: Transfer; afterAll: After }
@@ -31,37 +29,40 @@ export type ReturnTo =
 	| "FINDING_ALL_TRANSFERS"
 	| "FINDING_SYNCED_TRANSFERS"
 	| "CONFIRMING_TRANSFER_CLAIM"
+
+interface BridgeOperationContext {
+	bridge: BridgeParent
+	wallet: Wallet
+	returnTo: ReturnTo
+	requestAccountUpdates: string
+	claimAccountUpdates: string
+	sourceNetwork: Networks
+	destinationNetwork: Networks
+	changeNetworkTo: Networks
+	amount: string
+	requestHash: string
+	claimHash: string
+	claimParameters: {
+		transfer?: Transfer
+		afterAll?: After
+		after?: After
+	}
+}
+const currentNetwork = (context: BridgeOperationContext) =>
+	context.wallet.getSnapshot().context.currentNetwork
+
 export const bridgeOperationMachine = setup({
 	types: {
-		context: {} as {
-			bridge: BridgeParent
-			wallet: Wallet
-			returnTo: ReturnTo
-			requestAccountUpdates: string
-			claimAccountUpdates: string
-			currentNetwork: Network
-			sourceNetwork: Network
-			destinationNetwork: Network
-			changeNetworkTo: Network
-			amount: string
-			requestHash: string
-			claimHash: string
-			claimParameters: {
-				transfer?: Transfer
-				afterAll?: After
-				after?: After
-			}
-		},
+		context: {} as BridgeOperationContext,
 		input: {} as {
 			bridge: BridgeParent
 			wallet: Wallet
-			sourceNetwork: Network
-			destinationNetwork: Network
-			currentNetwork: Network
+			sourceNetwork: Networks
+			destinationNetwork: Networks
 			amount: string
 		},
 		events: {} as
-			| { type: "SetCurrentNetwork"; network: Network }
+			| { type: "SetCurrentNetwork"; network: Networks }
 			| { type: "StartBridgeOperation" }
 			| { type: "ReturnTo" }
 	},
@@ -93,10 +94,9 @@ export const bridgeOperationMachine = setup({
 		})
 	},
 	guards: {
-		currentNetworkIsSource: ({ context: { currentNetwork, sourceNetwork } }) =>
-			currentNetwork === sourceNetwork,
-		currentNetworkIsDestination: ({ context: { currentNetwork, destinationNetwork } }) =>
-			currentNetwork === destinationNetwork,
+		currentNetworkIsSource: ({ context }) => currentNetwork(context) === context.sourceNetwork,
+		currentNetworkIsDestination: ({ context }) =>
+			currentNetwork(context) === context.destinationNetwork,
 		toConfirmingTransferRequest: ({ context: { returnTo } }) =>
 			returnTo === "CONFIRMING_TRANSFER_REQUEST",
 		toFindingAllTransfers: ({ context: { returnTo } }) => returnTo === "FINDING_ALL_TRANSFERS",
@@ -108,12 +108,9 @@ export const bridgeOperationMachine = setup({
 }).createMachine({
 	id: "bridgeOperation",
 	initial: "IDLE",
-	context: ({
-		input: { currentNetwork, sourceNetwork, destinationNetwork, amount, bridge, wallet }
-	}) => ({
+	context: ({ input: { sourceNetwork, destinationNetwork, amount, bridge, wallet } }) => ({
 		bridge,
 		wallet,
-		currentNetwork,
 		changeNetworkTo: sourceNetwork,
 		sourceNetwork,
 		destinationNetwork,
@@ -130,7 +127,6 @@ export const bridgeOperationMachine = setup({
 			description:
 				"When the parent change the network, we receive the event and raise a return to an action if we can.",
 			actions: enqueueActions(({ context, enqueue }) => {
-				enqueue.assign({ currentNetwork: ({ event }) => event.network })
 				if (context.returnTo !== false) enqueue.raise({ type: "ReturnTo" })
 			})
 		}
@@ -144,8 +140,7 @@ export const bridgeOperationMachine = setup({
 				({ context }) => context.wallet,
 				({ context }) => ({
 					type: "RequestNetworkChange",
-					//TODO: Hardcoded testnet
-					network: `${context.changeNetworkTo}:testnet` as const
+					network: context.changeNetworkTo
 				})
 			),
 			on: {
@@ -177,7 +172,7 @@ export const bridgeOperationMachine = setup({
 			invoke: {
 				src: "proveTransferRequest",
 				input: ({ context }) => ({
-					direction: context.destinationNetwork === "zeko" ? "DEPOSIT" : "WITHDRAW",
+					direction: context.destinationNetwork.includes("zeko") ? "DEPOSIT" : "WITHDRAW",
 					amount: context.amount
 				}),
 				onDone: [
@@ -278,8 +273,9 @@ export const bridgeOperationMachine = setup({
 			invoke: {
 				src: "proveTransferClaim",
 				input: ({ context }) => ({
-					direction:
-						context.destinationNetwork === "zeko" ? ("DEPOSIT" as const) : ("WITHDRAW" as const),
+					direction: context.destinationNetwork.includes("zeko")
+						? ("DEPOSIT" as const)
+						: ("WITHDRAW" as const),
 					after: isDefined(context.claimParameters.after)
 				}),
 				onDone: [
@@ -320,9 +316,9 @@ export const bridgeOperationMachine = setup({
 		},
 		BRIDGE_OPERATION_DONE: {
 			type: "final",
-			exit: sendTo(
+			entry: sendTo(
 				({ context }) => context.bridge,
-				({ self }) => ({ type: "OperationComplete", id: self.id })
+				({ self }) => ({ type: "CompleteOperation", id: self.id })
 			)
 		}
 	}

@@ -28,7 +28,7 @@ type Theme<Shape> = {
 }
 
 export function createTheme<Shape extends ThemeConfig>(config: Shape): Theme<Shape> {
-	const cssEntries = generateCSSEntries(config)
+	const cssEntries = generateCSSEntries(config).filter((entry) => typeof entry.value === "string")
 	const variables = createThemeVariables(config)
 
 	const theme = {

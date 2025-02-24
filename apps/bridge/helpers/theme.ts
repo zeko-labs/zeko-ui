@@ -5,6 +5,8 @@ type Colors = {
 }
 
 const colors = {
+	white: "oklch(100% 0 0)",
+	black: "oklch(0% 0 0)",
 	alpha: {
 		softGray1: "oklch(14.48% 0 0 / 12%)",
 		softGray2: "oklch(14.48% 0 0 / 24%)"
@@ -13,7 +15,11 @@ const colors = {
 		50: "oklch(97.315% 0 0)",
 		100: "oklch(92.797% 0 0)",
 		200: "oklch(86.069% 0 0)",
+		300: "oklch(75.7% 0 0)",
+		400: "oklch(62.7% 0 0)",
 		500: "oklch(53.476% 0 0)",
+		600: "oklch(47.8% 0 0)",
+		700: "oklch(42.8% 0 0)",
 		800: "oklch(39.042% 0 0)",
 		900: "oklch(36.002% 0 0)",
 		950: "oklch(14.479% 0 0)"
@@ -24,19 +30,65 @@ const colors = {
 		100: "oklch(72.311% 0.13818 71.166)",
 		200: "oklch(59.222% 0.10877 74.108)"
 	},
+	yellow: {
+		50: "oklch(97.7% 0.016 99)",
+		100: "oklch(94.3% 0.041 98.1)",
+		200: "oklch(88.9% 0.079 96.6)",
+		300: "oklch(81.8% 0.114 93.6)",
+		400: "oklch(75.2% 0.13 87.9)",
+		500: "oklch(69.2% 0.124 83.1)",
+		600: "oklch(59.2% 0.109 74.1)",
+		700: "oklch(49.5% 0.091 64.9)"
+	},
+	blue: {
+		50: "oklch(97.5% 0.013 244.3)",
+		100: "oklch(94.2% 0.028 248.1)",
+		200: "oklch(90% 0.05 246.5)",
+		300: "oklch(83.8% 0.083 245.6)",
+		400: "oklch(76% 0.121 248.4)",
+		500: "oklch(67.7% 0.157 256)",
+		600: "oklch(59.9% 0.183 261.2)",
+		700: "oklch(51.7% 0.179 263.6)",
+		800: "oklch(46.7% 0.156 264.5)",
+		900: "oklch(41.2% 0.118 263.4)",
+		950: "oklch(30% 0.077 266.7)"
+	},
+	persianRed: {
+		50: "oklch(97.1% 0.01 17.3)",
+		100: "oklch(94% 0.021 21.2)",
+		200: "oklch(89.1% 0.042 21.6)",
+		300: "oklch(81.6% 0.073 24)",
+		400: "oklch(71.1% 0.122 24.3)",
+		500: "oklch(62.4% 0.161 26.8)",
+		600: "oklch(55.3% 0.173 28)",
+		700: "oklch(48.2% 0.153 28.2)",
+		800: "oklch(42.7% 0.127 28)",
+		900: "oklch(42.7% 0.127 28)",
+		950: "oklch(24.9% 0.071 26.2)"
+	},
+	pending: {
+		background: "oklch(94.6% 0.029 67.5)",
+		border: "oklch(87.2% 0.073 67.3)",
+		content: "oklch(64% 0.148 57.8)"
+	},
+	complete: {
+		background: "oklch(95.9% 0.021 156.8)",
+		border: "oklch(87.5% 0.064 155.7)",
+		content: "oklch(64.1% 0.142 150.6)"
+	},
 	spaceBlue: "oklch(97.315% 0 0 / 0.56)"
 } as const satisfies Colors
 
-// :root {
-// 	--size--2: clamp(0.56rem, 0.537rem + 0.1148vw, 0.64rem);
-// 	--size--1: clamp(0.7rem, 0.6713rem + 0.1435vw, 0.8rem);
-// 	--size-0: clamp(0.875rem, 0.8391rem + 0.1794vw, 1rem);
-// 	--size-1: clamp(1.0938rem, 1.0489rem + 0.2242vw, 1.25rem);
-// 	--size-2: clamp(1.3672rem, 1.3111rem + 0.2803vw, 1.5625rem);
-// 	--size-3: clamp(1.709rem, 1.6389rem + 0.3503vw, 1.9531rem);
-// 	--size-4: clamp(2.1362rem, 2.0486rem + 0.4379vw, 2.4414rem);
-// 	--size-5: clamp(2.6703rem, 2.5608rem + 0.5474vw, 3.0518rem);
-//   }
+// --step--2: clamp(0.56rem, 0.537rem + 0.1148vw, 0.64rem);
+// --step--1: clamp(0.7rem, 0.6713rem + 0.1435vw, 0.8rem);
+// --step-0: clamp(0.875rem, 0.8391rem + 0.1794vw, 1rem);
+// --step-1: clamp(1.0938rem, 1.0489rem + 0.2242vw, 1.25rem);
+// --step-2: clamp(1.3672rem, 1.3111rem + 0.2803vw, 1.5625rem);
+// --step-3: clamp(1.709rem, 1.6389rem + 0.3503vw, 1.9531rem);
+// --step-4: clamp(2.1362rem, 2.0486rem + 0.4379vw, 2.4414rem);
+// --step-5: clamp(2.6703rem, 2.5608rem + 0.5474vw, 3.0518rem);
+// --step-6: clamp(3.3379rem, 3.201rem + 0.6843vw, 3.8147rem);
+// --step-7: clamp(4.1723rem, 4.0013rem + 0.8553vw, 4.7684rem);
 
 const steps = [
 	"clamp(0.56rem, 0.537rem + 0.1148vw, 0.64rem)",
@@ -46,31 +98,19 @@ const steps = [
 	"clamp(1.3672rem, 1.3111rem + 0.2803vw, 1.5625rem)",
 	"clamp(1.709rem, 1.6389rem + 0.3503vw, 1.9531rem)",
 	"clamp(2.1362rem, 2.0486rem + 0.4379vw, 2.4414rem)",
-	"clamp(2.6703rem, 2.5608rem + 0.5474vw, 3.0518rem)"
+	"clamp(2.6703rem, 2.5608rem + 0.5474vw, 3.0518rem)",
+	"clamp(3.3379rem, 3.201rem + 0.6843vw, 3.8147rem)",
+	"clamp(4.1723rem, 4.0013rem + 0.8553vw, 4.7684rem)"
 ] as const
-
-type Prettify<T> = {
-	[K in keyof T]: T[K]
-} & {}
-
-type SizeEntry<E extends string, Index extends number> = [`size-${Index}`, E]
-
-//@ts-expect-error number => number & I
-type ScaleEntries<A extends readonly string[]> = { [I in keyof A]: Prettify<SizeEntry<A[I], I>> }
-
-const typeSafeObjectFromEntries = <const T extends ReadonlyArray<readonly [PropertyKey, unknown]>>(
-	entries: T
-): { [K in T[number] as K[0]]: K[1] } => {
-	return Object.fromEntries(entries) as { [K in T[number] as K[0]]: K[1] }
-}
-
-const entries = steps.map(
-	(step, index) => [`size-${index}` as const, step] as const
-) as unknown as ScaleEntries<typeof steps>
 
 const fonts = {
 	lexend: {
 		typescale: {
+			weight: {
+				regular: "400",
+				medium: "500",
+				semibold: "600"
+			},
 			scale: {
 				xs: steps[0],
 				s: steps[1],
@@ -79,7 +119,9 @@ const fonts = {
 				xl: steps[4],
 				xxl: steps[5],
 				h4: steps[6],
-				h3: steps[7]
+				h3: steps[7],
+				h2: steps[8],
+				h1: steps[9]
 			},
 			steps
 		}
@@ -91,9 +133,19 @@ export const theme = createTheme({
 	fonts,
 	gradients: {
 		goldGradient: {
+			// background: linear-gradient(251deg, #FFE459 33.63%, #DD9B34 55.54%, #DB9531 64.51%, #A47327 81.94%);
+			1: {
+				background: `background: linear-gradient(251deg, ${colors.cosmicGold[50]} 33.63%, ${colors.cosmicGold[90]} 55.54%, ${colors.cosmicGold[100]} 64.51%, ${colors.cosmicGold[200]} 81.94%);`,
+				steps: [
+					colors.cosmicGold[50],
+					colors.cosmicGold[90],
+					colors.cosmicGold[100],
+					colors.cosmicGold[200]
+				]
+			},
+			// linear-gradient(262deg, #FFE459 33.1%, #DD9B34 56.3%, #DB9531 65.78%, #A47327 84.23%);
 			2: {
-				background: `linear-gradient(261.78deg, ${colors.cosmicGold[50]} 33.1%, ${colors.cosmicGold[90]} 56.3%,${colors.cosmicGold[100]} 65.78%, ${colors.gray[200]} 84.23%)`,
-				inversedBackground: `linear-gradient(261.78deg, ${colors.cosmicGold[100]} 33.1%, ${colors.cosmicGold[90]} 56.3%, ${colors.cosmicGold[50]} 65.78%, ${colors.gray[200]} 84.23%)`,
+				background: `linear-gradient(261.78deg, ${colors.cosmicGold[50]} 33.1%, ${colors.cosmicGold[90]} 56.3%, ${colors.cosmicGold[100]} 65.78%, ${colors.cosmicGold[200]} 84.23%)`,
 				steps: [
 					colors.cosmicGold[50],
 					colors.cosmicGold[90],
@@ -101,6 +153,7 @@ export const theme = createTheme({
 					colors.gray[200]
 				]
 			},
+			// linear-gradient(271deg, #FFE459 2.88%, #DD9B34 79.48%, #DB9531 98.1%);
 			3: {
 				background: `linear-gradient(270.62deg, ${colors.cosmicGold[50]} 2.88%, ${colors.cosmicGold[90]} 79.48%, ${colors.cosmicGold[100]} 98.1%)`,
 				inversedBackground: `linear-gradient(270.62deg, ${colors.cosmicGold[100]} 2.88%,${colors.cosmicGold[90]} 79.48%, ${colors.cosmicGold[50]} 98.1%)`,
@@ -108,43 +161,82 @@ export const theme = createTheme({
 			}
 		},
 		buttonGradients: {
+			// radial-gradient(68.86% 100% at 100% 100%, #FFE459 0%, #DB9531 50.19%, #A47327 100%);
 			cta1: {
 				background: `radial-gradient(100% 68.86% at 100% 100%, ${colors.cosmicGold[50]} 0%, ${colors.cosmicGold[100]} 50.19%, ${colors.cosmicGold[200]} 100%)`
 			},
+			// linear-gradient(0deg, rgba(10, 10, 10, 0.12) 0%, rgba(10, 10, 10, 0.12) 100%), radial-gradient(94.94% 137.88% at 100% 100%, #FFE459 0%, #DB9531 50%, #A47327 100%);
 			cta2: {
 				background: `radial-gradient(137.88% 94.94% at 100% 100%, ${colors.cosmicGold[50]} 0%, ${colors.cosmicGold[100]} 50%, ${colors.cosmicGold[200]} 100%), linear-gradient(0deg, ${colors.alpha.softGray1}, ${colors.alpha.softGray1})`
 			},
+			// linear-gradient(0deg, rgba(10, 10, 10, 0.24) 0%, rgba(10, 10, 10, 0.24) 100%), radial-gradient(172.98% 251.21% at 100% 100%, #FFE459 0%, #DB9531 50%, #A47327 100%);
 			cta3: {
-				background: `radial-gradient(251.21% 172.98% at 100% 100%, ${colors.cosmicGold[50]} 0%, ${colors.cosmicGold[100]} 50%, ${colors.cosmicGold[200]} 100%), linear-gradient(0deg, ${colors.alpha.softGray2}, ${colors.alpha.softGray2})`
+				background: `linear-gradient(0deg, ${colors.alpha.softGray2}, ${colors.alpha.softGray2}), radial-gradient(172.98% 251.21% at 100% 100%, ${colors.cosmicGold[50]} 0%, ${colors.cosmicGold[100]} 50%, ${colors.cosmicGold[200]} 100%)`
 			}
+		}
+	},
+	semantic: {
+		border: {
+			primary: colors.gray[200],
+			primaryDark: colors.gray[700],
+			secondary: colors.gray[300]
+		},
+		background: {
+			secondary: colors.gray[100]
+		},
+		content: {
+			secondary: colors.gray[700],
+			tertiary: colors.gray[900]
 		}
 	},
 	sizes: {
 		button: {
-			small: {
-				width: 120,
-				height: 40,
-				fontSize: 14,
-				radius: 8,
-				padding: "0.5rem 0.75rem"
-			},
 			default: {
-				width: 165,
-				height: 52,
-				fontSize: 16,
-				radius: 8,
+				width: "135px",
+				height: "40px",
+				fontSize: fonts.lexend.typescale.scale.m,
+				fontWeight: fonts.lexend.typescale.weight.regular,
+				radius: "0.5rem",
+				padding: "0.8755rem 0.75rem"
+			},
+			cta: {
+				width: "165px",
+				height: "52px",
+				fontSize: fonts.lexend.typescale.scale.l,
+				fontWeight: fonts.lexend.typescale.weight.medium,
+				radius: "0.5rem",
 				padding: "0.75rem 1rem"
 			},
 			large: {
-				width: 200,
-				height: 60,
-				fontSize: 18,
-				radius: 8,
+				width: "200px",
+				height: "60px",
+				fontSize: fonts.lexend.typescale.scale.xl,
+				fontWeight: fonts.lexend.typescale.weight.medium,
+				radius: "0.5rem",
 				padding: "1rem 1.25rem"
 			}
 		}
 	}
 } as const)
+
+// type Prettify<T> = {
+// 	[K in keyof T]: T[K]
+// } & {}
+
+// type SizeEntry<E extends string, Index extends number> = [`size-${Index}`, E]
+
+// //@ts-expect-error number => number & I
+// type ScaleEntries<A extends readonly string[]> = { [I in keyof A]: Prettify<SizeEntry<A[I], I>> }
+
+// const typeSafeObjectFromEntries = <const T extends ReadonlyArray<readonly [PropertyKey, unknown]>>(
+// 	entries: T
+// ): { [K in T[number] as K[0]]: K[1] } => {
+// 	return Object.fromEntries(entries) as { [K in T[number] as K[0]]: K[1] }
+// }
+
+// const entries = steps.map(
+// 	(step, index) => [`size-${index}` as const, step] as const
+// ) as unknown as ScaleEntries<typeof steps>
 
 /**
  * TEST

@@ -4,19 +4,7 @@
         "path": "../apps/bridge",
       },
       {
-        "path": "../apps/dex",
-      },
-      {
-        "path": "../apps/sdk",
-      },
-      {
         "path": "../apps/sdk-docs",
-      },
-      {
-        "path": "../apps/luminadex-docs",
-      },
-      {
-        "path": "../apps/luminadex-contracts",
       },
       {
         "path": "..",

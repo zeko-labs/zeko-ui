@@ -1,146 +1,203 @@
-<script lang="ts" setup>
-import { theme } from "~~/helpers/theme"
-const styles = theme
-const steps = [
-	"Send transfer request",
-	"Sign send transaction",
-	"Claim transfer",
-	"Sign claim transaction",
-	"Transfer complete"
-]
-const currentStepIndex = ref(0)
-</script>
-
 <template>
-  <div class="page-background">
-    <video class="background-video" autoplay loop muted playsinline>
-      <source src="assets/videos/background_video.webm" type="video/webm" />
-      Your browser does not support the video tag.
-    </video>
-    <div class="rollup-bridge" :style="styles.css.string">
-      <header class="header">
-        <div class="header-content">
-          <div class="logo">
-            <SvgZekoLogo />
+  <main>
+    <header>
+      <Navigation :logo="false" />
+    </header>
+    <section class="Hero">
+      <div class="Content">
+        <div class="Logo">
+          <SvgZekoLogoRings />
+        </div>
+        <div class="Main">
+          <div class="Text">
+            <div class="Title">Powering the <b>zkInternet Revolution</b></div>
+            <div class="Description">
+              Zeko is a decentralized <b>zero-knowledge scaling protocol</b>
+              powering the future of the Internet, A.I., Gaming, and Finance
+            </div>
           </div>
-          <nav class="nav">
-            <a href="#" class="nav-item">Build</a>
-            <a href="#" class="nav-item">Community</a>
-          </nav>
-          <div class="user-menu">
-            <!-- Implement user menu icon here -->
+          <div class="Buttons">
+            <Button variant="cta1">Start Building</Button>
+            <Button variant="cta1">Testnet Contest</Button>
           </div>
         </div>
-      </header>
-      <main class="main-content">
-        <h1 class="title">Rollup Bridge</h1>
-        <p class="description">
-          The Rollup Bridge is a trustless bridge for transferring tokens from
-          Mina L1 to Zeko L2. Please check <a href="#" class="link">Zeko Docs</a
-          >
-          for information about other bridges.
-        </p>
-        <p class="instructions">
-          Complete all steps to execute a rollup transfer between Mina L1 and
-          Zeko L2
-        </p>
-
-        <div class="progress-bar">
-          <ProgressBar :step="currentStepIndex" />
-          <button
-            @click="currentStepIndex--"
-            :disabled="currentStepIndex === 0">
-            Previous Step
-          </button>
-          <button
-            @click="currentStepIndex++"
-            :disabled="currentStepIndex === steps.length - 1">
-            Next Step
-          </button>
-        </div>
-
-        <hr />
-        <TokenSelector />
-        <hr />
-
-        <FromTo />
-
-        <hr />
-
-        <Button variant="cta1" class="connect-wallet">Connect Wallet</Button>
-      </main>
-    </div>
-  </div>
-  <Wallet />
-  <Bridge />
+      </div>
+      <div class="SocialLinks">
+        <a href="https://discord.gg/vSDxqAchUY" target="_blank">
+          <SvgSocialDiscord />
+        </a>
+        <a href="https://github.com/zeko-labs" target="_blank">
+          <SvgSocialGithub />
+        </a>
+        <a href="https://t.me/zekoprotocol" target="_blank">
+          <SvgSocialTelegram />
+        </a>
+        <a href="https://x.com/ZekoLabs" target="_blank">
+          <SvgSocialX />
+        </a>
+      </div>
+    </section>
+    <section class="First">
+      <ProblemsAndSolution />
+    </section>
+    <section class="Second">
+      <div class="Text">
+        Lorem ipsum dolor sit amet consectetur adipisicing elit. Rem quod labore
+        corporis natus enim assumenda nobis consequuntur pariatur accusantium
+        quaerat deleniti officiis, debitis iste unde beatae facere aliquam ea
+        sint?
+      </div>
+      <div class="Text">
+        zkApps like decentralized A.I. are natively scalable and modular,
+        utilizing off-chain compute, storage, and data to augment UX and reduce
+        costs
+      </div>
+      <div class="Text">
+        Zeko Virtual Machine powers the future of decentralized apps with
+        advanced programmability, cryptography, and automated agents
+      </div>
+    </section>
+    <section class="Third">
+      <Features2 />
+    </section>
+    <section class="Rings">
+      <Rings />
+    </section>
+    <footer>
+      <Footer />
+    </footer>
+  </main>
 </template>
-
-<style scoped>
-.page-background {
-  position: relative;
-  width: 100vw;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-.background-video {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  z-index: -1;
-}
-
-.rollup-bridge {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  position: relative;
-  min-height: 100vh;
-  color: var(--colors-gray-950);
-}
-
-.header {
-  background: rgba(255, 255, 255, 0.24);
-  backdrop-filter: blur(4px);
-}
-
-.header-content {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  margin: 0;
-  padding: 1rem 2rem;
-  gap: 24px;
-}
-
-.logo {
-  width: 79px;
-  height: 48px;
-}
-
-.nav {
-  justify-self: flex-end;
-  display: flex;
-  gap: 2rem;
-}
-
-.nav-item {
-  color: var(--colors-gray-950);
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.user-menu {
-  width: 40px; /* Adjust based on your icon's dimensions */
-  height: 40px;
-  background-color: var(--colors-gray-900); /* Placeholder for the icon */
-  border-radius: 50%;
-}
-
+<style lang="postcss" scoped>
 main {
-  padding: 0 1rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto auto auto auto auto auto;
+  grid-template-areas:
+    "nav"
+    "hero"
+    "first"
+    "second"
+    "third"
+    "rings"
+    "footer";
+  position: relative;
+  min-height: 100dvh;
+  width: 100vw;
+  color: var(--colors-gray-950);
+  font-size: var(--fonts-lexend-typescale-scale-m);
+  padding: 0;
+}
+header {
+  grid-area: nav;
+  width: 100vw;
+}
+.Hero {
+  grid-area: hero;
+  min-height: 100dvh;
+  width: 100vw;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  .Content {
+    display: flex;
+    padding: 8.75rem 4rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3.5rem;
+    align-self: stretch;
+    .Main {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2.5rem;
+      align-self: stretch;
+      .Text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        align-self: stretch;
+        .Title {
+          font-size: var(--fonts-lexend-typescale-scale-h3);
+          font-weight: 500;
+          b {
+            font-weight: 600;
+          }
+        }
+        .Description {
+          width: 50ch;
+          font-size: var(--fonts-lexend-typescale-scale-m);
+          font-weight: 300;
+          b {
+            font-weight: 500;
+          } 
+        }
+      }
+      .Buttons {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+    }
+  }
+  .SocialLinks {
+    display: flex;
+    padding: 2.5rem 4rem;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 1.5rem;
+    background: rgba(255, 255, 255, 0.24);
+    backdrop-filter: blur(2px);
+    a {
+      color: var(--colors-gray-950);
+      &:hover {
+          transform: scale(1.2);
+      }
+    }
+  }
+}
+.First {
+  grid-area: first;
+  background-color: var(--colors-gray-950);
+  color: white;
+  height: 50rem;
+  width: 100vw;
+}
+.Second {
+  grid-area: second;
+  grid-template-columns: repeat(3, auto);
+  display: grid;
+  height: 22.125rem;
+  padding: 4rem;
+  gap: 2.5rem;
+  margin: 0 auto;
+  width: 100vw;
+  .Text {
+    display: flex;
+    padding: 2.25rem 2rem;
+    justify-content: center;
+    align-items: center;
+    flex: 1 0 0;
+    max-width: 50ch;
+    border-radius: 1rem;
+    background: white;
+  }
+}
+.Third {
+  grid-area: third;
+  color: white;
+  height: 30rem;
+  width: 100vw;
+}
+.Rings {
+  grid-area: rings;
+  width: 100vw;
+  height: 60rem;
+}
+footer {
+  grid-area: footer;
+  width: 100vw;
+  background-color: var(--colors-gray-950); 
+  color: white;
 }
 </style>

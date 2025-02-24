@@ -3,39 +3,59 @@ import { computed } from "vue"
 import { theme } from "~~/helpers/theme"
 
 interface Props {
-	size?: "small" | "default" | "large"
 	variant?: "cta1" | "cta2" | "cta3" | "default"
 }
 
 defineOptions({ inheritAttrs: false })
 
-const { size = "default", variant = "default" } = defineProps<Props>()
+const { variant = "default" } = defineProps<Props>()
 
 const isCta = computed(() => variant !== "default")
 
+const size = computed(() => (isCta.value ? "cta" : "default"))
+
 const buttonStyle = computed(() => {
-	const sizes = theme.config.sizes.button[size]
+	const sizes = theme.config.sizes.button[size.value]
 	const colors = theme.config.colors
 
 	const baseStyles = {
 		color: theme.config.colors.gray[50].value,
-		width: `${sizes.width.value / 16}rem`,
-		height: `${sizes.height.value / 16}rem`,
-		fontSize: `${sizes.fontSize.value / 16}rem`,
+		width: sizes.width,
+		height: sizes.height,
 		padding: sizes.padding.value,
-		fontWeight: 400,
-		radius: `${sizes.radius.value / 16}rem`
+		radius: sizes.radius.value,
+		fontSize: sizes.fontSize.value,
+		fontWeight: sizes.fontWeight.value
 	} as const
 	const cta = {
 		...baseStyles,
-		fontWeight: 500,
-		borderColor: theme.config.colors.spaceBlue.value
+		borderColor: theme.config.semantic.border.primary.value,
+		disabled: {
+			color: theme.config.semantic.content.secondary.value,
+			borderColor: theme.config.semantic.border.primaryDark.value,
+			background: theme.config.semantic.background.secondary.value
+		},
+		hover: { opacity: 0.9 },
+		active: { opacity: 0.8 }
 	} as const
 	const variants = {
 		default: {
 			...baseStyles,
 			background: colors.gray[950].value,
-			borderColor: colors.gray[950].value
+			borderColor: colors.gray[950].value,
+			disabled: {
+				color: theme.config.semantic.content.tertiary.value,
+				borderColor: theme.config.semantic.background.secondary.value,
+				background: theme.config.semantic.background.secondary.value
+			},
+			hover: {
+				background: theme.config.colors.gray[900].value,
+				borderColor: theme.config.colors.gray[900].value
+			},
+			active: {
+				background: theme.config.colors.gray[800].value,
+				borderColor: theme.config.colors.gray[800].value
+			}
 		},
 		cta1: {
 			...cta,
@@ -53,34 +73,21 @@ const buttonStyle = computed(() => {
 	return variants[variant]
 })
 
-const hoverActive = {
-	cta: {
-		hover: {
-			opacity: 0.9
-		},
-		active: {
-			opacity: 0.8
-		}
-	},
-	default: {
-		hover: {
-			background: theme.config.colors.gray[900].value,
-			borderColor: theme.config.colors.gray[900].value
-		},
-		active: {
-			background: theme.config.colors.gray[800].value,
-			borderColor: theme.config.colors.gray[800].value
-		}
-	}
-} as const
+const plus = computed(
+	() =>
+		useSlots().default?.()?.[0].children === "Add Token" &&
+		size.value === "default"
+)
 </script>
 
 <template>
   <button
+    type="button"
     class="ZekoButton"
     :class='[`ZekoButton${isCta ? "CTA" : "Default"}`]'
     v-bind="$attrs">
     <slot></slot>
+    <SvgPlus v-if="plus" />
   </button>
 </template>
 
@@ -94,6 +101,7 @@ const hoverActive = {
   cursor: pointer;
   border: none;
   outline: 0;
+  gap: 0.5rem;
   font-weight: v-bind("buttonStyle.fontWeight");
   background: v-bind("buttonStyle.background");
   color: v-bind("buttonStyle.color");
@@ -107,22 +115,39 @@ const hoverActive = {
 }
 
 .ZekoButtonCTA {
-  &:hover {
-    opacity: v-bind("hoverActive.cta.hover.opacity");
+  &:disabled {
+	box-shadow: inset 0 0 0 1px v-bind("buttonStyle.disabled.borderColor");
+	background: v-bind("buttonStyle.disabled.background");
+	color: v-bind("buttonStyle.disabled.color");
+	cursor: not-allowed;
   }
-  &:active {
-	opacity: v-bind("hoverActive.cta.active.opacity");
+  &:not(:disabled) {
+	&:hover {
+		opacity: v-bind("buttonStyle.hover.opacity");
+	}
+	&:active {
+		opacity: v-bind("buttonStyle.active.opacity");
+	}
   }
 }
 
 .ZekoButtonDefault {
-  &:hover {
-	background: v-bind("hoverActive.default.hover.background");
-	box-shadow: inset 0 0 0 1px v-bind("hoverActive.default.hover.borderColor");
+  &:disabled {
+	background: v-bind("buttonStyle.disabled.background");
+	box-shadow: inset 0 0 0 1px v-bind("buttonStyle.disabled.borderColor");
+	color: v-bind("buttonStyle.disabled.color");
+	cursor: not-allowed;
   }
-  &:active {
-	background: v-bind("hoverActive.default.active.background");
-	box-shadow: inset 0 0 0 1px v-bind("hoverActive.default.active.borderColor");
+  &:not(:disabled) {
+	&:hover {
+		background: v-bind("buttonStyle.hover.background");
+		box-shadow: inset 0 0 0 1px v-bind("buttonStyle.hover.borderColor");
+  	}
+  	&:active {
+		background: v-bind("buttonStyle.active.background");
+		box-shadow: inset 0 0 0 1px v-bind("buttonStyle.active.borderColor");
+  	}
   }
+
 }
 </style>

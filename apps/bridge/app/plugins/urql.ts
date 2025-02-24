@@ -1,8 +1,10 @@
 import urql from "@urql/vue"
-import { createClientOptions } from "@zeko/sdk/vue"
+
 export default defineNuxtPlugin({
 	name: "urql",
-	setup(nuxtApp) {
-		nuxtApp.vueApp.use(urql, createClientOptions("https://devnet.zeko.io/graphql"))
+	async setup(nuxtApp) {
+		if (import.meta.server) return
+		const sdk = await import("@lumina-dex/sdk")
+		nuxtApp.vueApp.use(urql, sdk.createClientOptions("https://devnet.zeko.io/graphql"))
 	}
 })

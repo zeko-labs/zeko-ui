@@ -1,20 +1,12 @@
 <script lang="ts" setup>
-import { useMachine, useSelector } from "@zeko/sdk/vue"
+import { useMachine, useSelector } from "@lumina-dex/sdk/vue"
 import { fromPromise } from "xstate"
 import { bridgeMachine } from "~~/machines/bridge"
 import { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 
-const walletStore = useWalletStore()
-const { getPublicKey } = walletStore
-const {
-	snapshot: walletSnapshot,
-	actorRef: walletActorRef,
-	address,
-	walletLoaded,
-	minaBalances,
-	zekoBalances,
-	currentNetwork
-} = toRefs(walletStore)
+const wallet = useWalletStore()
+const { address, walletLoaded, minaBalances, zekoBalances, currentNetwork } =
+	storeToRefs(wallet)
 
 const {
 	proveTransferRequest,
@@ -26,11 +18,9 @@ const {
 } = useBridge()
 
 const amountToBridge = ref("")
-// const show = (_: any) => {}
-const walletValue = computed(() => walletSnapshot.value.value)
+const walletValue = computed(() => wallet.snapshot.context)
 const totalBalances = computed(() => {
-	// show(walletSnapshot.value.value)
-	return `MINA: (L1) => ${minaBalances.value.MINA} | L2 => ${zekoBalances.value.MINA}`
+	return `MINA: (L1) => ${JSON.stringify(minaBalances.value)} | L2 => ${JSON.stringify(zekoBalances.value)}`
 })
 // const totalBalances = useSelector(walletActorRef, (state) => {
 // 	return `MINA: (L1) => ${state.context.minaBalances.MINA} | L2 => ${state.context.zekoBalances.MINA}`
@@ -62,7 +52,7 @@ const machine = bridgeMachine.provide({
 					async ({ input: { accountUpdates } }) => {
 						console.log("ConfirmTransferRequest ...")
 						const result = await confirmTransferRequest({
-							senderPublicKey: getPublicKey(address.value),
+							senderPublicKey: wallet.getPublicKey(address.value),
 							amount: amountToBridge.value,
 							accountUpdates
 						})
@@ -73,7 +63,7 @@ const machine = bridgeMachine.provide({
 				findAllTransfers: fromPromise(async () => {
 					console.log("Finding all transfers ...")
 					const transfers = await findAllTransfers({
-						senderPublicKey: getPublicKey(address.value),
+						senderPublicKey: wallet.getPublicKey(address.value),
 						amount: Number(amountToBridge.value)
 					})
 					return transfers
@@ -92,7 +82,6 @@ const machine = bridgeMachine.provide({
 						// biome-ignore lint/suspicious/noExplicitAny: TODO
 						const before = [] as any[] //TODO: See with Martin
 						const accountUpdates = await proveTransferClaim({
-							isNew,
 							after,
 							before,
 							recipient: address.value,
@@ -106,7 +95,7 @@ const machine = bridgeMachine.provide({
 					async ({ input: { accountUpdates } }) => {
 						console.log("ConfirmTransferClaim ...")
 						const result = await confirmTransferClaim({
-							senderPublicKey: getPublicKey(address.value),
+							senderPublicKey: wallet.getPublicKey(address.value),
 							accountUpdates
 						})
 						if ("hash" in result) return result.hash
@@ -120,10 +109,10 @@ const machine = bridgeMachine.provide({
 
 //MOCK
 const { send, snapshot, actorRef } = useMachine(bridgeMachine, {
-	input: { wallet: walletActorRef.value, currentNetwork: currentNetwork.value },
+	input: { wallet: wallet.actorRef, currentNetwork: currentNetwork.value },
 	inspect: (event) => {
 		if (event.type === "@xstate.event") {
-			console.log(event)
+			// console.log(event)
 		}
 	}
 })
@@ -139,7 +128,11 @@ const { send, snapshot, actorRef } = useMachine(bridgeMachine, {
 
 const source = computed(() => snapshot.value.context.sourceNetwork)
 const destination = computed(() => snapshot.value.context.destinationNetwork)
-const network = computed(() => snapshot.value.context.currentNetwork)
+
+const network = useSelector(
+	wallet.actorRef,
+	(state) => state.context.currentNetwork
+)
 
 const children = useSelector(actorRef, (state) => [
 	...state.context.operations.values()
