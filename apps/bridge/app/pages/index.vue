@@ -37,15 +37,13 @@
         </a>
       </div>
     </section>
-    <section class="First">
+    <section class="ProblemSolution">
       <ProblemsAndSolution />
     </section>
-    <section class="Second">
+    <section class="Feature">
       <div class="Text">
-        Lorem ipsum dolor sit amet consectetur adipisicing elit. Rem quod labore
-        corporis natus enim assumenda nobis consequuntur pariatur accusantium
-        quaerat deleniti officiis, debitis iste unde beatae facere aliquam ea
-        sint?
+        Zero-knowledge is the technology of Trust, the foundation for building
+        our future on blockchain
       </div>
       <div class="Text">
         zkApps like decentralized A.I. are natively scalable and modular,
@@ -57,7 +55,7 @@
         advanced programmability, cryptography, and automated agents
       </div>
     </section>
-    <section class="Third">
+    <section class="Feature2">
       <Features2 />
     </section>
     <section class="Rings">
@@ -130,7 +128,7 @@ header {
           font-weight: 300;
           b {
             font-weight: 500;
-          } 
+          }
         }
       }
       .Buttons {
@@ -151,19 +149,19 @@ header {
     a {
       color: var(--colors-gray-950);
       &:hover {
-          transform: scale(1.2);
+        transform: scale(1.2);
       }
     }
   }
 }
-.First {
+.ProblemSolution {
   grid-area: first;
   background-color: var(--colors-gray-950);
   color: white;
   height: 50rem;
   width: 100vw;
 }
-.Second {
+.Feature {
   grid-area: second;
   grid-template-columns: repeat(3, auto);
   display: grid;
@@ -183,7 +181,7 @@ header {
     background: white;
   }
 }
-.Third {
+.Feature2 {
   grid-area: third;
   color: white;
   height: 30rem;
@@ -197,7 +195,7 @@ header {
 footer {
   grid-area: footer;
   width: 100vw;
-  background-color: var(--colors-gray-950); 
+  background-color: var(--colors-gray-950);
   color: white;
 }
 </style>

@@ -22,12 +22,6 @@
   </div>
 </template>
 
-<script>
-export default {
-	name: "CircleTextComponent"
-}
-</script>
-
 <style lang="postcss" scoped>
 .background {
   width: 100%;

@@ -12,11 +12,7 @@ const currentStepIndex = ref(0)
 </script>
 
 <template>
-  <div class="page-background">
-    <video class="background-video" autoplay loop muted playsinline>
-      <source src="assets/videos/background_video.webm" type="video/webm" />
-      Your browser does not support the video tag.
-    </video>
+  <div class="wrapper">
     <div class="rollup-bridge" :style="styles.css.string">
       <header class="header">
         <div class="header-content">
@@ -87,22 +83,12 @@ const currentStepIndex = ref(0)
   <Bridge />
 </template>
 
-<style scoped>
-.page-background {
+<style lang="postcss" scoped>
+.wrapper {
   position: relative;
   width: 100vw;
   min-height: 100vh;
   overflow-x: hidden;
-}
-
-.background-video {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  z-index: -1;
 }
 
 .rollup-bridge {
