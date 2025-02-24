@@ -4,9 +4,6 @@
         "path": "../apps/bridge",
       },
       {
-        "path": "../apps/sdk-docs",
-      },
-      {
         "path": "..",
       },
     ],
