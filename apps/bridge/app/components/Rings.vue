@@ -1,75 +1,84 @@
-<script lang="ts" setup>
-</script>
 <template>
   <div class="background">
     <SvgZekoBigRings />
-    <div class="Node Connection">
-      <img
-        src="~/assets/images/rings/connection.png"
-        alt="Connection">
+    <div class="Node Connection" ref="Connection">
+      <div class="Picture">
+        <img
+          class="Hovered"
+          src="~/assets/images/rings/Connection2.svg"
+          alt="Connection">
+        <img
+          class="NotHovered"
+          src="~/assets/images/rings/Connection1.svg"
+          alt="Connection">
+      </div>
+
       <div class="Title">Connection</div>
       <div class="Card">
-        <div class="CardTitle">Connection</div>
-        <div class="CardText">
-          Proof generation, recursion, smart contracts, DA solutions & more;
-          Zeko offers everything developers need to bring their zkApp ideas to
-          life.
-        </div>
+        Proof generation, recursion, smart contracts, DA solutions & more; Zeko
+        offers everything developers need to bring their zkApp ideas to life.
       </div>
     </div>
-    <div class="Node Accessibility">
+    <div class="Node Accessibility" ref="Accessibility">
       <img
-        src="~/assets/images/rings/accessibility.png"
+        class="Hovered"
+        src="~/assets/images/rings/Accessibility2.svg"
+        alt="Accessibility">
+      <img
+        class="NotHovered"
+        src="~/assets/images/rings/Accessibility1.svg"
         alt="Accessibility">
       <div class="Title">Accessibility</div>
       <div class="Card">
-        <div class="CardTitle">Accessibility</div>
-        <div class="CardText">
-          Developers can write and deploy applications in any programming
-          language to an isomorphic Zeko L2, or spin up to their own custom
-          zkAppChains.
-        </div>
+        Developers can write and deploy applications in any programming language
+        to an isomorphic Zeko L2, or spin up to their own custom zkAppChains.
       </div>
     </div>
-    <div class="Node Origin">
+    <div class="Node Origin" ref="Origin">
       <img
-        src="~/assets/images/rings/origin.png"
+        class="Hovered"
+        src="~/assets/images/rings/Origin2.svg"
+        alt="Origin">
+      <img
+        class="NotHovered"
+        src="~/assets/images/rings/Origin1.svg"
         alt="Origin">
       <div class="Title">Origin</div>
       <div class="Card">
-        <div class="CardTitle">Origin</div>
-        <div class="CardText">
-          Zeko chains enjoy easy composability between each other and Mina
-          itself using recursive proofs and shared infrastructure.
-        </div>
+        Zeko chains enjoy easy composability between each other and Mina itself
+        using recursive proofs and shared infrastructure.
       </div>
     </div>
-    <div class="Node Scaling">
+    <div class="Node Scaling" ref="Scaling">
       <img
-        src="~/assets/images/rings/scaling.png"
+        class="Hovered"
+        src="~/assets/images/rings/Scaling2.svg"
+        alt="Scaling">
+      <img
+        class="NotHovered"
+        src="~/assets/images/rings/Scaling1.svg"
         alt="Scaling">
       <div class="Title">Scaling</div>
       <div class="Card">
-        <div class="CardTitle">Scaling</div>
-        <div class="CardText">
-          Through trustless zk-bridging, proofs that verify on Zeko can be
-          consumed by the EVM, dramatically upending existing paradigms for
-          blockchain applications.
-        </div>
+        Through trustless zk-bridging, proofs that verify on Zeko can be
+        consumed by the EVM, dramatically upending existing paradigms for
+        blockchain applications.
       </div>
     </div>
-    <div class="Node Legion">
+    <div class="Node Legion" ref="Legion">
       <img
-        src="~/assets/images/rings/legion.png"
+        class="Hovered"
+        src="~/assets/images/rings/Legion2.svg"
+        alt="Legion">
+      <img
+        class="NotHovered"
+        src="~/assets/images/rings/Legion1.svg"
         alt="Legion">
       <div class="Title">Legion</div>
       <div class="Card">
-        <div class="CardTitle">Legion</div>
-        <div class="CardText">
-          Zeko is a community of builders obsessed with pioneering applications,
-          optimizing performance, and enhancing the user experience. We shape
-          the future and inspire the new internet.
-        </div>
+        Zeko is a community of builders obsessed with pioneering applications,
+        optimizing performance, and enhancing the user experience. We shape the
+        future and inspire the new internet.
       </div>
     </div>
   </div>
@@ -78,10 +87,26 @@
 .background {
     position: relative;
 }
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
 svg {
+  position: relative;
   width: 100%;
   height: 60rem;
   pointer-events: none;
+  animation: pulse 8s infinite;
+  z-index: -1;
 }
 
 .Node {
@@ -90,9 +115,15 @@ svg {
     grid-template-columns: auto auto;
     align-items: center;
     gap: 1.25rem;
+    .Hovered {
+      display: none;
+    }
     .Title {
         font-size: var(--fonts-lexend-typescale-scale-xl);
         font-weight: 500;
+    }
+    img {
+        transition: transform 0.3s;
     }
 }
 
@@ -124,88 +155,45 @@ svg {
 .Card {
     display: none;
     position: absolute;
-    left: 100px; /* Size of the image */
-    max-width: 50ch;
-    min-width: 40ch;
-    background-color: oklch(1 0 0 / 0.9);
+    left: 6rem;
+    top: 4rem;
+    width: 45ch;
+    background-color: oklch(1 0 0 / 0.72);
+    backdrop-filter: blur(2px);
     border-radius: 0.5rem;
-    padding: 2rem;
-    gap: 1rem;
-    .CardTitle {
-        font-size: var(--fonts-lexend-typescale-scale-xl);
-        font-weight: 500;
-    }
+    padding: 1rem;
+    font-size: var(--fonts-lexend-typescale-scale-s);
+    font-weight: 400;
+    text-wrap: balance;
 }
 
-body:has(.Connection:hover) .Connection {
-    .Title {
-        display:none;
-    }
+ body:has(.Connection:hover) .Connection,
+ body:has(.Accessibility:hover) .Accessibility,
+ body:has(.Origin:hover) .Origin,
+ body:has(.Scaling:hover) .Scaling,
+ body:has(.Legion:hover) .Legion {
     .Card {
         display: grid;
     }
-    img {
-        transform: scale(1.1);
-        transition: transform 0.3s;
+    .Hovered {
+        display: block;
+    }
+    .NotHovered {
+        display: none;
     }
 }
 
-
-body:has(.Accessibility:hover) .Accessibility {
-    .Title {
-        display:none;
-    }
-    .Card {
-        display: grid;
-    }
-    img {
-        transform: scale(1.1);
-        transition: transform 0.3s;
-    }
+.Connection, .Accessibility, .Legion{
+  img:hover {
+          transform: scale(1.1) rotate(180deg);
+          transition: transform 0.3s;
+  }
 }
 
-body:has(.Origin:hover) .Origin {
-    .Title {
-        display:none;
-    }
-
-    .Card {
-        display: grid;
-    }
-    img {
-        transform: scale(1.1);
-        transition: transform 0.3s;
-    }
-}
-
-body:has(.Scaling:hover) .Scaling  {
-    .Title {
-        display:none;
-    }
-
-    .Card {
-        display: grid;
-    }
-    
-    img {
-        transform: scale(1.1);
-        transition: transform 0.3s;
-    }
-}
-
-
-
-body:has(.Legion:hover) .Legion {
-    .Title {
-        display:none;
-    }
-
-    .Card {
-        display: grid;
-    }
-    img {
-        transform: scale(1.1);
-        transition: transform 0.3s;
-    }
+.Scaling {
+  img:hover {
+          transform: scale(1.1);
+          transition: transform 0.3s;
+  }
 }
 </style>

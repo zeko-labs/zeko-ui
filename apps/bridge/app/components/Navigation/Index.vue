@@ -1,15 +1,42 @@
 <script lang="ts" setup>
-const { logo } = defineProps<{ logo: boolean }>()
+const { logo = true } = defineProps<{ logo?: boolean }>()
+const buildItems = [
+	{
+		name: "Docs",
+		url: "https://docs.zeko.io"
+	},
+	{
+		name: "Faucet",
+		url: "/faucet"
+	}
+]
+
+const communityItems = [
+	{
+		name: "Discord",
+		url: "https://discord.gg/vSDxqAchUY"
+	},
+	{
+		name: "Telegram",
+		url: "https://t.me/+m8LBsR2kNTAxNmFh"
+	},
+	{
+		name: "X (Twitter)",
+		url: "https://twitter.com/ZekoLabs"
+	}
+]
 </script>
 <template>
   <div class="Header">
     <div class="Navigation">
       <div class="logo">
-        <SvgZekoLogo v-if="logo" />
+        <NuxtLink to="/">
+          <SvgZekoLogo v-if="logo" />
+        </NuxtLink>
       </div>
       <nav class="nav">
-        <NavItem>Build</NavItem>
-        <NavItem>Community</NavItem>
+        <NavigationItem :items="buildItems">Build</NavigationItem>
+        <NavigationItem :items="communityItems">Community</NavigationItem>
       </nav>
       <ClientOnly>
         <Sound />

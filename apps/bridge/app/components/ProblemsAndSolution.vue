@@ -1,8 +1,12 @@
 <template>
   <div class="background">
     <div class="circle-container top-left">
-      <div class="circle-overlay"></div>
-      <div class="yellow-glow"></div>
+      <div class="circle-overlay">
+        <img
+          src="~/assets/images/problems-solutions/white_circles.svg"
+          alt="White Circles"
+        />
+      </div>
       <div class="text-container">
         <p>We live in a world of rapidly</p>
         <p>expanding technology</p>
@@ -11,8 +15,12 @@
     </div>
 
     <div class="circle-container bottom-right">
-      <div class="circle-overlay"></div>
-      <div class="yellow-glow"></div>
+      <div class="circle-overlay">
+        <img
+          src="~/assets/images/problems-solutions/white_circles.svg"
+          alt="White Circles"
+        />
+      </div>
       <div class="text-container">
         <p>Zeko is the privacy-preserving</p>
         <p>scalable operating system for the</p>
@@ -28,6 +36,8 @@
   height: 100%;
   position: relative;
   overflow: hidden;
+  background-image: url("~/assets/images/problems-solutions/background.svg");
+  background-size: cover;
 }
 
 .circle-container {
@@ -35,6 +45,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  opacity: 0.9;
+  &:hover {
+    opacity: 1;
+  }
 }
 
 .top-left {
@@ -57,20 +71,8 @@
   position: absolute;
   width: 100%;
   height: 100%;
-  background-image: url("~/assets/images/white_circles.png");
-  background-size: cover;
-  background-position: center;
-  opacity: 0.75;
   border-radius: 50%;
-}
-
-.yellow-glow {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 200, 0.25) 0%, rgba(255, 240, 150, 0.05) 40%, transparent 70%);
-  z-index: 2;
+  animation: pulse 4s infinite;
 }
 
 .text-container {
@@ -78,5 +80,17 @@
   z-index: 3;
   text-align: center;
   max-width: 80%;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 </style>

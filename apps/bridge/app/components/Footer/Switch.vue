@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 const model = defineModel()
-const state = computed(() => model.value ? 'Users' : 'Builders')
 
 </script>
 <template>

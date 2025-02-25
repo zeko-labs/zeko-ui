@@ -1,0 +1,9 @@
+{
+	"name": "zeko-ui",
+	"compatibility_date": "2025-01-16",
+	"main": "./.output/server/index.mjs",
+	"assets": {
+		"directory": "./.output/public/",
+		"binding": "ASSETS"
+	}
+}

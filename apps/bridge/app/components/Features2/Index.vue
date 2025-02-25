@@ -20,20 +20,11 @@ const content = [
 <template>
   <div class="background">
     <div class="columns-container">
-      <div class="column" v-for="item of content" :key="item.title">
-        <h2 class="column-title">{{ item.title }}</h2>
-        <p class="column-text">
-          {{ item.body }}
-        </p>
-        <div class="circle-link">
-          <a :href="item.link" target="_blank">
-            <img
-              src="~/assets/images/circle_link.png"
-              alt="Cross-Chain link"
-              class="circle-image">
-          </a>
-        </div>
-      </div>
+      <Features2Column
+        v-for="item of content"
+        :key="item.title"
+        v-bind="item"
+      />
     </div>
   </div>
 </template>
@@ -72,11 +63,5 @@ h2, p {
 
 .circle-link {
     padding-top: 1rem;
-}
-
-img:hover {
-    transform: scale(1.1);
-    transition: transform 0.3s;
-    filter: hue-rotate(170deg) saturate(200%);
 }
 </style>

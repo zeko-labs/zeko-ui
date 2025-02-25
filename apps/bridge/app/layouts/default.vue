@@ -6,7 +6,10 @@ const styles = theme
 <template>
   <div class="page-background">
     <video class="background-video" autoplay loop muted playsinline>
-      <source src="assets/videos/background_video.webm" type="video/webm" />
+      <source
+        src="~/assets/videos/new_background_video.webm"
+        type="video/webm"
+      />
       Your browser does not support the video tag.
     </video>
     <div class="Layout" :style="styles.css.string">

@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+const toggle = ref(false)
+const state = computed(() => (toggle.value ? "Users" : "Builders"))
 </script>
 <template>
   <div class="background">
@@ -6,13 +8,26 @@
       <div class="Main">
         <div class="Title">Join the Zeko Revolution</div>
         <div class="Toggler">
-          <FooterSwitch />
+          <FooterSwitch v-model="toggle" />
         </div>
         <div class="Description">
           Create your first zkApp, Deploy to Zeko Testnet, Grow your user base
           while you earn rewards.
         </div>
-        <Button variant="cta1">Start Building</Button>
+        <Switch>
+          <Match :when='state === "Builders"'>
+            <NuxtLink
+              to="https://docs.zeko.io"
+              target="_blank">
+              <Button variant="cta1">Start Building</Button>
+            </NuxtLink>
+          </Match>
+          <Match :when='state === "Users"'>
+            <NuxtLink to="/faucet">
+              <Button variant="cta1">Try Testnet</Button>
+            </NuxtLink>
+          </Match>
+        </Switch>
       </div>
       <div class="Footer">
         <div class="Date">
@@ -72,6 +87,7 @@ h2, p {
         font-size: var(--fonts-lexend-typescale-scale-m);
         font-weight: 500;
         width: 40ch;
+        text-wrap: balance;
     }
 }
 .Footer {
