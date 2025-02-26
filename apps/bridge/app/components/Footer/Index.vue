@@ -4,6 +4,12 @@ const state = computed(() => (toggle.value ? "Users" : "Builders"))
 </script>
 <template>
   <div class="background">
+    <img
+      src="/assets/images/footer.webp"
+      alt="Footer background"
+      class="background-image"
+      loading="lazy"
+    />
     <div class="Content">
       <div class="Main">
         <div class="Title">Join the Zeko Revolution</div>
@@ -34,12 +40,7 @@ const state = computed(() => (toggle.value ? "Users" : "Builders"))
           ©{{ new Date().getFullYear() }} Zeko Labs, All Rights Reserved
         </div>
         <div class="Logos">
-          <a href="https://x.com/ZekoLabs" target="_blank">
-            <SvgSocialX />
-          </a>
-          <a href="https://t.me/zekoprotocol" target="_blank">
-            <SvgSocialTelegram />
-          </a>
+          <AllLogos />
         </div>
         <div class="TOS">
           <a href="#" target="_blank">Terms of Service</a>
@@ -56,12 +57,25 @@ h2, p {
 }
 
 .background {
-    background-image: url("~/assets/images/footer.png");
-    background-size: cover;
+    position: relative;
     height: 100%;
+    overflow: hidden;
+}
+
+.background-image {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    object-fit: cover;
+    object-position: 50%;
+    z-index: 0;
 }
 
 .Content {
+    position: relative;
+    z-index: 1;
     display: flex;
     padding: 3.5rem 5.5rem;
     gap: 3.5rem;
@@ -84,8 +98,9 @@ h2, p {
     text-align: center;
     gap: 1rem;
     .Title {
-        font-size: var(--fonts-lexend-typescale-scale-xxl);
+        font-size: var(--fonts-lexend-typescale-scale-h4);
         font-weight: 500;
+        line-height: 140%;
         width: 15ch;
     }
     .Description {
@@ -93,11 +108,13 @@ h2, p {
         font-size: var(--fonts-lexend-typescale-scale-m);
         font-weight: 500;
         width: 40ch;
+        color: oklch(100 0 0 / 0.8);
         text-wrap: balance;
     }
 }
 .Footer {
     display: grid;
+    grid-template-areas: "date logos tos";
     grid-template-columns: 1fr 1fr 1fr;
     width: 100%;
     justify-items: center;
@@ -114,7 +131,7 @@ h2, p {
         grid-area: logos;
         display: flex;
         gap: 1.5rem;
-        a {
+        :deep(a) {
             color: white;
             &:hover {
                 transform: scale(1.2);

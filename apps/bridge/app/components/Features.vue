@@ -1,37 +1,54 @@
 <script lang="ts" setup>
-const ARevealed = ref(false)
-const BRevealed = ref(false)
-const CRevealed = ref(false)
+import { useIntersectionObserver } from "@vueuse/core"
 
-const AClasses = computed(() => ({ Text: true, Revealed: ARevealed.value }))
+const targetIsVisible = shallowRef(false)
 
-const BClasses = computed(() => ({ Text: true, Revealed: BRevealed.value }))
+const classes = computed(() => ({
+	Card: true,
+	Revealed: targetIsVisible.value
+}))
 
-const CClasses = computed(() => ({ Text: true, Revealed: CRevealed.value }))
+const target = useTemplateRef<HTMLDivElement>("target")
+const { stop } = useIntersectionObserver(target, ([entry], observerElement) => {
+	targetIsVisible.value = entry?.isIntersecting || false
+})
+onUnmounted(() => stop())
 </script>
 <template>
-  <div class="Wrapper">
-    <div
-      @mouseenter="(ARevealed = true)"
-      @click="(ARevealed = !ARevealed)"
-      :class="AClasses">
-      Zero-knowledge is the technology of Trust, embedding security in digital
-      interactions and foundational for building our future on blockchain
+  <div class="Wrapper" ref="target">
+    <div :class="classes">
+      <img
+        src="~/assets/images/features/reveal.webp"
+        loading="lazy"
+        alt="Text Reveal Effect"
+      />
+      <p>
+        Zero-knowledge is the technology of Trust, embedding security in digital
+        interactions and foundational for building our future on blockchain
+      </p>
     </div>
-    <div
-      @mouseenter="(BRevealed = true)"
-      @click="(BRevealed = !BRevealed)"
-      :class="BClasses">
-      zkApps like decentralized A.I. are natively scalable and modular,
-      utilizing off-chain compute, storage, and data to augment UX and reduce
-      costs
+    <div :class="classes">
+      <img
+        src="~/assets/images/features/reveal.webp"
+        loading="lazy"
+        alt="Text Reveal Effect"
+      />
+      <p>
+        zkApps like decentralized A.I. are natively scalable and modular,
+        utilizing off-chain compute, storage, and data to augment UX and reduce
+        costs
+      </p>
     </div>
-    <div
-      @mouseenter="(CRevealed = true)"
-      @click="(CRevealed = !CRevealed)"
-      :class="CClasses">
-      Zeko Virtual Machine powers the future of decentralized apps with advanced
-      programmability, cryptography, and automated agents
+    <div :class="classes">
+      <img
+        src="~/assets/images/features/reveal.webp"
+        loading="lazy"
+        alt="Text Reveal Effect"
+      />
+      <p>
+        Zeko Virtual Machine powers the future of decentralized apps with
+        advanced programmability, cryptography, and automated agents
+      </p>
     </div>
   </div>
 </template>
@@ -43,19 +60,30 @@ const CClasses = computed(() => ({ Text: true, Revealed: CRevealed.value }))
   margin: 0 auto;
   height: 100%;
   padding: 4rem;
-  .Text {
+  .Card {
     display: flex;
     padding: 2.25rem 2rem;
     justify-content: center;
     align-items: center;
-    flex: 1 0 0;
-    max-width: 50ch;
     border-radius: 1rem;
-    background: var(--colors-gray-950);
-    transition: background 0.25s linear;
-    &.Revealed {
-      background: white;
+    position: relative;
+    background: white;
+    img {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      object-fit: cover;
+      z-index: 0;
+      border-radius: 1rem;
     }
+    &.Revealed {
+      img {
+        opacity: 0; 
+        transition: opacity 3s linear;
+      }
+    } 
   }
 }
 

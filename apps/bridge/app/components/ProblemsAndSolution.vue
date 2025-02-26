@@ -1,9 +1,16 @@
 <template>
   <div class="background">
+    <img
+      src="~/assets/images/problems-solutions/background.webp"
+      alt="Background"
+      class="background-image"
+      loading="lazy"
+    />
     <div class="circle-container top-left">
       <div class="circle-overlay">
         <img
-          src="~/assets/images/problems-solutions/white_circles.svg"
+          src="~/assets/images/problems-solutions/white_circles.webp"
+          loading="lazy"
           alt="White Circles"
         />
       </div>
@@ -17,7 +24,8 @@
     <div class="circle-container bottom-right">
       <div class="circle-overlay">
         <img
-          src="~/assets/images/problems-solutions/white_circles.svg"
+          src="~/assets/images/problems-solutions/white_circles.webp"
+          loading="lazy"
           alt="White Circles"
         />
       </div>
@@ -37,8 +45,16 @@
   height: 100%;
   position: relative;
   overflow: hidden;
-  background-image: url("~/assets/images/problems-solutions/background.svg");
-  background-size: cover;
+}
+
+.background-image {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  object-fit: cover;
+  z-index: 0;
 }
 
 .circle-container {
@@ -76,7 +92,7 @@
   }
   .bottom-right {
     --size: 70vmax;
-    right: -20vmax;
+    right: -15vmax;
   }
 }
 
@@ -85,7 +101,7 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  animation: pulse 8s infinite;
+  animation: pulse 16s infinite;
 }
 
 .text-container {
@@ -100,7 +116,7 @@
     transform: scale(1);
   }
   50% {
-    transform: scale(1.01);
+    transform: scale(1.025);
   }
   100% {
     transform: scale(1);

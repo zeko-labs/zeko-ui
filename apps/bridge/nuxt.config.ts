@@ -11,17 +11,17 @@ export default defineNuxtConfig({
 	},
 	routeRules: {
 		"/": { swr: true, ssr: true, prerender: true },
-		"/faucet": { swr: true, ssr: true, prerender: true },
-		"/bridge": {
-			ssr: false,
-			static: true,
-			prerender: true,
-			headers: {
-				"Cross-Origin-Embedder-Policy":
-					process.env.NODE_ENV === "development" ? "unsafe-none" : "require-corp",
-				"Cross-Origin-Opener-Policy": "same-origin"
-			}
-		}
+		"/faucet": { swr: true, ssr: true, prerender: true }
+		// "/bridge": {
+		// 	ssr: false,
+		// 	static: true,
+		// 	prerender: true,
+		// 	headers: {
+		// 		"Cross-Origin-Embedder-Policy":
+		// 			process.env.NODE_ENV === "development" ? "unsafe-none" : "require-corp",
+		// 		"Cross-Origin-Opener-Policy": "same-origin"
+		// 	}
+		// }
 	},
 	runtimeConfig: {
 		faucetUrl: process.env.FAUCET_URL

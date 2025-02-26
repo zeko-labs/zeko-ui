@@ -64,12 +64,17 @@ const communityItems = [
   margin: 0;
   padding: 2.5rem 4rem;
   gap: 24px;
-  min-height: 10dvh;
+  min-height: 10svh;
 }
 
 @media (max-width: 1440px) {
   .Navigation {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    margin: auto;
+    padding: 0;
     .logo {
       display: none;
       grid-template-columns: auto 1fr auto;

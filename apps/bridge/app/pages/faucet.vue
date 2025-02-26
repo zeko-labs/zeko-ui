@@ -127,7 +127,7 @@ const submitDisabled = computed(
 <style lang="postcss" scoped>
 main {
   position: relative;
-  min-height: 100dvh;
+  min-height: 100svh;
   width: 100vw;
   padding: 0;
   display: grid;

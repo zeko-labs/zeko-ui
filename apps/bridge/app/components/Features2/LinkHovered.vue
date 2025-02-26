@@ -1,0 +1,156 @@
+<svg
+  class="Hovered"
+  width="56"
+  height="56"
+  viewBox="0 0 56 56"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg">
+  <g filter="url(#filter0_ii_002)">
+    <circle cx="28" cy="28" r="11" fill="url(#paint0_radial_002)" />
+  </g>
+  <path
+    d="M7.99988 28C7.99988 16.9362 16.9968 8 27.9999 8C39.0637 8 47.9999 16.997 47.9999 28C47.9999 39.0638 39.0029 48 27.9999 48C16.9968 48.0608 7.99988 39.0638 7.99988 28ZM46.3585 28C46.3585 17.9088 38.1518 9.70214 28.0607 9.70214C17.9695 9.70214 9.76281 17.9088 9.76281 28C9.76281 38.0912 17.9695 46.2979 28.0607 46.2979C38.0911 46.3587 46.3585 38.152 46.3585 28Z"
+    fill="url(#paint1_radial_002)"
+  />
+  <path
+    d="M4.00037 27.9998C4.00037 14.7233 14.7967 4 28.0002 4C41.2767 4 52 14.7963 52 27.9998C52 41.2763 41.2037 51.9996 28.0002 51.9996C14.7967 52.0726 4.00037 41.2763 4.00037 27.9998ZM50.0304 27.9998C50.0304 15.8905 40.1825 6.04255 28.0731 6.04255C15.9638 6.04255 6.11587 15.8905 6.11587 27.9998C6.11587 40.1092 15.9638 49.9571 28.0731 49.9571C40.1095 50.03 50.0304 40.1821 50.0304 27.9998Z"
+    fill="url(#paint2_radial_002)"
+  />
+  <path
+    d="M12 28C12 19.1489 19.1976 12 28 12C36.8511 12 44 19.1976 44 28C44 36.8511 36.8024 44 28 44C19.1976 44.0486 12 36.8511 12 28ZM42.6869 28C42.6869 19.9271 36.1216 13.3617 28.0486 13.3617C19.9757 13.3617 13.4103 19.9271 13.4103 28C13.4103 36.073 19.9757 42.6383 28.0486 42.6383C36.0729 42.6869 42.6869 36.1216 42.6869 28Z"
+    fill="url(#paint3_radial_002)"
+  />
+  <path
+    d="M-1.22392e-06 28C-5.48396e-07 12.5458 12.5458 -1.89944e-06 28 -1.22392e-06C43.4542 -5.48395e-07 56 12.5458 56 28C56 43.4542 43.4542 56 28 56C12.6029 56 -1.89944e-06 43.4542 -1.22392e-06 28ZM54.4033 28C54.4033 13.4583 42.5418 1.59673 28 1.59673C13.4583 1.59673 1.59673 13.4583 1.59673 28C1.59673 42.5418 13.4582 54.4033 28 54.4033C42.5418 54.4033 54.4033 42.5988 54.4033 28Z"
+    fill="url(#paint4_radial_002)"
+  />
+  <defs>
+    <filter
+      id="filter0_ii_002"
+      x="16"
+      y="16"
+      width="24"
+      height="24"
+      filterUnits="userSpaceOnUse"
+      color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix" />
+      <feBlend
+        mode="normal"
+        in="SourceGraphic"
+        in2="BackgroundImageFix"
+        result="shape"
+      />
+      <feColorMatrix
+        in="SourceAlpha"
+        type="matrix"
+        values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
+        result="hardAlpha"
+      />
+      <feOffset dx="1" dy="-1" />
+      <feGaussianBlur stdDeviation="7" />
+      <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+      <feColorMatrix
+        type="matrix"
+        values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.12 0"
+      />
+      <feBlend
+        mode="normal"
+        in2="shape"
+        result="effect1_innerShadow_002"
+      />
+      <feColorMatrix
+        in="SourceAlpha"
+        type="matrix"
+        values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
+        result="hardAlpha"
+      />
+      <feOffset dx="-1" dy="1" />
+      <feGaussianBlur stdDeviation="7" />
+      <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+      <feColorMatrix
+        type="matrix"
+        values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.12 0"
+      />
+      <feBlend
+        mode="normal"
+        in2="effect1_innerShadow_002"
+        result="effect2_innerShadow_002"
+      />
+    </filter>
+    <radialGradient
+      id="paint0_radial_002"
+      cx="0"
+      cy="0"
+      r="1"
+      gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(31.6397 23.2279) rotate(66.2505) scale(6.62742 5.48726)">
+      <stop stop-color="white" />
+      <stop
+        offset="1"
+        class="CircleLinkColor"
+        stop-color="red"
+        stop-opacity="0.9"
+      />
+    </radialGradient>
+    <radialGradient
+      id="paint1_radial_002"
+      cx="0"
+      cy="0"
+      r="1"
+      gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(36.6763 34.6179) rotate(156.25) scale(12.0499 9.97689)">
+      <stop stop-color="white" />
+      <stop
+        offset="1"
+        class="CircleLinkColor"
+        stop-color="red"
+        stop-opacity="0.9"
+      />
+    </radialGradient>
+    <radialGradient
+      id="paint2_radial_002"
+      cx="0"
+      cy="0"
+      r="1"
+      gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(38.4119 35.9412) rotate(156.25) scale(14.4597 11.9722)">
+      <stop stop-color="white" />
+      <stop
+        offset="1"
+        class="CircleLinkColor"
+        stop-color="red"
+        stop-opacity="0.9"
+      />
+    </radialGradient>
+    <radialGradient
+      id="paint3_radial_002"
+      cx="0"
+      cy="0"
+      r="1"
+      gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(34.9412 33.2943) rotate(156.25) scale(9.63989 7.98152)">
+      <stop stop-color="white" />
+      <stop
+        offset="1"
+        class="CircleLinkColor"
+        stop-color="red"
+        stop-opacity="0.9"
+      />
+    </radialGradient>
+    <radialGradient
+      id="paint4_radial_002"
+      cx="0"
+      cy="0"
+      r="1"
+      gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(40.1471 37.2647) rotate(156.251) scale(16.8698 13.9676)">
+      <stop stop-color="white" />
+      <stop
+        offset="1"
+        class="CircleLinkColor"
+        stop-color="red"
+        stop-opacity="0.9"
+      />
+    </radialGradient>
+  </defs>
+</svg>

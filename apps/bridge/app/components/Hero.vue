@@ -1,4 +1,3 @@
-import { and } from 'xstate';
 <template>
   <div class="Wrapper">
     <div class="Content">
@@ -14,24 +13,19 @@ import { and } from 'xstate';
           </div>
         </div>
         <div class="Buttons">
-          <Button variant="cta1">Start Building</Button>
-          <Button variant="cta1">Testnet Contest</Button>
+          <NuxtLink
+            to="https://docs.zeko.io"
+            target="_blank">
+            <Button variant="cta1">Start Building</Button>
+          </NuxtLink>
+          <NuxtLink to="/faucet">
+            <Button variant="cta1">Testnet Contest</Button>
+          </NuxtLink>
         </div>
       </div>
     </div>
     <div class="SocialLinks">
-      <a href="https://discord.gg/vSDxqAchUY" target="_blank">
-        <SvgSocialDiscord />
-      </a>
-      <a href="https://github.com/zeko-labs" target="_blank">
-        <SvgSocialGithub />
-      </a>
-      <a href="https://t.me/zekoprotocol" target="_blank">
-        <SvgSocialTelegram />
-      </a>
-      <a href="https://x.com/ZekoLabs" target="_blank">
-        <SvgSocialX />
-      </a>
+      <AllLogos />
     </div>
   </div>
 </template>
@@ -61,9 +55,14 @@ import { and } from 'xstate';
 
 @media (max-width: 1440px) {
   .Content {
-    padding: 0 2rem;
+    padding: 0 1rem;
     align-items: center;
+    max-width: 100vw;
   }
+}
+
+.Logo {
+  height: 3rem;
 }
 
 .Main {
@@ -144,7 +143,7 @@ import { and } from 'xstate';
   gap: 1.5rem;
   background: rgba(255, 255, 255, 0.24);
   backdrop-filter: blur(2px);
-  a {
+  :deep(a) {
     color: var(--colors-gray-950);
     &:hover {
       transform: scale(1.2);

@@ -64,4 +64,16 @@ button {
         }
     }
 }
+@media (max-width: 1440px) {
+  [data-scope="menu"][data-part="content"]{
+    background-color: oklch(100 0 0 / 0.85);
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+  }
+  [data-scope="menu"][data-part="item"]{
+    a {
+        font-size: var(--fonts-lexend-typescale-scale-xl);
+    }
+  }
+}
 </style>

@@ -1,6 +1,6 @@
 <template>
   <div class="background">
-    <SvgZekoBigRings />
+    <SvgZekoBigRings class="background-image" />
     <div class="Nodes">
       <div class="Node Connection" ref="Connection">
         <div class="Picture">
@@ -40,11 +40,11 @@
       <div class="Node Origin" ref="Origin">
         <img
           class="Hovered"
-          src="~/assets/images/rings/Origin2.svg"
+          src="~/assets/images/rings/Origin2.png"
           alt="Origin">
         <img
           class="NotHovered"
-          src="~/assets/images/rings/Origin1.svg"
+          src="~/assets/images/rings/Origin1.png"
           alt="Origin">
         <div class="Title">Origin</div>
         <div class="Card">
@@ -55,11 +55,11 @@
       <div class="Node Scaling" ref="Scaling">
         <img
           class="Hovered"
-          src="~/assets/images/rings/Scaling2.svg"
+          src="~/assets/images/rings/Scaling2.png"
           alt="Scaling">
         <img
           class="NotHovered"
-          src="~/assets/images/rings/Scaling1.svg"
+          src="~/assets/images/rings/Scaling1.png"
           alt="Scaling">
         <div class="Title">Scaling</div>
         <div class="Card">
@@ -89,119 +89,143 @@
 </template>
 <style lang="postcss" scoped>
 .background {
-    position: relative;
-    height: 100%;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
 }
 
 @keyframes pulse {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
-    100% {
-        transform: scale(1);
-    }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
-svg {
-  position: relative;
-  width: 100%;
-  height: 60rem;
-  pointer-events: none;
-  /* animation: pulse 16s infinite; */
-  z-index: -1;
+@keyframes bigpulse {
+  0% {
+    transform: scale(3);
+  }
+  50% {
+    transform: scale(3.15);
+  }
+  100% {
+    transform: scale(3);
+  }
 }
+
+.background-image {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  object-fit: cover;
+  z-index: 0;
+  z-index: -1;
+  animation: pulse 18s infinite;
+}
+
 @media (max-width: 1440px) {
-  svg {
-    height: 100%;
-    transform: scale(2);
+  .background-image {
+    transform: scale(3);
+    animation: bigpulse 18s infinite;
   }
 }
 
 .Node {
-    position: absolute;
-    display: grid;
-    grid-template-columns: auto auto;
-    align-items: center;
-    gap: 1.25rem;
-    .Hovered {
-      display: none;
+  position: absolute;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 1.25rem;
+  .Hovered {
+    display: none;
+  }
+  .Title {
+    font-size: var(--fonts-lexend-typescale-scale-xl);
+    font-weight: 500;
+  }
+  img {
+    width: 80px;
+    transition: transform 0.3s;
+    &:hover {
+      transform: scale(1.1) rotate(180deg);
+      transition: transform 0.3s;
     }
-    .Title {
-        font-size: var(--fonts-lexend-typescale-scale-xl);
-        font-weight: 500;
-    }
-    img {
-        transition: transform 0.3s;
-    }
+  }
 }
 
-
 .Connection {
-    top: 15%;
-    left: 45%;
+  top: 15%;
+  left: 45%;
 }
 
 .Accessibility {
-    top: 30%;
-    left: 22%;
+  top: 30%;
+  left: 22%;
 }
 
 .Origin {
-    top: 65%;
-    left: 24%;
+  top: 65%;
+  left: 24%;
 }
 
 .Scaling {
-    top: 65%;
-    left: 60%;
+  top: 65%;
+  left: 60%;
 }
 
 .Legion {
-    top: 40%;
-    left: 61%;
+  top: 40%;
+  left: 61%;
 }
 
 .Card {
-    display: none;
-    position: absolute;
-    left: 6rem;
-    top: 4rem;
-    width: 45ch;
-    background-color: oklch(1 0 0 / 0.72);
-    backdrop-filter: blur(0.125rem);
-    border-radius: 0.5rem;
-    padding: 1rem;
-    font-size: var(--fonts-lexend-typescale-scale-s);
-    font-weight: 400;
-    text-wrap: balance;
+  display: none;
+  position: absolute;
+  left: 6rem;
+  top: 4rem;
+  width: 45ch;
+  background-color: oklch(1 0 0 / 0.72);
+  backdrop-filter: blur(0.125rem);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  font-size: var(--fonts-lexend-typescale-scale-s);
+  font-weight: 400;
+  text-wrap: balance;
 }
 
- body:has(.Connection:hover) .Connection,
- body:has(.Accessibility:hover) .Accessibility,
- body:has(.Origin:hover) .Origin,
- body:has(.Scaling:hover) .Scaling,
- body:has(.Legion:hover) .Legion {
-    .Card {
-        display: grid;
-    }
-    .Hovered {
-        display: block;
-    }
-    .NotHovered {
-        display: none;
-    }
+body:has(.Connection:hover) .Connection,
+body:has(.Accessibility:hover) .Accessibility,
+body:has(.Origin:hover) .Origin,
+body:has(.Scaling:hover) .Scaling,
+body:has(.Legion:hover) .Legion {
+  .Card {
+    display: grid;
+  }
+  .Hovered {
+    display: block;
+  }
+  .NotHovered {
+    display: none;
+  }
+}
+
+.Nodes {
+  position: relative;
+  height: 100vh;
 }
 
 @media (max-width: 1440px) {
   .Nodes {
-    position: absolute;
-    height: 100%;
-    width: 100%;
-    top: 0;
-    left: 0;
+    height: auto;
+    min-height: auto;
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 2rem;
@@ -237,22 +261,8 @@ svg {
   .Title {
     grid-area: Title;
   }
-  img{ 
+  img {
     width: 2rem;
-  }
-}
-
-.Connection, .Accessibility, .Legion{
-  img:hover {
-          transform: scale(1.1) rotate(180deg);
-          transition: transform 0.3s;
-  }
-}
-
-.Scaling {
-  img:hover {
-          transform: scale(1.1);
-          transition: transform 0.3s;
   }
 }
 </style>

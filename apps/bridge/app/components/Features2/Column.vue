@@ -18,12 +18,12 @@ const { title, body, link } = defineProps<{
         target="_blank">
         <img
           class="Hovered"
-          src="~/assets/images/features2/circle_link2.svg"
+          src="~/assets/images/features2/link2.svg"
           alt="Cross-Chain link">
 
         <img
           class="NotHovered"
-          src="~/assets/images/features2/circle_link1.svg"
+          src="~/assets/images/features2/link1.svg"
           alt="Cross-Chain link">
       </a>
     </div>
