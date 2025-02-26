@@ -19,7 +19,7 @@ const content = [
 </script>
 <template>
   <div class="background">
-    <div class="columns-container">
+    <div class="Container">
       <Features2Column
         v-for="item of content"
         :key="item.title"
@@ -39,29 +39,19 @@ h2, p {
     background-size: cover;
     height: 100%;
 }
-.column {
-    display: grid;
-    gap: 1rem;
-}
 
-.columns-container {
+.Container {
     display: flex;
     padding: 6rem 4rem;
     align-items: center;
     gap: 2.5rem;
     align-self: stretch;
 }
-
-.column-title {
-    font-size: var(--fonts-lexend-typescale-scale-xxl);
-    font-weight: 500;
-}
-
-.column-text {
-    font-weight: 400;
-}
-
-.circle-link {
-    padding-top: 1rem;
+@media (max-width: 1440px) {
+    .Container {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 6rem 1rem;
+    }
 }
 </style>

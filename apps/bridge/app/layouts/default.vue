@@ -5,9 +5,16 @@ const styles = theme
 
 <template>
   <div class="page-background">
-    <video class="background-video" autoplay loop muted playsinline>
+    <video class="desktop background-video" autoplay loop muted playsinline>
       <source
-        src="~/assets/videos/new_background_video.webm"
+        src="~/assets/videos/desktop.webm"
+        type="video/webm"
+      />
+      Your browser does not support the video tag.
+    </video>
+    <video class="mobile background-video" autoplay loop muted playsinline>
+      <source
+        src="~/assets/videos/mobile.webm"
         type="video/webm"
       />
       Your browser does not support the video tag.
@@ -34,5 +41,21 @@ const styles = theme
   height: 100vh;
   object-fit: cover;
   z-index: -1;
+}
+
+.mobile {
+    display: none;
+}
+.desktop {
+    display: block;
+}
+
+@media (max-width: 1440px) {
+    .mobile {
+        display: block;
+    }
+    .desktop {
+        display: none;
+    }
 }
 </style>

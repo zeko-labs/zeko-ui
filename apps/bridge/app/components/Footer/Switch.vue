@@ -44,6 +44,12 @@ body:has(.switch-button-checkbox:checked) {
   padding-right: 120px;
   position: relative;
 }
+
+@media (max-width: 1440px) {
+  .switch-button {
+    transform: scale(0.8);
+  }
+}
 .switch-button:before {
   content: "Users";
   position: absolute;

@@ -1,84 +1,88 @@
 <template>
   <div class="background">
     <SvgZekoBigRings />
-    <div class="Node Connection" ref="Connection">
-      <div class="Picture">
+    <div class="Nodes">
+      <div class="Node Connection" ref="Connection">
+        <div class="Picture">
+          <img
+            class="Hovered"
+            src="~/assets/images/rings/Connection2.svg"
+            alt="Connection">
+          <img
+            class="NotHovered"
+            src="~/assets/images/rings/Connection1.svg"
+            alt="Connection">
+        </div>
+
+        <div class="Title">Connection</div>
+        <div class="Card">
+          Proof generation, recursion, smart contracts, DA solutions & more;
+          Zeko offers everything developers need to bring their zkApp ideas to
+          life.
+        </div>
+      </div>
+      <div class="Node Accessibility" ref="Accessibility">
         <img
           class="Hovered"
-          src="~/assets/images/rings/Connection2.svg"
-          alt="Connection">
+          src="~/assets/images/rings/Accessibility2.svg"
+          alt="Accessibility">
         <img
           class="NotHovered"
-          src="~/assets/images/rings/Connection1.svg"
-          alt="Connection">
+          src="~/assets/images/rings/Accessibility1.svg"
+          alt="Accessibility">
+        <div class="Title">Accessibility</div>
+        <div class="Card">
+          Developers can write and deploy applications in any programming
+          language to an isomorphic Zeko L2, or spin up to their own custom
+          zkAppChains.
+        </div>
       </div>
-
-      <div class="Title">Connection</div>
-      <div class="Card">
-        Proof generation, recursion, smart contracts, DA solutions & more; Zeko
-        offers everything developers need to bring their zkApp ideas to life.
+      <div class="Node Origin" ref="Origin">
+        <img
+          class="Hovered"
+          src="~/assets/images/rings/Origin2.svg"
+          alt="Origin">
+        <img
+          class="NotHovered"
+          src="~/assets/images/rings/Origin1.svg"
+          alt="Origin">
+        <div class="Title">Origin</div>
+        <div class="Card">
+          Zeko chains enjoy easy composability between each other and Mina
+          itself using recursive proofs and shared infrastructure.
+        </div>
       </div>
-    </div>
-    <div class="Node Accessibility" ref="Accessibility">
-      <img
-        class="Hovered"
-        src="~/assets/images/rings/Accessibility2.svg"
-        alt="Accessibility">
-      <img
-        class="NotHovered"
-        src="~/assets/images/rings/Accessibility1.svg"
-        alt="Accessibility">
-      <div class="Title">Accessibility</div>
-      <div class="Card">
-        Developers can write and deploy applications in any programming language
-        to an isomorphic Zeko L2, or spin up to their own custom zkAppChains.
+      <div class="Node Scaling" ref="Scaling">
+        <img
+          class="Hovered"
+          src="~/assets/images/rings/Scaling2.svg"
+          alt="Scaling">
+        <img
+          class="NotHovered"
+          src="~/assets/images/rings/Scaling1.svg"
+          alt="Scaling">
+        <div class="Title">Scaling</div>
+        <div class="Card">
+          Through trustless zk-bridging, proofs that verify on Zeko can be
+          consumed by the EVM, dramatically upending existing paradigms for
+          blockchain applications.
+        </div>
       </div>
-    </div>
-    <div class="Node Origin" ref="Origin">
-      <img
-        class="Hovered"
-        src="~/assets/images/rings/Origin2.svg"
-        alt="Origin">
-      <img
-        class="NotHovered"
-        src="~/assets/images/rings/Origin1.svg"
-        alt="Origin">
-      <div class="Title">Origin</div>
-      <div class="Card">
-        Zeko chains enjoy easy composability between each other and Mina itself
-        using recursive proofs and shared infrastructure.
-      </div>
-    </div>
-    <div class="Node Scaling" ref="Scaling">
-      <img
-        class="Hovered"
-        src="~/assets/images/rings/Scaling2.svg"
-        alt="Scaling">
-      <img
-        class="NotHovered"
-        src="~/assets/images/rings/Scaling1.svg"
-        alt="Scaling">
-      <div class="Title">Scaling</div>
-      <div class="Card">
-        Through trustless zk-bridging, proofs that verify on Zeko can be
-        consumed by the EVM, dramatically upending existing paradigms for
-        blockchain applications.
-      </div>
-    </div>
-    <div class="Node Legion" ref="Legion">
-      <img
-        class="Hovered"
-        src="~/assets/images/rings/Legion2.svg"
-        alt="Legion">
-      <img
-        class="NotHovered"
-        src="~/assets/images/rings/Legion1.svg"
-        alt="Legion">
-      <div class="Title">Legion</div>
-      <div class="Card">
-        Zeko is a community of builders obsessed with pioneering applications,
-        optimizing performance, and enhancing the user experience. We shape the
-        future and inspire the new internet.
+      <div class="Node Legion" ref="Legion">
+        <img
+          class="Hovered"
+          src="~/assets/images/rings/Legion2.svg"
+          alt="Legion">
+        <img
+          class="NotHovered"
+          src="~/assets/images/rings/Legion1.svg"
+          alt="Legion">
+        <div class="Title">Legion</div>
+        <div class="Card">
+          Zeko is a community of builders obsessed with pioneering applications,
+          optimizing performance, and enhancing the user experience. We shape
+          the future and inspire the new internet.
+        </div>
       </div>
     </div>
   </div>
@@ -86,6 +90,7 @@
 <style lang="postcss" scoped>
 .background {
     position: relative;
+    height: 100%;
 }
 
 @keyframes pulse {
@@ -93,7 +98,7 @@
         transform: scale(1);
     }
     50% {
-        transform: scale(1.1);
+        transform: scale(1.05);
     }
     100% {
         transform: scale(1);
@@ -105,8 +110,14 @@ svg {
   width: 100%;
   height: 60rem;
   pointer-events: none;
-  animation: pulse 8s infinite;
+  /* animation: pulse 16s infinite; */
   z-index: -1;
+}
+@media (max-width: 1440px) {
+  svg {
+    height: 100%;
+    transform: scale(2);
+  }
 }
 
 .Node {
@@ -126,6 +137,7 @@ svg {
         transition: transform 0.3s;
     }
 }
+
 
 .Connection {
     top: 15%;
@@ -159,7 +171,7 @@ svg {
     top: 4rem;
     width: 45ch;
     background-color: oklch(1 0 0 / 0.72);
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(0.125rem);
     border-radius: 0.5rem;
     padding: 1rem;
     font-size: var(--fonts-lexend-typescale-scale-s);
@@ -181,6 +193,53 @@ svg {
     .NotHovered {
         display: none;
     }
+}
+
+@media (max-width: 1440px) {
+  .Nodes {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 4rem 1rem;
+  }
+  .Node {
+    position: relative;
+    top: auto;
+    left: auto;
+    display: grid;
+    gap: 1rem;
+    grid-template-areas: "Picture Title" "Card Card";
+    grid-template-columns: auto 1fr;
+  }
+  .Node:nth-child(even) {
+    grid-template-areas: "Title Picture" "Card Card";
+    grid-template-columns: 1fr auto;
+    text-align: right;
+  }
+  .Card {
+    grid-area: Card;
+    position: relative;
+    display: grid;
+    top: auto;
+    left: auto;
+    width: 100%;
+    backdrop-filter: blur(0.25rem);
+    text-wrap: wrap;
+  }
+  .Picture {
+    grid-area: Picture;
+  }
+  .Title {
+    grid-area: Title;
+  }
+  img{ 
+    width: 2rem;
+  }
 }
 
 .Connection, .Accessibility, .Legion{

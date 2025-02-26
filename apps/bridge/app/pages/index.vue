@@ -49,7 +49,7 @@ header {
 }
 .Hero {
   grid-area: hero;
-  min-height: 100dvh;
+  min-height: 90dvh;
   width: 100vw;
 }
 .ProblemSolution {
@@ -60,10 +60,20 @@ header {
   height: 100dvh;
   width: 100vw;
 }
+@media (max-width: 1440px) {
+  .ProblemSolution {
+    height: 100dvh;
+  }
+}
 .Feature {
   grid-area: second;
   height: 22.125rem;
   width: 100vw;
+}
+@media (max-width: 1440px) {
+  .Feature {
+    min-height: 90dvh;
+  }
 }
 .Feature2 {
   grid-area: third;
@@ -71,11 +81,23 @@ header {
   height: 30rem;
   width: 100vw;
 }
+@media (max-width: 1440px) {
+  .Feature2 {
+    min-height: 100dvh;
+    height: auto;
+  }
+}
 .Rings {
   grid-area: rings;
   width: 100vw;
   height: 60rem;
 }
+@media (max-width: 1440px) {
+  .Rings {
+   min-height: 100dvh;
+  }
+}
+
 footer {
   grid-area: footer;
   width: 100vw;

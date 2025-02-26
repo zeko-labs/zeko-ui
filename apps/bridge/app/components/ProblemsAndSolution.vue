@@ -10,7 +10,7 @@
       <div class="text-container">
         <p>We live in a world of rapidly</p>
         <p>expanding technology</p>
-        <p>and eroding trust</p>
+        <p>and eroding TRUST</p>
       </div>
     </div>
 
@@ -24,7 +24,8 @@
       <div class="text-container">
         <p>Zeko is the privacy-preserving</p>
         <p>scalable operating system for the</p>
-        <p>New Internet revolution</p>
+        <p>next-gen Internet fortified</p>
+        <p>with zero-knowledge</p>
       </div>
     </div>
   </div>
@@ -52,19 +53,31 @@
 }
 
 .top-left {
-  width: 40vw;
-  height: 40vw;
-  top: -10vw;
-  left: 10vw;
+  --size: 40vmax;
+  width: var(--size);
+  height: var(--size);
+  top: -10vmax;
+  left: 10vmax;
   z-index: 1;
 }
 
 .bottom-right { 
-  width: 60vw;
-  height: 60vw;
-  bottom: -20vw;
+  --size: 60vmax;
+  width: var(--size);
+  height: var(--size);
+  bottom: -20vmax;
   right: 0;
   z-index: 2;
+}
+@media (max-width: 1440px) {
+  .top-left {
+    --size: 50vmax;
+    left: -10vmax;
+  }
+  .bottom-right {
+    --size: 70vmax;
+    right: -20vmax;
+  }
 }
 
 .circle-overlay {
@@ -72,7 +85,7 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  animation: pulse 4s infinite;
+  animation: pulse 8s infinite;
 }
 
 .text-container {
@@ -87,7 +100,7 @@
     transform: scale(1);
   }
   50% {
-    transform: scale(1.1);
+    transform: scale(1.01);
   }
   100% {
     transform: scale(1);

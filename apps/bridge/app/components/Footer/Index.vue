@@ -70,6 +70,12 @@ h2, p {
     align-self: stretch;
 }
 
+@media (max-width: 1440px) {
+    .Content {
+        padding: 4rem 1rem 2rem 1rem;
+    }
+}
+
 .Main {
     display:flex;
     align-items: center;
@@ -98,12 +104,14 @@ h2, p {
     align-items: center;
     padding: 2rem 0rem;
     .Date {
+        grid-area: date;
         font-size: var(--fonts-lexend-typescale-scale-xs);
         font-weight: 400;
         opacity: 0.5;
         justify-self: start;
     }
     .Logos {
+        grid-area: logos;
         display: flex;
         gap: 1.5rem;
         a {
@@ -114,6 +122,7 @@ h2, p {
         }
     }
     .TOS {
+        grid-area: tos;
         display: flex;
         gap: 1.5rem;
         justify-self: end;
@@ -127,6 +136,26 @@ h2, p {
                 opacity: 1;
                 transform: scale(1.02);
             }
+        }
+    }
+}
+@media (max-width: 1440px) {
+    .Footer {
+        grid-template-areas: "logos" "date" "tos";
+        grid-template-columns: auto;
+        grid-template-rows: auto auto auto;
+        gap: 1rem;
+        padding: 0;
+        .Date {
+            justify-self: center;
+            font-size: var(--fonts-lexend-typescale-scale-s);
+        }
+        .Logos {
+            justify-self: center;
+        }
+        .TOS {
+            justify-self: center;
+            font-size: var(--fonts-lexend-typescale-scale-s);
         }
     }
 }

@@ -37,17 +37,17 @@ const communityItems = [
       <nav class="nav">
         <NavigationItem :items="buildItems">Build</NavigationItem>
         <NavigationItem :items="communityItems">Community</NavigationItem>
+        <ClientOnly>
+          <Sound />
+          <template #fallback>
+            <div class="Sound">
+              <button>
+                <SvgSpeaker :is-muted="true" />
+              </button>
+            </div>
+          </template>
+        </ClientOnly>
       </nav>
-      <ClientOnly>
-        <Sound />
-        <template #fallback>
-          <div class="Sound">
-            <button>
-              <SvgSpeaker :is-muted="true" />
-            </button>
-          </div>
-        </template>
-      </ClientOnly>
     </div>
   </div>
 </template>
@@ -59,12 +59,22 @@ const communityItems = [
 
 .Navigation {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   align-items: center;
   margin: 0;
   padding: 2.5rem 4rem;
   gap: 24px;
   min-height: 10dvh;
+}
+
+@media (max-width: 1440px) {
+  .Navigation {
+    display: block;
+    .logo {
+      display: none;
+      grid-template-columns: auto 1fr auto;
+    }
+  }
 }
 
 .logo {
@@ -75,7 +85,14 @@ const communityItems = [
 .nav {
   justify-self: flex-end;
   display: flex;
+  align-items: center;
   gap: 2rem;
+}
+
+@media (max-width: 1440px) {
+  .nav {
+   justify-self: center;
+  }
 }
 
 .Sound, :deep(.Sound){

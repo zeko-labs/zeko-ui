@@ -6,12 +6,12 @@ const { title, body, link } = defineProps<{
 }>()
 </script>
 <template>
-  <div class="column" :key="title">
-    <h2 class="column-title">{{ title }}</h2>
-    <p class="column-text">
+  <div class="Wrapper" :key="title">
+    <h2 class="Title">{{ title }}</h2>
+    <p class="Text">
       {{ body }}
     </p>
-    <div class="circle-link" :data-item="title">
+    <div class="CircleLink" :data-item="title">
       <a
         :ref="title"
         :href="link"
@@ -34,25 +34,30 @@ const { title, body, link } = defineProps<{
 h2, p {
     margin: 0;
 }
+@media (max-width: 1440px) {
+    p {
+      max-width: 80vw;
+    }
+}
 
 
-.column {
+.Wrapper {
     display: grid;
     gap: 1rem;
 }
 
 
-.column-title {
+.Title {
     font-size: var(--fonts-lexend-typescale-scale-xxl);
     font-weight: 500;
 }
 
-.column-text {
+.Text {
     font-weight: 400;
     text-wrap: balance;
 }
 
-.circle-link {
+.CircleLink {
     padding-top: 1rem;
     width: fit-content;
 }
@@ -61,9 +66,9 @@ h2, p {
     display: none;
 }
 
-body:has(.circle-link[data-item="Cross-Chain"]:hover) .circle-link[data-item="Cross-Chain"],
-body:has(.circle-link[data-item="Evolved Rollups"]:hover) .circle-link[data-item="Evolved Rollups"],
-body:has(.circle-link[data-item="Future-Forward"]:hover) .circle-link[data-item="Future-Forward"] {
+body:has(.CircleLink[data-item="Cross-Chain"]:hover) .CircleLink[data-item="Cross-Chain"],
+body:has(.CircleLink[data-item="Evolved Rollups"]:hover) .CircleLink[data-item="Evolved Rollups"],
+body:has(.CircleLink[data-item="Future-Forward"]:hover) .CircleLink[data-item="Future-Forward"] {
     .Hovered {
         display: block;
     }

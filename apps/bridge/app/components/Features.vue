@@ -15,8 +15,8 @@ const CClasses = computed(() => ({ Text: true, Revealed: CRevealed.value }))
       @mouseenter="(ARevealed = true)"
       @click="(ARevealed = !ARevealed)"
       :class="AClasses">
-      Zero-knowledge is the technology of Trust, the foundation for building our
-      future on blockchain
+      Zero-knowledge is the technology of Trust, embedding security in digital
+      interactions and foundational for building our future on blockchain
     </div>
     <div
       @mouseenter="(BRevealed = true)"
@@ -56,6 +56,14 @@ const CClasses = computed(() => ({ Text: true, Revealed: CRevealed.value }))
     &.Revealed {
       background: white;
     }
+  }
+}
+
+@media (max-width: 1440px) {
+  .Wrapper  {
+    grid-template-rows: repeat(3, 1fr);
+    grid-template-columns: 1fr;
+    padding: 4rem 1rem;
   }
 }
 </style>
