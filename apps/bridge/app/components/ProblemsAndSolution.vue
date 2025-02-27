@@ -32,8 +32,7 @@
       <div class="text-container">
         <p>Zeko is the privacy-preserving</p>
         <p>scalable operating system for the</p>
-        <p>next-gen Internet fortified</p>
-        <p>with zero-knowledge</p>
+        <p>decentralized verified internet</p>
       </div>
     </div>
   </div>
@@ -88,7 +87,7 @@
 
 @media (max-width: 1024px) {
   .top-left {
-    --size: 50vmax;
+    --size: 54vmax;
     left: -10vmax;
   }
   .bottom-right {
