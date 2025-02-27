@@ -68,7 +68,7 @@
 }
 
 .top-left {
-  --size: 40vmax;
+  --size: 50vmax;
   width: var(--size);
   height: var(--size);
   top: -10vmax;

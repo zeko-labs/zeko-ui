@@ -18,6 +18,7 @@ onUnmounted(() => stop())
   <div class="Wrapper" ref="target">
     <div :class="classes">
       <img
+        class="One"
         src="~/assets/images/features/reveal.webp"
         loading="lazy"
         alt="Text Reveal Effect"
@@ -29,6 +30,7 @@ onUnmounted(() => stop())
     </div>
     <div :class="classes">
       <img
+        class="Two"
         src="~/assets/images/features/reveal.webp"
         loading="lazy"
         alt="Text Reveal Effect"
@@ -41,6 +43,7 @@ onUnmounted(() => stop())
     </div>
     <div :class="classes">
       <img
+        class="Three"
         src="~/assets/images/features/reveal.webp"
         loading="lazy"
         alt="Text Reveal Effect"
@@ -79,9 +82,17 @@ onUnmounted(() => stop())
       border-radius: 1rem;
     }
     &.Revealed {
-      img {
+       img.One {
         opacity: 0; 
-        transition: opacity 3s linear;
+        transition: opacity 2s ease-out;
+      }
+      img.Two {
+        opacity: 0; 
+        transition: opacity 2s ease-out 1s;
+      }
+      img.Three {
+        opacity: 0; 
+        transition: opacity 2s ease-out 2s;
       }
     } 
   }
