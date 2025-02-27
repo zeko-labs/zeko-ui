@@ -130,7 +130,7 @@
   animation: pulse 18s infinite;
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .background-image {
     transform: scale(3);
     animation: bigpulse 18s infinite;
@@ -221,7 +221,7 @@ body:has(.Legion:hover) .Legion {
   height: 100vh;
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .Nodes {
     height: auto;
     min-height: auto;
@@ -239,6 +239,10 @@ body:has(.Legion:hover) .Legion {
     gap: 1rem;
     grid-template-areas: "Picture Title" "Card Card";
     grid-template-columns: auto 1fr;
+    img {
+      width: 4ch;
+      height: 4ch;
+    }
   }
   .Node:nth-child(even) {
     grid-template-areas: "Title Picture" "Card Card";
@@ -261,8 +265,6 @@ body:has(.Legion:hover) .Legion {
   .Title {
     grid-area: Title;
   }
-  img {
-    width: 2rem;
-  }
+
 }
 </style>

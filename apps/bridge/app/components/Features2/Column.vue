@@ -34,7 +34,7 @@ const { title, body, link } = defineProps<{
 h2, p {
     margin: 0;
 }
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
     p {
       max-width: 80vw;
     }

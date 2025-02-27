@@ -138,66 +138,81 @@ main {
   font-size: var(--fonts-lexend-typescale-scale-m);
 }
 h2 {
-    font-size: var(--fonts-lexend-typescale-scale-h2);
-    padding: 0;
-    margin: 0;
+  font-size: var(--fonts-lexend-typescale-scale-h2);
+  padding: 0;
+  margin: 0;
 }
 a {
-    color: var(--colors-cosmicGold-200);
-    text-decoration: none;
+  color: var(--colors-cosmicGold-200);
+  text-decoration: none;
 }
 section {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 2rem 4rem;
-    max-width: 100ch;
-    text-wrap: balance;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem 4rem;
+  max-width: 100ch;
+  text-wrap: balance;
+}
+
+@media (max-width: 1024px) {
+  section {
+    max-width: 100vw;
+  }
 }
 
 .Form {
-span, input {
-  font-family: Lexend;
-  font-weight: 400;
-}
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  span, input {
+    font-family: Lexend;
+    font-weight: 400;
+  }
 
-/* Wrapper */
-[data-scope="field"][data-part="root"] {
-display: grid;
-gap: 0.5rem;
-}
+  /* Wrapper */
+  [data-scope="field"][data-part="root"] {
+    display: grid;
+    gap: 0.5rem;
+  }
 
-.InputWrapper{
-  display: inline-flex;
-  align-items: center;
-  color: var(--colors-gray-900);
-  background-color: white;
-  opacity: 0.75;
-  border-radius: 0.5rem;
-  border: 1px solid var(--colors-gray-200);
-  padding-left: 1rem;
-  width: fit-content;
-}
+  .InputWrapper {
+    display: inline-flex;
+    align-items: center;
+    color: var(--colors-gray-900);
+    background-color: white;
+    opacity: 0.75;
+    border-radius: 0.5rem;
+    border: 1px solid var(--colors-gray-200);
+    padding-left: 1rem;
+    width: fit-content;
+  }
 
-/* Input field */
-[data-scope="field"][data-part="input"] {
-  background: transparent;
-  border: none;
-  font-size: 1.125rem;
-  padding: 12px 16px;
-  outline: none;
-  height: 100%;
-  width: calc(58ch + 2rem);
-  border-radius: 0.5rem;
-}
-/* Label */
-[data-scope="field"][data-part="helper-text"] {
- font-size: var(--fonts-lexend-typescale-scale-xs);
- font-style: italic;
-}
+  /* Input field */
+  [data-scope="field"][data-part="input"] {
+    background: transparent;
+    border: none;
+    font-size: 1.125rem;
+    padding: 12px 16px;
+    outline: none;
+    height: 100%;
+    width: calc(58ch + 2rem);
+    border-radius: 0.5rem;
+  }
+  @media (max-width: 1024px) {
+    [data-scope="field"][data-part="input"] {
+      width: 100%;
+    }
+  }
+
+  /* Label */
+  [data-scope="field"][data-part="helper-text"] {
+    font-size: var(--fonts-lexend-typescale-scale-xs);
+    font-style: italic;
+  }
 }
 
 .error {
-    color: var(--colors-persianRed-500);
+  color: var(--colors-persianRed-500);
 }
 </style>

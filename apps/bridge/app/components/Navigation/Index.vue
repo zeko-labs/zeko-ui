@@ -67,7 +67,7 @@ const communityItems = [
   min-height: 10svh;
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .Navigation {
     display: flex;
     align-items: center;
@@ -94,7 +94,7 @@ const communityItems = [
   gap: 2rem;
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .nav {
    justify-self: center;
   }

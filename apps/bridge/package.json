@@ -8,6 +8,7 @@
 		"build:cf": "NITRO_PRESET=cloudflare_module nuxt build",
 		"deploy": "wrangler deploy",
 		"dev:cf": "wrangler dev .output/server/index.mjs --assets .output/public/",
+		"deploy:dev": "rimraf .output .wrangler .nuxt && NITRO_PRESET=cloudflare_module nuxt build && wrangler deploy",
 		"dev": "nuxt dev",
 		"generate": "nuxt generate",
 		"preview": "nuxt preview",
@@ -39,6 +40,8 @@
 		"@gql.tada/vue-support": "^1.0.1",
 		"@total-typescript/ts-reset": "^0.6.1",
 		"colorjs.io": "^0.5.2",
-		"postcss-nesting": "^13.0.1"
+		"postcss-nesting": "^13.0.1",
+		"rimraf": "^6.0.1",
+		"wrangler": "^3.110.0"
 	}
 }

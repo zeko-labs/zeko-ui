@@ -57,13 +57,14 @@ header {
   grid-area: first;
   background-color: var(--colors-gray-950);
   color: white;
-  min-height: 40rem;
-  height: 100svh;
   width: 100vw;
+  max-height: 100svh;
+  aspect-ratio: 16/10;
 }
-@media (max-width: 1440px) {
+
+@media (max-width: 1024px) {
   .ProblemSolution {
-    height: 100vh;
+    height: 85svh;
   }
 }
 .Feature {
@@ -81,12 +82,6 @@ header {
   grid-area: rings;
   width: 100vw;
   min-height: fit-content;
-  /* height: 60rem; */
-}
-@media (max-width: 1440px) {
-  .Rings {
-   /* height: auto; */
-  }
 }
 
 footer {

@@ -65,7 +65,7 @@ h2, p {
     gap: 2.5rem;
     align-self: stretch;
 }
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
     .Container {
         flex-direction: column;
         align-items: flex-start;

@@ -7,7 +7,7 @@ const styles = theme
   <div class="page-background">
     <video class="desktop background-video" autoplay loop muted playsinline>
       <source
-        src="~/assets/videos/desktop.webm"
+        src="~/assets/videos/looped_desktop.webm"
         type="video/webm"
       />
       Your browser does not support the video tag.
@@ -50,7 +50,7 @@ const styles = theme
     display: block;
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
     .mobile {
         display: block;
     }

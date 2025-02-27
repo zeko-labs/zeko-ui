@@ -45,7 +45,7 @@ body:has(.switch-button-checkbox:checked) {
   position: relative;
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .switch-button {
     transform: scale(0.8);
   }

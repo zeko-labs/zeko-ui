@@ -64,7 +64,7 @@ button {
         }
     }
 }
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   [data-scope="menu"][data-part="content"]{
     background-color: oklch(100 0 0 / 0.85);
     padding: 0.25rem;

@@ -38,7 +38,7 @@
   font-size: var(--fonts-lexend-typescale-scale-m);
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .Wrapper {
     padding: 0;
   }
@@ -53,7 +53,7 @@
   align-self: stretch;
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .Content {
     padding: 0 1rem;
     align-items: center;
@@ -73,7 +73,7 @@
   align-self: stretch;
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .Main {
     align-items: center;
     align-self: center;
@@ -104,7 +104,7 @@
   } 
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .Text {
     align-items: center;
     justify-content: center;
@@ -124,7 +124,7 @@
   align-items: flex-start;
   gap: 1rem;
 }
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .Buttons {
     flex-direction: column;
     align-items: center;
@@ -151,7 +151,7 @@
   }
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .SocialLinks {
     display: inline-flex;
     justify-content: center;

@@ -84,7 +84,7 @@ h2, p {
     align-self: stretch;
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
     .Content {
         padding: 4rem 1rem 2rem 1rem;
     }
@@ -156,7 +156,7 @@ h2, p {
         }
     }
 }
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
     .Footer {
         grid-template-areas: "logos" "date" "tos";
         grid-template-columns: auto;

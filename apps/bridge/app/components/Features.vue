@@ -46,8 +46,8 @@ onUnmounted(() => stop())
         alt="Text Reveal Effect"
       />
       <p>
-        Zeko Virtual Machine powers the future of decentralized apps with
-        advanced programmability, cryptography, and automated agents
+        Zeko zkRollup powers the future of decentralized apps with advanced
+        programmability, cryptography, and automated agents
       </p>
     </div>
   </div>
@@ -87,7 +87,7 @@ onUnmounted(() => stop())
   }
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .Wrapper  {
     grid-template-rows: repeat(3, 1fr);
     grid-template-columns: 1fr;

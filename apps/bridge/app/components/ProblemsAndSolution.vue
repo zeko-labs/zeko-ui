@@ -85,7 +85,8 @@
   right: 0;
   z-index: 2;
 }
-@media (max-width: 1440px) {
+
+@media (max-width: 1024px) {
   .top-left {
     --size: 50vmax;
     left: -10vmax;
