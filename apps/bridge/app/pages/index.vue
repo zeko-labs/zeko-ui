@@ -59,7 +59,7 @@ header {
   color: white;
   width: 100vw;
   max-height: 100svh;
-  aspect-ratio: 16/10;
+  aspect-ratio: 16/9;
 }
 
 @media (max-width: 1024px) {

@@ -36,7 +36,7 @@ onUnmounted(() => stop())
         alt="Text Reveal Effect"
       />
       <p>
-        zkApps like decentralized A.I. are natively scalable and modular,
+        zkApps like decentralized AI. are natively scalable and modular,
         utilizing off-chain compute, storage, and data to augment UX and reduce
         costs
       </p>

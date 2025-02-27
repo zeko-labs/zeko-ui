@@ -68,7 +68,7 @@
 }
 
 .top-left {
-  --size: 50vmax;
+  --size: 55vmax;
   width: var(--size);
   height: var(--size);
   top: -10vmax;
@@ -77,7 +77,7 @@
 }
 
 .bottom-right { 
-  --size: 60vmax;
+  --size: 65vmax;
   width: var(--size);
   height: var(--size);
   bottom: -20vmax;
@@ -98,9 +98,6 @@
 
 .circle-overlay {
   position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
   animation: pulse 16s infinite;
 }
 

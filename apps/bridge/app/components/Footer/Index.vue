@@ -1,6 +1,11 @@
 <script lang="ts" setup>
 const toggle = ref(false)
 const state = computed(() => (toggle.value ? "Users" : "Builders"))
+const description = computed(() =>
+	state.value === "Builders"
+		? "Create your first zkApp, Deploy to Zeko Testnet, Grow your user base and earn rewards."
+		: "Create a wallet, Faucet on Testnet, Try new zkApps and earn rewards."
+)
 </script>
 <template>
   <div class="background">
@@ -17,8 +22,7 @@ const state = computed(() => (toggle.value ? "Users" : "Builders"))
           <FooterSwitch v-model="toggle" />
         </div>
         <div class="Description">
-          Create your first zkApp, Deploy to Zeko Testnet, Grow your user base
-          while you earn rewards.
+          {{ description }}
         </div>
         <Switch>
           <Match :when='state === "Builders"'>
