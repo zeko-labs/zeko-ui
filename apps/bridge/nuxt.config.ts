@@ -10,8 +10,8 @@ export default defineNuxtConfig({
 		compatibilityVersion: 4
 	},
 	routeRules: {
-		"/": { swr: true, ssr: true, prerender: true },
-		"/faucet": { swr: true, ssr: true, prerender: true }
+		"/": { swr: false, ssr: true, prerender: true },
+		"/faucet": { swr: false, ssr: true, prerender: true }
 		// "/bridge": {
 		// 	ssr: false,
 		// 	static: true,

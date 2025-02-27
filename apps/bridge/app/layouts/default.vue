@@ -14,7 +14,7 @@ const styles = theme
     </video>
     <video class="mobile background-video" autoplay loop muted playsinline>
       <source
-        src="~/assets/videos/mobile.webm"
+        src="~/assets/videos/looped_mobile.webm"
         type="video/webm"
       />
       Your browser does not support the video tag.

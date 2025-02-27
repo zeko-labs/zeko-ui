@@ -1,4 +1,5 @@
 import { type } from "arktype"
+
 const validateBody = type({
 	address: "string.alphanumeric"
 })
