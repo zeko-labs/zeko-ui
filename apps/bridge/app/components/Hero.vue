@@ -96,8 +96,10 @@
   .Description {
     width: 50ch;
     text-wrap: balance;
+    color: var(--colors-gray-700);
     font-size: var(--fonts-lexend-typescale-scale-m);
     font-weight: 300;
+    line-height: 155%;
     b {
       font-weight: 500;
     }
