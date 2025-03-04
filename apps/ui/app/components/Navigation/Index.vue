@@ -101,18 +101,18 @@ const communityItems = [
 }
 
 .Sound, :deep(.Sound) {
-  --timing: 0.1s;
+  --transition: transform 0.1s ease-in-out;
   width: 2rem;
   height: 2rem;
   background-color: black;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  transition: transform var(--timing) ease-in-out;
+  transition: var(--transition);
   &:hover {
     background-color: var(--colors-cosmicGold-100);
     transform: scale(1.1);
-    transition: transform var(--timing) ease-in-out;
+    transition: var(--transition);
   }
   button, :deep(button) {
     background: none;
