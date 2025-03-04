@@ -49,7 +49,7 @@ jobs:
           script: |
             const url = "${{ steps.cloudflare.outputs.deployment-url }}"
             const rawOutput = `${{ steps.cloudflare.outputs.command-output }}`
-            const output = rawOutput.replace(/`/g, '\\`').replace(/\$/g, '\\$').replace(/\\/g, '\\\\').replace(/\n/g, '\\n')
+            const output = rawOutput.replace(/`/g, '\\`').replace(/\$/g, '\\$').replace(/\\/g, '\\\\')
             
             const environment = "preview"
             const deployTitle = "🛸 Zeko UI Deploy Preview is live 🏌️‍♀️"
@@ -57,8 +57,8 @@ jobs:
               `### ${deployTitle}
               #### 🌍 Deploy URL
               
-              [link preview](${url})
-              
+              [Cloudflare Workers Website preview](${url})
+
               #### 🔍 Build Output 
 
               <details><summary>Output</summary>${output}</details>
