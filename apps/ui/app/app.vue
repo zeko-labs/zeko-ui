@@ -2,7 +2,7 @@
 const title = "Zeko"
 const description = "Zeko is a zero-knowledge cross-chain scaling protocol"
 const url = "https://zeko.io"
-const image = "/og-image.png"
+const image = `${url}/og-image.png`
 const imageAlt = "Zeko Logo on a black background."
 useHead({
 	htmlAttrs: { lang: "en" },
@@ -20,6 +20,7 @@ useHead({
 		{ property: "twitter:card", content: "summary_large_image" },
 		{ property: "twitter:title", content: title },
 		{ property: "twitter:url", content: url },
+		{ property: "twitter:domain", content: "zeko.io" },
 		{ property: "twitter:description", content: description },
 		{ property: "twitter:image", content: image },
 		{ property: "twitter:image:alt", content: imageAlt },
