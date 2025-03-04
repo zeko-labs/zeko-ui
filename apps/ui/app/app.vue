@@ -9,11 +9,12 @@ useSeoMeta({
 	ogTitle: title,
 	ogUrl: url,
 	ogDescription: description,
+	ogImageSecureUrl: "/og-image.jpg",
 	ogImage: "/og-image.jpg",
 	twitterTitle: title,
 	twitterDescription: description,
 	twitterImage: "/og-image.jpg",
-	twitterCard: "summary_large_image"
+	twitterCard: "summary"
 })
 
 useHead({
