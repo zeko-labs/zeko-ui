@@ -13,7 +13,7 @@ useSeoMeta({
 	twitterTitle: title,
 	twitterDescription: description,
 	twitterImage: "/og-image.jpg",
-	twitterCard: "summary"
+	twitterCard: "summary_large_image"
 })
 
 useHead({
