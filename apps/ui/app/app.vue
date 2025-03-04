@@ -2,7 +2,7 @@
 const title = "Zeko"
 const description = "Zeko is a zero-knowledge cross-chain scaling protocol"
 const url = "https://zeko.io"
-useSeoMeta({
+useServerSeoMeta({
 	title,
 	appleMobileWebAppTitle: title,
 	description,
