@@ -9,10 +9,10 @@ useSeoMeta({
 	ogTitle: title,
 	ogUrl: url,
 	ogDescription: description,
-	ogImage: "/og-image.png",
+	ogImage: "/og-image.jpg",
 	twitterTitle: title,
 	twitterDescription: description,
-	twitterImage: "/og-image.png",
+	twitterImage: "/og-image.jpg",
 	twitterCard: "summary"
 })
 
