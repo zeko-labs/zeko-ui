@@ -9,7 +9,7 @@
           <div class="Title">Powering the <b>zkInternet Revolution</b></div>
           <div class="Description">
             Zeko is a decentralized <b>zero-knowledge scaling protocol</b>
-            powering the future of the Internet, AI., Gaming, and Finance
+            powering the future of the Internet, AI, Gaming, and Finance
           </div>
         </div>
         <div class="Buttons">
@@ -147,9 +147,6 @@
   backdrop-filter: blur(2px);
   :deep(a) {
     color: var(--colors-gray-950);
-    &:hover {
-      transform: scale(1.2);
-    }
   }
 }
 

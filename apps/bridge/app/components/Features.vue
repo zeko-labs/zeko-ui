@@ -25,7 +25,7 @@ onUnmounted(() => stop())
       />
       <p>
         Zero-knowledge is the technology of Trust, embedding security in digital
-        interactions and foundational for building our future on blockchain
+        interactions - the foundation for building our future on blockchain
       </p>
     </div>
     <div :class="classes">
@@ -36,9 +36,9 @@ onUnmounted(() => stop())
         alt="Text Reveal Effect"
       />
       <p>
-        zkApps like decentralized AI. are natively scalable and modular,
-        utilizing off-chain compute, storage, and data to augment UX and reduce
-        costs
+        zkApps like decentralized AI are natively scalable, modular, and private
+        - utilizing off-chain compute, storage, and data to augment UX and
+        reduce costs
       </p>
     </div>
     <div :class="classes">

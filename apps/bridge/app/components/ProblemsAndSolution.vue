@@ -32,7 +32,7 @@
       <div class="text-container">
         <p>Zeko is the privacy-preserving</p>
         <p>scalable operating system for the</p>
-        <p>decentralized verified internet</p>
+        <p>decentralized VERIFIED internet</p>
       </div>
     </div>
   </div>
@@ -68,11 +68,11 @@
 }
 
 .top-left {
-  --size: 55vmax;
+  --size: 50vmax;
   width: var(--size);
   height: var(--size);
   top: -10vmax;
-  left: 10vmax;
+  left: 5vmax;
   z-index: 1;
 }
 
@@ -81,7 +81,7 @@
   width: var(--size);
   height: var(--size);
   bottom: -20vmax;
-  right: 0;
+  right: -5vmax;
   z-index: 2;
 }
 

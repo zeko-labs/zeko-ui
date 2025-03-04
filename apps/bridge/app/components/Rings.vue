@@ -81,7 +81,7 @@
         <div class="Card">
           Zeko is a community of builders obsessed with pioneering applications,
           optimizing performance, and enhancing the user experience. We shape
-          the future and inspire the new internet.
+          the future and inspire the zkInternet.
         </div>
       </div>
     </div>

@@ -12,3 +12,13 @@
     <SvgSocialTelegram />
   </NuxtLink>
 </template>
+<style lang="postcss" scoped>
+a {
+  --transition: transform 0.15s ease-in-out;
+  transition: var(--transition);
+  &:hover {
+      transform: scale(1.2);
+      transition: var(--transition);
+  }
+}
+</style>

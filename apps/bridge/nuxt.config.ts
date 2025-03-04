@@ -30,7 +30,11 @@ export default defineNuxtConfig({
 		minify: false
 	},
 	vite: {
-		build: { minify: false }
+		// build: { minify: false },
+		optimizeDeps: {
+			include: ["@lumina-dex/sdk > react"],
+			exclude: ["@lumina-dex/sdk", "@urql/vue"]
+		}
 	},
 	postcss: {
 		plugins: {
