@@ -137,9 +137,6 @@ h2, p {
     gap: 1.5rem;
     :deep(a) {
       color: white;
-      &:hover {
-        transform: scale(1.2);
-      }
     }
   }
   .TOS {
