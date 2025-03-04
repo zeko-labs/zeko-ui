@@ -48,7 +48,7 @@ jobs:
           result-encoding: string
           script: |
             const url = "${{ steps.cloudflare.outputs.deployment-url }}"
-            const aliasUrl = "${{ steps.cloudflare.outputs.pages-deployment-alias-url }}"
+            const output = "${{ steps.cloudflare.outputs.command-output }}"
             const environment = "preview"
             const deployTitle = "🛸 Zeko UI Deploy Preview is live 🏌️‍♀️"
             const body = 
@@ -56,8 +56,7 @@ jobs:
               |  | URL |
               | --- | --- |
               | 🌍 Preview | ${url} |
-              | 🎫 Alias | ${aliasUrl} |
-              | 📅 Deployed At | ${new Date().toISOString()} |
+              | 🔍 Build Output | <details><summary>Output</summary>${output}</details> |
 
               > Deployed by Cloudflare Wrangler Action`
             
