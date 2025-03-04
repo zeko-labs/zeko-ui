@@ -103,7 +103,6 @@ span {
   }
 }
 
-
 /* Hide the native select element */
 select[aria-hidden="true"] {
   display: none;

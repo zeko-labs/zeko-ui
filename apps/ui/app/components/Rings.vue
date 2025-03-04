@@ -265,6 +265,5 @@ body:has(.Legion:hover) .Legion {
   .Title {
     grid-area: Title;
   }
-
 }
 </style>

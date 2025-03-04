@@ -82,24 +82,24 @@ onUnmounted(() => stop())
       border-radius: 1rem;
     }
     &.Revealed {
-       img.One {
-        opacity: 0; 
+      img.One {
+        opacity: 0;
         transition: opacity 2s ease-out;
       }
       img.Two {
-        opacity: 0; 
+        opacity: 0;
         transition: opacity 2s ease-out 1s;
       }
       img.Three {
-        opacity: 0; 
+        opacity: 0;
         transition: opacity 2s ease-out 2s;
       }
-    } 
+    }
   }
 }
 
 @media (max-width: 1024px) {
-  .Wrapper  {
+  .Wrapper {
     grid-template-rows: repeat(3, 1fr);
     grid-template-columns: 1fr;
     padding: 4rem 1rem;

@@ -168,7 +168,7 @@ const nodeSize = {
     fill: transparent;
     stroke: v-bind("gray");
     stroke-width: 2;
-    transition: fill 0.5s ease-out, stroke 0.5s ease-out; 
+    transition: fill 0.5s ease-out, stroke 0.5s ease-out;
     &.current {
       fill: transparent;
       stroke: url(#goldenGradient);

@@ -1,12 +1,16 @@
 <script lang="ts" setup>
 const model = defineModel()
-
 </script>
 <template>
   <div class="switch-button">
-    <input class="switch-button-checkbox" type="checkbox" v-model="model"></input>
-    <label class="switch-button-label" for="">
-        <span class="switch-button-label-span">Builders</span>
+    <input
+      id="switch"
+      class="switch-button-checkbox"
+      type="checkbox"
+      v-model="model"
+    />
+    <label class="switch-button-label" for="switch">
+      <span class="switch-button-label-span">Builders</span>
     </label>
   </div>
 </template>
@@ -89,7 +93,7 @@ body:has(.switch-button-checkbox:checked) {
 }
 .switch-button-checkbox + .switch-button-label:before {
   content: "";
-  border: 4px solid var(--colors-gray-950); 
+  border: 4px solid var(--colors-gray-950);
   background: white;
   color: var(--colors-gray-950);
   height: 100%;

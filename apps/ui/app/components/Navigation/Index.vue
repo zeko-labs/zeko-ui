@@ -96,11 +96,11 @@ const communityItems = [
 
 @media (max-width: 1024px) {
   .nav {
-   justify-self: center;
+    justify-self: center;
   }
 }
 
-.Sound, :deep(.Sound){
+.Sound, :deep(.Sound) {
   width: 40px;
   height: 40px;
   background-color: black;

@@ -18,17 +18,17 @@ const font = theme.config.fonts.lexend.typescale
 </template>
 <style lang="postcss" scoped>
 .Label {
-    display: flex;
-    padding: 0.25rem 0.5rem;
-    justify-content: center;
-    align-items: center;
-    width: fit-content;
-    gap: 0.25rem;
-    border-radius: 0.5rem;
-    border: 1px solid v-bind("color.border.value");
-    background: v-bind("color.background.value");
-    color: v-bind("color.content.value");
-    font-size: v-bind("font.scale.s.value");
-    font-weight: v-bind("font.weight.semibold.value");
+  display: flex;
+  padding: 0.25rem 0.5rem;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid v-bind("color.border.value");
+  background: v-bind("color.background.value");
+  color: v-bind("color.content.value");
+  font-size: v-bind("font.scale.s.value");
+  font-weight: v-bind("font.weight.semibold.value");
 }
 </style>

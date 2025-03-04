@@ -18,6 +18,6 @@
 </template>
 <style lang="postcss" scoped>
 svg {
-    transform: scale(0.7);
+  transform: scale(0.7);
 }
 </style>

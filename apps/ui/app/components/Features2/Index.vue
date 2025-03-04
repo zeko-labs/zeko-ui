@@ -37,39 +37,39 @@ const content = [
 
 <style lang="postcss" scoped>
 h2, p {
-    margin: 0;
+  margin: 0;
 }
 
 .background {
-    position: relative;
-    height: 100%;
-    overflow: hidden;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
 }
 
 .background-image {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    object-fit: cover;
-    z-index: 0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  object-fit: cover;
+  z-index: 0;
 }
 
 .Container {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    padding: 6rem 4rem;
-    align-items: center;
-    gap: 2.5rem;
-    align-self: stretch;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  padding: 6rem 4rem;
+  align-items: center;
+  gap: 2.5rem;
+  align-self: stretch;
 }
 @media (max-width: 1024px) {
-    .Container {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 6rem 1rem;
-    }
+  .Container {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 6rem 1rem;
+  }
 }
 </style>

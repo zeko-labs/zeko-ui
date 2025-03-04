@@ -82,13 +82,11 @@ const submitDisabled = computed(
         experimenting on testnets. tMINA cannot be sold and is not redeemable
         for any cryptocurrency or digital asset. For help with installing and
         setting up a wallet, visit: <a
-          href="https://docs.zeko.io/for_end_users">https://docs.zeko.io/for_end_users</a
-        >
+          href="https://docs.zeko.io/for_end_users">https://docs.zeko.io/for_end_users</a>
       </p>
       <span>
         To faucet tMINA on Mina L1 please visit <a
-          href="https://faucet.minaprotocol.com">https://faucet.minaprotocol.com</a
-        >
+          href="https://faucet.minaprotocol.com">https://faucet.minaprotocol.com</a>
       </span>
       <div class="Form">
         <Field.Root>

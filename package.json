@@ -1,11 +1,10 @@
 {
-	"name": "zeko-monorepo",
-	"version": "0.1.0",
+	"name": "zeko-ui-monorepo",
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"format": "dprint fmt --verbose",
-		"contracts": "rm -rf apps/luminadex-contracts && bunx giget@latest gh:Lumina-DEX/lumina-v1-core/contracts#beta apps/luminadex-contracts"
+		"format": "dprint check",
+		"format:fix": "dprint fmt"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.1",

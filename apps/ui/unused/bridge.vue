@@ -32,8 +32,8 @@ const currentStepIndex = ref(0)
         <h1 class="title">Rollup Bridge</h1>
         <p class="description">
           The Rollup Bridge is a trustless bridge for transferring tokens from
-          Mina L1 to Zeko L2. Please check <a href="#" class="link">Zeko Docs</a
-          >
+          Mina L1 to Zeko L2. Please check <a href="#" class="link">Zeko
+            Docs</a>
           for information about other bridges.
         </p>
         <p class="instructions">

@@ -44,18 +44,18 @@ const styles = theme
 }
 
 .mobile {
-    display: none;
+  display: none;
 }
 .desktop {
-    display: block;
+  display: block;
 }
 
 @media (max-width: 1024px) {
-    .mobile {
-        display: block;
-    }
-    .desktop {
-        display: none;
-    }
+  .mobile {
+    display: block;
+  }
+  .desktop {
+    display: none;
+  }
 }
 </style>

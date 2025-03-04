@@ -103,7 +103,7 @@
     b {
       font-weight: 500;
     }
-  } 
+  }
 }
 
 @media (max-width: 1024px) {

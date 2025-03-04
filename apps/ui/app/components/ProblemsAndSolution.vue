@@ -76,7 +76,7 @@
   z-index: 1;
 }
 
-.bottom-right { 
+.bottom-right {
   --size: 65vmax;
   width: var(--size);
   height: var(--size);

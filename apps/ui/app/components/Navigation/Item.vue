@@ -50,29 +50,29 @@ button {
     padding: 0;
   }
 }
-[data-scope="menu"][data-part="item"]{
+[data-scope="menu"][data-part="item"] {
+  a {
+    color: var(--colors-gray-950);
+    font-size: var(--fonts-lexend-typescale-scale-s);
+    text-decoration: none;
+    font-weight: 500;
+    outline: none;
+  }
+  &[data-highlighted] {
     a {
-        color: var(--colors-gray-950);
-        font-size: var(--fonts-lexend-typescale-scale-s);
-        text-decoration: none;
-        font-weight: 500;
-        outline: none;
+      color: var(--colors-cosmicGold-100);
     }
-    &[data-highlighted]{
-        a {
-            color: var(--colors-cosmicGold-100);
-        }
-    }
+  }
 }
 @media (max-width: 1024px) {
-  [data-scope="menu"][data-part="content"]{
+  [data-scope="menu"][data-part="content"] {
     background-color: oklch(100 0 0 / 0.85);
     padding: 0.25rem;
     border-radius: 0.25rem;
   }
-  [data-scope="menu"][data-part="item"]{
+  [data-scope="menu"][data-part="item"] {
     a {
-        font-size: var(--fonts-lexend-typescale-scale-xl);
+      font-size: var(--fonts-lexend-typescale-scale-xl);
     }
   }
 }

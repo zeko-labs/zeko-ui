@@ -116,38 +116,37 @@ const plus = computed(
 
 .ZekoButtonCTA {
   &:disabled {
-	box-shadow: inset 0 0 0 1px v-bind("buttonStyle.disabled.borderColor");
-	background: v-bind("buttonStyle.disabled.background");
-	color: v-bind("buttonStyle.disabled.color");
-	cursor: not-allowed;
+    box-shadow: inset 0 0 0 1px v-bind("buttonStyle.disabled.borderColor");
+    background: v-bind("buttonStyle.disabled.background");
+    color: v-bind("buttonStyle.disabled.color");
+    cursor: not-allowed;
   }
   &:not(:disabled) {
-	&:hover {
-		opacity: v-bind("buttonStyle.hover.opacity");
-	}
-	&:active {
-		opacity: v-bind("buttonStyle.active.opacity");
-	}
+    &:hover {
+      opacity: v-bind("buttonStyle.hover.opacity");
+    }
+    &:active {
+      opacity: v-bind("buttonStyle.active.opacity");
+    }
   }
 }
 
 .ZekoButtonDefault {
   &:disabled {
-	background: v-bind("buttonStyle.disabled.background");
-	box-shadow: inset 0 0 0 1px v-bind("buttonStyle.disabled.borderColor");
-	color: v-bind("buttonStyle.disabled.color");
-	cursor: not-allowed;
+    background: v-bind("buttonStyle.disabled.background");
+    box-shadow: inset 0 0 0 1px v-bind("buttonStyle.disabled.borderColor");
+    color: v-bind("buttonStyle.disabled.color");
+    cursor: not-allowed;
   }
   &:not(:disabled) {
-	&:hover {
-		background: v-bind("buttonStyle.hover.background");
-		box-shadow: inset 0 0 0 1px v-bind("buttonStyle.hover.borderColor");
-  	}
-  	&:active {
-		background: v-bind("buttonStyle.active.background");
-		box-shadow: inset 0 0 0 1px v-bind("buttonStyle.active.borderColor");
-  	}
+    &:hover {
+      background: v-bind("buttonStyle.hover.background");
+      box-shadow: inset 0 0 0 1px v-bind("buttonStyle.hover.borderColor");
+    }
+    &:active {
+      background: v-bind("buttonStyle.active.background");
+      box-shadow: inset 0 0 0 1px v-bind("buttonStyle.active.borderColor");
+    }
   }
-
 }
 </style>
