@@ -37,8 +37,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # Optional: Enable this if you want to have GitHub Deployments triggered
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: versions upload
           workingDirectory: apps/ui
-          environment: preview
           wranglerVersion: "3.110.0"
           packageManager: pnpm
       - name: Comment on PR
@@ -57,7 +57,6 @@ jobs:
               | --- | --- |
               | 🌍 Preview | ${url} |
               | 🎫 Alias | ${aliasUrl} |
-              | 🚀 Environment | ${environment} |
               | 📅 Deployed At | ${new Date().toISOString()} |
 
               > Deployed by Cloudflare Wrangler Action`
