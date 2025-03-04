@@ -56,7 +56,7 @@ jobs:
               |  | URL |
               | --- | --- |
               | 🌍 Preview | ${url} |
-              | 🔍 Build Output | <details><summary>Output</summary>${output}</details> |
+              | 🔍 Build Output | <details><summary>Output</summary><pre>${output.replace(/`/g, '\\`').replace(/\$/g, '\\$')}</pre></details> |
 
               > Deployed by Cloudflare Wrangler Action`
             
