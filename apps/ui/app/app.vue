@@ -2,25 +2,24 @@
 const title = "Zeko"
 const description = "Zeko is a zero-knowledge cross-chain scaling protocol"
 const url = "https://zeko.io"
-useServerSeoMeta({
-	title,
-	appleMobileWebAppTitle: title,
-	description,
-	ogTitle: title,
-	ogUrl: url,
-	ogDescription: description,
-	ogImage: "/og-image.jpg",
-	ogImageUrl: "/og-image.jpg",
-	ogImageSecureUrl: "/og-image.jpg",
-	twitterTitle: title,
-	twitterDescription: description,
-	twitterImage: "/og-image.jpg",
-	twitterCreator: "@ZekoLabs",
-	twitterCard: "summary_large_image"
-})
 
 useHead({
 	htmlAttrs: { lang: "en" },
+	meta: [
+		{ property: "og:title", content: title },
+		{ property: "apple-mobile-web-app-title", content: title },
+		{ name: "description", content: description },
+		{ property: "og:description", content: description },
+		{ property: "og:url", content: url },
+		{ property: "og:image", content: "/og-image.jpg" },
+		{ property: "og:image:url", content: "/og-image.jpg" },
+		{ property: "og:image:secure_url", content: "/og-image.jpg" },
+		{ property: "twitter:title", content: title },
+		{ property: "twitter:description", content: description },
+		{ property: "twitter:image", content: "/og-image.jpg" },
+		{ property: "twitter:creator", content: "@ZekoLabs" },
+		{ property: "twitter:card", content: "summary_large_image" }
+	],
 	link: [
 		{ rel: "icon", href: "/favicon.svg", sizes: "any", type: "image/svg+xml" },
 		{
