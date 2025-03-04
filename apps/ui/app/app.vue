@@ -2,23 +2,29 @@
 const title = "Zeko"
 const description = "Zeko is a zero-knowledge cross-chain scaling protocol"
 const url = "https://zeko.io"
-
+const image = "/og-image.png"
+const imageAlt = "Zeko Logo on a black background."
 useHead({
 	htmlAttrs: { lang: "en" },
 	meta: [
-		{ property: "og:title", content: title },
 		{ property: "apple-mobile-web-app-title", content: title },
 		{ name: "description", content: description },
+		{ property: "og:title", content: title },
+		{ property: "og:site_name", content: title },
 		{ property: "og:description", content: description },
 		{ property: "og:url", content: url },
-		{ property: "og:image", content: "/og-image.jpg" },
-		{ property: "og:image:url", content: "/og-image.jpg" },
-		{ property: "og:image:secure_url", content: "/og-image.jpg" },
+		{ property: "og:image", content: image },
+		{ property: "og:image:url", content: image },
+		{ property: "og:image:secure_url", content: image },
+		{ property: "og:image:alt", content: imageAlt },
+		{ property: "twitter:card", content: "summary_large_image" },
 		{ property: "twitter:title", content: title },
+		{ property: "twitter:url", content: url },
 		{ property: "twitter:description", content: description },
-		{ property: "twitter:image", content: "/og-image.jpg" },
+		{ property: "twitter:image", content: image },
+		{ property: "twitter:image:alt", content: imageAlt },
 		{ property: "twitter:creator", content: "@ZekoLabs" },
-		{ property: "twitter:card", content: "summary_large_image" }
+		{ property: "twitter:site", content: "@ZekoLabs" }
 	],
 	link: [
 		{ rel: "icon", href: "/favicon.svg", sizes: "any", type: "image/svg+xml" },
