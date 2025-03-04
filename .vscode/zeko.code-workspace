@@ -1,14 +1,14 @@
 {
     "folders": [
       {
-        "path": "../apps/bridge",
+        "path": "../apps/ui",
       },
       {
         "path": "..",
       },
     ],
     "settings": {
-      "typescript.tsdk": "zeko-bridge/node_modules/typescript/lib",
+      "typescript.tsdk": "node_modules/typescript/lib",
       "typescript.enablePromptUseWorkspaceTsdk": true
     },
   }
