@@ -9,12 +9,14 @@ useSeoMeta({
 	ogTitle: title,
 	ogUrl: url,
 	ogDescription: description,
-	ogImageSecureUrl: "/og-image.jpg",
 	ogImage: "/og-image.jpg",
+	ogImageUrl: "/og-image.jpg",
+	ogImageSecureUrl: "/og-image.jpg",
 	twitterTitle: title,
 	twitterDescription: description,
 	twitterImage: "/og-image.jpg",
-	twitterCard: "summary"
+	twitterCreator: "@ZekoLabs",
+	twitterCard: "summary_large_image"
 })
 
 useHead({
