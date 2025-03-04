@@ -55,14 +55,13 @@ jobs:
             const deployTitle = "🛸 Zeko UI Deploy Preview is live 🏌️‍♀️"
             const body = 
               `### ${deployTitle}
-              |  | URL |
-              | --- | --- |
-              | 🌍 Deploy URL | [🌍 link preview](${url}) |
-              ___________________________________________
-
+              #### 🌍 Deploy URL
+              
+              [link preview](${url})
+              
               #### 🔍 Build Output 
 
-              <details><summary>Output</summary><pre>${output}</pre></details>
+              <details><summary>Output</summary>${output}</details>
 
               > Deployed by Cloudflare Wrangler Action`
             
