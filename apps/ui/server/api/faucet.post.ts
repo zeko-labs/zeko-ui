@@ -7,9 +7,12 @@ const validateBody = type({
 export default defineEventHandler(async (event) => {
 	const body = await readValidatedBody(event, validateBody)
 	if (body instanceof type.errors) return new Response(body.message, { status: 400 })
-	const config = useRuntimeConfig(event)
-	if (!config.faucetUrl) return new Response("Server misconfigured.", { status: 500 })
-	const response = await fetch(config.faucetUrl, {
+	const url =
+		process.env.FAUCET_URL ??
+		useRuntimeConfig(event).faucetUrl ??
+		event.context.cloudflare.env.FAUCET_URL
+	if (!url) return new Response("Server misconfigured.", { status: 500 })
+	const response = await fetch(url, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json"
