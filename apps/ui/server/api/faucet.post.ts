@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
 	if (body instanceof type.errors) return new Response(body.message, { status: 400 })
 	const url = import.meta.dev ?
 		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-		useRuntimeConfig(event).faucetUrl : (env as any).STORE_FAUCET_URL
+		useRuntimeConfig(event).faucetUrl : await (env as any).STORE_FAUCET_URL.get()
 	if (!url) return new Response("A server error has happened.", { status: 500 })
 	const response = await fetch(url, {
 		method: "POST",
