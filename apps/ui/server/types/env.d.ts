@@ -1,6 +1,7 @@
 import type { CfProperties, ExecutionContext, Request } from "@cloudflare/workers-types"
 
 interface Env {
+	STORE_FAUCET_URL: string
 	FAUCET_URL: string
 }
 

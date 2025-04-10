@@ -109,7 +109,7 @@ const submitDisabled = computed(
             variant="cta1"
             :disabled="submitDisabled"
             @click='faucet.send({ type: "SUBMIT" })'>
-            Request <ArrowBigRight />
+            {{ pending ? "Requesting..." : "Request tMINA" }} <ArrowBigRight />
           </Button>
         </div>
       </div>

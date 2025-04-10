@@ -33,9 +33,7 @@ const description = computed(() =>
             </NuxtLink>
           </Match>
           <Match :when='state === "Users"'>
-            <NuxtLink
-              to="/faucet"
-              target="_blank">
+            <NuxtLink to="/faucet">
               <Button variant="cta1">Get Wallet</Button>
             </NuxtLink>
           </Match>

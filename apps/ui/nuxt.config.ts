@@ -27,6 +27,8 @@ export default defineNuxtConfig({
 		faucetUrl: process.env.FAUCET_URL
 	},
 	nitro: {
+		//TODO: enable when supported by Nitro
+		// cloudflare: { nodeCompat: true, deployConfig: true },
 		minify: false
 	},
 	vite: {
@@ -44,7 +46,7 @@ export default defineNuxtConfig({
 		}
 	},
 	devtools: { enabled: true },
-	modules: ["@nuxt/fonts", "@pinia/nuxt", "@hebilicious/nuxt-switch-match"],
+	modules: ["@nuxt/fonts", "@pinia/nuxt", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
 	fonts: {
 		provider: "google"
 	}

@@ -18,9 +18,7 @@
             target="_blank">
             <Button variant="cta1">Start Building</Button>
           </NuxtLink>
-          <NuxtLink
-            to="/faucet"
-            target="_blank">
+          <NuxtLink to="/faucet">
             <Button variant="cta1">Get Wallet</Button>
           </NuxtLink>
         </div>
