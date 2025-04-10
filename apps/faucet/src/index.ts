@@ -23,9 +23,8 @@ app.post("/", async (c) => {
     return c.text("Successfully sent", 200)
   } catch (error) {
     console.error(error)
-    return c.text(`An error has occurred ${error instanceof Error ? error.message : error}`, 500)
+    return c.text(`An error has occurred ${error instanceof Error ? error.message : error}`, 400)
   }
-
 })
 
 export default app

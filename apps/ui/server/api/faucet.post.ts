@@ -18,10 +18,13 @@ export default defineEventHandler(async (event) => {
 		},
 		body: JSON.stringify(body)
 	})
-	if (!response.ok) return new Response("The internal service is not available.", { status: 502 })
-	const result = await response.text()
-	if (result.includes("Account_balance_precondition_unsatisfied"))
-		return new Response("This address has already claimed tokens.", { status: 403 })
-	if (result.includes("Error")) return new Response("An unknown error occurred.", { status: 400 })
-	return new Response(result, { status: 202 })
+	try {
+		const result = await response.text()
+		if (result.includes("Account_balance_precondition_unsatisfied"))
+			return new Response("This address has already claimed tokens.", { status: 403 })
+		if (result.includes("Error")) return new Response("An unknown error occurred.", { status: 400 })
+		return new Response(result, { status: 202 })
+	} catch {
+		return new Response("The internal service is not available.", { status: 502 })
+	}
 })
