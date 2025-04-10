@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers"
 import { type } from "arktype"
 
 const validateBody = type({
@@ -8,7 +9,8 @@ export default defineEventHandler(async (event) => {
 	const body = await readValidatedBody(event, validateBody)
 	if (body instanceof type.errors) return new Response(body.message, { status: 400 })
 	const url = import.meta.dev ?
-		useRuntimeConfig(event).faucetUrl : event.context.cloudflare.env.STORE_FAUCET_URL
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		useRuntimeConfig(event).faucetUrl : (env as any).STORE_FAUCET_URL
 	if (!url) return new Response("A server error has happened.", { status: 500 })
 	const response = await fetch(url, {
 		method: "POST",
