@@ -1,0 +1,17 @@
+{
+  "name": "faucet",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts"
+  },
+  "main": "src/index.ts",
+  "type": "module",
+  "dependencies": {
+    "hono": "^4.7.6",
+    "o1js": "2.2.0"
+  },
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.7.10",
+    "@types/bun": "latest"
+  }
+}
