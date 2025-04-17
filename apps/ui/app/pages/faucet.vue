@@ -78,17 +78,11 @@ const submitDisabled = computed(
     <section class="Faucet">
       <h2>Faucet</h2>
       <p>
-        Enter a Mina address to receive testnet MINA (tMINA) on Zeko L2. These
-        have no value, monetary or otherwise, and are solely useful for
-        experimenting on testnets. tMINA cannot be sold and is not redeemable
-        for any cryptocurrency or digital asset. For help with installing and
-        setting up a wallet, visit: <a
+        Enter a Mina address to receive testnet MINA (tMINA) on Zeko L2. For
+        help with installing and setting up a wallet, visit:
+        <a
           href="https://docs.zeko.io/for_end_users">https://docs.zeko.io/for_end_users</a>
       </p>
-      <span>
-        To faucet tMINA on Mina L1 please visit <a
-          href="https://faucet.minaprotocol.com">https://faucet.minaprotocol.com</a>
-      </span>
       <div class="Form">
         <Field.Root :id>
           <Field.Label>MINA Address</Field.Label>
@@ -119,6 +113,14 @@ const submitDisabled = computed(
           tMINA succesfully requested to <span>{{ minaAddress }}</span>
         </p>
         <p class="error" v-if="error">{{ errorMessage }}</p>
+      </div>
+      <div class="Disclaimer">
+        <b>Disclaimer</b>: These have no value, monetary or otherwise, and are
+        solely useful for experimenting on testnets. tMINA cannot be sold and is
+        not redeemable for any cryptocurrency or digital asset. To faucet tMINA
+        on Mina L1 please visit
+        <a
+          href="https://faucet.minaprotocol.com">https://faucet.minaprotocol.com</a>
       </div>
     </section>
   </main>
@@ -213,5 +215,11 @@ section {
 
 .error {
   color: var(--colors-persianRed-500);
+}
+
+.Disclaimer {
+  font-size: var(--fonts-lexend-typescale-scale-s);
+  color: var(--colors-gray-500);
+  margin-top: 1rem;
 }
 </style>
