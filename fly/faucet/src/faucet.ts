@@ -49,5 +49,6 @@ export async function sendPayment(address: string) {
 		receiver.body.preconditions.account.balance.value.upper = amount.sub(1)
 	})
 
-	await tx.sign([privateKey]).send()
+	const result = await tx.sign([privateKey]).send()
+	return result
 }

@@ -19,8 +19,8 @@ app.post("/", async (c) => {
 	try {
 		const { address } = await c.req.json<{ address: string }>()
 		if (!address) return c.text("Address cannot be null", 400)
-		await sendPayment(address)
-		return c.text("Successfully sent", 200)
+		const result = await sendPayment(address)
+		return c.json({ message: "Successfully sent", result }, 200)
 	} catch (error) {
 		console.error(error)
 		return c.text(`An error has occurred ${error instanceof Error ? error.message : error}`, 400)
