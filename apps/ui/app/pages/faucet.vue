@@ -6,7 +6,7 @@ import { type } from "arktype"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ArrowBigRight } from "lucide-vue-next"
 import { assign, enqueueActions, fromPromise, setup } from "xstate"
-import { faucetBody } from "~~/server/api/faucet.post"
+import { faucetBody } from "~~/helpers/validation"
 
 const minaAddress = defineModel()
 

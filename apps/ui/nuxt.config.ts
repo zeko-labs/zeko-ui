@@ -33,6 +33,7 @@ export default defineNuxtConfig({
 	},
 	vite: {
 		// build: { minify: false },
+		// build: { rollupOptions: { external: ["cloudflare:workers"] } },
 		optimizeDeps: {
 			include: ["@lumina-dex/sdk > react"],
 			exclude: ["@lumina-dex/sdk", "@urql/vue"]

@@ -1,14 +1,9 @@
 import { env } from "cloudflare:workers"
 import { type } from "arktype"
+import { faucetBody } from "~~/helpers/validation"
 
 const validateBody = type({
 	address: "string.alphanumeric"
-})
-
-export const faucetBody = type({
-	message: "string",
-	hash: "string",
-	data: "object"
 })
 
 export default defineEventHandler(async (event) => {
