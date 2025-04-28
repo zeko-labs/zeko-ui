@@ -26,10 +26,12 @@ export default defineEventHandler(async (event) => {
 	try {
 		const faucetResult = await response.json()
 		const faucetData = faucetBody(faucetResult)
-		if (faucetData instanceof type.errors) return Response.json({ message: "The faucet has errored." }, { status: 400 })
+		if (faucetData instanceof type.errors)
+			return Response.json({ message: "The faucet has errored." }, { status: 400 })
 		if (faucetData.message.includes("Account_balance_precondition_unsatisfied"))
 			return Response.json({ message: "This address has already claimed tokens." }, { status: 403 })
-		if (faucetData.message.toLocaleLowerCase().includes("error")) return new Response("An unknown error occurred.", { status: 400 })
+		if (faucetData.message.toLocaleLowerCase().includes("error"))
+			return Response.json({ message: "An unknown error occurred." }, { status: 400 })
 		return Response.json(faucetData, { status: 202 })
 	} catch {
 		return new Response("The internal service is not available.", { status: 502 })
