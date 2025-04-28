@@ -26,9 +26,8 @@ const faucetMachine = setup({
 			})
 			const result = await response.json()
 			const data = faucetBody(result)
-			if (data instanceof type.errors)
+			if (data instanceof type.errors || !response.ok)
 				throw new Error(`An error has occurred: ${data.message}`)
-			if (!response.ok) throw new Error("An unknown error occured.")
 			return data
 		})
 	}
