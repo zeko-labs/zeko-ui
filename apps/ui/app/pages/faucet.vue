@@ -24,11 +24,11 @@ const faucetMachine = setup({
 				},
 				body: JSON.stringify({ address: minaAddress.value })
 			})
-			if (!response.ok) throw new Error("An error occured.")
 			const result = await response.json()
 			const data = faucetBody(result)
 			if (data instanceof type.errors)
-				throw new Error("A faucet error occured.")
+				throw new Error(`An error has occurred: ${data.message}`)
+			if (!response.ok) throw new Error("An unknown error occured.")
 			return data
 		})
 	}
@@ -117,7 +117,7 @@ const submitDisabled = computed(
       </div>
 
       <div class="Result">
-        <p v-if="success">
+        <p class="success" v-if="success">
           tMINA succesfully requested to <span>{{ minaAddress }}</span>
           <a
             :href="zekoScanLink"
@@ -229,6 +229,10 @@ section {
 
 .error {
   color: var(--colors-persianRed-500);
+}
+
+.success {
+  color: var(--colors-complete-content);
 }
 
 .Disclaimer {
