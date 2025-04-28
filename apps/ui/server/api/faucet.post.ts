@@ -8,9 +8,9 @@ const validateBody = type({
 
 export default defineEventHandler(async (event) => {
 	const body = await readValidatedBody(event, validateBody)
-	if (body instanceof type.errors) return new Response(body.message, { status: 400 })
+	if (body instanceof type.errors) return Response.json({ message: body.message }, { status: 400 })
 	const url = import.meta.dev ? useRuntimeConfig(event).faucetUrl : await env.STORE_FAUCET_URL.get()
-	if (!url) return new Response("A server error has happened.", { status: 500 })
+	if (!url) return Response.json({ message: "A server error has happened." }, { status: 500 })
 	const response = await fetch(url, {
 		method: "POST",
 		headers: {
