@@ -29,6 +29,6 @@ export default defineEventHandler(async (event) => {
 			return Response.json({ message: "An unknown error occurred." }, { status: 400 })
 		return Response.json(faucetData, { status: 202 })
 	} catch {
-		return new Response("The internal service is not available.", { status: 502 })
+		return Response.json({ message: "The internal service is not available." }, { status: 502 })
 	}
 })
