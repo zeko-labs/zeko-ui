@@ -12,10 +12,10 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /introduction
+      link: /introduction/what-is-zeko
     - theme: alt
       text: Architecture
-      link: /architecture
+      link: /architecture/zeko-core-concepts
 
 features:
   - title: Zero-Knowledge Powered

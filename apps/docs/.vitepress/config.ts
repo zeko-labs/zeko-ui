@@ -7,6 +7,7 @@ import llmstxt from "vitepress-plugin-llms"
 export default defineConfig({
 	title: "Zeko Documentation",
 	description: "Documentation for Zeko",
+	srcDir: 'content',
 	vite: {
 		plugins: [llmstxt()]
 	},
@@ -44,85 +45,72 @@ export default defineConfig({
 		sidebar: [
 			{
 				text: 'Introduction',
-				link: '/introduction',
 				items: [
-					{ text: 'What is Zeko?', link: '/introduction#11-what-is-zeko' },
-					{ text: 'Why Zeko?', link: '/introduction#12-why-zeko' },
-					{ text: 'Quick Start (For Users & Developers)', link: '/introduction#13-quick-start-for-users--developers' },
-					{ text: 'Who is this Documentation For?', link: '/introduction#14-who-is-this-documentation-for' }
+					{ text: 'What is Zeko?', link: '/introduction/what-is-zeko' },
+					{ text: 'Why Zeko?', link: '/introduction/why-zeko' },
+					{ text: 'Quick Start', link: '/introduction/quick-start' },
+					{ text: 'Who is this Documentation For?', link: '/introduction/who-is-this-for' }
 				]
 			},
 			{
 				text: 'Background Concepts',
-				link: '/background',
 				items: [
-					{ text: 'Core Blockchain Concepts', link: '/background#21-core-blockchain-concepts' },
-					{ text: 'Smart Contracts & EVM', link: '/background#22-smart-contracts--evm' },
-					{ text: 'Zero-Knowledge Proofs (ZKPs)', link: '/background#23-zero-knowledge-proofs-zkps' },
-					{ text: 'Layer 2 Scaling Solutions', link: '/background#24-layer-2-scaling-solutions' },
-					{ text: 'Mina Protocol', link: '/background#25-mina-protocol' }
+					{ text: 'Core Blockchain Concepts', link: '/background/core-blockchain-concepts' },
+					{ text: 'Smart Contracts & EVM', link: '/background/smart-contracts-evm' },
+					{ text: 'Zero-Knowledge Proofs (ZKPs)', link: '/background/zero-knowledge-proofs' },
+					{ text: 'Layer 2 Scaling Solutions', link: '/background/layer-2-scaling' },
+					{ text: 'Mina Protocol', link: '/background/mina-protocol' }
 				]
 			},
 			{
 				text: 'Zeko Architecture & Concepts',
-				link: '/architecture',
 				items: [
-					{ text: 'Zeko Core Concepts', link: '/architecture#31-zeko-core-concepts' },
-					{ text: 'Technical Architecture', link: '/architecture#32-technical-architecture' },
-					{ text: 'Security Model', link: '/architecture#33-security-model' },
-					{ text: 'Roadmap', link: '/architecture#34-roadmap' }
+					{ text: 'Zeko Core Concepts', link: '/architecture/zeko-core-concepts' },
+					{ text: 'Technical Architecture', link: '/architecture/technical-architecture' },
+					{ text: 'Security Model', link: '/architecture/security-model' },
+					{ text: 'Roadmap', link: '/architecture/roadmap' }
 				]
 			},
 			{
 				text: 'Using Zeko (For End Users)',
-				link: '/users',
 				items: [
-					{ text: 'Getting Started', link: '/users#41-getting-started' },
-					{ text: 'Performing Basic Transactions', link: '/users#42-performing-basic-transactions' },
-					{ text: 'Zeko Bridge', link: '/users#43-zeko-bridge' },
-					{ text: 'Zekoscan Explorer', link: '/users#44-zekoscan-explorer' },
-					{ text: 'User Concepts Explained', link: '/users#45-user-concepts-explained' }
+					{ text: 'Getting Started', link: '/users/getting-started' },
+					{ text: 'Performing Basic Transactions', link: '/users/performing-basic-transactions' },
+					{ text: 'Zeko Bridge', link: '/users/zeko-bridge' },
+					{ text: 'Zekoscan Explorer', link: '/users/zekoscan-explorer' },
+					{ text: 'User Concepts Explained', link: '/users/user-concepts-explained' }
 				]
 			},
 			{
 				text: 'Developing on Zeko (For Developers)',
-				link: '/developers',
 				items: [
-					{ text: 'Getting Started', link: '/developers#51-getting-started' },
-					{ text: 'Core Developer Concepts', link: '/developers#52-core-developer-concepts' },
-					{ text: 'Guides & Tutorials', link: '/developers#53-guides--tutorials' },
-					{ text: 'Examples & Boilerplates', link: '/developers#54-examples--boilerplates' },
-					{ text: 'API Reference', link: '/developers#55-api-reference' },
-					{ text: 'Contributing to Zeko Development', link: '/developers#56-contributing-to-zeko-development' }
+					{ text: 'Getting Started', link: '/developers/getting-started' },
+					{ text: 'Core Developer Concepts', link: '/developers/core-developer-concepts' },
+					{ text: 'Guides & Tutorials', link: '/developers/guides-tutorials' },
+					{ text: 'Examples & Boilerplates', link: '/developers/examples-boilerplates' },
+					{ text: 'API Reference', link: '/developers/api-reference' },
+					{ text: 'Contributing to Zeko Development', link: '/developers/contributing' }
 				]
 			},
 			{
 				text: 'Running Network Infrastructure (For Operators)',
-				link: '/operators',
 				items: [
-					{ text: 'Getting Started', link: '/operators#61-getting-started' },
-					{ text: 'Guides', link: '/operators#62-guides' },
-					{ text: 'Concepts for Operators', link: '/operators#63-concepts-for-operators' },
-					{ text: 'Troubleshooting', link: '/operators#64-troubleshooting' }
+					{ text: 'Getting Started', link: '/operators/getting-started' },
+					{ text: 'Guides', link: '/operators/guides' },
+					{ text: 'Concepts for Operators', link: '/operators/concepts-for-operators' },
+					{ text: 'Troubleshooting', link: '/operators/troubleshooting' }
 				]
 			},
 			{
 				text: 'Reference',
-				link: '/reference',
 				items: [
-					{ text: 'Glossary', link: '/reference#71-glossary' },
-					{ text: 'Frequently Asked Questions (FAQ)', link: '/reference#72-frequently-asked-questions-faq' },
-					{ text: 'Troubleshooting Guide', link: '/reference#73-troubleshooting-guide' }
+					{ text: 'Glossary', link: '/reference/glossary' },
+					{ text: 'FAQ', link: '/reference/faq' },
+					{ text: 'Troubleshooting Guide', link: '/reference/troubleshooting-guide' }
 				]
 			},
-			{
-				text: 'Community & Support',
-				link: '/community'
-			},
-			{
-				text: 'Changelog',
-				link: '/changelog'
-			}
+			{ text: 'Community & Support', link: '/community' },
+			{ text: 'Changelog', link: '/changelog' }
 		],
 
 		socialLinks: [
