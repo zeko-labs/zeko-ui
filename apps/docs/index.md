@@ -3,30 +3,33 @@
 layout: home
 
 hero:
-  name: "LuminaDex SDK"
-  text: "State machine-driven SDK for the Lumina DEX"
-  tagline: Build decentralized applications on the Mina blockchain with ease
+  name: "Zeko Documentation"
+  text: "Comprehensive docs for the Zeko Protocol"
+  tagline: "Zero-knowledge, Layer 2, and Mina blockchain made accessible."
   image:
     src: /logo.png
-    alt: LuminaDex SDK
+    alt: Zeko Protocol
   actions:
     - theme: brand
       text: Get Started
-      link: /guide/getting-started
+      link: /introduction
     - theme: alt
-      text: API Reference
-      link: /api/overview
+      text: Architecture
+      link: /architecture
 
 features:
-  - title: XState Powered
-    details: Built on XState state machines for predictable, testable application logic with type-safe events and transitions
+  - title: Zero-Knowledge Powered
+    details: Zeko leverages advanced zero-knowledge proofs for privacy and scalability on Mina.
 
-  - title: Framework Agnostic
-    details: First-class support for both React and Vue with dedicated integrations, while maintaining a framework-agnostic core
+  - title: Layer 2 Scaling
+    details: Efficient, secure, and scalable transactions with Layer 2 technology.
 
-  - title: Complete DEX Support
-    details: Connect wallets, swap tokens, add/remove liquidity, fetch pool data, and deploy contracts with a consistent API
+  - title: Developer Friendly
+    details: Comprehensive guides, API references, and examples for building on Zeko.
 
-  - title: Fully Type-Safe
-    details: Full TypeScript support with comprehensive type definitions for a better developer experience and fewer runtime errors
+  - title: User Focused
+    details: Simple onboarding, bridging, and explorer tools for end users.
+
+  - title: Open & Community Driven
+    details: Open-source, transparent, and supported by a growing community.
 ---
