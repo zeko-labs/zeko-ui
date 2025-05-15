@@ -3,7 +3,8 @@ name: UI Preview
 on:
   pull_request:
     branches: ["main"]
-
+    paths:
+      - "apps/ui/**"
 jobs:
   deploy-zeko-ui-preview:
     name: Deploy Zeko UI [preview]

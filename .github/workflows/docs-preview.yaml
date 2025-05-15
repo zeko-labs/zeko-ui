@@ -3,7 +3,8 @@ name: Docs Preview
 on:
   pull_request:
     branches: ["main"]
-
+    paths:
+      - "apps/docs/**"
 jobs:
   deploy-zeko-docs-preview:
     name: Deploy Zeko Docs [preview]
