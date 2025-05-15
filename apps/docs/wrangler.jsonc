@@ -1,0 +1,12 @@
+{
+	"$schema": "https://unpkg.com/wrangler@latest/config-schema.json",
+	"name": "zeko-docs",
+	"compatibility_date": "2025-01-16",
+	"main": "worker.ts",
+	// "routes": [{ "pattern": "sdk.luminadex.com", "custom_domain": true }],
+	"assets": {
+		"directory": ".vitepress/dist",
+		"binding": "ASSETS",
+		"not_found_handling": "single-page-application"
+	}
+}

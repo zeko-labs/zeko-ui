@@ -1,0 +1,37 @@
+# Docs rewrite
+
+- Introduction
+  - Blockchain, Bitcoin, Wallets
+    - https://academy.binance.com/en/articles/what-is-blockchain-and-how-does-it-work
+  - Ethereum, Smart Contracts
+    - https://academy.binance.com/en/articles/what-are-smart-contracts
+  - Mina, Zero Knowledge
+    - https://academy.binance.com/en/articles/what-is-zero-knowledge-proof-and-how-does-it-impact-blockchain
+  - Layer 2, ZK rollups
+    - https://academy.binance.com/en/glossary/zk-rollup https://academy.binance.com/en/glossary/zero-knowledge-proofs
+- Zeko
+  - Why use Zeko ?
+  - Understanding Zeko : How does Zeko works ?
+  - Zeko Architecture and Design Deep Dive
+  - Zeko Roadmap
+- For Users
+  - Getting Started (Browser, Auro Wallet, Create Wallet, Fund Wallet, Testnet vs Mainnet, Zeko Explorer, Zeko Bridge)
+  - Concepts
+    - Auro Wallet
+    - Zekoscan Explorer
+    - Zeko Bridge
+    - Zeko Faucet
+  - Guide: Step by Step to use a dapp on zeko
+- For Developers
+  - Getting Started (Useful links, o1js, Lumina SDK ...)
+  - Concepts
+    - o1js
+    - Lumina SDK
+    - ZK Proofs
+    - Account Updates
+    - ZK Programs
+  - Guide: Step by Step to write a dapp up and running
+  - Contributing to Zeko
+- For Network Operators
+  - Getting Started (Useful links, sequencer repo)
+  - Guide: Step by Step to run the sequencer
