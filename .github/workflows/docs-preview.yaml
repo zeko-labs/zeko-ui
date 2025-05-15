@@ -27,7 +27,7 @@ jobs:
 
       # TODO: If there's no changes, this should have some caching an be almost instant
       - name: Build Docs
-        working-directory: apps/ui
+        working-directory: apps/docs
         run: pnpm run build
 
       - name: Deploy to Cloudflare Workers Site
