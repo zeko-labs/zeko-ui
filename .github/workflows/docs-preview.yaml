@@ -25,6 +25,9 @@ jobs:
 
       - uses: ./.github/actions/install
 
+      - name: Install D2
+        run: curl -fsSL https://d2lang.com/install.sh | sh -s --
+
       # TODO: If there's no changes, this should have some caching an be almost instant
       - name: Build Docs
         working-directory: apps/docs
