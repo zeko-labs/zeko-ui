@@ -40,7 +40,10 @@ export default defineConfig({
 				detailedView: true
 			}
 		},
-		nav: [],
+		nav: [
+			{ text: 'Docs', link: '/introduction/what-is-zeko' },
+			{ text: 'Glossary', link: '/about/glossary' }
+		],
 		logo: "/logo.png",
 		sidebar: [
 			{
@@ -48,7 +51,7 @@ export default defineConfig({
 				items: [
 					{ text: 'What is Zeko?', link: '/introduction/what-is-zeko' },
 					{ text: 'Why Zeko?', link: '/introduction/why-zeko' },
-					{ text: 'Quick Start', link: '/introduction/quick-start' },
+					{ text: 'Quick Start (For Users & Developers)', link: '/introduction/quick-start' },
 					{ text: 'Who is this Documentation For?', link: '/introduction/who-is-this-for' }
 				]
 			},
@@ -63,7 +66,7 @@ export default defineConfig({
 				]
 			},
 			{
-				text: 'Zeko Architecture & Concepts',
+				text: 'Understanding Zeko (Core Architecture & Concepts)',
 				items: [
 					{ text: 'Zeko Core Concepts', link: '/architecture/zeko-core-concepts' },
 					{ text: 'Technical Architecture', link: '/architecture/technical-architecture' },
@@ -102,15 +105,14 @@ export default defineConfig({
 				]
 			},
 			{
-				text: 'Reference',
+				text: 'About',
 				items: [
-					{ text: 'Glossary', link: '/reference/glossary' },
-					{ text: 'FAQ', link: '/reference/faq' },
-					{ text: 'Troubleshooting Guide', link: '/reference/troubleshooting-guide' }
+					{ text: 'Glossary', link: '/about/glossary' },
+					{ text: 'Frequently Asked Questions (FAQ)', link: '/about/faq' },
+					{ text: 'Community & Support', link: '/about/community' },
+					{ text: 'Changelog', link: '/about/changelog' }
 				]
-			},
-			{ text: 'Community & Support', link: '/community' },
-			{ text: 'Changelog', link: '/changelog' }
+			}
 		],
 
 		socialLinks: [

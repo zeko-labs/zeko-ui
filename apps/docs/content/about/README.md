@@ -1,0 +1,4 @@
+- glossary.md
+- faq.md
+- community.md
+- changelog.md

@@ -139,21 +139,15 @@ Welcome to the Zeko documentation! This guide provides information for everyone 
   - Common issues and their solutions.
   - Logging and debugging tips.
 
-## 7. Reference
+## 7. About
 
 - **7.1 Glossary**
   - Centralized definitions for all Zeko and related terms.
 - **7.2 Frequently Asked Questions (FAQ)**
   - Answers to common questions across all user types.
-- **7.3 Troubleshooting Guide**
-  - More detailed troubleshooting steps for various issues (potentially linking from other sections).
-
-## 8. Community & Support
-
-- Links to official Zeko community channels (Discord, Telegram, Forum).
-- How to get support.
-- How to report bugs or suggest features.
-
-## 9. Changelog
-
-- Chronological list of documentation updates and Zeko protocol changes reflected in the docs.
+- **7.3 Community & Support**
+  - Links to official Zeko community channels (Discord, Telegram, Forum).
+  - How to get support.
+  - How to report bugs or suggest features.
+- **7.4 Changelog**
+  - Chronological list of documentation updates and Zeko protocol changes reflected in the docs.
