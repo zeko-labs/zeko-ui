@@ -162,19 +162,7 @@ export const theme = createTheme({
 			},
 		},
 		border: {
-			/**
-			 *       background:
-		linear-gradient(white, white) padding-box,
-		linear-gradient(
-		90deg,
-		white -26.02%,
-		var(--colors-cosmicGold-medium, #e5a40f) 19.61%,
-		var(--colors-cosmicGold-50, #ffe459) 48.48%,
-		var(--colors-cosmicGold-50, #e5a40f) 81.9%,
-		white 127.78%
-	  ) border-box;
-	  border: 1px solid transparent;
-			 */
+			// background: linear-gradient(white, white) padding-box, linear-gradient(90deg, white -26.02%, var(--colors-cosmicGold-medium, #e5a40f) 19.61%, var(--colors-cosmicGold-50, #ffe459) 48.48%, var(--colors-cosmicGold-50, #e5a40f) 81.9%,white 127.78%) border-box;border: 1px solid transparent;
 			mainnetEra: {
 				background: `linear-gradient(white, white) padding-box, linear-gradient(90deg, ${colors.white} -26.02%, ${colors.cosmicGold.medium} 19.61%, ${colors.cosmicGold[50]} 48.48%, ${colors.cosmicGold[50]} 81.9%, ${colors.white} 127.78%) border-box`,
 				border: "1px solid transparent"

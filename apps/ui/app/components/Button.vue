@@ -3,7 +3,7 @@ import { computed } from "vue"
 import { theme } from "~~/helpers/theme"
 
 interface Props {
-	variant?: "auro" | "cta1" | "cta2" | "cta3" | "default"
+	variant?: "auro" | "black" | "cta1" | "cta2" | "cta3" | "default"
 }
 
 defineOptions({ inheritAttrs: false })
@@ -80,6 +80,13 @@ const buttonStyle = computed(() => {
 			...cta,
 			radius: "6.25rem",
 			background: "oklch(0.513 0.2408 278.15)"
+		},
+		black: {
+			...cta,
+			// background: "red",
+			background:
+				"linear-gradient(263deg, var(--colors-gray-950) 0%, var(--colors-gray-700) 100%)",
+			borderColor: "rgba(255, 255, 255, 0.20)"
 		}
 	} as const
 	return variants[variant]
@@ -95,6 +102,7 @@ const className = computed(
 		(
 			({
 				auro: "ZekoButtonAuro",
+				black: "ZekoButtonBlack",
 				cta1: "ZekoButtonCTA",
 				cta2: "ZekoButtonCTA",
 				cta3: "ZekoButtonCTA",
@@ -139,6 +147,27 @@ const className = computed(
   font-size: v-bind("buttonStyle.fontSize");
   box-shadow: inset 0 0 0 1px v-bind("buttonStyle.borderColor");
   background-clip: padding-box;
+}
+
+.ZekoButtonBlack {
+  &:disabled {
+    background: var(--semantic-background-secondary);
+    color: var(--colors-gray-400);
+    box-shadow: inset 0 0 0 1px oklch(0.8607 0 0);
+    cursor: not-allowed;
+  }
+  &:not(:disabled) {
+    &:hover {
+      background: linear-gradient(
+        var(--colors-gray-950),
+        var(--colors-gray-950)
+      );
+    }
+    &:active {
+      background: var(--colors-gray-950);
+      box-shadow: inset 0 0 0 3px v-bind("buttonStyle.borderColor");
+    }
+  }
 }
 
 .ZekoButtonAuro {

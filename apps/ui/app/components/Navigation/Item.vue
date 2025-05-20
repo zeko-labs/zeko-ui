@@ -7,30 +7,32 @@ const isExternal = (url: string) => url.startsWith("http")
 
 <template>
   <div class="NavigationItem">
-    <Menu.Root>
-      <Menu.Trigger>
-        <span>
-          <slot />
-        </span>
-        <Menu.Indicator as-child>
-          <SvgCaretDown />
-        </Menu.Indicator>
-      </Menu.Trigger>
-      <Menu.Positioner>
-        <Menu.Content>
-          <Menu.Item
-            v-for="item of items"
-            :key="item.name"
-            :value="item.name">
-            <NuxtLink
-              :to="item.url"
-              :target='isExternal(item.url) ? "_blank" : undefined'>
-              {{ item.name }}
-            </NuxtLink>
-          </Menu.Item>
-        </Menu.Content>
-      </Menu.Positioner>
-    </Menu.Root>
+    <ClientOnly>
+      <Menu.Root>
+        <Menu.Trigger>
+          <span>
+            <slot />
+          </span>
+          <Menu.Indicator as-child>
+            <SvgCaretDown />
+          </Menu.Indicator>
+        </Menu.Trigger>
+        <Menu.Positioner>
+          <Menu.Content>
+            <Menu.Item
+              v-for="item of items"
+              :key="item.name"
+              :value="item.name">
+              <NuxtLink
+                :to="item.url"
+                :target='isExternal(item.url) ? "_blank" : undefined'>
+                {{ item.name }}
+              </NuxtLink>
+            </Menu.Item>
+          </Menu.Content>
+        </Menu.Positioner>
+      </Menu.Root>
+    </ClientOnly>
   </div>
 </template>
 <style lang="postcss" scoped>

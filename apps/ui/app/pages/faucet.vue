@@ -128,7 +128,7 @@ const submitDisabled = computed(
                 </div>
                 <div class="Submit">
                   <Button
-                    variant="cta1"
+                    variant="black"
                     :disabled="submitDisabled"
                     @click='faucet.send({ type: "SUBMIT" })'>
                     {{ pending ? "Requesting..." : "Request tMINA" }}
@@ -137,10 +137,7 @@ const submitDisabled = computed(
                 </div>
               </div>
 
-              <!-- <Field.HelperText>
-              Limit of 1 use per address on each network to help ensure everyone
-              has access.
-            </Field.HelperText> -->
+              <!-- <Field.HelperText>  Limit of 1 use per address on each network to help ensure everyone has access.</Field.HelperText> -->
               <!-- <Field.ErrorText> {{ errorMessage }}</Field.ErrorText> -->
             </Field.Root>
             <div class="Result">
