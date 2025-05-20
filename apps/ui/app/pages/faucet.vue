@@ -267,7 +267,7 @@ a {
   .Download {
     display: grid;
     gap: 1rem;
-    button {
+    button, a {
       width: fit-content;
     }
   }
