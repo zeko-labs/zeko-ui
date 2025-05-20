@@ -190,6 +190,7 @@ main {
   @media (min-width: 480px) {
     min-height: 100svh;
   }
+
   .NavigationSectionWrapper {
     /* Mobile */
     @media (max-width: 480px) {
@@ -378,5 +379,11 @@ footer {
   font-size: var(--fonts-lexend-typescale-scale-s);
   color: var(--colors-gray-500);
   padding: 4rem 0 4rem 0;
+  /* Tablet & Desktop */
+  @media (min-width: 480px) {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+  }
 }
 </style>

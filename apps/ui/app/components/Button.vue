@@ -83,7 +83,6 @@ const buttonStyle = computed(() => {
 		},
 		black: {
 			...cta,
-			// background: "red",
 			background:
 				"linear-gradient(263deg, var(--colors-gray-950) 0%, var(--colors-gray-700) 100%)",
 			borderColor: "rgba(255, 255, 255, 0.20)"
