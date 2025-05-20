@@ -4,16 +4,17 @@ import { Field } from "@ark-ui/vue/field"
 import { useActor } from "@lumina-dex/sdk/vue"
 import { type } from "arktype"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
-import { ArrowBigRight } from "lucide-vue-next"
+import { ArrowBigRight, TriangleAlert } from "lucide-vue-next"
 import { assign, enqueueActions, fromPromise, setup } from "xstate"
 import { faucetBody } from "~~/helpers/validation"
-
 const minaAddress = defineModel()
 
 const id = useId()
+
 const faucetMachine = setup({
 	types: {
-		events: {} as { type: "SUBMIT" }
+		events: {} as { type: "SUBMIT" },
+		context: {} as { errorMessage: string; hash: string }
 	},
 	actors: {
 		submit: fromPromise(async () => {
@@ -35,24 +36,24 @@ const faucetMachine = setup({
 	id: "faucet",
 	initial: "IDLE",
 	context: {
-		errorMessage: "",
+		errorMessage: "Unknown error",
 		hash: ""
 	},
 	states: {
 		IDLE: { on: { SUBMIT: "PENDING" } },
 		PENDING: {
 			entry: enqueueActions(({ enqueue }) => {
-				enqueue.assign({ errorMessage: "", hash: "" })
+				enqueue.assign({ errorMessage: "Unknown error", hash: "" })
 			}),
 			invoke: {
 				src: "submit",
 				onDone: {
 					target: "SUCCESS",
-					actions: assign({ hash: ({ event }) => event.output.hash })
+					actions: assign({ hash: ({ event }) => event.output.hash ?? "" })
 				},
 				onError: {
 					target: "ERROR",
-					actions: assign({ errorMessage: ({ event }) => event.error })
+					actions: assign({ errorMessage: ({ event }) => String(event.error) })
 				}
 			}
 		},
@@ -140,21 +141,25 @@ const submitDisabled = computed(
               Limit of 1 use per address on each network to help ensure everyone
               has access.
             </Field.HelperText> -->
-              <Field.ErrorText>{{ errorMessage }}</Field.ErrorText>
+              <!-- <Field.ErrorText> {{ errorMessage }}</Field.ErrorText> -->
             </Field.Root>
-          </div>
-
-          <div class="Result">
-            <p class="success" v-if="success">
-              tMINA succesfully requested to <span>{{ minaAddress }}</span>
-              <a
-                :href="zekoScanLink"
-                target="_blank"
-                rel="noopener noreferrer">
-                View on ZekoScan
-              </a>
-            </p>
-            <p class="error" v-if="error">{{ errorMessage }}</p>
+            <div class="Result">
+              <p class="success" v-if="success">
+                tMINA succesfully requested to <span>{{ minaAddress }}</span>
+                <a
+                  :href="zekoScanLink"
+                  target="_blank"
+                  rel="noopener noreferrer">
+                  View on ZekoScan
+                </a>
+              </p>
+              <div class="error" v-if="error">
+                <TriangleAlert />
+                <span>
+                  {{ errorMessage }}
+                </span>
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -273,6 +278,16 @@ a {
 .Faucet {
   p {
     color: var(--colors-gray-800);
+    &.success {
+      color: var(--colors-complete-content);
+    }
+  }
+  .error {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    color: var(--colors-persianRed-500);
   }
 }
 
@@ -360,14 +375,6 @@ a {
       }
     }
   }
-}
-
-.error {
-  color: var(--colors-persianRed-500);
-}
-
-.success {
-  color: var(--colors-complete-content);
 }
 
 footer {
