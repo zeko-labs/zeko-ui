@@ -3,7 +3,7 @@ import { computed } from "vue"
 import { theme } from "~~/helpers/theme"
 
 interface Props {
-	variant?: "cta1" | "cta2" | "cta3" | "default"
+	variant?: "auro" | "cta1" | "cta2" | "cta3" | "default"
 }
 
 defineOptions({ inheritAttrs: false })
@@ -25,7 +25,12 @@ const buttonStyle = computed(() => {
 		padding: sizes.padding.value,
 		radius: sizes.radius.value,
 		fontSize: sizes.fontSize.value,
-		fontWeight: sizes.fontWeight.value
+		fontWeight: sizes.fontWeight.value,
+		hover: {
+			background: "inherit",
+			borderColor: "inherit",
+			opacity: "inherit"
+		}
 	} as const
 	const cta = {
 		...baseStyles,
@@ -35,8 +40,8 @@ const buttonStyle = computed(() => {
 			borderColor: theme.config.semantic.border.primaryDark.value,
 			background: theme.config.semantic.background.secondary.value
 		},
-		hover: { opacity: 0.9 },
-		active: { opacity: 0.8 }
+		hover: { background: "inherit", borderColor: "inherit", opacity: 0.9 },
+		active: { background: "inherit", borderColor: "inherit", opacity: 0.8 }
 	} as const
 	const variants = {
 		default: {
@@ -49,10 +54,12 @@ const buttonStyle = computed(() => {
 				background: theme.config.semantic.background.secondary.value
 			},
 			hover: {
+				opacity: "inherit",
 				background: theme.config.colors.gray[900].value,
 				borderColor: theme.config.colors.gray[900].value
 			},
 			active: {
+				opacity: "inherit",
 				background: theme.config.colors.gray[800].value,
 				borderColor: theme.config.colors.gray[800].value
 			}
@@ -68,6 +75,11 @@ const buttonStyle = computed(() => {
 		cta3: {
 			...cta,
 			background: theme.config.gradients.buttonGradients.cta3.background.value
+		},
+		auro: {
+			...cta,
+			radius: "6.25rem",
+			background: "oklch(0.513 0.2408 278.15)"
 		}
 	} as const
 	return variants[variant]
@@ -78,15 +90,30 @@ const plus = computed(
 		useSlots().default?.()?.[0].children === "Add Token" &&
 		size.value === "default"
 )
+const className = computed(
+	() =>
+		(
+			({
+				auro: "ZekoButtonAuro",
+				cta1: "ZekoButtonCTA",
+				cta2: "ZekoButtonCTA",
+				cta3: "ZekoButtonCTA",
+				default: "ZekoButtonDefault"
+			}) as const
+		)[variant]
+)
 </script>
 
 <template>
   <button
     type="button"
     class="ZekoButton"
-    :class='[`ZekoButton${isCta ? "CTA" : "Default"}`]'
+    :class="className"
     v-bind="$attrs">
-    <slot></slot>
+    <SvgAuro v-if='variant === "auro"' />
+    <span>
+      <slot></slot>
+    </span>
     <SvgPlus v-if="plus" />
   </button>
 </template>
@@ -112,6 +139,27 @@ const plus = computed(
   font-size: v-bind("buttonStyle.fontSize");
   box-shadow: inset 0 0 0 1px v-bind("buttonStyle.borderColor");
   background-clip: padding-box;
+}
+
+.ZekoButtonAuro {
+  text-decoration-line: underline;
+  text-underline-position: under;
+  box-shadow: 0px 12px 16px 0px oklch(0.6559 0.1665 285.18 / 24%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  span {
+    margin-top: -2px;
+  }
+  &:not(:disabled) {
+    &:hover {
+      background: oklch(0.4451 0.2184 277.23);
+    }
+    &:active {
+      background: oklch(0.513 0.2408 278.15);
+      box-shadow: inset 0 0 0 3px oklch(0.4451 0.2184 277.23);
+    }
+  }
 }
 
 .ZekoButtonCTA {

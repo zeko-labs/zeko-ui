@@ -79,80 +79,125 @@ const submitDisabled = computed(
 </script>
 <template>
   <main>
-    <header>
-      <Navigation />
-    </header>
-    <section class="Faucet">
-      <h2>Faucet</h2>
-      <p>
-        Enter a Mina address to receive testnet MINA (tMINA) on Zeko L2. For
-        help with installing and setting up a wallet, visit:
-        <a
-          href="https://docs.zeko.io/for_end_users">https://docs.zeko.io/for_end_users</a>
-      </p>
-      <div class="Form">
-        <Field.Root :id>
-          <Field.Label>MINA Address</Field.Label>
-          <div class="InputWrapper">
-            <SvgMinaToken width="24" height="24" />
-            <Field.Input
-              v-model="minaAddress"
-              type="text"
-              placeholder="Enter MINA address"
-            />
+    <div class="NavigationSectionWrapper">
+      <header>
+        <Navigation />
+      </header>
+      <div class="SectionWrapper">
+        <section class="GetWallet">
+          <div class="TitleWrapper">
+            <SvgNumbersOne />
+            <h3>Get Wallet</h3>
           </div>
-          <Field.HelperText>Limit of 1 use per address on each network to help
-            ensure everyone has access.</Field.HelperText>
-          <Field.ErrorText>{{ errorMessage }}</Field.ErrorText>
-        </Field.Root>
-        <div class="Submit">
-          <Button
-            variant="cta1"
-            :disabled="submitDisabled"
-            @click='faucet.send({ type: "SUBMIT" })'>
-            {{ pending ? "Requesting..." : "Request tMINA" }} <ArrowBigRight />
-          </Button>
-        </div>
-      </div>
+          <ul>
+            <li>
+              <div class="Download">
+                <span>Download Auro Wallet</span>
+                <NuxtLink to="https://www.aurowallet.com/" target="_blank">
+                  <Button variant="auro">Download Wallet</Button>
+                </NuxtLink>
+              </div>
+            </li>
 
-      <div class="Result">
-        <p class="success" v-if="success">
-          tMINA succesfully requested to <span>{{ minaAddress }}</span>
-          <a
-            :href="zekoScanLink"
-            target="_blank"
-            rel="noopener noreferrer">
-            View on ZekoScan
-          </a>
-        </p>
-        <p class="error" v-if="error">{{ errorMessage }}</p>
+            <li>Switch Network to Zeko Testnet</li>
+            <li>Use Faucet to get testnet tokens</li>
+          </ul>
+        </section>
+        <section class="Faucet">
+          <div class="TitleWrapper">
+            <SvgNumbersTwo />
+            <h3>Faucet</h3>
+          </div>
+
+          <div class="Form">
+            <p>
+              Enter your Zeko address to receive testnet MINA (tMINA) on Zeko L2
+            </p>
+            <Field.Root :id>
+              <Field.Label>MINA Address</Field.Label>
+
+              <div class="InputButtonWrapper">
+                <div class="InputWrapper">
+                  <SvgMinaToken width="24" height="24" />
+                  <Field.Input
+                    v-model="minaAddress"
+                    type="text"
+                    placeholder="Enter Zeko/MINA address"
+                  />
+                </div>
+                <div class="Submit">
+                  <Button
+                    variant="cta1"
+                    :disabled="submitDisabled"
+                    @click='faucet.send({ type: "SUBMIT" })'>
+                    {{ pending ? "Requesting..." : "Request tMINA" }}
+                    <ArrowBigRight />
+                  </Button>
+                </div>
+              </div>
+
+              <!-- <Field.HelperText>
+              Limit of 1 use per address on each network to help ensure everyone
+              has access.
+            </Field.HelperText> -->
+              <Field.ErrorText>{{ errorMessage }}</Field.ErrorText>
+            </Field.Root>
+          </div>
+
+          <div class="Result">
+            <p class="success" v-if="success">
+              tMINA succesfully requested to <span>{{ minaAddress }}</span>
+              <a
+                :href="zekoScanLink"
+                target="_blank"
+                rel="noopener noreferrer">
+                View on ZekoScan
+              </a>
+            </p>
+            <p class="error" v-if="error">{{ errorMessage }}</p>
+          </div>
+        </section>
       </div>
-      <div class="Disclaimer">
-        <b>Disclaimer</b>: These have no value, monetary or otherwise, and are
-        solely useful for experimenting on testnets. tMINA cannot be sold and is
-        not redeemable for any cryptocurrency or digital asset. To faucet tMINA
-        on Mina L1 please visit
-        <a
-          href="https://faucet.minaprotocol.com">https://faucet.minaprotocol.com</a>
-      </div>
-    </section>
+    </div>
+    <footer>
+      Disclaimer: Limit of 1 use per address on each network. Tokens have no
+      value, monetary or otherwise, and are solely useful for experimenting on
+      testnets. tMINA cannot be sold and is not redeemable for any
+      cryptocurrency or digital asset.
+    </footer>
   </main>
 </template>
 <style lang="postcss" scoped>
 main {
   position: relative;
-  min-height: 100svh;
   width: 100vw;
-  padding: 0;
+  padding: 0 4rem;
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: min-content auto;
-  gap: 1rem;
-  color: var(--colors-gray-950);
+  color: var(--colors-gray-900);
   font-size: var(--fonts-lexend-typescale-scale-m);
+  :deep(.Navigation) {
+    padding: 2.5rem 0rem;
+  }
+  /* Mobile */
+  @media (max-width: 480px) {
+    padding: 0 1rem;
+  }
+  /* Tablet & Desktop */
+  @media (min-width: 480px) {
+    min-height: 100svh;
+  }
+  .NavigationSectionWrapper {
+    /* Mobile */
+    @media (max-width: 480px) {
+      min-height: 100svh;
+    }
+  }
 }
-h2 {
-  font-size: var(--fonts-lexend-typescale-scale-h2);
+h3 {
+  font-size: var(--fonts-lexend-typescale-scale-h3);
+  color: var(--colors-gray-950);
   padding: 0;
   margin: 0;
 }
@@ -160,18 +205,74 @@ a {
   color: var(--colors-cosmicGold-200);
   text-decoration: none;
 }
-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 2rem 4rem;
-  max-width: 100ch;
-  text-wrap: balance;
+
+.SectionWrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  padding: 4.5rem 0 0 0;
+
+  /* Mobile */
+  @media (max-width: 480px) {
+    padding: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    gap: 4rem;
+  }
+
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 0rem;
+    text-wrap: balance;
+    /* Mobile */
+    @media (max-width: 480px) {
+      gap: 2.5rem;
+    }
+    .TitleWrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      /* Mobile */
+      @media (max-width: 480px) {
+        flex-direction: row;
+        align-items: center;
+        gap: 1rem;
+      }
+    }
+  }
+
+  .GetWallet {
+    ul {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      /* Mobile */
+      @media (max-width: 480px) {
+        padding-inline-start: 1.75rem;
+      }
+    }
+    li {
+      padding-left: 1rem;
+      /* Mobile */
+      @media (max-width: 480px) {
+        padding-left: 0.5rem;
+      }
+    }
+  }
+  .Download {
+    display: grid;
+    gap: 1rem;
+    button {
+      width: fit-content;
+    }
+  }
 }
 
-@media (max-width: 1024px) {
-  section {
-    max-width: 100vw;
+.Faucet {
+  p {
+    color: var(--colors-gray-800);
   }
 }
 
@@ -179,6 +280,9 @@ section {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  p {
+    margin: 0;
+  }
   span, input {
     font-family: Lexend;
     font-weight: 400;
@@ -190,6 +294,17 @@ section {
     gap: 0.5rem;
   }
 
+  .InputButtonWrapper {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+    /* Mobile */
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto;
+    }
+  }
+
   .InputWrapper {
     display: inline-flex;
     align-items: center;
@@ -199,18 +314,25 @@ section {
     border-radius: 0.5rem;
     border: 1px solid var(--colors-gray-200);
     padding-left: 1rem;
-    width: fit-content;
+    width: 100%;
+    input {
+      width: 100%;
+    }
+    &:has(input:focus) {
+      background: var(--gradients-border-mainnetEra-background);
+      border: var(--gradients-border-mainnetEra-border);
+    }
   }
 
   /* Input field */
   [data-scope="field"][data-part="input"] {
     background: transparent;
     border: none;
-    font-size: 1.125rem;
+    font-size: var(--fonts-lexend-typescale-scale-s);
     padding: 12px 16px;
     outline: none;
     height: 100%;
-    width: calc(58ch + 2rem);
+    /* width: calc(58ch + 2rem); */
     border-radius: 0.5rem;
   }
   @media (max-width: 1024px) {
@@ -220,9 +342,23 @@ section {
   }
 
   /* Label */
+  [data-scope="field"][data-part="label"] {
+    font-size: var(--fonts-lexend-typescale-scale-xs);
+    color: var(--semantic-content-tertiary);
+  }
+
   [data-scope="field"][data-part="helper-text"] {
     font-size: var(--fonts-lexend-typescale-scale-xs);
     font-style: italic;
+  }
+
+  .Submit {
+    button {
+      /* Mobile */
+      @media (max-width: 480px) {
+        width: 100%;
+      }
+    }
   }
 }
 
@@ -234,9 +370,9 @@ section {
   color: var(--colors-complete-content);
 }
 
-.Disclaimer {
+footer {
   font-size: var(--fonts-lexend-typescale-scale-s);
   color: var(--colors-gray-500);
-  margin-top: 1rem;
+  padding: 4rem 0 4rem 0;
 }
 </style>

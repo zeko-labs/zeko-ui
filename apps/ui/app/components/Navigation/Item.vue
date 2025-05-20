@@ -66,9 +66,9 @@ button {
 }
 @media (max-width: 1024px) {
   [data-scope="menu"][data-part="content"] {
-    background-color: oklch(100 0 0 / 0.65);
+    background-color: oklch(100 0 0 / 1);
     padding: 0.25rem;
-    border-radius: 0.25rem;
+    border-radius: 0.5rem;
   }
   [data-scope="menu"][data-part="item"] {
     a {
