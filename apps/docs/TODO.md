@@ -1,0 +1,4 @@
+- Remove duplication
+- Add images
+- Add diagrams
+- Add interactivity (glossary etc)
