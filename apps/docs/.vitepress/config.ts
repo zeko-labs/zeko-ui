@@ -99,7 +99,7 @@ export default defineConfig({
 				text: 'Running Network Infrastructure (For Operators)',
 				items: [
 					{ text: 'Getting Started', link: '/operators/getting-started' },
-					{ text: 'Guides', link: '/operators/guides' },
+					{ text: 'Guides & Tutorials', link: '/operators/guides-tutorials' },
 					{ text: 'Concepts for Operators', link: '/operators/concepts-for-operators' },
 					{ text: 'Troubleshooting', link: '/operators/troubleshooting' }
 				]

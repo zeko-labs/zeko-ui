@@ -1,7 +1,7 @@
 # API Reference
 
 :::warning
-WIP: This section is under construction. Content is for illustrative purposes only.
+WIP: This section is under construction.
 :::
 
 Find API documentation for Zeko SDKs, smart contracts, and developer tools here.

@@ -9,4 +9,4 @@ WIP: This section is under construction. Content is for illustrative purposes on
 3. Connect your wallet to the Zeko dApp.
 4. Make your first transaction or deploy a contract using the provided templates.
 
-[Get Testnet Tokens](https://faucet.zeko.com) | [Zeko dApp](https://app.zeko.com)
+[Get Testnet Tokens](https://zeko.io/faucet)

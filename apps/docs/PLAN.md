@@ -25,7 +25,6 @@ Welcome to the Zeko documentation! This guide provides information for everyone 
   - What is a blockchain?
   - Wallets & Keys (Public/Private)
   - Transactions
-  - Introduction to Bitcoin (as a foundational concept)
 - **2.2 Smart Contracts & EVM (Optional, if relevant context for Zeko)**
   - What are smart contracts?
   - Brief mention of Ethereum/EVM if Zeko interfaces with or is analogous in certain ways.
@@ -48,6 +47,7 @@ Welcome to the Zeko documentation! This guide provides information for everyone 
   - zkPrograms (Zeko's smart contracts) - conceptual explanation.
   - State Management (How state transitions are handled).
 - **3.2 Technical Architecture**
+  - Zeko internal design
   - Detailed component breakdown (Sequencer, Prover, Verifier Smart Contract on Mina).
   - Data Availability layer (How Zeko data is anchored/available).
   - Transaction Lifecycle (Flow diagram: User Tx -> Sequencer -> Batching -> Proving -> Verification on Mina).
@@ -74,7 +74,6 @@ Welcome to the Zeko documentation! This guide provides information for everyone 
 - **4.4 Zekoscan Explorer**
   - Guide: Using the block explorer to view transactions, blocks, and addresses.
 - **4.5 User Concepts Explained**
-  - Wallets on Zeko (differences/specifics).
   - Testnet vs Mainnet (understanding the difference).
   - Understanding Transaction Fees.
 
@@ -128,9 +127,7 @@ Welcome to the Zeko documentation! This guide provides information for everyone 
   - Useful Repositories and Tools.
 - **6.2 Guides**
   - Guide: Setting Up and Running a Sequencer Node.
-  - Guide: Setting Up and Running a Prover Node.
-  - Guide: Monitoring Your Node's Performance and Health.
-  - Guide: Updating Your Node Software.
+  - Guide: Setting Up and Running a DAL.
 - **6.3 Concepts for Operators**
   - Network Topology (How nodes connect and interact).
   - Role of the Verifier Contract on Mina.
@@ -142,7 +139,7 @@ Welcome to the Zeko documentation! This guide provides information for everyone 
 ## 7. About
 
 - **7.1 Glossary**
-  - Centralized definitions for all Zeko and related terms.
+  - Centralized definitions for all Zeko, Mina and blockchain related terms.
 - **7.2 Frequently Asked Questions (FAQ)**
   - Answers to common questions across all user types.
 - **7.3 Community & Support**
