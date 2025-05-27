@@ -28,7 +28,8 @@ const colors = {
 		50: "oklch(91.642% 0.15696 98.188)",
 		90: "oklch(73.683% 0.13788 73.881)",
 		100: "oklch(72.311% 0.13818 71.166)",
-		200: "oklch(59.222% 0.10877 74.108)"
+		200: "oklch(59.222% 0.10877 74.108)",
+		medium: "oklch(76.12% 0.1554 79.54)"
 	},
 	yellow: {
 		50: "oklch(97.7% 0.016 99)",
@@ -158,6 +159,13 @@ export const theme = createTheme({
 				background: `linear-gradient(270.62deg, ${colors.cosmicGold[50]} 2.88%, ${colors.cosmicGold[90]} 79.48%, ${colors.cosmicGold[100]} 98.1%)`,
 				inversedBackground: `linear-gradient(270.62deg, ${colors.cosmicGold[100]} 2.88%,${colors.cosmicGold[90]} 79.48%, ${colors.cosmicGold[50]} 98.1%)`,
 				steps: [colors.cosmicGold[50], colors.cosmicGold[90], colors.cosmicGold[100]]
+			},
+		},
+		border: {
+			// background: linear-gradient(white, white) padding-box, linear-gradient(90deg, white -26.02%, var(--colors-cosmicGold-medium, #e5a40f) 19.61%, var(--colors-cosmicGold-50, #ffe459) 48.48%, var(--colors-cosmicGold-50, #e5a40f) 81.9%,white 127.78%) border-box;border: 1px solid transparent;
+			mainnetEra: {
+				background: `linear-gradient(white, white) padding-box, linear-gradient(90deg, ${colors.white} -26.02%, ${colors.cosmicGold.medium} 19.61%, ${colors.cosmicGold[50]} 48.48%, ${colors.cosmicGold[50]} 81.9%, ${colors.white} 127.78%) border-box`,
+				border: "1px solid transparent"
 			}
 		},
 		buttonGradients: {
@@ -182,7 +190,7 @@ export const theme = createTheme({
 			secondary: colors.gray[300]
 		},
 		background: {
-			secondary: colors.gray[100]
+			secondary: colors.gray[100],
 		},
 		content: {
 			secondary: colors.gray[700],

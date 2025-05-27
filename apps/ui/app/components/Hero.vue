@@ -62,7 +62,7 @@
 }
 
 .Logo {
-  height: 3rem;
+  width: 9.5rem;
 }
 
 .Main {

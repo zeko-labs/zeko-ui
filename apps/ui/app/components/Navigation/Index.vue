@@ -31,7 +31,7 @@ const communityItems = [
     <div class="Navigation">
       <div class="logo">
         <NuxtLink to="/">
-          <SvgZekoLogo v-if="logo" />
+          <SvgZekoLogoRings v-if="logo" />
         </NuxtLink>
       </div>
       <nav class="nav">
@@ -71,7 +71,7 @@ const communityItems = [
   .Navigation {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     align-self: center;
     margin: auto;
     padding: 0;
