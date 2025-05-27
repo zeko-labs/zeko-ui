@@ -7,7 +7,7 @@ hero:
   text: "Comprehensive docs for the Zeko Protocol"
   tagline: "Zero-knowledge, Layer 2, and Mina blockchain made accessible."
   image:
-    src: /logo.png
+    src: /logo.svg
     alt: Zeko Protocol
   actions:
     - theme: brand

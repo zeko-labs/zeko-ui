@@ -5,7 +5,7 @@ import llmstxt from "vitepress-plugin-llms"
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-	title: "Zeko Documentation",
+	title: "Zeko Docs",
 	description: "Documentation for Zeko",
 	srcDir: 'content',
 	vite: {
@@ -44,7 +44,7 @@ export default defineConfig({
 			{ text: 'Docs', link: '/introduction/what-is-zeko' },
 			{ text: 'Glossary', link: '/about/glossary' }
 		],
-		logo: "/logo.png",
+		logo: { light: "/logo.svg", dark: "/logo-dark.svg" },
 		sidebar: [
 			{
 				text: 'Introduction',
@@ -69,8 +69,7 @@ export default defineConfig({
 				items: [
 					{ text: 'Zeko Core Concepts', link: '/architecture/zeko-core-concepts' },
 					{ text: 'Technical Architecture', link: '/architecture/technical-architecture' },
-					{ text: 'Security Model', link: '/architecture/security-model' },
-					{ text: 'Roadmap', link: '/architecture/roadmap' }
+					{ text: 'Security Model', link: '/architecture/security-model' }
 				]
 			},
 			{
@@ -108,8 +107,7 @@ export default defineConfig({
 				items: [
 					{ text: 'Glossary', link: '/about/glossary' },
 					{ text: 'Frequently Asked Questions (FAQ)', link: '/about/faq' },
-					{ text: 'Community & Support', link: '/about/community' },
-					{ text: 'Changelog', link: '/about/changelog' }
+					{ text: 'Community & Support', link: '/about/community' }
 				]
 			}
 		],

@@ -51,19 +51,19 @@ vertical-gap: 20
 # First row - 3 steps (1→2→3) - Client
 0,0: "1. User Initiation" {
   shape: rectangle
-  style.fill: "#2196f3"
+  style.fill: "#5098f6"
   style.font-color: "white"
 }
 
 0,1: "2. Client-Side Proving" {
   shape: rectangle
-  style.fill: "#2196f3"
+  style.fill: "#5098f6"
   style.font-color: "white"
 }
 
 0,2: "3. Submission to Sequencer" {
   shape: rectangle
-  style.fill: "#2196f3"
+  style.fill: "#5098f6"
   style.font-color: "white"
 }
 
@@ -77,32 +77,32 @@ vertical-gap: 20
 
 1,1: "5. Data Availability Posting" {
   shape: rectangle
-  style.fill: "#4caf50"
+  style.fill: "#c19432"
   style.font-color: "white"
 }
 
 1,2: "4. Sequencer Processing" {
   shape: rectangle
-  style.fill: "#4caf50"
+  style.fill: "#c19432"
   style.font-color: "white"
 }
 
 # Third row - 3 steps (6→7→8) - L2
 2,0: "6. Proving (Sequencer-Initiated)" {
   shape: rectangle
-  style.fill: "#4caf50"
+  style.fill: "#c19432"
   style.font-color: "white"
 }
 
 2,1: "7. Batching" {
   shape: rectangle
-  style.fill: "#4caf50"
+  style.fill: "#c19432"
   style.font-color: "white"
 }
 
 2,2: "8. Batch Proof Aggregation" {
   shape: rectangle
-  style.fill: "#4caf50"
+  style.fill: "#c19432"
   style.font-color: "white"
 }
 
@@ -116,13 +116,13 @@ vertical-gap: 20
 
 3,1: "9. Commitment to L1" {
   shape: rectangle
-  style.fill: "#ff9800"
+  style.fill: "#3da45d"
   style.font-color: "white"
 }
 
 3,2: "10. L1 State Update" {
   shape: rectangle
-  style.fill: "#ff9800"
+  style.fill: "#3da45d"
   style.font-color: "white"
 }
 
