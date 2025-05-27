@@ -1,8 +1,3 @@
----
-prev: false
-next: false
----
-
 # Using a custom Zeko network with o1js
 
 This guide will walk you through the process of using a custom Zeko network to write zkapps. If this is your first time using Mina, we recommend you start with the official [Mina documentation](https://docs.minaprotocol.com/).

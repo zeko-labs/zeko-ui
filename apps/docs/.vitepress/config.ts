@@ -87,7 +87,12 @@ export default defineConfig({
 				items: [
 					{ text: 'Getting Started', link: '/developers/getting-started' },
 					{ text: 'Core Developer Concepts', link: '/developers/core-developer-concepts' },
-					{ text: 'Guides & Tutorials', link: '/developers/guides-tutorials' },
+					{
+						text: 'Guides & Tutorials', link: '/developers/guides-tutorials', collapsed: true,
+						items: [
+							{ text: "Custom Network", link: '/developers/guides/custom-network' },
+						]
+					},
 					{ text: 'Examples & Boilerplates', link: '/developers/examples-boilerplates' },
 					{ text: 'API Reference', link: '/developers/api-reference' },
 					{ text: 'Contributing to Zeko Development', link: '/developers/contributing' }
@@ -97,7 +102,13 @@ export default defineConfig({
 				text: 'Running Network Infrastructure (For Operators)',
 				items: [
 					{ text: 'Getting Started', link: '/operators/getting-started' },
-					{ text: 'Guides & Tutorials', link: '/operators/guides-tutorials' },
+					{
+						text: 'Guides & Tutorials', link: '/operators/guides-tutorials', collapsed: true,
+						items: [
+							{ text: "DA Layer", link: '/operators/guides/da-layer' },
+							{ text: "Sequencer", link: '/operators/guides/sequencer' },
+						]
+					},
 					{ text: 'Concepts for Operators', link: '/operators/concepts-for-operators' },
 					{ text: 'Troubleshooting', link: '/operators/troubleshooting' }
 				]

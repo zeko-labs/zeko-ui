@@ -27,9 +27,6 @@ features:
   - title: Developer Friendly
     details: Comprehensive guides, API references, and examples for building on Zeko.
 
-  - title: User Focused
-    details: Simple onboarding, bridging, and explorer tools for end users.
-
   - title: Open & Community Driven
     details: Open-source, transparent, and supported by a growing community.
 ---
