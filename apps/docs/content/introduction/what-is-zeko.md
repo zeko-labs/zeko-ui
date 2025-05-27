@@ -1,6 +1,6 @@
 # What is Zeko?
 
-Zeko is a zk-rollup protocol built on Mina, designed for scalable, private, and secure blockchain applications.
+_Zeko is a zk-rollup protocol built on Mina, designed for scalable, private, and secure blockchain applications._
 
 ## High-Level Summary
 

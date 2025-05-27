@@ -1,6 +1,6 @@
-# Zero-Knowledge Proofs (ZKPs)
+# Zero-Knowledge Proofs
 
-Zero-Knowledge Proofs (ZKPs) are a fundamental cryptographic concept with significant implications for blockchain technology, privacy, and scalability. They form a core part of the technology behind Mina Protocol and Layer 2 solutions built on it, such as Zeko.
+_Zero-Knowledge Proofs (ZKPs) are a fundamental cryptographic concept with significant implications for blockchain technology, privacy, and scalability. They form a core part of the technology behind Mina Protocol and Layer 2 solutions built on it, such as Zeko._
 
 ## High-Level Explanation: Proving Without Revealing
 
@@ -10,9 +10,9 @@ Think of proving you know a secret password to enter a room. With a ZKP, you can
 
 Key properties of a ZKP system include:
 
-- **Completeness:** If the statement is true, an honest prover can always convince an honest verifier.
-- **Soundness:** If the statement is false, a dishonest prover cannot convince an honest verifier, except with a negligible probability.
-- **Zero-Knowledge:** If the statement is true, the verifier learns nothing beyond the truth of the statement itself.
+- **Completeness:** An honest prover can construct a valid proof.
+- **Soundness:** An adversary can't construct a valid proof..
+- **Zero-Knowledge:** The verifier learns nothing beyond the truth of the statement itself.
 
 ## Why are ZKPs Important for Scalability and Privacy?
 
@@ -28,6 +28,9 @@ One of the most impactful applications of ZKPs for scalability is in **zk-rollup
 
 ## ZKPs in Mina Protocol and Zeko
 
-Mina Protocol uniquely integrates ZKPs at its core through recursive proofs. This recursion allows proofs to verify other proofs, enabling Mina to compress its entire blockchain history into a constant-sized proof. Furthermore, Mina uses recursive tree-based proofs to aggregate and compress proofs for individual transactions within blocks. This inherent ZKP-based compression is a foundational element that Zeko leverages. In Zeko, transaction validity is proven using ZKPs, and these proofs are aggregated into larger proofs representing batches of transactions.
+Mina Protocol uniquely integrates ZKPs at its core through recursive proofs. This recursion allows proofs to verify other proofs, enabling Mina to compress its entire blockchain history into a constant-sized proof. Furthermore, Mina uses recursive tree-based proofs to aggregate and compress proofs for individual transactions within blocks.
 
-In summary, ZKPs are crucial for building more private and scalable blockchain applications by allowing information to be verified without being exposed, and by enabling the efficient compression and verification of large numbers of transactions off-chain before settling them on Layer 1. Mina and Zeko utilise these properties extensively for transaction processing and state transitions.
+This inherent ZKP-based compression is a foundational element that Zeko leverages. In Zeko, transaction validity is proven using ZKPs, and these proofs are aggregated into larger proofs representing batches of transactions.
+
+> [!TIP] 💡 Zeko and ZKPs
+> Learn more about Zeko Core Concepts in the [dedicated docs section](../architecture/zeko-core-concepts.html#the-role-of-zero-knowledge-proofs-in-zeko).💡

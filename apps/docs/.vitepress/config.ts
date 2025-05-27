@@ -51,22 +51,21 @@ export default defineConfig({
 				items: [
 					{ text: 'What is Zeko?', link: '/introduction/what-is-zeko' },
 					{ text: 'Why Zeko?', link: '/introduction/why-zeko' },
-					{ text: 'Quick Start (For Users & Developers)', link: '/introduction/quick-start' },
-					{ text: 'Who is this Documentation For?', link: '/introduction/who-is-this-for' }
+					{ text: 'Quick Start', link: '/introduction/quick-start' },
 				]
 			},
 			{
 				text: 'Background Concepts',
 				items: [
 					{ text: 'Core Blockchain Concepts', link: '/background/core-blockchain-concepts' },
-					{ text: 'Smart Contracts & EVM', link: '/background/smart-contracts-evm' },
-					{ text: 'Zero-Knowledge Proofs (ZKPs)', link: '/background/zero-knowledge-proofs' },
+					{ text: 'Smart Contracts', link: '/background/smart-contracts' },
+					{ text: 'Zero-Knowledge Proofs', link: '/background/zero-knowledge-proofs' },
 					{ text: 'Layer 2 Scaling Solutions', link: '/background/layer-2-scaling' },
 					{ text: 'Mina Protocol', link: '/background/mina-protocol' }
 				]
 			},
 			{
-				text: 'Understanding Zeko (Core Architecture & Concepts)',
+				text: 'Zeko Deep Dive',
 				items: [
 					{ text: 'Zeko Core Concepts', link: '/architecture/zeko-core-concepts' },
 					{ text: 'Technical Architecture', link: '/architecture/technical-architecture' },

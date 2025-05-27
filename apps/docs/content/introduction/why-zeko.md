@@ -1,5 +1,7 @@
 # Why Zeko?
 
+_What are the key benefits of Zeko and its core use cases?_
+
 ## Key Benefits
 
 ### Zero-Knowledge Native

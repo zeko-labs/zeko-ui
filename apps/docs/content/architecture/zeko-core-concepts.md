@@ -1,6 +1,6 @@
 # Zeko Core Concepts
 
-Zeko is designed as a Layer 2 (L2) ecosystem specifically for Mina's zero-knowledge applications, known as zkApps. It aims to provide a robust platform for building and deploying zkApps with significantly improved throughput and quick confirmation times compared to the Layer 1 (L1) Mina protocol.
+_Zeko is designed as a Layer 2 (L2) ecosystem specifically for Mina's zero-knowledge applications, known as zkApps. It aims to provide a robust platform for building and deploying zkApps with significantly improved throughput and quick confirmation times compared to the Layer 1 (L1) Mina protocol._
 
 ## How Zeko Achieves Scalability: The Rollup Mechanism
 
@@ -8,7 +8,7 @@ At its core, Zeko functions as a **ZK Rollup**. This means it processes transact
 
 The **sequencer** is a key component in this process, acting as a transaction collector that gathers transactions and applies them to the current state. It groups these transactions into **batches** for efficient settling on L1. The sequencer then proves the validity of these batches using zero-knowledge proofs. A root SNARK proof representing the batch is created, which is then committed to the L1 zkApp's account state.
 
-This process leverages **transaction SNARKs**, which prove the transition from one ledger state to another (e.g., ledger A to ledger B). These proofs are composed into a binary tree structure. The root SNARK of this tree serves as a proof for the entire batch. The constant size of this proof is how Zeko compresses the computation of validating a batch of transactions. This offloads work from the main network nodes, a fundamental idea behind Mina. By committing a single, constant-size proof to L1, Zeko significantly increases transaction throughput.
+This process leverages **transaction SNARKs**, which prove the transition from one ledger state to another. These proofs are composed into a binary tree structure. The root SNARK of this tree serves as a proof for the entire batch and the constant size of this proof is how Zeko compresses the computation of validating a batch of transactions. This offloads work from the main network nodes, a fundamental idea behind Mina. By committing a single, constant-size proof to L1, Zeko significantly increases transaction throughput.
 
 ## The Role of Zero-Knowledge Proofs in Zeko
 
@@ -21,28 +21,60 @@ In Zeko, ZKPs, specifically zk-SNARKs, are used for two primary purposes in tran
 
 While zk-SNARKs _can_ be used to hide parts of transaction data, the primary use in zkApps on Mina/Zeko is proving correct execution and compressing computation. Hiding data is considered a side product. These proofs must satisfy **completeness** (an honest prover can demonstrate knowledge) and **soundness** (a dishonest prover cannot convince the verifier) without revealing the sensitive information itself.
 
-Mina and Zeko benefit from the underlying **recursive proof system** (Kimchi backed by Pickles), which enables arbitrary infinite recursive proof construction. This recursive capability is used internally within Mina for decentralized proving and sequencing and allows for the creation of tree-based recursive programs like the one used in the rollup aggregation. Zk-rollups utilize ZKPs to ensure the validity of all transactions in a bundled batch without necessarily disclosing the specifics of each transaction, which can enhance privacy.
+Mina and Zeko benefit from the underlying **recursive proof system** ([Kimchi backed by Pickles](https://minaprotocol.com/blog/kimchi-the-latest-update-to-minas-proof-system)), which enables arbitrary infinite recursive proof construction. This recursive capability is used internally within Mina for decentralized proving and sequencing and allows for the creation of tree-based recursive programs like the one used in the rollup aggregation.
 
-## zkPrograms: Zeko's Smart Contracts
+> [!TIP] 💡 ZK Rollups 💡
+> Zk-rollups utilize ZKPs to ensure the validity of all transactions in a bundled batch without necessarily disclosing the specifics of each transaction, which can enhance privacy.
 
-On Mina, smart contracts are referred to as **zkApps** or **zkApp accounts**. Zeko is largely isomorphic to Mina, meaning you can use the same tools and libraries, like o1js, to develop zkApps on Zeko as you would on Mina.
+## zkApps: Zeko's Smart Contracts
+
+On Mina and Zeko, smart contracts are referred to as **zkApps** or **zkApp accounts**. While the languages of the circuits is ocaml, the [o1js](https://docs.minaprotocol.com/zkapps/o1js) library can be used, to develop zkApps using Typescript.
 
 zkApps are zero-knowledge smart contracts that leverage ZKPs to ensure the correctness of state transitions. Developers write these contracts using the `SmartContract` class in o1js.
 
 Additionally, o1js provides the `ZkProgram()` construct, which is used to define the steps of **recursive programs**. Unlike `SmartContract` methods, `ZkProgram()` methods execute off-chain. These off-chain computations can take private inputs, which are not seen by the Mina network. After performing the desired recursive steps off-chain, the proof of execution generated by the `ZkProgram` can be verified _on-chain_ within a `SmartContract` method. This allows the results or outputs of complex off-chain computations to be trustlessly verified and used, for example, to update the zkApp's on-chain state.
 
-While the primary on-chain logic of a zkApp is defined within the `SmartContract` class, the ability to define and verify `ZkProgram`s provides a powerful way to perform arbitrary zero-knowledge programs or circuits off-chain and settle their validity on-chain.
+> [!NOTE] zkProgram and SmartContract
+> While the primary on-chain logic of a zkApp is defined within the `SmartContract` class, the ability to define and verify `ZkProgram`s provides a powerful way to perform arbitrary zero-knowledge programs or circuits off-chain and settle their validity on-chain.
 
 ## State Management
 
-Zeko is designed as a nested instantiation of the Mina ledger within the account state of a zkApp on the Mina L1 chain. This L1 zkApp account acts as the **'outer' account**, while there is a corresponding **'inner' account** on the L2 (Zeko).
+Zeko operates as a nested instantiation of the Mina ledger within a zkApp account on the Mina L1 chain. This creates a dual-layer architecture where the L1 zkApp account serves as the **'outer' account** that tracks the state of a corresponding **'inner' account** on the L2.
 
-The fundamental data structure for all Mina transactions, including those that alter zkApp state, is the **Account Update**. Every zkApp transaction is composed of one or more `AccountUpdate` classes, which are instructions for the Mina network. These instructions can include altering on-chain state, emitting events, changing permissions, or changing balances.
+```d2
+direction: down
 
-An `AccountUpdate` can define **preconditions** that must be met for the update to be applied, specify **updates** to be made (like changing the zkApp state field), indicate **balance changes**, and require specific **authorization** (a proof, signature, or none). For zkApps to change their state or subtract funds, the authorization type is typically `Proof`, requiring a valid proof of correct smart contract execution.
+L1: Mina L1 {
+  style.fill: "#e8f4fd"
+  outer: Outer Account {
+    state: L2 Hash
+  }
+}
 
-State transitions within Zeko's L2 ledger are managed by the sequencer applying transactions to the ledger. These transactions consist of Account Updates. The sequencer then proves the validity of the batch of transactions and their cumulative state transition (e.g., from Ledger A to Ledger D). The root proof of this batch is sent to the L1 Mina chain, where the L1 zkApp's state (which holds the L2 ledger hash) is updated. This commits the L2 state transition to the L1 chain.
+L2: Zeko L2 {
+  style.fill: "#f0f8e8"
+  inner: Inner Account {
+    ledger: L2 State
+  }
+  sequencer: Sequencer
+}
 
-Communication and synchronization between the L1 (outer account) and L2 (inner account) happen via **actions**. Actions are public arbitrary information passed with a transaction, similar to events, but they can be processed by the smart contract using a **reducer**. A commitment to the history of dispatched actions, the **actionState**, is stored on the account, allowing verification that processed actions were indeed dispatched to that contract. Communication from L1 to L2 involves posting actions to the L1 zkApp account. Communication from L2 to L1 involves posting actions to the L2 inner account. On commit (when the batch proof is posted to L1), the action states of the outer and inner accounts are synchronized.
+L2.sequencer -> L1.outer: Batch Proof
+L1.outer <-> L2.inner: Actions
+```
 
-Zeko's state management, therefore, involves applying Account Updates within the L2 ledger off-chain, proving the correctness of batches of these updates, and committing the resulting L2 state root to the L1 Mina chain via the L1 zkApp's state field, enabled by the recursive proof system and synchronized via L1/L2 actions and action states.
+### Account Updates: The Transaction Building Blocks
+
+All transactions on Mina and Zeko are built from **Account Updates** - the fundamental data structure that instructs the network on state changes. Each `AccountUpdate` can alter on-chain state, emit events, change permissions, or modify balances. These updates include **preconditions** that must be satisfied, specify the exact **updates** to apply, define **balance changes**, and require appropriate **authorization** (typically a proof for zkApps).
+
+### L2 State Transitions and Batch Proving
+
+The Zeko sequencer manages L2 state by collecting transactions composed of **Account Updates** and applying them to the ledger off-chain. Rather than processing transactions individually, the sequencer batches them together and generates a **proof** demonstrating the validity of the cumulative state transition. This root proof is then submitted to the L1 Mina chain, updating the outer zkApp's state to reflect the new L2 ledger hash and effectively committing the **entire batch** to L1.
+
+### L1/L2 Communication Through Actions
+
+Synchronization between the outer and inner accounts occurs via Mina's **action** system. Actions are public data attached to transactions that can be processed by smart contracts using reducers. The network maintains an **actionState** - a cryptographic commitment to the history of dispatched actions - ensuring processed actions were genuinely sent to the contract.
+
+Communication flows _bidirectionally_: L1 to L2 communication involves posting actions to the L1 zkApp account, while L2 to L1 communication posts actions to the L2 inner account. During the commit process (when batch proofs are posted to L1), the action states of both accounts **synchronize**, maintaining consistency across layers.
+
+This architecture enables Zeko to process transactions **efficiently** off-chain while leveraging Mina's recursive proof system to compress validation and maintain the security guarantees of the L1 chain.

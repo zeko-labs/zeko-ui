@@ -1,6 +1,6 @@
 # Getting Started
 
-Developing on Zeko is **mostly isomorphic to developing zkApps on Mina**, meaning you can use the same tools and libraries. Zeko provides a fully Mina-equivalent application layer for building and deploying zkApps.
+Zeko provides a fully Mina-equivalent application layer for building and deploying zkApps, meaning you can use the same tools and libraries.
 
 If you are new to building on Mina or with zkApps, it is highly recommended to [**start with the official Mina documentation**](https://docs.minaprotocol.com/).
 
@@ -18,7 +18,7 @@ The primary tool for developing zkApps on Mina, and consequently on Zeko, is the
 
 ### Lumina SDK
 
-The **Lumina SDK** is a library designed to interact with the Lumina Dex. Refer to the [Lumina SDK documentation](https://sdk.luminadex.com/) for installation and usage details.
+The **Lumina SDK** is a library designed to interact with the [Lumina Dex](https://luminadex.com/). Refer to the [Lumina SDK documentation](https://sdk.luminadex.com/) for installation and usage details.
 
 ## Essential Developer Links
 

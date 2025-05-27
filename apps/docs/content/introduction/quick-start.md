@@ -1,12 +1,15 @@
-# Quick Start (For Users & Developers)
+# Quick Start
 
-:::warning
-WIP: This section is under construction. Content is for illustrative purposes only.
-:::
+_As Zeko has a wide target audience, this documentation is divided into sections tailored for different roles._
 
-1. Get a Mina-compatible wallet (e.g., Auro Wallet).
-2. Request testnet Zeko tokens from the faucet.
-3. Connect your wallet to the Zeko dApp.
-4. Make your first transaction or deploy a contract using the provided templates.
+## User Quick Start
 
-[Get Testnet Tokens](https://zeko.io/faucet)
+If you're an end user, head over to the [Getting Started](../users/getting-started.md) section for instructions on setting up your wallet, obtaining tokens, and connecting to the Zeko network.
+
+## Developer Quick Start
+
+If you're a developer, head over to the [Getting Started](../developers/getting-started.md) section for development-specific instructions.
+
+## Node Operator Quick Start
+
+If you're a node operator, head over to the [Getting Started](../operators/getting-started.md) section for instructions on setting up and running a Zeko node.

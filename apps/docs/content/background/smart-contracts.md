@@ -4,7 +4,8 @@
 
 A **smart contract** is a self-executing digital agreement written in code and stored on a blockchain. They automate and enforce contract terms without requiring intermediaries. Smart contracts leverage blockchain technology for increased **security** and **transparency**, streamlining processes and transactions across various industries.
 
-They can be thought of as a virtual "if-then" statement; for example, _if_ a buyer sends the agreed-upon amount, _then_ the smart contract automatically executes and transfers ownership of an asset from seller to buyer. This allows two parties to transact directly without needing a third party to ensure the agreement is honoured.
+> [!TIP] 💡 Smart Contracts 💡
+> They can be thought of as a virtual "if-then" statement; for example, _if_ a buyer sends the agreed-upon amount, _then_ the smart contract automatically executes and transfers ownership of an asset from seller to buyer. This allows two parties to transact directly without needing a third party to ensure the agreement is honoured.
 
 Beyond simple transactions, smart contracts enable a wide array of use cases, including:
 
@@ -27,14 +28,20 @@ The operation of smart contracts relies on **blockchain technology**, code execu
 5. **Immutable Record**: Upon validation and confirmation, the execution is recorded as an immutable entry on the blockchain ledger, making it transparent and auditable.
 6. **Finality**: The execution of a smart contract is final and cannot be reversed, ensuring the transaction's integrity and security.
 
-While offering many advantages like transparency, security, and efficiency, smart contracts also have potential drawbacks, including security vulnerabilities from code errors, and scalability limitations on the underlying blockchain network. The immutability, while enhancing security, can be problematic if errors are present or updates are needed.
-
-The cryptocurrency community addresses these challenges through practices like bug bounty programs, security audits, standardisation efforts (like ERC standards), and **Layer-2 solutions** such as rollups.
+::: warning
+While offering many advantages like transparency, security, and efficiency, smart contracts also have potential drawbacks, including security vulnerabilities from code errors, and scalability limitations on the underlying blockchain network.
+These challenges are addressed with bug bounty programs, security audits, standardisation efforts, and **Layer-2 solutions** such as rollups.
+:::
 
 ## Smart Contracts on Mina and Zeko : zkApps
 
 On Mina Protocol, smart contracts are called **zkApps** (zero-knowledge applications). These leverage **zero-knowledge proofs** (ZKPs) to verify state transitions, allowing transactions to be proved off-chain and verified on-chain without revealing private data.
 
+![ZkApps](./zkapps.jpg)
+
 ZKPs in zkApps are primarily used for two purposes: to hide parts of the data and to **compress the computation**. The transaction snark uses the compression property to validate a batch of transactions into the verification of a single snark. While the "zk" part can hide data, this is often a side product; the main goal in zkApps is **proving that you've executed the smart contract correctly** off-chain.
 
 **Zeko is a Layer 2 (L2) ecosystem specifically designed for Mina's zkApps**. It aims to provide a robust platform for building and deploying zkApps with improved throughput and quick confirmation times.
+
+> [!TIP] 💡 More about zkApps 💡
+> For more information on zkApps, refer to the [Mina documentation](https://docs.minaprotocol.com/zkapps/writing-a-zkapp).

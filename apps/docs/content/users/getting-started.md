@@ -17,21 +17,19 @@ Auro Wallet already supports Zeko, so you can use it to interact with Zeko dApps
 
 Select the Zeko network within your Auro Wallet to interact with Zeko dApps and the network.
 
-### Adding the Zeko Network to other Wallet
+### Adding the Zeko Network to Other Wallets
 
 If you are using a different wallet that supports custom networks, you can add the Zeko network manually
 
-- **Network Name**: Zeko
-- **Mainnet URL**: `https://mainnet.zeko.io`
-
-For test networks, you can also add the following:
-
-- **Alphanet URL**: `https://alphanet.zeko.io`
 - **Testnet URL**: `https://testnet.zeko.io`
+
+:::warning
+Zeko mainnet is not yet available. Stay tuned for updates on the mainnet launch.
+:::
 
 ## Obtaining MINA Tokens
 
-To perform transactions and interact with dApps on Zeko, you will need MINA tokens.
+To perform transactions and interact with dApps on Zeko, you will need tMINA tokens.
 
-- **Testnet**: For testing purposes on the Zeko devnet, you can obtain tMina tokens from the [Zeko Faucet](https://zeko.io/faucet).
+- **Testnet**: For testing purposes on the Zeko testnet, you can obtain tMina tokens from the [Zeko Faucet](https://zeko.io/faucet).
 - **Mainnet**: Obtain Mina from a cryptocurrency exchange that supports MINA, or from other users.
