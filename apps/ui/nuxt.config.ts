@@ -24,7 +24,13 @@ export default defineNuxtConfig({
 		// }
 	},
 	runtimeConfig: {
-		faucetUrl: process.env.FAUCET_URL
+		faucetUrl: process.env.FAUCET_URL,
+		public: {
+			telegram: "https://t.me/zekoprotocol",
+			discord: "https://discord.gg/vSDxqAchUY",
+			twitter: "https://twitter.com/ZekoLabs",
+			github: "https://github.com/zeko-labs",
+		}
 	},
 	nitro: {
 		//TODO: enable when supported by Nitro

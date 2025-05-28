@@ -1,0 +1,12 @@
+declare module 'nuxt/schema' {
+    interface RuntimeConfig {
+    }
+    interface PublicRuntimeConfig {
+        discord: string
+        twitter: string
+        github: string
+        telegram: string
+    }
+}
+// It is always important to ensure you import/export something when augmenting a type
+export { }

@@ -1,5 +1,8 @@
 <script lang="ts" setup>
 const { logo = true } = defineProps<{ logo?: boolean }>()
+const {
+	public: { telegram, discord, twitter }
+} = useRuntimeConfig()
 const buildItems = [
 	{
 		name: "Docs",
@@ -12,18 +15,9 @@ const buildItems = [
 ]
 
 const communityItems = [
-	{
-		name: "Discord",
-		url: "https://discord.gg/vSDxqAchUY"
-	},
-	{
-		name: "Telegram",
-		url: "https://t.me/+m8LBsR2kNTAxNmFh"
-	},
-	{
-		name: "X (Twitter)",
-		url: "https://twitter.com/ZekoLabs"
-	}
+	{ name: "Discord", url: discord },
+	{ name: "Telegram", url: telegram },
+	{ name: "X (Twitter)", url: twitter }
 ]
 </script>
 <template>

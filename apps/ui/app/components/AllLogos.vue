@@ -1,14 +1,14 @@
 <template>
-  <NuxtLink to="https://discord.gg/vSDxqAchUY" target="_blank ">
+  <NuxtLink :to="$config.public.discord" target="_blank ">
     <SvgSocialDiscord />
   </NuxtLink>
-  <NuxtLink to="https://github.com/zeko-labs" target="_blank ">
+  <NuxtLink :to="$config.public.github" target="_blank ">
     <SvgSocialGithub />
   </NuxtLink>
-  <NuxtLink to="https://x.com/ZekoLabs" target="_blank ">
+  <NuxtLink :to="$config.public.twitter" target="_blank ">
     <SvgSocialX />
   </NuxtLink>
-  <NuxtLink to="https://t.me/zekoprotocol" target="_blank">
+  <NuxtLink :to="$config.public.telegram" target="_blank">
     <SvgSocialTelegram />
   </NuxtLink>
 </template>
