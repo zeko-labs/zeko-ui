@@ -24,7 +24,7 @@ The operation of smart contracts relies on **blockchain technology**, code execu
 1. **Creation and Deployment**: A developer writes the smart contract code using a language compatible with the blockchain and deploys it onto the network.
 2. **Code and Conditions**: The contract contains code defining the terms, rules, and conditions of the agreement, which can range from simple payments to complex multi-step processes.
 3. **Contract Invocation**: Once deployed, anyone with access to the blockchain can interact with the smart contract by calling its functions and providing necessary inputs. This is common when users interact with DeFi services and DApps via crypto wallets.
-4. **Validation and Execution**: When invoked, the transaction is verified and validated by the blockchain network. If the specified conditions are met, the task defined by the contract code is automatically executed.
+4. **Validation and Execution**: When invoked, the transaction is verified and validated by each node in the blockchain network, which guarantees secure execution. If the specified conditions are met, the task defined by the contract code is automatically executed.
 5. **Immutable Record**: Upon validation and confirmation, the execution is recorded as an immutable entry on the blockchain ledger, making it transparent and auditable.
 6. **Finality**: The execution of a smart contract is final and cannot be reversed, ensuring the transaction's integrity and security.
 
@@ -36,6 +36,9 @@ These challenges are addressed with bug bounty programs, security audits, standa
 ## Smart Contracts on Mina and Zeko : zkApps
 
 On Mina Protocol, smart contracts are called **zkApps** (zero-knowledge applications). These leverage **zero-knowledge proofs** (ZKPs) to verify state transitions, allowing transactions to be proved off-chain and verified on-chain without revealing private data.
+
+> [!TIP] 💡 zkApps Validation and Execution 💡
+> zkApps are validated client-side, which means that the network throughput is higher than other blockchains that have to validate smart contracts at the node level.
 
 ![ZkApps](./zkapps.jpg)
 

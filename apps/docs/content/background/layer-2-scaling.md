@@ -25,7 +25,7 @@ The transaction data itself is posted to a **Data Availability (DA) layer**. The
 ZK-Rollups offer several key advantages:
 
 - **Increased Throughput:** Batching transactions processed off-chain boosts overall transaction capacity.
-- **Lower Gas Fees:** Less data on-chain means significantly reduced fees.
+- **Lower Gas Fees:** A single entity verifies the transactions, which is cheaper than verifying on every node in the network.
 - **Privacy:** ZKPs can enhance privacy by proving validity without revealing transaction details.
 
 > [!TIP] 💡 Zeko's Architecture 💡

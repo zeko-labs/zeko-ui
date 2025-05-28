@@ -10,6 +10,62 @@ The **sequencer** is a key component in this process, acting as a transaction co
 
 This process leverages **transaction SNARKs**, which prove the transition from one ledger state to another. These proofs are composed into a binary tree structure. The root SNARK of this tree serves as a proof for the entire batch and the constant size of this proof is how Zeko compresses the computation of validating a batch of transactions. This offloads work from the main network nodes, a fundamental idea behind Mina. By committing a single, constant-size proof to L1, Zeko significantly increases transaction throughput.
 
+```d2
+direction: down
+
+# Style classes
+classes: {
+  root-proof: {
+    style.fill: "#28a745"
+    style.stroke: "#1e7e34"
+    style.font-color: "white"
+  }
+  intermediate-proof: {
+    style.fill: "#ffc107"
+    style.stroke: "#d39e00"
+    style.font-color: "white"
+  }
+  tx-proof: {
+    style.fill: "#17a2b8"
+    style.stroke: "#117a8b"
+    style.font-color: "white"
+  }
+}
+
+# Binary Tree of Transaction Proofs
+tree: Binary Tree of Proofs {
+  style.fill: "#f8f9fa"
+
+  root: Root SNARK\nState A->E { class: root-proof }
+  
+  level1_left: Intermediate Proof\nState A->C { class: intermediate-proof }
+  level1_right: Intermediate Proof\nState D->E { class: intermediate-proof }
+  
+  tx1: Tx SNARK 1\nState A->B { class: tx-proof }
+  tx2: Tx SNARK 2\nState B->C { class: tx-proof }
+  tx3: Tx SNARK 3\nState C->D { class: tx-proof }
+  tx4: Tx SNARK 4\nState D->E { class: tx-proof }
+  
+  # Tree connections
+  level1_left -> root
+  level1_right -> root
+  tx1 -> level1_left
+  tx2 -> level1_left
+  tx3 -> level1_right
+  tx4 -> level1_right
+}
+
+# L1 Commitment
+l1: Mina L1 {
+  style.fill: "#e8f4fd"
+  zkapp: zkApp Account {
+    state: Rollup State
+  }
+}
+
+tree.root -> l1.zkapp: Commits Root Proof
+```
+
 ## The Role of Zero-Knowledge Proofs in Zeko
 
 Zero-knowledge proofs (ZKPs) are fundamental to Zeko, as they are to Mina and zkApps. They allow one party (the prover) to convince another party (the verifier) that a statement is true without revealing any information beyond the truth of the statement itself.
@@ -76,5 +132,7 @@ The Zeko sequencer manages L2 state by collecting transactions composed of **Acc
 Synchronization between the outer and inner accounts occurs via Mina's **action** system. Actions are public data attached to transactions that can be processed by smart contracts using reducers. The network maintains an **actionState** - a cryptographic commitment to the history of dispatched actions - ensuring processed actions were genuinely sent to the contract.
 
 Communication flows _bidirectionally_: L1 to L2 communication involves posting actions to the L1 zkApp account, while L2 to L1 communication posts actions to the L2 inner account. During the commit process (when batch proofs are posted to L1), the action states of both accounts **synchronize**, maintaining consistency across layers.
+
+When action states are synchronised, anybody can prove on **each layer** that their action has been included using a simple Merkle proof.
 
 This architecture enables Zeko to process transactions **efficiently** off-chain while leveraging Mina's recursive proof system to compress validation and maintain the security guarantees of the L1 chain.

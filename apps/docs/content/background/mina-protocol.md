@@ -7,7 +7,7 @@ _This section is a brief overview of the Mina Protocol, you can find more inform
 Mina Protocol distinguishes itself with a unique architecture designed to be a **succinct blockchain**. At its core, Mina leverages zero-knowledge proofs (ZKPs), specifically using the **Kimchi proof system** and the **Pickles recursive system**. This allows for advanced cryptographic functions and efficient verification.
 
 > [!TIP] 💡 Kimchi and Pickles 💡
-> Find more about Kimchi and Pickles in this [Mina article](https://minaprotocol.com/blog/kimchi-the-latest-update-to-minas-proof-system).
+> Find more about Kimchi and Pickles in this [Mina article](https://minaprotocol.com/blog/kimchi-the-latest-update-to-minas-proof-system) and in the [Mina Book](https://o1-labs.github.io/proof-systems/kimchi/overview.html).
 
 A hallmark of Mina's design is its support for **arbitrary infinite recursive proof construction**. Mina is noted as being the only blockchain currently offering this capability. Recursion is fundamental to how Mina operates, being used to compress the historical blockchain data into a constant, small size. It also utilizes **tree-based recursive proofs** (described as "rollup-like") to compress transactions within blocks.
 

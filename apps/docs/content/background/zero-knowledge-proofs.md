@@ -32,5 +32,6 @@ Mina Protocol uniquely integrates ZKPs at its core through recursive proofs. Thi
 
 This inherent ZKP-based compression is a foundational element that Zeko leverages. In Zeko, transaction validity is proven using ZKPs, and these proofs are aggregated into larger proofs representing batches of transactions.
 
-> [!TIP] 💡 Zeko and ZKPs
-> Learn more about Zeko Core Concepts in the [dedicated docs section](../architecture/zeko-core-concepts.html#the-role-of-zero-knowledge-proofs-in-zeko).💡
+> [!TIP]
+
+> Mina's Proof system is explained in detail in the [Mina book](https://o1-labs.github.io/proof-systems/). You can learn more about Zeko Core Concepts in the [dedicated docs section](../architecture/zeko-core-concepts.html#the-role-of-zero-knowledge-proofs-in-zeko).

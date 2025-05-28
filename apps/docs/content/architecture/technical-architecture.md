@@ -8,7 +8,7 @@ Zeko functions as a **zkApp account** on Mina Protocol. It is designed to be a _
 
 ### Sequencer
 
-The sequencer is Zeko's transaction powerhouse and acts like the _conductor of an orchestra_. Its primary roles include:
+The sequencer primary roles include:
 
 - Acting as a **Transaction Collector**, gathering transactions submitted by users.
 - Applying these transactions to the current state of the L2 ledger.
@@ -146,7 +146,7 @@ vertical-gap: 20
 
 ## Zeko Internal Design
 
-Zeko is meant to be a **zkApp** that contains a _nested Mina ledger_ in its account state. Transfers of **Mina** (only, for now) between the _outer and inner ledgers_ should be possible. These are the only goals for the **MVP**.
+Zeko is meant to be a **zkApp** that contains a _nested Mina ledger_ in its account state. Transfers of **Mina** and tokens between the _outer and inner ledgers_ should be possible. These are the only goals for the **MVP**.
 
 The design is meant only to do this as well as possible. The MVP zkApp neither has any **data availability checks** to ensure that the witnesses necessary to operate on the zkApp are available in the network.
 
