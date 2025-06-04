@@ -4,7 +4,7 @@ _Zeko is a zk-rollup protocol built on Mina, designed for scalable, private, and
 
 ## High-Level Summary
 
-Zeko is a cross-chain, zero-knowledge scaling protocol built on Mina that enables developers to launch fast, private, and scalable decentralized applications. It combines the privacy guarantees of zero-knowledge proofs with the efficiency of off-chain computation and the security of Mina’s succinct L1, creating a modular, universal operating system for the new internet.
+[Zeko](https://zeko.io/) is a cross-chain, zero-knowledge scaling protocol built on Mina that enables developers to launch fast, private, and scalable decentralized applications. It combines the privacy guarantees of zero-knowledge proofs with the efficiency of off-chain computation and the security of Mina’s succinct L1, creating a modular, universal operating system for the new internet.
 
 Zeko testnet launch represents a preview of Zeko Protocol capabilities and functionalities to come. While this version will continue to evolve over time, it provides a foundation for developers to start building and assess how to deploy more scalable, feature-rich applications on Zeko. With the release of our protocol, developers gain access to all the existing tooling and features built for Mina, plus many unique to Zeko designed to simplify the zero-knowledge development process. From proof generation, recursion, smart contract creation to decentralized storage solutions, our platform offers everything developers need to realize the potential to bring your dApp ideas to life.
 

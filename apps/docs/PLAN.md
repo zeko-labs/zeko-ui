@@ -65,15 +65,12 @@ Welcome to the Zeko documentation! This guide provides information for everyone 
   - Setting up a compatible wallet (e.g., Auro Wallet guide).
   - Obtaining Zeko tokens (Testnet Faucet, Mainnet information).
   - Connecting your wallet to Zeko (via dApp or web interface).
-- **4.2 Performing Basic Transactions**
+- **4.2 Guides and Tutorials**
   - Guide: Sending Zeko tokens.
   - Guide: Interacting with a dApp (general process).
-- **4.3 Zeko Bridge**
   - Guide: Using the Zeko Bridge to transfer assets (e.g., between Mina and Zeko, or other connected chains).
-  - Explaining the bridging process simply.
-- **4.4 Zekoscan Explorer**
   - Guide: Using the block explorer to view transactions, blocks, and addresses.
-- **4.5 User Concepts Explained**
+- **4.3 User Concepts Explained**
   - Testnet vs Mainnet (understanding the difference).
   - Understanding Transaction Fees.
 

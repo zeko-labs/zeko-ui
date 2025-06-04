@@ -24,7 +24,6 @@ The **Lumina SDK** is a library designed to interact with the [Lumina Dex](https
 
 Leverage the existing resources and community within the Mina ecosystem, as Zeko developers benefit from this shared knowledge and support.
 
-- **Zeko Documentation (this site):** Provides information specific to Zeko, including its architecture, sequencer, data availability, and developer guides.
 - [**Official Mina Documentation:**](https://docs.minaprotocol.com/) The primary resource for learning about zkApps, o1js, account updates, permissions, actions & reducer, and custom tokens. It is the recommended starting point for developers new to Mina.
 - **GitHub Repositories:**
   - [**Zeko Repository:**](https://github.com/zeko-labs/zeko) The source code for the Zeko protocol, including the sequencer and data availability components.
@@ -32,5 +31,6 @@ Leverage the existing resources and community within the Mina ecosystem, as Zeko
   - [**Mina Fungible Token Repository:**](https://github.com/MinaFoundation/mina-fungible-token) Example code for custom token implementations.
 - [**Discord:**](https://discord.com/invite/vSDxqAchUY) Join the Mina community Discord server to connect with other developers and get support.
 - [**Zeko Faucet:**](https://zeko.io/faucet) Obtain testnet tokens for the Zeko instance on devnet.
+- [**ZekoScan Explorer:**](https://zekoscan.io/) Explore transactions, blocks, and accounts on the Zeko network.
 
 These resources will help you get started with setting up your environment, learning core concepts, and finding support within the community.

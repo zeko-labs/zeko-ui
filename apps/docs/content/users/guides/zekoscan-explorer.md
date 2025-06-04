@@ -1,4 +1,4 @@
-# Zekoscan Explorer
+# Using Zekoscan Explorer
 
 :::warning
 WIP: This section is under construction.

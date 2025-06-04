@@ -114,20 +114,20 @@ vertical-gap: 20
   }
 }
 
-3,1: "9. Commitment to L1" {
+3,1: "10. L1 State Update" {
   shape: rectangle
   style.fill: "#3da45d"
   style.font-color: "white"
 }
 
-3,2: "10. L1 State Update" {
+3,2: "9. Commitment to L1" {
   shape: rectangle
   style.fill: "#3da45d"
   style.font-color: "white"
 }
 
 # Flow connections following the new snail pattern
-0,0 -> 0,1 -> 0,2 -> 1,2 -> 1,1 -> 2,0 -> 2,1 -> 2,2 -> 3,1 -> 3,2
+0,0 -> 0,1 -> 0,2 -> 1,2 -> 1,1 -> 2,0 -> 2,1 -> 2,2 -> 3,2 -> 3,1
 ```
 
 1. **User Initiation:** A user initiates a transaction, for example, to mint tokens using a zkApp. This involves generating **account updates**, which are sets of instructions for the ledger.

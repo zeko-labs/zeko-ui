@@ -1,6 +1,6 @@
 # User Concepts Explained
 
-This section helps end users understand some key concepts when interacting with the Zeko network.
+_This section helps end users understand some key concepts when interacting with the Zeko network._
 
 #### Testnet vs Mainnet
 

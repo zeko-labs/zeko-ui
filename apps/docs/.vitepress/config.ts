@@ -42,12 +42,14 @@ export default defineConfig({
 		},
 		nav: [
 			{ text: 'Docs', link: '/introduction/what-is-zeko' },
-			{ text: 'Glossary', link: '/about/glossary' }
+			{ text: 'Glossary', link: '/about/glossary' },
+			{ text: 'Website', link: 'https://zeko.io', target: '_blank', rel: 'noopener noreferrer' },
 		],
 		logo: { light: "/logo.svg", dark: "/logo-dark.svg" },
 		sidebar: [
 			{
 				text: 'Introduction',
+				collapsed: false,
 				items: [
 					{ text: 'What is Zeko?', link: '/introduction/what-is-zeko' },
 					{ text: 'Why Zeko?', link: '/introduction/why-zeko' },
@@ -56,6 +58,7 @@ export default defineConfig({
 			},
 			{
 				text: 'Background Concepts',
+				collapsed: false,
 				items: [
 					{ text: 'Core Blockchain Concepts', link: '/background/core-blockchain-concepts' },
 					{ text: 'Smart Contracts', link: '/background/smart-contracts' },
@@ -66,6 +69,7 @@ export default defineConfig({
 			},
 			{
 				text: 'Zeko Deep Dive',
+				collapsed: false,
 				items: [
 					{ text: 'Zeko Core Concepts', link: '/architecture/zeko-core-concepts' },
 					{ text: 'Technical Architecture', link: '/architecture/technical-architecture' },
@@ -73,17 +77,8 @@ export default defineConfig({
 				]
 			},
 			{
-				text: 'Using Zeko (For End Users)',
-				items: [
-					{ text: 'Getting Started', link: '/users/getting-started' },
-					{ text: 'Performing Basic Transactions', link: '/users/performing-basic-transactions' },
-					{ text: 'Zeko Bridge', link: '/users/zeko-bridge' },
-					{ text: 'Zekoscan Explorer', link: '/users/zekoscan-explorer' },
-					{ text: 'User Concepts Explained', link: '/users/user-concepts-explained' }
-				]
-			},
-			{
 				text: 'Developing on Zeko (For Developers)',
+				collapsed: true,
 				items: [
 					{ text: 'Getting Started', link: '/developers/getting-started' },
 					{ text: 'Core Developer Concepts', link: '/developers/core-developer-concepts' },
@@ -99,7 +94,26 @@ export default defineConfig({
 				]
 			},
 			{
+				text: 'Using Zeko (For End Users)',
+				collapsed: true,
+				items: [
+					{ text: 'Getting Started', link: '/users/getting-started' },
+					{
+						text: 'Guides & Tutorials', link: '/users/guides-tutorials', collapsed: true,
+						items: [
+							{ text: 'Sending Tokens', link: '/users/guides/sending-tokens' },
+							{ text: 'Interacting with a Dapp', link: '/users/guides/dapp' },
+							{ text: 'Using Zeko Bridge', link: '/users/guides/zeko-bridge' },
+							{ text: 'Using Zekoscan Explorer', link: '/users/guides/zekoscan-explorer' },
+						]
+					},
+
+					{ text: 'User Concepts Explained', link: '/users/user-concepts-explained' }
+				]
+			},
+			{
 				text: 'Running Network Infrastructure (For Operators)',
+				collapsed: true,
 				items: [
 					{ text: 'Getting Started', link: '/operators/getting-started' },
 					{
@@ -115,6 +129,7 @@ export default defineConfig({
 			},
 			{
 				text: 'About',
+				collapsed: false,
 				items: [
 					{ text: 'Glossary', link: '/about/glossary' },
 					{ text: 'Frequently Asked Questions (FAQ)', link: '/about/faq' },
@@ -122,7 +137,6 @@ export default defineConfig({
 				]
 			}
 		],
-
 		socialLinks: [
 			{ icon: "github", link: "https://github.com/zeko-labs" }
 		],
