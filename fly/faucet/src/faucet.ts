@@ -30,9 +30,9 @@ export async function sendPayment(address: string) {
 
 	const feePayer = {
 		sender: publicKey,
-		fee: 1,
-		nonce: nonce
-	}
+		fee: 0.1 * 1e9,
+		nonce: nonce,
+	} satisfies Mina.FeePayerSpec
 
 	const amount = new UInt64(amount_bigint)
 
