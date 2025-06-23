@@ -1,5 +1,6 @@
 import {
     AccountUpdate,
+    Bool,
     Mina,
     PrivateKey,
     type PublicKey,
@@ -112,8 +113,7 @@ describe('Faucet Contract', () => {
             const events = await zkFaucet.fetchEvents()
             const depositEvents = events.filter(e => e.type === 'deposit')
             expect(depositEvents).toHaveLength(1)
-            // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-            const event = depositEvents[0].event.data as any as FaucetDepositEvent
+            const event = depositEvents[0].event.data as unknown as FaucetDepositEvent
             expect(event.depositor.toBase58()).toEqual(senderAccount.toBase58())
             expect(event.amount).toEqual(depositAmount)
         })
@@ -169,10 +169,10 @@ describe('Faucet Contract', () => {
             const claimEvents = events.filter(e => e.type === 'claim')
             expect(claimEvents).toHaveLength(1)
 
-            // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-            const event = claimEvents[0].event.data as any as FaucetClaimEvent
+            const event = claimEvents[0].event.data as unknown as FaucetClaimEvent
             expect(event.claimer.toBase58()).toEqual(user1Account.toBase58())
             expect(event.amount).toEqual(claimAmount)
+            expect(event.claimNumber.toBigInt()).toEqual(BigInt(1))
         })
 
         it('should prevent double claiming from same user', async () => {
@@ -197,10 +197,8 @@ describe('Faucet Contract', () => {
 
             const secondClaimUserBalance = Mina.getBalance(user1Account)
 
-            console.log('Initial user balance:', initialUserBalance.toBigInt())
-            console.log('First claim user balance:', firstClaimUserBalance.toBigInt())
-            console.log('Second claim user balance:', secondClaimUserBalance.toBigInt())
-
+            expect(secondClaimUserBalance.toBigInt()).toEqual(firstClaimUserBalance.toBigInt())
+            expect(firstClaimUserBalance.toBigInt() - initialUserBalance.toBigInt()).toBeGreaterThan(0)
 
             // Check that both claims created events
             const events = await zkFaucet.fetchEvents()
@@ -264,42 +262,92 @@ describe('Faucet Contract', () => {
                 await txn.sign([user1Key]).send()
             }).rejects.toThrow()
         })
+
+        it('should prevent transfer of internal tracking token between users', async () => {
+            // First, user1 claims to get the tracking token
+            const claimTxn = await Mina.transaction(user1Account, async () => {
+                AccountUpdate.fundNewAccount(user1Account)
+                await zkFaucet.claim()
+            })
+            await claimTxn.prove()
+            await claimTxn.sign([user1Key]).send()
+
+            // Verify user1 has the tracking token (balance = 1)
+            const user1TokenBalance = Mina.getBalance(user1Account, zkFaucet.deriveTokenId())
+            expect(user1TokenBalance).toEqual(UInt64.one)
+
+            // Try to transfer the tracking token from user1 to user2 - this should fail
+            // because the contract's approveBase method prevents any token operations
+            await expect(async () => {
+                const transferTxn = await Mina.transaction(user1Account, async () => {
+                    AccountUpdate.fundNewAccount(user1Account, 1) // Fund for new token account creation
+                    const user1Update = AccountUpdate.createSigned(user1Account, zkFaucet.deriveTokenId())
+                    const user2Update = AccountUpdate.create(user2Account, zkFaucet.deriveTokenId())
+
+                    user1Update.send({ to: user2Update, amount: UInt64.one })
+                    user2Update.account.isNew.requireEquals(Bool(true))
+                })
+                await transferTxn.prove()
+                await transferTxn.sign([user1Key]).send()
+            }).rejects.toThrow()
+
+            // Verify balances remain unchanged after failed transfer
+            const user1FinalTokenBalance = Mina.getBalance(user1Account, zkFaucet.deriveTokenId())
+
+            expect(user1FinalTokenBalance).toEqual(UInt64.one)
+        })
     })
 
-    // describe('State Management', () => {
-    //     beforeEach(async () => {
-    //         const faucetAmount = UInt64.from(1000)
+    describe('Contract Balance Transfer', () => {
+        beforeEach(async () => {
+            const faucetAmount = UInt64.from(100 * 10 ** 9)
 
-    //         const txn = await Mina.transaction(deployerAccount, async () => {
-    //             AccountUpdate.fundNewAccount(deployerAccount)
-    //             zkFaucet.deploy({ amount: faucetAmount })
-    //         })
-    //         await txn.prove()
-    //         await txn.sign([deployerKey, zkFaucetPrivateKey]).send()
-    //     })
+            // Deploy contract
+            const deployTxn = await Mina.transaction(deployerAccount, async () => {
+                AccountUpdate.fundNewAccount(deployerAccount, 1)
+                await zkFaucet.deploy({ amount: faucetAmount })
+            })
+            await deployTxn.prove()
+            await deployTxn.sign([deployerKey, zkFaucetPrivateKey]).send()
 
-    //     it('should maintain correct state after multiple operations', async () => {
-    //         const initialRoot = zkFaucet.claimersRoot.get()
+            // Fund the contract with a substantial amount
+            const depositAmount = UInt64.from(1000 * 10 ** 9)
+            const depositTxn = await Mina.transaction(senderAccount, async () => {
+                await zkFaucet.deposit(depositAmount)
+            })
+            await depositTxn.prove()
+            await depositTxn.sign([senderKey]).send()
+        })
 
-    //         // Fund the contract
-    //         const depositTxn = await Mina.transaction(senderAccount, async () => {
-    //             zkFaucet.deposit(UInt64.from(5000))
-    //         })
-    //         await depositTxn.prove()
-    //         await depositTxn.sign([senderKey]).send()
+        it('should transfer entire MINA balance to another wallet using contract private key', async () => {
+            // Get initial balances
+            const initialContractBalance = Mina.getBalance(zkFaucetAddress)
+            const initialUser1Balance = Mina.getBalance(user1Account)
 
-    //         // User claims
-    //         const claimTxn = await Mina.transaction(user1Account, async () => {
-    //             zkFaucet.claim()
-    //         })
-    //         await claimTxn.prove()
-    //         await claimTxn.sign([user1Key]).send()
+            // Transfer the entire contract balance to user1 using the contract's private key
+            const txn = await Mina.transaction(deployerAccount, async () => {
+                const contractUpdate = AccountUpdate.createSigned(zkFaucetAddress)
 
-    //         const finalRoot = zkFaucet.claimersRoot.get()
-    //         const amount = zkFaucet.amount.get()
+                // Transfer the entire balance (minus fees) to user1
+                contractUpdate.send({ to: user1Account, amount: initialContractBalance })
+            })
+            await txn.prove()
+            await txn.sign([deployerKey, zkFaucetPrivateKey]).send()
 
-    //         expect(finalRoot).not.toEqual(initialRoot) // Root should change after claim
-    //         expect(amount).toEqual(UInt64.from(1000)) // Amount should remain the same
-    //     })
-    // })
+            // Verify the transfer
+            const finalContractBalance = Mina.getBalance(zkFaucetAddress)
+            const finalUser1Balance = Mina.getBalance(user1Account)
+
+            // Contract should have zero balance (or minimal amount due to account minimum)
+            expect(finalContractBalance.toBigInt()).toBeLessThan(initialContractBalance.toBigInt())
+
+            // User1 should have received the transferred amount
+            const transferredAmount = finalUser1Balance.sub(initialUser1Balance)
+            expect(transferredAmount.toBigInt()).toBeGreaterThan(0)
+
+            // The transferred amount should approximately equal the initial contract balance
+            // (allowing for some difference due to fees and account minimums)
+            expect(transferredAmount.toBigInt()).toBeGreaterThan(initialContractBalance.toBigInt() * BigInt(90) / BigInt(100))
+        })
+    })
 })

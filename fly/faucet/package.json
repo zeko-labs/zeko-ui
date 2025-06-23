@@ -9,13 +9,12 @@
 	"type": "module",
 	"dependencies": {
 		"hono": "^4.7.6",
-		"mina-fungible-token": "^1.1.0",
-		"o1js": "^2.6.0",
-		"unplugin-swc": "^1.5.5",
-		"vitest": "^3.2.4"
+		"o1js": "^2.6.0"
 	},
 	"devDependencies": {
 		"@flydotio/dockerfile": "^0.7.10",
-		"@types/bun": "latest"
+		"@types/bun": "latest",
+		"unplugin-swc": "^1.5.5",
+		"vitest": "^3.2.4"
 	}
 }

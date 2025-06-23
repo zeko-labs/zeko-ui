@@ -20,6 +20,7 @@ export interface FaucetDeployProps extends Exclude<DeployArgs, undefined> {
 export class FaucetClaimEvent extends Struct({
     eventId: Field,
     claimer: PublicKey,
+    claimNumber: Field,
     amount: UInt64,
 }) { }
 
@@ -44,13 +45,15 @@ export class Faucet extends TokenContract {
     async deploy(args: FaucetDeployProps) {
         await super.deploy()
         args.amount.assertGreaterThan(UInt64.zero, "Put a default amount")
-        this.amount.set(args.amount)
 
+        // Set the initial state of the contract
+        this.amount.set(args.amount)
         this.totalClaims.set(Field(0))
 
+        // Set the permissions for the contract
         this.account.permissions.set({
             ...Permissions.default(),
-            send: Permissions.proof(),
+            send: Permissions.proofOrSignature(),
             setVerificationKey: Permissions.VerificationKey.none(),
             setPermissions: Permissions.impossible()
         })
@@ -60,7 +63,7 @@ export class Faucet extends TokenContract {
     async deposit(amount: UInt64) {
         amount.assertGreaterThan(UInt64.zero, "Deposit amount must be greater than zero")
 
-        // Create account update for the sender to send tokens to the contract
+        // Create account update for the sender to send MINA to the contract
         const senderUpdate = AccountUpdate.createSigned(this.sender.getUnconstrained())
         senderUpdate.send({ to: this.address, amount })
 
@@ -76,27 +79,29 @@ export class Faucet extends TokenContract {
         const amount = this.amount.getAndRequireEquals()
         const sender = this.sender.getUnconstrained()
 
-        // Check if balance of MINA is sufficient
+        // Check if we have enough MINA
         const contractBalance = this.account.balance.getAndRequireEquals()
-        contractBalance.assertGreaterThanOrEqual(amount, "Insufficient balance in faucet")
+        contractBalance.assertGreaterThanOrEqual(amount, "Insufficient MINA balance in faucet")
 
-        // Check if the tracking token balance of the sender is 0
+        // Check if the tracking token balance of the sender is 0 to prevent double claims
         const senderToken = AccountUpdate.create(sender, this.deriveTokenId())
         senderToken.account.balance.requireEquals(UInt64.zero)
+
         // Update total claims counter
         const currentClaims = this.totalClaims.getAndRequireEquals()
         this.totalClaims.set(currentClaims.add(1))
 
         // Send MINA tokens to the claimer
-        this.send({ to: sender, amount }) // This uses the standard MINA balance
+        this.send({ to: sender, amount })
 
-        // If the user hasn't claimed, mint 1 unit of *this contract's own custom token* to their account
+        // If the user hasn't claimed, mint 1 unit of the tracking token to their account
         this.internal.mint({ address: sender, amount: UInt64.one })
 
         // Emit the claim event - use a simple counter as timestamp
         this.emitEventIf(senderToken.account.balance.get().equals(UInt64.zero), 'claim', new FaucetClaimEvent({
             eventId: Field(1),
             claimer: sender,
+            claimNumber: currentClaims.add(1),
             amount: amount,
         }))
     }
