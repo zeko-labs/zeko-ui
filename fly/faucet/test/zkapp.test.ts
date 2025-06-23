@@ -350,4 +350,66 @@ describe('Faucet Contract', () => {
             expect(transferredAmount.toBigInt()).toBeGreaterThan(initialContractBalance.toBigInt() * BigInt(90) / BigInt(100))
         })
     })
+
+    describe('Update Amount', () => {
+        beforeEach(async () => {
+            const faucetAmount = UInt64.from(100 * 10 ** 9)
+
+            // Deploy contract
+            const deployTxn = await Mina.transaction(deployerAccount, async () => {
+                AccountUpdate.fundNewAccount(deployerAccount, 1)
+                await zkFaucet.deploy({ amount: faucetAmount })
+            })
+            await deployTxn.prove()
+            await deployTxn.sign([deployerKey, zkFaucetPrivateKey]).send()
+        })
+
+        it('should allow contract owner to update amount using contract private key', async () => {
+            const initialAmount = zkFaucet.amount.get()
+            const newAmount = UInt64.from(200 * 10 ** 9)
+
+            // Update amount using contract private key
+            const txn = await Mina.transaction(zkFaucetAddress, async () => {
+                await zkFaucet.updateAmount(newAmount)
+            })
+            await txn.prove()
+            await txn.sign([zkFaucetPrivateKey]).send()
+
+            // Verify the amount was updated
+            const updatedAmount = zkFaucet.amount.get()
+            expect(updatedAmount).toEqual(newAmount)
+            expect(updatedAmount).not.toEqual(initialAmount)
+        })
+
+        it('should fail when non-owner tries to update amount', async () => {
+            const newAmount = UInt64.from(200 * 10 ** 9)
+
+            // Try to update amount from a different account (should fail)
+            await expect(async () => {
+                const txn = await Mina.transaction(user1Account, async () => {
+                    await zkFaucet.updateAmount(newAmount)
+                })
+                await txn.prove()
+                await txn.sign([user1Key]).send()
+            }).rejects.toThrow()
+
+            // Verify the amount was not changed
+            const unchangedAmount = zkFaucet.amount.get()
+            expect(unchangedAmount).toEqual(UInt64.from(100 * 10 ** 9)) // Should still be the initial amount
+        })
+
+        it('should fail when trying to update amount to zero', async () => {
+            await expect(async () => {
+                const txn = await Mina.transaction(zkFaucetAddress, async () => {
+                    await zkFaucet.updateAmount(UInt64.zero)
+                })
+                await txn.prove()
+                await txn.sign([zkFaucetPrivateKey]).send()
+            }).rejects.toThrow()
+
+            // Verify the amount was not changed
+            const unchangedAmount = zkFaucet.amount.get()
+            expect(unchangedAmount).toEqual(UInt64.from(100 * 10 ** 9)) // Should still be the initial amount
+        })
+    })
 })

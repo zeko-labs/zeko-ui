@@ -105,4 +105,16 @@ export class Faucet extends TokenContract {
             amount: amount,
         }))
     }
+
+    @method
+    async updateAmount(newAmount: UInt64) {
+        newAmount.assertGreaterThan(UInt64.zero, "New amount must be greater than zero")
+
+        // Only the contract itself can update the amount (requires contract private key)
+        const sender = this.sender.getAndRequireSignature()
+        sender.assertEquals(this.address)
+
+        // Update the amount state
+        this.amount.set(newAmount)
+    }
 }
