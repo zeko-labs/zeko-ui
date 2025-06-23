@@ -3,10 +3,16 @@
 	"linter": {
 		"rules": {
 			"correctness": {
-				"noUnusedImports": { "level": "warn", "fix": "safe" }
+				"noUnusedImports": {
+					"level": "warn",
+					"fix": "safe"
+				}
 			},
 			"style": {
-				"useConst": { "level": "warn", "fix": "safe" }
+				"useConst": {
+					"level": "warn",
+					"fix": "safe"
+				}
 			}
 		}
 	}

@@ -2,6 +2,9 @@
 	"compilerOptions": {
 		"strict": true,
 		"jsx": "react-jsx",
-		"jsxImportSource": "hono/jsx"
+		"jsxImportSource": "hono/jsx",
+		"strictPropertyInitialization": false, // to enable generic constructors, e.g. on CircuitValue
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true
 	}
 }
