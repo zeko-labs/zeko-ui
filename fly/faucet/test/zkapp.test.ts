@@ -67,9 +67,6 @@ describe('Faucet Contract', () => {
 
             const amount = zkFaucet.amount.get()
             expect(amount).toEqual(faucetAmount)
-
-            const claimersRoot = zkFaucet.totalClaims.get()
-            expect(claimersRoot).toBeDefined()
         })
 
         it('should fail to deploy with zero amount', async () => {
@@ -172,7 +169,6 @@ describe('Faucet Contract', () => {
             const event = claimEvents[0].event.data as unknown as FaucetClaimEvent
             expect(event.claimer.toBase58()).toEqual(user1Account.toBase58())
             expect(event.amount).toEqual(claimAmount)
-            expect(event.claimNumber.toBigInt()).toEqual(BigInt(1))
         })
 
         it('should prevent double claiming from same user', async () => {

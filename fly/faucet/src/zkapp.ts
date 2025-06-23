@@ -20,7 +20,6 @@ export interface FaucetDeployProps extends Exclude<DeployArgs, undefined> {
 export class FaucetClaimEvent extends Struct({
     eventId: Field,
     claimer: PublicKey,
-    claimNumber: Field,
     amount: UInt64,
 }) { }
 
@@ -32,7 +31,6 @@ export class FaucetDepositEvent extends Struct({
 
 export class Faucet extends TokenContract {
     @state(UInt64) amount = State<UInt64>()
-    @state(Field) totalClaims = State<Field>()
 
     events = {
         claim: FaucetClaimEvent,
@@ -48,7 +46,6 @@ export class Faucet extends TokenContract {
 
         // Set the initial state of the contract
         this.amount.set(args.amount)
-        this.totalClaims.set(Field(0))
 
         // Set the permissions for the contract
         this.account.permissions.set({
@@ -62,14 +59,14 @@ export class Faucet extends TokenContract {
     @method
     async deposit(amount: UInt64) {
         amount.assertGreaterThan(UInt64.zero, "Deposit amount must be greater than zero")
-
+        const depositor = this.sender.getUnconstrained()
         // Create account update for the sender to send MINA to the contract
-        const senderUpdate = AccountUpdate.createSigned(this.sender.getUnconstrained())
+        const senderUpdate = AccountUpdate.createSigned(depositor)
         senderUpdate.send({ to: this.address, amount })
 
         this.emitEvent('deposit', new FaucetDepositEvent({
             eventId: Field(0),
-            depositor: this.sender.getUnconstrained(),
+            depositor,
             amount,
         }))
     }
@@ -87,10 +84,6 @@ export class Faucet extends TokenContract {
         const senderToken = AccountUpdate.create(sender, this.deriveTokenId())
         senderToken.account.balance.requireEquals(UInt64.zero)
 
-        // Update total claims counter
-        const currentClaims = this.totalClaims.getAndRequireEquals()
-        this.totalClaims.set(currentClaims.add(1))
-
         // Send MINA tokens to the claimer
         this.send({ to: sender, amount })
 
@@ -101,7 +94,6 @@ export class Faucet extends TokenContract {
         this.emitEventIf(senderToken.account.balance.get().equals(UInt64.zero), 'claim', new FaucetClaimEvent({
             eventId: Field(1),
             claimer: sender,
-            claimNumber: currentClaims.add(1),
             amount: amount,
         }))
     }
