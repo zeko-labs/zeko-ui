@@ -90,7 +90,7 @@ export class Faucet extends TokenContract {
         // If the user hasn't claimed, mint 1 unit of the tracking token to their account
         this.internal.mint({ address: sender, amount: UInt64.one })
 
-        // Emit the claim event - use a simple counter as timestamp
+        // Emit the claim event only if it's the first claim for the sender
         this.emitEventIf(senderToken.account.balance.get().equals(UInt64.zero), 'claim', new FaucetClaimEvent({
             eventId: Field(1),
             claimer: sender,
