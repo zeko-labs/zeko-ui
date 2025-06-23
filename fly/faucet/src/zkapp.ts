@@ -1,17 +1,17 @@
 import {
     AccountUpdate,
-    type DeployArgs,
     Field,
-    MerkleMap,
     Permissions,
     PublicKey,
-    SmartContract,
     State,
     Struct,
+    TokenContract,
     UInt64,
     method,
     state,
 } from "o1js"
+
+import type { AccountUpdateForest, DeployArgs } from "o1js"
 
 export interface FaucetDeployProps extends Exclude<DeployArgs, undefined> {
     amount: UInt64
@@ -21,36 +21,32 @@ export class FaucetClaimEvent extends Struct({
     eventId: Field,
     claimer: PublicKey,
     amount: UInt64,
-    timestamp: UInt64
 }) { }
 
 export class FaucetDepositEvent extends Struct({
     eventId: Field,
     depositor: PublicKey,
     amount: UInt64,
-    timestamp: UInt64
 }) { }
 
-export class Faucet extends SmartContract {
+export class Faucet extends TokenContract {
+    @state(UInt64) amount = State<UInt64>()
+    @state(Field) totalClaims = State<Field>()
+
     events = {
         claim: FaucetClaimEvent,
         deposit: FaucetDepositEvent
     }
-
-    @state(UInt64)
-    amount = State<UInt64>()
-
-    @state(Field)
-    claimersRoot = State<Field>()
+    async approveBase(forest: AccountUpdateForest) {
+        forest.isEmpty().assertTrue("You can't approve any token operation")
+    }
 
     async deploy(args: FaucetDeployProps) {
-        await super.deploy(args)
+        await super.deploy()
         args.amount.assertGreaterThan(UInt64.zero, "Put a default amount")
         this.amount.set(args.amount)
 
-        // Initialize with empty merkle tree root
-        const emptyTreeRoot = new MerkleMap().getRoot()
-        this.claimersRoot.set(emptyTreeRoot)
+        this.totalClaims.set(Field(0))
 
         this.account.permissions.set({
             ...Permissions.default(),
@@ -69,10 +65,9 @@ export class Faucet extends SmartContract {
         senderUpdate.send({ to: this.address, amount })
 
         this.emitEvent('deposit', new FaucetDepositEvent({
-            eventId: Field("deposit"),
+            eventId: Field(0),
             depositor: this.sender.getUnconstrained(),
             amount,
-            timestamp: this.network.timestamp.getAndRequireEquals()
         }))
     }
 
@@ -81,22 +76,28 @@ export class Faucet extends SmartContract {
         const amount = this.amount.getAndRequireEquals()
         const sender = this.sender.getUnconstrained()
 
-        // Check if balance is sufficient
+        // Check if balance of MINA is sufficient
         const contractBalance = this.account.balance.getAndRequireEquals()
         contractBalance.assertGreaterThanOrEqual(amount, "Insufficient balance in faucet")
 
-        // For simplicity in testing, we'll track claims using events
-        // In a real implementation, you'd want proper state management for preventing double claims
+        // Check if the tracking token balance of the sender is 0
+        const senderToken = AccountUpdate.create(sender, this.deriveTokenId())
+        senderToken.account.balance.requireEquals(UInt64.zero)
+        // Update total claims counter
+        const currentClaims = this.totalClaims.getAndRequireEquals()
+        this.totalClaims.set(currentClaims.add(1))
 
-        // Send tokens to the claimer
-        this.send({ to: sender, amount })
+        // Send MINA tokens to the claimer
+        this.send({ to: sender, amount }) // This uses the standard MINA balance
 
-        // Emit the claim event
-        this.emitEvent('claim', new FaucetClaimEvent({
-            eventId: Field("claim"),
+        // If the user hasn't claimed, mint 1 unit of *this contract's own custom token* to their account
+        this.internal.mint({ address: sender, amount: UInt64.one })
+
+        // Emit the claim event - use a simple counter as timestamp
+        this.emitEventIf(senderToken.account.balance.get().equals(UInt64.zero), 'claim', new FaucetClaimEvent({
+            eventId: Field(1),
             claimer: sender,
-            amount,
-            timestamp: this.network.timestamp.getAndRequireEquals()
+            amount: amount,
         }))
     }
 }
