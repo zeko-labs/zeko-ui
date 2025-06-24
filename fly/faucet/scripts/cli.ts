@@ -64,18 +64,18 @@ const main = defineCommand({
     meta: {
         name: "zeko-faucet",
         version: "1.0.0",
-        description: "CLI to test and manage the Mina Faucet on zeko Testnet",
+        description: "CLI to deploy and manage the Mina Faucet on zeko Testnet",
     },
     args: {
         network: {
             type: "string",
-            description: "Can be mina:devnet, zeko:testnet, mina:mainnet, zeko:mainnet",
+            description: "One of mina:devnet, zeko:testnet, mina:mainnet, zeko:mainnet",
             default: "mina:devnet",
             required: true
         },
         fee: {
             type: "string",
-            description: "Transaction fee in nanomina (1 mina = 1e9 nanomina)",
+            description: "Transaction fee in MINA",
             default: "1",
             required: true
         }
@@ -99,7 +99,7 @@ const main = defineCommand({
             args: {
                 amount: {
                     type: "string",
-                    description: "New amount to set in the Faucet contract (in nanomina)",
+                    description: "New amount to set in MINA",
                     required: true
                 }
             },
