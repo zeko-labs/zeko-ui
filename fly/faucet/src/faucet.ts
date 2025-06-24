@@ -10,6 +10,7 @@ import {
 	fetchAccount
 } from "o1js"
 import { sequencerBaseUrl } from "./constants"
+import { Faucet } from "./zkapp"
 
 if (!process.env.ZEKO_FAUCET_SENDER_PRIVATE_KEY)
 	throw new Error("set ZEKO_FAUCET_SENDER_PRIVATE_KEY env var")
@@ -50,5 +51,25 @@ export async function sendPayment(address: string) {
 	})
 
 	const result = await tx.sign([privateKey]).send()
+	return result
+}
+
+const zkFaucetAddress = new PublicKey("zkFaucetAddress")
+// Replace with actual zkFaucet address
+export async function sendZkPayment(address: string) {
+	const zkFaucet = new Faucet(zkFaucetAddress)
+
+	const feePayer = {
+		sender: publicKey,
+		fee: 0.1 * 1e9,
+	} satisfies Mina.FeePayerSpec
+
+	const transaction = await Mina.transaction(feePayer, async () => {
+		AccountUpdate.fundNewAccount(feePayer.sender)
+		await zkFaucet.claim(PublicKey.fromBase58(address))
+	})
+
+	await transaction.prove()
+	const result = await transaction.sign([privateKey]).send()
 	return result
 }

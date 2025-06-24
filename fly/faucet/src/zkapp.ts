@@ -72,29 +72,28 @@ export class Faucet extends TokenContract {
     }
 
     @method
-    async claim() {
+    async claim(claimer: PublicKey) {
         const amount = this.amount.getAndRequireEquals()
-        const sender = this.sender.getUnconstrained()
 
         // Check if we have enough MINA
         const contractBalance = this.account.balance.getAndRequireEquals()
         contractBalance.assertGreaterThanOrEqual(amount, "Insufficient MINA balance in faucet")
 
-        // Check if the tracking token balance of the sender is 0 to prevent double claims
-        const senderToken = AccountUpdate.create(sender, this.deriveTokenId())
+        // Check if the tracking token balance of the claimer is 0 to prevent double claims
+        const senderToken = AccountUpdate.create(claimer, this.deriveTokenId())
         senderToken.account.balance.requireEquals(UInt64.zero)
 
         // Send MINA tokens to the claimer
-        this.send({ to: sender, amount })
+        this.send({ to: claimer, amount })
 
         // If the user hasn't claimed, mint 1 unit of the tracking token to their account
-        this.internal.mint({ address: sender, amount: UInt64.one })
+        this.internal.mint({ address: claimer, amount: UInt64.one })
 
         // Emit the claim event only if it's the first claim for the sender
         this.emitEventIf(senderToken.account.balance.get().equals(UInt64.zero), 'claim', new FaucetClaimEvent({
             eventId: Field(1),
-            claimer: sender,
-            amount: amount,
+            claimer,
+            amount,
         }))
     }
 

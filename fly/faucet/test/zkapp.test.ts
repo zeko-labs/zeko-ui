@@ -153,7 +153,7 @@ describe('Faucet Contract', () => {
 
             const txn = await Mina.transaction(user1Account, async () => {
                 AccountUpdate.fundNewAccount(user1Account)
-                await zkFaucet.claim()
+                await zkFaucet.claim(user1Account)
             })
             await txn.prove()
             await txn.sign([user1Key]).send()
@@ -177,7 +177,7 @@ describe('Faucet Contract', () => {
 
             const firstTxn = await Mina.transaction(user1Account, async () => {
                 AccountUpdate.fundNewAccount(user1Account)
-                await zkFaucet.claim()
+                await zkFaucet.claim(user1Account)
             })
             await firstTxn.prove()
             await firstTxn.sign([user1Key]).send()
@@ -185,7 +185,7 @@ describe('Faucet Contract', () => {
 
             await expect(async () => {
                 const secondTxn = await Mina.transaction(user1Account, async () => {
-                    await zkFaucet.claim()
+                    await zkFaucet.claim(user1Account)
                 })
                 await secondTxn.prove()
                 await secondTxn.sign([user1Key]).send()
@@ -209,7 +209,7 @@ describe('Faucet Contract', () => {
             // User 1 claims
             const txn1 = await Mina.transaction(user1Account, async () => {
                 AccountUpdate.fundNewAccount(user1Account)
-                await zkFaucet.claim()
+                await zkFaucet.claim(user1Account)
             })
             await txn1.prove()
             await txn1.sign([user1Key]).send()
@@ -217,7 +217,7 @@ describe('Faucet Contract', () => {
             // User 2 claims
             const txn2 = await Mina.transaction(user2Account, async () => {
                 AccountUpdate.fundNewAccount(user2Account)
-                await zkFaucet.claim()
+                await zkFaucet.claim(user2Account)
             })
             await txn2.prove()
             await txn2.sign([user2Key]).send()
@@ -252,7 +252,7 @@ describe('Faucet Contract', () => {
 
             await expect(async () => {
                 const txn = await Mina.transaction(user1Account, async () => {
-                    await newZkApp.claim()
+                    await newZkApp.claim(user1Account)
                 })
                 await txn.prove()
                 await txn.sign([user1Key]).send()
@@ -263,7 +263,7 @@ describe('Faucet Contract', () => {
             // First, user1 claims to get the tracking token
             const claimTxn = await Mina.transaction(user1Account, async () => {
                 AccountUpdate.fundNewAccount(user1Account)
-                await zkFaucet.claim()
+                await zkFaucet.claim(user1Account)
             })
             await claimTxn.prove()
             await claimTxn.sign([user1Key]).send()
@@ -291,6 +291,37 @@ describe('Faucet Contract', () => {
             const user1FinalTokenBalance = Mina.getBalance(user1Account, zkFaucet.deriveTokenId())
 
             expect(user1FinalTokenBalance).toEqual(UInt64.one)
+        })
+
+        it('should allow claiming on behalf of someone else', async () => {
+            // user1 will claim on behalf of user2
+            const initialUser2Balance = Mina.getBalance(user2Account)
+            const claimAmount = UInt64.from(100 * 10 ** 9)
+
+            // user1 initiates the transaction but claims for user2
+            const txn = await Mina.transaction(user1Account, async () => {
+                AccountUpdate.fundNewAccount(user1Account) // user1 pays for account creation
+                await zkFaucet.claim(user2Account) // but user2 receives the funds
+            })
+            await txn.prove()
+            await txn.sign([user1Key]).send()
+
+            // Check that user2 received the funds
+            const finalUser2Balance = Mina.getBalance(user2Account)
+            expect(finalUser2Balance.toBigInt() - initialUser2Balance.toBigInt()).toEqual(claimAmount.toBigInt())
+
+            // Verify user2 has the tracking token (to prevent double claims)
+            const user2TokenBalance = Mina.getBalance(user2Account, zkFaucet.deriveTokenId())
+            expect(user2TokenBalance).toEqual(UInt64.one)
+
+            // Check for claim event with correct claimer
+            const events = await zkFaucet.fetchEvents()
+            const claimEvents = events.filter(e => e.type === 'claim')
+            expect(claimEvents).toHaveLength(1)
+
+            const event = claimEvents[0].event.data as unknown as FaucetClaimEvent
+            expect(event.claimer.toBase58()).toEqual(user2Account.toBase58()) // Event should show user2 as claimer
+            expect(event.amount).toEqual(claimAmount)
         })
     })
 
