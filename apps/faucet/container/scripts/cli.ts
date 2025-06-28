@@ -2,13 +2,12 @@ import { archiveUrls, urls } from "@lumina-dex/sdk"
 import { defineCommand, runMain } from "citty"
 import { AccountUpdate, Mina, PrivateKey, UInt64 } from "o1js"
 import * as v from 'valibot'
-import { Faucet } from "../src/zkapp"
+import { Faucet } from "../zkapp"
 
 type FaucetArgs = {
     network: keyof typeof urls
     fee: string
 }
-
 
 const setup = ({ network, fee: _fee }: FaucetArgs) => {
     const Schema = v.object({

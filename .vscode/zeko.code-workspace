@@ -4,7 +4,7 @@
         "path": "../apps/ui",
       },
       {
-        "path": "../fly/faucet",
+        "path": "../apps/faucet",
       },
       {
         "path": "../apps/docs",

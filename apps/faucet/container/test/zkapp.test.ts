@@ -8,7 +8,7 @@ import {
 } from 'o1js'
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-import { Faucet, type FaucetClaimEvent, type FaucetDepositEvent } from '../src/zkapp'
+import { Faucet, type FaucetClaimEvent, type FaucetDepositEvent } from '../zkapp'
 
 describe('Faucet Contract', () => {
     const proofsEnabled = false
@@ -303,7 +303,7 @@ describe('Faucet Contract', () => {
                 AccountUpdate.fundNewAccount(user1Account) // user1 pays for account creation
                 await zkFaucet.claim(user2Account) // but user2 receives the funds
             })
-            await txn.prove()
+            await txn.prove() //On the client`
             await txn.sign([user1Key]).send()
 
             // Check that user2 received the funds

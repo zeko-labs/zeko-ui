@@ -19,11 +19,11 @@ RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential dumb-init pkg-config python-is-python3
 
 # Install node modules
-COPY bun.lock package.json ./
-RUN bun install
+COPY container/bun.lock container/package.json ./
+RUN bun install --production
 
 # Copy application code
-COPY . .
+COPY container/ .
 
 
 # Final stage for app image

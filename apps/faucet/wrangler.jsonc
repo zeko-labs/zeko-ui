@@ -1,0 +1,41 @@
+{
+	"$schema": "https://unpkg.com/wrangler@latest/config-schema.json",
+	"compatibility_date": "2025-04-08",
+	"name": "faucet",
+	"main": "src/index.ts",
+	"observability": {
+		"enabled": true
+	},
+	"vars": {
+		"ZEKO_FAUCET_SEND_AMOUNT": "10000000000"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "FAUCET_CLAIM",
+			"id": "02e09bc705f04bcf9123fb617cc221b1"
+		}
+	],
+	"containers": [
+		{
+			"max_instances": 10,
+			"name": "faucet-container",
+			"class_name": "Faucet",
+			"image": "./Dockerfile",
+			"instance_type": "standard"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "FAUCET",
+				"class_name": "Faucet"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["Faucet"]
+		}
+	]
+}
