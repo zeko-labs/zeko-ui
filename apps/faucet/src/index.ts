@@ -28,10 +28,10 @@ export default {
         // TODO: "getRandom" to be replaced with latency-aware routing in the near future
         console.log("Incoming request to the Faucet container")
         const { address } = await request.clone().json<{ address: string }>()
-        if (!address) return new Response("Address cannot be null", { status: 400 })
+        if (!address) return Response.json({ message: "Address cannot be null" }, { status: 400 })
 
         const lastClaim = await env.FAUCET_CLAIM.get(address)
-        if (lastClaim) return new Response(`Already claimed at ${lastClaim}`, { status: 403 })
+        if (lastClaim) return Response.json({ message: `Already claimed at ${lastClaim}` }, { status: 403 })
         const containerInstance = await getRandom(env.FAUCET, INSTANCE_COUNT)
         console.log(`Routing request to container instance: ${containerInstance.id}`)
         const response = await containerInstance.fetch(request)

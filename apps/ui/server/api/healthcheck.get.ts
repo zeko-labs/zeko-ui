@@ -1,8 +1,6 @@
-import { env } from "cloudflare:workers"
-
 export default defineEventHandler(async (event) => {
 	const auth = event.headers.get("Authorization")
-	const url = import.meta.dev ? useRuntimeConfig(event).faucetUrl : await env.STORE_FAUCET_URL.get()
+	const url = import.meta.dev ? useRuntimeConfig(event).faucetUrl : await event.context.cloudflare.env.STORE_FAUCET_URL.get()
 	if (!url) return new Response("Service is misconfigured.", { status: 500 })
 	if (auth !== url) return new Response(`Unauthorized header: ${auth}`, { status: 401 })
 	const sequencer = await fetch(
