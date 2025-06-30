@@ -1,5 +1,5 @@
 {
-	"$schema": "https://unpkg.com/wrangler@latest/config-schema.json",
+	"$schema": "node_modules/wrangler/config-schema.json",
 	"compatibility_date": "2025-04-08",
 	"name": "faucet",
 	"main": "src/index.ts",
@@ -13,6 +13,12 @@
 		{
 			"binding": "FAUCET_CLAIM",
 			"id": "02e09bc705f04bcf9123fb617cc221b1"
+		}
+	],
+	"routes": [
+		{
+			"pattern": "faucet.api.zeko.io",
+			"custom_domain": true
 		}
 	],
 	"containers": [

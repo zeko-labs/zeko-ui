@@ -24,26 +24,20 @@ export class Faucet extends Container<Env> {
 }
 
 export default {
-    //TODO: 
-    // - Rate Limiting
-    // - Authentication
-
     async fetch(request, env, ctx): Promise<Response> {
         // TODO: "getRandom" to be replaced with latency-aware routing in the near future
-        console.log("Incoming request to the Faucet container", request)
+        console.log("Incoming request to the Faucet container")
         const { address } = await request.clone().json<{ address: string }>()
         if (!address) return new Response("Address cannot be null", { status: 400 })
 
         const lastClaim = await env.FAUCET_CLAIM.get(address)
-        if (lastClaim) return new Response(`Already claimed at ${lastClaim}`, { status: 429 })
-
+        if (lastClaim) return new Response(`Already claimed at ${lastClaim}`, { status: 403 })
         const containerInstance = await getRandom(env.FAUCET, INSTANCE_COUNT)
         console.log(`Routing request to container instance: ${containerInstance.id}`)
         const response = await containerInstance.fetch(request)
 
         const data = await response.clone().json<{ message: string }>()
-        console.log(`Response from container ${containerInstance.id}:`, data)
-
+        console.log(`Response Status ${response.status} from container ${containerInstance.id}:`, data)
         if (data.message === "Successfully sent") {
             ctx.waitUntil(env.FAUCET_CLAIM.put(address, new Date().toISOString()))
             console.log(`Stored claim for address ${address} at ${new Date().toISOString()}`)

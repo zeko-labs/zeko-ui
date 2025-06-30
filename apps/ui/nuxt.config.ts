@@ -24,7 +24,6 @@ export default defineNuxtConfig({
 		// }
 	},
 	runtimeConfig: {
-		faucetUrl: process.env.FAUCET_URL,
 		public: {
 			telegram: "https://t.me/zekoprotocol",
 			discord: "https://discord.gg/vSDxqAchUY",

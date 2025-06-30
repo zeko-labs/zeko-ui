@@ -5,7 +5,7 @@
 		"deploy": "wrangler deploy",
 		"test": "vitest",
 		"zeko-faucet": "bun run scripts/cli.ts",
-		"cf-typegen": "wrangler types"
+		"type:cf": "wrangler types"
 	},
 	"main": "src/index.ts",
 	"type": "module",
