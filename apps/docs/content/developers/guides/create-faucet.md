@@ -1,0 +1,775 @@
+# Creating a MINA Faucet on Zeko
+
+> ⚠️ **Warning**: This guide is for educational purposes only. Do NOT deploy a faucet to mainnet as it gives away free MINA to anyone. Use only on testnets for learning purposes.
+
+## Overview
+
+A MINA faucet is a smart contract that distributes small amounts of MINA tokens to users for testing purposes. This tutorial will guide you through creating a complete faucet implementation using o1js and smart contracts on the Zeko protocol.
+
+This is an excellent exercise for developers looking to:
+
+- Learn how to write smart contracts with o1js
+- Understand token management and account tracking
+- Practice testing smart contracts
+- Build user interfaces for blockchain applications
+
+## Smart contract Architecture
+
+The faucet smart contract architecture needs to enable several important features:
+
+- Anyone can deposit MINA into the faucet
+- Anyone can claim only once
+- The faucet can update the amount of MINA available for claiming
+
+The difficulty lies in implementing a mechanism to prevent double spending :
+We use a trick : by extending the Faucet from `TokenContract`, we can use a tracking token to track whether a user has claimed or not. This way, we can prevent double claims by checking the balance of the tracking token. By setting approveBase and the account permissions properly, we can ensure that the tracking token cannot be transferred or used in any way other than to check if the user has claimed or not.
+Additionally we will emit events to enable observability and off-chain tracking of deposits and claims.
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- Basic knowledge of TypeScript
+- Familiarity with blockchain concepts
+- Node.js and Bun installed
+- Understanding of o1js fundamentals
+
+## Project Structure
+
+We'll create a faucet with the following structure:
+
+```
+faucet/
+├── package.json
+├── vitest.config.ts
+├── zkapp.ts          # Smart contract implementation
+└── test/
+    └── zkapp.test.ts  # Comprehensive test suite
+```
+
+## Step 1: Project Setup
+
+First, create a new project and install dependencies:
+
+```bash
+mkdir mina-faucet-tutorial
+cd mina-faucet-tutorial
+bun init -y
+```
+
+Install the required dependencies:
+
+```bash
+bun add o1js
+bun add -d vitest unplugin-swc @types/bun
+```
+
+## Step 2: Configure Testing Environment
+
+Create a `vitest.config.ts` file to configure our testing environment for o1js:
+
+```typescript
+import swc from "unplugin-swc"
+import { defineConfig } from "vitest/config"
+
+export default defineConfig({
+	test: {
+		globals: true,
+		testTimeout: 60_000, // 60 seconds timeout for o1js operations
+		hookTimeout: 60_000, // 60 seconds for setup/teardown
+		pool: "forks" // Use process isolation for o1js
+	},
+	plugins: [swc.vite()]
+})
+```
+
+Update your `package.json` to include test scripts:
+
+```json
+{
+	"scripts": {
+		"test": "vitest",
+		"test:watch": "vitest --watch"
+	},
+	"type": "module"
+}
+```
+
+## Step 3: Implement the Faucet Smart Contract
+
+Create `zkapp.ts` with the following implementation:
+
+```typescript
+import {
+	AccountUpdate,
+	Field,
+	Permissions,
+	PublicKey,
+	State,
+	Struct,
+	TokenContract,
+	UInt64,
+	method,
+	state
+} from "o1js"
+
+import type { AccountUpdateForest, DeployArgs } from "o1js"
+
+export interface FaucetDeployProps extends Exclude<DeployArgs, undefined> {
+	amount: UInt64
+}
+
+export class FaucetClaimEvent extends Struct({
+	eventId: Field,
+	claimer: PublicKey,
+	amount: UInt64
+}) {}
+
+export class FaucetDepositEvent extends Struct({
+	eventId: Field,
+	depositor: PublicKey,
+	amount: UInt64
+}) {}
+
+export class Faucet extends TokenContract {
+	@state(UInt64) amount = State<UInt64>()
+
+	events = {
+		claim: FaucetClaimEvent,
+		deposit: FaucetDepositEvent
+	}
+	async approveBase(forest: AccountUpdateForest) {
+		forest.isEmpty().assertTrue("You can't approve any token operation")
+	}
+
+	async deploy(args: FaucetDeployProps) {
+		await super.deploy()
+		args.amount.assertGreaterThan(UInt64.zero, "Put a default amount")
+
+		// Set the initial state of the contract
+		this.amount.set(args.amount)
+
+		// Set the permissions for the contract
+		this.account.permissions.set({
+			...Permissions.default(),
+			send: Permissions.proofOrSignature(),
+			setVerificationKey: Permissions.VerificationKey.none(),
+			setPermissions: Permissions.impossible()
+		})
+	}
+
+	@method
+	async deposit(amount: UInt64) {
+		amount.assertGreaterThan(
+			UInt64.zero,
+			"Deposit amount must be greater than zero"
+		)
+		const depositor = this.sender.getUnconstrained()
+		// Create account update for the sender to send MINA to the contract
+		const senderUpdate = AccountUpdate.createSigned(depositor)
+		senderUpdate.send({ to: this.address, amount })
+
+		this.emitEvent(
+			"deposit",
+			new FaucetDepositEvent({
+				eventId: Field(0),
+				depositor,
+				amount
+			})
+		)
+	}
+
+	@method
+	async claim(claimer: PublicKey) {
+		const amount = this.amount.getAndRequireEquals()
+
+		// Check if we have enough MINA
+		const contractBalance = this.account.balance.getAndRequireEquals()
+		contractBalance.assertGreaterThanOrEqual(
+			amount,
+			"Insufficient MINA balance in faucet"
+		)
+
+		// Check if the tracking token balance of the claimer is 0 to prevent double claims
+		const senderToken = AccountUpdate.create(claimer, this.deriveTokenId())
+		senderToken.account.balance.requireEquals(UInt64.zero)
+
+		// Send MINA tokens to the claimer
+		this.send({ to: claimer, amount })
+
+		// If the user hasn't claimed, mint 1 unit of the tracking token to their account
+		this.internal.mint({ address: claimer, amount: UInt64.one })
+
+		// Emit the claim event only if it's the first claim for the sender
+		this.emitEventIf(
+			senderToken.account.balance.get().equals(UInt64.zero),
+			"claim",
+			new FaucetClaimEvent({
+				eventId: Field(1),
+				claimer,
+				amount
+			})
+		)
+	}
+
+	@method
+	async updateAmount(newAmount: UInt64) {
+		newAmount.assertGreaterThan(
+			UInt64.zero,
+			"New amount must be greater than zero"
+		)
+
+		// Only the contract itself can update the amount (requires contract private key)
+		const sender = this.sender.getAndRequireSignature()
+		sender.assertEquals(this.address)
+
+		// Update the amount state
+		this.amount.set(newAmount)
+	}
+}
+```
+
+### Key Features Explained
+
+1. **TokenContract Base**: Extends TokenContract to manage both MINA and custom tracking tokens
+2. **Double-Claim Prevention**: Uses tracking tokens to ensure users can only claim once
+3. **Events**: Emits events for deposits and claims for off-chain tracking
+4. **Access Control**: The contract private key is required to update the faucet amount
+5. **Security**: Prevents token transfers through `approveBase` method and deploy permissions
+
+## Step 4: Comprehensive Test Suite
+
+Create `test/zkapp.test.ts` with comprehensive tests:
+
+```typescript
+import {
+	AccountUpdate,
+	Bool,
+	Mina,
+	PrivateKey,
+	type PublicKey,
+	UInt64
+} from "o1js"
+import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+
+import {
+	Faucet,
+	type FaucetClaimEvent,
+	type FaucetDepositEvent
+} from "../zkapp"
+
+describe("Faucet Contract", () => {
+	const proofsEnabled = false
+	let deployerAccount: PublicKey
+	let deployerKey: PrivateKey
+	let senderAccount: PublicKey
+	let senderKey: PrivateKey
+	let user1Account: PublicKey
+	let user1Key: PrivateKey
+	let user2Account: PublicKey
+	let user2Key: PrivateKey
+	let zkFaucetAddress: PublicKey
+	let zkFaucetPrivateKey: PrivateKey
+	let zkFaucet: Faucet
+
+	beforeAll(async () => {
+		if (proofsEnabled) await Faucet.compile()
+	})
+
+	beforeEach(async () => {
+		const Local = await Mina.LocalBlockchain({ proofsEnabled })
+		Mina.setActiveInstance(Local)
+		const createTestAccount = (n: number) => ({
+			privateKey: Local.testAccounts[n].key,
+			publicKey: Local.testAccounts[n]
+		})
+		// Get test accounts
+		const deployer = createTestAccount(0)
+		const sender = createTestAccount(1)
+		const user1 = createTestAccount(2)
+		const user2 = createTestAccount(3)
+
+		// Set accounts
+		deployerAccount = deployer.publicKey
+		deployerKey = deployer.privateKey
+		senderAccount = sender.publicKey
+		senderKey = sender.privateKey
+		user1Account = user1.publicKey
+		user1Key = user1.privateKey
+		user2Account = user2.publicKey
+		user2Key = user2.privateKey
+
+		// Create zkFaucet account
+		zkFaucetPrivateKey = PrivateKey.random()
+		zkFaucetAddress = zkFaucetPrivateKey.toPublicKey()
+		zkFaucet = new Faucet(zkFaucetAddress)
+	})
+
+	describe("Deploy", () => {
+		it("should deploy the contract with correct initial state", async () => {
+			const faucetAmount = UInt64.from(100 * 10 ** 9)
+
+			const txn = await Mina.transaction(deployerAccount, async () => {
+				AccountUpdate.fundNewAccount(deployerAccount, 1)
+				await zkFaucet.deploy({ amount: faucetAmount })
+			})
+			await txn.prove()
+			await txn.sign([deployerKey, zkFaucetPrivateKey]).send()
+
+			const amount = zkFaucet.amount.get()
+			expect(amount).toEqual(faucetAmount)
+		})
+
+		it("should fail to deploy with zero amount", async () => {
+			await expect(async () => {
+				const txn = await Mina.transaction(deployerAccount, async () => {
+					AccountUpdate.fundNewAccount(deployerAccount)
+					await zkFaucet.deploy({ amount: UInt64.zero })
+				})
+				await txn.prove()
+				await txn.sign([deployerKey, zkFaucetPrivateKey]).send()
+			}).rejects.toThrow()
+		})
+	})
+
+	describe("Deposit", () => {
+		beforeEach(async () => {
+			const faucetAmount = UInt64.from(1000)
+
+			const txn = await Mina.transaction(deployerAccount, async () => {
+				AccountUpdate.fundNewAccount(deployerAccount, 1)
+				await zkFaucet.deploy({ amount: faucetAmount })
+			})
+			await txn.prove()
+			await txn.sign([deployerKey, zkFaucetPrivateKey]).send()
+		})
+
+		it("should allow deposits and emit deposit event", async () => {
+			const depositAmount = UInt64.from(500)
+			const initialBalance = Mina.getBalance(zkFaucetAddress)
+
+			const txn = await Mina.transaction(senderAccount, async () => {
+				await zkFaucet.deposit(depositAmount)
+			})
+			await txn.prove()
+			await txn.sign([senderKey]).send()
+
+			const finalBalance = Mina.getBalance(zkFaucetAddress)
+			expect(finalBalance.sub(initialBalance)).toEqual(depositAmount)
+
+			// Check for deposit event
+			const events = await zkFaucet.fetchEvents()
+			const depositEvents = events.filter((e) => e.type === "deposit")
+			expect(depositEvents).toHaveLength(1)
+			const event = depositEvents[0].event.data as unknown as FaucetDepositEvent
+			expect(event.depositor.toBase58()).toEqual(senderAccount.toBase58())
+			expect(event.amount).toEqual(depositAmount)
+		})
+
+		it("should fail to deposit zero amount", async () => {
+			await expect(async () => {
+				const txn = await Mina.transaction(senderAccount, async () => {
+					await zkFaucet.deposit(UInt64.zero)
+				})
+				await txn.prove()
+				await txn.sign([senderKey]).send()
+			}).rejects.toThrow()
+		})
+	})
+
+	describe("Claim", () => {
+		beforeEach(async () => {
+			const faucetAmount = UInt64.from(100 * 10 ** 9)
+
+			// Deploy contract
+			const deployTxn = await Mina.transaction(deployerAccount, async () => {
+				AccountUpdate.fundNewAccount(deployerAccount, 1)
+				await zkFaucet.deploy({ amount: faucetAmount })
+			})
+			await deployTxn.prove()
+			await deployTxn.sign([deployerKey, zkFaucetPrivateKey]).send()
+
+			// Fund the contract
+			const depositAmount = UInt64.from(1000 * 10 ** 9)
+			const depositTxn = await Mina.transaction(senderAccount, async () => {
+				await zkFaucet.deposit(depositAmount)
+			})
+			await depositTxn.prove()
+			await depositTxn.sign([senderKey]).send()
+		})
+
+		it("should allow first-time claim and emit claim event", async () => {
+			const initialUserBalance = Mina.getBalance(user1Account)
+			const claimAmount = UInt64.from(100 * 10 ** 9)
+
+			const txn = await Mina.transaction(user1Account, async () => {
+				AccountUpdate.fundNewAccount(user1Account)
+				await zkFaucet.claim(user1Account)
+			})
+			await txn.prove()
+			await txn.sign([user1Key]).send()
+			const finalUserBalance = Mina.getBalance(user1Account)
+			// Check that the final balance is greater after paying fees
+			expect(
+				finalUserBalance.toBigInt() - initialUserBalance.toBigInt()
+			).toBeGreaterThan(0)
+
+			// Check for claim event
+			const events = await zkFaucet.fetchEvents()
+			const claimEvents = events.filter((e) => e.type === "claim")
+			expect(claimEvents).toHaveLength(1)
+
+			const event = claimEvents[0].event.data as unknown as FaucetClaimEvent
+			expect(event.claimer.toBase58()).toEqual(user1Account.toBase58())
+			expect(event.amount).toEqual(claimAmount)
+		})
+
+		it("should prevent double claiming from same user", async () => {
+			// First claim should succeed
+			const initialUserBalance = Mina.getBalance(user1Account)
+
+			const firstTxn = await Mina.transaction(user1Account, async () => {
+				AccountUpdate.fundNewAccount(user1Account)
+				await zkFaucet.claim(user1Account)
+			})
+			await firstTxn.prove()
+			await firstTxn.sign([user1Key]).send()
+			const firstClaimUserBalance = Mina.getBalance(user1Account)
+
+			await expect(async () => {
+				const secondTxn = await Mina.transaction(user1Account, async () => {
+					await zkFaucet.claim(user1Account)
+				})
+				await secondTxn.prove()
+				await secondTxn.sign([user1Key]).send()
+			}).rejects.toThrow()
+
+			const secondClaimUserBalance = Mina.getBalance(user1Account)
+
+			expect(secondClaimUserBalance.toBigInt()).toEqual(
+				firstClaimUserBalance.toBigInt()
+			)
+			expect(
+				firstClaimUserBalance.toBigInt() - initialUserBalance.toBigInt()
+			).toBeGreaterThan(0)
+
+			// Check that both claims created events
+			const events = await zkFaucet.fetchEvents()
+			const claimEvents = events.filter((e) => e.type === "claim")
+			expect(claimEvents).toHaveLength(1)
+		})
+
+		it("should allow different users to claim", async () => {
+			const initialUser1Balance = Mina.getBalance(user1Account)
+			const initialUser2Balance = Mina.getBalance(user2Account)
+
+			// User 1 claims
+			const txn1 = await Mina.transaction(user1Account, async () => {
+				AccountUpdate.fundNewAccount(user1Account)
+				await zkFaucet.claim(user1Account)
+			})
+			await txn1.prove()
+			await txn1.sign([user1Key]).send()
+
+			// User 2 claims
+			const txn2 = await Mina.transaction(user2Account, async () => {
+				AccountUpdate.fundNewAccount(user2Account)
+				await zkFaucet.claim(user2Account)
+			})
+			await txn2.prove()
+			await txn2.sign([user2Key]).send()
+
+			const finalUser1Balance = Mina.getBalance(user1Account)
+			const finalUser2Balance = Mina.getBalance(user2Account)
+
+			expect(
+				finalUser1Balance.toBigInt() - initialUser1Balance.toBigInt()
+			).toBeGreaterThan(0)
+			expect(
+				finalUser2Balance.toBigInt() - initialUser2Balance.toBigInt()
+			).toBeGreaterThan(0)
+
+			// Check for both claim events
+			const events = await zkFaucet.fetchEvents()
+			const claimEvents = events.filter((e) => e.type === "claim")
+			expect(claimEvents).toHaveLength(2)
+		})
+
+		it("should fail to claim when contract has insufficient balance", async () => {
+			// Deploy a new contract with small amount and no additional deposits
+			const smallAmount = UInt64.from(100)
+			const newZkAppPrivateKey = PrivateKey.random()
+			const newZkAppAddress = newZkAppPrivateKey.toPublicKey()
+			const newZkApp = new Faucet(newZkAppAddress)
+
+			const deployTxn = await Mina.transaction(deployerAccount, async () => {
+				AccountUpdate.fundNewAccount(deployerAccount, 1)
+				await newZkApp.deploy({ amount: smallAmount })
+			})
+			await deployTxn.prove()
+			await deployTxn.sign([deployerKey, newZkAppPrivateKey]).send()
+
+			// Don't fund the contract, so it has zero balance but wants to give 100
+
+			await expect(async () => {
+				const txn = await Mina.transaction(user1Account, async () => {
+					await newZkApp.claim(user1Account)
+				})
+				await txn.prove()
+				await txn.sign([user1Key]).send()
+			}).rejects.toThrow()
+		})
+
+		it("should prevent transfer of internal tracking token between users", async () => {
+			// First, user1 claims to get the tracking token
+			const claimTxn = await Mina.transaction(user1Account, async () => {
+				AccountUpdate.fundNewAccount(user1Account)
+				await zkFaucet.claim(user1Account)
+			})
+			await claimTxn.prove()
+			await claimTxn.sign([user1Key]).send()
+
+			// Verify user1 has the tracking token (balance = 1)
+			const user1TokenBalance = Mina.getBalance(
+				user1Account,
+				zkFaucet.deriveTokenId()
+			)
+			expect(user1TokenBalance).toEqual(UInt64.one)
+
+			// Try to transfer the tracking token from user1 to user2 - this should fail
+			// because the contract's approveBase method prevents any token operations
+			await expect(async () => {
+				const transferTxn = await Mina.transaction(user1Account, async () => {
+					AccountUpdate.fundNewAccount(user1Account, 1) // Fund for new token account creation
+					const user1Update = AccountUpdate.createSigned(
+						user1Account,
+						zkFaucet.deriveTokenId()
+					)
+					const user2Update = AccountUpdate.create(
+						user2Account,
+						zkFaucet.deriveTokenId()
+					)
+
+					user1Update.send({ to: user2Update, amount: UInt64.one })
+					user2Update.account.isNew.requireEquals(Bool(true))
+				})
+				await transferTxn.prove()
+				await transferTxn.sign([user1Key]).send()
+			}).rejects.toThrow()
+
+			// Verify balances remain unchanged after failed transfer
+			const user1FinalTokenBalance = Mina.getBalance(
+				user1Account,
+				zkFaucet.deriveTokenId()
+			)
+
+			expect(user1FinalTokenBalance).toEqual(UInt64.one)
+		})
+
+		it("should allow claiming on behalf of someone else", async () => {
+			// user1 will claim on behalf of user2
+			const initialUser2Balance = Mina.getBalance(user2Account)
+			const claimAmount = UInt64.from(100 * 10 ** 9)
+
+			// user1 initiates the transaction but claims for user2
+			const txn = await Mina.transaction(user1Account, async () => {
+				AccountUpdate.fundNewAccount(user1Account) // user1 pays for account creation
+				await zkFaucet.claim(user2Account) // but user2 receives the funds
+			})
+			await txn.prove() //On the client`
+			await txn.sign([user1Key]).send()
+
+			// Check that user2 received the funds
+			const finalUser2Balance = Mina.getBalance(user2Account)
+			expect(
+				finalUser2Balance.toBigInt() - initialUser2Balance.toBigInt()
+			).toEqual(claimAmount.toBigInt())
+
+			// Verify user2 has the tracking token (to prevent double claims)
+			const user2TokenBalance = Mina.getBalance(
+				user2Account,
+				zkFaucet.deriveTokenId()
+			)
+			expect(user2TokenBalance).toEqual(UInt64.one)
+
+			// Check for claim event with correct claimer
+			const events = await zkFaucet.fetchEvents()
+			const claimEvents = events.filter((e) => e.type === "claim")
+			expect(claimEvents).toHaveLength(1)
+
+			const event = claimEvents[0].event.data as unknown as FaucetClaimEvent
+			expect(event.claimer.toBase58()).toEqual(user2Account.toBase58()) // Event should show user2 as claimer
+			expect(event.amount).toEqual(claimAmount)
+		})
+	})
+
+	describe("Contract Balance Transfer", () => {
+		beforeEach(async () => {
+			const faucetAmount = UInt64.from(100 * 10 ** 9)
+
+			// Deploy contract
+			const deployTxn = await Mina.transaction(deployerAccount, async () => {
+				AccountUpdate.fundNewAccount(deployerAccount, 1)
+				await zkFaucet.deploy({ amount: faucetAmount })
+			})
+			await deployTxn.prove()
+			await deployTxn.sign([deployerKey, zkFaucetPrivateKey]).send()
+
+			// Fund the contract with a substantial amount
+			const depositAmount = UInt64.from(1000 * 10 ** 9)
+			const depositTxn = await Mina.transaction(senderAccount, async () => {
+				await zkFaucet.deposit(depositAmount)
+			})
+			await depositTxn.prove()
+			await depositTxn.sign([senderKey]).send()
+		})
+
+		it("should transfer entire MINA balance to another wallet using contract private key", async () => {
+			// Get initial balances
+			const initialContractBalance = Mina.getBalance(zkFaucetAddress)
+			const initialUser1Balance = Mina.getBalance(user1Account)
+
+			// Transfer the entire contract balance to user1 using the contract's private key
+			const txn = await Mina.transaction(deployerAccount, async () => {
+				const contractUpdate = AccountUpdate.createSigned(zkFaucetAddress)
+
+				// Transfer the entire balance (minus fees) to user1
+				contractUpdate.send({
+					to: user1Account,
+					amount: initialContractBalance
+				})
+			})
+			await txn.prove()
+			await txn.sign([deployerKey, zkFaucetPrivateKey]).send()
+
+			// Verify the transfer
+			const finalContractBalance = Mina.getBalance(zkFaucetAddress)
+			const finalUser1Balance = Mina.getBalance(user1Account)
+
+			// Contract should have zero balance (or minimal amount due to account minimum)
+			expect(finalContractBalance.toBigInt()).toBeLessThan(
+				initialContractBalance.toBigInt()
+			)
+
+			// User1 should have received the transferred amount
+			const transferredAmount = finalUser1Balance.sub(initialUser1Balance)
+			expect(transferredAmount.toBigInt()).toBeGreaterThan(0)
+
+			// The transferred amount should approximately equal the initial contract balance
+			// (allowing for some difference due to fees and account minimums)
+			expect(transferredAmount.toBigInt()).toBeGreaterThan(
+				(initialContractBalance.toBigInt() * BigInt(90)) / BigInt(100)
+			)
+		})
+	})
+
+	describe("Update Amount", () => {
+		beforeEach(async () => {
+			const faucetAmount = UInt64.from(100 * 10 ** 9)
+
+			// Deploy contract
+			const deployTxn = await Mina.transaction(deployerAccount, async () => {
+				AccountUpdate.fundNewAccount(deployerAccount, 1)
+				await zkFaucet.deploy({ amount: faucetAmount })
+			})
+			await deployTxn.prove()
+			await deployTxn.sign([deployerKey, zkFaucetPrivateKey]).send()
+		})
+
+		it("should allow contract owner to update amount using contract private key", async () => {
+			const initialAmount = zkFaucet.amount.get()
+			const newAmount = UInt64.from(200 * 10 ** 9)
+
+			// Update amount using contract private key
+			const txn = await Mina.transaction(zkFaucetAddress, async () => {
+				await zkFaucet.updateAmount(newAmount)
+			})
+			await txn.prove()
+			await txn.sign([zkFaucetPrivateKey]).send()
+
+			// Verify the amount was updated
+			const updatedAmount = zkFaucet.amount.get()
+			expect(updatedAmount).toEqual(newAmount)
+			expect(updatedAmount).not.toEqual(initialAmount)
+		})
+
+		it("should fail when non-owner tries to update amount", async () => {
+			const newAmount = UInt64.from(200 * 10 ** 9)
+
+			// Try to update amount from a different account (should fail)
+			await expect(async () => {
+				const txn = await Mina.transaction(user1Account, async () => {
+					await zkFaucet.updateAmount(newAmount)
+				})
+				await txn.prove()
+				await txn.sign([user1Key]).send()
+			}).rejects.toThrow()
+
+			// Verify the amount was not changed
+			const unchangedAmount = zkFaucet.amount.get()
+			expect(unchangedAmount).toEqual(UInt64.from(100 * 10 ** 9)) // Should still be the initial amount
+		})
+
+		it("should fail when trying to update amount to zero", async () => {
+			await expect(async () => {
+				const txn = await Mina.transaction(zkFaucetAddress, async () => {
+					await zkFaucet.updateAmount(UInt64.zero)
+				})
+				await txn.prove()
+				await txn.sign([zkFaucetPrivateKey]).send()
+			}).rejects.toThrow()
+
+			// Verify the amount was not changed
+			const unchangedAmount = zkFaucet.amount.get()
+			expect(unchangedAmount).toEqual(UInt64.from(100 * 10 ** 9)) // Should still be the initial amount
+		})
+	})
+})
+```
+
+## Step 5: Running the Tests
+
+Run your test suite to verify everything works correctly:
+
+```bash
+bun test
+```
+
+You should see all tests passing, confirming that:
+
+- ✅ Contract deploys correctly
+- ✅ Users can deposit MINA to fund the faucet
+- ✅ Users can claim MINA (only once per user)
+- ✅ Double claims are prevented
+- ✅ Events are emitted correctly
+- ✅ Access control works properly
+
+## Step 6: Key Learning Outcomes
+
+By completing this tutorial, you've learned:
+
+### Smart Contract Development
+
+- **Token Management**: How to work with both MINA and custom tokens
+- **State Management**: Using on-chain state to track faucet configuration
+- **Access Control**: Implementing owner-only functions
+- **Event Emission**: Creating events for off-chain tracking
+
+### Security Patterns
+
+- **Double-Claim Prevention**: Using tracking tokens to prevent abuse
+- **Balance Validation**: Ensuring sufficient funds before operations
+- **Permission Systems**: Restricting sensitive operations
+
+### Testing Best Practices
+
+- **Comprehensive Coverage**: Testing all contract methods and edge cases
+- **Local Blockchain**: Using Mina's local blockchain for testing
+- **Account Management**: Working with multiple test accounts
+- **Event Verification**: Testing that events are emitted correctly
+
+## Conclusion
+
+You've successfully built a complete MINA faucet smart contract with comprehensive tests. This project demonstrates fundamental smart contract patterns and provides a solid foundation for more advanced Zeko protocol development.
+
+The faucet showcases important concepts like token management, access control, event emission, and security patterns that are essential for building robust decentralized applications on the Mina Protocol using Zeko.

@@ -86,6 +86,7 @@ export default defineConfig({
 						text: 'Guides & Tutorials', link: '/developers/guides-tutorials', collapsed: true,
 						items: [
 							{ text: "Custom Network", link: '/developers/guides/custom-network' },
+							{ text: "Creating a Faucet", link: '/developers/guides/create-faucet' },
 						]
 					},
 					{ text: 'Examples & Boilerplates', link: '/developers/examples-boilerplates' },

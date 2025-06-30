@@ -56,9 +56,6 @@ export async function sendPayment({ address, privateKey, amount, publicKey }: {
 		sender.requireSignature()
 		receiver.balanceChange = Int64.create(amount64, Sign.one)
 		receiver.body.implicitAccountCreationFee = new Bool(true)
-		// receiver.body.preconditions.account.balance.isSome = new Bool(true)
-		// receiver.body.preconditions.account.balance.value.lower = UInt64.zero
-		// receiver.body.preconditions.account.balance.value.upper = amount64.sub(1)
 	})
 
 	const result = await tx.sign([privateKey]).send()

@@ -4,23 +4,22 @@ import { sequencerBaseUrl } from "./constants"
 import { sendPayment } from "./faucet"
 
 if (!process.env.ZEKO_FAUCET_SENDER_PRIVATE_KEY)
-	throw new Error("set ZEKO_FAUCET_SENDER_PRIVATE_KEY env var")
-
-const privateKey = PrivateKey.fromBase58(process.env.ZEKO_FAUCET_SENDER_PRIVATE_KEY)
-const network = Mina.Network(sequencerBaseUrl)
-Mina.setActiveInstance(network)
-
+	throw new Error("set ZEKO_FAUCET_SENDER_PRIVATE_KEY")
 if (!process.env.ZEKO_FAUCET_SEND_AMOUNT) throw new Error("set ZEKO_FAUCET_SEND_AMOUNT")
 
-const amount = BigInt(process.env.ZEKO_FAUCET_SEND_AMOUNT)
+const privateKey = PrivateKey.fromBase58(process.env.ZEKO_FAUCET_SENDER_PRIVATE_KEY)
 const publicKey = privateKey.toPublicKey()
+const amount = BigInt(process.env.ZEKO_FAUCET_SEND_AMOUNT)
+
+const network = Mina.Network(sequencerBaseUrl)
+Mina.setActiveInstance(network)
 
 const app = new Hono()
 
 app.post("/", async (c) => {
 	try {
 		const { address } = await c.req.json<{ address: string }>()
-		if (!address) return c.text("Address cannot be null", 400)
+		if (!address) return c.json({ message: "Address cannot be null" }, 400)
 		const result = await sendPayment({ address, privateKey, amount, publicKey })
 		return c.json({ message: "Successfully sent", data: result.data, hash: result.hash }, 200)
 	} catch (error) {
