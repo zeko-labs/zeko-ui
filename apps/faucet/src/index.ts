@@ -23,25 +23,34 @@ export class Faucet extends Container<Env> {
     }
 }
 
+const validateBody = (body: unknown): body is { address: string } => {
+    return typeof body === 'object' && body !== null && 'address' in body && typeof body.address === 'string' && body.address.length > 0
+}
+
 export default {
     async fetch(request, env, ctx): Promise<Response> {
-        // TODO: "getRandom" to be replaced with latency-aware routing in the near future
-        console.log("Incoming request to the Faucet container")
-        const { address } = await request.clone().json<{ address: string }>()
-        if (!address) return Response.json({ message: "Address cannot be null" }, { status: 400 })
+        try {
+            console.log("Incoming request to the Faucet container")
+            const body = await request.clone().json()
+            if (!validateBody(body)) return Response.json({ message: "Address cannot be null" }, { status: 400 })
+            const { address } = body
+            const lastClaim = await env.FAUCET_CLAIM.get(address)
+            if (lastClaim) return Response.json({ message: `Already claimed at ${lastClaim}` }, { status: 403 })
+            // TODO: "getRandom" to be replaced with latency-aware routing in the near future
+            const containerInstance = await getRandom(env.FAUCET, INSTANCE_COUNT)
+            console.log(`Routing request to container instance: ${containerInstance.id}`)
+            const response = await containerInstance.fetch(request)
 
-        const lastClaim = await env.FAUCET_CLAIM.get(address)
-        if (lastClaim) return Response.json({ message: `Already claimed at ${lastClaim}` }, { status: 403 })
-        const containerInstance = await getRandom(env.FAUCET, INSTANCE_COUNT)
-        console.log(`Routing request to container instance: ${containerInstance.id}`)
-        const response = await containerInstance.fetch(request)
-
-        const data = await response.clone().json<{ message: string }>()
-        console.log(`Response Status ${response.status} from container ${containerInstance.id}:`, data)
-        if (data.message === "Successfully sent") {
-            ctx.waitUntil(env.FAUCET_CLAIM.put(address, new Date().toISOString()))
-            console.log(`Stored claim for address ${address} at ${new Date().toISOString()}`)
+            const data = await response.clone().json<{ message: string }>()
+            console.log(`Response Status ${response.status} from container ${containerInstance.id}:`, data)
+            if (data.message === "Successfully sent") {
+                ctx.waitUntil(env.FAUCET_CLAIM.put(address, new Date().toISOString()))
+                console.log(`Stored claim for address ${address} at ${new Date().toISOString()}`)
+            }
+            return response
+        } catch (error) {
+            console.error("Error processing request in Faucet container:", error)
+            return Response.json({ message: "An error occurred while processing your request." }, { status: 500 })
         }
-        return response
     },
 } satisfies ExportedHandler<Env>

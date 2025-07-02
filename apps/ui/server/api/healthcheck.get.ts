@@ -13,7 +13,5 @@ export default defineEventHandler(async (event) => {
 		}
 	)
 	if (!sequencer.ok) return new Response("The sequencer is not available.", { status: 502 })
-	const faucet = await fetch(`${url}healthcheck`)
-	if (!faucet.ok) return new Response("The faucet is not available.", { status: 502 })
 	return new Response("OK", { status: 200 })
 })
