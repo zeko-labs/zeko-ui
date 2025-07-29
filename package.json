@@ -1,0 +1,31 @@
+{
+    "name": "bridge-sdk",
+    "version": "1.0.0",
+    "description": "Zeko bridge SDK",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "clean": "rm -rf dist",
+        "example": "node dist/examples/demo.js"
+    },
+    "keywords": [
+        "typescript",
+        "library"
+    ],
+    "author": "Martin Ondejka <martin.ondejka@zeko.io>",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^20.8.10",
+        "prettier": "^3.0.3",
+        "typescript": "^5.2.2"
+    },
+    "files": [
+        "dist"
+    ],
+    "repository": {
+        "type": "git",
+        "url": ""
+    }
+}
