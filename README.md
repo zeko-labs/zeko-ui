@@ -1,15 +1,6 @@
 # Bridge SDK
 
-A TypeScript library with Prettier formatting and comprehensive tooling.
-
-## Features
-
-- 🚀 TypeScript with strict configuration
-- 💅 Prettier code formatting
-- 🔍 ESLint linting with TypeScript support
-- 🧪 Jest testing framework
-- 📦 Ready for npm publishing
-- 🛠️ Comprehensive build scripts
+A TypeScript SDK for interacting with the Zeko bridge, enabling deposits and withdrawals between Mina (L1) and Zeko (L2).
 
 ## Installation
 
@@ -17,109 +8,96 @@ A TypeScript library with Prettier formatting and comprehensive tooling.
 npm install
 ```
 
-## Development
-
-### Available Scripts
-
-- `npm run build` - Build the library
-- `npm run dev` - Watch mode for development
-- `npm run clean` - Clean build directory
-- `npm run format` - Format code with Prettier
-- `npm run format:check` - Check code formatting
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Fix ESLint issues
-- `npm test` - Run tests
-- `npm run test:watch` - Run tests in watch mode
-
-### Project Structure
-
-```
-src/
-├── index.ts          # Main entry point
-├── types.ts          # TypeScript type definitions
-├── utils.ts          # Utility functions
-└── __tests__/        # Test files
-    └── index.test.ts
-```
-
-## Usage
-
-```typescript
-import { greet, Calculator, debounce, generateId } from 'bridge-sdk';
-
-// Use the greeting function
-const message = greet('World'); // "Hello, World!"
-
-// Use the calculator
-const calc = new Calculator();
-const result = calc.add(5, 3); // 8
-
-// Use utility functions
-const debouncedFn = debounce(() => console.log('Debounced!'), 1000);
-const id = generateId(10); // Random 10-character string
-```
-
-## Configuration
-
-### Prettier
-
-The project uses Prettier for code formatting with the following configuration:
-
-- Single quotes
-- 2 spaces indentation
-- 80 character line width
-- Trailing commas in ES5 mode
-- Semicolons enabled
-
-### TypeScript
-
-Strict TypeScript configuration with:
-
-- ES2020 target
-- CommonJS modules
-- Declaration files generation
-- Source maps enabled
-- Strict type checking
-
-### ESLint
-
-ESLint configuration with:
-
-- TypeScript support
-- Prettier integration
-- Recommended rules
-- Custom rule overrides
-
-## Testing
-
-Tests are written using Jest and TypeScript. Run tests with:
-
-```bash
-npm test
-```
-
-## Building
-
-Build the library for production:
+## Build
 
 ```bash
 npm run build
 ```
 
-This will:
-1. Clean the dist directory
-2. Compile TypeScript to JavaScript
-3. Generate declaration files
-4. Create source maps
+## Usage
 
-## Publishing
+### Initialize the Bridge
 
-The library is configured for npm publishing with:
+```typescript
+import { Bridge } from "bridge-sdk";
 
-- Main entry point: `dist/index.js`
-- TypeScript declarations: `dist/index.d.ts`
-- Only `dist` directory included in package
+const bridge = await Bridge.init({
+  l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
+  l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
+  zekoUrl: "https://testnet.zeko.io/graphql",
+  l1Network: "testnet",
+  l2Network: "testnet",
+});
+```
+
+### Submit a Deposit
+
+```typescript
+import { PrivateKey, UInt32, UInt64 } from "o1js";
+
+const signer = PrivateKey.fromBase58(process.env.MINA_PRIVATE_KEY);
+const recipient = signer.toPublicKey();
+
+const txn = await bridge.submitDeposit(
+  { sender: recipient, fee: 0.1 * 10e8 },
+  {
+    recipient,
+    amount: UInt64.from(10 * 10e8),
+    timeout: UInt32.MAXINT(),
+    holderAccountL1: bridge.outerHolders[0],
+  }
+);
+
+const result = await txn.sign([signer]).send();
+```
+
+### Submit a Withdrawal
+
+```typescript
+const txn = await bridge.submitWithdrawal(
+  { sender: recipient, fee: 0.1 * 10e8 },
+  {
+    recipient,
+    amount: UInt64.from(5 * 10e8),
+  }
+);
+
+const result = await txn.sign([signer]).send();
+```
+
+### Finalize Operations
+
+```typescript
+// Finalize a deposit
+await bridge.finalizeDeposit(recipient);
+
+// Finalize a withdrawal
+await bridge.finalizeWithdrawal(
+  recipient,
+  { sender: recipient, fee: 0.1 * 10e8 },
+  bridge.outerHolders[0]
+);
+```
+
+## Examples
+
+Run the example scripts:
+
+```bash
+npm run submitDeposit
+npm run finalizeDeposit
+npm run submitWithdrawal
+npm run finalizeWithdrawal
+npm run fetchOuterActions
+npm run fetchInnerActions
+```
+
+## Development
+
+```bash
+npm run dev      # Watch mode
+```
 
 ## License
 
-MIT 
+MIT
