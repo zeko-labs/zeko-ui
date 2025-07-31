@@ -16,11 +16,12 @@ import {
   UInt64,
 } from "o1js";
 import {
-  AccountQuery,
   accountQuery,
+  AccountQuery,
   FetchConfigQuery,
   fetchConfigQuery,
   finalizeDepositMutation,
+  finalizeWithdrawalMutation,
   GenesisConstants,
   genesisConstantsQuery,
   ProvedForest,
@@ -30,15 +31,18 @@ import {
   SequencerPkQuery,
   sequencerPkQuery,
   submitDepositMutation,
+  submitWithdrawalMutation,
 } from "./queries";
 import {
   Account,
   Config,
+  InnerAction,
+  InnerWitness,
   OuterAction,
   OuterCommit,
   OuterWitness,
 } from "./types";
-import { Actions, depositAux, fetchActions } from "./utils";
+import { Actions, depositAux, fetchActions, withdrawalAux } from "./utils";
 
 export class Bridge {
   constructor(
@@ -134,7 +138,7 @@ export class Bridge {
     );
   }
 
-  private setL1() {
+  public setL1() {
     Mina.setActiveInstance(
       Mina.Network({
         mina: this.config.l1Url,
@@ -144,7 +148,7 @@ export class Bridge {
     );
   }
 
-  private setL2() {
+  public setL2() {
     Mina.setActiveInstance(
       Mina.Network({
         mina: this.config.zekoUrl,
@@ -152,6 +156,38 @@ export class Bridge {
         networkId: this.config.l2Network,
       })
     );
+  }
+
+  async fetchCurrentSlot() {
+    const {
+      data: { runtimeConfig },
+    } = await this.l1Client.query<RuntimeConfig>({
+      query: runtimeConfigQuery,
+    });
+
+    const currentTimestamp = Date.now() / 1000;
+    const forkSlot = runtimeConfig.proof.fork.global_slot_since_genesis;
+    const genesisTimestamp =
+      Date.parse(runtimeConfig.genesis.genesis_state_timestamp) / 1000;
+
+    return UInt32.from(
+      Math.floor(forkSlot + (currentTimestamp - genesisTimestamp) / 180)
+    );
+  }
+
+  async fetchAccount(
+    client: ApolloClient<NormalizedCacheObject>,
+    pk: PublicKey,
+    tokenId?: Field
+  ) {
+    const {
+      data: { account },
+    } = await client.query<AccountQuery>({
+      query: accountQuery,
+      variables: { pk, tokenId: tokenId ? TokenId.toBase58(tokenId) : null },
+    });
+
+    return account;
   }
 
   async fetchOuterActions(
@@ -164,15 +200,37 @@ export class Bridge {
       if (action[0].equals(0).toBoolean()) {
         return {
           type: "commit",
+          ledger: action[1],
+          innerActionState: action[2],
+          innerActionStateLength: UInt32.fromFields([action[3]]),
+          synchronizedOuterActionState: action[4],
+          synchronizedOuterActionStateLength: UInt32.fromFields([action[5]]),
           action: { beforeActionState, afterActionState, action },
         };
-      } else {
+      } else if (action[0].equals(1).toBoolean()) {
         return {
           type: "witness",
           aux: action[1],
           action: { beforeActionState, afterActionState, action },
         };
-      }
+      } else throw new Error("Invalid outer action type");
+    });
+  }
+
+  async fetchInnerActions(
+    pk: PublicKey,
+    actionStates?: Mina.ActionStates
+  ): Promise<InnerAction[]> {
+    const actions = await fetchActions(this.l2Client, pk, actionStates);
+
+    return actions.map(({ beforeActionState, afterActionState, action }) => {
+      if (action[0].equals(0).toBoolean()) {
+        return {
+          type: "witness",
+          aux: action[1],
+          action: { beforeActionState, afterActionState, action },
+        };
+      } else throw new Error("Invalid inner action type");
     });
   }
 
@@ -209,23 +267,6 @@ export class Bridge {
 
     return (JSON.parse(provedForest) as Types.Json.AccountUpdate[]).map(
       AccountUpdate.fromJSON
-    );
-  }
-
-  async fetchCurrentSlot() {
-    const {
-      data: { runtimeConfig },
-    } = await this.l1Client.query<RuntimeConfig>({
-      query: runtimeConfigQuery,
-    });
-
-    const currentTimestamp = Date.now() / 1000;
-    const forkSlot = runtimeConfig.proof.fork.global_slot_since_genesis;
-    const genesisTimestamp =
-      Date.parse(runtimeConfig.genesis.genesis_state_timestamp) / 1000;
-
-    return UInt32.from(
-      Math.floor(forkSlot + (currentTimestamp - genesisTimestamp) / 180)
     );
   }
 
@@ -273,10 +314,10 @@ export class Bridge {
   }
 
   async findDeposits(pk: PublicKey) {
-    const outerActions = await fetchActions(this.l1ArchiveClient, pk);
+    const userOuterActions = await fetchActions(this.l1ArchiveClient, pk);
     const currentSlot = await this.fetchCurrentSlot();
 
-    return outerActions
+    return userOuterActions
       .map(({ beforeActionState, afterActionState, action }) => {
         const [
           recipient1,
@@ -342,21 +383,6 @@ export class Bridge {
     }[];
   }
 
-  async fetchAccount(
-    client: ApolloClient<NormalizedCacheObject>,
-    pk: PublicKey,
-    tokenId?: Field
-  ) {
-    const {
-      data: { account },
-    } = await client.query<AccountQuery>({
-      query: accountQuery,
-      variables: { pk, tokenId: tokenId ? TokenId.toBase58(tokenId) : null },
-    });
-
-    return account;
-  }
-
   async getNextDepositIndex(helperAccount: Account) {
     const nextDepositIndex = helperAccount.zkappState?.at(0);
     return UInt32.from(nextDepositIndex ?? 0);
@@ -387,7 +413,7 @@ export class Bridge {
     const outerActions = await this.fetchOuterActions(this.outerPk);
 
     const deposits = (await this.findDeposits(pk)).map(deposit => ({
-      deposit: deposit,
+      deposit,
       aux: depositAux(deposit),
     }));
 
@@ -500,6 +526,199 @@ export class Bridge {
     );
 
     txn.transaction.accountUpdates.push(...depositForest);
+
+    return txn;
+  }
+
+  async submitWithdrawal(
+    feePayer: Mina.FeePayerSpec,
+    {
+      recipient,
+      amount,
+    }: {
+      recipient: PublicKey;
+      amount: UInt64;
+    }
+  ) {
+    this.setL2();
+
+    const txn = await Mina.transaction(feePayer, async () => {
+      const transferrer = AccountUpdate.createSigned(recipient);
+      transferrer.balance.subInPlace(amount);
+      transferrer.body.actions = Actions.pushAction(transferrer.body.actions, [
+        ...recipient.toFields(),
+        ...amount.toFields(),
+      ]);
+    });
+
+    const withdrawalForest = await this.pollQuery(submitWithdrawalMutation, {
+      input: { recipient, amount, children: "[]" },
+    });
+
+    txn.transaction.accountUpdates.push(...withdrawalForest);
+
+    return txn;
+  }
+
+  async findWithdrawals(pk: PublicKey) {
+    const userInnerActions = await fetchActions(this.l2Client, pk);
+
+    return userInnerActions
+      .map(({ beforeActionState, afterActionState, action }) => {
+        const [recipient1, recipient2, amount1] = action;
+
+        if (!recipient1 || !recipient2 || !amount1) return null;
+
+        const recipient = PublicKey.fromFields([recipient1, recipient2]);
+        const amount = UInt64.fromFields([amount1]);
+
+        return {
+          beforeActionState,
+          afterActionState,
+          recipient,
+          amount,
+        };
+      })
+      .filter(Boolean) as {
+      beforeActionState: Field;
+      afterActionState: Field;
+      recipient: PublicKey;
+      amount: UInt64;
+    }[];
+  }
+
+  async getNextWithdrawalIndex(helperAccount: Account) {
+    const nextWithdrawalIndex = helperAccount.zkappState?.at(1);
+    return UInt32.from(nextWithdrawalIndex ?? 0);
+  }
+
+  async finalizeWithdrawal(
+    pk: PublicKey,
+    feePayer: Mina.FeePayerSpec,
+    outerHolder: PublicKey
+  ) {
+    const helperAccount = await this.fetchAccount(
+      this.l1Client,
+      pk,
+      TokenId.derive(this.outerTokenOwner)
+    );
+
+    const prevNextWithdrawal = helperAccount
+      ? await this.getNextWithdrawalIndex(helperAccount)
+      : UInt32.zero;
+
+    const innerActions = await this.fetchInnerActions(this.innerPk);
+
+    const withdrawals = (await this.findWithdrawals(pk)).map(withdrawal => ({
+      withdrawal,
+      aux: withdrawalAux(withdrawal),
+    }));
+
+    const findMatchingWithdrawal = (action: InnerWitness) =>
+      withdrawals.find(({ aux }) => aux.equals(action.aux).toBoolean());
+
+    const myWithdrawalIndex = innerActions.findIndex((action, index) => {
+      const matchingWithdrawal = findMatchingWithdrawal(action);
+
+      if (!matchingWithdrawal) return false;
+
+      if (prevNextWithdrawal.greaterThan(UInt32.from(index)).toBoolean())
+        return false;
+
+      return true;
+    });
+
+    if (myWithdrawalIndex === -1)
+      throw new Error("Did not find any withdrawal to finalize");
+
+    const myWithdrawal = innerActions[myWithdrawalIndex];
+
+    const outerActions = await this.fetchOuterActions(this.outerPk);
+
+    const reversedOuterActions = outerActions.slice().reverse();
+    const reversedLastCommitIndex = reversedOuterActions.findIndex(action => {
+      if (action.type !== "commit") return false;
+
+      return true;
+    });
+
+    if (reversedLastCommitIndex === -1)
+      throw new Error("Last commit not found");
+
+    const lastCommitIndex = outerActions.length - reversedLastCommitIndex - 1;
+    const lastCommit = outerActions[lastCommitIndex] as OuterCommit;
+
+    const lastCommitAse = outerActions
+      .slice(lastCommitIndex + 1, outerActions.length)
+      .map(({ action }) => Actions.fromList([action.action]).hash);
+
+    const syncedInnerActionStateIndex = innerActions.findIndex(({ action }) =>
+      action.afterActionState.equals(lastCommit.innerActionState).toBoolean()
+    );
+
+    if (
+      syncedInnerActionStateIndex === -1 ||
+      syncedInnerActionStateIndex < myWithdrawalIndex
+    )
+      throw new Error("Withdrawal has not been synced");
+
+    const withdrawalAse = innerActions
+      .slice(myWithdrawalIndex + 1, syncedInnerActionStateIndex + 1)
+      .map(({ action }) => Actions.fromList([action.action]).hash);
+
+    const withdrawalParams = findMatchingWithdrawal(myWithdrawal)!;
+
+    let withdrawalForest = await this.pollQuery(finalizeWithdrawalMutation, {
+      input: {
+        withdrawalParams: {
+          ...withdrawalParams.withdrawal,
+          children: "[]",
+        },
+        prevNextWithdrawal,
+        withdrawalAse: {
+          fields: withdrawalAse,
+          stmt: {
+            length: lastCommit.innerActionStateLength.sub(withdrawalAse.length),
+            actionState: myWithdrawal.action.afterActionState,
+          },
+        },
+        beforeWithdrawal: {
+          actionState: myWithdrawal.action.beforeActionState,
+        },
+        commitAse: {
+          fields: lastCommitAse,
+          stmt: { actionState: lastCommit.action.afterActionState },
+        },
+        commit: {
+          actions: lastCommit.action.action,
+        },
+        beforeCommit: { actionState: lastCommit.action.beforeActionState },
+        publicKey: outerHolder,
+      },
+    });
+
+    for (let i = 0; i < withdrawalForest.length; i++) {
+      if (!withdrawalForest[i].publicKey.equals(pk).toBoolean()) continue;
+
+      withdrawalForest[i].lazyAuthorization = { kind: "lazy-signature" };
+    }
+
+    this.setL1();
+
+    const accountCreationFee = helperAccount
+      ? UInt64.zero
+      : this.l1AccountCreationFee;
+
+    const txn = await Mina.transaction(feePayer, async () => {
+      const transferrer = AccountUpdate.create(
+        withdrawalParams.withdrawal.recipient
+      );
+      transferrer.balance.addInPlace(
+        withdrawalParams.withdrawal.amount.sub(accountCreationFee)
+      );
+    });
+
+    txn.transaction.accountUpdates.push(...withdrawalForest);
 
     return txn;
   }

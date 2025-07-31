@@ -23,16 +23,34 @@ export type OuterWitness = {
 
 export type OuterCommit = {
   type: "commit";
+  ledger: Field;
+  innerActionState: Field;
+  innerActionStateLength: UInt32;
+  synchronizedOuterActionState: Field;
+  synchronizedOuterActionStateLength: UInt32;
+  action: Action;
+};
+
+export type InnerWitness = {
+  type: "witness";
+  aux: Field;
   action: Action;
 };
 
 export type OuterAction = OuterWitness | OuterCommit;
+
+export type InnerAction = InnerWitness;
 
 export type Deposit = {
   recipient: PublicKey;
   amount: UInt64;
   timeout: UInt32;
   holderAccountL1: PublicKey;
+};
+
+export type Withdrawal = {
+  recipient: PublicKey;
+  amount: UInt64;
 };
 
 export type Account = {

@@ -1,7 +1,7 @@
 import { ApolloClient, NormalizedCacheObject } from "@apollo/client/core";
 import { Field, Mina, Poseidon, PublicKey, Types } from "o1js";
 import { FetchActionsQuery, fetchActionsQuery } from "./queries";
-import { Action, Deposit } from "./types";
+import { Action, Deposit, Withdrawal } from "./types";
 
 export class Actions {
   static empty(): Types.Events {
@@ -44,8 +44,8 @@ export async function fetchActions(
     query: fetchActionsQuery,
     variables: {
       pk,
-      fromActionState: actionStates?.fromActionState,
-      endActionState: actionStates?.endActionState,
+      fromActionState: actionStates?.fromActionState ?? null,
+      endActionState: actionStates?.endActionState ?? null,
     },
   });
 
@@ -77,10 +77,18 @@ export async function fetchActions(
 
 export function depositAux(deposit: Deposit) {
   return Poseidon.hashWithPrefix("Deposit_params - qFB3jXP*)", [
-    Field(0),
+    Field(0), // Empty children
     ...deposit.holderAccountL1.toFields(),
     ...deposit.amount.toFields(),
     ...deposit.recipient.toFields(),
     ...deposit.timeout.toFields(),
+  ]);
+}
+
+export function withdrawalAux(deposit: Withdrawal) {
+  return Poseidon.hashWithPrefix("Withdrawal_params - qFB3jXP*)", [
+    Field(0), // Empty children
+    ...deposit.amount.toFields(),
+    ...deposit.recipient.toFields(),
   ]);
 }

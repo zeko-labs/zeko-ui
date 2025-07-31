@@ -1,4 +1,4 @@
-import { PrivateKey, PublicKey } from "o1js";
+import { PrivateKey } from "o1js";
 import { env } from "process";
 import { Bridge } from "..";
 
@@ -7,6 +7,7 @@ if (!env.MINA_PRIVATE_KEY) {
 }
 
 const signer = PrivateKey.fromBase58(env.MINA_PRIVATE_KEY);
+const recipient = signer.toPublicKey();
 
 async function main() {
   const bridge = await Bridge.init({
@@ -16,9 +17,7 @@ async function main() {
     l1Network: "testnet",
     l2Network: "testnet",
   });
-  const recipient = PublicKey.fromBase58(
-    "B62qrPQ5HPV3fnxmiqEeqWrw7f716hcr7hKp4RjQxp9aJLqA9Z7brRs"
-  );
+
   const txn = await bridge.finalizeDeposit(recipient);
 
   console.log(txn.toPretty());

@@ -141,3 +141,19 @@ export const finalizeDepositMutation = gql`
     }
   }
 `;
+
+export const submitWithdrawalMutation = gql`
+  mutation SubmitWithdrawal($input: SubmitWithdrawalInput!) {
+    request: proveWithdrawalRequest(input: $input) {
+      key
+    }
+  }
+`;
+
+export const finalizeWithdrawalMutation = gql`
+  mutation FinalizeWithdrawal($input: FinalizeWithdrawalInput!) {
+    request: finalizeWithdrawal(input: $input) {
+      key
+    }
+  }
+`;

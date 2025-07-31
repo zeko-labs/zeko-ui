@@ -1,5 +1,13 @@
-import { PublicKey } from "o1js";
+import { PrivateKey } from "o1js";
+import { env } from "process";
 import { Bridge } from "..";
+
+if (!env.MINA_PRIVATE_KEY) {
+  throw new Error("MINA_PRIVATE_KEY is not set");
+}
+
+const signer = PrivateKey.fromBase58(env.MINA_PRIVATE_KEY);
+const recipient = signer.toPublicKey();
 
 async function main() {
   const bridge = await Bridge.init({
@@ -12,19 +20,32 @@ async function main() {
 
   const actions = await bridge.fetchOuterActions(bridge.outerPk);
   console.log(
-    actions.map(
-      ({ action: { action, beforeActionState, afterActionState }, type }) => ({
-        type,
-        action: action.map(x => x.toString()),
-        beforeActionState: beforeActionState.toString(),
-        afterActionState: afterActionState.toString(),
-      })
-    )
+    actions.map(action => {
+      if (action.type === "commit") {
+        return {
+          type: action.type,
+          ledger: action.ledger.toString(),
+          innerActionState: action.innerActionState.toString(),
+          innerActionStateLength: action.innerActionStateLength.toString(),
+          synchronizedOuterActionState:
+            action.synchronizedOuterActionState.toString(),
+          synchronizedOuterActionStateLength:
+            action.synchronizedOuterActionStateLength.toString(),
+          action: action.action.action.map(x => x.toString()),
+          beforeActionState: action.action.beforeActionState.toString(),
+          afterActionState: action.action.afterActionState.toString(),
+        };
+      } else if (action.type === "witness") {
+        return {
+          type: action.type,
+          action: action.action.action.map(x => x.toString()),
+          beforeActionState: action.action.beforeActionState.toString(),
+          afterActionState: action.action.afterActionState.toString(),
+        };
+      } else throw new Error("should not be reachable");
+    })
   );
 
-  const recipient = PublicKey.fromBase58(
-    "B62qrPQ5HPV3fnxmiqEeqWrw7f716hcr7hKp4RjQxp9aJLqA9Z7brRs"
-  );
   const deposits = await bridge.findDeposits(recipient);
   console.log(
     deposits.map(
