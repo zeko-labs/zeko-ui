@@ -8,7 +8,9 @@
         "build": "tsc",
         "dev": "tsc --watch",
         "clean": "rm -rf dist",
-        "example": "node dist/examples/demo.js"
+        "submitDeposit": "node dist/examples/submitDeposit.js",
+        "fetchOuterActions": "node dist/examples/fetchOuterActions.js",
+        "finalizeDeposit": "node dist/examples/finalizeDeposit.js"
     },
     "keywords": [
         "typescript",
@@ -27,5 +29,11 @@
     "repository": {
         "type": "git",
         "url": ""
+    },
+    "dependencies": {
+        "@apollo/client": "^3.13.9",
+        "graphql": "^16.11.0",
+        "o1js": "file:../../mina/o1js",
+        "zod": "^4.0.13"
     }
 }

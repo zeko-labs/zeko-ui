@@ -1,28 +1,40 @@
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  createdAt: Date;
-}
+import { Field, NetworkId, PublicKey, UInt32, UInt64 } from "o1js";
 
-export interface ApiResponse<T> {
-  data: T;
-  success: boolean;
-  message?: string;
-  error?: string;
-}
+export type Config = {
+  l1Url: string;
+  l1ArchiveUrl: string;
+  zekoUrl: string;
+  l1Network: NetworkId;
+  l2Network: NetworkId;
+  pollTimeout?: number;
+};
 
-export type Status = 'pending' | 'success' | 'error' | 'loading';
+export type Action = {
+  action: Field[];
+  beforeActionState: Field;
+  afterActionState: Field;
+};
 
-export interface Config {
-  apiUrl: string;
-  timeout: number;
-  retries: number;
-}
+export type OuterWitness = {
+  type: "witness";
+  aux: Field;
+  action: Action;
+};
 
-export type EventHandler<T = any> = (event: T) => void;
+export type OuterCommit = {
+  type: "commit";
+  action: Action;
+};
 
-export interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-} 
+export type OuterAction = OuterWitness | OuterCommit;
+
+export type Deposit = {
+  recipient: PublicKey;
+  amount: UInt64;
+  timeout: UInt32;
+  holderAccountL1: PublicKey;
+};
+
+export type Account = {
+  zkappState?: string[];
+};
