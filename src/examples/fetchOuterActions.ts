@@ -34,6 +34,11 @@ async function main() {
           action: action.action.action.map(x => x.toString()),
           beforeActionState: action.action.beforeActionState.toString(),
           afterActionState: action.action.afterActionState.toString(),
+          isPastWithdrawalDelay: action.isPastWithdrawalDelay,
+          slotRange: {
+            lower: action.slotRange.lower.toString(),
+            upper: action.slotRange.upper.toString(),
+          },
         };
       } else if (action.type === "witness") {
         return {

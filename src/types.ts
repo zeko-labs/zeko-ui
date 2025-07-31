@@ -28,6 +28,11 @@ export type OuterCommit = {
   innerActionStateLength: UInt32;
   synchronizedOuterActionState: Field;
   synchronizedOuterActionStateLength: UInt32;
+  slotRange: {
+    lower: UInt32;
+    upper: UInt32;
+  };
+  isPastWithdrawalDelay: boolean;
   action: Action;
 };
 

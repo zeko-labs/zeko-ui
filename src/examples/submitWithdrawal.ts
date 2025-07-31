@@ -20,7 +20,7 @@ async function main() {
 
   const withdrawalParams = {
     recipient,
-    amount: UInt64.from(3 * 10e8),
+    amount: UInt64.from(1 * 10e8),
   };
 
   const txn = await bridge.submitWithdrawal(

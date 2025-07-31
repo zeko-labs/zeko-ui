@@ -60,7 +60,8 @@ export class Bridge {
     public readonly outerHolders: PublicKey[],
     public readonly innerHolder: PublicKey,
     public readonly outerTokenOwner: PublicKey,
-    public readonly sequencerPk: PublicKey
+    public readonly sequencerPk: PublicKey,
+    public readonly withdrawalDelay: UInt32
   ) {}
 
   static async init(config: Config): Promise<Bridge> {
@@ -134,7 +135,8 @@ export class Bridge {
       ),
       PublicKey.fromBase58(circuitsConfig.holderAccountL2),
       PublicKey.fromBase58(circuitsConfig.helperTokenOwnerL1),
-      PublicKey.fromBase58(sequencerPk)
+      PublicKey.fromBase58(sequencerPk),
+      UInt32.from(circuitsConfig.withdrawalDelay)
     );
   }
 
@@ -158,7 +160,7 @@ export class Bridge {
     );
   }
 
-  async fetchCurrentSlot() {
+  public async fetchCurrentSlot() {
     const {
       data: { runtimeConfig },
     } = await this.l1Client.query<RuntimeConfig>({
@@ -175,7 +177,7 @@ export class Bridge {
     );
   }
 
-  async fetchAccount(
+  public async fetchAccount(
     client: ApolloClient<NormalizedCacheObject>,
     pk: PublicKey,
     tokenId?: Field
@@ -190,11 +192,12 @@ export class Bridge {
     return account;
   }
 
-  async fetchOuterActions(
+  public async fetchOuterActions(
     pk: PublicKey,
     actionStates?: Mina.ActionStates
   ): Promise<OuterAction[]> {
     const actions = await fetchActions(this.l1ArchiveClient, pk, actionStates);
+    const currentSlot = await this.fetchCurrentSlot();
 
     return actions.map(({ beforeActionState, afterActionState, action }) => {
       if (action[0].equals(0).toBoolean()) {
@@ -205,6 +208,15 @@ export class Bridge {
           innerActionStateLength: UInt32.fromFields([action[3]]),
           synchronizedOuterActionState: action[4],
           synchronizedOuterActionStateLength: UInt32.fromFields([action[5]]),
+          slotRange: {
+            lower: UInt32.fromFields([action[6]]),
+            upper: UInt32.fromFields([action[7]]),
+          },
+          isPastWithdrawalDelay: currentSlot
+            .greaterThan(
+              UInt32.fromFields([action[7]]).add(this.withdrawalDelay)
+            )
+            .toBoolean(),
           action: { beforeActionState, afterActionState, action },
         };
       } else if (action[0].equals(1).toBoolean()) {
@@ -217,7 +229,7 @@ export class Bridge {
     });
   }
 
-  async fetchInnerActions(
+  public async fetchInnerActions(
     pk: PublicKey,
     actionStates?: Mina.ActionStates
   ): Promise<InnerAction[]> {
@@ -270,7 +282,7 @@ export class Bridge {
     );
   }
 
-  async submitDeposit(
+  public async submitDeposit(
     feePayer: Mina.FeePayerSpec,
     {
       recipient,
@@ -313,7 +325,7 @@ export class Bridge {
     return txn;
   }
 
-  async findDeposits(pk: PublicKey) {
+  public async findDeposits(pk: PublicKey) {
     const userOuterActions = await fetchActions(this.l1ArchiveClient, pk);
     const currentSlot = await this.fetchCurrentSlot();
 
@@ -383,12 +395,12 @@ export class Bridge {
     }[];
   }
 
-  async getNextDepositIndex(helperAccount: Account) {
+  public async getNextDepositIndex(helperAccount: Account) {
     const nextDepositIndex = helperAccount.zkappState?.at(0);
     return UInt32.from(nextDepositIndex ?? 0);
   }
 
-  async fetchSyncedOuterActionState() {
+  public async fetchSyncedOuterActionState() {
     const innerAccount = await this.fetchAccount(this.l2Client, this.innerPk);
 
     if (!innerAccount) throw new Error("Inner account not found");
@@ -399,7 +411,7 @@ export class Bridge {
     };
   }
 
-  async finalizeDeposit(pk: PublicKey, fee: UInt64 = UInt64.zero) {
+  public async finalizeDeposit(pk: PublicKey, fee: UInt64 = UInt64.zero) {
     const helperAccount = await this.fetchAccount(
       this.l2Client,
       pk,
@@ -530,7 +542,7 @@ export class Bridge {
     return txn;
   }
 
-  async submitWithdrawal(
+  public async submitWithdrawal(
     feePayer: Mina.FeePayerSpec,
     {
       recipient,
@@ -560,7 +572,7 @@ export class Bridge {
     return txn;
   }
 
-  async findWithdrawals(pk: PublicKey) {
+  public async findWithdrawals(pk: PublicKey) {
     const userInnerActions = await fetchActions(this.l2Client, pk);
 
     return userInnerActions
@@ -587,12 +599,12 @@ export class Bridge {
     }[];
   }
 
-  async getNextWithdrawalIndex(helperAccount: Account) {
+  public async getNextWithdrawalIndex(helperAccount: Account) {
     const nextWithdrawalIndex = helperAccount.zkappState?.at(1);
     return UInt32.from(nextWithdrawalIndex ?? 0);
   }
 
-  async finalizeWithdrawal(
+  public async finalizeWithdrawal(
     pk: PublicKey,
     feePayer: Mina.FeePayerSpec,
     outerHolder: PublicKey
@@ -632,12 +644,15 @@ export class Bridge {
       throw new Error("Did not find any withdrawal to finalize");
 
     const myWithdrawal = innerActions[myWithdrawalIndex];
+    const withdrawalParams = findMatchingWithdrawal(myWithdrawal)!;
 
     const outerActions = await this.fetchOuterActions(this.outerPk);
 
     const reversedOuterActions = outerActions.slice().reverse();
     const reversedLastCommitIndex = reversedOuterActions.findIndex(action => {
       if (action.type !== "commit") return false;
+
+      if (!action.isPastWithdrawalDelay) return false;
 
       return true;
     });
@@ -665,8 +680,6 @@ export class Bridge {
     const withdrawalAse = innerActions
       .slice(myWithdrawalIndex + 1, syncedInnerActionStateIndex + 1)
       .map(({ action }) => Actions.fromList([action.action]).hash);
-
-    const withdrawalParams = findMatchingWithdrawal(myWithdrawal)!;
 
     let withdrawalForest = await this.pollQuery(finalizeWithdrawalMutation, {
       input: {
