@@ -1,0 +1,16 @@
+{
+    "name": "leaderboard-container",
+    "scripts": {
+        "dev": "bun --hot index.ts",
+        "start": "bun run index.ts",
+        "test": "vitest"
+    },
+    "main": "index.ts",
+    "type": "module",
+    "dependencies": {
+        "@lumina-dex/sdk": "^0.17.0",
+        "hono": "^4.7.6",
+        "o1js": "^2.6.0",
+        "p-limit": "^6.2.0"
+    }
+}

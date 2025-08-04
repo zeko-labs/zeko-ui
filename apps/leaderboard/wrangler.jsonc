@@ -1,0 +1,9 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"compatibility_date": "2025-04-08",
+	"name": "leaderboard",
+	"main": "src/index.ts",
+	"observability": {
+		"enabled": true
+	}
+}

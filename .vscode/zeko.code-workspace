@@ -10,7 +10,11 @@
         "path": "../apps/docs",
       },
       {
+        "path": "../apps/leaderboard",
+      },
+      {
         "path": "..",
+        "name": "#root"
       },
     ],
     "settings": {
