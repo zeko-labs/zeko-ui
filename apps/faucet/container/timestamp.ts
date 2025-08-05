@@ -1,4 +1,4 @@
-import { Mina, } from 'o1js'
+import { Mina, UInt32, UInt64, } from 'o1js'
 
 export const urls = {
     "mina:mainnet": "https://api.minascan.io/node/mainnet/v1/graphql",
@@ -16,12 +16,12 @@ const toNetwork = (networkId: string): Networks => {
 
 export async function getCurrentSlot() {
     const rawNetworkId = Mina.getNetworkId()
+
     const networkId = typeof rawNetworkId === 'string' ? `mina:${rawNetworkId}` : rawNetworkId.custom
     const endpoint = urls[toNetwork(networkId)]
 
-    console.log(`Fetching current slot from: ${endpoint}`)
-
-    const response = await fetch(endpoint, {
+    // console.log(`Fetching current slot from: ${endpoint}`)
+    const request = new Request(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -31,6 +31,7 @@ export async function getCurrentSlot() {
             variables: {}
         })
     })
+    const response = await fetch(request)
 
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
 
@@ -46,5 +47,6 @@ export async function getCurrentSlot() {
 
     const calculatedSlot = Math.floor(forkSlot + (((currentTimestamp / 1000) - genesisTimestamp) / 180))
 
-    return `${currentTimestamp}_${calculatedSlot}`
+    // console.log(`Current timestamp: ${currentTimestamp}, ForkSlot: ${forkSlot}, Genesis timestamp: ${genesisTimestamp}, Calculated slot: ${calculatedSlot}`)
+    return { timestamp: UInt64.from(currentTimestamp), slot: UInt32.from(calculatedSlot) }
 }

@@ -4,10 +4,12 @@ import {
     Mina,
     PrivateKey,
     type PublicKey,
+    UInt32,
     UInt64,
 } from 'o1js'
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
+import { getCurrentSlot } from '../timestamp'
 import { Faucet, type FaucetClaimEvent, type FaucetDepositEvent } from '../zkapp'
 
 describe('Faucet Contract', () => {
@@ -30,6 +32,8 @@ describe('Faucet Contract', () => {
 
     beforeEach(async () => {
         const Local = await Mina.LocalBlockchain({ proofsEnabled })
+        const { slot } = await getCurrentSlot()
+        Local.setGlobalSlot(UInt32.from(slot).add(10))
         Mina.setActiveInstance(Local)
         const createTestAccount = (n: number) => ({ privateKey: Local.testAccounts[n].key, publicKey: Local.testAccounts[n] })
         // Get test accounts

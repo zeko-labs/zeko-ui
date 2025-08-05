@@ -92,10 +92,11 @@ export class Faucet extends TokenContract {
 
         // If the user hasn't claimed, mint 1 unit of the tracking token to their account
         this.internal.mint({ address: claimer, amount: UInt64.one })
-        // currentSlot logic
-        const result = await Provable.witnessAsync(Field, async () => await getCurrentSlot())
-        const [timestamp, slot] = result.split('_')
+        // timestamp logic
+        const { timestamp, slot } = await Provable.witnessAsync(Struct({ timestamp: UInt64, slot: UInt32 }), async () => await getCurrentSlot())
         const currentSlot = UInt32.from(slot)
+        // Provable.log("Global slot since genesis:")
+        // Provable.log(this.network.globalSlotSinceGenesis.get())
         this.network.globalSlotSinceGenesis.requireBetween(currentSlot, currentSlot.add(UInt32.from(100)))
         // Emit the claim event only if it's the first claim for the sender
         this.emitEventIf(senderToken.account.balance.get().equals(UInt64.zero), 'claim', new FaucetClaimEvent({

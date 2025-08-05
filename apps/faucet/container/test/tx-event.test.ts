@@ -33,7 +33,7 @@ describe('Faucet Transaction', () => {
         it('should send a transaction with an event', async () => {
             const initialBalance = Mina.getBalance(senderAccount)
             const depositAmount = BigInt(10 * 1e9) // 10 MINA
-
+            const timestamp = BigInt(Date.now())
             await sendPayment({
                 address: senderAccount.toBase58(),
                 privateKey: zkFaucetPrivateKey,
@@ -48,11 +48,11 @@ describe('Faucet Transaction', () => {
             const events = await Local.fetchEvents(zkFaucetAddress)
             expect(events).toHaveLength(1)
             const event = events[0].events[0].data as string[]
-            console.log("Event data:", event)
             expect(event[0]).toBe('0') // Claim
             expect(event[1]).toBe('1') // EventId
             expect(PublicKey.fromFields([Field.from(event[2]), Field.from(event[3])]).toBase58()).toBe(senderAccount.toBase58()) // Claimer address
             expect(BigInt(event[4])).toEqual(depositAmount) // Amount
+            expect(BigInt(event[5])).toBeGreaterThan(timestamp) // Timestamp
             console.dir(event, { depth: null })
         })
     })
