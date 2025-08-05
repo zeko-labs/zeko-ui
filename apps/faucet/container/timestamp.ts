@@ -1,4 +1,4 @@
-import { Mina, UInt32, } from 'o1js'
+import { Mina, } from 'o1js'
 
 export const urls = {
     "mina:mainnet": "https://api.minascan.io/node/mainnet/v1/graphql",
@@ -46,5 +46,5 @@ export async function getCurrentSlot() {
 
     const calculatedSlot = Math.floor(forkSlot + (((currentTimestamp / 1000) - genesisTimestamp) / 180))
 
-    return `${currentTimestamp}_${UInt32.from(calculatedSlot)}`
+    return `${currentTimestamp}_${calculatedSlot}`
 }

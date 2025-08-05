@@ -49,7 +49,7 @@ export async function sendPayment({ address, privateKey, amount, publicKey }: {
 			Field("1"), // EventId
 			...claimer.toFields(), // Claimer PublicKey
 			Field(amount), // Amount
-			Field(Date.now()) // Timestamp
+			Field(UInt64.from(Date.now()).toBigInt()) // Timestamp
 		]
 		sender.body.events = createEvent(event)
 		sender.requireSignature()
