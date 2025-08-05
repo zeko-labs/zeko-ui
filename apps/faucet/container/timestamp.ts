@@ -1,5 +1,9 @@
 import { Mina, UInt32, } from 'o1js'
 
+/**
+ * /!\ This is a very brittle way of calculacting the currentSlot, and must be fixed before mainnet deployment /!\
+ */
+
 export const urls = {
     "mina:mainnet": "https://api.minascan.io/node/mainnet/v1/graphql",
     "mina:devnet": "https://api.minascan.io/node/devnet/v1/graphql",
@@ -16,9 +20,9 @@ const toNetwork = (networkId: string): Networks => {
 
 export async function getCurrentSlot() {
     const rawNetworkId = Mina.getNetworkId()
-
-    const networkId = typeof rawNetworkId === 'string' ? `mina:${rawNetworkId}` : rawNetworkId.custom
-    const endpoint = urls[toNetwork(networkId)]
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    const networkUrl = (globalThis as any).__MINA_NETWORK_URL__ ?? process?.env?.MINA_NETWORK_URL
+    const endpoint = networkUrl ?? urls[toNetwork(typeof rawNetworkId === 'string' ? `mina:${rawNetworkId}` : rawNetworkId.custom)]
 
     // console.log(`Fetching current slot from: ${endpoint}`)
     const request = new Request(endpoint, {
@@ -44,7 +48,6 @@ export async function getCurrentSlot() {
     const currentTimestamp = Date.now()
     const forkSlot = runtimeConfig.proof.fork.global_slot_since_genesis
     const genesisTimestamp = Date.parse(runtimeConfig.genesis.genesis_state_timestamp) / 1000
-
     const calculatedSlot = Math.floor(forkSlot + (((currentTimestamp / 1000) - genesisTimestamp) / 180))
 
     // console.log(`Current timestamp: ${currentTimestamp}, ForkSlot: ${forkSlot}, Genesis timestamp: ${genesisTimestamp}, Calculated slot: ${calculatedSlot}`)

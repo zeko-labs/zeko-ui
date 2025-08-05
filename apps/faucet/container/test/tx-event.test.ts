@@ -7,6 +7,7 @@ import {
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { sendPayment } from '../faucet'
+import { getCurrentSlot } from '../timestamp'
 describe('Faucet Transaction', () => {
     const proofsEnabled = false
     let senderAccount: PublicKey
@@ -33,7 +34,8 @@ describe('Faucet Transaction', () => {
         it('should send a transaction with an event', async () => {
             const initialBalance = Mina.getBalance(senderAccount)
             const depositAmount = BigInt(10 * 1e9) // 10 MINA
-            const timestamp = BigInt(Date.now())
+            const slot = await getCurrentSlot() // Get the current slot
+
             await sendPayment({
                 address: senderAccount.toBase58(),
                 privateKey: zkFaucetPrivateKey,
@@ -52,7 +54,7 @@ describe('Faucet Transaction', () => {
             expect(event[1]).toBe('1') // EventId
             expect(PublicKey.fromFields([Field.from(event[2]), Field.from(event[3])]).toBase58()).toBe(senderAccount.toBase58()) // Claimer address
             expect(BigInt(event[4])).toEqual(depositAmount) // Amount
-            expect(BigInt(event[5])).toBeGreaterThan(timestamp) // Timestamp
+            expect(BigInt(event[5])).toBeGreaterThan(slot.sub(1).toBigint()) // Slot - Ensure the slot is recent
             console.dir(event, { depth: null })
         })
     })
