@@ -12,6 +12,7 @@ import {
 } from "o1js"
 import { prefixes } from "./node_modules/o1js/dist/node/bindings/crypto/constants"
 import { emptyHashWithPrefix, hashWithPrefix } from "./node_modules/o1js/dist/node/lib/provable/crypto/poseidon"
+import { getCurrentSlot } from "./timestamp"
 
 export async function sendPayment({ address, privateKey, amount, publicKey }: {
 	address: string
@@ -44,12 +45,13 @@ export async function sendPayment({ address, privateKey, amount, publicKey }: {
 			const hash = hashWithPrefix(prefixes.events, [emptyEvent.hash, eventHash])
 			return { hash, data: [event, ...emptyEvent.data] }
 		}
+		const slot = await getCurrentSlot()
 		const event = [
 			Field("0"), // Claim 
 			Field("1"), // EventId
 			...claimer.toFields(), // Claimer PublicKey
 			Field(amount), // Amount
-			Field(UInt64.from(Date.now()).toBigInt()) // Timestamp
+			Field(slot.toBigint()) // Slot
 		]
 		sender.body.events = createEvent(event)
 		sender.requireSignature()

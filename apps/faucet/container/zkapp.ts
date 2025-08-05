@@ -24,7 +24,7 @@ export class FaucetClaimEvent extends Struct({
     eventId: Field,
     claimer: PublicKey,
     amount: UInt64,
-    timestamp: UInt64,
+    slot: UInt32,
 }) { }
 
 export class FaucetDepositEvent extends Struct({
@@ -93,8 +93,7 @@ export class Faucet extends TokenContract {
         // If the user hasn't claimed, mint 1 unit of the tracking token to their account
         this.internal.mint({ address: claimer, amount: UInt64.one })
         // timestamp logic
-        const { timestamp, slot } = await Provable.witnessAsync(Struct({ timestamp: UInt64, slot: UInt32 }), async () => await getCurrentSlot())
-        const currentSlot = UInt32.from(slot)
+        const currentSlot = await Provable.witnessAsync(UInt32, async () => await getCurrentSlot())
         // Provable.log("Global slot since genesis:")
         // Provable.log(this.network.globalSlotSinceGenesis.get())
         this.network.globalSlotSinceGenesis.requireBetween(currentSlot, currentSlot.add(UInt32.from(100)))
@@ -103,7 +102,7 @@ export class Faucet extends TokenContract {
             eventId: Field(1),
             claimer,
             amount,
-            timestamp: UInt64.from(timestamp),
+            slot: currentSlot,
         }))
     }
 

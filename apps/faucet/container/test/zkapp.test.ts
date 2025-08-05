@@ -32,7 +32,7 @@ describe('Faucet Contract', () => {
 
     beforeEach(async () => {
         const Local = await Mina.LocalBlockchain({ proofsEnabled })
-        const { slot } = await getCurrentSlot()
+        const slot = await getCurrentSlot()
         Local.setGlobalSlot(UInt32.from(slot).add(10))
         Mina.setActiveInstance(Local)
         const createTestAccount = (n: number) => ({ privateKey: Local.testAccounts[n].key, publicKey: Local.testAccounts[n] })
