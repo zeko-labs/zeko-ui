@@ -14,6 +14,7 @@ import {
 } from "o1js"
 
 import type { AccountUpdateForest, DeployArgs } from "o1js"
+import { getCurrentSlot } from "./timestamp"
 
 export interface FaucetDeployProps extends Exclude<DeployArgs, undefined> {
     amount: UInt64
@@ -23,7 +24,7 @@ export class FaucetClaimEvent extends Struct({
     eventId: Field,
     claimer: PublicKey,
     amount: UInt64,
-    currentSlot: UInt32,
+    timestamp: UInt64,
 }) { }
 
 export class FaucetDepositEvent extends Struct({
@@ -31,28 +32,6 @@ export class FaucetDepositEvent extends Struct({
     depositor: PublicKey,
     amount: UInt64,
 }) { }
-
-
-async function getCurrentSlot() {
-    const response = await fetch("https://api.minascan.io/node/devnet/v1/graphql", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            query: `
-        query RuntimeConfig { runtimeConfig }
-      `,
-            variables: {}
-        })
-    })
-
-    const { data: { runtimeConfig } } = await response.json()
-
-    const currentTimestamp = Date.now() / 1000
-    const forkSlot = runtimeConfig.proof.fork.global_slot_since_genesis
-    const genesisTimestamp = Date.parse(runtimeConfig.genesis.genesis_state_timestamp) / 1000
-
-    return UInt32.from(Math.floor(forkSlot + ((currentTimestamp - genesisTimestamp) / 180)))
-}
 
 export class Faucet extends TokenContract {
     @state(UInt64) amount = State<UInt64>()
@@ -114,14 +93,16 @@ export class Faucet extends TokenContract {
         // If the user hasn't claimed, mint 1 unit of the tracking token to their account
         this.internal.mint({ address: claimer, amount: UInt64.one })
         // currentSlot logic
-        const currentSlot = await Provable.witnessAsync(UInt32, async () => await getCurrentSlot())
+        const result = await Provable.witnessAsync(Field, async () => await getCurrentSlot())
+        const [timestamp, slot] = result.split('_')
+        const currentSlot = UInt32.from(slot)
         this.network.globalSlotSinceGenesis.requireBetween(currentSlot, currentSlot.add(UInt32.from(100)))
         // Emit the claim event only if it's the first claim for the sender
         this.emitEventIf(senderToken.account.balance.get().equals(UInt64.zero), 'claim', new FaucetClaimEvent({
             eventId: Field(1),
             claimer,
             amount,
-            currentSlot
+            timestamp: UInt64.from(timestamp),
         }))
     }
 
