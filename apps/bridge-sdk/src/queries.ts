@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client/core"
-import { Account } from "./types"
+import type { Account } from "./types"
 
 export const fetchConfigQuery = gql`
   query {
@@ -17,16 +17,16 @@ export const fetchConfigQuery = gql`
 `
 
 export type FetchConfigQuery = {
-	circuitsConfig: {
-		zekoL1: string
-		zekoL2: string
-		holderAccountsL1: string[]
-		holderAccountL2: string
-		helperTokenOwnerL1: string
-		chainL1: string
-		chainL2: string
-		withdrawalDelay: number
-	}
+  circuitsConfig: {
+    zekoL1: string
+    zekoL2: string
+    holderAccountsL1: string[]
+    holderAccountL2: string
+    helperTokenOwnerL1: string
+    chainL1: string
+    chainL2: string
+    withdrawalDelay: number
+  }
 }
 
 export const sequencerPkQuery = gql`
@@ -36,7 +36,7 @@ export const sequencerPkQuery = gql`
 `
 
 export type SequencerPkQuery = {
-	sequencerPk: string
+  sequencerPk: string
 }
 
 export const fetchActionsQuery = gql`
@@ -60,15 +60,15 @@ export const fetchActionsQuery = gql`
 `
 
 export type FetchActionsQuery = {
-	actions: {
-		actionState: {
-			actionStateOne: string
-			actionStateTwo: string
-		}
-		actionData: {
-			data: string[]
-		}[]
-	}[]
+  actions: {
+    actionState: {
+      actionStateOne: string
+      actionStateTwo: string
+    }
+    actionData: {
+      data: string[]
+    }[]
+  }[]
 }
 
 export const runtimeConfigQuery = gql`
@@ -78,16 +78,16 @@ export const runtimeConfigQuery = gql`
 `
 
 export type RuntimeConfig = {
-	runtimeConfig: {
-		proof: {
-			fork: {
-				global_slot_since_genesis: number
-			}
-		}
-		genesis: {
-			genesis_state_timestamp: string
-		}
-	}
+  runtimeConfig: {
+    proof: {
+      fork: {
+        global_slot_since_genesis: number
+      }
+    }
+    genesis: {
+      genesis_state_timestamp: string
+    }
+  }
 }
 
 export const accountQuery = gql`
@@ -99,7 +99,7 @@ export const accountQuery = gql`
 `
 
 export type AccountQuery = {
-	account?: Account
+  account?: Account
 }
 
 export const genesisConstantsQuery = gql`
@@ -111,9 +111,9 @@ export const genesisConstantsQuery = gql`
 `
 
 export type GenesisConstants = {
-	genesisConstants: {
-		accountCreationFee: string
-	}
+  genesisConstants: {
+    accountCreationFee: string
+  }
 }
 
 export const provedForestQuery = gql`
@@ -123,7 +123,7 @@ export const provedForestQuery = gql`
 `
 
 export type ProvedForest = {
-	provedForest: string | null
+  provedForest: string | null
 }
 
 export const submitDepositMutation = gql`

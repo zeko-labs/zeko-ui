@@ -1,6 +1,6 @@
+import { env } from "node:process"
 import { PrivateKey } from "o1js"
-import { env } from "process"
-import { Bridge } from ".."
+import { Bridge } from "../src"
 
 if (!env.MINA_PRIVATE_KEY) {
 	throw new Error("MINA_PRIVATE_KEY is not set")
@@ -15,27 +15,31 @@ async function main() {
 		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
 		zekoUrl: "https://testnet.zeko.io/graphql",
 		l1Network: "testnet",
-		l2Network: "testnet"
+		l2Network: "testnet",
 	})
 
 	const actions = await bridge.fetchInnerActions(bridge.innerPk)
 	console.log(
-		actions.map(({ action: { action, beforeActionState, afterActionState }, type }) => ({
-			type,
-			action: action.map((x) => x.toString()),
-			beforeActionState: beforeActionState.toString(),
-			afterActionState: afterActionState.toString()
-		}))
+		actions.map(
+			({ action: { action, beforeActionState, afterActionState }, type }) => ({
+				type,
+				action: action.map((x) => x.toString()),
+				beforeActionState: beforeActionState.toString(),
+				afterActionState: afterActionState.toString(),
+			}),
+		),
 	)
 
 	const withdrawals = await bridge.findWithdrawals(recipient)
 	console.log(
-		withdrawals.map(({ recipient, amount, beforeActionState, afterActionState }) => ({
-			recipient: recipient.toBase58(),
-			amount: amount.toString(),
-			beforeActionState: beforeActionState.toString(),
-			afterActionState: afterActionState.toString()
-		}))
+		withdrawals.map(
+			({ recipient, amount, beforeActionState, afterActionState }) => ({
+				recipient: recipient.toBase58(),
+				amount: amount.toString(),
+				beforeActionState: beforeActionState.toString(),
+				afterActionState: afterActionState.toString(),
+			}),
+		),
 	)
 }
 

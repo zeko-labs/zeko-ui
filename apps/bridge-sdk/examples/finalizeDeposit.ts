@@ -1,6 +1,6 @@
+import { env } from "node:process"
 import { PrivateKey } from "o1js"
-import { env } from "process"
-import { Bridge } from ".."
+import { Bridge } from "../src"
 
 if (!env.MINA_PRIVATE_KEY) {
 	throw new Error("MINA_PRIVATE_KEY is not set")
@@ -15,7 +15,7 @@ async function main() {
 		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
 		zekoUrl: "https://testnet.zeko.io/graphql",
 		l1Network: "testnet",
-		l2Network: "testnet"
+		l2Network: "testnet",
 	})
 
 	const txn = await bridge.finalizeDeposit(recipient)

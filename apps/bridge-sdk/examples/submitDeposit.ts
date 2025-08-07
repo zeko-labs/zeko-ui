@@ -1,6 +1,6 @@
-import { PrivateKey } from "o1js"
-import { env } from "process"
-import { Bridge } from ".."
+import { env } from "node:process"
+import { PrivateKey, UInt32, UInt64 } from "o1js"
+import { Bridge } from "../src"
 
 if (!env.MINA_PRIVATE_KEY) {
 	throw new Error("MINA_PRIVATE_KEY is not set")
@@ -15,16 +15,19 @@ async function main() {
 		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
 		zekoUrl: "https://testnet.zeko.io/graphql",
 		l1Network: "testnet",
-		l2Network: "testnet"
+		l2Network: "testnet",
 	})
 
-	const txn = await bridge.finalizeWithdrawal(
+	const depositParams = {
 		recipient,
-		{
-			sender: recipient,
-			fee: 0.1 * 10e8
-		},
-		bridge.outerHolders[0]
+		amount: UInt64.from(10 * 10e8),
+		timeout: UInt32.MAXINT(),
+		holderAccountL1: bridge.outerHolders[0],
+	}
+
+	const txn = await bridge.submitDeposit(
+		{ sender: depositParams.recipient, fee: 0.1 * 10e8 },
+		depositParams,
 	)
 
 	console.log(txn.toPretty())

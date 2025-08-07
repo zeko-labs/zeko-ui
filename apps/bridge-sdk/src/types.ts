@@ -1,4 +1,4 @@
-import { Field, NetworkId, PublicKey, UInt32, UInt64 } from "o1js"
+import type { Field, NetworkId, PublicKey, UInt32, UInt64 } from "o1js"
 
 export type Config = {
 	l1Url: string
