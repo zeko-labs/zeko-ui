@@ -119,7 +119,7 @@ export class Bridge {
 		const {
 			data
 		} = await client.query(accountQuery, { pk: pk.toBase58(), tokenId: tokenId ? TokenId.toBase58(tokenId) : null })
-		if (!data?.account) throw new Error("Account not found")
+		if (!data) throw new Error("Error getting account data")
 		return data.account
 	}
 

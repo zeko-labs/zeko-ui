@@ -1,12 +1,10 @@
 {
-    "name": "bridge-sdk",
+    "name": "@zeko/bridge-sdk",
     "version": "1.0.0",
     "description": "Zeko bridge SDK",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "main": "src/index.ts",
     "scripts": {
         "build": "tsc",
-        "dev": "tsc --watch",
         "clean": "rm -rf dist",
         "format:fix": "dprint fmt",
         "lint:fix": "biome check --fix --unsafe",
@@ -26,6 +24,10 @@
         "library"
     ],
     "author": "Martin Ondejka <martin.ondejka@zeko.io>",
+    "contributors": [
+        "Martin Ondejka <martin.ondejka@zeko.io>",
+        "Emmanuel Donnet <emmanuel@zeko.io>"
+    ],
     "license": "MIT",
     "devDependencies": {
         "@0no-co/graphqlsp": "^1.15.0",

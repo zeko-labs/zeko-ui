@@ -12,7 +12,7 @@ export async function fetchActions(
 	actionStates?: Mina.ActionStates,
 ): Promise<Action[]> {
 	const {
-		data,
+		data
 	} = await client.query(fetchActionsQuery, {
 		pk: pk.toBase58(),
 		fromActionState: actionStates?.fromActionState?.toString() ?? null,

@@ -1,17 +1,19 @@
-# Bridge SDK
+# Zeko Bridge SDK
 
 A TypeScript SDK for interacting with the Zeko bridge, enabling deposits and withdrawals between Mina (L1) and Zeko (L2).
 
 ## Installation
 
+You will need `pnpm` and `bun` installed to run this project.
+
 ```bash
-npm install
+pnpm install
 ```
 
 ## Build
 
 ```bash
-npm run build
+bun run build
 ```
 
 ## Usage
@@ -24,9 +26,9 @@ import { Bridge } from "bridge-sdk"
 const bridge = await Bridge.init({
 	l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
 	l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
-	zekoUrl: "https://testnet.zeko.io/graphql",
+	zekoUrl: "https://alphanet.zeko.io/graphql",
 	l1Network: "testnet",
-	l2Network: "testnet"
+	l2Network: { custom: "zeko:alphanet" }
 })
 ```
 
@@ -81,21 +83,18 @@ await bridge.finalizeWithdrawal(
 
 ## Examples
 
+Set your wallet private key in the `.env` file.
 Run the example scripts:
 
 ```bash
-npm run submitDeposit
-npm run finalizeDeposit
-npm run submitWithdrawal
-npm run finalizeWithdrawal
-npm run fetchOuterActions
-npm run fetchInnerActions
-```
-
-## Development
-
-```bash
-npm run dev      # Watch mode
+# Make sure that you have at least 10 MINA on L1.
+bun run submitDeposit 
+# You will have to wait until the deposit went through on L1
+bun run finalizeDeposit
+bun run submitWithdrawal
+bun run finalizeWithdrawal
+bun run fetchOuterActions
+bun run fetchInnerActions
 ```
 
 ## License
