@@ -8,7 +8,6 @@
 		"declarationMap": true,
 		"sourceMap": true,
 		"outDir": "./dist",
-		"rootDir": "./src",
 		"strict": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
@@ -23,8 +22,33 @@
 		"noImplicitReturns": true,
 		"noImplicitThis": true,
 		"noUnusedLocals": true,
-		"noUnusedParameters": true
+		"noUnusedParameters": true,
+		"plugins": [
+			{
+				"name": "gql.tada/ts-plugin",
+				"schemas": [
+					{
+						"name": "zeko",
+						"schema": "./src/graphql/generated/zeko.graphql",
+						"tadaOutputLocation": "./src/graphql/generated/zeko-env.d.ts",
+						"tadaTurboLocation": "./src/graphql/generated/zeko-cache.d.ts"
+					},
+					{
+						"name": "mina",
+						"schema": "./src/graphql/generated/mina.graphql",
+						"tadaOutputLocation": "./src/graphql/generated/mina-env.d.ts",
+						"tadaTurboLocation": "./src/graphql/generated/mina-cache.d.ts"
+					},
+					{
+						"name": "mina-archive",
+						"schema": "./src/graphql/generated/mina-archive.graphql",
+						"tadaOutputLocation": "./src/graphql/generated/mina-archive-env.d.ts",
+						"tadaTurboLocation": "./src/graphql/generated/mina-archive-cache.d.ts"
+					}
+				]
+			}
+		]
 	},
-	"include": ["src/**/*", "examples"],
+	"include": ["src", "examples"],
 	"exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

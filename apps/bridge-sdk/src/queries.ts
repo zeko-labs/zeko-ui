@@ -1,6 +1,8 @@
 import { gql } from "@apollo/client/core"
 import type { Account } from "./types"
 
+// /!\ TODO Move all these queries to graphql-tada 
+
 export const fetchConfigQuery = gql`
   query {
     circuitsConfig {

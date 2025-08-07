@@ -10,6 +10,10 @@
         "clean": "rm -rf dist",
         "format:fix": "dprint fmt",
         "lint:fix": "biome check --fix --unsafe",
+        "schema:zeko:get": "gql-tada generate schema 'https://testnet.zeko.io/graphql' --output './src/graphql/generated/zeko.graphql'",
+        "schema:mina:get": "gql-tada generate schema 'https://api.minascan.io/node/devnet/v1/graphql' --output './src/graphql/generated/mina.graphql'",
+        "schema:mina:archive:get": "gql-tada generate schema 'https://api.minascan.io/archive/devnet/v1/graphql' --output './src/graphql/generated/mina-archive.graphql'",
+        "schema:get": "bun schema:zeko:get && bun schema:mina:get && bun schema:mina:archive:get",
         "fetchOuterActions": "node dist/examples/fetchOuterActions.js",
         "fetchInnerActions": "node dist/examples/fetchInnerActions.js",
         "submitDeposit": "node dist/examples/submitDeposit.js",
@@ -25,6 +29,7 @@
     "license": "MIT",
     "devDependencies": {
         "@types/node": "^20.8.10",
+        "gql.tada": "^1.8.13",
         "prettier": "^3.0.3",
         "typescript": "^5.2.2"
     },
