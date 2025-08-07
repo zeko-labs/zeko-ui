@@ -59,5 +59,5 @@ export type Withdrawal = {
 }
 
 export type Account = {
-	zkappState?: string[]
+	zkappState?: string[] | null
 }

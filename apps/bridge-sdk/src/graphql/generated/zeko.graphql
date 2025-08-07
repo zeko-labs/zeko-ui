@@ -3,32 +3,78 @@ schema {
   mutation: mutation
 }
 
-input TransferClaimInput {
-  transfer: TransferRequestInput!
-  after: [TransferInput!]!
-  before: [TransferInput!]!
-  pointer: String!
-  isNew: Boolean!
+input AseWithoutLengthInput {
+  fields: [String!]!
+  stmt: AseWithoutLengthStmtInput!
 }
 
-enum TransferDirection {
-  DEPOSIT
-  WITHDRAW
+input AseWithoutLengthStmtInput {
+  actionState: String!
 }
 
-input TransferInput {
+input FinalizeWithdrawalInput {
+  withdrawalParams: WithdrawalParamsInput!
+  prevNextWithdrawal: UInt32!
+  withdrawalAse: AseWithLengthInput!
+  beforeWithdrawal: AseWithoutLengthStmtInput!
+  commitAse: AseWithoutLengthInput!
+  beforeCommit: AseWithoutLengthStmtInput!
+  commit: CheckAcceptedMinaElemInput!
+  publicKey: PublicKey!
+}
+
+input CheckAcceptedMinaElemInput {
+  actions: [String!]!
+}
+
+input CheckAcceptedMinaInitInput {
+  depositIndex: UInt32!
+  orignalActionState: String!
+  params: DepositParamsInput!
+}
+
+input CheckAcceptedMinaInput {
+  elems: [CheckAcceptedMinaElemInput!]!
+  init: CheckAcceptedMinaInitInput!
+}
+
+input AseWithLengthStmtInput {
+  length: UInt32!
+  actionState: String!
+}
+
+input AseWithLengthInput {
+  fields: [String!]!
+  stmt: AseWithLengthStmtInput!
+}
+
+input FinalizeDepositInput {
+  prevNextDeposit: UInt32!
+  checkAccepted: CheckAcceptedMinaInput!
+  ase: AseWithLengthInput!
+}
+
+input WithdrawalParamsInput {
   recipient: PublicKey!
   amount: UInt64!
+  children: String!
 }
 
-input TransferRequestInput {
-  direction: TransferDirection!
-  transfer: TransferInput!
+input DepositParamsInput {
+  timeout: Int!
+  recipient: PublicKey!
+  amount: UInt64!
+  holderAccountL1: PublicKey!
+  children: String!
 }
 
-type ProveTransferPayload {
-  """Key for querying the account update"""
-  accountUpdateKey: String!
+input DepositRequestInput {
+  depositParams: DepositParamsInput!
+}
+
+type ProofKeyPayload {
+  """Key for querying the proof"""
+  key: String!
 }
 
 input FeePayerBodyInput {
@@ -624,11 +670,17 @@ type mutation {
   """Send a zkApp transaction"""
   sendZkapp(input: SendZkappInput!): SendZkappPayload!
 
-  """Prove rollup transfer request"""
-  proveTransferRequest(input: TransferRequestInput!): ProveTransferPayload!
+  """Prove deposit request"""
+  proveDepositRequest(input: DepositRequestInput!): ProofKeyPayload!
 
-  """Prove rollup transfer claim"""
-  proveTransferClaim(input: TransferClaimInput!): ProveTransferPayload!
+  """Prove withdrawal request"""
+  proveWithdrawalRequest(input: WithdrawalParamsInput!): ProofKeyPayload!
+
+  """Finalize a deposit"""
+  finalizeDeposit(input: FinalizeDepositInput!): ProofKeyPayload!
+
+  """Finalize a withdrawal"""
+  finalizeWithdrawal(input: FinalizeWithdrawalInput!): ProofKeyPayload!
 }
 
 input EventFilterOptionsInput {
@@ -694,6 +746,17 @@ type ActionOutput {
   transactionInfo: TransactionInfo
   actionState: ActionStates!
   actionData: [ActionData!]!
+}
+
+type ZekoCircuitsConfig {
+  zekoL1: PublicKey!
+  zekoL2: PublicKey!
+  holderAccountsL1: [PublicKey!]!
+  holderAccountL2: PublicKey!
+  helperTokenOwnerL1: PublicKey!
+  chainL1: String!
+  chainL2: String!
+  withdrawalDelay: Int!
 }
 
 type StateHashes {
@@ -1056,8 +1119,8 @@ type query {
   """
   genesisConstants: GenesisConstants!
 
-  """Query proved account update for transfer in a JSON format"""
-  transferAccountUpdate(key: String!): String
+  """Query proved forest in a JSON format"""
+  provedForest(key: String!): String
 
   """Get current state of the rollup"""
   stateHashes: StateHashes
@@ -1083,6 +1146,12 @@ type query {
 
   """Get the size of the prover queue"""
   proverQueueSize: Int!
+
+  """Get the circuits config"""
+  circuitsConfig: ZekoCircuitsConfig!
+
+  """Get the sequencer's public key"""
+  sequencerPk: PublicKey!
   actions(input: ActionFilterOptionsInput!): [ActionOutput!]!
   events(input: EventFilterOptionsInput!): [EventOutput!]!
 }

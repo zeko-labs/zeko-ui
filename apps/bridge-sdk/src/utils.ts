@@ -1,27 +1,38 @@
-import type { ApolloClient, NormalizedCacheObject } from "@apollo/client/core"
 import { Field, type Mina, Poseidon, type PublicKey, } from "o1js"
+import type { Client } from "urql"
+import * as v from "valibot"
 import { fromList, pushHash } from "./actions"
-import { type FetchActionsQuery, fetchActionsQuery } from "./queries"
+import { fetchActionsQuery } from "./graphql/queries/mina-archive"
 import type { Action, Deposit, Withdrawal } from "./types"
 
 
 export async function fetchActions(
-	client: ApolloClient<NormalizedCacheObject>,
+	client: Client,
 	pk: PublicKey,
 	actionStates?: Mina.ActionStates,
 ): Promise<Action[]> {
 	const {
-		data: { actions },
-	} = await client.query<FetchActionsQuery>({
-		query: fetchActionsQuery,
-		variables: {
-			pk,
-			fromActionState: actionStates?.fromActionState ?? null,
-			endActionState: actionStates?.endActionState ?? null,
-		},
+		data,
+	} = await client.query(fetchActionsQuery, {
+		pk: pk.toBase58(),
+		fromActionState: actionStates?.fromActionState?.toString() ?? null,
+		endActionState: actionStates?.endActionState?.toString() ?? null,
 	})
-
-	return actions.flatMap(
+	// We make sure there's no null data
+	const result = v.safeParse(
+		v.array(
+			v.object({
+				actionState: v.object({
+					actionStateOne: v.string(),
+					actionStateTwo: v.string(),
+				}),
+				actionData: v.array(v.object({ data: v.array(v.string()) })),
+			}),
+		),
+		data?.actions
+	)
+	if (!result.success) throw new Error("Invalid actions data")
+	return result.output.flatMap(
 		({ actionState: { actionStateTwo: actionStateBefore }, actionData }) => {
 			const actions = actionData.map(({ data }) => data.map(Field.from))
 			let actionState = Field.from(actionStateBefore)

@@ -1,30 +1,10 @@
-import {
-	ApolloClient,
-	type DocumentNode,
-	HttpLink,
-	InMemoryCache,
-	type NormalizedCacheObject
-} from "@apollo/client/core"
 import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
+import type { Client } from "urql"
+import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
-import {
-	type AccountQuery,
-	type FetchConfigQuery,
-	type GenesisConstants,
-	type ProvedForest,
-	type RuntimeConfig,
-	type SequencerPkQuery,
-	accountQuery,
-	fetchConfigQuery,
-	finalizeDepositMutation,
-	finalizeWithdrawalMutation,
-	genesisConstantsQuery,
-	provedForestQuery,
-	runtimeConfigQuery,
-	sequencerPkQuery,
-	submitDepositMutation,
-	submitWithdrawalMutation
-} from "./queries"
+import { createGraphqlClient } from "./graphql"
+import { accountQuery, genesisConstantsQueryL1, runtimeConfigQuery } from "./graphql/queries/mina"
+import { fetchConfigQuery, finalizeDepositMutation, finalizeWithdrawalMutation, genesisConstantsQueryL2, provedForestQuery, sequencerPkQuery, submitDepositMutation, submitWithdrawalMutation } from "./graphql/queries/zeko"
 import type {
 	Account,
 	Config,
@@ -40,9 +20,9 @@ export class Bridge {
 	constructor(
 		private readonly config: Config,
 
-		private readonly l1Client: ApolloClient<NormalizedCacheObject>,
-		private readonly l1ArchiveClient: ApolloClient<NormalizedCacheObject>,
-		private readonly l2Client: ApolloClient<NormalizedCacheObject>,
+		private readonly l1Client: Client,
+		private readonly l1ArchiveClient: Client,
+		private readonly l2Client: Client,
 
 		public readonly l1AccountCreationFee: UInt64,
 		public readonly l2AccountCreationFee: UInt64,
@@ -57,61 +37,26 @@ export class Bridge {
 	) { }
 
 	static async init(config: Config): Promise<Bridge> {
-		const l1Client = new ApolloClient({
-			link: new HttpLink({ uri: config.l1Url }),
-			cache: new InMemoryCache(),
-			defaultOptions: {
-				watchQuery: { fetchPolicy: "no-cache" },
-				query: { fetchPolicy: "no-cache" },
-				mutate: { fetchPolicy: "no-cache" }
-			}
-		})
-		const l1ArchiveClient = new ApolloClient({
-			link: new HttpLink({ uri: config.l1ArchiveUrl }),
-			cache: new InMemoryCache(),
-			defaultOptions: {
-				watchQuery: { fetchPolicy: "no-cache" },
-				query: { fetchPolicy: "no-cache" },
-				mutate: { fetchPolicy: "no-cache" }
-			}
-		})
-		const l2Client = new ApolloClient({
-			link: new HttpLink({ uri: config.zekoUrl }),
-			cache: new InMemoryCache(),
-			defaultOptions: {
-				watchQuery: { fetchPolicy: "no-cache" },
-				query: { fetchPolicy: "no-cache" },
-				mutate: { fetchPolicy: "no-cache" }
-			}
-		})
 
-		const {
-			data: { circuitsConfig }
-		} = await l2Client.query<FetchConfigQuery>({
-			query: fetchConfigQuery
-		})
+		const l1Client = createGraphqlClient(config.l1Url)
+		const l1ArchiveClient = createGraphqlClient(config.l1ArchiveUrl)
+		const l2Client = createGraphqlClient(config.zekoUrl)
 
-		const {
-			data: {
-				genesisConstants: { accountCreationFee: l1AccountCreationFee }
-			}
-		} = await l1Client.query<GenesisConstants>({
-			query: genesisConstantsQuery
-		})
+		const fetchConfigResult = await l2Client.query(fetchConfigQuery, {})
+		const circuitsConfig = fetchConfigResult.data?.circuitsConfig
+		if (!circuitsConfig) throw new Error("Circuits config not found")
 
-		const {
-			data: {
-				genesisConstants: { accountCreationFee: l2AccountCreationFee }
-			}
-		} = await l2Client.query<GenesisConstants>({
-			query: genesisConstantsQuery
-		})
+		const genesisConstantL1Result = await l1Client.query(genesisConstantsQueryL1, {})
+		const l1AccountCreationFee = genesisConstantL1Result.data?.genesisConstants?.accountCreationFee
+		if (!l1AccountCreationFee) throw new Error("L1 account creation fee not found")
 
-		const {
-			data: { sequencerPk }
-		} = await l2Client.query<SequencerPkQuery>({
-			query: sequencerPkQuery
-		})
+		const genesisConstantL2Result = await l2Client.query(genesisConstantsQueryL2, {})
+		const l2AccountCreationFee = genesisConstantL2Result.data?.genesisConstants?.accountCreationFee
+		if (!l2AccountCreationFee) throw new Error("L2 account creation fee not found")
+
+		const sequencerPkResult = await l2Client.query(sequencerPkQuery, {})
+		const sequencerPk = sequencerPkResult.data?.sequencerPk
+		if (!sequencerPk) throw new Error("Sequencer public key not found")
 
 		return new Bridge(
 			config,
@@ -151,32 +96,31 @@ export class Bridge {
 	}
 
 	public async fetchCurrentSlot() {
-		const {
-			data: { runtimeConfig }
-		} = await this.l1Client.query<RuntimeConfig>({
-			query: runtimeConfigQuery
-		})
+		const { data } = await this.l1Client.query(runtimeConfigQuery, {})
+
+		const result = v.safeParse(v.object({
+			proof: v.object({ fork: v.object({ global_slot_since_genesis: v.number() }) }),
+			genesis: v.object({ genesis_state_timestamp: v.string() })
+		}), data?.runtimeConfig)
+		if (!result.success) throw new Error("Invalid runtime config")
 
 		const currentTimestamp = Date.now() / 1000
-		const forkSlot = runtimeConfig.proof.fork.global_slot_since_genesis
-		const genesisTimestamp = Date.parse(runtimeConfig.genesis.genesis_state_timestamp) / 1000
+		const forkSlot = result.output.proof.fork.global_slot_since_genesis
+		const genesisTimestamp = Date.parse(result.output.genesis.genesis_state_timestamp) / 1000
 
 		return UInt32.from(Math.floor(forkSlot + (currentTimestamp - genesisTimestamp) / 180))
 	}
 
 	public async fetchAccount(
-		client: ApolloClient<NormalizedCacheObject>,
+		client: Client,
 		pk: PublicKey,
 		tokenId?: Field
 	) {
 		const {
-			data: { account }
-		} = await client.query<AccountQuery>({
-			query: accountQuery,
-			variables: { pk, tokenId: tokenId ? TokenId.toBase58(tokenId) : null }
-		})
-
-		return account
+			data
+		} = await client.query(accountQuery, { pk: pk.toBase58(), tokenId: tokenId ? TokenId.toBase58(tokenId) : null })
+		if (!data?.account) throw new Error("Account not found")
+		return data.account
 	}
 
 	public async fetchOuterActions(
@@ -235,17 +179,9 @@ export class Bridge {
 	}
 
 	private async pollQuery(
-		mutation: DocumentNode,
-		variables: Record<string, unknown>,
+		key: string,
 		pollPeriod = 1_000
 	) {
-		const result = await this.l2Client.mutate<{ request: { key: string } }>({
-			mutation,
-			variables
-		})
-
-		const key = result.data?.request.key
-		if (!key) throw new Error("No key returned from mutation")
 
 		let provedForest: string | null = null
 		let attempts = 0
@@ -258,12 +194,8 @@ export class Bridge {
 			await new Promise((resolve) => setTimeout(resolve, pollPeriod))
 			attempts++
 
-			const resultResponse = await this.l2Client.query<ProvedForest>({
-				query: provedForestQuery,
-				variables: { key }
-			})
-
-			provedForest = resultResponse.data.provedForest
+			const resultResponse = await this.l2Client.query(provedForestQuery, { key })
+			provedForest = resultResponse.data?.provedForest ?? null
 		}
 
 		return (JSON.parse(provedForest) as Types.Json.AccountUpdate[]).map(AccountUpdate.fromJSON)
@@ -297,15 +229,18 @@ export class Bridge {
 			])
 		})
 
-		const depositForest = await this.pollQuery(submitDepositMutation, {
+		const { data } = await this.l2Client.mutation(submitDepositMutation, {
 			depositParams: {
-				recipient,
-				amount,
+				recipient: recipient.toBase58(),
+				amount: amount.toString(),
 				timeout: +timeout.toString(),
-				holderAccountL1,
+				holderAccountL1: holderAccountL1.toBase58(),
 				children: "[]"
 			}
 		})
+		if (!data?.request?.key) throw new Error("No key returned from mutation")
+
+		const depositForest = await this.pollQuery(data.request.key)
 
 		txn.transaction.accountUpdates.push(...depositForest)
 
@@ -458,32 +393,38 @@ export class Bridge {
 			.slice(nextCommitIndex + 1, syncedOuterActionStateIndex + 1)
 			.map(({ action }) => fromList([action.action]).hash)
 
-		const depositForest = await this.pollQuery(finalizeDepositMutation, {
-			input: {
-				prevNextDeposit,
-				checkAccepted: {
-					elems: outerActions
-						.slice(myDepositIndex, nextCommitIndex + 1)
-						.map(({ action }) => ({ actions: action.action })),
-					init: {
-						depositIndex: myDepositIndex,
-						orignalActionState: myDeposit.action.beforeActionState,
-						params: {
-							...depositParams.deposit,
-							timeout: +depositParams.deposit.timeout,
-							children: "[]"
+		const { data } = await this.l2Client.mutation(finalizeDepositMutation,
+			{
+				input: {
+					prevNextDeposit,
+					checkAccepted: {
+						elems: outerActions
+							.slice(myDepositIndex, nextCommitIndex + 1)
+							.map(({ action }) => ({ actions: action.action.map((a) => a.toString()) })),
+						init: {
+							depositIndex: myDepositIndex,
+							orignalActionState: myDeposit.action.beforeActionState.toString(),
+							params: {
+								amount: depositParams.deposit.amount.toString(),
+								recipient: depositParams.deposit.recipient.toBase58(),
+								holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
+								timeout: +depositParams.deposit.timeout,
+								children: "[]"
+							}
 						}
-					}
-				},
-				ase: {
-					stmt: {
-						length: syncedOuterActionState.length.sub(aseElems.length),
-						actionState: nextCommit.action.afterActionState
 					},
-					fields: aseElems
+					ase: {
+						stmt: {
+							length: syncedOuterActionState.length.sub(aseElems.length),
+							actionState: nextCommit.action.afterActionState.toString()
+						},
+						fields: aseElems.map((elem) => elem.toString())
+					}
 				}
-			}
-		})
+			})
+
+		if (!data?.request?.key) throw new Error("No key returned from mutation")
+		const depositForest = await this.pollQuery(data.request.key)
 
 		for (let i = 0; i < depositForest.length; i++) {
 			if (!depositForest[i].publicKey.equals(pk).toBoolean()) continue
@@ -532,9 +473,16 @@ export class Bridge {
 			])
 		})
 
-		const withdrawalForest = await this.pollQuery(submitWithdrawalMutation, {
-			input: { recipient, amount, children: "[]" }
+		const { data } = await this.l2Client.mutation(submitWithdrawalMutation, {
+			input: {
+				recipient: recipient.toBase58(),
+				amount: amount.toString(),
+				children: "[]"
+			}
 		})
+		if (!data?.request?.key) throw new Error("No key returned from mutation")
+
+		const withdrawalForest = await this.pollQuery(data.request.key)
 
 		txn.transaction.accountUpdates.push(...withdrawalForest)
 
@@ -644,34 +592,38 @@ export class Bridge {
 			.slice(myWithdrawalIndex + 1, syncedInnerActionStateIndex + 1)
 			.map(({ action }) => fromList([action.action]).hash)
 
-		const withdrawalForest = await this.pollQuery(finalizeWithdrawalMutation, {
+
+		const { data } = await this.l2Client.mutation(finalizeWithdrawalMutation, {
 			input: {
 				withdrawalParams: {
-					...withdrawalParams.withdrawal,
+					amount: withdrawalParams.withdrawal.amount.toString(),
+					recipient: withdrawalParams.withdrawal.recipient.toBase58(),
 					children: "[]"
 				},
 				prevNextWithdrawal,
 				withdrawalAse: {
-					fields: withdrawalAse,
+					fields: withdrawalAse.map((elem) => elem.toString()),
 					stmt: {
 						length: lastCommit.innerActionStateLength.sub(withdrawalAse.length),
-						actionState: myWithdrawal.action.afterActionState
+						actionState: myWithdrawal.action.afterActionState.toString()
 					}
 				},
 				beforeWithdrawal: {
-					actionState: myWithdrawal.action.beforeActionState
+					actionState: myWithdrawal.action.beforeActionState.toString()
 				},
 				commitAse: {
-					fields: lastCommitAse,
-					stmt: { actionState: lastCommit.action.afterActionState }
+					fields: lastCommitAse.map((elem) => elem.toString()),
+					stmt: { actionState: lastCommit.action.afterActionState.toString() }
 				},
 				commit: {
-					actions: lastCommit.action.action
+					actions: lastCommit.action.action.map((a) => a.toString()),
 				},
-				beforeCommit: { actionState: lastCommit.action.beforeActionState },
-				publicKey: outerHolder
+				beforeCommit: { actionState: lastCommit.action.beforeActionState.toString() },
+				publicKey: outerHolder.toBase58()
 			}
 		})
+		if (!data?.request?.key) throw new Error("No key returned from mutation")
+		const withdrawalForest = await this.pollQuery(data.request.key)
 
 		for (let i = 0; i < withdrawalForest.length; i++) {
 			if (!withdrawalForest[i].publicKey.equals(pk).toBoolean()) continue

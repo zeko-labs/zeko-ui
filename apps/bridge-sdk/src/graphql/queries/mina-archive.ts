@@ -1,16 +1,21 @@
-// import { minaArchive as graphql } from "../helpers"
+import { minaArchive as graphql } from ".."
 
-// export const fetchConfigQuery = graphql(`
-//   query FetchConfig {
-//     circuitsConfig {
-//       zekoL1
-//       zekoL2
-//       holderAccountsL1
-//       holderAccountL2
-//       helperTokenOwnerL1
-//       chainL1
-//       chainL2
-//       withdrawalDelay
-//     }
-//   }
-// `)
+export const fetchActionsQuery = graphql(`
+  query FetchActions($pk: String!, $fromActionState: String, $endActionState: String) {
+    actions(
+      input: {
+        address: $pk
+        fromActionState: $fromActionState
+        endActionState: $endActionState
+      }
+    ) {
+      actionState {
+        actionStateOne
+        actionStateTwo
+      }
+      actionData {
+        data
+      }
+    }
+  }
+`)
