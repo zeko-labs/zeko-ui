@@ -1,5 +1,5 @@
-import { gql } from "@apollo/client/core";
-import { Account } from "./types";
+import { gql } from "@apollo/client/core"
+import { Account } from "./types"
 
 export const fetchConfigQuery = gql`
   query {
@@ -14,30 +14,30 @@ export const fetchConfigQuery = gql`
       withdrawalDelay
     }
   }
-`;
+`
 
 export type FetchConfigQuery = {
-  circuitsConfig: {
-    zekoL1: string;
-    zekoL2: string;
-    holderAccountsL1: string[];
-    holderAccountL2: string;
-    helperTokenOwnerL1: string;
-    chainL1: string;
-    chainL2: string;
-    withdrawalDelay: number;
-  };
-};
+	circuitsConfig: {
+		zekoL1: string
+		zekoL2: string
+		holderAccountsL1: string[]
+		holderAccountL2: string
+		helperTokenOwnerL1: string
+		chainL1: string
+		chainL2: string
+		withdrawalDelay: number
+	}
+}
 
 export const sequencerPkQuery = gql`
   query {
     sequencerPk
   }
-`;
+`
 
 export type SequencerPkQuery = {
-  sequencerPk: string;
-};
+	sequencerPk: string
+}
 
 export const fetchActionsQuery = gql`
   query ($pk: String!, $fromActionState: String, $endActionState: String) {
@@ -57,38 +57,38 @@ export const fetchActionsQuery = gql`
       }
     }
   }
-`;
+`
 
 export type FetchActionsQuery = {
-  actions: {
-    actionState: {
-      actionStateOne: string;
-      actionStateTwo: string;
-    };
-    actionData: {
-      data: string[];
-    }[];
-  }[];
-};
+	actions: {
+		actionState: {
+			actionStateOne: string
+			actionStateTwo: string
+		}
+		actionData: {
+			data: string[]
+		}[]
+	}[]
+}
 
 export const runtimeConfigQuery = gql`
   query RuntimeConfig {
     runtimeConfig
   }
-`;
+`
 
 export type RuntimeConfig = {
-  runtimeConfig: {
-    proof: {
-      fork: {
-        global_slot_since_genesis: number;
-      };
-    };
-    genesis: {
-      genesis_state_timestamp: string;
-    };
-  };
-};
+	runtimeConfig: {
+		proof: {
+			fork: {
+				global_slot_since_genesis: number
+			}
+		}
+		genesis: {
+			genesis_state_timestamp: string
+		}
+	}
+}
 
 export const accountQuery = gql`
   query Account($pk: PublicKey!, $tokenId: TokenId) {
@@ -96,11 +96,11 @@ export const accountQuery = gql`
       zkappState
     }
   }
-`;
+`
 
 export type AccountQuery = {
-  account?: Account;
-};
+	account?: Account
+}
 
 export const genesisConstantsQuery = gql`
   query GenesisConstants {
@@ -108,23 +108,23 @@ export const genesisConstantsQuery = gql`
       accountCreationFee
     }
   }
-`;
+`
 
 export type GenesisConstants = {
-  genesisConstants: {
-    accountCreationFee: string;
-  };
-};
+	genesisConstants: {
+		accountCreationFee: string
+	}
+}
 
 export const provedForestQuery = gql`
   query provedForest($key: String!) {
     provedForest(key: $key)
   }
-`;
+`
 
 export type ProvedForest = {
-  provedForest: string | null;
-};
+	provedForest: string | null
+}
 
 export const submitDepositMutation = gql`
   mutation SubmitDeposit($depositParams: DepositParamsInput!) {
@@ -132,7 +132,7 @@ export const submitDepositMutation = gql`
       key
     }
   }
-`;
+`
 
 export const finalizeDepositMutation = gql`
   mutation FinalizeDeposit($input: FinalizeDepositInput!) {
@@ -140,7 +140,7 @@ export const finalizeDepositMutation = gql`
       key
     }
   }
-`;
+`
 
 export const submitWithdrawalMutation = gql`
   mutation SubmitWithdrawal($input: SubmitWithdrawalInput!) {
@@ -148,7 +148,7 @@ export const submitWithdrawalMutation = gql`
       key
     }
   }
-`;
+`
 
 export const finalizeWithdrawalMutation = gql`
   mutation FinalizeWithdrawal($input: FinalizeWithdrawalInput!) {
@@ -156,4 +156,4 @@ export const finalizeWithdrawalMutation = gql`
       key
     }
   }
-`;
+`

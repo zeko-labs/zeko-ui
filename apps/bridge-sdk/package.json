@@ -1,42 +1,38 @@
 {
-    "name": "bridge-sdk",
-    "version": "1.0.0",
-    "description": "Zeko bridge SDK",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "scripts": {
-        "build": "tsc",
-        "dev": "tsc --watch",
-        "clean": "rm -rf dist",
-        "fetchOuterActions": "node dist/examples/fetchOuterActions.js",
-        "fetchInnerActions": "node dist/examples/fetchInnerActions.js",
-        "submitDeposit": "node dist/examples/submitDeposit.js",
-        "finalizeDeposit": "node dist/examples/finalizeDeposit.js",
-        "submitWithdrawal": "node dist/examples/submitWithdrawal.js",
-        "finalizeWithdrawal": "node dist/examples/finalizeWithdrawal.js"
-    },
-    "keywords": [
-        "typescript",
-        "library"
-    ],
-    "author": "Martin Ondejka <martin.ondejka@zeko.io>",
-    "license": "MIT",
-    "devDependencies": {
-        "@types/node": "^20.8.10",
-        "prettier": "^3.0.3",
-        "typescript": "^5.2.2"
-    },
-    "files": [
-        "dist"
-    ],
-    "repository": {
-        "type": "git",
-        "url": ""
-    },
-    "dependencies": {
-        "@apollo/client": "^3.13.9",
-        "graphql": "^16.11.0",
-        "o1js": "file:../../mina/o1js",
-        "zod": "^4.0.13"
-    }
+	"name": "bridge-sdk",
+	"version": "1.0.0",
+	"description": "Zeko bridge SDK",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"clean": "rm -rf dist",
+		"format:fix": "dprint fmt",
+		"fetchOuterActions": "node dist/examples/fetchOuterActions.js",
+		"fetchInnerActions": "node dist/examples/fetchInnerActions.js",
+		"submitDeposit": "node dist/examples/submitDeposit.js",
+		"finalizeDeposit": "node dist/examples/finalizeDeposit.js",
+		"submitWithdrawal": "node dist/examples/submitWithdrawal.js",
+		"finalizeWithdrawal": "node dist/examples/finalizeWithdrawal.js"
+	},
+	"keywords": ["typescript", "library"],
+	"author": "Martin Ondejka <martin.ondejka@zeko.io>",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^20.8.10",
+		"prettier": "^3.0.3",
+		"typescript": "^5.2.2"
+	},
+	"files": ["dist"],
+	"repository": {
+		"type": "git",
+		"url": ""
+	},
+	"dependencies": {
+		"@apollo/client": "^3.13.9",
+		"graphql": "^16.11.0",
+		"o1js": "file:../../mina/o1js",
+		"zod": "^4.0.13"
+	}
 }
