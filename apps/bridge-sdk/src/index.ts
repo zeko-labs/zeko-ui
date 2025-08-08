@@ -8,11 +8,13 @@ import { fetchConfigQuery, finalizeDepositMutation, finalizeWithdrawalMutation, 
 import type {
 	Account,
 	Config,
+	Deposits,
 	InnerAction,
 	InnerWitness,
 	OuterAction,
 	OuterCommit,
-	OuterWitness
+	OuterWitness,
+	Withdrawals
 } from "./types"
 import { depositAux, fetchActions, withdrawalAux } from "./utils"
 
@@ -75,7 +77,7 @@ export class Bridge {
 		)
 	}
 
-	public setL1() {
+	public setL1(): void {
 		Mina.setActiveInstance(
 			Mina.Network({
 				mina: this.config.l1Url,
@@ -85,7 +87,7 @@ export class Bridge {
 		)
 	}
 
-	public setL2() {
+	public setL2(): void {
 		Mina.setActiveInstance(
 			Mina.Network({
 				mina: this.config.zekoUrl,
@@ -95,7 +97,7 @@ export class Bridge {
 		)
 	}
 
-	public async fetchCurrentSlot() {
+	public async fetchCurrentSlot(): Promise<UInt32> {
 		const { data } = await this.l1Client.query(runtimeConfigQuery, {})
 
 		const result = v.safeParse(v.object({
@@ -115,7 +117,7 @@ export class Bridge {
 		client: Client,
 		pk: PublicKey,
 		tokenId?: Field
-	) {
+	): Promise<{ zkappState: string[] | null } | null> {
 		const {
 			data
 		} = await client.query(accountQuery, { pk: pk.toBase58(), tokenId: tokenId ? TokenId.toBase58(tokenId) : null })
@@ -214,7 +216,7 @@ export class Bridge {
 			timeout: UInt32
 			holderAccountL1: PublicKey
 		}
-	) {
+	): Promise<Mina.Transaction<false, false>> {
 		this.setL1()
 
 		const txn = await Mina.transaction(feePayer, async () => {
@@ -247,7 +249,7 @@ export class Bridge {
 		return txn
 	}
 
-	public async findDeposits(pk: PublicKey) {
+	public async findDeposits(pk: PublicKey): Promise<Deposits> {
 		const userOuterActions = await fetchActions(this.l1ArchiveClient, pk)
 		const currentSlot = await this.fetchCurrentSlot()
 
@@ -298,24 +300,15 @@ export class Bridge {
 					timedOut: timeout.lessThan(currentSlot).toBoolean()
 				}
 			})
-			.filter(Boolean) as {
-				beforeActionState: Field
-				afterActionState: Field
-				recipient: PublicKey
-				amount: UInt64
-				timeout: UInt32
-				holderAccountL1: PublicKey
-				outerPk: PublicKey
-				timedOut: boolean
-			}[]
+			.filter(Boolean) as Deposits
 	}
 
-	public async getNextDepositIndex(helperAccount: Account) {
+	public async getNextDepositIndex(helperAccount: Account): Promise<UInt32> {
 		const nextDepositIndex = helperAccount.zkappState?.at(0)
 		return UInt32.from(nextDepositIndex ?? 0)
 	}
 
-	public async fetchSyncedOuterActionState() {
+	public async fetchSyncedOuterActionState(): Promise<{ state: Field; length: UInt32 }> {
 		const innerAccount = await this.fetchAccount(this.l2Client, this.innerPk)
 
 		if (!innerAccount || !innerAccount.zkappState) throw new Error("Inner account not found")
@@ -326,7 +319,7 @@ export class Bridge {
 		}
 	}
 
-	public async finalizeDeposit(pk: PublicKey, fee: UInt64 = UInt64.zero) {
+	public async finalizeDeposit(pk: PublicKey, fee: UInt64 = UInt64.zero): Promise<Mina.Transaction<false, false>> {
 		const helperAccount = await this.fetchAccount(
 			this.l2Client,
 			pk,
@@ -515,7 +508,7 @@ export class Bridge {
 			recipient: PublicKey
 			amount: UInt64
 		}
-	) {
+	): Promise<Mina.Transaction<false, false>> {
 		this.setL2()
 
 		const txn = await Mina.transaction(feePayer, async () => {
@@ -543,7 +536,7 @@ export class Bridge {
 		return txn
 	}
 
-	public async findWithdrawals(pk: PublicKey) {
+	public async findWithdrawals(pk: PublicKey): Promise<Withdrawals> {
 		const userInnerActions = await fetchActions(this.l2Client, pk)
 
 		return userInnerActions
@@ -562,15 +555,10 @@ export class Bridge {
 					amount
 				}
 			})
-			.filter(Boolean) as {
-				beforeActionState: Field
-				afterActionState: Field
-				recipient: PublicKey
-				amount: UInt64
-			}[]
+			.filter(Boolean) as Withdrawals
 	}
 
-	public async getNextWithdrawalIndex(helperAccount: Account) {
+	public async getNextWithdrawalIndex(helperAccount: Account): Promise<UInt32> {
 		const nextWithdrawalIndex = helperAccount.zkappState?.at(1)
 		return UInt32.from(nextWithdrawalIndex ?? 0)
 	}
@@ -579,7 +567,7 @@ export class Bridge {
 		pk: PublicKey,
 		feePayer: Mina.FeePayerSpec,
 		outerHolder: PublicKey
-	) {
+	): Promise<Mina.Transaction<false, false>> {
 		const helperAccount = await this.fetchAccount(
 			this.l1Client,
 			pk,

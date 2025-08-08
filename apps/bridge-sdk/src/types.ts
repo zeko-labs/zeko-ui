@@ -61,3 +61,21 @@ export type Withdrawal = {
 export type Account = {
 	zkappState?: string[] | null
 }
+
+export type Deposits = {
+	beforeActionState: Field
+	afterActionState: Field
+	recipient: PublicKey
+	amount: UInt64
+	timeout: UInt32
+	holderAccountL1: PublicKey
+	outerPk: PublicKey
+	timedOut: boolean
+}[]
+
+export type Withdrawals = {
+	beforeActionState: Field
+	afterActionState: Field
+	recipient: PublicKey
+	amount: UInt64
+}[]
