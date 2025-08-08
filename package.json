@@ -18,7 +18,7 @@
 	"packageManager": "pnpm@9.12.0",
 	"pnpm": {
 		"patchedDependencies": {
-			"@gql.tada/internal@1.0.8": "patches/@gql.tada__internal@1.0.8.patch"
+			"@gql.tada/internal": "patches/@gql.tada__internal.patch"
 		}
 	}
 }

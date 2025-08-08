@@ -5,9 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@gql.tada/internal@1.0.8':
+  '@gql.tada/internal':
     hash: r6sdebyzpemqktlkckaf4ey7wm
-    path: patches/@gql.tada__internal@1.0.8.patch
+    path: patches/@gql.tada__internal.patch
 
 importers:
 
