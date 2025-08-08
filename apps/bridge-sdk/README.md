@@ -28,7 +28,7 @@ const bridge = await Bridge.init({
 	l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
 	zekoUrl: "https://alphanet.zeko.io/graphql",
 	l1Network: "testnet",
-	l2Network: { custom: "zeko:alphanet" }
+	l2Network: "testnet"
 })
 ```
 
@@ -91,7 +91,9 @@ Run the example scripts:
 bun run submitDeposit 
 # You will have to wait until the deposit went through on L1
 bun run finalizeDeposit
+# Nothing to note here
 bun run submitWithdrawal
+# You will have to wait until the withdrawal is synced
 bun run finalizeWithdrawal
 bun run fetchOuterActions
 bun run fetchInnerActions

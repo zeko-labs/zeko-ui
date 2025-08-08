@@ -1,6 +1,6 @@
 import { env } from "node:process"
 import { PrivateKey, UInt64 } from "o1js"
-import { Bridge } from "../src"
+import { Bridge } from "../src/index"
 
 if (!env.MINA_PRIVATE_KEY) {
 	throw new Error("MINA_PRIVATE_KEY is not set")
@@ -15,7 +15,7 @@ async function main() {
 		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
 		zekoUrl: "https://alphanet.zeko.io/graphql",
 		l1Network: "testnet",
-		l2Network: { custom: "zeko:alphanet" },
+		l2Network: "testnet",
 	})
 
 	const withdrawalParams = {
