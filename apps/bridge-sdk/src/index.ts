@@ -452,6 +452,60 @@ export class Bridge {
 		return txn
 	}
 
+	// New helper: check if a user can finalize a deposit right now
+	public async canFinalizeDeposit(pk: PublicKey): Promise<boolean> {
+		// Determine which deposit (if any) is next for this user
+		const helperAccount = await this.fetchAccount(
+			this.l2Client,
+			pk,
+			TokenId.derive(this.innerHolder)
+		)
+
+		const prevNextDeposit = helperAccount
+			? await this.getNextDepositIndex(helperAccount)
+			: UInt32.zero
+
+		const outerActions = await this.fetchOuterActions(this.outerPk)
+
+		const deposits = (await this.findDeposits(pk)).map((deposit) => ({
+			deposit,
+			aux: depositAux(deposit)
+		}))
+
+		const findMatchingDeposit = (action: OuterWitness) =>
+			deposits.find(
+				({ aux, deposit: { timedOut } }) => aux.equals(action.aux).toBoolean() && !timedOut
+			)
+
+		const myDepositIndex = outerActions.findIndex((action, index) => {
+			if (action.type === "commit") return false
+
+			const matchingDeposit = findMatchingDeposit(action)
+			if (!matchingDeposit) return false
+
+			if (prevNextDeposit.greaterThan(UInt32.from(index)).toBoolean()) return false
+
+			return true
+		})
+
+		if (myDepositIndex === -1) return false
+
+		// There must be a commit after our deposit
+		const nextCommitIndex = outerActions.findIndex((action, index) => {
+			if (action.type !== "commit") return false
+			return index > myDepositIndex
+		})
+		if (nextCommitIndex === -1) return false
+
+		// That commit must have been synced to the inner state
+		const syncedOuterActionState = await this.fetchSyncedOuterActionState()
+		const syncedOuterActionStateIndex = outerActions.findIndex(({ action }) =>
+			action.afterActionState.equals(syncedOuterActionState.state).toBoolean()
+		)
+
+		return syncedOuterActionStateIndex !== -1 && syncedOuterActionStateIndex >= nextCommitIndex
+	}
+
 	public async submitWithdrawal(
 		feePayer: Mina.FeePayerSpec,
 		{
@@ -643,5 +697,52 @@ export class Bridge {
 		txn.transaction.accountUpdates.push(...withdrawalForest)
 
 		return txn
+	}
+
+	// New helper: check if a user can finalize a withdrawal right now
+	public async canFinalizeWithdrawal(pk: PublicKey): Promise<boolean> {
+		const helperAccount = await this.fetchAccount(
+			this.l1Client,
+			pk,
+			TokenId.derive(this.outerTokenOwner)
+		)
+
+		const prevNextWithdrawal = helperAccount
+			? await this.getNextWithdrawalIndex(helperAccount)
+			: UInt32.zero
+
+		const innerActions = await this.fetchInnerActions(this.innerPk)
+
+		const withdrawals = (await this.findWithdrawals(pk)).map((withdrawal) => ({
+			withdrawal,
+			aux: withdrawalAux(withdrawal)
+		}))
+
+		const myWithdrawalIndex = innerActions.findIndex((action, index) => {
+			const matching = withdrawals.find(({ aux }) => aux.equals(action.aux).toBoolean())
+			if (!matching) return false
+			if (prevNextWithdrawal.greaterThan(UInt32.from(index)).toBoolean()) return false
+			return true
+		})
+
+		if (myWithdrawalIndex === -1) return false
+
+		const outerActions = await this.fetchOuterActions(this.outerPk)
+		const reversedOuterActions = outerActions.slice().reverse()
+		const reversedLastCommitIndex = reversedOuterActions.findIndex((action) => {
+			if (action.type !== "commit") return false
+			if (!action.isPastWithdrawalDelay) return false
+			return true
+		})
+		if (reversedLastCommitIndex === -1) return false
+
+		const lastCommitIndex = outerActions.length - reversedLastCommitIndex - 1
+		const lastCommit = outerActions[lastCommitIndex] as OuterCommit
+
+		const syncedInnerActionStateIndex = innerActions.findIndex(({ action }) =>
+			action.afterActionState.equals(lastCommit.innerActionState).toBoolean()
+		)
+
+		return syncedInnerActionStateIndex !== -1 && syncedInnerActionStateIndex >= myWithdrawalIndex
 	}
 }

@@ -16,7 +16,9 @@
         "submitDeposit": "bun examples/submitDeposit.ts",
         "finalizeDeposit": "bun examples/finalizeDeposit.ts",
         "submitWithdrawal": "bun examples/submitWithdrawal.ts",
-        "finalizeWithdrawal": "bun examples/finalizeWithdrawal.ts"
+        "finalizeWithdrawal": "bun examples/finalizeWithdrawal.ts",
+        "canFinalizeDeposit": "bun examples/canFinalizeDeposit.ts",
+        "canFinalizeWithdrawal": "bun examples/canFinalizeWithdrawal.ts"
     },
     "keywords": [
         "typescript",
