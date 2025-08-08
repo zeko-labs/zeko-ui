@@ -114,7 +114,7 @@ type ActionOutput {
 type NetworkStateOutput {
   """
   Returns the latest pending and canonical block heights that are synced by the archive node.  If the archive node is not fully synced, the pending block height will be lower than the actual network state.  Wait some time for the archive node to get back in sync.
-  """
+"""
   maxBlockHeight: MaxBlockHeightInfo
 }
 

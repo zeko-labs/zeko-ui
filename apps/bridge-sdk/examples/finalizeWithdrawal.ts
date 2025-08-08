@@ -15,16 +15,16 @@ async function main() {
 		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
 		zekoUrl: "https://alphanet.zeko.io/graphql",
 		l1Network: "testnet",
-		l2Network: "testnet",
+		l2Network: "testnet"
 	})
 
 	const txn = await bridge.finalizeWithdrawal(
 		recipient,
 		{
 			sender: recipient,
-			fee: 0.1 * 10e8,
+			fee: 0.1 * 10e8
 		},
-		bridge.outerHolders[0],
+		bridge.outerHolders[0]
 	)
 
 	console.log(txn.toPretty())

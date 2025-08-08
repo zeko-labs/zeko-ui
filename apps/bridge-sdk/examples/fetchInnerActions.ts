@@ -15,31 +15,27 @@ async function main() {
 		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
 		zekoUrl: "https://alphanet.zeko.io/graphql",
 		l1Network: "testnet",
-		l2Network: "testnet",
+		l2Network: "testnet"
 	})
 
 	const actions = await bridge.fetchInnerActions(bridge.innerPk)
 	console.log(
-		actions.map(
-			({ action: { action, beforeActionState, afterActionState }, type }) => ({
-				type,
-				action: action.map((x) => x.toString()),
-				beforeActionState: beforeActionState.toString(),
-				afterActionState: afterActionState.toString(),
-			}),
-		),
+		actions.map(({ action: { action, beforeActionState, afterActionState }, type }) => ({
+			type,
+			action: action.map((x) => x.toString()),
+			beforeActionState: beforeActionState.toString(),
+			afterActionState: afterActionState.toString()
+		}))
 	)
 
 	const withdrawals = await bridge.findWithdrawals(recipient)
 	console.log(
-		withdrawals.map(
-			({ recipient, amount, beforeActionState, afterActionState }) => ({
-				recipient: recipient.toBase58(),
-				amount: amount.toString(),
-				beforeActionState: beforeActionState.toString(),
-				afterActionState: afterActionState.toString(),
-			}),
-		),
+		withdrawals.map(({ recipient, amount, beforeActionState, afterActionState }) => ({
+			recipient: recipient.toBase58(),
+			amount: amount.toString(),
+			beforeActionState: beforeActionState.toString(),
+			afterActionState: afterActionState.toString()
+		}))
 	)
 }
 

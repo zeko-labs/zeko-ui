@@ -16,11 +16,7 @@
 		"vBindSameNameShortHand": true
 	},
 	"graphql": {},
-	"excludes": [
-		"**/node_modules",
-		"**/.nuxt",
-		"**/generated/*.d.ts"
-	],
+	"excludes": ["**/node_modules", "**/.nuxt", "**/generated/*.d.ts", "worker-configuration.d.ts"],
 	"plugins": [
 		"https://plugins.dprint.dev/markdown-0.17.8.wasm",
 		"https://plugins.dprint.dev/biome-0.6.0.wasm",

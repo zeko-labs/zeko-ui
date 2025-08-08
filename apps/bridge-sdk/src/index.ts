@@ -4,7 +4,16 @@ import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
 import { createGraphqlClient } from "./graphql"
 import { accountQuery, genesisConstantsQueryL1, runtimeConfigQuery } from "./graphql/queries/mina"
-import { fetchConfigQuery, finalizeDepositMutation, finalizeWithdrawalMutation, genesisConstantsQueryL2, provedForestQuery, sequencerPkQuery, submitDepositMutation, submitWithdrawalMutation } from "./graphql/queries/zeko"
+import {
+	fetchConfigQuery,
+	finalizeDepositMutation,
+	finalizeWithdrawalMutation,
+	genesisConstantsQueryL2,
+	provedForestQuery,
+	sequencerPkQuery,
+	submitDepositMutation,
+	submitWithdrawalMutation
+} from "./graphql/queries/zeko"
 import type {
 	Account,
 	Config,
@@ -36,10 +45,9 @@ export class Bridge {
 		public readonly outerTokenOwner: PublicKey,
 		public readonly sequencerPk: PublicKey,
 		public readonly withdrawalDelay: UInt32
-	) { }
+	) {}
 
 	static async init(config: Config): Promise<Bridge> {
-
 		const l1Client = createGraphqlClient(config.l1Url)
 		const l1ArchiveClient = createGraphqlClient(config.l1ArchiveUrl)
 		const l2Client = createGraphqlClient(config.zekoUrl)
@@ -100,10 +108,13 @@ export class Bridge {
 	public async fetchCurrentSlot(): Promise<UInt32> {
 		const { data } = await this.l1Client.query(runtimeConfigQuery, {})
 
-		const result = v.safeParse(v.object({
-			proof: v.object({ fork: v.object({ global_slot_since_genesis: v.number() }) }),
-			genesis: v.object({ genesis_state_timestamp: v.string() })
-		}), data?.runtimeConfig)
+		const result = v.safeParse(
+			v.object({
+				proof: v.object({ fork: v.object({ global_slot_since_genesis: v.number() }) }),
+				genesis: v.object({ genesis_state_timestamp: v.string() })
+			}),
+			data?.runtimeConfig
+		)
 		if (!result.success) throw new Error("Invalid runtime config")
 
 		const currentTimestamp = Date.now() / 1000
@@ -118,9 +129,10 @@ export class Bridge {
 		pk: PublicKey,
 		tokenId?: Field
 	): Promise<{ zkappState: string[] | null } | null> {
-		const {
-			data
-		} = await client.query(accountQuery, { pk: pk.toBase58(), tokenId: tokenId ? TokenId.toBase58(tokenId) : null })
+		const { data } = await client.query(accountQuery, {
+			pk: pk.toBase58(),
+			tokenId: tokenId ? TokenId.toBase58(tokenId) : null
+		})
 		if (!data) throw new Error("Error getting account data")
 		return data.account
 	}
@@ -180,11 +192,7 @@ export class Bridge {
 		})
 	}
 
-	private async pollQuery(
-		key: string,
-		pollPeriod = 1_000
-	) {
-
+	private async pollQuery(key: string, pollPeriod = 1_000) {
 		let provedForest: string | null = null
 		let attempts = 0
 
@@ -319,7 +327,10 @@ export class Bridge {
 		}
 	}
 
-	public async finalizeDeposit(pk: PublicKey, fee: UInt64 = UInt64.zero): Promise<Mina.Transaction<false, false>> {
+	public async finalizeDeposit(
+		pk: PublicKey,
+		fee: UInt64 = UInt64.zero
+	): Promise<Mina.Transaction<false, false>> {
 		const helperAccount = await this.fetchAccount(
 			this.l2Client,
 			pk,
@@ -386,35 +397,34 @@ export class Bridge {
 			.slice(nextCommitIndex + 1, syncedOuterActionStateIndex + 1)
 			.map(({ action }) => fromList([action.action]).hash)
 
-		const { data } = await this.l2Client.mutation(finalizeDepositMutation,
-			{
-				input: {
-					prevNextDeposit,
-					checkAccepted: {
-						elems: outerActions
-							.slice(myDepositIndex, nextCommitIndex + 1)
-							.map(({ action }) => ({ actions: action.action.map((a) => a.toString()) })),
-						init: {
-							depositIndex: myDepositIndex,
-							orignalActionState: myDeposit.action.beforeActionState.toString(),
-							params: {
-								amount: depositParams.deposit.amount.toString(),
-								recipient: depositParams.deposit.recipient.toBase58(),
-								holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
-								timeout: +depositParams.deposit.timeout,
-								children: "[]"
-							}
+		const { data } = await this.l2Client.mutation(finalizeDepositMutation, {
+			input: {
+				prevNextDeposit,
+				checkAccepted: {
+					elems: outerActions
+						.slice(myDepositIndex, nextCommitIndex + 1)
+						.map(({ action }) => ({ actions: action.action.map((a) => a.toString()) })),
+					init: {
+						depositIndex: myDepositIndex,
+						orignalActionState: myDeposit.action.beforeActionState.toString(),
+						params: {
+							amount: depositParams.deposit.amount.toString(),
+							recipient: depositParams.deposit.recipient.toBase58(),
+							holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
+							timeout: +depositParams.deposit.timeout,
+							children: "[]"
 						}
-					},
-					ase: {
-						stmt: {
-							length: syncedOuterActionState.length.sub(aseElems.length),
-							actionState: nextCommit.action.afterActionState.toString()
-						},
-						fields: aseElems.map((elem) => elem.toString())
 					}
+				},
+				ase: {
+					stmt: {
+						length: syncedOuterActionState.length.sub(aseElems.length),
+						actionState: nextCommit.action.afterActionState.toString()
+					},
+					fields: aseElems.map((elem) => elem.toString())
 				}
-			})
+			}
+		})
 
 		if (!data?.request?.key) throw new Error("No key returned from mutation")
 		const depositForest = await this.pollQuery(data.request.key)
@@ -634,7 +644,6 @@ export class Bridge {
 			.slice(myWithdrawalIndex + 1, syncedInnerActionStateIndex + 1)
 			.map(({ action }) => fromList([action.action]).hash)
 
-
 		const { data } = await this.l2Client.mutation(finalizeWithdrawalMutation, {
 			input: {
 				withdrawalParams: {
@@ -658,7 +667,7 @@ export class Bridge {
 					stmt: { actionState: lastCommit.action.afterActionState.toString() }
 				},
 				commit: {
-					actions: lastCommit.action.action.map((a) => a.toString()),
+					actions: lastCommit.action.action.map((a) => a.toString())
 				},
 				beforeCommit: { actionState: lastCommit.action.beforeActionState.toString() },
 				publicKey: outerHolder.toBase58()

@@ -15,7 +15,7 @@ async function main() {
 		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
 		zekoUrl: "https://alphanet.zeko.io/graphql",
 		l1Network: "testnet",
-		l2Network: "testnet",
+		l2Network: "testnet"
 	})
 
 	const txn = await bridge.finalizeDeposit(recipient)
