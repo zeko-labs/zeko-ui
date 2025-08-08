@@ -12,9 +12,23 @@ pnpm install
 
 ## Build
 
+You can build the libraries with tsdown :
+
 ```bash
 bun run build
 ```
+
+## Development
+
+### Graphql
+
+The library uses `gql.tada` to generate types from the GraphQL schema. You can run the following command to download the latest schema and generate types:
+
+```bash
+bun run schema:get
+```
+
+If the queries in the `src/queries` are out of sync with the schema, there will be a typescript error.
 
 ## Usage
 

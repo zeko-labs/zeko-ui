@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Zeko bridge SDK",
   "main": "./dist/index.js",
+  "private": true,
   "type": "module",
   "scripts": {
     "build": "tsdown",
