@@ -1,0 +1,29 @@
+name: bridge-sdk-lint
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "apps/bridge-sdk/**"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - uses: ./.github/actions/install
+        
+        - name: Format
+          working-directory: apps/bridge-sdk
+          run: pnpm run format
+
+        - name: Lint
+          working-directory: apps/bridge-sdk
+          run: pnpm run lint
+
+        - name: Build
+          working-directory: apps/bridge-sdk
+          run: pnpm run build

@@ -7,8 +7,10 @@
 	"type": "module",
 	"scripts": {
 		"build": "tsdown",
+		"format": "dprint check",
+		"lint": "biome lint",
 		"format:fix": "dprint fmt",
-		"lint:fix": "biome check --fix --unsafe",
+		"lint:fix": "biome lint --fix --unsafe",
 		"schema:zeko:get": "gql-tada generate schema 'https://alphanet.zeko.io/graphql' --output './src/graphql/generated/zeko.graphql'",
 		"schema:mina:get": "gql-tada generate schema 'https://api.minascan.io/node/devnet/v1/graphql' --output './src/graphql/generated/mina.graphql'",
 		"schema:mina:archive:get": "gql-tada generate schema 'https://api.minascan.io/archive/devnet/v1/graphql' --output './src/graphql/generated/mina-archive.graphql'",
