@@ -1,0 +1,6 @@
+{
+    "name": "@zeko/design",
+    "private": true,
+    "type": "module",
+    "main": "src/index.ts"
+}
