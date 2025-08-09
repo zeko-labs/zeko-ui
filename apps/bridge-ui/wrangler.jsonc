@@ -1,0 +1,19 @@
+{
+	"$schema": "https://unpkg.com/wrangler@latest/config-schema.json",
+	"name": "bridge",
+	"main": "./.output/server/index.mjs",
+	"compatibility_date": "2025-08-07",
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./.output/public/"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"routes": [
+		{
+			"pattern": "bridge.zeko.io",
+			"custom_domain": true
+		}
+	]
+}

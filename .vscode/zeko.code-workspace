@@ -4,6 +4,12 @@
         "path": "../apps/ui",
       },
       {
+        "path": "../apps/bridge-ui",
+      },
+      {
+        "path": "../apps/layer"
+      },
+      {
         "path": "../apps/faucet",
       },
       {
