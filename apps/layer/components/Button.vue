@@ -20,8 +20,8 @@ const buttonStyle = computed(() => {
 
 	const baseStyles = {
 		color: theme.config.colors.gray[50].value,
-		width: sizes.width,
-		height: sizes.height,
+		width: sizes.width.value,
+		height: sizes.height.value,
 		padding: sizes.padding.value,
 		radius: sizes.radius.value,
 		fontSize: sizes.fontSize.value,

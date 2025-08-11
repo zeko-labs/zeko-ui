@@ -4,11 +4,15 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
+    "build:cf": "NITRO_PRESET=cloudflare_module nuxt build",
     "dev": "nuxt dev",
+    "dev:cf": "wrangler dev .output/server/index.mjs --assets .output/public/",
+    "type:cf": "wrangler types",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "type:cf": "wrangler types"
+    "deploy": "wrangler deploy",
+    "deploy:dev": "rimraf .output .wrangler .nuxt && NITRO_PRESET=cloudflare_module nuxt build && wrangler deploy"
   },
   "dependencies": {
     "@hebilicious/nuxt-switch-match": "^0.1.1",
