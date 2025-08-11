@@ -7,6 +7,7 @@ import type { introspection as zekoSchema } from "./generated/zeko-env"
 
 type Scalars = {
 	UInt64: string
+	UInt32: string
 	PublicKey: string
 	TokenID: string
 	Fee: string

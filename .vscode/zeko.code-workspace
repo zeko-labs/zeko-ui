@@ -1,16 +1,19 @@
 {
     "folders": [
       {
+        "path": "../apps/layer"
+      },
+      {
+        "path": "../apps/design"
+      },
+      {
         "path": "../apps/ui",
       },
       {
         "path": "../apps/bridge-ui",
       },
       {
-        "path": "../apps/layer"
-      },
-      {
-        "path": "../apps/design"
+        "path": "../apps/bridge-sdk",
       },
       {
         "path": "../apps/faucet",
@@ -18,9 +21,7 @@
       {
         "path": "../apps/docs",
       },
-      {
-        "path": "../apps/bridge-sdk",
-      },
+
       {
         "path": "..",
       },
