@@ -1,20 +1,20 @@
 {
-    "name": "@zeko/docs",
-    "private": true,
-    "type": "module",
-    "scripts": {
-        "dev": "vitepress dev",
-        "build": "vitepress build",
-        "preview": "vitepress preview",
-        "deploy": "wrangler deploy",
-        "deploy:preview": "wrangler versions upload"
-    },
-    "devDependencies": {
-        "@cloudflare/workers-types": "^4.20250515.0",
-        "vitepress": "^1.6.3",
-        "vitepress-plugin-d2": "^1.0.4",
-        "vitepress-plugin-llms": "^1.1.4",
-        "vue": "^3.5.14",
-        "wrangler": "4.9.1"
-    }
+	"name": "@zeko/docs",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vitepress dev",
+		"build": "vitepress build",
+		"preview": "vitepress preview",
+		"deploy": "wrangler deploy",
+		"deploy:preview": "wrangler versions upload"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20250515.0",
+		"vitepress": "^1.6.3",
+		"vitepress-plugin-d2": "^1.0.4",
+		"vitepress-plugin-llms": "^1.1.4",
+		"vue": "^3.5.14",
+		"wrangler": "4.9.1"
+	}
 }

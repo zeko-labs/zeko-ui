@@ -1,4 +1,4 @@
-name: bridge-sdk-lint
+name: bridge-sdk
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
       - "apps/bridge-sdk/**"
 
 jobs:
-  lint:
+  build:
     runs-on: ubuntu-latest
     steps:
         - uses: actions/checkout@v4

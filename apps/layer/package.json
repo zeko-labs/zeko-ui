@@ -1,23 +1,23 @@
 {
-  "name": "@zeko/layer",
-  "type": "module",
-  "private": true,
-  "main": "./nuxt.config.ts",
-  "scripts": {
-    "dev": "nuxi dev playground",
-    "dev:prepare": "nuxt prepare playground",
-    "build": "nuxt build playground",
-    "generate": "nuxt generate playground",
-    "preview": "nuxt preview playground"
-  },
-  "devDependencies": {
-    "nuxt": "^4.0.3",
-    "typescript": "^5.8.3",
-    "vue": "latest"
-  },
-  "dependencies": {
-    "@ark-ui/vue": "^5.9.1",
-    "@zeko/design": "workspace:^",
-    "lucide-vue-next": "^0.453.0"
-  }
+	"name": "@zeko/layer",
+	"type": "module",
+	"private": true,
+	"main": "./nuxt.config.ts",
+	"scripts": {
+		"dev": "nuxi dev playground",
+		"dev:prepare": "nuxt prepare playground",
+		"build": "nuxt build playground",
+		"generate": "nuxt generate playground",
+		"preview": "nuxt preview playground"
+	},
+	"devDependencies": {
+		"nuxt": "^4.0.3",
+		"typescript": "^5.8.3",
+		"vue": "latest"
+	},
+	"dependencies": {
+		"@ark-ui/vue": "^5.9.1",
+		"@zeko/design": "workspace:^",
+		"lucide-vue-next": "^0.453.0"
+	}
 }

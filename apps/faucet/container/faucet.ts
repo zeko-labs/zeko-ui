@@ -11,9 +11,17 @@ import {
 	fetchAccount
 } from "o1js"
 import { prefixes } from "./node_modules/o1js/dist/node/bindings/crypto/constants"
-import { emptyHashWithPrefix, hashWithPrefix } from "./node_modules/o1js/dist/node/lib/provable/crypto/poseidon"
+import {
+	emptyHashWithPrefix,
+	hashWithPrefix
+} from "./node_modules/o1js/dist/node/lib/provable/crypto/poseidon"
 
-export async function sendPayment({ address, privateKey, amount, publicKey }: {
+export async function sendPayment({
+	address,
+	privateKey,
+	amount,
+	publicKey
+}: {
 	address: string
 	privateKey: PrivateKey
 	amount: bigint
@@ -27,7 +35,7 @@ export async function sendPayment({ address, privateKey, amount, publicKey }: {
 	const feePayer = {
 		sender: publicKey,
 		fee: 0.1 * 1e9,
-		nonce,
+		nonce
 	} satisfies Mina.FeePayerSpec
 
 	const amount64 = new UInt64(amount)
@@ -46,7 +54,7 @@ export async function sendPayment({ address, privateKey, amount, publicKey }: {
 		}
 
 		const event = [
-			Field("0"), // Claim 
+			Field("0"), // Claim
 			Field("1"), // EventId
 			...claimer.toFields(),
 			Field(amount) // Amount

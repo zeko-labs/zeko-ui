@@ -4,11 +4,13 @@
 	"type": "module",
 	"scripts": {
 		"format": "dprint check",
-		"format:fix": "dprint fmt"
+		"format:fix": "dprint fmt",
+		"format:all:fix": "dprint fmt --verbose --allow-no-files"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.1",
 		"dprint": "^0.47.2",
+		"lefthook": "^1.12.2",
 		"typescript": "^5.6.2"
 	},
 	"engines": {
@@ -17,6 +19,7 @@
 	},
 	"packageManager": "pnpm@9.12.0",
 	"pnpm": {
+		"onlyBuiltDependencies": ["lefthook"],
 		"patchedDependencies": {
 			"@gql.tada/internal": "patches/@gql.tada__internal.patch"
 		}

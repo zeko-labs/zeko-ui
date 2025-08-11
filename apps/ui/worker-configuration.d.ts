@@ -2,9 +2,9 @@
 // Runtime types generated with workerd@1.20250408.0 2025-01-16 nodejs_compat
 declare namespace Cloudflare {
 	interface Env {
-		STORE_FAUCET_URL: SecretsStoreSecret;
-		FAUCET: Fetcher;
-		ASSETS: Fetcher;
+		STORE_FAUCET_URL: SecretsStoreSecret
+		FAUCET: Fetcher
+		ASSETS: Fetcher
 	}
 }
 interface Env extends Cloudflare.Env {}
