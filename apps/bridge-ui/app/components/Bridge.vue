@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { useMachine, useSelector } from "@lumina-dex/sdk/vue"
-import { fromPromise } from "xstate"
 import { bridgeMachine } from "~~/machines/bridge"
 import { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 

@@ -1,12 +1,6 @@
 {
 	// https://nuxt.com/docs/guide/concepts/typescript
 	"files": [],
-	// "compilerOptions": {
-	// 	"target": "esnext",
-	// 	"moduleResolution": "bundler",
-	// 	"composite": true
-	// },
-	// "include": ["machines", "app", "*.d.ts"],
 	"references": [
 		{
 			"path": "./.nuxt/tsconfig.app.json"
@@ -21,7 +15,7 @@
 			"path": "./.nuxt/tsconfig.node.json"
 		},
 		{
-			"path": "./tsconfig.custom.json"
+			"path": "./bridge.tsconfig.json"
 		}
 	]
 }

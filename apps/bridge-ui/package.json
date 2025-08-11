@@ -26,8 +26,6 @@
 		"@xstate/vue": "^3.1.4",
 		"@zeko/design": "workspace:^",
 		"@zeko/layer": "workspace:^",
-		"arktype": "^2.1.0",
-		"lucide-vue-next": "^0.453.0",
 		"nanoid": "^5.0.9",
 		"nuxt": "^4.0.1",
 		"o1js": "^2.7.0",
