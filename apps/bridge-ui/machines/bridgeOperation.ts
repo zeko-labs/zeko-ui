@@ -20,7 +20,7 @@ const isDefined = <T>(value: T) => {
 	return value
 }
 
-type BridgeParent = ActorRef<Snapshot<unknown>, BridgeEvents>
+type BridgeMachine = ActorRef<Snapshot<unknown>, BridgeEvents>
 
 type Wallet = ActorRefFromLogic<typeof walletMachine>
 export type ReturnTo =
@@ -31,7 +31,7 @@ export type ReturnTo =
 	| "CONFIRMING_TRANSFER_CLAIM"
 
 interface BridgeOperationContext {
-	bridge: BridgeParent
+	bridgeMachine: BridgeMachine
 	wallet: Wallet
 	returnTo: ReturnTo
 	requestAccountUpdates: string
@@ -55,7 +55,7 @@ export const bridgeOperationMachine = setup({
 	types: {
 		context: {} as BridgeOperationContext,
 		input: {} as {
-			bridge: BridgeParent
+			bridgeMachine: BridgeMachine
 			wallet: Wallet
 			sourceNetwork: Networks
 			destinationNetwork: Networks
@@ -108,8 +108,8 @@ export const bridgeOperationMachine = setup({
 }).createMachine({
 	id: "bridgeOperation",
 	initial: "IDLE",
-	context: ({ input: { sourceNetwork, destinationNetwork, amount, bridge, wallet } }) => ({
-		bridge,
+	context: ({ input: { sourceNetwork, destinationNetwork, amount, bridgeMachine, wallet } }) => ({
+		bridgeMachine,
 		wallet,
 		changeNetworkTo: sourceNetwork,
 		sourceNetwork,
@@ -317,7 +317,7 @@ export const bridgeOperationMachine = setup({
 		BRIDGE_OPERATION_DONE: {
 			type: "final",
 			entry: sendTo(
-				({ context }) => context.bridge,
+				({ context }) => context.bridgeMachine,
 				({ self }) => ({ type: "CompleteOperation", id: self.id })
 			)
 		}
