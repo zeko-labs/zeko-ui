@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { theme } from "~~/helpers/theme"
+import { theme } from "@zeko/design"
 const styles = theme
 </script>
 

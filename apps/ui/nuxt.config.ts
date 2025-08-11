@@ -6,6 +6,7 @@ export default defineNuxtConfig({
 		"@unocss/reset/sanitize/assets.css",
 		"~/assets/styles/fonts.css"
 	],
+	extends: ["@zeko/layer"],
 	future: {
 		compatibilityVersion: 4
 	},
@@ -28,7 +29,7 @@ export default defineNuxtConfig({
 			telegram: "https://t.me/zekoprotocol",
 			discord: "https://discord.gg/vSDxqAchUY",
 			twitter: "https://twitter.com/ZekoLabs",
-			github: "https://github.com/zeko-labs",
+			github: "https://github.com/zeko-labs"
 		}
 	},
 	nitro: {
@@ -52,7 +53,7 @@ export default defineNuxtConfig({
 		}
 	},
 	devtools: { enabled: true },
-	modules: ["@nuxt/fonts", "@pinia/nuxt", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
+	modules: ["@nuxt/fonts", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
 	fonts: {
 		provider: "google"
 	}

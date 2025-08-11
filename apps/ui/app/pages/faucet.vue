@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { Field } from "@ark-ui/vue/field"
-import { useActor } from "@lumina-dex/sdk/vue"
+import { useActor } from "@xstate/vue"
 import { type } from "arktype"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ArrowBigRight, TriangleAlert } from "lucide-vue-next"
