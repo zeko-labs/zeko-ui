@@ -680,12 +680,13 @@ export class Bridge {
 		const outerActions: (MaybeDeposit | OuterCommit)[] = (await this.fetchOuterActions()).map(
 			(action) => {
 				if (action.type === "commit") return action
-				else if (action.type === "witness") {
+				if (action.type === "witness") {
 					return {
 						...action,
 						deposit: auxesMap.get(action.aux.toBigInt())
 					}
-				} else throw new Error("unreachable")
+				}
+				throw new Error("unreachable")
 			}
 		)
 
@@ -696,7 +697,7 @@ export class Bridge {
 		})[] = outerActions.map((action, index) => {
 			if (syncedOuterActionState.length.greaterThanOrEqual(UInt32.from(index)).toBoolean())
 				return { ...action, synced: true }
-			else return { ...action, synced: false }
+			return { ...action, synced: false }
 		})
 
 		const reversedOuterActions = outerActionsMaybeSynced.slice().reverse()
@@ -726,7 +727,7 @@ export class Bridge {
 		})[] = outerActionsMaybeSynced.map((action, index) => {
 			if (lastCommittedIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
 				return { ...action, accepted: true }
-			else return { ...action, accepted: false }
+			return { ...action, accepted: false }
 		})
 
 		const reversedLastSyncedCommit = reversedOuterActions.findIndex(
@@ -754,7 +755,7 @@ export class Bridge {
 		})[] = outerActionsMaybeAccepted.map((action, index) => {
 			if (lastSyncedIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
 				return { ...action, confirmed: true }
-			else return { ...action, confirmed: false }
+			return { ...action, confirmed: false }
 		})
 
 		return outerActionsMaybeConfirmed
@@ -806,7 +807,7 @@ export class Bridge {
 		})[] = innerActions.map((action, index) => {
 			if (lastCommittedInnerIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
 				return { ...action, committed: true }
-			else return { ...action, committed: false }
+			return { ...action, committed: false }
 		})
 
 		const reversedLastPastDelayCommit = reversedOuterActions.findIndex(
@@ -833,7 +834,7 @@ export class Bridge {
 		})[] = innerActionsMaybeCommitted.map((action, index) => {
 			if (lastPastDelayIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
 				return { ...action, isPastWithdrawalDelay: true }
-			else return { ...action, isPastWithdrawalDelay: false }
+			return { ...action, isPastWithdrawalDelay: false }
 		})
 
 		return innerActionsMaybePastDelay
