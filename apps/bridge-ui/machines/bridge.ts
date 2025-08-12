@@ -59,7 +59,7 @@ export const bridgeMachine = setup({
 			const operation = spawn("bridgeOperationMachine", {
 				id,
 				systemId: id,
-				input: { bridge: self, wallet, sourceNetwork, destinationNetwork, amount }
+				input: { bridgeMachine: self, wallet, sourceNetwork, destinationNetwork, amount }
 			})
 			operation.send({ type: "StartBridgeOperation" })
 			const operations = context.operations.set(id, { status: "started", operation })

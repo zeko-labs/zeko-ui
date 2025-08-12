@@ -9,7 +9,7 @@
 	"type": "module",
 	"dependencies": {
 		"hono": "^4.7.6",
-		"o1js": "^2.6.0"
+		"o1js": "catalog:"
 	},
 	"devDependencies": {
 		"@lumina-dex/sdk": "^0.17.0",
