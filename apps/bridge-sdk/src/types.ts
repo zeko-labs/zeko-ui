@@ -54,6 +54,13 @@ export type OuterActionWithState = (MaybeDeposit | OuterCommit) & {
 
 export type InnerAction = InnerWitness
 
+export type MaybeWithdrawal = InnerWitness & { withdrawal: Withdrawal | undefined }
+
+export type InnerActionWithState = MaybeWithdrawal & {
+	committed: boolean
+	isPastWithdrawalDelay: boolean
+}
+
 export type Deposit = {
 	recipient: PublicKey
 	amount: UInt64

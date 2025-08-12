@@ -18,8 +18,10 @@ import type {
 	Config,
 	Deposit,
 	InnerAction,
+	InnerActionWithState,
 	InnerWitness,
 	MaybeDeposit,
+	MaybeWithdrawal,
 	OuterAction,
 	OuterActionWithState,
 	OuterCommit,
@@ -706,6 +708,14 @@ export class Bridge {
 			reversedLastCommitIndex === -1
 				? -1
 				: outerActionsMaybeSynced.length - reversedLastCommitIndex - 1
+
+		if (lastCommitIndex === -1)
+			return outerActionsMaybeSynced.map((action) => ({
+				...action,
+				accepted: false,
+				confirmed: false
+			}))
+
 		const lastCommittedIndex = (
 			outerActions[lastCommitIndex] as OuterCommit
 		).synchronizedOuterActionStateLength.sub(1)
@@ -726,6 +736,13 @@ export class Bridge {
 			reversedLastSyncedCommit === -1
 				? -1
 				: outerActionsMaybeSynced.length - reversedLastSyncedCommit - 1
+
+		if (lastSyncedCommitIndex === -1)
+			return outerActionsMaybeAccepted.map((action) => ({
+				...action,
+				confirmed: false
+			}))
+
 		const lastSyncedIndex = (
 			outerActions[lastSyncedCommitIndex] as OuterCommit
 		).synchronizedOuterActionStateLength.sub(1)
@@ -741,5 +758,84 @@ export class Bridge {
 		})
 
 		return outerActionsMaybeConfirmed
+	}
+	public async fetchInnerActionsWithStates(pk: PublicKey): Promise<InnerActionWithState[]> {
+		const withdrawals = await this.fetchUserWithdrawals(pk)
+
+		const auxesMap = new Map<bigint, Withdrawal>()
+		for (const withdrawal of withdrawals) {
+			const aux = withdrawalAux(withdrawal)
+			auxesMap.set(aux.toBigInt(), withdrawal)
+		}
+
+		const innerActions: MaybeWithdrawal[] = (await this.fetchInnerActions()).map((action) => ({
+			...action,
+			withdrawal: auxesMap.get(action.aux.toBigInt())
+		}))
+
+		const outerActions = await this.fetchOuterActions()
+		const reversedOuterActions = outerActions.slice().reverse()
+
+		const reversedLastCommitIndex = reversedOuterActions.findIndex(
+			(action) => action.type === "commit"
+		)
+		const lastCommitIndex =
+			reversedLastCommitIndex === -1 ? -1 : outerActions.length - reversedLastCommitIndex - 1
+
+		if (lastCommitIndex === -1)
+			return innerActions.map((action) => ({
+				...action,
+				committed: false,
+				isPastWithdrawalDelay: false
+			}))
+
+		const lastCommit = outerActions[lastCommitIndex] as OuterCommit
+
+		if (lastCommit.innerActionStateLength.equals(UInt32.zero).toBoolean()) {
+			return innerActions.map((action) => ({
+				...action,
+				committed: false,
+				isPastWithdrawalDelay: false
+			}))
+		}
+
+		const lastCommittedInnerIndex = lastCommit.innerActionStateLength.sub(1)
+
+		const innerActionsMaybeCommitted: (MaybeWithdrawal & {
+			committed: boolean
+		})[] = innerActions.map((action, index) => {
+			if (lastCommittedInnerIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
+				return { ...action, committed: true }
+			else return { ...action, committed: false }
+		})
+
+		const reversedLastPastDelayCommit = reversedOuterActions.findIndex(
+			(action) => action.type === "commit" && action.isPastWithdrawalDelay
+		)
+		const lastPastDelayCommitIndex =
+			reversedLastPastDelayCommit === -1
+				? -1
+				: outerActions.length - reversedLastPastDelayCommit - 1
+
+		if (lastPastDelayCommitIndex === -1)
+			return innerActionsMaybeCommitted.map((action) => ({
+				...action,
+				isPastWithdrawalDelay: false
+			}))
+
+		const lastPastDelayIndex = (
+			outerActions[lastPastDelayCommitIndex] as OuterCommit
+		).innerActionStateLength.sub(1)
+
+		const innerActionsMaybePastDelay: (MaybeWithdrawal & {
+			committed: boolean
+			isPastWithdrawalDelay: boolean
+		})[] = innerActionsMaybeCommitted.map((action, index) => {
+			if (lastPastDelayIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
+				return { ...action, isPastWithdrawalDelay: true }
+			else return { ...action, isPastWithdrawalDelay: false }
+		})
+
+		return innerActionsMaybePastDelay
 	}
 }
