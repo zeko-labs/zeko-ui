@@ -15,7 +15,6 @@ import {
 	submitWithdrawalMutation
 } from "./graphql/queries/zeko"
 import type {
-	Account,
 	Config,
 	Deposits,
 	InnerAction,
@@ -25,7 +24,13 @@ import type {
 	OuterWitness,
 	Withdrawals
 } from "./types"
-import { depositAux, fetchActions, withdrawalAux } from "./utils"
+import {
+	depositAux,
+	fetchActions,
+	getNextDepositIndex,
+	getNextWithdrawalIndex,
+	withdrawalAux
+} from "./utils"
 
 export class Bridge {
 	constructor(
@@ -311,11 +316,6 @@ export class Bridge {
 			.filter(Boolean) as Deposits
 	}
 
-	public async getNextDepositIndex(helperAccount: Account): Promise<UInt32> {
-		const nextDepositIndex = helperAccount.zkappState?.at(0)
-		return UInt32.from(nextDepositIndex ?? 0)
-	}
-
 	public async fetchSyncedOuterActionState(): Promise<{ state: Field; length: UInt32 }> {
 		const innerAccount = await this.fetchAccount(this.l2Client, this.innerPk)
 
@@ -327,19 +327,14 @@ export class Bridge {
 		}
 	}
 
-	public async finalizeDeposit(
-		pk: PublicKey,
-		fee: UInt64 = UInt64.zero
-	): Promise<Mina.Transaction<false, false>> {
+	private async fetchDepositFinalizationWitnesses(pk: PublicKey) {
 		const helperAccount = await this.fetchAccount(
 			this.l2Client,
 			pk,
 			TokenId.derive(this.innerHolder)
 		)
 
-		const prevNextDeposit = helperAccount
-			? await this.getNextDepositIndex(helperAccount)
-			: UInt32.zero
+		const prevNextDeposit = helperAccount ? getNextDepositIndex(helperAccount) : UInt32.zero
 
 		const outerActions = await this.fetchOuterActions(this.outerPk)
 
@@ -365,7 +360,7 @@ export class Bridge {
 			return true
 		})
 
-		if (myDepositIndex === -1) throw new Error("Did not find any deposit to finalize")
+		if (myDepositIndex === -1) return null
 
 		const myDeposit = outerActions[myDepositIndex] as OuterWitness
 
@@ -377,12 +372,12 @@ export class Bridge {
 			return true
 		})
 
-		if (nextCommitIndex === -1) throw new Error("Next commit not found")
+		if (nextCommitIndex === -1) return null
 
 		const nextCommit = outerActions[nextCommitIndex] as OuterCommit
 
 		const depositParams = findMatchingDeposit(myDeposit)
-		if (!depositParams) throw new Error("Did not find deposit parameters")
+		if (!depositParams) throw new Error("Unreachable: Did not find deposit parameters")
 
 		const syncedOuterActionState = await this.fetchSyncedOuterActionState()
 
@@ -391,14 +386,16 @@ export class Bridge {
 		)
 
 		if (syncedOuterActionStateIndex === -1 || syncedOuterActionStateIndex < nextCommitIndex)
-			throw new Error("Next commit has not been synced")
+			return null
 
 		const aseElems = outerActions
 			.slice(nextCommitIndex + 1, syncedOuterActionStateIndex + 1)
 			.map(({ action }) => fromList([action.action]).hash)
 
-		const { data } = await this.l2Client.mutation(finalizeDepositMutation, {
-			input: {
+		return {
+			depositParams,
+			helperAccount,
+			witness: {
 				prevNextDeposit,
 				checkAccepted: {
 					elems: outerActions
@@ -424,6 +421,21 @@ export class Bridge {
 					fields: aseElems.map((elem) => elem.toString())
 				}
 			}
+		}
+	}
+
+	public async finalizeDeposit(
+		pk: PublicKey,
+		fee: UInt64 = UInt64.zero
+	): Promise<Mina.Transaction<false, false>> {
+		const witnesses = await this.fetchDepositFinalizationWitnesses(pk)
+
+		if (!witnesses) throw new Error("Did not find any deposit to finalize")
+
+		const { witness, depositParams, helperAccount } = witnesses
+
+		const { data } = await this.l2Client.mutation(finalizeDepositMutation, {
+			input: witness
 		})
 
 		if (!data?.request?.key) throw new Error("No key returned from mutation")
@@ -455,58 +467,8 @@ export class Bridge {
 		return txn
 	}
 
-	// New helper: check if a user can finalize a deposit right now
 	public async canFinalizeDeposit(pk: PublicKey): Promise<boolean> {
-		// Determine which deposit (if any) is next for this user
-		const helperAccount = await this.fetchAccount(
-			this.l2Client,
-			pk,
-			TokenId.derive(this.innerHolder)
-		)
-
-		const prevNextDeposit = helperAccount
-			? await this.getNextDepositIndex(helperAccount)
-			: UInt32.zero
-
-		const outerActions = await this.fetchOuterActions(this.outerPk)
-
-		const deposits = (await this.findDeposits(pk)).map((deposit) => ({
-			deposit,
-			aux: depositAux(deposit)
-		}))
-
-		const findMatchingDeposit = (action: OuterWitness) =>
-			deposits.find(
-				({ aux, deposit: { timedOut } }) => aux.equals(action.aux).toBoolean() && !timedOut
-			)
-
-		const myDepositIndex = outerActions.findIndex((action, index) => {
-			if (action.type === "commit") return false
-
-			const matchingDeposit = findMatchingDeposit(action)
-			if (!matchingDeposit) return false
-
-			if (prevNextDeposit.greaterThan(UInt32.from(index)).toBoolean()) return false
-
-			return true
-		})
-
-		if (myDepositIndex === -1) return false
-
-		// There must be a commit after our deposit
-		const nextCommitIndex = outerActions.findIndex((action, index) => {
-			if (action.type !== "commit") return false
-			return index > myDepositIndex
-		})
-		if (nextCommitIndex === -1) return false
-
-		// That commit must have been synced to the inner state
-		const syncedOuterActionState = await this.fetchSyncedOuterActionState()
-		const syncedOuterActionStateIndex = outerActions.findIndex(({ action }) =>
-			action.afterActionState.equals(syncedOuterActionState.state).toBoolean()
-		)
-
-		return syncedOuterActionStateIndex !== -1 && syncedOuterActionStateIndex >= nextCommitIndex
+		return !!(await this.fetchDepositFinalizationWitnesses(pk))
 	}
 
 	public async submitWithdrawal(
@@ -568,25 +530,14 @@ export class Bridge {
 			.filter(Boolean) as Withdrawals
 	}
 
-	public async getNextWithdrawalIndex(helperAccount: Account): Promise<UInt32> {
-		const nextWithdrawalIndex = helperAccount.zkappState?.at(1)
-		return UInt32.from(nextWithdrawalIndex ?? 0)
-	}
-
-	public async finalizeWithdrawal(
-		pk: PublicKey,
-		feePayer: Mina.FeePayerSpec,
-		outerHolder: PublicKey
-	): Promise<Mina.Transaction<false, false>> {
+	private async fetchWithdrawalFinalizationWitnesses(pk: PublicKey, outerHolder: PublicKey) {
 		const helperAccount = await this.fetchAccount(
 			this.l1Client,
 			pk,
 			TokenId.derive(this.outerTokenOwner)
 		)
 
-		const prevNextWithdrawal = helperAccount
-			? await this.getNextWithdrawalIndex(helperAccount)
-			: UInt32.zero
+		const prevNextWithdrawal = helperAccount ? getNextWithdrawalIndex(helperAccount) : UInt32.zero
 
 		const innerActions = await this.fetchInnerActions(this.innerPk)
 
@@ -644,8 +595,10 @@ export class Bridge {
 			.slice(myWithdrawalIndex + 1, syncedInnerActionStateIndex + 1)
 			.map(({ action }) => fromList([action.action]).hash)
 
-		const { data } = await this.l2Client.mutation(finalizeWithdrawalMutation, {
-			input: {
+		return {
+			withdrawalParams,
+			helperAccount,
+			witness: {
 				withdrawalParams: {
 					amount: withdrawalParams.withdrawal.amount.toString(),
 					recipient: withdrawalParams.withdrawal.recipient.toBase58(),
@@ -672,6 +625,22 @@ export class Bridge {
 				beforeCommit: { actionState: lastCommit.action.beforeActionState.toString() },
 				publicKey: outerHolder.toBase58()
 			}
+		}
+	}
+
+	public async finalizeWithdrawal(
+		pk: PublicKey,
+		feePayer: Mina.FeePayerSpec,
+		outerHolder: PublicKey
+	): Promise<Mina.Transaction<false, false>> {
+		const witnesses = await this.fetchWithdrawalFinalizationWitnesses(pk, outerHolder)
+
+		if (!witnesses) throw new Error("Did not find any withdrawal to finalize")
+
+		const { witness, withdrawalParams, helperAccount } = witnesses
+
+		const { data } = await this.l2Client.mutation(finalizeWithdrawalMutation, {
+			input: witness
 		})
 		if (!data?.request?.key) throw new Error("No key returned from mutation")
 		const withdrawalForest = await this.pollQuery(data.request.key)
@@ -696,50 +665,7 @@ export class Bridge {
 		return txn
 	}
 
-	// New helper: check if a user can finalize a withdrawal right now
 	public async canFinalizeWithdrawal(pk: PublicKey): Promise<boolean> {
-		const helperAccount = await this.fetchAccount(
-			this.l1Client,
-			pk,
-			TokenId.derive(this.outerTokenOwner)
-		)
-
-		const prevNextWithdrawal = helperAccount
-			? await this.getNextWithdrawalIndex(helperAccount)
-			: UInt32.zero
-
-		const innerActions = await this.fetchInnerActions(this.innerPk)
-
-		const withdrawals = (await this.findWithdrawals(pk)).map((withdrawal) => ({
-			withdrawal,
-			aux: withdrawalAux(withdrawal)
-		}))
-
-		const myWithdrawalIndex = innerActions.findIndex((action, index) => {
-			const matching = withdrawals.find(({ aux }) => aux.equals(action.aux).toBoolean())
-			if (!matching) return false
-			if (prevNextWithdrawal.greaterThan(UInt32.from(index)).toBoolean()) return false
-			return true
-		})
-
-		if (myWithdrawalIndex === -1) return false
-
-		const outerActions = await this.fetchOuterActions(this.outerPk)
-		const reversedOuterActions = outerActions.slice().reverse()
-		const reversedLastCommitIndex = reversedOuterActions.findIndex((action) => {
-			if (action.type !== "commit") return false
-			if (!action.isPastWithdrawalDelay) return false
-			return true
-		})
-		if (reversedLastCommitIndex === -1) return false
-
-		const lastCommitIndex = outerActions.length - reversedLastCommitIndex - 1
-		const lastCommit = outerActions[lastCommitIndex] as OuterCommit
-
-		const syncedInnerActionStateIndex = innerActions.findIndex(({ action }) =>
-			action.afterActionState.equals(lastCommit.innerActionState).toBoolean()
-		)
-
-		return syncedInnerActionStateIndex !== -1 && syncedInnerActionStateIndex >= myWithdrawalIndex
+		return !!(await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner))
 	}
 }
