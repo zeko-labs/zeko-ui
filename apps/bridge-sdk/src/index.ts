@@ -16,13 +16,13 @@ import {
 } from "./graphql/queries/zeko"
 import type {
 	Config,
-	Deposits,
+	Deposit,
 	InnerAction,
 	InnerWitness,
 	OuterAction,
 	OuterCommit,
 	OuterWitness,
-	Withdrawals
+	Withdrawal
 } from "./types"
 import {
 	depositAux,
@@ -129,7 +129,7 @@ export class Bridge {
 		return UInt32.from(Math.floor(forkSlot + (currentTimestamp - genesisTimestamp) / 180))
 	}
 
-	public async fetchAccount(
+	private async fetchAccount(
 		client: Client,
 		pk: PublicKey,
 		tokenId?: Field
@@ -142,7 +142,58 @@ export class Bridge {
 		return data.account
 	}
 
-	public async fetchOuterActions(
+	private async fetchUserDeposits(pk: PublicKey): Promise<Deposit[]> {
+		const userOuterActions = await fetchActions(this.l1ArchiveClient, pk)
+		const currentSlot = await this.fetchCurrentSlot()
+
+		return userOuterActions
+			.map(({ action }) => {
+				const [
+					recipient1,
+					recipient2,
+					amount1,
+					timeout1,
+					holderAccount1,
+					holderAccount2,
+					outer1,
+					outer2
+				] = action
+
+				if (
+					!recipient1 ||
+					!recipient2 ||
+					!amount1 ||
+					!timeout1 ||
+					!holderAccount1 ||
+					!holderAccount2 ||
+					!outer1 ||
+					!outer2
+				)
+					return null
+
+				const recipient = PublicKey.fromFields([recipient1, recipient2])
+				const amount = UInt64.fromFields([amount1])
+				const timeout = UInt32.fromFields([timeout1])
+				const holderAccountL1 = PublicKey.fromFields([holderAccount1, holderAccount2])
+				const outerPk = PublicKey.fromFields([outer1, outer2])
+
+				if (!outerPk.equals(this.outerPk).toBoolean()) return null
+
+				if (!this.outerHolders.some((holder) => holder.equals(holderAccountL1).toBoolean()))
+					return null
+
+				return {
+					recipient,
+					amount,
+					timeout,
+					holderAccountL1,
+					timedOut: timeout.lessThan(currentSlot).toBoolean()
+				}
+			})
+			.filter(Boolean) as Deposit[]
+	}
+
+	private async fetchOuterActions(
 		pk: PublicKey,
 		actionStates?: Mina.ActionStates
 	): Promise<OuterAction[]> {
@@ -179,7 +230,27 @@ export class Bridge {
 		})
 	}
 
-	public async fetchInnerActions(
+	private async fetchUserWithdrawals(pk: PublicKey): Promise<Withdrawal[]> {
+		const userInnerActions = await fetchActions(this.l2Client, pk)
+
+		return userInnerActions
+			.map(({ action }) => {
+				const [recipient1, recipient2, amount1] = action
+
+				if (!recipient1 || !recipient2 || !amount1) return null
+
+				const recipient = PublicKey.fromFields([recipient1, recipient2])
+				const amount = UInt64.fromFields([amount1])
+
+				return {
+					recipient,
+					amount
+				}
+			})
+			.filter(Boolean) as Withdrawal[]
+	}
+
+	private async fetchInnerActions(
 		pk: PublicKey,
 		actionStates?: Mina.ActionStates
 	): Promise<InnerAction[]> {
@@ -262,60 +333,6 @@ export class Bridge {
 		return txn
 	}
 
-	public async findDeposits(pk: PublicKey): Promise<Deposits> {
-		const userOuterActions = await fetchActions(this.l1ArchiveClient, pk)
-		const currentSlot = await this.fetchCurrentSlot()
-
-		return userOuterActions
-			.map(({ beforeActionState, afterActionState, action }) => {
-				const [
-					recipient1,
-					recipient2,
-					amount1,
-					timeout1,
-					holderAccount1,
-					holderAccount2,
-					outer1,
-					outer2
-				] = action
-
-				if (
-					!recipient1 ||
-					!recipient2 ||
-					!amount1 ||
-					!timeout1 ||
-					!holderAccount1 ||
-					!holderAccount2 ||
-					!outer1 ||
-					!outer2
-				)
-					return null
-
-				const recipient = PublicKey.fromFields([recipient1, recipient2])
-				const amount = UInt64.fromFields([amount1])
-				const timeout = UInt32.fromFields([timeout1])
-				const holderAccountL1 = PublicKey.fromFields([holderAccount1, holderAccount2])
-				const outerPk = PublicKey.fromFields([outer1, outer2])
-
-				if (!outerPk.equals(this.outerPk).toBoolean()) return null
-
-				if (!this.outerHolders.some((holder) => holder.equals(holderAccountL1).toBoolean()))
-					return null
-
-				return {
-					beforeActionState,
-					afterActionState,
-					recipient,
-					amount,
-					timeout,
-					holderAccountL1,
-					outerPk,
-					timedOut: timeout.lessThan(currentSlot).toBoolean()
-				}
-			})
-			.filter(Boolean) as Deposits
-	}
-
 	public async fetchSyncedOuterActionState(): Promise<{ state: Field; length: UInt32 }> {
 		const innerAccount = await this.fetchAccount(this.l2Client, this.innerPk)
 
@@ -338,7 +355,7 @@ export class Bridge {
 
 		const outerActions = await this.fetchOuterActions(this.outerPk)
 
-		const deposits = (await this.findDeposits(pk)).map((deposit) => ({
+		const deposits = (await this.fetchUserDeposits(pk)).map((deposit) => ({
 			deposit,
 			aux: depositAux(deposit)
 		}))
@@ -364,10 +381,15 @@ export class Bridge {
 
 		const myDeposit = outerActions[myDepositIndex] as OuterWitness
 
-		const nextCommitIndex = outerActions.findIndex((action, index) => {
+		const nextCommitIndex = outerActions.findIndex((action) => {
 			if (action.type !== "commit") return false
 
-			if (myDepositIndex >= index) return false
+			if (
+				action.synchronizedOuterActionStateLength
+					.greaterThan(UInt32.from(myDepositIndex))
+					.toBoolean()
+			)
+				return false
 
 			return true
 		})
@@ -508,28 +530,6 @@ export class Bridge {
 		return txn
 	}
 
-	public async findWithdrawals(pk: PublicKey): Promise<Withdrawals> {
-		const userInnerActions = await fetchActions(this.l2Client, pk)
-
-		return userInnerActions
-			.map(({ beforeActionState, afterActionState, action }) => {
-				const [recipient1, recipient2, amount1] = action
-
-				if (!recipient1 || !recipient2 || !amount1) return null
-
-				const recipient = PublicKey.fromFields([recipient1, recipient2])
-				const amount = UInt64.fromFields([amount1])
-
-				return {
-					beforeActionState,
-					afterActionState,
-					recipient,
-					amount
-				}
-			})
-			.filter(Boolean) as Withdrawals
-	}
-
 	private async fetchWithdrawalFinalizationWitnesses(pk: PublicKey, outerHolder: PublicKey) {
 		const helperAccount = await this.fetchAccount(
 			this.l1Client,
@@ -541,7 +541,7 @@ export class Bridge {
 
 		const innerActions = await this.fetchInnerActions(this.innerPk)
 
-		const withdrawals = (await this.findWithdrawals(pk)).map((withdrawal) => ({
+		const withdrawals = (await this.fetchUserWithdrawals(pk)).map((withdrawal) => ({
 			withdrawal,
 			aux: withdrawalAux(withdrawal)
 		}))
