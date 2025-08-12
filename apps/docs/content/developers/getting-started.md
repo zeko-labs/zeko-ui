@@ -6,13 +6,11 @@ You already know [What is Zeko](../introduction/what-is-zeko.md) and [Why you sh
 
 **Zeko provides a fully Mina-equivalent application layer** for building and deploying zkApps, meaning you can use the same tools and libraries and your development environment setup for building zkApps on Zeko will largely follow the standard setup for Mina zkApp development.
 
-If you are new to building on Mina or with zkApps, it is highly recommended to **start with the official [Mina documentation](https://docs.minaprotocol.com/)**.
-
 ## Step 1 – Intro and Education
 
 > For developers new to Zeko, ZK, and Mina
 
-Zeko is an _isomorphic zkRollup on Mina_, so we reference the deep library of [Mina resources](https://docs.minaprotocol.com/) wherever relevant.
+If you are new to building on Mina or with zkApps, it is highly recommended to **start with the official [Mina documentation](https://docs.minaprotocol.com/)**. Zeko is an _isomorphic zkRollup on Mina_, so we reference the deep library of [Mina resources](https://docs.minaprotocol.com/) wherever relevant.
 
 Visit the [**Zeko GitHub repo**](https://github.com/zeko-labs/zeko/tree/compatible/src/app/zeko), the source code for the Zeko protocol, including the sequencer and data availability components.
 
@@ -47,23 +45,17 @@ zkApps are zero-knowledge programs that are **Turing complete**, and offer enhan
 > For Mina-native or ZK-adjacent devs
 
 - [**Write and Deploy a zkApp Today**](https://docs.minaprotocol.com/zkapps/writing-a-zkapp/introduction-to-zkapps/how-to-write-a-zkapp)
-- Make sure to **get wallet & [faucet tMINA](https://zeko.io/faucet) on Zeko** or **[Bridge tMINA](https://zeko.io/bridge) from Mina to Zeko**, and check your activity on **[ZekoScan testnet explorer](https://zekoscan.io/testnet/home)**
+- Make sure to **[get a wallet & faucet tMINA](https://zeko.io/faucet) on Zeko** or **[Bridge tMINA](https://zeko.io/bridge) from Mina to Zeko**, and check your activity on **[ZekoScan testnet explorer](https://zekoscan.io/testnet/home)**. _(Auro wallet browser extension v2.4.1 or mobile app v2.2.0 or later are required)_
 - Mina devnet [faucet](https://minascan.io/devnet/home) and [MinaScan](https://minascan.io/mainnet/home) explorer may also be helpful resources
 - **Write your smart contract using the [zkApp CLI](https://github.com/o1-labs/zkapp-cli)**
-
-### LuminaDex SDK
-
-[LuminaDex](https://luminadex.com/) is the first Dex on MINA and ZEKO. The **LuminaDex SDK** is a [library](https://sdk.luminadex.com/) designed to simplify the integration of the [LuminaDex contracts](https://github.com/Lumina-DEX/lumina/tree/main/packages/contracts) in a website. You can find the [source code on github](https://github.com/Lumina-DEX/lumina/tree/main/packages/dex-ui), and a [beta website](https://lumina-devnet.netlify.app/) that uses the SDK.
 
 ### Taking zkApps to the Next Level
 
 > Useful links and code examples
 
-- **Lumina SDK for front-end swaps**
-  - [SDK docs](https://sdk.luminadex.com/)
-  - [Beta Website](https://lumina-devnet.netlify.app/) using SDK
-  - Beta Website [Source Code](https://github.com/Lumina-DEX/lumina/tree/main/packages/dex-ui) on GitHub
-  - [Contracts](https://github.com/Lumina-DEX/lumina/tree/main/packages/contracts)
+- **LuminaDex SDK for front-end swaps on Zeko and Mina**
+  - The SDK library is designed to simplify the integration of the [LuminaDex contracts](https://github.com/Lumina-DEX/lumina/tree/main/packages/contracts) in a website.
+  - [Beta Website](https://lumina-devnet.netlify.app/) using SDK and Lumina audited contracts. View the [Source Code on GitHub](https://github.com/Lumina-DEX/lumina/tree/main/packages/dex-ui).
 - [Mina Fungible token standard](https://github.com/MinaFoundation/mina-fungible-token): example code for custom token implementations
 - Other examples / demos:
   - [Prove you know the answer to a question (10 / 2 + 2 = ?)](https://github.com/RaidasGrisk/zkapp-ui)
@@ -107,21 +99,3 @@ The Zeko community is mostly active on Discord :
 - [**ZekoTokens**](https://zekotokens.com/): Deploy tokens on Zeko
 - **Solis, powered by LuminaDex:** _link TBD_
 - **Obirium:** _link TBD_
-
-## Essential Developer Links
-
-Leverage the existing resources and community within the Mina ecosystem, as Zeko developers benefit from this shared knowledge and support.
-
-- [**Official Mina Documentation:**](https://docs.minaprotocol.com/) – learn about zkApps, o1js, account updates, permissions, actions & reducer, and custom tokens.
-- **GitHub Repositories:**
-  - [Zeko](https://github.com/zeko-labs/zeko)
-  - [o1js](https://github.com/o1-labs/o1js)
-  - [Mina Fungible Token](https://github.com/MinaFoundation/mina-fungible-token)
-- [**Zeko Faucet**](https://zeko.io/faucet) – obtain testnet tokens.
-- [**Zeko Bridge**](https://zeko.io/bridge) – bridge tMINA from Mina to Zeko.
-- **Explorers:** explore transactions, blocks, and accounts.
-  - [ZekoScan](https://zekoscan.io/)
-  - [Mina devnet](https://minascan.io/devnet/home)
-  - [Mina mainnet](https://minascan.io/mainnet/home)
-
-These resources will help you get started with setting up your environment, learning core concepts, and finding support within the community.
