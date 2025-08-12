@@ -824,9 +824,16 @@ export class Bridge {
 				isPastWithdrawalDelay: false
 			}))
 
-		const lastPastDelayIndex = (
-			outerActions[lastPastDelayCommitIndex] as OuterCommit
-		).innerActionStateLength.sub(1)
+		const lastPastDelayCommit = outerActions[lastPastDelayCommitIndex] as OuterCommit
+
+		if (lastPastDelayCommit.innerActionStateLength.equals(UInt32.zero).toBoolean()) {
+			return innerActionsMaybeCommitted.map((action) => ({
+				...action,
+				isPastWithdrawalDelay: false
+			}))
+		}
+
+		const lastPastDelayIndex = lastPastDelayCommit.innerActionStateLength.sub(1)
 
 		const innerActionsMaybePastDelay: (MaybeWithdrawal & {
 			committed: boolean
