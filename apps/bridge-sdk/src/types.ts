@@ -44,6 +44,14 @@ export type InnerWitness = {
 
 export type OuterAction = OuterWitness | OuterCommit
 
+export type MaybeDeposit = OuterWitness & { deposit: Deposit | undefined }
+
+export type OuterActionWithState = (MaybeDeposit | OuterCommit) & {
+	synced: boolean
+	accepted: boolean
+	confirmed: boolean
+}
+
 export type InnerAction = InnerWitness
 
 export type Deposit = {
