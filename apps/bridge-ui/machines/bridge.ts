@@ -33,23 +33,27 @@ interface BridgeContext {
 const currentNetwork = (context: BridgeContext) =>
 	context.wallet.getSnapshot().context.currentNetwork
 
-const supportedNetworks = ["mina:testnet", "zeko:testnet"] as const
+const supportedNetworks = ["mina:devnet", "zeko:testnet"] as const
+
+const bridgeDirections = {
+	"zeko:mainnet": "mina:mainnet",
+	"mina:mainnet": "zeko:mainnet",
+	"zeko:testnet": "mina:devnet",
+	"mina:devnet": "zeko:testnet"
+} as const
 
 // Parent Bridge Machine
 export const bridgeMachine = setup({
 	types: {
 		context: {} as BridgeContext,
-		input: {} as { wallet: Wallet; currentNetwork: Networks },
+		input: {} as { wallet: Wallet },
 		events: {} as BridgeEvents | WalletEmit
 	},
 	guards: {
 		validSource: ({ context }) => supportedNetworks.includes(context.sourceNetwork),
 		validDestination: ({ context }) => supportedNetworks.includes(context.destinationNetwork)
 	},
-	actors: {
-		bridgeOperationMachine,
-		detectWalletChange
-	},
+	actors: { bridgeOperationMachine, detectWalletChange },
 	actions: {
 		startOperation: assign(({ context, self, spawn }, { amount }: { amount: string }) => {
 			const { wallet } = context
@@ -79,12 +83,16 @@ export const bridgeMachine = setup({
 }).createMachine({
 	id: "bridge",
 	initial: "READY",
-	context: ({ input: { wallet } }) => ({
-		wallet,
-		operations: new Map(),
-		sourceNetwork: "mina:devnet",
-		destinationNetwork: "zeko:testnet"
-	}),
+	context: ({ input: { wallet } }) => {
+		const sourceNetwork = wallet.getSnapshot().context.currentNetwork
+		const destinationNetwork = bridgeDirections[sourceNetwork]
+		return {
+			wallet,
+			operations: new Map(),
+			sourceNetwork,
+			destinationNetwork
+		}
+	},
 	entry: spawnChild("detectWalletChange", {
 		input: ({ context }) => ({ wallet: context.wallet })
 	}),
@@ -94,28 +102,24 @@ export const bridgeMachine = setup({
 				"Change the network of all operations and invert direction if the network is different.",
 			guard: ({ event, context }) => event.network !== currentNetwork(context),
 			actions: enqueueActions(({ context, event, enqueue }) => {
-				for (const { status, operation } of context.operations.values()) {
-					if (status === "started") {
-						operation.send({ type: "SetCurrentNetwork", network: event.network })
-					}
-				}
-
-				if (event.network.includes("testnet")) {
-					return enqueue.assign({
-						sourceNetwork: event.network.includes("mina") ? "mina:devnet" : "zeko:testnet",
-						destinationNetwork: event.network.includes("mina") ? "zeko:testnet" : "mina:devnet"
+				const sourceNetwork = event.network
+				const destinationNetwork = bridgeDirections[event.network]
+				//Check for mainnet
+				if (sourceNetwork.includes("mainnet")) {
+					console.error("Mainnet is not supported yet, changing to 'zeko:testnet' ")
+					return enqueue.sendTo(context.wallet, {
+						type: "RequestNetworkChange",
+						network: "zeko:testnet"
 					})
 				}
-
-				const destinationNetwork = supportedNetworks.includes(context.destinationNetwork)
-					? context.destinationNetwork
-					: supportedNetworks.find((network) => network !== event.network) //First valid network
-
-				enqueue.raise({
-					type: "SetNetworks",
-					sourceNetwork: event.network,
-					destinationNetwork: destinationNetwork as Networks
-				})
+				//Notify all operations
+				for (const { status, operation } of context.operations.values()) {
+					if (status === "started") {
+						operation.send({ type: "SetCurrentNetwork", network: sourceNetwork })
+					}
+				}
+				// Assign data
+				enqueue.assign({ sourceNetwork, destinationNetwork })
 			})
 		},
 		SetNetworks: {

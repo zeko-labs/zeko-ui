@@ -11,7 +11,5 @@ const stateValue = computed(() => machine.value.value)
 </script>
 <template>
   <div>{{ stateValue }}</div>
-  <div>{{ machine.context.changeNetworkTo }}</div>
-  <div>{{ machine.context.returnTo }}</div>
+  <pre>{{ machine.context }}</pre>
 </template>
-0

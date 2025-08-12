@@ -1,49 +1,34 @@
 <script lang="ts" setup>
 import { useMachine, useSelector } from "@lumina-dex/sdk/vue"
 import { bridgeMachine } from "~~/machines/bridge"
-import { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 
 const wallet = useWalletStore()
-const { address, walletLoaded, balances, currentNetwork } = storeToRefs(wallet)
+const { walletLoaded, balances } = storeToRefs(wallet)
 
 const amountToBridge = ref("")
+
+const network = useSelector(
+	wallet.actorRef,
+	(state) => state.context.currentNetwork
+)
+
 const walletValue = computed(() => wallet.snapshot.context)
 const totalBalances = computed(() => {
 	return `MINA: (L1) => ${JSON.stringify(balances.value["mina:devnet"])} | L2 => ${JSON.stringify(balances.value["zeko:testnet"])}`
 })
-// const totalBalances = useSelector(walletActorRef, (state) => {
-// 	return `MINA: (L1) => ${state.context.minaBalances.MINA} | L2 => ${state.context.zekoBalances.MINA}`
-// })
 
-// const totalBalances = computed(
-// 	() =>
-// 		`MINA: (L1) => ${minaBalances.value.get("mina")} | L2 => ${zekoBalances.value.get("mina")}`
-// )
-
-// const minaBalanceTest = computed(() => minaBalances.value)
-
-const machine = bridgeMachine.provide({
-	actors: {
-		bridgeOperationMachine: bridgeOperationMachine.provide({
-			actors: {}
-		})
-	}
-})
-
-//MOCK
-const { send, snapshot, actorRef } = useMachine(bridgeMachine, {
-	input: { wallet: wallet.actorRef, currentNetwork: currentNetwork.value },
+const {
+	send,
+	snapshot,
+	actorRef: bridgeActor
+} = useMachine(bridgeMachine, {
+	input: { wallet: wallet.actorRef },
 	inspect: (event) => {
 		if (event.type === "@xstate.event") {
 			// console.log(event)
 		}
 	}
 })
-
-//PROD
-// const { send, snapshot, actorRef } = useMachine(machine, {
-// 	input: {} //Pass some initial state.
-// })
 
 // actorRef.subscribe((state) => {
 // 	console.log("State", state.context)
@@ -52,12 +37,7 @@ const { send, snapshot, actorRef } = useMachine(bridgeMachine, {
 const source = computed(() => snapshot.value.context.sourceNetwork)
 const destination = computed(() => snapshot.value.context.destinationNetwork)
 
-const network = useSelector(
-	wallet.actorRef,
-	(state) => state.context.currentNetwork
-)
-
-const children = useSelector(actorRef, (state) => [
+const children = useSelector(bridgeActor, (state) => [
 	...state.context.operations.values()
 ])
 </script>

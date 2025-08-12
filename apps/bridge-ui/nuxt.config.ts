@@ -11,7 +11,7 @@ export default defineNuxtConfig({
 			prerender: true,
 			headers: {
 				"Cross-Origin-Embedder-Policy":
-					process.env.NODE_ENV === "development" ? "unsafe-none" : "require-corp",
+					process.env.NODE_ENV === "development" ? "credentialless" : "require-corp",
 				"Cross-Origin-Opener-Policy": "same-origin"
 			}
 		}

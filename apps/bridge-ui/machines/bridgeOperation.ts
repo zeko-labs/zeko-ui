@@ -29,18 +29,24 @@ export type ReturnTo = false | "INIT_BRIDGE_OPERATION" | "FINALIZE_DEPOSIT" | "F
 
 type Direction = "deposit" | "withdrawal"
 
+type Result = Awaited<ReturnType<typeof sendTransaction>>
+
 interface BridgeOperationContext {
 	bridgeMachine: BridgeMachine
 	bridge: Bridge | null
-	direction: Direction
-	depositHash: string
-	withdrawalHash: string
 	wallet: Wallet
-	returnTo: ReturnTo
+	direction: Direction
+	amount: string
 	sourceNetwork: Networks
 	destinationNetwork: Networks
+	result: {
+		submitDeposit: Result | null
+		finalizeDeposit: Result | null
+		submitWithdraw: Result | null
+		finalizeWithdraw: Result | null
+	}
+	returnTo: ReturnTo
 	changeNetworkTo: Networks
-	amount: string
 }
 const currentNetwork = (context: BridgeOperationContext) =>
 	context.wallet.getSnapshot().context.currentNetwork
@@ -72,7 +78,7 @@ export const bridgeOperationMachine = setup({
 			})
 			return bridge
 		}),
-		submitDeposit: fromPromise<string, { bridge: Bridge; amount: string; wallet: Wallet }>(
+		submitDeposit: fromPromise<Result, { bridge: Bridge; amount: string; wallet: Wallet }>(
 			async ({ input }) => {
 				const { bridge, amount, wallet } = input
 				const recipient = PublicKey.fromBase58(wallet.getSnapshot().context.account)
@@ -86,7 +92,7 @@ export const bridgeOperationMachine = setup({
 					}
 				)
 				const result = await sendTransaction({ tx, wallet })
-				return result.hash
+				return result
 			}
 		),
 		pendingDeposit: fromCallback<EventObject, { bridge: Bridge; wallet: Wallet }>(
@@ -105,13 +111,13 @@ export const bridgeOperationMachine = setup({
 				}
 			}
 		),
-		finalizeDeposit: fromPromise<string, { bridge: Bridge; wallet: Wallet }>(async ({ input }) => {
+		finalizeDeposit: fromPromise<Result, { bridge: Bridge; wallet: Wallet }>(async ({ input }) => {
 			const { bridge, wallet } = input
 			const tx = await bridge.finalizeDeposit(
 				PublicKey.fromBase58(wallet.getSnapshot().context.account)
 			)
 			const result = await sendTransaction({ tx, wallet })
-			return result.hash
+			return result
 		}),
 		submitWithdrawal: fromPromise<string, { bridge: Bridge; amount: string; wallet: Wallet }>(
 			async ({ input }) => {
@@ -172,14 +178,18 @@ export const bridgeOperationMachine = setup({
 		wallet,
 		bridgeMachine,
 		bridge: null,
-		direction: sourceNetwork.includes("zeko") ? "deposit" : "withdrawal",
-		depositHash: "",
-		withdrawalHash: "",
+		direction: sourceNetwork.includes("mina") ? "deposit" : "withdrawal",
 		changeNetworkTo: sourceNetwork,
 		sourceNetwork,
 		destinationNetwork,
 		amount,
-		returnTo: false
+		returnTo: false,
+		result: {
+			submitDeposit: null,
+			finalizeDeposit: null,
+			submitWithdraw: null,
+			finalizeWithdraw: null
+		}
 	}),
 	on: {
 		SetCurrentNetwork: {
@@ -217,6 +227,8 @@ export const bridgeOperationMachine = setup({
 			}
 		},
 		WAITING_FOR_NETWORK: {
+			description:
+				"When the network is incorrect, we request a network change and return to the previous action.",
 			entry: sendTo(
 				({ context }) => context.wallet,
 				({ context }) => ({ type: "RequestNetworkChange", network: context.changeNetworkTo })
@@ -260,7 +272,9 @@ export const bridgeOperationMachine = setup({
 				onDone: [
 					{
 						target: "PENDING_DEPOSIT",
-						actions: assign({ depositHash: ({ event }) => event.output })
+						actions: assign(({ context, event }) => ({
+							result: { ...context.result, submitDeposit: event.output }
+						}))
 					}
 				]
 			}
@@ -285,7 +299,12 @@ export const bridgeOperationMachine = setup({
 			invoke: {
 				src: "finalizeDeposit",
 				input: ({ context }) => ({ ...bridgeAndWallet(context) }),
-				onDone: { target: "BRIDGE_OPERATION_DONE" }
+				onDone: {
+					target: "BRIDGE_OPERATION_DONE",
+					actions: assign(({ context, event }) => ({
+						result: { ...context.result, finalizeDeposit: event.output }
+					}))
+				}
 			}
 		},
 		SUBMIT_WITHDRAWAL: {
@@ -295,7 +314,9 @@ export const bridgeOperationMachine = setup({
 				onDone: [
 					{
 						target: "PENDING_WITHDRAWAL",
-						actions: assign({ withdrawalHash: ({ event }) => event.output })
+						actions: assign(({ context, event }) => ({
+							result: { ...context.result, submitWithdrawal: event.output }
+						}))
 					}
 				]
 			}
@@ -320,7 +341,12 @@ export const bridgeOperationMachine = setup({
 			invoke: {
 				src: "finalizeWithdrawal",
 				input: ({ context }) => ({ ...bridgeAndWallet(context) }),
-				onDone: { target: "BRIDGE_OPERATION_DONE" }
+				onDone: {
+					target: "BRIDGE_OPERATION_DONE",
+					actions: assign(({ context, event }) => ({
+						result: { ...context.result, finalizeWithdrawal: event.output }
+					}))
+				}
 			}
 		},
 		BRIDGE_OPERATION_DONE: {
