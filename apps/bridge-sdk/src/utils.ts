@@ -1,9 +1,9 @@
-import { Field, type Mina, Poseidon, type PublicKey } from "o1js"
+import { Field, type Mina, Poseidon, type PublicKey, UInt32 } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
 import { fromList, pushHash } from "./actions"
 import { fetchActionsQuery } from "./graphql/queries/mina-archive"
-import type { Action, Deposit, Withdrawal } from "./types"
+import type { Account, Action, Deposit, Withdrawal } from "./types"
 
 export async function fetchActions(
 	client: Client,
@@ -66,4 +66,14 @@ export function withdrawalAux(withdrawal: Withdrawal) {
 		...withdrawal.amount.toFields(),
 		...withdrawal.recipient.toFields()
 	])
+}
+
+export function getNextDepositIndex(helperAccount: Account): UInt32 {
+	const nextDepositIndex = helperAccount.zkappState?.at(0)
+	return UInt32.from(nextDepositIndex ?? 0)
+}
+
+export function getNextWithdrawalIndex(helperAccount: Account): UInt32 {
+	const nextWithdrawalIndex = helperAccount.zkappState?.at(1)
+	return UInt32.from(nextWithdrawalIndex ?? 0)
 }
