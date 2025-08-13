@@ -1,13 +1,23 @@
 import { type Networks, type WalletEmit, detectWalletChange } from "@lumina-dex/sdk"
 import type { walletMachine } from "@lumina-dex/sdk"
+import { Bridge } from "@zeko/bridge-sdk"
 import { nanoid } from "nanoid"
-import { type ActorRefFromLogic, and, assign, enqueueActions, setup, spawnChild } from "xstate"
+import { PublicKey } from "o1js"
+import {
+	type ActorRefFromLogic,
+	and,
+	assign,
+	enqueueActions,
+	fromPromise,
+	setup,
+	spawnChild
+} from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
 
 type Operations = Map<
 	string,
 	{
-		status: "started" | "completed"
+		status: "started" | "paused" | "completed"
 		operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 	}
 >
@@ -21,18 +31,25 @@ export type BridgeEvents =
 	| { type: "CompleteOperation"; id: string }
 	| { type: "InvertDirection" }
 	| { type: "_InvalidNetworks" }
-	| { type: "SetNetworks"; sourceNetwork: Networks; destinationNetwork: Networks }
+	| {
+			type: "SetNetworks"
+			sourceNetwork: Networks
+			destinationNetwork: Networks
+	  }
 
 interface BridgeContext {
 	sourceNetwork: BridgeNetworks
 	destinationNetwork: BridgeNetworks
 	operations: Operations
+	operationsToUnpause: string[]
 	wallet: Wallet
+	walletReady: boolean
 }
 
 const currentNetwork = (context: BridgeContext) =>
 	context.wallet.getSnapshot().context.currentNetwork
 
+const operationId = () => `bridgeOperation-${Date.now()}-${nanoid(8)}`
 const supportedNetworks = ["mina:devnet", "zeko:testnet"] as const
 
 const bridgeDirections = {
@@ -42,6 +59,30 @@ const bridgeDirections = {
 	"mina:devnet": "zeko:testnet"
 } as const
 
+type ActionState = {
+	index: number
+	id: string
+	recipient: string
+	amount: string
+	finalised: boolean
+	source: Networks
+	destination: Networks
+}
+type PendingOperations = {
+	deposits: ActionState[]
+	withdrawals: ActionState[]
+}
+
+type StartOperationSettings = {
+	amount: string
+	command: "start" | "resumeDeposit" | "resumeWithdrawal" | "complete"
+	state?: {
+		id?: string
+		status: "started" | "paused" | "completed"
+		source: Networks
+		destination: Networks
+	}
+}
 // Parent Bridge Machine
 export const bridgeMachine = setup({
 	types: {
@@ -53,75 +94,194 @@ export const bridgeMachine = setup({
 		validSource: ({ context }) => supportedNetworks.includes(context.sourceNetwork),
 		validDestination: ({ context }) => supportedNetworks.includes(context.destinationNetwork)
 	},
-	actors: { bridgeOperationMachine, detectWalletChange },
+	actors: {
+		bridgeOperationMachine,
+		detectWalletChange,
+		findPendingOperations: fromPromise<PendingOperations, { wallet: Wallet }>(async ({ input }) => {
+			const { wallet } = input
+			//TODO: Get the correct source and destination
+			const l1 = "mina:devnet"
+			const l2 = "zeko:testnet"
+			const bridge = await Bridge.init({
+				l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
+				l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
+				zekoUrl: "https://alphanet.zeko.io/graphql",
+				l1Network: "testnet",
+				l2Network: "testnet"
+			})
+			const recipient = PublicKey.fromBase58(wallet.getSnapshot().context.account)
+			const [outerActions, innerActions] = await Promise.all([
+				bridge.fetchOuterActionsWithStates(recipient),
+				bridge.fetchInnerActionsWithStates(recipient)
+			])
+			const deposits = outerActions
+				.map((action, index) => {
+					if (action.type === "witness" && action.deposit) {
+						return {
+							index,
+							id: action.action.afterActionState.toString(),
+							recipient: action.deposit.recipient.toBase58(),
+							amount: (action.deposit.amount.toBigInt() / BigInt(10e8)).toString(),
+							finalised: action.deposit.finalised,
+							source: l1,
+							destination: l2
+						} as const
+					}
+				})
+				.filter(Boolean)
+			const withdrawals = innerActions
+				.map((action, index) => {
+					if (action.withdrawal) {
+						return {
+							index,
+							id: action.action.afterActionState.toString(),
+							recipient: action.withdrawal.recipient.toBase58(),
+							amount: (action.withdrawal.amount.toBigInt() / BigInt(10e8)).toString(),
+							finalised: action.withdrawal.finalised,
+							source: l2,
+							destination: l1
+						} as const
+					}
+				})
+				.filter(Boolean)
+			console.log(`Found ${deposits.length} deposits and ${withdrawals.length} withdrawals`)
+			return { deposits, withdrawals }
+		})
+	},
 	actions: {
-		startOperation: assign(({ context, self, spawn }, { amount }: { amount: string }) => {
+		startOperation: assign(({ context, self, spawn }, settings: StartOperationSettings) => {
+			console.log("Starting an operation with settings", settings)
+			const { amount, command, state } = settings
 			const { wallet } = context
-			const sourceNetwork = context.sourceNetwork as Networks
-			const destinationNetwork = context.destinationNetwork as Networks
-			const id = `bridgeOperation-${Date.now()}-${nanoid(8)}`
+			const direction = (
+				{
+					start: context.sourceNetwork.includes("mina") ? "deposit" : "withdrawal",
+					complete: context.sourceNetwork.includes("mina") ? "deposit" : "withdrawal",
+					resumeDeposit: "deposit",
+					resumeWithdrawal: "withdrawal"
+				} as const
+			)[command]
+
+			const source = state?.source ?? (context.sourceNetwork as Networks)
+			const destination = state?.destination ?? (context.destinationNetwork as Networks)
+
+			const id = state?.id ?? operationId()
 			const operation = spawn("bridgeOperationMachine", {
 				id,
 				systemId: id,
-				input: { bridgeMachine: self, wallet, sourceNetwork, destinationNetwork, amount }
+				input: {
+					bridgeMachine: self,
+					wallet,
+					source,
+					destination,
+					direction,
+					amount
+				}
 			})
-			operation.send({ type: "StartBridgeOperation" })
-			const operations = context.operations.set(id, { status: "started", operation })
-			return { operations }
+			if (command === "start") operation.send({ type: "StartBridgeOperation" })
+			if (command === "resumeDeposit" || command === "resumeWithdrawal") {
+				operation.send({ type: "Resume", paused: state?.status === "paused" })
+			}
+			if (command === "complete") operation.send({ type: "CompleteBridgeOperation" })
+			const operations = context.operations.set(id, {
+				status: state?.status ?? "started",
+				operation
+			})
+			return { operations: new Map(operations) }
 		}),
 		completeOperation: assign(({ context }, params: { id: string }) => {
+			console.log("Completing operation", params.id)
 			const { id } = params
-			const currentOperation = context.operations.get(id)?.operation
-			if (!currentOperation) throw new Error("Operation not found")
-			const operations = context.operations.set(id, {
+			const operations = context.operations
+			const completedOperation = operations.get(id)?.operation
+			if (!completedOperation) throw new Error("Operation not found")
+			operations.set(id, {
 				status: "completed",
-				operation: currentOperation
+				operation: completedOperation
 			})
-			return { operations }
+			// Resume the next operation
+			const [idToResume, ...rest] = context.operationsToUnpause
+			console.log("Found operation to resume", idToResume, rest)
+			if (idToResume) {
+				const operation = operations.get(idToResume)?.operation
+				if (operation) {
+					console.log("Resuming operation", idToResume)
+					operation.send({ type: "Resume", paused: false })
+					operations.set(idToResume, { status: "started", operation })
+				}
+			}
+			return {
+				operations: new Map(operations),
+				operationsToUnpause: idToResume ? rest : []
+			}
 		})
 	}
 }).createMachine({
 	id: "bridge",
-	initial: "READY",
+	initial: "IDLE",
 	context: ({ input: { wallet } }) => {
 		const sourceNetwork = wallet.getSnapshot().context.currentNetwork
 		const destinationNetwork = bridgeDirections[sourceNetwork]
 		return {
 			wallet,
 			operations: new Map(),
+			operationsToUnpause: [],
 			sourceNetwork,
-			destinationNetwork
+			destinationNetwork,
+			walletReady: false
 		}
 	},
 	entry: spawnChild("detectWalletChange", {
 		input: ({ context }) => ({ wallet: context.wallet })
 	}),
 	on: {
-		NetworkChanged: {
-			description:
-				"Change the network of all operations and invert direction if the network is different.",
-			guard: ({ event, context }) => event.network !== currentNetwork(context),
-			actions: enqueueActions(({ context, event, enqueue }) => {
-				const sourceNetwork = event.network
-				const destinationNetwork = bridgeDirections[event.network]
-				//Check for mainnet
-				if (sourceNetwork.includes("mainnet")) {
-					console.error("Mainnet is not supported yet, changing to 'zeko:testnet' ")
-					return enqueue.sendTo(context.wallet, {
-						type: "RequestNetworkChange",
-						network: "zeko:testnet"
-					})
-				}
-				//Notify all operations
-				for (const { status, operation } of context.operations.values()) {
-					if (status === "started") {
-						operation.send({ type: "SetCurrentNetwork", network: sourceNetwork })
+		NetworkChanged: [
+			{
+				target: ".READY",
+				guard: ({ context }) => !context.walletReady,
+				actions: enqueueActions(({ context, enqueue, event }) => {
+					const sourceNetwork = event.network
+					const destinationNetwork = bridgeDirections[event.network]
+					//Check for mainnet
+					if (sourceNetwork.includes("mainnet")) {
+						console.error("Mainnet is not supported yet, changing to 'zeko:testnet' ")
+						return enqueue.sendTo(context.wallet, {
+							type: "RequestNetworkChange",
+							network: "zeko:testnet"
+						})
 					}
-				}
-				// Assign data
-				enqueue.assign({ sourceNetwork, destinationNetwork })
-			})
-		},
+					enqueue.assign({ walletReady: true, sourceNetwork, destinationNetwork })
+				})
+			},
+			{
+				description:
+					"Change the network of all operations and invert direction if the network is different.",
+				guard: ({ event, context }) => event.network !== currentNetwork(context),
+				actions: enqueueActions(({ context, event, enqueue }) => {
+					const sourceNetwork = event.network
+					const destinationNetwork = bridgeDirections[event.network]
+					//Check for mainnet
+					if (sourceNetwork.includes("mainnet")) {
+						console.error("Mainnet is not supported yet, changing to 'zeko:testnet' ")
+						return enqueue.sendTo(context.wallet, {
+							type: "RequestNetworkChange",
+							network: "zeko:testnet"
+						})
+					}
+					//Notify all operations
+					for (const { status, operation } of context.operations.values()) {
+						if (status === "started") {
+							operation.send({
+								type: "SetCurrentNetwork",
+								network: sourceNetwork
+							})
+						}
+					}
+					// Assign data
+					enqueue.assign({ sourceNetwork, destinationNetwork })
+				})
+			}
+		],
 		SetNetworks: {
 			target: ".READY",
 			guard: ({ event, context }) =>
@@ -144,7 +304,106 @@ export const bridgeMachine = setup({
 		}
 	},
 	states: {
+		IDLE: {},
 		READY: {
+			invoke: {
+				src: "findPendingOperations",
+				input: ({ context }) => ({ wallet: context.wallet }),
+				onDone: {
+					actions: enqueueActions(({ event, enqueue }) => {
+						const handlePending = () => {
+							const [deposit, ...deposits] = event.output.deposits.filter(
+								(a) => a.finalised === false
+							)
+							const [withdrawal, ...withdrawals] = event.output.withdrawals.filter(
+								(a) => a.finalised === false
+							)
+							const type = "startOperation"
+							// We only truly resume the first deposit or withdrawal, everything else is paused.
+							if (deposit) {
+								const { amount, source, destination, id } = deposit
+								enqueue({
+									type,
+									params: {
+										amount,
+										command: "resumeDeposit",
+										state: { id, status: "started", destination, source }
+									}
+								})
+							}
+							if (withdrawal) {
+								const { amount, source, destination, id } = withdrawal
+								enqueue({
+									type,
+									params: {
+										amount,
+										command: "resumeWithdrawal",
+										state: {
+											id,
+											status: deposit ? "paused" : "started",
+											destination,
+											source
+										}
+									}
+								})
+							}
+							for (const { amount, source, destination, id } of deposits)
+								enqueue({
+									type,
+									params: {
+										amount,
+										command: "resumeDeposit",
+										state: { id, status: "paused", source, destination }
+									}
+								})
+							for (const { amount, source, destination, id } of withdrawals)
+								enqueue({
+									type,
+									params: {
+										amount,
+										command: "resumeWithdrawal",
+										state: { id, status: "paused", source, destination }
+									}
+								})
+							// Queue the un-finalized operations to unpause them one by one
+							enqueue.assign({
+								operationsToUnpause: deposits
+									.map((d) => d.id)
+									.concat(deposit && withdrawal ? [withdrawal.id] : [])
+									.concat(withdrawals.map((w) => w.id))
+							})
+						}
+
+						const handleComplete = () => {
+							const deposits = event.output.deposits.filter((a) => a.finalised === true)
+							const withdrawals = event.output.withdrawals.filter((a) => a.finalised === true)
+							const type = "startOperation"
+
+							for (const { amount, source, destination, id } of deposits)
+								enqueue({
+									type,
+									params: {
+										amount,
+										command: "complete",
+										state: { id, status: "completed", source, destination }
+									}
+								})
+							for (const { amount, source, destination, id } of withdrawals)
+								enqueue({
+									type,
+									params: {
+										amount,
+										command: "complete",
+										state: { id, status: "completed", source, destination }
+									}
+								})
+						}
+
+						handlePending()
+						handleComplete()
+					})
+				}
+			},
 			on: {
 				InvertDirection: {
 					actions: assign(({ context: { sourceNetwork, destinationNetwork } }) => ({
@@ -154,7 +413,10 @@ export const bridgeMachine = setup({
 				},
 				StartOperation: {
 					guard: and(["validSource", "validDestination"]),
-					actions: { type: "startOperation", params: ({ event }) => ({ amount: event.amount }) }
+					actions: {
+						type: "startOperation",
+						params: ({ event }) => ({ amount: event.amount, command: "start" })
+					}
 				},
 				CompleteOperation: {
 					actions: {
@@ -164,7 +426,10 @@ export const bridgeMachine = setup({
 				},
 				_InvalidNetworks: {
 					target: "INVALID_NETWORKS",
-					actions: assign({ sourceNetwork: "invalid", destinationNetwork: "invalid" })
+					actions: assign({
+						sourceNetwork: "invalid",
+						destinationNetwork: "invalid"
+					})
 				}
 			}
 		},

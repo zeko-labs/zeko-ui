@@ -62,19 +62,23 @@ export class Bridge {
 		const l1ArchiveClient = createGraphqlClient(config.l1ArchiveUrl)
 		const l2Client = createGraphqlClient(config.zekoUrl)
 
-		const fetchConfigResult = await l2Client.query(fetchConfigQuery, {})
+		const [fetchConfigResult, genesisConstantL2Result, genesisConstantL1Result, sequencerPkResult] =
+			await Promise.all([
+				l2Client.query(fetchConfigQuery, {}),
+				l2Client.query(genesisConstantsQueryL2, {}),
+				l1Client.query(genesisConstantsQueryL1, {}),
+				l2Client.query(sequencerPkQuery, {})
+			])
+
 		const circuitsConfig = fetchConfigResult.data?.circuitsConfig
 		if (!circuitsConfig) throw new Error("Circuits config not found")
 
-		const genesisConstantL1Result = await l1Client.query(genesisConstantsQueryL1, {})
 		const l1AccountCreationFee = genesisConstantL1Result.data?.genesisConstants?.accountCreationFee
 		if (!l1AccountCreationFee) throw new Error("L1 account creation fee not found")
 
-		const genesisConstantL2Result = await l2Client.query(genesisConstantsQueryL2, {})
 		const l2AccountCreationFee = genesisConstantL2Result.data?.genesisConstants?.accountCreationFee
 		if (!l2AccountCreationFee) throw new Error("L2 account creation fee not found")
 
-		const sequencerPkResult = await l2Client.query(sequencerPkQuery, {})
 		const sequencerPk = sequencerPkResult.data?.sequencerPk
 		if (!sequencerPk) throw new Error("Sequencer public key not found")
 

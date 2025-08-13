@@ -55,7 +55,9 @@ const children = useSelector(bridgeActor, (state) => [
     Sending {{ amountToBridge }} from {{ source }}
     to {{ destination }}
     <hr />
-    XState: {{ snapshot.value }}
+    Bridge: {{ snapshot.value }}
+    <hr />
+
     Children :
     <ul>
       <li v-for="(child, index) of children" :key="index">

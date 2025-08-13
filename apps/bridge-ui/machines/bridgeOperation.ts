@@ -6,6 +6,7 @@ import {
 	type ActorRef,
 	type ActorRefFromLogic,
 	type Snapshot,
+	and,
 	assign,
 	enqueueActions,
 	fromCallback,
@@ -37,8 +38,9 @@ interface BridgeOperationContext {
 	wallet: Wallet
 	direction: Direction
 	amount: string
-	sourceNetwork: Networks
-	destinationNetwork: Networks
+	source: Networks
+	destination: Networks
+	paused: boolean
 	result: {
 		submitDeposit: Result | null
 		finalizeDeposit: Result | null
@@ -51,19 +53,24 @@ interface BridgeOperationContext {
 const currentNetwork = (context: BridgeOperationContext) =>
 	context.wallet.getSnapshot().context.currentNetwork
 
+const POLL_INTERVAL = 20_000
+//TODO: Error handling
 export const bridgeOperationMachine = setup({
 	types: {
 		context: {} as BridgeOperationContext,
 		input: {} as {
 			bridgeMachine: BridgeMachine
 			wallet: Wallet
-			sourceNetwork: Networks
-			destinationNetwork: Networks
+			direction: Direction
+			source: Networks
+			destination: Networks
 			amount: string
 		},
 		events: {} as
 			| { type: "SetCurrentNetwork"; network: Networks }
 			| { type: "StartBridgeOperation" }
+			| { type: "CompleteBridgeOperation" }
+			| { type: "Resume"; paused: boolean }
 			| { type: "ReturnTo" }
 			| { type: "CanFinalize" }
 	},
@@ -102,10 +109,10 @@ export const bridgeOperationMachine = setup({
 				const checkDepositStatus = async () => {
 					console.log("Checking deposit status ...")
 					const can = await bridge.canFinalizeDeposit(recipient)
-					if (can) sendBack({ type: "CAN_FINALIZE" })
+					if (can) sendBack({ type: "CanFinalize" })
 				}
 				checkDepositStatus()
-				const interval = setInterval(checkDepositStatus, 10_000)
+				const interval = setInterval(checkDepositStatus, POLL_INTERVAL)
 				return () => {
 					clearInterval(interval)
 				}
@@ -141,10 +148,10 @@ export const bridgeOperationMachine = setup({
 				const checkWithdrawalStatus = async () => {
 					console.log("Checking withdrawal status...")
 					const can = await bridge.canFinalizeWithdrawal(recipient)
-					if (can) sendBack({ type: "CAN_FINALIZE" })
+					if (can) sendBack({ type: "CanFinalize" })
 				}
 				checkWithdrawalStatus()
-				const interval = setInterval(checkWithdrawalStatus, 20_000)
+				const interval = setInterval(checkWithdrawalStatus, POLL_INTERVAL)
 				return () => {
 					clearInterval(interval)
 				}
@@ -165,9 +172,10 @@ export const bridgeOperationMachine = setup({
 		)
 	},
 	guards: {
-		currentNetworkIsSource: ({ context }) => currentNetwork(context) === context.sourceNetwork,
-		currentNetworkIsDestination: ({ context }) =>
-			currentNetwork(context) === context.destinationNetwork,
+		currentNetworkIsSource: ({ context }) => currentNetwork(context) === context.source,
+		currentNetworkIsDestination: ({ context }) => currentNetwork(context) === context.destination,
+		deposit: ({ context }) => context.direction === "deposit",
+		withdrawal: ({ context }) => context.direction === "withdrawal",
 		toInitBridgeOperation: ({ context: { returnTo } }) => returnTo === "INIT_BRIDGE_OPERATION",
 		toFinalizeDeposit: ({ context: { returnTo } }) => returnTo === "FINALIZE_DEPOSIT",
 		toFinalizeWithdrawal: ({ context: { returnTo } }) => returnTo === "FINALIZE_WITHDRAWAL"
@@ -175,16 +183,17 @@ export const bridgeOperationMachine = setup({
 }).createMachine({
 	id: "bridgeOperation",
 	initial: "IDLE",
-	context: ({ input: { sourceNetwork, destinationNetwork, amount, bridgeMachine, wallet } }) => ({
+	context: ({ input: { direction, source, destination, amount, bridgeMachine, wallet } }) => ({
 		wallet,
 		bridgeMachine,
 		bridge: null,
-		direction: sourceNetwork.includes("mina") ? "deposit" : "withdrawal",
-		changeNetworkTo: sourceNetwork,
-		sourceNetwork,
-		destinationNetwork,
+		direction,
+		changeNetworkTo: source,
+		source,
+		destination,
 		amount,
 		returnTo: false,
+		paused: false,
 		result: {
 			submitDeposit: null,
 			finalizeDeposit: null,
@@ -214,18 +223,61 @@ export const bridgeOperationMachine = setup({
 	states: {
 		IDLE: {
 			on: {
+				Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) },
+				CompleteBridgeOperation: { target: "BRIDGE_OPERATION_DONE_NOOP" },
 				StartBridgeOperation: [
 					{ target: "INIT_BRIDGE_OPERATION", guard: "currentNetworkIsSource" },
 					{
 						target: "WAITING_FOR_NETWORK",
 						actions: assign({
 							returnTo: "INIT_BRIDGE_OPERATION",
-							changeNetworkTo: ({ context }) => context.sourceNetwork
+							changeNetworkTo: ({ context }) => context.source
 						}),
 						guard: "currentNetworkIsDestination"
 					}
 				]
 			}
+		},
+		PAUSED: {
+			description: "Paused with bridge initialized.",
+			on: {
+				Resume: { target: "TO_FINALIZE", actions: assign({ paused: ({ event }) => event.paused }) }
+			}
+		},
+		RESUMING: {
+			invoke: {
+				src: "initializeBridge",
+				onDone: { target: "TO_FINALIZE", actions: assign({ bridge: ({ event }) => event.output }) }
+			}
+		},
+		TO_FINALIZE: {
+			always: [
+				{ target: "PAUSED", guard: ({ context }) => context.paused === true },
+				{
+					target: "FINALIZE_WITHDRAWAL",
+					guard: and(["withdrawal", "currentNetworkIsSource"])
+				},
+				{
+					target: "FINALIZE_DEPOSIT",
+					guard: and(["deposit", "currentNetworkIsDestination"])
+				},
+				{
+					target: "WAITING_FOR_NETWORK",
+					actions: assign({
+						returnTo: "FINALIZE_DEPOSIT",
+						changeNetworkTo: ({ context }) => context.destination
+					}),
+					guard: and(["deposit", "currentNetworkIsSource"])
+				},
+				{
+					target: "WAITING_FOR_NETWORK",
+					actions: assign({
+						returnTo: "FINALIZE_WITHDRAWAL",
+						changeNetworkTo: ({ context }) => context.source
+					}),
+					guard: and(["withdrawal", "currentNetworkIsDestination"])
+				}
+			]
 		},
 		WAITING_FOR_NETWORK: {
 			description:
@@ -295,7 +347,10 @@ export const bridgeOperationMachine = setup({
 					{ target: "FINALIZE_DEPOSIT", guard: "currentNetworkIsDestination" },
 					{
 						target: "WAITING_FOR_NETWORK",
-						actions: assign({ returnTo: "FINALIZE_DEPOSIT" }),
+						actions: assign({
+							returnTo: "FINALIZE_DEPOSIT",
+							changeNetworkTo: ({ context }) => context.destination
+						}),
 						guard: "currentNetworkIsSource"
 					}
 				]
@@ -337,7 +392,10 @@ export const bridgeOperationMachine = setup({
 					{ target: "FINALIZE_WITHDRAWAL", guard: "currentNetworkIsSource" },
 					{
 						target: "WAITING_FOR_NETWORK",
-						actions: assign({ returnTo: "FINALIZE_WITHDRAWAL" }),
+						actions: assign({
+							returnTo: "FINALIZE_WITHDRAWAL",
+							changeNetworkTo: ({ context }) => context.source
+						}),
 						guard: "currentNetworkIsDestination"
 					}
 				]
@@ -361,6 +419,7 @@ export const bridgeOperationMachine = setup({
 				({ context }) => context.bridgeMachine,
 				({ self }) => ({ type: "CompleteOperation", id: self.id })
 			)
-		}
+		},
+		BRIDGE_OPERATION_DONE_NOOP: { type: "final" }
 	}
 })
