@@ -119,7 +119,7 @@ export const bridgeOperationMachine = setup({
 			const result = await sendTransaction({ tx, wallet })
 			return result
 		}),
-		submitWithdrawal: fromPromise<string, { bridge: Bridge; amount: string; wallet: Wallet }>(
+		submitWithdrawal: fromPromise<Result, { bridge: Bridge; amount: string; wallet: Wallet }>(
 			async ({ input }) => {
 				const { bridge, amount, wallet } = input
 				const recipient = PublicKey.fromBase58(wallet.getSnapshot().context.account)
@@ -131,7 +131,7 @@ export const bridgeOperationMachine = setup({
 					}
 				)
 				const result = await sendTransaction({ tx, wallet })
-				return result.hash
+				return result
 			}
 		),
 		pendingWithdrawal: fromCallback<EventObject, { bridge: Bridge; wallet: Wallet }>(
@@ -169,7 +169,8 @@ export const bridgeOperationMachine = setup({
 		currentNetworkIsDestination: ({ context }) =>
 			currentNetwork(context) === context.destinationNetwork,
 		toInitBridgeOperation: ({ context: { returnTo } }) => returnTo === "INIT_BRIDGE_OPERATION",
-		toFinalizeDeposit: ({ context: { returnTo } }) => returnTo === "FINALIZE_DEPOSIT"
+		toFinalizeDeposit: ({ context: { returnTo } }) => returnTo === "FINALIZE_DEPOSIT",
+		toFinalizeWithdrawal: ({ context: { returnTo } }) => returnTo === "FINALIZE_WITHDRAWAL"
 	}
 }).createMachine({
 	id: "bridgeOperation",
@@ -243,6 +244,11 @@ export const bridgeOperationMachine = setup({
 					{
 						target: "FINALIZE_DEPOSIT",
 						guard: "toFinalizeDeposit",
+						actions: assign({ returnTo: false })
+					},
+					{
+						target: "FINALIZE_WITHDRAWAL",
+						guard: "toFinalizeWithdrawal",
 						actions: assign({ returnTo: false })
 					}
 				]

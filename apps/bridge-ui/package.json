@@ -16,7 +16,7 @@
 	},
 	"dependencies": {
 		"@hebilicious/nuxt-switch-match": "^0.1.1",
-		"@lumina-dex/sdk": "^0.20.0",
+		"@lumina-dex/sdk": "^0.21.0",
 		"@nuxt/fonts": "^0.10.2",
 		"@pinia/nuxt": "0.9.0",
 		"@unhead/vue": "1.11.19",
