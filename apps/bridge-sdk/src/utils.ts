@@ -77,3 +77,10 @@ export function getNextWithdrawalIndex(helperAccount: Account): UInt32 {
 	const nextWithdrawalIndex = helperAccount.zkappState?.at(1)
 	return UInt32.from(nextWithdrawalIndex ?? 0)
 }
+
+export function filterNulls<T>(arr: (T | null)[]): T[] {
+	return arr.filter(Boolean).map((x) => {
+		if (x === null) throw new Error("Unreachable")
+		return x
+	})
+}

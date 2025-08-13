@@ -31,6 +31,7 @@ import type {
 import {
 	depositAux,
 	fetchActions,
+	filterNulls,
 	getNextDepositIndex,
 	getNextWithdrawalIndex,
 	withdrawalAux
@@ -150,8 +151,8 @@ export class Bridge {
 		const userOuterActions = await fetchActions(this.l1ArchiveClient, pk)
 		const currentSlot = await this.fetchCurrentSlot()
 
-		return userOuterActions
-			.map(({ action }) => {
+		return filterNulls(
+			userOuterActions.map(({ action }) => {
 				const [
 					recipient1,
 					recipient2,
@@ -194,7 +195,7 @@ export class Bridge {
 					timedOut: timeout.lessThan(currentSlot).toBoolean()
 				}
 			})
-			.filter(Boolean) as Deposit[]
+		)
 	}
 
 	private async fetchOuterActions(actionStates?: Mina.ActionStates): Promise<OuterAction[]> {
@@ -234,8 +235,8 @@ export class Bridge {
 	private async fetchUserWithdrawals(pk: PublicKey): Promise<Withdrawal[]> {
 		const userInnerActions = await fetchActions(this.l2Client, pk)
 
-		return userInnerActions
-			.map(({ action }) => {
+		return filterNulls(
+			userInnerActions.map(({ action }) => {
 				const [recipient1, recipient2, amount1] = action
 
 				if (!recipient1 || !recipient2 || !amount1) return null
@@ -248,7 +249,7 @@ export class Bridge {
 					amount
 				}
 			})
-			.filter(Boolean) as Withdrawal[]
+		)
 	}
 
 	private async fetchInnerActions(actionStates?: Mina.ActionStates): Promise<InnerAction[]> {
@@ -416,13 +417,13 @@ export class Bridge {
 			depositParams,
 			helperAccount,
 			witness: {
-				prevNextDeposit,
+				prevNextDeposit: prevNextDeposit.toString(),
 				checkAccepted: {
 					elems: outerActions
 						.slice(myDepositIndex, nextCommitIndex + 1)
 						.map(({ action }) => ({ actions: action.action.map((a) => a.toString()) })),
 					init: {
-						depositIndex: myDepositIndex,
+						depositIndex: myDepositIndex.toString(),
 						orignalActionState: myDeposit.action.beforeActionState.toString(),
 						params: {
 							amount: depositParams.deposit.amount.toString(),
@@ -435,7 +436,7 @@ export class Bridge {
 				},
 				ase: {
 					stmt: {
-						length: syncedOuterActionState.length.sub(aseElems.length),
+						length: syncedOuterActionState.length.sub(aseElems.length).toString(),
 						actionState: nextCommit.action.afterActionState.toString()
 					},
 					fields: aseElems.map((elem) => elem.toString())
@@ -603,11 +604,11 @@ export class Bridge {
 					recipient: withdrawalParams.withdrawal.recipient.toBase58(),
 					children: "[]"
 				},
-				prevNextWithdrawal,
+				prevNextWithdrawal: prevNextWithdrawal.toString(),
 				withdrawalAse: {
 					fields: withdrawalAse.map((elem) => elem.toString()),
 					stmt: {
-						length: lastCommit.innerActionStateLength.sub(withdrawalAse.length),
+						length: lastCommit.innerActionStateLength.sub(withdrawalAse.length).toString(),
 						actionState: myWithdrawal.action.afterActionState.toString()
 					}
 				},
