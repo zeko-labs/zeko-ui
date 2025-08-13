@@ -416,13 +416,13 @@ export class Bridge {
 			depositParams,
 			helperAccount,
 			witness: {
-				prevNextDeposit,
+				prevNextDeposit: prevNextDeposit.toString(),
 				checkAccepted: {
 					elems: outerActions
 						.slice(myDepositIndex, nextCommitIndex + 1)
 						.map(({ action }) => ({ actions: action.action.map((a) => a.toString()) })),
 					init: {
-						depositIndex: myDepositIndex,
+						depositIndex: myDepositIndex.toString(),
 						orignalActionState: myDeposit.action.beforeActionState.toString(),
 						params: {
 							amount: depositParams.deposit.amount.toString(),
@@ -435,7 +435,7 @@ export class Bridge {
 				},
 				ase: {
 					stmt: {
-						length: syncedOuterActionState.length.sub(aseElems.length),
+						length: syncedOuterActionState.length.sub(aseElems.length).toString(),
 						actionState: nextCommit.action.afterActionState.toString()
 					},
 					fields: aseElems.map((elem) => elem.toString())
@@ -603,11 +603,11 @@ export class Bridge {
 					recipient: withdrawalParams.withdrawal.recipient.toBase58(),
 					children: "[]"
 				},
-				prevNextWithdrawal,
+				prevNextWithdrawal: prevNextWithdrawal.toString(),
 				withdrawalAse: {
 					fields: withdrawalAse.map((elem) => elem.toString()),
 					stmt: {
-						length: lastCommit.innerActionStateLength.sub(withdrawalAse.length),
+						length: lastCommit.innerActionStateLength.sub(withdrawalAse.length).toString(),
 						actionState: myWithdrawal.action.afterActionState.toString()
 					}
 				},

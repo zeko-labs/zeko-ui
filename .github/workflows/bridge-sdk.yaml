@@ -24,6 +24,10 @@ jobs:
           working-directory: apps/bridge-sdk
           run: pnpm run lint
 
+        - name: TypeCheck
+          working-directory: apps/bridge-sdk
+          run: pnpm run type:check
+
         - name: Build
           working-directory: apps/bridge-sdk
           run: pnpm run build

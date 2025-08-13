@@ -10,6 +10,7 @@
 		"format": "dprint check",
 		"lint": "biome lint",
 		"format:fix": "dprint fmt",
+		"type:check": "tsc --noEmit",
 		"lint:fix": "biome lint --fix --unsafe",
 		"schema:zeko:get": "gql-tada generate schema 'https://alphanet.zeko.io/graphql' --output './src/graphql/generated/zeko.graphql'",
 		"schema:mina:get": "gql-tada generate schema 'https://api.minascan.io/node/devnet/v1/graphql' --output './src/graphql/generated/mina.graphql'",

@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
 import { env } from "node:process"
 import { PrivateKey } from "o1js"
 import { Bridge } from "../src/index"
@@ -19,54 +21,65 @@ async function main() {
 	})
 
 	const actions = await bridge.fetchOuterActionsWithStates(recipient)
-	console.log(
-		actions.map((action, index) => {
-			if (action.type === "commit") {
-				return {
-					index,
-					type: action.type,
-					// ledger: action.ledger.toString(),
-					// innerActionState: action.innerActionState.toString(),
-					// innerActionStateLength: action.innerActionStateLength.toString(),
-					// synchronizedOuterActionState: action.synchronizedOuterActionState.toString(),
-					synchronizedOuterActionStateLength: action.synchronizedOuterActionStateLength.toString(),
-					// action: action.action.action.map((x) => x.toString()),
-					// beforeActionState: action.action.beforeActionState.toString(),
-					// afterActionState: action.action.afterActionState.toString(),
-					// isPastWithdrawalDelay: action.isPastWithdrawalDelay,
-					// slotRange: {
-					// 	lower: action.slotRange.lower.toString(),
-					// 	upper: action.slotRange.upper.toString()
-					// },
-					synced: action.synced,
-					accepted: action.accepted,
-					confirmed: action.confirmed
-				}
+	const formattedActions = actions.map((action, index) => {
+		if (action.type === "commit") {
+			return {
+				index,
+				type: action.type,
+				// ledger: action.ledger.toString(),
+				// innerActionState: action.innerActionState.toString(),
+				// innerActionStateLength: action.innerActionStateLength.toString(),
+				// synchronizedOuterActionState: action.synchronizedOuterActionState.toString(),
+				synchronizedOuterActionStateLength: action.synchronizedOuterActionStateLength.toString(),
+				// action: action.action.action.map((x) => x.toString()),
+				// beforeActionState: action.action.beforeActionState.toString(),
+				// afterActionState: action.action.afterActionState.toString(),
+				// isPastWithdrawalDelay: action.isPastWithdrawalDelay,
+				// slotRange: {
+				// 	lower: action.slotRange.lower.toString(),
+				// 	upper: action.slotRange.upper.toString()
+				// },
+				synced: action.synced,
+				accepted: action.accepted,
+				confirmed: action.confirmed
 			}
-			if (action.type === "witness") {
-				return {
-					index,
-					type: action.type,
-					action: action.action.action.map((x) => x.toString()),
-					beforeActionState: action.action.beforeActionState.toString(),
-					afterActionState: action.action.afterActionState.toString(),
-					deposit: action.deposit
-						? {
-								recipient: action.deposit.recipient.toBase58(),
-								amount: action.deposit.amount.toString(),
-								timeout: action.deposit.timeout.toString(),
-								holderAccountL1: action.deposit.holderAccountL1.toBase58(),
-								timedOut: action.deposit.timedOut
-							}
-						: undefined,
-					synced: action.synced,
-					accepted: action.accepted,
-					confirmed: action.confirmed
-				}
+		}
+		if (action.type === "witness") {
+			return {
+				index,
+				type: action.type,
+				action: action.action.action.map((x) => x.toString()),
+				beforeActionState: action.action.beforeActionState.toString(),
+				afterActionState: action.action.afterActionState.toString(),
+				deposit: action.deposit
+					? {
+							recipient: action.deposit.recipient.toBase58(),
+							amount: action.deposit.amount.toString(),
+							timeout: action.deposit.timeout.toString(),
+							holderAccountL1: action.deposit.holderAccountL1.toBase58(),
+							timedOut: action.deposit.timedOut
+						}
+					: undefined,
+				synced: action.synced,
+				accepted: action.accepted,
+				confirmed: action.confirmed
 			}
-			throw new Error("should not be reachable")
-		})
-	)
+		}
+		throw new Error("should not be reachable")
+	})
+
+	// Write full array to disk (untruncated) before logging
+	try {
+		const tmpDir = join(process.cwd(), "tmp")
+		mkdirSync(tmpDir, { recursive: true })
+		const logPath = join(tmpDir, "outer-actions.log")
+		writeFileSync(logPath, JSON.stringify(formattedActions, null, 2), "utf8")
+		console.log(`Full outer actions written to ${logPath}`)
+	} catch (e) {
+		console.error("Failed to write outer actions log:", e)
+	}
+
+	console.log(formattedActions)
 }
 
 main().catch(console.error)
