@@ -95,6 +95,14 @@ await bridge.finalizeWithdrawal(
 )
 ```
 
+The proving time depens on the length of `checkAccepted.elems.length` and `ase.fields`. These grow with time, so longer you wait, the longer the proving time.
+The sequencer doesn’t know if you’ve abandoned the request and so it is still proving it. On alphanet we have only one prover, so if you keep trying and abandoning it, each request needs to wait for more.
+
+In the future :
+
+- caching of those proofs inside the sequencer, so users would not have to prove the whole extensions
+- moving this proving into the browser
+
 ## Examples
 
 Set your wallet private key in the `.env` file.
