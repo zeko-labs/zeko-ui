@@ -35,7 +35,8 @@ async function main() {
 				withdrawal: withdrawal
 					? {
 							recipient: withdrawal.recipient.toBase58(),
-							amount: withdrawal.amount.toString()
+							amount: withdrawal.amount.toString(),
+							finalised: withdrawal.finalised
 						}
 					: undefined,
 				committed,
