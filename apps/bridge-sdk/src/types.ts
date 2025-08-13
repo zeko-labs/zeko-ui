@@ -44,13 +44,29 @@ export type InnerWitness = {
 
 export type OuterAction = OuterWitness | OuterCommit
 
+export type MaybeDeposit = OuterWitness & { deposit: Deposit | undefined }
+
+export type OuterActionWithState = (MaybeDeposit | OuterCommit) & {
+	synced: boolean
+	accepted: boolean
+	confirmed: boolean
+}
+
 export type InnerAction = InnerWitness
+
+export type MaybeWithdrawal = InnerWitness & { withdrawal: Withdrawal | undefined }
+
+export type InnerActionWithState = MaybeWithdrawal & {
+	committed: boolean
+	isPastWithdrawalDelay: boolean
+}
 
 export type Deposit = {
 	recipient: PublicKey
 	amount: UInt64
 	timeout: UInt32
 	holderAccountL1: PublicKey
+	timedOut: boolean
 }
 
 export type Withdrawal = {
@@ -61,21 +77,3 @@ export type Withdrawal = {
 export type Account = {
 	zkappState?: string[] | null
 }
-
-export type Deposits = {
-	beforeActionState: Field
-	afterActionState: Field
-	recipient: PublicKey
-	amount: UInt64
-	timeout: UInt32
-	holderAccountL1: PublicKey
-	outerPk: PublicKey
-	timedOut: boolean
-}[]
-
-export type Withdrawals = {
-	beforeActionState: Field
-	afterActionState: Field
-	recipient: PublicKey
-	amount: UInt64
-}[]
