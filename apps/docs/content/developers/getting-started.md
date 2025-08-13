@@ -10,7 +10,7 @@ You already know [What is Zeko](../introduction/what-is-zeko.md) and [Why you sh
 
 > For developers new to Zeko, ZK, and Mina
 
-If you are new to building on Mina or with zkApps, it is highly recommended to **start with the official [Mina documentation](https://docs.minaprotocol.com/)**. Zeko is an _isomorphic zkRollup on Mina_, so we reference the deep library of [Mina resources](https://docs.minaprotocol.com/) wherever relevant.
+If you are new to building on Mina or with zkApps, it is highly recommended to **start with the official [Mina documentation](https://docs.minaprotocol.com/)**. Zeko is an _isomorphic zkRollup on Mina_, so we reference the deep library of Mina resources wherever relevant.
 
 Visit the [**Zeko GitHub repo**](https://github.com/zeko-labs/zeko/tree/compatible/src/app/zeko), the source code for the Zeko protocol, including the sequencer and data availability components.
 
@@ -54,7 +54,7 @@ zkApps are zero-knowledge programs that are **Turing complete**, and offer enhan
 > Useful links and code examples
 
 - **LuminaDex SDK for front-end swaps on Zeko and Mina**
-  - The SDK library is designed to simplify the integration of the [LuminaDex contracts](https://github.com/Lumina-DEX/lumina/tree/main/packages/contracts) in a website.
+  - The [SDK library](https://sdk.luminadex.com/) is designed to simplify the integration of the [LuminaDex contracts](https://github.com/Lumina-DEX/lumina/tree/main/packages/contracts) in a website.
   - [Beta Website](https://lumina-devnet.netlify.app/) using SDK and Lumina audited contracts. View the [Source Code on GitHub](https://github.com/Lumina-DEX/lumina/tree/main/packages/dex-ui).
 - [Mina Fungible token standard](https://github.com/MinaFoundation/mina-fungible-token): example code for custom token implementations
 - Other examples / demos:
