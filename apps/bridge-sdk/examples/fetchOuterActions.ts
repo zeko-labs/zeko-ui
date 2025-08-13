@@ -56,7 +56,8 @@ async function main() {
 								amount: action.deposit.amount.toString(),
 								timeout: action.deposit.timeout.toString(),
 								holderAccountL1: action.deposit.holderAccountL1.toBase58(),
-								timedOut: action.deposit.timedOut
+								timedOut: action.deposit.timedOut,
+								finalised: action.deposit.finalised
 							}
 						: undefined,
 					synced: action.synced,

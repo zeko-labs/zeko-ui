@@ -678,13 +678,23 @@ export class Bridge {
 			auxesMap.set(aux.toBigInt(), deposit)
 		}
 
+		const helperAccount = await this.fetchAccount(
+			this.l2Client,
+			pk,
+			TokenId.derive(this.innerHolder)
+		)
+		const nextDeposit = helperAccount ? getNextDepositIndex(helperAccount) : UInt32.zero
+
 		const outerActions: (MaybeDeposit | OuterCommit)[] = (await this.fetchOuterActions()).map(
-			(action) => {
+			(action, index) => {
 				if (action.type === "commit") return action
 				if (action.type === "witness") {
+					const deposit = auxesMap.get(action.aux.toBigInt())
 					return {
 						...action,
-						deposit: auxesMap.get(action.aux.toBigInt())
+						deposit: deposit
+							? { ...deposit, finalised: nextDeposit.greaterThan(UInt32.from(index)).toBoolean() }
+							: undefined
 					}
 				}
 				throw new Error("unreachable")
@@ -770,10 +780,27 @@ export class Bridge {
 			auxesMap.set(aux.toBigInt(), withdrawal)
 		}
 
-		const innerActions: MaybeWithdrawal[] = (await this.fetchInnerActions()).map((action) => ({
-			...action,
-			withdrawal: auxesMap.get(action.aux.toBigInt())
-		}))
+		const helperAccount = await this.fetchAccount(
+			this.l1Client,
+			pk,
+			TokenId.derive(this.outerTokenOwner)
+		)
+		const nextWithdrawal = helperAccount ? getNextWithdrawalIndex(helperAccount) : UInt32.zero
+
+		const innerActions: MaybeWithdrawal[] = (await this.fetchInnerActions()).map(
+			(action, index) => {
+				const withdrawal = auxesMap.get(action.aux.toBigInt())
+				return {
+					...action,
+					withdrawal: withdrawal
+						? {
+								...withdrawal,
+								finalised: nextWithdrawal.greaterThan(UInt32.from(index)).toBoolean()
+							}
+						: undefined
+				}
+			}
+		)
 
 		const outerActions = await this.fetchOuterActions()
 		const reversedOuterActions = outerActions.slice().reverse()
