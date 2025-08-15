@@ -44,6 +44,7 @@
 		"@total-typescript/ts-reset": "^0.6.1",
 		"nitro-cloudflare-dev": "^0.2.2",
 		"postcss-nesting": "^13.0.1",
+		"vite": "^7.1.2",
 		"wrangler": "^4.28.1"
 	}
 }
