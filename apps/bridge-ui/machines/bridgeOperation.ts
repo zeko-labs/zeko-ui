@@ -224,8 +224,7 @@ export const bridgeOperationMachine = setup({
 	states: {
 		IDLE: {
 			on: {
-				//TODO: Re-enable this
-				// Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) },
+				Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) },
 				CompleteBridgeOperation: { target: "BRIDGE_OPERATION_DONE_NOOP" },
 				StartBridgeOperation: [
 					{ target: "INIT_BRIDGE_OPERATION", guard: "currentNetworkIsSource" },
