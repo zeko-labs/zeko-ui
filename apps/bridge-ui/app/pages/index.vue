@@ -1,19 +1,11 @@
 <script lang="ts" setup>
+// biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { theme } from "@zeko/design"
-const styles = theme
-const steps = [
-	"Send transfer request",
-	"Sign send transaction",
-	"Claim transfer",
-	"Sign claim transaction",
-	"Transfer complete"
-]
-const currentStepIndex = ref(0)
 </script>
 
 <template>
   <div class="wrapper">
-    <div class="rollup-bridge" :style="styles.css.string">
+    <div class="rollup-bridge">
       <header class="header">
         <div class="header-content">
           <div class="logo">
@@ -41,48 +33,29 @@ const currentStepIndex = ref(0)
           Zeko L2
         </p>
 
-        <div class="progress-bar">
-          <ProgressBar :step="currentStepIndex" />
-          <button
-            @click="currentStepIndex--"
-            :disabled="currentStepIndex === 0">
-            Previous Step
-          </button>
-          <button
-            @click="currentStepIndex++"
-            :disabled="currentStepIndex === steps.length - 1">
-            Next Step
-          </button>
-        </div>
-
-        <hr />
-        <TokenSelector />
-        <hr />
-
-        <FromTo />
-
-        <hr />
-
-        <Button variant="cta1">Connect Wallet</Button>
-        <Button variant="cta2">Send</Button>
-        <Button variant="cta3">Claim</Button>
-        <Button variant="cta1" disabled>Disabled</Button>
-
-        <hr />
-        <Button>Default</Button>
-        <Button>Add Token</Button>
-        <Button disabled>Add Token</Button>
-        <hr />
-
-        <Label is="pending" />
-        <Label is="complete" />
+        <Bridge />
       </main>
     </div>
   </div>
-  <Wallet />
-  <Bridge />
-</template>
+  <!-- <div>
+    <hr />
 
+    <Button variant="cta1">Connect Wallet</Button>
+    <Button variant="cta2">Send</Button>
+    <Button variant="cta3">Claim</Button>
+    <Button variant="cta1" disabled>Disabled</Button>
+
+    <hr />
+    <Button>Default</Button>
+    <Button>Add Token</Button>
+    <Button disabled>Add Token</Button>
+    <hr />
+
+    <Label is="pending" />
+    <Label is="complete" />
+  </div>
+  <Wallet /> -->
+</template>
 <style lang="postcss" scoped>
 .wrapper {
   position: relative;

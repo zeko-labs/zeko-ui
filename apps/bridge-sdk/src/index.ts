@@ -37,6 +37,8 @@ import {
 	withdrawalAux
 } from "./utils"
 
+export * from "./types"
+
 export class Bridge {
 	constructor(
 		private readonly config: Config,

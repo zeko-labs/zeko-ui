@@ -1,8 +1,7 @@
 import { type Networks, type WalletEmit, detectWalletChange } from "@lumina-dex/sdk"
 import type { walletMachine } from "@lumina-dex/sdk"
-import { Bridge } from "@zeko/bridge-sdk"
+import * as Comlink from "comlink"
 import { nanoid } from "nanoid"
-import { PublicKey } from "o1js"
 import {
 	type ActorRefFromLogic,
 	and,
@@ -13,6 +12,12 @@ import {
 	spawnChild
 } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
+import type { OperationsWorker, PendingOperations } from "./operations.worker"
+import workerUrl from "./operations.worker?worker&url"
+
+//TODO: Fix with https://github.com/vitejs/vite/issues/13680
+const jsWorker = `import ${JSON.stringify(new URL(workerUrl, import.meta.url))}`
+const blobWorker = new Blob([jsWorker], { type: "application/javascript" })
 
 type Operations = Map<
 	string,
@@ -23,23 +28,16 @@ type Operations = Map<
 >
 type Wallet = ActorRefFromLogic<typeof walletMachine>
 
-type BridgeNetworks = Networks | "invalid"
-
 export type BridgeEvents =
-	| { type: "ApplyNetworkChange"; network: Networks }
 	| { type: "StartOperation"; amount: string }
 	| { type: "CompleteOperation"; id: string }
 	| { type: "InvertDirection" }
-	| { type: "_InvalidNetworks" }
-	| {
-			type: "SetNetworks"
-			sourceNetwork: Networks
-			destinationNetwork: Networks
-	  }
+	| { type: "SetSource"; sourceNetwork: Networks }
+	| { type: "SetDestination"; destinationNetwork: Networks }
 
 interface BridgeContext {
-	sourceNetwork: BridgeNetworks
-	destinationNetwork: BridgeNetworks
+	sourceNetwork: Networks
+	destinationNetwork: Networks
 	operations: Operations
 	operationsToUnpause: string[]
 	wallet: Wallet
@@ -59,19 +57,7 @@ const bridgeDirections = {
 	"mina:devnet": "zeko:testnet"
 } as const
 
-type ActionState = {
-	index: number
-	id: string
-	recipient: string
-	amount: string
-	finalised: boolean
-	source: Networks
-	destination: Networks
-}
-type PendingOperations = {
-	deposits: ActionState[]
-	withdrawals: ActionState[]
-}
+// type imported from worker
 
 type StartOperationSettings = {
 	amount: string
@@ -83,6 +69,7 @@ type StartOperationSettings = {
 		destination: Networks
 	}
 }
+
 // Parent Bridge Machine
 export const bridgeMachine = setup({
 	types: {
@@ -99,53 +86,18 @@ export const bridgeMachine = setup({
 		detectWalletChange,
 		findPendingOperations: fromPromise<PendingOperations, { wallet: Wallet }>(async ({ input }) => {
 			const { wallet } = input
-			//TODO: Get the correct source and destination
-			const l1 = "mina:devnet"
-			const l2 = "zeko:testnet"
-			const bridge = await Bridge.init({
-				l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
-				l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
-				zekoUrl: "https://alphanet.zeko.io/graphql",
-				l1Network: "testnet",
-				l2Network: "testnet"
-			})
-			const recipient = PublicKey.fromBase58(wallet.getSnapshot().context.account)
-			const [outerActions, innerActions] = await Promise.all([
-				bridge.fetchOuterActionsWithStates(recipient),
-				bridge.fetchInnerActionsWithStates(recipient)
-			])
-			const deposits = outerActions
-				.map((action, index) => {
-					if (action.type === "witness" && action.deposit) {
-						return {
-							index,
-							id: action.action.afterActionState.toString(),
-							recipient: action.deposit.recipient.toBase58(),
-							amount: (action.deposit.amount.toBigInt() / BigInt(10e8)).toString(),
-							finalised: action.deposit.finalised,
-							source: l1,
-							destination: l2
-						} as const
-					}
-				})
-				.filter(Boolean)
-			const withdrawals = innerActions
-				.map((action, index) => {
-					if (action.withdrawal) {
-						return {
-							index,
-							id: action.action.afterActionState.toString(),
-							recipient: action.withdrawal.recipient.toBase58(),
-							amount: (action.withdrawal.amount.toBigInt() / BigInt(10e8)).toString(),
-							finalised: action.withdrawal.finalised,
-							source: l2,
-							destination: l1
-						} as const
-					}
-				})
-				.filter(Boolean)
-			console.log(`Found ${deposits.length} deposits and ${withdrawals.length} withdrawals`)
-			return { deposits, withdrawals }
+			const account = wallet.getSnapshot().context.account
+			// TODO: compute l1/l2 from current networks if needed
+			const l1 = "mina:devnet" as const
+			const l2 = "zeko:testnet" as const
+
+			const ww = new Worker(URL.createObjectURL(blobWorker), { type: "module" })
+			const worker = Comlink.wrap<OperationsWorker>(ww)
+			const result = await worker.findPendingOperations({ account, l1, l2 })
+			console.log(
+				`Found ${result.deposits.length} deposits and ${result.withdrawals.length} withdrawals`
+			)
+			return result
 		})
 	},
 	actions: {
@@ -282,30 +234,29 @@ export const bridgeMachine = setup({
 				})
 			}
 		],
-		SetNetworks: {
+		SetSource: {
 			target: ".READY",
-			guard: ({ event, context }) =>
-				// If the source network is the same, destination must be different
-				// If the destination network is the same, source must be different
-				(event.sourceNetwork === context.sourceNetwork
-					? event.destinationNetwork !== context.destinationNetwork
-					: event.destinationNetwork === context.destinationNetwork
-						? event.sourceNetwork !== context.sourceNetwork
-						: true) &&
-				// Both networks must be supported
-				supportedNetworks.includes(event.sourceNetwork) &&
-				supportedNetworks.includes(event.destinationNetwork) &&
-				// Both networks must be different
-				event.sourceNetwork !== event.destinationNetwork,
+			guard: ({ event, context }) => event.sourceNetwork !== context.sourceNetwork,
 			actions: assign(({ event }) => ({
 				sourceNetwork: event.sourceNetwork,
-				destinationNetwork: event.destinationNetwork
+				destinationNetwork: bridgeDirections[event.sourceNetwork]
+			}))
+		},
+		SetDestination: {
+			target: ".READY",
+			guard: ({ event, context }) => event.destinationNetwork !== context.destinationNetwork,
+			actions: assign(({ event }) => ({
+				destinationNetwork: event.destinationNetwork,
+				sourceNetwork: bridgeDirections[event.destinationNetwork]
 			}))
 		}
 	},
 	states: {
 		IDLE: {},
 		READY: {
+			// entry: enqueueActions(() => {
+			// 	console.log("Entering READY state")
+			// }),
 			invoke: {
 				src: "findPendingOperations",
 				input: ({ context }) => ({ wallet: context.wallet }),
@@ -423,16 +374,8 @@ export const bridgeMachine = setup({
 						type: "completeOperation",
 						params: ({ event }) => ({ id: event.id })
 					}
-				},
-				_InvalidNetworks: {
-					target: "INVALID_NETWORKS",
-					actions: assign({
-						sourceNetwork: "invalid",
-						destinationNetwork: "invalid"
-					})
 				}
 			}
-		},
-		INVALID_NETWORKS: {}
+		}
 	}
 })

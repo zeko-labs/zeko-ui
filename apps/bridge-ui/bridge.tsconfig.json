@@ -5,7 +5,8 @@
 		"module": "ESNext",
 		"esModuleInterop": true,
 		"strict": true,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"types": ["vite/client"]
 	},
-	"include": ["machines", "global.d.ts"]
+	"include": ["app", "machines", "global.d.ts", "env.d.ts"]
 }

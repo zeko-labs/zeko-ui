@@ -1,40 +1,53 @@
+import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { walletMachine } from "@lumina-dex/sdk"
-import type { Mina } from "o1js"
+import { type Mina, type PublicKey, Transaction } from "o1js"
 import type { ActorRefFromLogic } from "xstate"
 
 type Wallet = ActorRefFromLogic<typeof walletMachine>
 
 export const sendTransaction = async ({
 	tx,
-	wallet
-}: { tx: Mina.Transaction<false, false> | string; wallet: Wallet }) => {
+	wallet,
+	sender
+}: { tx: Mina.Transaction<false, false> | string; wallet: Wallet; sender?: PublicKey }) => {
 	const transaction = typeof tx === "string" ? tx : tx.toJSON()
-	const updateResult = await window.mina.sendTransaction({ onlySign: false, transaction })
-	if (updateResult instanceof Error) {
-		console.error("Transaction failed", updateResult)
-		throw updateResult
+	const result = await window.mina.sendTransaction({ onlySign: !!sender, transaction })
+
+	if (result instanceof Error) {
+		console.error("Transaction failed", result)
+		throw result
 	}
-	if ("hash" in updateResult) {
+
+	const processHash = (hash: string) => {
 		const timestamp = Date.now()
 		const { currentNetwork, account } = wallet.getSnapshot().context
-		const hash = updateResult.hash
 		const storageKey = `zeko-bridge-tx-${timestamp}-${currentNetwork}-${account}-${hash}`
 		localStorage.setItem(
 			storageKey,
 			JSON.stringify({ timestamp, currentNetwork, account, hash, transaction })
 		)
-		console.log("Transaction sent and saved to localStorage", updateResult)
+		console.log("Transaction sent and saved to localStorage", result)
 		const baseUrl = {
-			"mina:devnet": "https://minascan.io/devnet",
+			"mina:devnet": "https://mxinascan.io/devnet",
 			"mina:mainnet": "https://minascan.io/mainnet",
 			"zeko:testnet": "https://zekoscan.io/testnet",
 			"zeko:mainnet": "https://zekoscan.io/mainnet"
 		} as const
 		return {
-			hash: updateResult.hash,
-			url: `${baseUrl[currentNetwork]}/account/${updateResult.hash}/zk-txs` as const
+			hash,
+			url: `${baseUrl[currentNetwork]}/account/${hash}/zk-txs` as const
 		}
 	}
-	console.log("An unexpected transaction result was received", updateResult)
+
+	if ("hash" in result) return processHash(result.hash)
+
+	// Transactions paid by another sender are signed, then sent with o1js
+	if (sender && "signedData" in result) {
+		const transaction = Transaction.fromJSON(JSON.parse(result.signedData) as ZkappCommand)
+		const result2 = await transaction.send()
+		return processHash(result2.hash)
+	}
+
+	console.log("An unexpected transaction result was received", result)
 	throw new Error("Unexpected transaction result")
 }

@@ -18,6 +18,7 @@
 	},
 	"dependencies": {
 		"@ark-ui/vue": "^5.9.1",
+		"@hebilicious/nuxt-switch-match": "^0.1.1",
 		"@zeko/design": "workspace:^",
 		"lucide-vue-next": "^0.453.0"
 	}

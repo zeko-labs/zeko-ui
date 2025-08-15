@@ -3,10 +3,11 @@
 import { Field } from "@ark-ui/vue/field"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { Select, createListCollection } from "@ark-ui/vue/select"
+import { theme } from "@zeko/design"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ChevronDownIcon } from "lucide-vue-next"
-import { theme } from "@zeko/design"
 
+const modelValue = defineModel({ required: true, default: 0 })
 const collection = createListCollection({
 	items: ["MINA", "ZEKO"]
 })
@@ -17,7 +18,13 @@ const colors = theme.config.colors
 <template>
   <div class="SelectWrapper">
     <Field.Root>
-      <Field.Input type="number" />
+      <Field.Input
+        type="number"
+        step="0.01"
+        min="0"
+        v-model="modelValue"
+        placeholder="Enter Amount"
+      />
     </Field.Root>
     <Field.Root>
       <Select.Root :collection :default-value='["MINA"]'>
@@ -43,9 +50,7 @@ const colors = theme.config.colors
                 <Select.ItemGroupLabel>Tokens</Select.ItemGroupLabel>
                 <Select.Item v-for="item of collection.items" :key="item" :item>
                   <!-- <Select.ItemContext>OK</Select.ItemContext> -->
-                  <Select.ItemText>
-                    {{ item }}
-                  </Select.ItemText>
+                  <Select.ItemText>{{ item }}</Select.ItemText>
                   <!-- <Select.ItemIndicator>✓</Select.ItemIndicator> -->
                 </Select.Item>
               </Select.ItemGroup>
@@ -61,12 +66,13 @@ const colors = theme.config.colors
 <style lang="postcss" scoped>
 /* Main container */
 .SelectWrapper {
-  display: inline-flex;
+  display: grid;
+  justify-content: space-between;
+  grid-template-columns: 1fr auto;
   background-color: v-bind("colors.spaceBlue.value");
   border-radius: 8px;
   border: 1px solid v-bind("colors.gray[200].value");
   overflow: hidden;
-  max-width: 500px;
 }
 
 span, input {
@@ -87,7 +93,7 @@ span, input {
 
 /* Select container */
 [data-scope="select"][data-part="root"] {
-  min-width: 120px;
+  min-width: 100%;
 }
 
 .TriggerWrapper {
@@ -181,5 +187,16 @@ span, input {
 /* Hide the native select element */
 select[aria-hidden="true"] {
   display: none;
+}
+
+/* Hide input number arrows */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  appearance: textfield;
 }
 </style>

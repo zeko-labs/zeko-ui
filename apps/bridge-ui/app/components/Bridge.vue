@@ -1,103 +1,94 @@
 <script lang="ts" setup>
-import { useMachine, useSelector } from "@lumina-dex/sdk/vue"
-import { bridgeMachine } from "~~/machines/bridge"
+import { useSelector } from "@lumina-dex/sdk/vue"
+import { depositSteps, withdrawalSteps } from "~/helpers"
 
-const wallet = useWalletStore()
-const { walletLoaded, balances } = storeToRefs(wallet)
+const bs = useBridgeStore()
 
-const amountToBridge = ref("")
+const amountToBridge = ref<number>(0)
 
-const network = useSelector(
-	wallet.actorRef,
-	(state) => state.context.currentNetwork
+const source = computed(() => bs.bridge.snapshot.context.sourceNetwork)
+
+const direction = computed(() =>
+	source.value.includes("mina") ? "deposit" : "withdrawal"
 )
 
-const walletValue = computed(() => wallet.snapshot.context)
-const totalBalances = computed(() => {
-	return `MINA: (L1) => ${JSON.stringify(balances.value["mina:devnet"])} | L2 => ${JSON.stringify(balances.value["zeko:testnet"])}`
-})
+const operationsForTable = useSelector(bs.bridge.actorRef, (state) =>
+	[...state.context.operations.entries()].map(([id, value]) => ({
+		id,
+		operation: value.operation
+	}))
+)
 
-const {
-	send,
-	snapshot,
-	actorRef: bridgeActor
-} = useMachine(bridgeMachine, {
-	input: { wallet: wallet.actorRef },
-	inspect: (event) => {
-		if (event.type === "@xstate.event") {
-			// console.log(event)
-		}
-	}
-})
+const steps = computed(() =>
+	direction.value === "deposit" ? depositSteps : withdrawalSteps
+)
 
-// actorRef.subscribe((state) => {
-// 	console.log("State", state.context)
-// })
-
-const source = computed(() => snapshot.value.context.sourceNetwork)
-const destination = computed(() => snapshot.value.context.destinationNetwork)
-
-const children = useSelector(bridgeActor, (state) => [
-	...state.context.operations.values()
-])
+const step = ref(0)
 </script>
 <template>
-  <hr />
-
-  <div :data-xstate="walletValue" v-show="walletLoaded">
-    <!-- <h2>Bridge</h2>
-    <hr>
-    <h3>Instructions :</h3>
-    <p>1. Chose a source and a destination</p>
-    <p>2. Select and deposit your tokens from the source network.</p>
-    <p>3. Withdraw your tokens from the destination network.</p>
-    <hr /> -->
-    Sending {{ amountToBridge }} from {{ source }}
-    to {{ destination }}
-    <hr />
-    Bridge: {{ snapshot.value }}
-    <hr />
-
-    Children :
-    <ul>
-      <li v-for="(child, index) of children" :key="index">
-        <template v-if="child">
-          <Operation :operation="child.operation" />
-        </template>
-      </li>
-    </ul>
-    <hr />
-    XState current Network : {{ network }}
-    Computed:
-    {{ balances }}
-    <hr />
-    Source: {{ source }}
-    <Button @click='send({ type: "InvertDirection" })'><==></Button>
-    Destination:
-    {{ destination }}
-    <hr />
-    <div>
-      <p>Amount to bridge :</p>
-      <fieldset role="group">
-        <Button disabled>Mina</Button>
-        <input v-model="amountToBridge" type="text" />
-        <input type="submit" disabled v-model="totalBalances" />
-      </fieldset>
-
-      <hr />
-
-      <div role="group">
-        <!-- <button v-if="canBridge" @click="startBridge">Bridge</button> -->
-        <!-- <button v-if="canClaim" @click="confirm">Claim</button> -->
-        <!-- <button @click='send({ type: "BridgeToMina" })'>BridgeToMina</button> -->
-        <!-- <button @click='send({ type: "BridgeToZeko" })'>BridgeToZeko</button> -->
-      </div>
-      <hr />
-      <Button
-        v-if='snapshot.matches("READY")'
-        @click='send({ type: "StartOperation", amount: amountToBridge })'>
-        Bridge
-      </Button>
+  <div class="ProgressBarWrapper">
+    <ProgressBar :steps :step />
+    <!-- <button
+      @click="step--"
+      :disabled="step === 0">
+      Previous Step
+    </button>
+    <button
+      @click="step++"
+      :disabled="step === steps.length - 1">
+      Next Step
+    </button> -->
+  </div>
+  <div class="MainOperationInput" v-show="bs.walletLoaded">
+    <div class="InputBox">
+      <h3>Sending</h3>
+      <BridgeAmountSelector v-model="amountToBridge" />
     </div>
+
+    <FromTo
+      :source="bs.bridge.snapshot.context.sourceNetwork"
+      :destination="bs.bridge.snapshot.context.destinationNetwork"
+    />
+    <Button
+      class="BridgeButton"
+      variant="cta2"
+      v-if='bs.bridge.snapshot.matches("READY")'
+      @click='
+        bs.bridge.send({
+        	type: "StartOperation",
+        	amount: (amountToBridge ?? 0).toString()
+        })
+      '
+      :disabled="amountToBridge === 0">
+      Bridge
+    </Button>
+  </div>
+  <div>
+    <h2>Recent Transactions</h2>
+    <BridgeOperations :operations="operationsForTable" />
   </div>
 </template>
+<style lang="postcss">
+.debug {
+  background-color: palegoldenrod;
+  padding: 1rem;
+}
+</style>
+<style lang="postcss" scoped>
+:deep(.InputBox) {
+  display: grid;
+  grid-template-columns: 20ch 1fr;
+  align-items: center;
+}
+.MainOperationInput {
+  display: grid;
+  gap: 1rem;
+  max-width: 50vw;
+}
+.BridgeButton {
+  margin-top: 1rem;
+}
+.ProgressBarWrapper {
+  padding: 2rem 0 3rem 0;
+}
+</style>

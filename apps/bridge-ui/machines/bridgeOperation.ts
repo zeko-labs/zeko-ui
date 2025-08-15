@@ -124,7 +124,7 @@ export const bridgeOperationMachine = setup({
 			const tx = await bridge.finalizeDeposit(
 				PublicKey.fromBase58(wallet.getSnapshot().context.account)
 			)
-			const result = await sendTransaction({ tx, wallet })
+			const result = await sendTransaction({ tx, wallet, sender: bridge.sequencerPk })
 			return result
 		}),
 		submitWithdrawal: fromPromise<Result, { bridge: Bridge; amount: string; wallet: Wallet }>(
@@ -224,7 +224,8 @@ export const bridgeOperationMachine = setup({
 	states: {
 		IDLE: {
 			on: {
-				Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) },
+				//TODO: Re-enable this
+				// Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) },
 				CompleteBridgeOperation: { target: "BRIDGE_OPERATION_DONE_NOOP" },
 				StartBridgeOperation: [
 					{ target: "INIT_BRIDGE_OPERATION", guard: "currentNetworkIsSource" },

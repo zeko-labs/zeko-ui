@@ -1,16 +1,15 @@
 <script lang="ts" setup>
-const store = useWalletStore()
-const { address, displayAddress, snapshot, actorRef, balances } =
-	storeToRefs(store)
+const bs = useBridgeStore()
 </script>
 
 <template>
   <h2>Wallet</h2>
   <hr />
-  {{ snapshot.value }}
-  {{ snapshot.context }}
+  {{ bs.wallet.snapshot.value }}
+  {{ bs.wallet.snapshot.context }}
   <p>
-    {{ address }} {{ displayAddress }} | {{ snapshot.context?.currentNetwork }}
+    {{ bs.address }}
+    {{ bs.displayAddress }} | {{ bs.wallet.snapshot.context?.currentNetwork }}
   </p>
   <fieldset>
     <label>
@@ -18,11 +17,11 @@ const { address, displayAddress, snapshot, actorRef, balances } =
       Testnet
     </label>
   </fieldset>
-  {{ actorRef }}
-  {{ balances }}
+  {{ bs.wallet.actorRef }}
+  {{ bs.balances }}
   <!-- <hr /> -->
-  <div v-if='snapshot.matches("INIT")' role="group">
-    <button @click='store.send({ type: "Connect" })'>
+  <div v-if='bs.wallet.snapshot.matches("INIT")' role="group">
+    <button @click='bs.wallet.send({ type: "Connect" })'>
       Connect
     </button>
   </div>

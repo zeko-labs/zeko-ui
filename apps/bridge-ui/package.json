@@ -15,10 +15,12 @@
 		"deploy:dev": "rimraf .output .wrangler .nuxt && NITRO_PRESET=cloudflare_module nuxt build && wrangler deploy"
 	},
 	"dependencies": {
+		"@ark-ui/vue": "^5.9.1",
 		"@hebilicious/nuxt-switch-match": "^0.1.1",
 		"@lumina-dex/sdk": "^0.21.0",
 		"@nuxt/fonts": "^0.10.2",
 		"@pinia/nuxt": "0.9.0",
+		"@tanstack/vue-table": "^8.21.3",
 		"@unhead/vue": "1.11.19",
 		"@unocss/reset": "^0.63.6",
 		"@urql/vue": "^1.4.2",
@@ -27,6 +29,8 @@
 		"@zeko/bridge-sdk": "workspace:^",
 		"@zeko/design": "workspace:^",
 		"@zeko/layer": "workspace:^",
+		"comlink": "^4.4.2",
+		"lucide-vue-next": "^0.453.0",
 		"nanoid": "^5.0.9",
 		"nuxt": "^4.0.1",
 		"o1js": "catalog:",

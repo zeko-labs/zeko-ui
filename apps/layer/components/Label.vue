@@ -6,14 +6,16 @@ const font = theme.config.fonts.lexend.typescale
 </script>
 <template>
   <div class="Label">
-    <template v-if='is === "pending"'>
-      <SvgPendingClock />
-      <span>Pending</span>
-    </template>
-    <template v-if='is === "complete"'>
-      <SvgCompletedCircle />
-      <span>Completed</span>
-    </template>
+    <Switch>
+      <Match :when='is === "pending"'>
+        <SvgPendingClock />
+        <slot>Pending</slot>
+      </Match>
+      <Match :when='is === "complete"'>
+        <SvgCompletedCircle />
+        <slot>Completed</slot>
+      </Match>
+    </Switch>
   </div>
 </template>
 <style lang="postcss" scoped>

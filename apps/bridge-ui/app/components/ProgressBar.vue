@@ -2,15 +2,9 @@
 import { theme } from "@zeko/design"
 
 const {
-	steps = [
-		"Send transfer request",
-		"Sign send transaction",
-		"Claim transfer",
-		"Sign claim transaction",
-		"Transfer complete"
-	],
+	steps = ["Deposit", "Confirm Deposit", "Transfer complete"],
 	step = 2
-} = defineProps<{ steps?: string[]; step?: number }>()
+} = defineProps<{ steps?: readonly string[]; step?: number }>()
 
 const currentStepIndex = computed(() =>
 	Math.min(Math.max(step, 0), steps.length - 1)
