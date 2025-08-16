@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { Networks } from "@lumina-dex/sdk"
+import { useSelector } from "@lumina-dex/sdk/vue"
 import type { ColumnDef } from "@tanstack/vue-table"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { FlexRender, getCoreRowModel, useVueTable } from "@tanstack/vue-table"
@@ -72,17 +73,20 @@ const mapStatus = (
 
 const rows = computed<OperationRow[]>(() =>
 	operations.map(({ id, operation }) => {
-		const snapshot = operation.getSnapshot()
-		const { text, kind } = mapStatus(snapshot.value, snapshot.context.direction)
+		const state = useSelector(operation, (state) => state)
+		const { text, kind } = mapStatus(
+			state.value.value,
+			state.value.context.direction
+		)
 		return {
 			id,
 			operation,
-			status: snapshot.value,
+			status: state.value.value,
 			statusText: text,
 			statusKind: kind,
-			source: snapshot.context.source,
-			destination: snapshot.context.destination,
-			amount: snapshot.context.amount,
+			source: state.value.context.source,
+			destination: state.value.context.destination,
+			amount: state.value.context.amount,
 			date: new Date().toLocaleDateString()
 		}
 	})
@@ -110,6 +114,9 @@ const table = useVueTable({
 
 <template>
   <div class="BridgeOperations">
+    <!-- <template v-for="operation of operations">
+      <pre>{{  operation.operation.getSnapshot().value }}</pre>
+    </template> -->
     <!-- Table wrapper -->
     <table>
       <!-- Header -->

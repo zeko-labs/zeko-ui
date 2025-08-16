@@ -273,7 +273,7 @@ export class Bridge {
 		})
 	}
 
-	private async pollQuery(key: string, pollPeriod = 1_000) {
+	private async pollQuery(key: string, pollPeriod = 5_000) {
 		let provedForest: string | null = null
 		let attempts = 0
 
