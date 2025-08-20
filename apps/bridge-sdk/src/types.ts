@@ -13,6 +13,9 @@ export type Action = {
 	action: Field[]
 	beforeActionState: Field
 	afterActionState: Field
+	timestamp: string
+	status: string
+	hash: string
 }
 
 export type Deposit = {

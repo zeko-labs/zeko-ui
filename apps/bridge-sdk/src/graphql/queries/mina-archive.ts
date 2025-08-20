@@ -9,12 +9,19 @@ export const fetchActionsQuery = graphql(`
         endActionState: $endActionState
       }
     ) {
+      blockInfo {
+        timestamp
+      }
       actionState {
         actionStateOne
         actionStateTwo
       }
       actionData {
         data
+        transactionInfo {
+          status
+          hash
+        }
       }
     }
   }

@@ -22,7 +22,7 @@ async function main() {
 	console.log(
 		actions.map(
 			({
-				action: { action, beforeActionState, afterActionState },
+				action: { action, beforeActionState, afterActionState, hash, status, timestamp },
 				type,
 				withdrawal,
 				committed,
@@ -39,6 +39,11 @@ async function main() {
 							finalised: withdrawal.finalised
 						}
 					: undefined,
+				transaction: {
+					hash,
+					status,
+					timestamp
+				},
 				committed,
 				isPastWithdrawalDelay
 			})

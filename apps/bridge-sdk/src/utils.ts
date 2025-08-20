@@ -15,32 +15,59 @@ export async function fetchActions(
 		fromActionState: actionStates?.fromActionState?.toString() ?? null,
 		endActionState: actionStates?.endActionState?.toString() ?? null
 	})
+	//TODO: Once Zeko-archive is ready, this can be replaced by data.actions direclty
+	const dataWithDefault = data?.actions.map((a) => ({
+		...a,
+		actionData: a?.actionData?.map((ad) => ({
+			...ad,
+			transactionInfo: ad?.transactionInfo ?? { status: "status", hash: "hash" }
+		})),
+		blockInfo: { timestamp: String(a?.blockInfo?.timestamp ?? "0") }
+	}))
+	console.log(dataWithDefault)
 	// We make sure there's no null data
 	const result = v.safeParse(
 		v.array(
 			v.object({
+				blockInfo: v.object({ timestamp: v.string() }),
 				actionState: v.object({
 					actionStateOne: v.string(),
 					actionStateTwo: v.string()
 				}),
-				actionData: v.array(v.object({ data: v.array(v.string()) }))
+				actionData: v.array(
+					v.object({
+						data: v.array(v.string()),
+						transactionInfo: v.object({ status: v.string(), hash: v.string() })
+					})
+				)
 			})
 		),
-		data?.actions
+		dataWithDefault
 	)
 	if (!result.success) throw new Error("Invalid actions data")
 	return result.output.flatMap(
-		({ actionState: { actionStateTwo: actionStateBefore }, actionData }) => {
-			const actions = actionData.map(({ data }) => data.map(Field.from))
+		({
+			actionState: { actionStateTwo: actionStateBefore },
+			actionData,
+			blockInfo: { timestamp }
+		}) => {
+			const actions = actionData.map(({ data, transactionInfo: { hash, status } }) => ({
+				data: data.map(Field.from),
+				hash,
+				status
+			}))
 			let actionState = Field.from(actionStateBefore)
 
 			const correctActions = []
 			for (const action of actions) {
-				const afterActionState = pushHash(actionState, fromList([action]).hash)
+				const afterActionState = pushHash(actionState, fromList([action.data]).hash)
 				correctActions.push({
-					action,
+					action: action.data,
 					beforeActionState: actionState,
-					afterActionState
+					afterActionState,
+					timestamp,
+					hash: action.hash,
+					status: action.status
 				})
 				actionState = afterActionState
 			}

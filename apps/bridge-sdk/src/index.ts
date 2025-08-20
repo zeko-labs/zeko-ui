@@ -208,34 +208,36 @@ export class Bridge {
 		const actions = await fetchActions(this.l1ArchiveClient, this.outerPk, actionStates)
 		const currentSlot = await this.fetchCurrentSlot()
 
-		return actions.map(({ beforeActionState, afterActionState, action }) => {
-			if (action[0].equals(0).toBoolean()) {
-				return {
-					type: "commit",
-					ledger: action[1],
-					innerActionState: action[2],
-					innerActionStateLength: UInt32.fromFields([action[3]]),
-					synchronizedOuterActionState: action[4],
-					synchronizedOuterActionStateLength: UInt32.fromFields([action[5]]),
-					slotRange: {
-						lower: UInt32.fromFields([action[6]]),
-						upper: UInt32.fromFields([action[7]])
-					},
-					isPastWithdrawalDelay: currentSlot
-						.greaterThan(UInt32.fromFields([action[7]]).add(this.withdrawalDelay))
-						.toBoolean(),
-					action: { beforeActionState, afterActionState, action }
+		return actions.map(
+			({ beforeActionState, afterActionState, action, hash, status, timestamp }) => {
+				if (action[0].equals(0).toBoolean()) {
+					return {
+						type: "commit",
+						ledger: action[1],
+						innerActionState: action[2],
+						innerActionStateLength: UInt32.fromFields([action[3]]),
+						synchronizedOuterActionState: action[4],
+						synchronizedOuterActionStateLength: UInt32.fromFields([action[5]]),
+						slotRange: {
+							lower: UInt32.fromFields([action[6]]),
+							upper: UInt32.fromFields([action[7]])
+						},
+						isPastWithdrawalDelay: currentSlot
+							.greaterThan(UInt32.fromFields([action[7]]).add(this.withdrawalDelay))
+							.toBoolean(),
+						action: { beforeActionState, afterActionState, action, hash, status, timestamp }
+					}
 				}
-			}
-			if (action[0].equals(1).toBoolean()) {
-				return {
-					type: "witness",
-					aux: action[1],
-					action: { beforeActionState, afterActionState, action }
+				if (action[0].equals(1).toBoolean()) {
+					return {
+						type: "witness",
+						aux: action[1],
+						action: { beforeActionState, afterActionState, action, hash, status, timestamp }
+					}
 				}
+				throw new Error("Invalid outer action type")
 			}
-			throw new Error("Invalid outer action type")
-		})
+		)
 	}
 
 	private async fetchUserWithdrawals(pk: PublicKey): Promise<Withdrawal[]> {
@@ -261,16 +263,18 @@ export class Bridge {
 	private async fetchInnerActions(actionStates?: Mina.ActionStates): Promise<InnerAction[]> {
 		const actions = await fetchActions(this.l2Client, this.innerPk, actionStates)
 
-		return actions.map(({ beforeActionState, afterActionState, action }) => {
-			if (action[0].equals(0).toBoolean()) {
-				return {
-					type: "witness",
-					aux: action[1],
-					action: { beforeActionState, afterActionState, action }
+		return actions.map(
+			({ beforeActionState, afterActionState, action, hash, status, timestamp }) => {
+				if (action[0].equals(0).toBoolean()) {
+					return {
+						type: "witness",
+						aux: action[1],
+						action: { beforeActionState, afterActionState, action, hash, status, timestamp }
+					}
 				}
+				throw new Error("Invalid inner action type")
 			}
-			throw new Error("Invalid inner action type")
-		})
+		)
 	}
 
 	private async pollQuery(key: string, pollPeriod = 5_000) {

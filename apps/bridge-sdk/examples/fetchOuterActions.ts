@@ -41,7 +41,12 @@ async function main() {
 				// },
 				synced: action.synced,
 				accepted: action.accepted,
-				confirmed: action.confirmed
+				confirmed: action.confirmed,
+				transaction: {
+					hash: action.action.hash,
+					status: action.action.status,
+					timestamp: action.action.timestamp
+				}
 			}
 		}
 		if (action.type === "witness") {
@@ -61,6 +66,11 @@ async function main() {
 							finalised: action.deposit.finalised
 						}
 					: undefined,
+				transaction: {
+					hash: action.action.hash,
+					status: action.action.status,
+					timestamp: action.action.timestamp
+				},
 				synced: action.synced,
 				accepted: action.accepted,
 				confirmed: action.confirmed
