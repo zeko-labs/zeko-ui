@@ -7,7 +7,7 @@ import { theme } from "@zeko/design"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ChevronDownIcon } from "lucide-vue-next"
 
-const modelValue = defineModel({ required: true, default: 0 })
+const modelValue = defineModel({ required: true })
 const collection = createListCollection({
 	items: ["MINA", "ZEKO"]
 })

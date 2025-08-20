@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { theme } from "@zeko/design"
 const { is } = defineProps<{ is: "pending" | "complete" }>()
-const color = theme.config.colors[is]
+const color = computed(() => theme.config.colors[is])
 const font = theme.config.fonts.lexend.typescale
 </script>
 <template>

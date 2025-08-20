@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { theme } from "@zeko/design"
 
-const {
-	steps = ["Deposit", "Confirm Deposit", "Transfer complete"],
-	step = 2
-} = defineProps<{ steps?: readonly string[]; step?: number }>()
+const { steps, step } = defineProps<{
+	steps: readonly string[]
+	step: number
+}>()
 
 const currentStepIndex = computed(() =>
 	Math.min(Math.max(step, 0), steps.length - 1)

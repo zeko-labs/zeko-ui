@@ -40,56 +40,75 @@ const friendlyNetwork = (n: string) => {
 	return `${capitalize(words[0])} ${capitalize(words[1])}`
 }
 
+const deposit = (kind: "pending" | "complete") => (step: number) => ({
+	text: depositSteps[step] as (typeof depositSteps)[number],
+	kind
+})
+const withdrawal = (kind: "pending" | "complete") => (step: number) => ({
+	text: withdrawalSteps[step] as (typeof withdrawalSteps)[number],
+	kind
+})
+const pendingDeposit = deposit("pending")
+const pendingWithdrawal = withdrawal("pending")
 const mapStatus = (
 	state: MachineStates,
 	direction: Direction
 ): { text: string; kind: "pending" | "complete" } => {
-	if (state.includes("DONE"))
-		return {
-			text: direction === "deposit" ? depositSteps[3] : withdrawalSteps[3],
-			kind: "complete"
-		}
-	if (direction === "deposit") {
-		if (state === "SUBMIT_DEPOSIT")
-			return { text: depositSteps[0], kind: "pending" }
-		if (state === "PENDING_DEPOSIT")
-			return { text: depositSteps[1], kind: "pending" }
-		if (state === "FINALIZE_DEPOSIT" || state === "TO_FINALIZE")
-			return { text: depositSteps[2], kind: "pending" }
-		return { text: depositSteps[1], kind: "pending" }
+	const isDeposit = direction === "deposit"
+	switch (state) {
+		case "BRIDGE_OPERATION_DONE":
+		case "BRIDGE_OPERATION_DONE_NOOP":
+			return isDeposit ? deposit("complete")(2) : withdrawal("complete")(2)
+		case "SUBMIT_DEPOSIT":
+			return pendingDeposit(0)
+		case "PENDING_DEPOSIT":
+			return pendingDeposit(1)
+		case "FINALIZE_DEPOSIT":
+			return pendingDeposit(2)
+		case "SUBMIT_WITHDRAWAL":
+			return pendingWithdrawal(0)
+		case "PENDING_WITHDRAWAL":
+			return pendingWithdrawal(1)
+		case "FINALIZE_WITHDRAWAL":
+			return pendingWithdrawal(2)
+		case "TO_FINALIZE":
+			return isDeposit ? pendingDeposit(2) : pendingWithdrawal(2)
+		case "PAUSED":
+			return { text: "Paused", kind: "pending" }
+		case "IDLE":
+			return { text: "Idle", kind: "pending" }
+		default:
+			return isDeposit ? pendingDeposit(1) : pendingWithdrawal(1)
 	}
-	// withdrawal
-	if (state === "SUBMIT_WITHDRAWAL")
-		return { text: withdrawalSteps[0], kind: "pending" }
-	if (state === "PENDING_WITHDRAWAL")
-		return { text: withdrawalSteps[1], kind: "pending" }
-	if (state === "FINALIZE_WITHDRAWAL" || state === "TO_FINALIZE")
-		return { text: withdrawalSteps[2], kind: "pending" }
-
-	if (state === "PAUSED") return { text: "Paused", kind: "pending" }
-	if (state === "IDLE") return { text: "Idle", kind: "pending" }
-	return { text: withdrawalSteps[1], kind: "pending" }
 }
 
 const rows = computed<OperationRow[]>(() =>
-	operations.map(({ id, operation }) => {
-		const state = useSelector(operation, (state) => state)
-		const { text, kind } = mapStatus(
-			state.value.value,
-			state.value.context.direction
-		)
-		return {
-			id,
-			operation,
-			status: state.value.value,
-			statusText: text,
-			statusKind: kind,
-			source: state.value.context.source,
-			destination: state.value.context.destination,
-			amount: state.value.context.amount,
-			date: new Date().toLocaleDateString()
-		}
-	})
+	operations
+		.map(({ id, operation }) => {
+			const state = useSelector(operation, (state) => state)
+			const { text, kind } = mapStatus(
+				state.value.value,
+				state.value.context.direction
+			)
+			return {
+				id,
+				operation,
+				status: state.value.value,
+				statusText: text,
+				statusKind: kind,
+				source: state.value.context.source,
+				destination: state.value.context.destination,
+				amount: state.value.context.amount,
+				date: new Date().toLocaleDateString()
+			}
+		})
+		.toSorted((a, b) => {
+			const aIsDone = a.status.includes("DONE")
+			const bIsDone = b.status.includes("DONE")
+			if (aIsDone && !bIsDone) return 1 // If a is DONE and b is NOT DONE, a goes after b (return 1).
+			if (!aIsDone && bIsDone) return -1 // If a is NOT DONE and b is DONE, a goes before b (return -1).
+			return 0 // If both both DONE or both not DONE, preserves the initial order(return 0).
+		})
 )
 
 // Column definitions

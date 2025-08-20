@@ -31,17 +31,20 @@ type Wallet = ActorRefFromLogic<typeof walletMachine>
 export type BridgeEvents =
 	| { type: "StartOperation"; amount: string }
 	| { type: "CompleteOperation"; id: string }
+	| { type: "PauseOperation"; id: string }
+	| { type: "TerminateOperation"; id: string }
 	| { type: "InvertDirection" }
 	| { type: "SetSource"; sourceNetwork: Networks }
 	| { type: "SetDestination"; destinationNetwork: Networks }
 
-interface BridgeContext {
+export interface BridgeContext {
 	sourceNetwork: Networks
 	destinationNetwork: Networks
 	operations: Operations
 	operationsToUnpause: string[]
 	wallet: Wallet
 	walletReady: boolean
+	activeOperation: string | null
 }
 
 const currentNetwork = (context: BridgeContext) =>
@@ -105,17 +108,17 @@ export const bridgeMachine = setup({
 			console.log("Starting an operation with settings", settings)
 			const { amount, command, state } = settings
 			const { wallet } = context
+			const source = state?.source ?? (context.sourceNetwork as Networks)
+			const destination = state?.destination ?? (context.destinationNetwork as Networks)
+			const regularDirection = source.includes("mina") ? "deposit" : "withdrawal"
 			const direction = (
 				{
-					start: context.sourceNetwork.includes("mina") ? "deposit" : "withdrawal",
-					complete: context.sourceNetwork.includes("mina") ? "deposit" : "withdrawal",
+					start: regularDirection,
+					complete: regularDirection,
 					resumeDeposit: "deposit",
 					resumeWithdrawal: "withdrawal"
 				} as const
 			)[command]
-
-			const source = state?.source ?? (context.sourceNetwork as Networks)
-			const destination = state?.destination ?? (context.destinationNetwork as Networks)
 
 			const id = state?.id ?? operationId()
 			const operation = spawn("bridgeOperationMachine", {
@@ -139,18 +142,31 @@ export const bridgeMachine = setup({
 				status: state?.status ?? "started",
 				operation
 			})
-			return { operations: new Map(operations) }
+			return {
+				operations: new Map(operations),
+				activeOperation:
+					command === "complete" || state?.status === "paused" ? context.activeOperation : id
+			}
 		}),
-		completeOperation: assign(({ context }, params: { id: string }) => {
-			console.log("Completing operation", params.id)
+		pauseOperation: assign(({ context }, params: { id: string }) => {
 			const { id } = params
+			const operations = context.operations
+			const pausedOperation = operations.get(id)?.operation
+			if (!pausedOperation) throw new Error("Operation not found")
+			operations.set(id, { status: "paused", operation: pausedOperation })
+			return {
+				operations: new Map(operations),
+				operationsToUnpause: [...context.operationsToUnpause, id]
+			}
+		}),
+		completeOperation: assign(({ context }, params: { id: string; terminate?: boolean }) => {
+			console.log("Completing operation", params.id)
+			const { id, terminate } = params
 			const operations = context.operations
 			const completedOperation = operations.get(id)?.operation
 			if (!completedOperation) throw new Error("Operation not found")
-			operations.set(id, {
-				status: "completed",
-				operation: completedOperation
-			})
+			if (terminate) operations.delete(id)
+			else operations.set(id, { status: "completed", operation: completedOperation })
 			// Resume the next operation
 			const [idToResume, ...rest] = context.operationsToUnpause
 			console.log("Found operation to resume", idToResume, rest)
@@ -164,7 +180,8 @@ export const bridgeMachine = setup({
 			}
 			return {
 				operations: new Map(operations),
-				operationsToUnpause: idToResume ? rest : []
+				operationsToUnpause: idToResume ? rest : [],
+				activeOperation: idToResume ?? null
 			}
 		})
 	}
@@ -180,7 +197,8 @@ export const bridgeMachine = setup({
 			operationsToUnpause: [],
 			sourceNetwork,
 			destinationNetwork,
-			walletReady: false
+			walletReady: false,
+			activeOperation: null
 		}
 	},
 	entry: spawnChild("detectWalletChange", {
@@ -254,9 +272,6 @@ export const bridgeMachine = setup({
 	states: {
 		IDLE: {},
 		READY: {
-			// entry: enqueueActions(() => {
-			// 	console.log("Entering READY state")
-			// }),
 			invoke: {
 				src: "findPendingOperations",
 				input: ({ context }) => ({ wallet: context.wallet }),
@@ -369,11 +384,17 @@ export const bridgeMachine = setup({
 						params: ({ event }) => ({ amount: event.amount, command: "start" })
 					}
 				},
-				CompleteOperation: {
+				PauseOperation: {
+					actions: { type: "pauseOperation", params: ({ event }) => ({ id: event.id }) }
+				},
+				TerminateOperation: {
 					actions: {
 						type: "completeOperation",
-						params: ({ event }) => ({ id: event.id })
+						params: ({ event }) => ({ id: event.id, terminate: true })
 					}
+				},
+				CompleteOperation: {
+					actions: { type: "completeOperation", params: ({ event }) => ({ id: event.id }) }
 				}
 			}
 		}
