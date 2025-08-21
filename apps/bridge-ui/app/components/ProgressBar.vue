@@ -46,7 +46,7 @@ const nodeSize = {
   </svg>
   <div class="progress-bar">
     <div class="progress-track">
-      <template v-for="(step, index) of steps" :key="index">
+      <template v-for="(stepText, index) of steps" :key="index">
         <div class="node-wrapper">
           <svg
             class="progress-node"
@@ -60,32 +60,35 @@ const nodeSize = {
               :class="progressClass(index)"
             />
           </svg>
-          <SvgCheck class="check" v-if="index === steps.length - 1" />
+          <SvgCheck
+            :class="{ check: true, completed: progressClass(index).completed }"
+            v-if="index === steps.length - 1"
+          />
         </div>
 
         <div
           v-if="index < steps.length - 1"
           class="progress-line"
           :class="{ completed: progressClass(index).completed }">
-          <label
+          <span
             class="absolute-step-label step-label"
             :class="{ current: progressClass(index).current }">
-            {{ step }}
-          </label>
+            {{ stepText }}
+          </span>
         </div>
       </template>
     </div>
-    <label
+    <span
       class="legend step-label"
       :class="progressClass(steps.length - 1)">
       {{ steps[steps.length - 1] }}
-    </label>
+    </span>
   </div>
 </template>
 
 <style lang="postcss" scoped>
 .progress-bar {
-  width: 75vw;
+  width: 100%;
   display: grid;
   grid-template-areas:
     "progress progress ."
@@ -99,7 +102,7 @@ const nodeSize = {
   grid-area: progress;
   align-items: center;
   justify-content: space-between;
-  padding: 4px;
+  padding: 4px 0;
 }
 
 .node-wrapper {
@@ -115,6 +118,10 @@ const nodeSize = {
     justify-content: center;
     pointer-events: none;
     z-index: 2;
+    color: transparent;
+    &.completed {
+      color: white;
+    }
   }
 }
 
@@ -131,8 +138,8 @@ const nodeSize = {
   color: v-bind("theme.config.colors.gray[500].value");
   &.current {
     color: v-bind("theme.config.colors.gray[950].value");
-    font-weight: 400;
-    transform: scale(1.05);
+    font-weight: 600;
+    font-size: 16px;
   }
 }
 
@@ -154,6 +161,15 @@ const nodeSize = {
   }
 }
 
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .progress-node {
   position: relative;
   flex-shrink: 0;
@@ -167,11 +183,14 @@ const nodeSize = {
       fill: transparent;
       stroke: url(#goldenGradient);
       stroke-width: 2;
+      transform-origin: center;
+      animation: rotate 6s linear infinite;
     }
     &.completed {
       fill: url(#goldenGradient);
       stroke: url(#goldenGradient);
       transition-delay: 0.3s;
+      animation: none;
     }
     &.future {
       fill: transparent;

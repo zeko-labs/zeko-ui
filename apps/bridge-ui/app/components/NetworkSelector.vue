@@ -185,7 +185,7 @@ select[aria-hidden="true"] {
 /* Select dropdown menu*/
 [data-scope="select"][data-part="content"] {
   color: v-bind("colors.gray[900].value");
-  background-color: v-bind("colors.gray[100].value");
+  background-color: v-bind("colors.gray[200].value");
   border: 1px solid white;
   border-radius: 4px;
   padding: 10px 8px;
@@ -201,7 +201,7 @@ select[aria-hidden="true"] {
 [data-scope="select"][data-part="item-group"] {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 [data-scope="select"][data-part="item-group-label"] {
@@ -209,8 +209,9 @@ select[aria-hidden="true"] {
 }
 
 [data-scope="select"][data-part="item"] {
-  padding: 0px 8px;
+  padding: 8px 8px;
   border-radius: 4px;
+  border: none;
   display: flex;
   align-items: center;
   gap: 1ch;
@@ -219,18 +220,18 @@ select[aria-hidden="true"] {
   }
 
   &[data-highlighted] {
-    box-shadow: 0 0 0 1px v-bind("colors.gray[200].value");
+    box-shadow: 0 0 0 1px rgba(250, 250, 250, 1);
   }
 
   &:hover, [data-highlighted] {
-    color: white;
+    color: v-bind("colors.white.value");
   }
 
   &[aria-selected="true"] {
     &:hover, [data-highlighted] {
-      color: v-bind("colors.gray[900].value");
+      color: v-bind("colors.gray[950].value");
     }
-    background-color: rgba(250, 250, 250, 0.8);
+    background-color: rgba(250, 250, 250, 1);
   }
 }
 </style>

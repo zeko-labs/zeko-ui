@@ -27,7 +27,7 @@ const colors = theme.config.colors
       />
     </Field.Root>
     <Field.Root>
-      <Select.Root :collection :default-value='["MINA"]'>
+      <Select.Root :collection :default-value='["MINA"]' :disabled="true">
         <Select.Control asChild>
           <div class="TriggerWrapper">
             <Select.Trigger>
@@ -89,6 +89,7 @@ span, input {
   padding: 12px 16px;
   outline: none;
   height: 100%;
+  width: 100%;
 }
 
 /* Select container */
@@ -116,7 +117,7 @@ span, input {
   align-items: center;
   justify-content: space-between;
   color: v-bind("colors.gray[900].value");
-  background-color: v-bind("colors.gray[100].value");
+  background-color: v-bind("colors.gray[200].value");
   cursor: pointer;
   border: 0;
   border-radius: 4px;

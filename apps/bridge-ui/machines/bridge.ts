@@ -12,21 +12,34 @@ import {
 	spawnChild
 } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
-import type { OperationsWorker, PendingOperations } from "./operations.worker"
+import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
 import workerUrl from "./operations.worker?worker&url"
 
-//TODO: Fix with https://github.com/vitejs/vite/issues/13680
-const jsWorker = `import ${JSON.stringify(new URL(workerUrl, import.meta.url))}`
-const blobWorker = new Blob([jsWorker], { type: "application/javascript" })
-
+type OperationStatus = "started" | "paused" | "completed"
 type Operations = Map<
 	string,
 	{
-		status: "started" | "paused" | "completed"
+		status: OperationStatus
 		operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 	}
 >
 type Wallet = ActorRefFromLogic<typeof walletMachine>
+type OperationWorker = Comlink.Remote<OperationsWorker>
+
+type Command = "start" | "resumeDeposit" | "resumeWithdrawal" | "complete"
+type StartOperationSettings = {
+	amount: string
+	command: Command
+	state?: {
+		id?: string
+		status: OperationStatus
+		source: Networks
+		destination: Networks
+		transaction: ActionState["transaction"]
+	}
+}
+
+type PendingOperationsInput = { wallet: Wallet; worker: OperationWorker }
 
 export type BridgeEvents =
 	| { type: "StartOperation"; amount: string }
@@ -45,6 +58,7 @@ export interface BridgeContext {
 	wallet: Wallet
 	walletReady: boolean
 	activeOperation: string | null
+	worker: OperationWorker
 }
 
 const currentNetwork = (context: BridgeContext) =>
@@ -60,19 +74,6 @@ const bridgeDirections = {
 	"mina:devnet": "zeko:testnet"
 } as const
 
-// type imported from worker
-
-type StartOperationSettings = {
-	amount: string
-	command: "start" | "resumeDeposit" | "resumeWithdrawal" | "complete"
-	state?: {
-		id?: string
-		status: "started" | "paused" | "completed"
-		source: Networks
-		destination: Networks
-	}
-}
-
 // Parent Bridge Machine
 export const bridgeMachine = setup({
 	types: {
@@ -87,21 +88,21 @@ export const bridgeMachine = setup({
 	actors: {
 		bridgeOperationMachine,
 		detectWalletChange,
-		findPendingOperations: fromPromise<PendingOperations, { wallet: Wallet }>(async ({ input }) => {
-			const { wallet } = input
-			const account = wallet.getSnapshot().context.account
-			// TODO: compute l1/l2 from current networks if needed
-			const l1 = "mina:devnet" as const
-			const l2 = "zeko:testnet" as const
+		findPendingOperations: fromPromise<PendingOperations, PendingOperationsInput>(
+			async ({ input }) => {
+				const { wallet, worker } = input
+				const account = wallet.getSnapshot().context.account
+				// TODO: compute l1/l2 from current networks if needed
+				const l1 = "mina:devnet" as const
+				const l2 = "zeko:testnet" as const
 
-			const ww = new Worker(URL.createObjectURL(blobWorker), { type: "module" })
-			const worker = Comlink.wrap<OperationsWorker>(ww)
-			const result = await worker.findPendingOperations({ account, l1, l2 })
-			console.log(
-				`Found ${result.deposits.length} deposits and ${result.withdrawals.length} withdrawals`
-			)
-			return result
-		})
+				const result = await worker.findPendingOperations({ account, l1, l2 })
+				console.log(
+					`Found ${result.deposits.length} deposits and ${result.withdrawals.length} withdrawals`
+				)
+				return result
+			}
+		)
 	},
 	actions: {
 		startOperation: assign(({ context, self, spawn }, settings: StartOperationSettings) => {
@@ -130,7 +131,8 @@ export const bridgeMachine = setup({
 					source,
 					destination,
 					direction,
-					amount
+					amount,
+					transaction: state?.transaction
 				}
 			})
 			if (command === "start") operation.send({ type: "StartBridgeOperation" })
@@ -191,8 +193,15 @@ export const bridgeMachine = setup({
 	context: ({ input: { wallet } }) => {
 		const sourceNetwork = wallet.getSnapshot().context.currentNetwork
 		const destinationNetwork = bridgeDirections[sourceNetwork]
+		//TODO: Fix with https://github.com/vitejs/vite/issues/13680
+		const jsWorker = `import ${JSON.stringify(new URL(workerUrl, import.meta.url))}`
+		const blobWorker = new Blob([jsWorker], { type: "application/javascript" })
+		const ww = new Worker(URL.createObjectURL(blobWorker), { type: "module" })
+		const worker = Comlink.wrap<OperationsWorker>(ww)
+
 		return {
 			wallet,
+			worker,
 			operations: new Map(),
 			operationsToUnpause: [],
 			sourceNetwork,
@@ -205,6 +214,16 @@ export const bridgeMachine = setup({
 		input: ({ context }) => ({ wallet: context.wallet })
 	}),
 	on: {
+		AccountChanged: [
+			{
+				target: ".READY",
+				guard: ({ context }) => context.walletReady,
+				actions: enqueueActions(({ enqueue, context }) => {
+					context.operations.clear()
+					enqueue.assign({ operations: new Map(), operationsToUnpause: [], activeOperation: null })
+				})
+			}
+		],
 		NetworkChanged: [
 			{
 				target: ".READY",
@@ -240,7 +259,7 @@ export const bridgeMachine = setup({
 					}
 					//Notify all operations
 					for (const { status, operation } of context.operations.values()) {
-						if (status === "started") {
+						if (status === "started" || status === "paused") {
 							operation.send({
 								type: "SetCurrentNetwork",
 								network: sourceNetwork
@@ -274,9 +293,25 @@ export const bridgeMachine = setup({
 		READY: {
 			invoke: {
 				src: "findPendingOperations",
-				input: ({ context }) => ({ wallet: context.wallet }),
+				input: ({ context }) => ({ wallet: context.wallet, worker: context.worker }),
 				onDone: {
 					actions: enqueueActions(({ event, enqueue }) => {
+						interface StartArgs {
+							status: OperationStatus
+							actionState: ActionState
+							command: Command
+						}
+						const start = ({ status, actionState, command }: StartArgs) => {
+							const { amount, source, destination, transaction, id } = actionState
+							enqueue({
+								type: "startOperation",
+								params: {
+									amount,
+									command,
+									state: { id, status, destination, source, transaction }
+								}
+							})
+						}
 						const handlePending = () => {
 							const [deposit, ...deposits] = event.output.deposits.filter(
 								(a) => a.finalised === false
@@ -284,53 +319,21 @@ export const bridgeMachine = setup({
 							const [withdrawal, ...withdrawals] = event.output.withdrawals.filter(
 								(a) => a.finalised === false
 							)
-							const type = "startOperation"
+
 							// We only truly resume the first deposit or withdrawal, everything else is paused.
-							if (deposit) {
-								const { amount, source, destination, id } = deposit
-								enqueue({
-									type,
-									params: {
-										amount,
-										command: "resumeDeposit",
-										state: { id, status: "started", destination, source }
-									}
-								})
-							}
+							if (deposit)
+								start({ status: "started", actionState: deposit, command: "resumeDeposit" })
+
 							if (withdrawal) {
-								const { amount, source, destination, id } = withdrawal
-								enqueue({
-									type,
-									params: {
-										amount,
-										command: "resumeWithdrawal",
-										state: {
-											id,
-											status: deposit ? "paused" : "started",
-											destination,
-											source
-										}
-									}
-								})
+								const status = deposit ? "paused" : "started"
+								start({ status, actionState: withdrawal, command: "resumeWithdrawal" })
 							}
-							for (const { amount, source, destination, id } of deposits)
-								enqueue({
-									type,
-									params: {
-										amount,
-										command: "resumeDeposit",
-										state: { id, status: "paused", source, destination }
-									}
-								})
-							for (const { amount, source, destination, id } of withdrawals)
-								enqueue({
-									type,
-									params: {
-										amount,
-										command: "resumeWithdrawal",
-										state: { id, status: "paused", source, destination }
-									}
-								})
+
+							for (const actionState of deposits)
+								start({ status: "paused", actionState, command: "resumeDeposit" })
+
+							for (const actionState of withdrawals)
+								start({ status: "paused", actionState, command: "resumeWithdrawal" })
 							// Queue the un-finalized operations to unpause them one by one
 							enqueue.assign({
 								operationsToUnpause: deposits
@@ -343,26 +346,12 @@ export const bridgeMachine = setup({
 						const handleComplete = () => {
 							const deposits = event.output.deposits.filter((a) => a.finalised === true)
 							const withdrawals = event.output.withdrawals.filter((a) => a.finalised === true)
-							const type = "startOperation"
 
-							for (const { amount, source, destination, id } of deposits)
-								enqueue({
-									type,
-									params: {
-										amount,
-										command: "complete",
-										state: { id, status: "completed", source, destination }
-									}
-								})
-							for (const { amount, source, destination, id } of withdrawals)
-								enqueue({
-									type,
-									params: {
-										amount,
-										command: "complete",
-										state: { id, status: "completed", source, destination }
-									}
-								})
+							for (const actionState of deposits)
+								start({ status: "completed", actionState, command: "complete" })
+
+							for (const actionState of withdrawals)
+								start({ status: "completed", actionState, command: "complete" })
 						}
 
 						handlePending()

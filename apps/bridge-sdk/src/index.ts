@@ -46,6 +46,7 @@ export class Bridge {
 		private readonly l1Client: Client,
 		private readonly l1ArchiveClient: Client,
 		private readonly l2Client: Client,
+		private readonly l2ArchiveClient: Client,
 
 		public readonly l1AccountCreationFee: UInt64,
 		public readonly l2AccountCreationFee: UInt64,
@@ -63,6 +64,9 @@ export class Bridge {
 		const l1Client = createGraphqlClient(config.l1Url)
 		const l1ArchiveClient = createGraphqlClient(config.l1ArchiveUrl)
 		const l2Client = createGraphqlClient(config.zekoUrl)
+		//TODO: Once the archive is stable, enable it
+		const l2ArchiveClient = createGraphqlClient(config.zekoArchiveUrl)
+		// const l2ArchiveClient = createGraphqlClient(config.zekoUrl)
 
 		const [fetchConfigResult, genesisConstantL2Result, genesisConstantL1Result, sequencerPkResult] =
 			await Promise.all([
@@ -89,6 +93,7 @@ export class Bridge {
 			l1Client,
 			l1ArchiveClient,
 			l2Client,
+			l2ArchiveClient,
 			UInt64.from(l1AccountCreationFee),
 			UInt64.from(l2AccountCreationFee),
 			PublicKey.fromBase58(circuitsConfig.zekoL1),
@@ -241,7 +246,7 @@ export class Bridge {
 	}
 
 	private async fetchUserWithdrawals(pk: PublicKey): Promise<Withdrawal[]> {
-		const userInnerActions = await fetchActions(this.l2Client, pk)
+		const userInnerActions = await fetchActions(this.l2ArchiveClient, pk)
 
 		return filterNulls(
 			userInnerActions.map(({ action }) => {
@@ -261,7 +266,7 @@ export class Bridge {
 	}
 
 	private async fetchInnerActions(actionStates?: Mina.ActionStates): Promise<InnerAction[]> {
-		const actions = await fetchActions(this.l2Client, this.innerPk, actionStates)
+		const actions = await fetchActions(this.l2ArchiveClient, this.innerPk, actionStates)
 
 		return actions.map(
 			({ beforeActionState, afterActionState, action, hash, status, timestamp }) => {

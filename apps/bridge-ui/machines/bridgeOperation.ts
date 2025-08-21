@@ -18,6 +18,7 @@ import {
 } from "xstate"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { sendTransaction } from "./helpers"
+import type { ActionState } from "./operations.worker"
 
 const bridgeAndWallet = (context: BridgeOperationContext) => {
 	const bridge = context.bridge
@@ -49,6 +50,7 @@ type BridgeOperationEvents =
 	| { type: "Pause" }
 	| { type: "ReturnTo" }
 	| { type: "CanFinalize" }
+	| { type: "Finalize" }
 
 interface BridgeOperationContext {
 	id: string
@@ -60,6 +62,7 @@ interface BridgeOperationContext {
 	source: Networks
 	destination: Networks
 	paused: boolean
+	transaction?: ActionState["transaction"]
 	errors: Error[]
 	result: {
 		submitDeposit: Result | null
@@ -85,6 +88,7 @@ export const bridgeOperationMachine = setup({
 			source: Networks
 			destination: Networks
 			amount: string
+			transaction?: ActionState["transaction"]
 		},
 		events: {} as BridgeOperationEvents
 	},
@@ -95,6 +99,7 @@ export const bridgeOperationMachine = setup({
 				l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
 				l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
 				zekoUrl: "https://alphanet.zeko.io/graphql",
+				zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql",
 				l1Network: "testnet",
 				l2Network: "testnet",
 				pollTimeout: 3_600_000
@@ -204,7 +209,7 @@ export const bridgeOperationMachine = setup({
 	id: "bridgeOperation",
 	initial: "IDLE",
 	context: ({
-		input: { direction, source, destination, amount, bridgeMachine, wallet },
+		input: { direction, source, destination, amount, bridgeMachine, wallet, transaction },
 		self: { id }
 	}) => ({
 		id,
@@ -218,6 +223,7 @@ export const bridgeOperationMachine = setup({
 		amount,
 		returnTo: false,
 		paused: false,
+		transaction,
 		errors: [],
 		result: {
 			submitDeposit: null,
@@ -277,33 +283,35 @@ export const bridgeOperationMachine = setup({
 			}
 		},
 		TO_FINALIZE: {
-			always: [
-				{ target: "PAUSED", guard: ({ context }) => context.paused === true },
-				{
-					target: "FINALIZE_WITHDRAWAL",
-					guard: and(["withdrawal", "currentNetworkIsSource"])
-				},
-				{
-					target: "FINALIZE_DEPOSIT",
-					guard: and(["deposit", "currentNetworkIsDestination"])
-				},
-				{
-					target: "WAITING_FOR_NETWORK",
-					guard: and(["deposit", "currentNetworkIsSource"]),
-					actions: assign({
-						returnTo: "FINALIZE_DEPOSIT",
-						changeNetworkTo: ({ context }) => context.destination
-					})
-				},
-				{
-					target: "WAITING_FOR_NETWORK",
-					guard: and(["withdrawal", "currentNetworkIsDestination"]),
-					actions: assign({
-						returnTo: "FINALIZE_WITHDRAWAL",
-						changeNetworkTo: ({ context }) => context.source
-					})
-				}
-			]
+			always: [{ target: "PAUSED", guard: ({ context }) => context.paused === true }],
+			on: {
+				Finalize: [
+					{
+						target: "FINALIZE_WITHDRAWAL",
+						guard: and(["withdrawal", "currentNetworkIsSource"])
+					},
+					{
+						target: "FINALIZE_DEPOSIT",
+						guard: and(["deposit", "currentNetworkIsDestination"])
+					},
+					{
+						target: "WAITING_FOR_NETWORK",
+						guard: and(["deposit", "currentNetworkIsSource"]),
+						actions: assign({
+							returnTo: "FINALIZE_DEPOSIT",
+							changeNetworkTo: ({ context }) => context.destination
+						})
+					},
+					{
+						target: "WAITING_FOR_NETWORK",
+						guard: and(["withdrawal", "currentNetworkIsDestination"]),
+						actions: assign({
+							returnTo: "FINALIZE_WITHDRAWAL",
+							changeNetworkTo: ({ context }) => context.source
+						})
+					}
+				]
+			}
 		},
 		WAITING_FOR_NETWORK: {
 			description:

@@ -1,3 +1,4 @@
+import type { Networks } from "@lumina-dex/sdk"
 import { Bridge } from "@zeko/bridge-sdk"
 import type {
 	InnerActionWithState,
@@ -8,14 +9,17 @@ import type {
 import * as Comlink from "comlink"
 import { PublicKey } from "o1js"
 
-export type Networks = "mina:devnet" | "zeko:testnet" | "mina:mainnet" | "zeko:mainnet"
-
-type ActionState = {
+export type ActionState = {
 	index: number
 	id: string
 	recipient: string
 	amount: string
 	finalised: boolean
+	transaction: {
+		date: Date
+		status: string
+		hash: string
+	}
 	source: Networks
 	destination: Networks
 }
@@ -39,6 +43,7 @@ async function findPendingOperations({ account, l1, l2 }: FindArgs): Promise<Pen
 		l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
 		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
 		zekoUrl: "https://alphanet.zeko.io/graphql",
+		zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql",
 		l1Network: "testnet",
 		l2Network: "testnet"
 	})
@@ -61,6 +66,11 @@ async function findPendingOperations({ account, l1, l2 }: FindArgs): Promise<Pen
 					recipient: maybe.deposit.recipient.toBase58(),
 					amount: toAmount(maybe.deposit.amount.toBigInt()),
 					finalised: maybe.deposit.finalised,
+					transaction: {
+						date: new Date(Number(maybe.action.timestamp)),
+						status: maybe.action.status,
+						hash: maybe.action.hash
+					},
 					source: l1,
 					destination: l2
 				} as const
@@ -78,6 +88,11 @@ async function findPendingOperations({ account, l1, l2 }: FindArgs): Promise<Pen
 					recipient: maybe.withdrawal.recipient.toBase58(),
 					amount: toAmount(maybe.withdrawal.amount.toBigInt()),
 					finalised: maybe.withdrawal.finalised,
+					transaction: {
+						date: new Date(Number(maybe.action.timestamp)),
+						status: maybe.action.status,
+						hash: maybe.action.hash
+					},
 					source: l2,
 					destination: l1
 				} as const

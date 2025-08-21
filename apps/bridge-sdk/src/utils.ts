@@ -24,7 +24,7 @@ export async function fetchActions(
 		})),
 		blockInfo: { timestamp: String(a?.blockInfo?.timestamp ?? "0") }
 	}))
-	console.log(dataWithDefault)
+	// console.log(dataWithDefault)
 	// We make sure there's no null data
 	const result = v.safeParse(
 		v.array(

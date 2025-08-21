@@ -1,41 +1,52 @@
-<script lang="ts" setup>
+<script setup lang="ts">
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
-import { theme } from "@zeko/design"
+import { Wallet as WalletIcon } from "lucide-vue-next"
+const bs = useBridgeStore()
+const currentMina = computed(() => {
+	return Number.parseFloat(
+		bs.balances[bs.currentNetwork]?.MINA?.balance.toFixed(3) ?? "0"
+	).toString()
+})
 </script>
-
 <template>
   <div class="wrapper">
     <div class="rollup-bridge">
       <header class="header">
         <div class="header-content">
           <div class="logo">
-            <SvgZekoLogo />
+            <SvgZekoLogoRings />
           </div>
           <nav class="nav">
-            <a href="#" class="nav-item">Build</a>
-            <a href="#" class="nav-item">Community</a>
+            <!-- <a href="#" class="nav-item">Build</a> -->
+            <!-- <a href="#" class="nav-item">Community</a> -->
           </nav>
-          <div class="user-menu">
-            <!-- Implement user menu icon here -->
+
+          <div class="Wallet">
+            <div class="Mina">
+              <span>
+                {{ currentMina }}
+              </span>
+              <SvgMinaToken width="24" height="24" />
+            </div>
+            <div class="Network">
+              <NetworkTarget :network="bs.currentNetwork" />
+            </div>
+            <div class="Address" :title="bs.address">
+              <WalletIcon />
+              <span>
+                {{ bs.displayAddress }}
+              </span>
+            </div>
           </div>
         </div>
       </header>
       <main class="main-content">
-        <h1 class="title">Rollup Bridge</h1>
-        <p class="description">
-          The Rollup Bridge is a trustless bridge for transferring tokens from
-          Mina L1 to Zeko L2. Please check <a href="#" class="link">Zeko
-            Docs</a>
-          for information about other bridges.
-        </p>
-        <p class="instructions">
-          Complete all steps to execute a rollup transfer between Mina L1 and
-          Zeko L2
-        </p>
-
+        <h1 class="title">Zeko Bridge</h1>
+        <hr>
         <Bridge />
       </main>
     </div>
+    <footer>© {{ new Date().getFullYear() }} Zeko</footer>
   </div>
   <!-- <div>
     <hr />
@@ -62,13 +73,15 @@ import { theme } from "@zeko/design"
   width: 100vw;
   min-height: 100vh;
   overflow-x: hidden;
+  padding: 0 4rem;
+  display: grid;
+  grid-template-rows: auto 1fr;
 }
 
 .rollup-bridge {
   display: grid;
   grid-template-rows: auto 1fr;
   position: relative;
-  min-height: 100vh;
   color: var(--colors-gray-950);
 }
 
@@ -104,14 +117,34 @@ import { theme } from "@zeko/design"
   font-weight: 500;
 }
 
-.user-menu {
-  width: 40px; /* Adjust based on your icon's dimensions */
-  height: 40px;
-  background-color: var(--colors-gray-900); /* Placeholder for the icon */
-  border-radius: 50%;
+.Wallet {
+  display: flex;
+  gap: 1ch;
+  div {
+    display: flex;
+    align-items: center;
+  }
+  .Mina {
+    gap: 0.5ch;
+  }
+  .Address {
+    gap: 0.5ch;
+  }
 }
 
 main {
   padding: 0 1rem;
+}
+
+footer {
+  font-size: var(--fonts-lexend-typescale-scale-s);
+  color: var(--colors-gray-500);
+  padding: 4rem 0 4rem 0;
+  /* Tablet & Desktop */
+  @media (min-width: 480px) {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+  }
 }
 </style>

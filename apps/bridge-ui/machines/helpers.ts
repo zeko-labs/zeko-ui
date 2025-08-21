@@ -1,9 +1,18 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
-import type { walletMachine } from "@lumina-dex/sdk"
+import type { Networks, walletMachine } from "@lumina-dex/sdk"
 import { type Mina, type PublicKey, Transaction } from "o1js"
 import type { ActorRefFromLogic } from "xstate"
 
 type Wallet = ActorRefFromLogic<typeof walletMachine>
+
+const baseUrl = {
+	"mina:devnet": "https://mxinascan.io/devnet",
+	"mina:mainnet": "https://minascan.io/mainnet",
+	"zeko:testnet": "https://zekoscan.io/testnet",
+	"zeko:mainnet": "https://zekoscan.io/mainnet"
+} as const
+export const createExplorerUrl = ({ network, hash }: { network: Networks; hash: string }) =>
+	`${baseUrl[network]}/account/${hash}/zk-txs` as const
 
 export const sendTransaction = async ({
 	tx,
@@ -27,16 +36,8 @@ export const sendTransaction = async ({
 			JSON.stringify({ timestamp, currentNetwork, account, hash, transaction })
 		)
 		console.log("Transaction sent and saved to localStorage", result)
-		const baseUrl = {
-			"mina:devnet": "https://mxinascan.io/devnet",
-			"mina:mainnet": "https://minascan.io/mainnet",
-			"zeko:testnet": "https://zekoscan.io/testnet",
-			"zeko:mainnet": "https://zekoscan.io/mainnet"
-		} as const
-		return {
-			hash,
-			url: `${baseUrl[currentNetwork]}/account/${hash}/zk-txs` as const
-		}
+
+		return { hash, url: createExplorerUrl({ network: currentNetwork, hash }) }
 	}
 
 	if ("hash" in result) return processHash(result.hash)

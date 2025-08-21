@@ -1,19 +1,10 @@
 <script lang="ts" setup>
-import type { Networks } from "@lumina-dex/sdk"
-import { useSelector } from "@lumina-dex/sdk/vue"
-import type { ColumnDef } from "@tanstack/vue-table"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { FlexRender, getCoreRowModel, useVueTable } from "@tanstack/vue-table"
 import { computed } from "vue"
 import type { ActorRefFromLogic } from "xstate"
-import { depositSteps, withdrawalSteps } from "~/helpers"
+import { statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
-
-type Direction = "deposit" | "withdrawal"
-
-type MachineStates = ReturnType<
-	(typeof bridgeOperationMachine)["getInitialSnapshot"]
->["value"]
 
 const { operations } = defineProps<{
 	operations: {
@@ -22,71 +13,12 @@ const { operations } = defineProps<{
 	}[]
 }>()
 
-export type OperationRow = {
-	id: string
-	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
-	status: MachineStates
-	statusText: string
-	statusKind: "pending" | "complete"
-	source: Networks
-	destination: Networks
-	amount: string
-	date: string
-}
-
-const friendlyNetwork = (n: string) => {
-	const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-	const words = n.split(":") as [string, string]
-	return `${capitalize(words[0])} ${capitalize(words[1])}`
-}
-
-const deposit = (kind: "pending" | "complete") => (step: number) => ({
-	text: depositSteps[step] as (typeof depositSteps)[number],
-	kind
-})
-const withdrawal = (kind: "pending" | "complete") => (step: number) => ({
-	text: withdrawalSteps[step] as (typeof withdrawalSteps)[number],
-	kind
-})
-const pendingDeposit = deposit("pending")
-const pendingWithdrawal = withdrawal("pending")
-const mapStatus = (
-	state: MachineStates,
-	direction: Direction
-): { text: string; kind: "pending" | "complete" } => {
-	const isDeposit = direction === "deposit"
-	switch (state) {
-		case "BRIDGE_OPERATION_DONE":
-		case "BRIDGE_OPERATION_DONE_NOOP":
-			return isDeposit ? deposit("complete")(2) : withdrawal("complete")(2)
-		case "SUBMIT_DEPOSIT":
-			return pendingDeposit(0)
-		case "PENDING_DEPOSIT":
-			return pendingDeposit(1)
-		case "FINALIZE_DEPOSIT":
-			return pendingDeposit(2)
-		case "SUBMIT_WITHDRAWAL":
-			return pendingWithdrawal(0)
-		case "PENDING_WITHDRAWAL":
-			return pendingWithdrawal(1)
-		case "FINALIZE_WITHDRAWAL":
-			return pendingWithdrawal(2)
-		case "TO_FINALIZE":
-			return isDeposit ? pendingDeposit(2) : pendingWithdrawal(2)
-		case "PAUSED":
-			return { text: "Paused", kind: "pending" }
-		case "IDLE":
-			return { text: "Idle", kind: "pending" }
-		default:
-			return isDeposit ? pendingDeposit(1) : pendingWithdrawal(1)
-	}
-}
-
-const rows = computed<OperationRow[]>(() =>
+const data = computed(() =>
 	operations
 		.map(({ id, operation }) => {
-			const state = useSelector(operation, (state) => state)
-			const { text, kind } = mapStatus(
+			// const state = useSelector(operation, (state) => state)
+			const state = computed(() => operation.getSnapshot())
+			const { text, kind } = statusFromState(
 				state.value.value,
 				state.value.context.direction
 			)
@@ -99,7 +31,10 @@ const rows = computed<OperationRow[]>(() =>
 				source: state.value.context.source,
 				destination: state.value.context.destination,
 				amount: state.value.context.amount,
-				date: new Date().toLocaleDateString()
+				hash: state.value.context.transaction?.hash ?? "no-hash",
+				date:
+					state.value.context.transaction?.date.toLocaleDateString() ??
+					new Date().toLocaleDateString()
 			}
 		})
 		.toSorted((a, b) => {
@@ -107,26 +42,22 @@ const rows = computed<OperationRow[]>(() =>
 			const bIsDone = b.status.includes("DONE")
 			if (aIsDone && !bIsDone) return 1 // If a is DONE and b is NOT DONE, a goes after b (return 1).
 			if (!aIsDone && bIsDone) return -1 // If a is NOT DONE and b is DONE, a goes before b (return -1).
-			return 0 // If both both DONE or both not DONE, preserves the initial order(return 0).
+			return b.date.localeCompare(a.date) // If both both DONE or both not DONE, sort them by date.
 		})
 )
 
 // Column definitions
-const columns = computed<ColumnDef<OperationRow>[]>(() => [
+const columns = [
 	{ accessorKey: "statusText", header: "Status" },
 	{ accessorKey: "source", header: "From" },
 	{ accessorKey: "destination", header: "To" },
 	{ accessorKey: "amount", header: "Amount" },
 	{ accessorKey: "date", header: "Date" }
-])
+]
 
 const table = useVueTable({
-	get data() {
-		return rows.value
-	},
-	get columns() {
-		return columns.value
-	},
+	data,
+	columns,
 	getCoreRowModel: getCoreRowModel()
 })
 </script>
@@ -168,28 +99,12 @@ const table = useVueTable({
 
           <!-- From cell: network label -->
           <td>
-            <span
-              class="network"
-              :class='
-                row.original.source.startsWith("mina:")
-                ? "network-mina"
-                : "network-zeko"
-              '>
-              {{ friendlyNetwork(String(row.getValue("source"))) }}
-            </span>
+            <NetworkTarget :network="row.original.source"></NetworkTarget>
           </td>
 
           <!-- To cell: network label -->
           <td>
-            <span
-              class="network"
-              :class='
-                row.original.destination.startsWith("mina:")
-                ? "network-mina"
-                : "network-zeko"
-              '>
-              {{ friendlyNetwork(String(row.getValue("destination"))) }}
-            </span>
+            <NetworkTarget :network="row.original.destination"></NetworkTarget>
           </td>
 
           <!-- Amount cell: add MINA suffix -->
@@ -204,7 +119,7 @@ const table = useVueTable({
         </tr>
 
         <!-- Empty state -->
-        <tr v-if="rows.length === 0">
+        <tr v-if="data.length === 0">
           <td :colspan="columns.length">No recent transactions.</td>
         </tr>
       </tbody>
