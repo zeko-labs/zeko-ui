@@ -1,7 +1,13 @@
 export default defineNuxtConfig({
 	compatibilityDate: "2025-07-15",
 	devtools: { enabled: true },
-	modules: ["@nuxt/fonts", "@pinia/nuxt", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
+	modules: [
+		"@nuxt/fonts",
+		"@pinia/nuxt",
+		"@hebilicious/nuxt-switch-match",
+		"nitro-cloudflare-dev",
+		"@vite-pwa/nuxt"
+	],
 	extends: ["@zeko/layer"],
 	routeRules: {
 		"/": {
@@ -36,5 +42,14 @@ export default defineNuxtConfig({
 		"@unocss/reset/sanitize/sanitize.css",
 		"@unocss/reset/sanitize/assets.css",
 		"~/assets/styles/fonts.css"
-	]
+	],
+	pwa: {
+		srcDir: "service-worker",
+		filename: "sw.ts",
+		strategies: "injectManifest",
+		devOptions: {
+			enabled: true,
+			type: "module"
+		}
+	}
 })

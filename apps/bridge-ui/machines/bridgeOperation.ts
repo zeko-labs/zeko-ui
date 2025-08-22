@@ -16,6 +16,7 @@ import {
 	sendTo,
 	setup
 } from "xstate"
+import { finalizeNotification } from "../app/service-worker/notificationList"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { sendTransaction } from "./helpers"
 import type { ActionState } from "./operations.worker"
@@ -52,7 +53,7 @@ type BridgeOperationEvents =
 	| { type: "CanFinalize" }
 	| { type: "Finalize" }
 
-interface BridgeOperationContext {
+export interface BridgeOperationContext {
 	id: string
 	bridgeMachine: BridgeMachine
 	bridge: Bridge | null
@@ -283,7 +284,10 @@ export const bridgeOperationMachine = setup({
 			}
 		},
 		TO_FINALIZE: {
-			always: [{ target: "PAUSED", guard: ({ context }) => context.paused === true }],
+			always: [
+				{ target: "PAUSED", guard: ({ context }) => context.paused === true },
+				{ actions: ({ context }) => finalizeNotification(context) }
+			],
 			on: {
 				Finalize: [
 					{

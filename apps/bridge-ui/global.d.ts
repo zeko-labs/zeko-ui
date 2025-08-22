@@ -5,4 +5,7 @@ declare global {
 	interface Window {
 		mina: Mina
 	}
+	interface Navigator {
+		standalone?: boolean
+	}
 }

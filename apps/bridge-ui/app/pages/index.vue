@@ -7,6 +7,7 @@ const currentMina = computed(() => {
 		bs.balances[bs.currentNetwork]?.MINA?.balance.toFixed(3) ?? "0"
 	).toString()
 })
+const { notificationPermission } = useNotificationState()
 </script>
 <template>
   <div class="wrapper">
@@ -42,6 +43,11 @@ const currentMina = computed(() => {
       </header>
       <main class="main-content">
         <h1 class="title">Zeko Bridge</h1>
+        <span
+          v-if='notificationPermission !== "granted"'
+          class="notifications disabled">Notifications are disabled.</span>
+        <span v-else class="notifications enabled">Notifications are
+          enabled.</span>
         <hr>
         <Bridge />
       </main>
@@ -145,6 +151,17 @@ footer {
     display: flex;
     flex-direction: row;
     align-items: flex-end;
+  }
+}
+
+.notifications {
+  font-style: italic;
+  font-size: var(--fonts-lexend-typescale-scale-s);
+  &.enabled {
+    color: green;
+  }
+  &.disabled {
+    color: red;
   }
 }
 </style>
