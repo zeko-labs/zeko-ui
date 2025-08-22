@@ -193,10 +193,8 @@ export const bridgeMachine = setup({
 	context: ({ input: { wallet } }) => {
 		const sourceNetwork = wallet.getSnapshot().context.currentNetwork
 		const destinationNetwork = bridgeDirections[sourceNetwork]
-		//TODO: Fix with https://github.com/vitejs/vite/issues/13680
-		const jsWorker = `import ${JSON.stringify(new URL(workerUrl, import.meta.url))}`
-		const blobWorker = new Blob([jsWorker], { type: "application/javascript" })
-		const ww = new Worker(URL.createObjectURL(blobWorker), { type: "module" })
+
+		const ww = new Worker(new URL(workerUrl, import.meta.url), { type: "module" })
 		const worker = Comlink.wrap<OperationsWorker>(ww)
 
 		return {
@@ -286,6 +284,13 @@ export const bridgeMachine = setup({
 				destinationNetwork: event.destinationNetwork,
 				sourceNetwork: bridgeDirections[event.destinationNetwork]
 			}))
+		},
+		InvertDirection: {
+			target: ".READY",
+			actions: assign(({ context: { sourceNetwork, destinationNetwork } }) => ({
+				sourceNetwork: destinationNetwork,
+				destinationNetwork: sourceNetwork
+			}))
 		}
 	},
 	states: {
@@ -360,12 +365,6 @@ export const bridgeMachine = setup({
 				}
 			},
 			on: {
-				InvertDirection: {
-					actions: assign(({ context: { sourceNetwork, destinationNetwork } }) => ({
-						sourceNetwork: destinationNetwork,
-						destinationNetwork: sourceNetwork
-					}))
-				},
 				StartOperation: {
 					guard: and(["validSource", "validDestination"]),
 					actions: {
@@ -374,6 +373,7 @@ export const bridgeMachine = setup({
 					}
 				},
 				PauseOperation: {
+					description: "Set operation status to paused and add it to the operationToUnpause array.",
 					actions: { type: "pauseOperation", params: ({ event }) => ({ id: event.id }) }
 				},
 				TerminateOperation: {

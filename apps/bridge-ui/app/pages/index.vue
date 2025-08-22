@@ -1,12 +1,4 @@
 <script setup lang="ts">
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
-import { Wallet as WalletIcon } from "lucide-vue-next"
-const bs = useBridgeStore()
-const currentMina = computed(() => {
-	return Number.parseFloat(
-		bs.balances[bs.currentNetwork]?.MINA?.balance.toFixed(3) ?? "0"
-	).toString()
-})
 const { notificationPermission } = useNotificationState()
 </script>
 <template>
@@ -21,24 +13,7 @@ const { notificationPermission } = useNotificationState()
             <!-- <a href="#" class="nav-item">Build</a> -->
             <!-- <a href="#" class="nav-item">Community</a> -->
           </nav>
-
-          <div class="Wallet">
-            <div class="Mina">
-              <span>
-                {{ currentMina }}
-              </span>
-              <SvgMinaToken width="24" height="24" />
-            </div>
-            <div class="Network">
-              <NetworkTarget :network="bs.currentNetwork" />
-            </div>
-            <div class="Address" :title="bs.address">
-              <WalletIcon />
-              <span>
-                {{ bs.displayAddress }}
-              </span>
-            </div>
-          </div>
+          <Wallet />
         </div>
       </header>
       <main class="main-content">
@@ -70,8 +45,7 @@ const { notificationPermission } = useNotificationState()
 
     <Label is="pending" />
     <Label is="complete" />
-  </div>
-  <Wallet /> -->
+  </div> -->
 </template>
 <style lang="postcss" scoped>
 .wrapper {
@@ -121,21 +95,6 @@ const { notificationPermission } = useNotificationState()
   text-decoration: none;
   font-size: 1rem;
   font-weight: 500;
-}
-
-.Wallet {
-  display: flex;
-  gap: 1ch;
-  div {
-    display: flex;
-    align-items: center;
-  }
-  .Mina {
-    gap: 0.5ch;
-  }
-  .Address {
-    gap: 0.5ch;
-  }
 }
 
 main {

@@ -1,5 +1,3 @@
-import { ref, watchEffect } from "vue"
-
 export const useNotificationState = () => {
 	const serviceWorkerSupported = ref("serviceWorker" in navigator)
 	const notificationPermission = ref<"granted" | "denied" | "default">("default")

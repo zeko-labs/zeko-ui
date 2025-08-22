@@ -23,11 +23,11 @@ const status = computed(() =>
       </div>
       <div class="Row">
         <div>From</div>
-        <NetworkTarget :network="machine.context.source" />
+        <NetworkBadge :network="machine.context.source" />
       </div>
       <div class="Row">
         <div>To</div>
-        <NetworkTarget :network="machine.context.destination" />
+        <NetworkBadge :network="machine.context.destination" />
       </div>
       <div class="Row">
         <div>Amount</div>

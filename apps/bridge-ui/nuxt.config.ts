@@ -1,3 +1,8 @@
+const headers = {
+	"Cross-Origin-Resource-Policy": "same-site",
+	"Cross-Origin-Embedder-Policy": "require-corp",
+	"Cross-Origin-Opener-Policy": "same-origin"
+} as const
 export default defineNuxtConfig({
 	compatibilityDate: "2025-07-15",
 	devtools: { enabled: true },
@@ -10,20 +15,11 @@ export default defineNuxtConfig({
 	],
 	extends: ["@zeko/layer"],
 	routeRules: {
-		"/": {
-			ssr: false,
-			static: true,
-			prerender: true,
-			headers: {
-				"Cross-Origin-Resource-Policy": "same-site",
-				"Cross-Origin-Embedder-Policy":
-					process.env.NODE_ENV === "development" ? "credentialless" : "require-corp",
-				"Cross-Origin-Opener-Policy": "same-origin"
-			}
-		}
+		"/": { ssr: false, static: true, prerender: true, headers }
 	},
 	nitro: { minify: false },
 	vite: {
+		server: { headers },
 		worker: {
 			format: "es"
 		},
@@ -47,6 +43,11 @@ export default defineNuxtConfig({
 		srcDir: "service-worker",
 		filename: "sw.ts",
 		strategies: "injectManifest",
+		manifest: false,
+		injectRegister: false,
+		injectManifest: {
+			injectionPoint: undefined
+		},
 		devOptions: {
 			enabled: true,
 			type: "module"

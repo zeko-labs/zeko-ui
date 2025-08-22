@@ -31,22 +31,57 @@ export type PendingOperations = {
 
 type FindArgs = {
 	account: string
-	// in case we need to vary urls per env later
 	l1: Networks
 	l2: Networks
 }
 
-// Keep the worker logic free of any UI or xstate specifics
+const urls = {
+	l1: {
+		mainnet: {
+			l1Url: "https://api.minascan.io/node/mainnet/v1/graphql",
+			l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql"
+		},
+		testnet: {
+			l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
+			l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql"
+		}
+	},
+	l2: {
+		mainnet: {
+			zekoUrl: "https://mainnet.zeko.io/graphql",
+			zekoArchiveUrl: "https://archive.mainnet.zeko.io/graphql"
+		},
+		alphanet: {
+			zekoUrl: "https://alphanet.zeko.io/graphql",
+			zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql"
+		},
+		testnet: {
+			zekoUrl: "https://testnet.zeko.io/graphql",
+			zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql"
+		}
+	}
+} as const
+
+const getConfig = ({ l1, l2 }: { l1: Networks; l2: Networks }) => {
+	const l1Urls = l1.includes("mainnet") ? urls.l1.mainnet : urls.l1.testnet
+	const l2Urls = l2.includes("mainnet") ? urls.l2.mainnet : urls.l2.alphanet //TODO: change to testnet
+	return {
+		...l1Urls,
+		...l2Urls,
+		l1Network: l1.includes("mainnet") ? "mainnet" : "testnet",
+		l2Network: l2.includes("mainnet") ? "mainnet" : "testnet"
+	} as const
+}
+
+const bridges = new Map<string, Bridge>()
+
 async function findPendingOperations({ account, l1, l2 }: FindArgs): Promise<PendingOperations> {
-	// TODO: make these configurable via args in the future
-	const bridge = await Bridge.init({
-		l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
-		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
-		zekoUrl: "https://alphanet.zeko.io/graphql",
-		zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql",
-		l1Network: "testnet",
-		l2Network: "testnet"
-	})
+	let bridge = bridges.get(`${l1}_${l2}`)
+	if (!bridge) {
+		const config = getConfig({ l1, l2 })
+		bridge = await Bridge.init(config)
+		bridges.set(`${l1}_${l2}`, bridge)
+	}
 
 	const recipient = PublicKey.fromBase58(account)
 	const [outerActions, innerActions] = (await Promise.all([

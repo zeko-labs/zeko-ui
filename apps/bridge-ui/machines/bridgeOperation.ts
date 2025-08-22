@@ -457,7 +457,14 @@ export const bridgeOperationMachine = setup({
 							result: { ...context.result, submitWithdrawal: event.output }
 						}))
 					}
-				]
+				],
+				onError: {
+					target: "FAILED",
+					actions: sendTo(
+						({ context }) => context.bridgeMachine,
+						({ self }) => ({ type: "TerminateOperation", id: self.id })
+					)
+				}
 			}
 		},
 		PENDING_WITHDRAWAL: {

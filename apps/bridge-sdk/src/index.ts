@@ -64,9 +64,7 @@ export class Bridge {
 		const l1Client = createGraphqlClient(config.l1Url)
 		const l1ArchiveClient = createGraphqlClient(config.l1ArchiveUrl)
 		const l2Client = createGraphqlClient(config.zekoUrl)
-		//TODO: Once the archive is stable, enable it
 		const l2ArchiveClient = createGraphqlClient(config.zekoArchiveUrl)
-		// const l2ArchiveClient = createGraphqlClient(config.zekoUrl)
 
 		const [fetchConfigResult, genesisConstantL2Result, genesisConstantL1Result, sequencerPkResult] =
 			await Promise.all([

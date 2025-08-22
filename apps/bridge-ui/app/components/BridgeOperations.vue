@@ -64,9 +64,6 @@ const table = useVueTable({
 
 <template>
   <div class="BridgeOperations">
-    <!-- <template v-for="operation of operations">
-      <pre>{{  operation.operation.getSnapshot().value }}</pre>
-    </template> -->
     <!-- Table wrapper -->
     <table>
       <!-- Header -->
@@ -99,17 +96,22 @@ const table = useVueTable({
 
           <!-- From cell: network label -->
           <td>
-            <NetworkTarget :network="row.original.source"></NetworkTarget>
+            <NetworkBadge :network="row.original.source"></NetworkBadge>
           </td>
 
           <!-- To cell: network label -->
           <td>
-            <NetworkTarget :network="row.original.destination"></NetworkTarget>
+            <NetworkBadge :network="row.original.destination"></NetworkBadge>
           </td>
 
           <!-- Amount cell: add MINA suffix -->
           <td>
-            {{ String(row.getValue("amount")) }} MINA
+            <div class="AmountBox">
+              <SvgMinaToken width="24" height="24" />
+              <span>
+                {{ String(row.getValue("amount")) }}
+              </span>
+            </div>
           </td>
 
           <!-- Date cell: placeholder date -->
@@ -152,29 +154,12 @@ tbody tr:hover {
   background-color: rgba(0, 0, 0, 0.02);
 }
 
-/* Network label styles */
-.network {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.5rem;
-  font-weight: 600;
-  font-size: 0.875rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-}
-.network-mina {
-  color: #501a5d;
-  background: #f9ebff;
-  border-color: #f8bef2;
-}
-.network-zeko {
-  color: #1d4044;
-  background: #e6fffa;
-  border-color: #b2f5ea;
-}
-
 .data-row {
   cursor: default;
+}
+
+.AmountBox {
+  display: flex;
+  gap: 1ch;
 }
 </style>
