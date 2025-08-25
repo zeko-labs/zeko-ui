@@ -1,9 +1,6 @@
-<script setup lang="ts">
-const { notificationPermission } = useNotificationState()
-</script>
 <template>
-  <div class="wrapper">
-    <div class="rollup-bridge">
+  <div class="Container">
+    <div class="Content">
       <header class="header">
         <div class="header-content">
           <div class="logo">
@@ -16,14 +13,8 @@ const { notificationPermission } = useNotificationState()
           <Wallet />
         </div>
       </header>
-      <main class="main-content">
-        <h1 class="title">Zeko Bridge</h1>
-        <span
-          v-if='notificationPermission !== "granted"'
-          class="notifications disabled">Notifications are disabled.</span>
-        <span v-else class="notifications enabled">Notifications are
-          enabled.</span>
-        <hr>
+      <main>
+        <h2>Zeko Bridge</h2>
         <Bridge />
       </main>
     </div>
@@ -48,7 +39,7 @@ const { notificationPermission } = useNotificationState()
   </div> -->
 </template>
 <style lang="postcss" scoped>
-.wrapper {
+.Container {
   position: relative;
   width: 100vw;
   min-height: 100vh;
@@ -56,10 +47,14 @@ const { notificationPermission } = useNotificationState()
   padding: 0 4rem;
   display: grid;
   grid-template-rows: auto 1fr;
+  @media (max-width: 1024px) {
+    padding: 0rem;
+  }
 }
 
-.rollup-bridge {
+.Content {
   display: grid;
+  gap: 2ch;
   grid-template-rows: auto 1fr;
   position: relative;
   color: var(--colors-gray-950);
@@ -76,7 +71,7 @@ const { notificationPermission } = useNotificationState()
   align-items: center;
   margin: 0;
   padding: 1rem 2rem;
-  gap: 24px;
+  gap: 1rem;
 }
 
 .logo {
@@ -98,29 +93,23 @@ const { notificationPermission } = useNotificationState()
 }
 
 main {
+  display: grid;
+  gap: 4ch;
   padding: 0 1rem;
+  h2 {
+    text-align: center;
+  }
 }
 
 footer {
   font-size: var(--fonts-lexend-typescale-scale-s);
   color: var(--colors-gray-500);
-  padding: 4rem 0 4rem 0;
+  padding: 4rem 1rem;
   /* Tablet & Desktop */
   @media (min-width: 480px) {
     display: flex;
     flex-direction: row;
     align-items: flex-end;
-  }
-}
-
-.notifications {
-  font-style: italic;
-  font-size: var(--fonts-lexend-typescale-scale-s);
-  &.enabled {
-    color: green;
-  }
-  &.disabled {
-    color: red;
   }
 }
 </style>

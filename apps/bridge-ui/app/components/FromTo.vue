@@ -10,7 +10,7 @@ const bs = useBridgeStore()
 <template>
   <div class="FromTo">
     <div class="InputBox">
-      <h3>From</h3>
+      <h4>From</h4>
       <NetworkSelector target="source" :current-value="[source]" />
     </div>
     <!-- Divider -->
@@ -41,7 +41,7 @@ const bs = useBridgeStore()
       </label>
     </div>
     <div class="InputBox">
-      <h3>To</h3>
+      <h4>To</h4>
       <NetworkSelector target="destination" :current-value="[destination]" />
     </div>
   </div>

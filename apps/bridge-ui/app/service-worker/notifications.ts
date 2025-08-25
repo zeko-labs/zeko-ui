@@ -3,7 +3,7 @@ export const dispatch = async ({
 	options
 }: { title: string; options: NotificationOptions }) => {
 	checkWebpushCompability()
-	await askPermision()
+	await askPermission()
 	// Get the service worker registration
 	const registration = await navigator.serviceWorker.getRegistration()
 	if (!registration) {
@@ -14,7 +14,7 @@ export const dispatch = async ({
 	console.log("Notification shown successfully.")
 }
 
-const askPermision = async () => {
+export const askPermission = async () => {
 	if ("Notification" in window) {
 		console.log("Asking permission for notification...")
 		const permission = await Notification.requestPermission()
@@ -35,7 +35,7 @@ const askPermision = async () => {
 	console.log("Permission granted for push notification.", permissions)
 }
 
-const checkWebpushCompability = (): void => {
+export const checkWebpushCompability = (): void => {
 	if (!("serviceWorker" in navigator)) {
 		throw new Error("Service worker is not supported in this browser.")
 	}

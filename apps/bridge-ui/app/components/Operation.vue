@@ -52,35 +52,36 @@ const status = computed(() =>
         </Match>
       </Switch>
     </div>
-  </div>
-  <div class="Button" v-if='machine.matches("TO_FINALIZE")'>
-    <Button
-      variant="cta2"
-      @click='operation.send({ type: "Finalize" })'>Finalize</Button>
+    <div v-if='machine.matches("TO_FINALIZE")'>
+      <Button
+        variant="cta2"
+        @click='operation.send({ type: "Finalize" })'>Finalize</Button>
+    </div>
   </div>
 </template>
 <style lang="postcss" scoped>
 .Operation {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 1ch;
-}
-.Table {
-  display: flex;
-  flex-direction: column;
-  gap: 1ch;
-  width: fit-content;
+  grid-template-rows: 1fr auto auto;
+  gap: 2ch;
   background: oklch(1 0 0 / 0.7);
   border-radius: 1rem;
   padding: 1rem;
-}
-.Explanation {
-  padding: 1rem;
-  background: var(--colors-blue-100);
-  border-radius: 1rem;
-}
-.Row {
-  display: grid;
-  grid-template-columns: minmax(auto, 20ch) 1fr;
+  height: 100%;
+  .Table {
+    display: flex;
+    flex-direction: column;
+    gap: 1ch;
+    width: 100%;
+    .Row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  }
+  .Explanation {
+    font-style: italic;
+    font-size: var(--fonts-lexend-typescale-scale-s);
+  }
 }
 </style>

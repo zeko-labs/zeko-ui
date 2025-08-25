@@ -1,4 +1,6 @@
-export const useNotificationState = () => {
+import { askPermission, checkWebpushCompability } from "~/service-worker/notifications"
+
+export const useNotificationStore = defineStore("notifications", () => {
 	const serviceWorkerSupported = ref("serviceWorker" in navigator)
 	const notificationPermission = ref<"granted" | "denied" | "default">("default")
 	const notificationAPI = ref(false)
@@ -42,10 +44,44 @@ export const useNotificationState = () => {
 		}
 	}
 
-	// Watch for changes or run on component mount
-	watchEffect(() => {
+	const toggle = async () => {
+		checkWebpushCompability()
+		await askPermission()
 		checkPermissions()
+	}
+
+	onMounted(() => {
+		checkPermissions()
+		if ("Notification" in window) {
+			navigator.permissions.query({ name: "notifications" }).then((permissionStatus) => {
+				console.log(`notification permission status is ${permissionStatus.state}`)
+				permissionStatus.onchange = () => {
+					console.log(`notification permission status has changed to ${permissionStatus.state}`)
+					if (permissionStatus.state === "denied") {
+						notificationPermission.value = "denied"
+					}
+					if (permissionStatus.state === "granted") {
+						notificationPermission.value = "granted"
+					}
+					if (permissionStatus.state === "prompt") {
+						notificationPermission.value = "default"
+					}
+				}
+			})
+		} else {
+			;(window as Window).addEventListener("focus", checkPermissions)
+		}
 	})
 
-	return { serviceWorkerSupported, notificationPermission, isLoading, notificationAPI }
-}
+	onUnmounted(() => {
+		;(window as Window).removeEventListener("focus", checkPermissions)
+	})
+
+	return {
+		serviceWorkerSupported,
+		notificationPermission,
+		isLoading,
+		notificationAPI,
+		toggle
+	}
+})

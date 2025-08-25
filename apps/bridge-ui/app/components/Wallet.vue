@@ -1,15 +1,27 @@
 <script lang="ts" setup>
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
-import { Wallet as WalletIcon } from "lucide-vue-next"
+import { BellOffIcon, BellRingIcon, WalletIcon } from "lucide-vue-next"
 const bs = useBridgeStore()
+const n = useNotificationStore()
+
 const currentMina = computed(() => {
 	return Number.parseFloat(
 		bs.balances[bs.currentNetwork]?.MINA?.balance.toFixed(3) ?? "0"
 	).toString()
 })
+const granted = computed(() => n.notificationPermission === "granted")
 </script>
 <template>
   <div class="Wallet">
+    <div
+      class="Notifications"
+      :class="n.notificationPermission"
+      :title='`Notifications are ${granted ? "enabled" : "disabled"}.`'>
+      <BellRingIcon v-if="granted" />
+      <button @click="n.toggle" v-else>
+        <BellOffIcon />
+      </button>
+    </div>
     <div class="Mina">
       <span>
         {{ currentMina }}
@@ -30,16 +42,42 @@ const currentMina = computed(() => {
 <style lang="postcss" scoped>
 .Wallet {
   display: flex;
-  gap: 1ch;
+  gap: 2ch;
+  align-items: center;
   div {
     display: flex;
-    align-items: center;
+    place-items: center;
+  }
+  .Notifications {
+    @media (max-width: 1024px) {
+      display: none;
+    }
+    button {
+      all: unset;
+      cursor: pointer;
+      display: flex;
+      place-items: center;
+    }
+    &.granted {
+      color: var(--colors-cosmicGold-medium);
+    }
+    &.denied {
+      color: var(--colors-persianRed-400);
+    }
+    &.default {
+      color: var(--colors-persianRed-400);
+    }
   }
   .Mina {
     gap: 0.5ch;
   }
   .Address {
     gap: 0.5ch;
+  }
+  .Network {
+    @media (max-width: 1024px) {
+      display: none;
+    }
   }
 }
 </style>

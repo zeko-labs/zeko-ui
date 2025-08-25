@@ -49,6 +49,7 @@ export type BridgeEvents =
 	| { type: "InvertDirection" }
 	| { type: "SetSource"; sourceNetwork: Networks }
 	| { type: "SetDestination"; destinationNetwork: Networks }
+	| { type: "SwitchToTesnet" }
 
 export interface BridgeContext {
 	sourceNetwork: Networks
@@ -224,19 +225,19 @@ export const bridgeMachine = setup({
 		],
 		NetworkChanged: [
 			{
+				target: ".MAINNET",
+				guard: ({ context }) => currentNetwork(context).includes("mainnet"),
+				actions: enqueueActions(({ context, enqueue }) => {
+					console.error("Mainnet is not supported yet, manually change to a compatible network.")
+					enqueue.sendTo(context.wallet, { type: "RequestNetworkChange", network: "zeko:testnet" })
+				})
+			},
+			{
 				target: ".READY",
 				guard: ({ context }) => !context.walletReady,
-				actions: enqueueActions(({ context, enqueue, event }) => {
+				actions: enqueueActions(({ enqueue, event }) => {
 					const sourceNetwork = event.network
 					const destinationNetwork = bridgeDirections[event.network]
-					//Check for mainnet
-					if (sourceNetwork.includes("mainnet")) {
-						console.error("Mainnet is not supported yet, changing to 'zeko:testnet' ")
-						return enqueue.sendTo(context.wallet, {
-							type: "RequestNetworkChange",
-							network: "zeko:testnet"
-						})
-					}
 					enqueue.assign({ walletReady: true, sourceNetwork, destinationNetwork })
 				})
 			},
@@ -250,10 +251,11 @@ export const bridgeMachine = setup({
 					//Check for mainnet
 					if (sourceNetwork.includes("mainnet")) {
 						console.error("Mainnet is not supported yet, changing to 'zeko:testnet' ")
-						return enqueue.sendTo(context.wallet, {
+						enqueue.sendTo(context.wallet, {
 							type: "RequestNetworkChange",
 							network: "zeko:testnet"
 						})
+						return
 					}
 					//Notify all operations
 					for (const { status, operation } of context.operations.values()) {
@@ -295,6 +297,20 @@ export const bridgeMachine = setup({
 	},
 	states: {
 		IDLE: {},
+		MAINNET: {
+			on: {
+				SwitchToTesnet: {
+					description: "TODO: this should be removed once the bridge supports mainnet.",
+					actions: enqueueActions(({ enqueue, context }) => {
+						console.log("Switching to testnet")
+						enqueue.sendTo(context.wallet, {
+							type: "RequestNetworkChange",
+							network: "zeko:testnet"
+						})
+					})
+				}
+			}
+		},
 		READY: {
 			invoke: {
 				src: "findPendingOperations",

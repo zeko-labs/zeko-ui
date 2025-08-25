@@ -15,11 +15,11 @@ const friendlyNetwork = (n: string) => {
   </span>
 </template>
 <style lang="postcss" scoped>
-/* Network label styles */
 .network {
   display: inline-flex;
   align-items: center;
   width: fit-content;
+  min-width: 12ch;
   gap: 0.5rem;
   padding: 0.25rem 0.5rem;
   font-weight: 600;

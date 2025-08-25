@@ -132,6 +132,8 @@ const table = useVueTable({
 <style lang="postcss" scoped>
 .BridgeOperations {
   width: 100%;
+  max-width: 95vw;
+  overflow-x: scroll;
 }
 
 :where(table) {

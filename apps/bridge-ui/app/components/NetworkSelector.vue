@@ -70,6 +70,7 @@ const select = useSelect({
 	collection,
 	defaultValue: currentValue,
 	multiple: false,
+	disabled: true,
 	onValueChange
 })
 
@@ -98,7 +99,7 @@ watch(
                     {{ name(select.value[0] as Networks) }}
                   </Select.ValueText>
                 </div>
-                <Select.Indicator>
+                <Select.Indicator style="display: none">
                   <ChevronDownIcon :stroke-width="1" />
                 </Select.Indicator>
               </div>
@@ -109,7 +110,7 @@ watch(
           <Select.Positioner>
             <Select.Content>
               <Select.ItemGroup>
-                <Select.ItemGroupLabel>Frameworks</Select.ItemGroupLabel>
+                <Select.ItemGroupLabel>Networks</Select.ItemGroupLabel>
                 <Select.Item v-for="item of collection.items" :key="item" :item>
                   <component
                     :is='item.includes("mina") ? SvgMinaToken : SvgZekoToken'

@@ -64,6 +64,12 @@ const nodeSize = {
             :class="{ check: true, completed: progressClass(index).completed }"
             v-if="index === steps.length - 1"
           />
+          <span
+            v-if="index === steps.length - 1"
+            class="last-label step-label"
+            :class="progressClass(steps.length - 1)">
+            {{ steps[steps.length - 1] }}
+          </span>
         </div>
 
         <div
@@ -78,11 +84,6 @@ const nodeSize = {
         </div>
       </template>
     </div>
-    <span
-      class="legend step-label"
-      :class="progressClass(steps.length - 1)">
-      {{ steps[steps.length - 1] }}
-    </span>
   </div>
 </template>
 
@@ -91,10 +92,15 @@ const nodeSize = {
   width: 100%;
   display: grid;
   grid-template-areas:
-    "progress progress ."
-    ". . legend";
+    "progress progress"
+    ". .";
+  grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
-  grid-template-columns: 1fr 1fr auto;
+  container-type: inline-size;
+  padding: 0rem 2rem;
+  @media (max-width: 1024px) {
+    padding: 0rem;
+  }
 }
 
 .progress-track {
@@ -125,18 +131,15 @@ const nodeSize = {
   }
 }
 
-.legend {
-  grid-area: legend;
-  display: inline-flex;
-  align-items: center;
-  margin-left: v-bind("`-${nodeSize.rem}`");
-}
-
 .step-label {
   font-size: 14px;
   font-weight: 400;
+  display: none;
   color: v-bind("theme.config.colors.gray[500].value");
+  align-items: center;
+  min-width: 20ch;
   &.current {
+    display: grid;
     color: v-bind("theme.config.colors.gray[950].value");
     font-weight: 600;
     font-size: 16px;
@@ -146,7 +149,21 @@ const nodeSize = {
 .absolute-step-label {
   position: absolute;
   width: 20%;
-  margin: v-bind("`${nodeSize.rem} -${nodeSize.rem}`");
+  margin: v-bind("`${nodeSize.rem} -${nodeSize.value / 6}rem`");
+}
+
+.last-label {
+  position: absolute;
+  min-width: 24ch;
+  margin-bottom: -4rem;
+  margin-right: -4rem;
+}
+
+/* Container query: once the progress bar has enough horizontal space, show all labels */
+@container (min-width: 55ch) {
+  .step-label {
+    display: grid;
+  }
 }
 
 .progress-line {
