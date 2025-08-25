@@ -143,7 +143,7 @@ export default defineConfig({
 		],
 		socialLinks: [{ icon: "github", link: "https://github.com/zeko-labs" }],
 		footer: {
-			message: "Released under the MIT License.",
+			message: "Docs released under the MIT License.",
 			copyright: "Copyright © 2025-present Zeko Labs"
 		}
 	}
