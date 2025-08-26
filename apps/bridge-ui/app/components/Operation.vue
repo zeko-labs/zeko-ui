@@ -31,7 +31,10 @@ const status = computed(() =>
       </div>
       <div class="Row">
         <div>Amount</div>
-        <div>{{ machine.context.amount }}</div>
+        <div class="Mina">
+          <span>{{ machine.context.amount }}</span>
+          <SvgMinaToken width="24" height="24" />
+        </div>
       </div>
     </div>
     <div class="Explanation">
@@ -77,6 +80,11 @@ const status = computed(() =>
       display: flex;
       justify-content: space-between;
       align-items: center;
+      .Mina {
+        display: flex;
+        place-items: center;
+        gap: 0.5ch;
+      }
     }
   }
   .Explanation {
