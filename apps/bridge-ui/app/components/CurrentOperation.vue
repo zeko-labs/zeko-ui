@@ -7,9 +7,7 @@ import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 const { operation } = defineProps<{
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 }>()
-
 const machine = useSelector(operation, (state) => state)
-
 const steps = computed(() =>
 	machine.value.value ?? machine.value.context.direction === "deposit"
 		? depositSteps
@@ -37,7 +35,28 @@ const step = computed(() => {
 })
 </script>
 <template>
-  <div class="ProgressBar">
-    <ProgressBar :steps :step />
+  <div
+    :class='
+      {
+      	CurrentOperationWrapper: true,
+      	Finalize: machine.matches("TO_FINALIZE")
+      }
+    '>
+    <div class="ProgressBar">
+      <ProgressBar :steps :step />
+    </div>
+    <Operation :operation />
   </div>
 </template>
+<style lang="postcss" scoped>
+.CurrentOperationWrapper {
+  padding: 0 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
+  gap: 1rem;
+  &.Finalize {
+    justify-content: space-between;
+  }
+}
+</style>

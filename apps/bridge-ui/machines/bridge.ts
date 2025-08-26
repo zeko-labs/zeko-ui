@@ -215,7 +215,7 @@ export const bridgeMachine = setup({
 	on: {
 		AccountChanged: [
 			{
-				target: ".READY",
+				target: ".FIND_OPERATIONS",
 				guard: ({ context }) => context.walletReady,
 				actions: enqueueActions(({ enqueue, context }) => {
 					context.operations.clear()
@@ -226,14 +226,17 @@ export const bridgeMachine = setup({
 		NetworkChanged: [
 			{
 				target: ".MAINNET",
+				description: "TODO: this should be removed once the bridge supports mainnet.",
 				guard: ({ context }) => currentNetwork(context).includes("mainnet"),
 				actions: enqueueActions(({ context, enqueue }) => {
 					console.error("Mainnet is not supported yet, manually change to a compatible network.")
+					enqueue.assign({ walletReady: false })
 					enqueue.sendTo(context.wallet, { type: "RequestNetworkChange", network: "zeko:testnet" })
 				})
 			},
 			{
-				target: ".READY",
+				target: ".FIND_OPERATIONS",
+				description: "This is taken automatically as the Auro will send the event on page load.",
 				guard: ({ context }) => !context.walletReady,
 				actions: enqueueActions(({ enqueue, event }) => {
 					const sourceNetwork = event.network
@@ -272,7 +275,7 @@ export const bridgeMachine = setup({
 			}
 		],
 		SetSource: {
-			target: ".READY",
+			target: ".FIND_OPERATIONS",
 			guard: ({ event, context }) => event.sourceNetwork !== context.sourceNetwork,
 			actions: assign(({ event }) => ({
 				sourceNetwork: event.sourceNetwork,
@@ -280,7 +283,7 @@ export const bridgeMachine = setup({
 			}))
 		},
 		SetDestination: {
-			target: ".READY",
+			target: ".FIND_OPERATIONS",
 			guard: ({ event, context }) => event.destinationNetwork !== context.destinationNetwork,
 			actions: assign(({ event }) => ({
 				destinationNetwork: event.destinationNetwork,
@@ -293,6 +296,30 @@ export const bridgeMachine = setup({
 				sourceNetwork: destinationNetwork,
 				destinationNetwork: sourceNetwork
 			}))
+		},
+		StartOperation: {
+			description:
+				"Start a new bridge operation. Operation concurrency is handled by BridgeOperation. If there's an activeOperation, the operation will pause itself at the right time with the `anotherOperationIsActive` guard.",
+			guard: and(["validSource", "validDestination"]),
+			actions: {
+				type: "startOperation",
+				params: ({ event }) => ({ amount: event.amount, command: "start" })
+			}
+		},
+		PauseOperation: {
+			description: "Set operation status to paused and add it to the operationToUnpause array.",
+			actions: { type: "pauseOperation", params: ({ event }) => ({ id: event.id }) }
+		},
+		TerminateOperation: {
+			description: "Complete an operation and terminate it.",
+			actions: {
+				type: "completeOperation",
+				params: ({ event }) => ({ id: event.id, terminate: true })
+			}
+		},
+		CompleteOperation: {
+			description: "Complete an operation.",
+			actions: { type: "completeOperation", params: ({ event }) => ({ id: event.id }) }
 		}
 	},
 	states: {
@@ -311,11 +338,13 @@ export const bridgeMachine = setup({
 				}
 			}
 		},
-		READY: {
+		READY: {},
+		FIND_OPERATIONS: {
 			invoke: {
 				src: "findPendingOperations",
 				input: ({ context }) => ({ wallet: context.wallet, worker: context.worker }),
 				onDone: {
+					target: "READY",
 					actions: enqueueActions(({ event, enqueue }) => {
 						interface StartArgs {
 							status: OperationStatus
@@ -378,28 +407,6 @@ export const bridgeMachine = setup({
 						handlePending()
 						handleComplete()
 					})
-				}
-			},
-			on: {
-				StartOperation: {
-					guard: and(["validSource", "validDestination"]),
-					actions: {
-						type: "startOperation",
-						params: ({ event }) => ({ amount: event.amount, command: "start" })
-					}
-				},
-				PauseOperation: {
-					description: "Set operation status to paused and add it to the operationToUnpause array.",
-					actions: { type: "pauseOperation", params: ({ event }) => ({ id: event.id }) }
-				},
-				TerminateOperation: {
-					actions: {
-						type: "completeOperation",
-						params: ({ event }) => ({ id: event.id, terminate: true })
-					}
-				},
-				CompleteOperation: {
-					actions: { type: "completeOperation", params: ({ event }) => ({ id: event.id }) }
 				}
 			}
 		}

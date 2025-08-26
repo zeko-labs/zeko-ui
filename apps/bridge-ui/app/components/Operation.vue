@@ -39,8 +39,11 @@ const status = computed(() =>
     </div>
     <div class="Explanation">
       <Switch>
-        <Match :when='machine.matches("IDLE")'>
-          The bridge operation is loading.
+        <Match :when='machine.matches("WAITING_FOR_NETWORK")'>
+          Swap to the correct network
+        </Match>
+        <Match :when='machine.matches("INIT_BRIDGE_OPERATION")'>
+          The bridge operation process is starting.
         </Match>
         <Match :when='machine.matches("SUBMIT_DEPOSIT")'>
           We are generating a transaction to deposit your funds from Mina L1 to
@@ -65,12 +68,15 @@ const status = computed(() =>
 <style lang="postcss" scoped>
 .Operation {
   display: grid;
-  grid-template-rows: 1fr auto auto;
+  grid-template-rows: 1fr auto;
   gap: 2ch;
   background: oklch(1 0 0 / 0.7);
   border-radius: 1rem;
   padding: 1rem;
-  height: 100%;
+  &.Finalize {
+    grid-template-rows: 1fr auto auto;
+    flex: 1;
+  }
   .Table {
     display: flex;
     flex-direction: column;

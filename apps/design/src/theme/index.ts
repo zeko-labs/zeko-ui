@@ -200,24 +200,24 @@ export const theme = createTheme({
 	sizes: {
 		button: {
 			default: {
-				width: "135px",
-				height: "40px",
+				width: "8.438rem",
+				height: "2.5rem",
 				fontSize: fonts.lexend.typescale.scale.m,
 				fontWeight: fonts.lexend.typescale.weight.regular,
 				radius: "0.5rem",
 				padding: "0.8755rem 0.75rem"
 			},
 			cta: {
-				width: "165px",
-				height: "52px",
+				width: "10.313rem",
+				height: "3.25rem",
 				fontSize: fonts.lexend.typescale.scale.m,
 				fontWeight: fonts.lexend.typescale.weight.medium,
 				radius: "0.5rem",
 				padding: "0.75rem 1rem"
 			},
 			large: {
-				width: "200px",
-				height: "60px",
+				width: "12.5rem",
+				height: "3.75rem",
 				fontSize: fonts.lexend.typescale.scale.xl,
 				fontWeight: fonts.lexend.typescale.weight.medium,
 				radius: "0.5rem",

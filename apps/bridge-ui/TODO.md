@@ -12,15 +12,15 @@
 - [x] UI element to choose which and how much token to transfer
 - [x] CTA to BRIDGE
 - [x] CTA to Withdraw
-- [ ] UI element to confirm transfer
-- [ ] UI element to show progress
-- [ ] LocalStorage state tracking
+- [x] UI element to confirm transfer
+- [x] UI element to show progress
+- [x] LocalStorage state tracking
 
 # TODO
 
 - [x] fetch both balances using graphQL
-- [ ] handle errors
-- [ ] local storage state restoration
+- [x] handle errors
+- [x] local storage state restoration
 
 # Questions to resolve
 

@@ -30,5 +30,11 @@
       "typescript.tsdk": "node_modules/typescript/lib",
       "typescript.enablePromptUseWorkspaceTsdk": true
     },
+    "extensions": {
+      "recommendations": [
+        "dprint.dprint",
+        "biomejs.biome"
+      ]
+    }
   }
   

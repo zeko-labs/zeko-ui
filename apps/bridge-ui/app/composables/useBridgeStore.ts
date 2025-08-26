@@ -15,9 +15,10 @@ export const useBridgeStore = defineStore("bridge", () => {
 	const balances = computed(() => wallet.snapshot.value.context.balances)
 	const walletLoaded = computed(
 		() =>
-			wallet.snapshot.value.matches("READY") ||
-			wallet.snapshot.value.matches("SWITCHING_NETWORK") ||
-			wallet.snapshot.value.matches("FETCHING_BALANCE")
+			address.value.length > 0 &&
+			(wallet.snapshot.value.matches("READY") ||
+				wallet.snapshot.value.matches("SWITCHING_NETWORK") ||
+				wallet.snapshot.value.matches("FETCHING_BALANCE"))
 	)
 
 	/** Bridge */

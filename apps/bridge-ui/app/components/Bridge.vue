@@ -16,9 +16,15 @@ const firstOperation = computed(() => allOperations.value[0]?.operation)
 const otherOperations = computed(() => allOperations.value.slice(1))
 </script>
 <template>
+  <Disabled
+    v-if='
+      bs.currentNetwork.includes("mainnet") ||
+      (bs.address.length === 0 && !bs.bridge.snapshot.matches("IDLE"))
+    '
+  />
   <div
     class="Bridge"
-    v-if='!bs.currentNetwork.includes("mainnet") && bs.walletLoaded'>
+    v-else-if='!bs.currentNetwork.includes("mainnet") && bs.address.length > 0'>
     <div class="MainOperation" :class="{ NoOperation: !firstOperation }">
       <div class="MainOperationInput">
         <div class="InputBox">
@@ -33,7 +39,6 @@ const otherOperations = computed(() => allOperations.value.slice(1))
         <Button
           class="BridgeButton"
           variant="cta2"
-          v-if='bs.bridge.snapshot.matches("READY")'
           @click='
             bs.bridge.send({
             	type: "StartOperation",
@@ -44,36 +49,21 @@ const otherOperations = computed(() => allOperations.value.slice(1))
           Bridge
         </Button>
       </div>
-      <div class="CurrentOperationWrapper" v-if="firstOperation">
-        <ProgressBarWrapper :operation="firstOperation" />
-        <Operation :operation="firstOperation" />
-      </div>
+      <CurrentOperation v-if="firstOperation" :operation="firstOperation" />
     </div>
     <div class="RecentTransactions">
       <h3>Recent Transactions</h3>
-      <BridgeOperations :operations="otherOperations" />
+      <span v-if='bs.bridge.snapshot.matches("FIND_OPERATIONS")'>Loading
+        ...</span>
+      <BridgeOperations
+        v-else
+        :operations="otherOperations"
+      />
     </div>
   </div>
-  <div class="Disabled" v-else>
-    <p>
-      The Rollup Bridge is a trustless bridge for transferring tokens from Mina
-      L1 Devnet to Zeko L2 Testnet. Please check <a
-        href="https://docs.zeko.io">Zeko Docs</a> for information about other
-      bridges.
-    </p>
-    <p class="MainnetOnly" v-if='bs.currentNetwork.includes("mainnet")'>
-      The Rollup Bridge is not available on Mainnet. Please
-      <button @click='bs.bridge.send({ type: "SwitchToTesnet" })'>
-        switch to a testnet
-      </button>
-      to start using the bridge.
-    </p>
-    <div class="WalletConnection" v-if="!bs.walletLoaded">
-      <p>Please connect your wallet to start bridging.</p>
-      <Button
-        variant="auro"
-        @click='bs.wallet.send({ type: "Connect" })'>Connect Wallet</Button>
-    </div>
+
+  <div v-else>
+    Loading ...
   </div>
 </template>
 <style lang="postcss" scoped>
@@ -88,10 +78,12 @@ const otherOperations = computed(() => allOperations.value.slice(1))
 .MainOperation {
   display: grid;
   grid-template-columns: auto auto;
+  max-width: 100vw;
   &.NoOperation {
     grid-template-columns: auto;
+    margin: auto;
+    max-width: 120ch;
   }
-  max-width: 100vw;
   @media (max-width: 1024px) {
     grid-template-columns: auto;
     gap: 2rem;
@@ -103,26 +95,5 @@ const otherOperations = computed(() => allOperations.value.slice(1))
 }
 .BridgeButton {
   margin: 1rem;
-}
-.CurrentOperationWrapper {
-  padding: 0 2rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 1rem;
-}
-.Disabled {
-  text-align: center;
-  button {
-    width: fit-content;
-  }
-}
-.MainnetOnly {
-  button {
-    all: unset;
-    text-decoration: underline;
-    color: blue;
-    cursor: pointer;
-  }
 }
 </style>
