@@ -39,7 +39,12 @@ type StartOperationSettings = {
 	}
 }
 
-type PendingOperationsInput = { wallet: Wallet; worker: OperationWorker }
+type PendingOperationsInput = {
+	wallet: Wallet
+	worker: OperationWorker
+	sourceNetwork: Networks
+	destinationNetwork: Networks
+}
 
 export type BridgeEvents =
 	| { type: "StartOperation"; amount: string }
@@ -91,11 +96,11 @@ export const bridgeMachine = setup({
 		detectWalletChange,
 		findPendingOperations: fromPromise<PendingOperations, PendingOperationsInput>(
 			async ({ input }) => {
-				const { wallet, worker } = input
+				const { wallet, worker, sourceNetwork, destinationNetwork } = input
 				const account = wallet.getSnapshot().context.account
-				// TODO: compute l1/l2 from current networks if needed
-				const l1 = "mina:devnet" as const
-				const l2 = "zeko:testnet" as const
+
+				const l1 = sourceNetwork.includes("mina") ? sourceNetwork : destinationNetwork
+				const l2 = sourceNetwork.includes("zeko") ? sourceNetwork : destinationNetwork
 
 				const result = await worker.findPendingOperations({ account, l1, l2 })
 				console.log(
@@ -329,7 +334,6 @@ export const bridgeMachine = setup({
 				SwitchToTesnet: {
 					description: "TODO: this should be removed once the bridge supports mainnet.",
 					actions: enqueueActions(({ enqueue, context }) => {
-						console.log("Switching to testnet")
 						enqueue.sendTo(context.wallet, {
 							type: "RequestNetworkChange",
 							network: "zeko:testnet"
@@ -342,7 +346,12 @@ export const bridgeMachine = setup({
 		FIND_OPERATIONS: {
 			invoke: {
 				src: "findPendingOperations",
-				input: ({ context }) => ({ wallet: context.wallet, worker: context.worker }),
+				input: ({ context: { wallet, worker, sourceNetwork, destinationNetwork } }) => ({
+					wallet,
+					worker,
+					sourceNetwork,
+					destinationNetwork
+				}),
 				onDone: {
 					target: "READY",
 					actions: enqueueActions(({ event, enqueue }) => {

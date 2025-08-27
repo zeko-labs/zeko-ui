@@ -15,7 +15,6 @@ export async function fetchActions(
 		fromActionState: actionStates?.fromActionState?.toString() ?? null,
 		endActionState: actionStates?.endActionState?.toString() ?? null
 	})
-	//TODO: Once Zeko-archive is ready, this can be replaced by data.actions direclty
 	const dataWithDefault = data?.actions.map((a) => ({
 		...a,
 		actionData: a?.actionData?.map((ad) => ({
@@ -24,8 +23,6 @@ export async function fetchActions(
 		})),
 		blockInfo: { timestamp: String(a?.blockInfo?.timestamp ?? "0") }
 	}))
-	// console.log(dataWithDefault)
-	// We make sure there's no null data
 	const result = v.safeParse(
 		v.array(
 			v.object({

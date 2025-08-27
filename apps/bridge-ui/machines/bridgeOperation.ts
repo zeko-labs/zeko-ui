@@ -18,7 +18,7 @@ import {
 } from "xstate"
 import { finalizeNotification } from "../app/service-worker/notificationList"
 import type { BridgeContext, BridgeEvents } from "./bridge"
-import { sendTransaction } from "./helpers"
+import { getBridgeConfig, sendTransaction } from "./helpers"
 import type { ActionState } from "./operations.worker"
 
 const bridgeAndWallet = (context: BridgeOperationContext) => {
@@ -78,6 +78,7 @@ const currentNetwork = (context: BridgeOperationContext) =>
 	context.wallet.getSnapshot().context.currentNetwork
 
 const POLL_INTERVAL = 20_000
+const POLL_TIMEOUT = 3_600_000
 //TODO: Error handling
 export const bridgeOperationMachine = setup({
 	types: {
@@ -94,19 +95,16 @@ export const bridgeOperationMachine = setup({
 		events: {} as BridgeOperationEvents
 	},
 	actors: {
-		initializeBridge: fromPromise<Bridge>(async () => {
-			//TODO: Initialize with the correct config
-			const bridge = await Bridge.init({
-				l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
-				l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
-				zekoUrl: "https://alphanet.zeko.io/graphql",
-				zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql",
-				l1Network: "testnet",
-				l2Network: "testnet",
-				pollTimeout: 3_600_000
-			})
-			return bridge
-		}),
+		initializeBridge: fromPromise<Bridge, { source: Networks; destination: Networks }>(
+			async ({ input }) => {
+				const { source, destination } = input
+				const l1 = source.includes("mina") ? source : destination
+				const l2 = source.includes("zeko") ? source : destination
+				const config = getBridgeConfig({ l1, l2 })
+				const bridge = await Bridge.init({ ...config, pollTimeout: POLL_TIMEOUT })
+				return bridge
+			}
+		),
 		submitDeposit: fromPromise<Result, { bridge: Bridge; amount: string; wallet: Wallet }>(
 			async ({ input }) => {
 				const { bridge, amount, wallet } = input
@@ -280,6 +278,7 @@ export const bridgeOperationMachine = setup({
 		RESUMING: {
 			invoke: {
 				src: "initializeBridge",
+				input: ({ context: { source, destination } }) => ({ source, destination }),
 				onDone: { target: "TO_FINALIZE", actions: assign({ bridge: ({ event }) => event.output }) }
 			}
 		},
@@ -347,6 +346,7 @@ export const bridgeOperationMachine = setup({
 		INIT_BRIDGE_OPERATION: {
 			invoke: {
 				src: "initializeBridge",
+				input: ({ context: { source, destination } }) => ({ source, destination }),
 				onDone: [
 					{
 						target: "SUBMIT_DEPOSIT",
