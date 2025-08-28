@@ -42,6 +42,14 @@ const status = computed(() =>
         <Match :when='machine.matches("WAITING_FOR_NETWORK")'>
           Swap to the correct network
         </Match>
+        <Match :when='machine.matches("PENDING_DEPOSIT")'>
+          Waiting for the deposit transaction to be confirmed on Mina L1. This
+          can take several minutes as we are waiting for 5 blocks or more.
+        </Match>
+        <Match :when='machine.matches("PENDING_WITHDRAWAL")'>
+          Waiting for the withdrawal transaction to be confirmed on Zeko L2.
+          This should be pretty fast.
+        </Match>
         <Match :when='machine.matches("INIT_BRIDGE_OPERATION")'>
           The bridge operation process is starting.
         </Match>
@@ -55,6 +63,9 @@ const status = computed(() =>
         </Match>
         <Match :when='machine.matches("TO_FINALIZE")'>
           You must click on the "Finalize" button to complete the operation.
+        </Match>
+        <Match :when='machine.matches("FINALIZE_DEPOSIT")'>
+          We are generating a proof on the sequencer. You'll have to sign next.
         </Match>
       </Switch>
     </div>

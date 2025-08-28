@@ -252,7 +252,6 @@ export const bridgeMachine = setup({
 			{
 				description:
 					"Change the network of all operations and invert direction if the network is different.",
-				guard: ({ event, context }) => event.network !== currentNetwork(context),
 				actions: enqueueActions(({ context, event, enqueue }) => {
 					const sourceNetwork = event.network
 					const destinationNetwork = bridgeDirections[event.network]

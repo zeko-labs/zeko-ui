@@ -1,6 +1,6 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks, walletMachine } from "@lumina-dex/sdk"
-import { type Mina, type PublicKey, Transaction } from "o1js"
+import { type Mina, Transaction } from "o1js"
 import type { ActorRefFromLogic } from "xstate"
 
 type Wallet = ActorRefFromLogic<typeof walletMachine>
@@ -56,10 +56,10 @@ export const createExplorerUrl = ({ network, hash }: { network: Networks; hash: 
 export const sendTransaction = async ({
 	tx,
 	wallet,
-	sender
-}: { tx: Mina.Transaction<false, false> | string; wallet: Wallet; sender?: PublicKey }) => {
+	onlySign = false
+}: { tx: Mina.Transaction<false, false> | string; wallet: Wallet; onlySign?: boolean }) => {
 	const transaction = typeof tx === "string" ? tx : tx.toJSON()
-	const result = await window.mina.sendTransaction({ onlySign: !!sender, transaction })
+	const result = await window.mina.sendTransaction({ onlySign, transaction })
 
 	if (result instanceof Error) {
 		console.error("Transaction failed", result)
@@ -82,7 +82,9 @@ export const sendTransaction = async ({
 	if ("hash" in result) return processHash(result.hash)
 
 	// Transactions paid by another sender are signed, then sent with o1js
-	if (sender && "signedData" in result) {
+	if (onlySign && "signedData" in result) {
+		console.log({ result })
+		console.log(JSON.parse(result.signedData))
 		const transaction = Transaction.fromJSON(JSON.parse(result.signedData) as ZkappCommand)
 		const result2 = await transaction.send()
 		return processHash(result2.hash)

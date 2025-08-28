@@ -140,11 +140,16 @@ export const bridgeOperationMachine = setup({
 		),
 		finalizeDeposit: fromPromise<Result, { bridge: Bridge; wallet: Wallet }>(async ({ input }) => {
 			const { bridge, wallet } = input
-			const tx = await bridge.finalizeDeposit(
-				PublicKey.fromBase58(wallet.getSnapshot().context.account)
-			)
-			const result = await sendTransaction({ tx, wallet, sender: bridge.sequencerPk })
-			return result
+			try {
+				const tx = await bridge.finalizeDeposit(
+					PublicKey.fromBase58(wallet.getSnapshot().context.account)
+				)
+				const result = await sendTransaction({ tx, wallet })
+				return result
+			} catch (e) {
+				console.error(e)
+				throw e
+			}
 		}),
 		submitWithdrawal: fromPromise<Result, { bridge: Bridge; amount: string; wallet: Wallet }>(
 			async ({ input }) => {
@@ -236,14 +241,14 @@ export const bridgeOperationMachine = setup({
 			description:
 				"When the parent change the network, we receive the event and raise a return to an action if we can.",
 			actions: enqueueActions(({ context, enqueue, event }) => {
+				console.log("SetCurrentNetwork", { context, event })
 				if (context.returnTo !== false) {
 					if (context.changeNetworkTo === event.network) enqueue.raise({ type: "ReturnTo" })
 					else {
 						//If we are still on the wrong network, we need to request a change
 						enqueue.sendTo(
 							({ context }) => context.wallet,
-							({ context }) => ({ type: "RequestNetworkChange", network: context.changeNetworkTo }),
-							{ delay: 5000 }
+							({ context }) => ({ type: "RequestNetworkChange", network: context.changeNetworkTo })
 						)
 					}
 				}

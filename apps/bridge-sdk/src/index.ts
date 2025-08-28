@@ -483,7 +483,11 @@ export class Bridge {
 
 		this.setL2()
 
-		const accountCreationFee = helperAccount ? UInt64.zero : this.l2AccountCreationFee.mul(2)
+		const l2Account = await this.fetchAccount(this.l2Client, pk)
+
+		const accountCreationFee = (helperAccount ? UInt64.zero : this.l2AccountCreationFee).add(
+			l2Account ? UInt64.zero : this.l2AccountCreationFee
+		)
 
 		const txn = await Mina.transaction(
 			{
