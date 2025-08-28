@@ -9,7 +9,7 @@ import { ChevronDownIcon } from "lucide-vue-next"
 
 const modelValue = defineModel({ required: true })
 const collection = createListCollection({
-	items: ["MINA", "ZEKO"]
+	items: ["MINA", "ZEKO"] as const
 })
 
 const colors = theme.config.colors
@@ -36,7 +36,7 @@ const colors = theme.config.colors
                   <SvgMinaToken width="24" height="24" />
                   <Select.ValueText placeholder="Placeholder" />
                 </div>
-                <Select.Indicator>
+                <Select.Indicator style="display: none">
                   <ChevronDownIcon :stroke-width="1" />
                 </Select.Indicator>
               </div>
@@ -85,8 +85,8 @@ span, input {
   background: transparent;
   border: none;
   color: v-bind("colors.gray[900].value");
-  font-size: 1.125rem;
-  padding: 12px 16px;
+  font-size: var(--fonts-lexend-typescale-scale-s);
+  padding: 12px 0px 12px 16px;
   outline: none;
   height: 100%;
   width: 100%;
@@ -117,7 +117,6 @@ span, input {
   align-items: center;
   justify-content: space-between;
   color: v-bind("colors.gray[900].value");
-  background-color: v-bind("colors.gray[200].value");
   cursor: pointer;
   border: 0;
   border-radius: 4px;

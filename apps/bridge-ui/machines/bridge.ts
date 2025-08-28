@@ -12,8 +12,11 @@ import {
 	spawnChild
 } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
+import { createLogger } from "./debug"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
 import workerUrl from "./operations.worker?worker&url"
+
+const { act, logger } = createLogger("[BRIDGE]")
 
 type OperationStatus = "started" | "paused" | "completed"
 type Operations = Map<
@@ -96,23 +99,25 @@ export const bridgeMachine = setup({
 		detectWalletChange,
 		findPendingOperations: fromPromise<PendingOperations, PendingOperationsInput>(
 			async ({ input }) => {
-				const { wallet, worker, sourceNetwork, destinationNetwork } = input
-				const account = wallet.getSnapshot().context.account
+				return act("findPendingOperation", async () => {
+					const { wallet, worker, sourceNetwork, destinationNetwork } = input
+					const account = wallet.getSnapshot().context.account
 
-				const l1 = sourceNetwork.includes("mina") ? sourceNetwork : destinationNetwork
-				const l2 = sourceNetwork.includes("zeko") ? sourceNetwork : destinationNetwork
+					const l1 = sourceNetwork.includes("mina") ? sourceNetwork : destinationNetwork
+					const l2 = sourceNetwork.includes("zeko") ? sourceNetwork : destinationNetwork
 
-				const result = await worker.findPendingOperations({ account, l1, l2 })
-				console.log(
-					`Found ${result.deposits.length} deposits and ${result.withdrawals.length} withdrawals`
-				)
-				return result
+					const result = await worker.findPendingOperations({ account, l1, l2 })
+					console.log(
+						`Found ${result.deposits.length} deposits and ${result.withdrawals.length} withdrawals`
+					)
+					return result
+				})
 			}
 		)
 	},
 	actions: {
 		startOperation: assign(({ context, self, spawn }, settings: StartOperationSettings) => {
-			console.log("Starting an operation with settings", settings)
+			logger.info("Starting an operation with settings", settings)
 			const { amount, command, state } = settings
 			const { wallet } = context
 			const source = state?.source ?? (context.sourceNetwork as Networks)
@@ -168,7 +173,7 @@ export const bridgeMachine = setup({
 			}
 		}),
 		completeOperation: assign(({ context }, params: { id: string; terminate?: boolean }) => {
-			console.log("Completing operation", params.id)
+			logger.info("Completing operation", params.id)
 			const { id, terminate } = params
 			const operations = context.operations
 			const completedOperation = operations.get(id)?.operation
@@ -177,11 +182,11 @@ export const bridgeMachine = setup({
 			else operations.set(id, { status: "completed", operation: completedOperation })
 			// Resume the next operation
 			const [idToResume, ...rest] = context.operationsToUnpause
-			console.log("Found operation to resume", idToResume, rest)
+			logger.info("Found operation to resume", idToResume, rest)
 			if (idToResume) {
 				const operation = operations.get(idToResume)?.operation
 				if (operation) {
-					console.log("Resuming operation", idToResume)
+					logger.info("Resuming operation", idToResume)
 					operation.send({ type: "Resume", paused: false })
 					operations.set(idToResume, { status: "started", operation })
 				}
@@ -234,7 +239,7 @@ export const bridgeMachine = setup({
 				description: "TODO: this should be removed once the bridge supports mainnet.",
 				guard: ({ context }) => currentNetwork(context).includes("mainnet"),
 				actions: enqueueActions(({ context, enqueue }) => {
-					console.error("Mainnet is not supported yet, manually change to a compatible network.")
+					logger.error("Mainnet is not supported yet, manually change to a compatible network.")
 					enqueue.assign({ walletReady: false })
 					enqueue.sendTo(context.wallet, { type: "RequestNetworkChange", network: "zeko:testnet" })
 				})
@@ -257,7 +262,7 @@ export const bridgeMachine = setup({
 					const destinationNetwork = bridgeDirections[event.network]
 					//Check for mainnet
 					if (sourceNetwork.includes("mainnet")) {
-						console.error("Mainnet is not supported yet, changing to 'zeko:testnet' ")
+						logger.error("Mainnet is not supported yet, changing to 'zeko:testnet' ")
 						enqueue.sendTo(context.wallet, {
 							type: "RequestNetworkChange",
 							network: "zeko:testnet"

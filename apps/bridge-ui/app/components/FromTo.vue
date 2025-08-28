@@ -98,6 +98,11 @@ const bs = useBridgeStore()
   background: #f9fafb;
   border-color: #9ca3af;
   transform: scale(1.05);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: #6366f1;
+  .arrow-icon {
+    color: #6366f1;
+  }
 }
 
 /* Button active state */
@@ -121,24 +126,9 @@ const bs = useBridgeStore()
   transition: color 0.3s ease;
 }
 
-/* Hover effect on icon */
-.circle-button:hover .arrow-icon {
-  color: #374151;
-}
-
 /* Rotation when checkbox is checked */
 .toggle-checkbox:checked ~ .circle-button .icon-container {
   transform: rotate(180deg);
-}
-
-/* Optional: Add a subtle shadow when activated */
-.toggle-checkbox:checked ~ .circle-button {
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-  border-color: #6366f1;
-}
-
-.toggle-checkbox:checked ~ .circle-button .arrow-icon {
-  color: #6366f1;
 }
 
 /* Additional visual feedback */

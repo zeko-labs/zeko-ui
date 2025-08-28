@@ -575,11 +575,11 @@ export class Bridge {
 			return true
 		})
 
-		if (myWithdrawalIndex === -1) throw new Error("Did not find any withdrawal to finalize")
+		if (myWithdrawalIndex === -1) return null
 
 		const myWithdrawal = innerActions[myWithdrawalIndex]
 		const withdrawalParams = findMatchingWithdrawal(myWithdrawal)
-		if (!withdrawalParams) throw new Error("Did not find withdrawal parameters")
+		if (!withdrawalParams) throw new Error("Unreachable: Did not find withdrawal parameters")
 
 		const outerActions = await this.fetchOuterActions()
 
@@ -592,7 +592,7 @@ export class Bridge {
 			return true
 		})
 
-		if (reversedLastCommitIndex === -1) throw new Error("Last commit not found")
+		if (reversedLastCommitIndex === -1) return null
 
 		const lastCommitIndex = outerActions.length - reversedLastCommitIndex - 1
 		const lastCommit = outerActions[lastCommitIndex] as OuterCommit
@@ -606,7 +606,7 @@ export class Bridge {
 		)
 
 		if (syncedInnerActionStateIndex === -1 || syncedInnerActionStateIndex < myWithdrawalIndex)
-			throw new Error("Withdrawal has not been synced")
+			return null
 
 		const withdrawalAse = innerActions
 			.slice(myWithdrawalIndex + 1, syncedInnerActionStateIndex + 1)
@@ -790,7 +790,7 @@ export class Bridge {
 	}
 	public async fetchInnerActionsWithStates(pk: PublicKey): Promise<InnerActionWithState[]> {
 		const withdrawals = await this.fetchUserWithdrawals(pk)
-
+		console.log({ withdrawals })
 		const auxesMap = new Map<bigint, Withdrawal>()
 		for (const withdrawal of withdrawals) {
 			const aux = withdrawalAux(withdrawal)

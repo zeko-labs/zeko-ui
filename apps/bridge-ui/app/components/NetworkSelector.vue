@@ -8,7 +8,6 @@ import type { Networks } from "@lumina-dex/sdk"
 import { theme } from "@zeko/design"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ChevronDownIcon } from "lucide-vue-next"
-import { SvgMinaToken, SvgZekoToken } from "#components"
 
 const emit = defineEmits(["select:network"])
 
@@ -38,20 +37,6 @@ const collection = createListCollection({
 		return true
 	})
 })
-
-const isMina = computed(() => currentValue[0].includes("mina"))
-
-const currentLogo = computed(() => (isMina.value ? SvgMinaToken : SvgZekoToken))
-
-const name = (network: Networks | undefined) => {
-	if (!network) return undefined
-	return {
-		"mina:devnet": "Mina (Devnet)",
-		"zeko:testnet": "Zeko (Testnet)",
-		"mina:mainnet": "Mina",
-		"zeko:mainnet": "Zeko"
-	}[network]
-}
 
 const colors = theme.config.colors
 
@@ -94,9 +79,8 @@ watch(
             <Select.Trigger>
               <div class="TriggerContent">
                 <div class="TextWithLogo">
-                  <component :is="currentLogo" />
                   <Select.ValueText placeholder="Placeholder" as-child>
-                    {{ name(select.value[0] as Networks) }}
+                    <NetworkBadge :network="select.value[0] as Networks" />
                   </Select.ValueText>
                 </div>
                 <Select.Indicator style="display: none">
@@ -112,10 +96,9 @@ watch(
               <Select.ItemGroup>
                 <Select.ItemGroupLabel>Networks</Select.ItemGroupLabel>
                 <Select.Item v-for="item of collection.items" :key="item" :item>
-                  <component
-                    :is='item.includes("mina") ? SvgMinaToken : SvgZekoToken'
-                  />
-                  <Select.ItemText>{{ name(item) }}</Select.ItemText>
+                  <Select.ItemText>
+                    <NetworkBadge :network="item" />
+                  </Select.ItemText>
                   <Select.ItemIndicator>✓</Select.ItemIndicator>
                 </Select.Item>
               </Select.ItemGroup>

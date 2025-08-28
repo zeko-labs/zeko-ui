@@ -8,12 +8,22 @@ const amountToBridge = ref<number | undefined>(undefined)
 const allOperations = useSelector(bs.bridge.actorRef, (state) =>
 	[...state.context.operations.entries()].map(([id, value]) => ({
 		id,
+		status: value.status,
 		operation: value.operation
 	}))
 )
 
-const firstOperation = computed(() => allOperations.value[0]?.operation)
-const otherOperations = computed(() => allOperations.value.slice(1))
+const firstNonCompleteOperation = computed(
+	() => allOperations.value.find((op) => op.status !== "completed")?.operation
+)
+const otherOperations = computed(() => {
+	if (firstNonCompleteOperation.value) {
+		return allOperations.value.filter(
+			(op) => op.id !== firstNonCompleteOperation.value?.id
+		)
+	}
+	return allOperations.value
+})
 </script>
 <template>
   <Disabled
@@ -25,7 +35,9 @@ const otherOperations = computed(() => allOperations.value.slice(1))
   <div
     class="Bridge"
     v-else-if='!bs.currentNetwork.includes("mainnet") && bs.address.length > 0'>
-    <div class="MainOperation" :class="{ NoOperation: !firstOperation }">
+    <div
+      class="MainOperation"
+      :class="{ NoOperation: !firstNonCompleteOperation }">
       <div class="MainOperationInput">
         <div class="InputBox">
           <h4>Sending</h4>
@@ -49,12 +61,15 @@ const otherOperations = computed(() => allOperations.value.slice(1))
           Bridge
         </Button>
       </div>
-      <CurrentOperation v-if="firstOperation" :operation="firstOperation" />
+      <CurrentOperation
+        v-if="firstNonCompleteOperation"
+        :operation="firstNonCompleteOperation"
+      />
     </div>
     <div class="RecentTransactions">
       <h3>Recent Transactions</h3>
-      <span v-if='bs.bridge.snapshot.matches("FIND_OPERATIONS")'>Loading
-        ...</span>
+      <span
+        v-if='bs.bridge.snapshot.matches("FIND_OPERATIONS")'>Loading...</span>
       <BridgeOperations
         v-else
         :operations="otherOperations"
@@ -78,6 +93,7 @@ const otherOperations = computed(() => allOperations.value.slice(1))
 .MainOperation {
   display: grid;
   grid-template-columns: auto auto;
+  gap: 2ch;
   max-width: 100vw;
   &.NoOperation {
     grid-template-columns: auto;
@@ -92,8 +108,8 @@ const otherOperations = computed(() => allOperations.value.slice(1))
 .MainOperationInput {
   display: grid;
   gap: 1rem;
-}
-.BridgeButton {
-  margin: 1rem;
+  border: 1px solid var(--colors-alpha-soft-gray1);
+  border-radius: 1rem;
+  padding: 2rem;
 }
 </style>

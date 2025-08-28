@@ -8,33 +8,30 @@ const friendlyNetwork = (n: string) => {
 }
 </script>
 <template>
-  <span
-    class="network"
-    :class='network.includes("mina") ? "network-mina" : "network-zeko"'>
-    {{ friendlyNetwork(network) }}
-  </span>
+  <div class="NetworkBadge">
+    <SvgMinaLogo v-if='network.includes("mina")' />
+    <SvgZekoToken v-else />
+    <span class="network"> {{ friendlyNetwork(network) }}</span>
+  </div>
 </template>
 <style lang="postcss" scoped>
-.network {
-  display: inline-flex;
-  align-items: center;
+.NetworkBadge {
+  display: flex;
+  gap: 0.5ch;
   width: fit-content;
-  min-width: 12ch;
-  gap: 0.5rem;
+  border-radius: 2rem;
   padding: 0.25rem 0.5rem;
+  border: 1px solid var(--colors-alpha-soft-gray1);
+  svg {
+    --size: 1.5rem;
+    height: var(--size);
+    width: var(--size);
+  }
+}
+.network {
+  display: flex;
+  place-items: center;
+  font-size: var(--fonts-lexend-typescale-scale-s);
   font-weight: 600;
-  font-size: 0.875rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-}
-.network-mina {
-  color: #501a5d;
-  background: #f9ebff;
-  border-color: #f8bef2;
-}
-.network-zeko {
-  color: #1d4044;
-  background: #e6fffa;
-  border-color: #b2f5ea;
 }
 </style>

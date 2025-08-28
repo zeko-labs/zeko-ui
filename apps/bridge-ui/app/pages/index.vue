@@ -1,24 +1,13 @@
 <template>
   <div class="Container">
     <div class="Content">
-      <header class="header">
-        <div class="header-content">
-          <div class="logo">
-            <SvgZekoLogoRings />
-          </div>
-          <nav class="nav">
-            <!-- <a href="#" class="nav-item">Build</a> -->
-            <!-- <a href="#" class="nav-item">Community</a> -->
-          </nav>
-          <Wallet />
-        </div>
-      </header>
+      <Header />
       <main>
         <h2>Zeko Bridge</h2>
         <Bridge />
       </main>
     </div>
-    <footer>© {{ new Date().getFullYear() }} Zeko</footer>
+    <footer>© {{ new Date().getFullYear() }} Zeko Labs</footer>
   </div>
   <!-- <div>
     <hr />
@@ -44,7 +33,7 @@
   width: 100vw;
   min-height: 100vh;
   overflow-x: hidden;
-  padding: 0 4rem;
+  padding: 0 3rem;
   display: grid;
   grid-template-rows: auto 1fr;
   @media (max-width: 1024px) {
@@ -58,38 +47,6 @@
   grid-template-rows: auto 1fr;
   position: relative;
   color: var(--colors-gray-950);
-}
-
-.header {
-  background: rgba(255, 255, 255, 0.24);
-  backdrop-filter: blur(4px);
-}
-
-.header-content {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  margin: 0;
-  padding: 1rem 2rem;
-  gap: 1rem;
-}
-
-.logo {
-  width: 79px;
-  height: 48px;
-}
-
-.nav {
-  justify-self: flex-end;
-  display: flex;
-  gap: 2rem;
-}
-
-.nav-item {
-  color: var(--colors-gray-950);
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 500;
 }
 
 main {
