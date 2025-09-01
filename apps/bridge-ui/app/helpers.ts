@@ -34,29 +34,20 @@ export const statusFromState = (
 	direction: Direction
 ): { text: string; kind: "pending" | "complete" } => {
 	const isDeposit = direction === "deposit"
-	switch (state) {
-		case "BRIDGE_OPERATION_DONE":
-		case "BRIDGE_OPERATION_DONE_NOOP":
+	if (typeof state === "string") {
+		if (state.includes("DONE"))
 			return isDeposit ? deposit("complete")(3) : withdrawal("complete")(3)
-		case "SUBMIT_DEPOSIT":
-			return pendingDeposit(0)
-		case "PENDING_DEPOSIT":
-			return pendingDeposit(1)
-		case "FINALIZE_DEPOSIT":
-			return pendingDeposit(2)
-		case "SUBMIT_WITHDRAWAL":
-			return pendingWithdrawal(0)
-		case "PENDING_WITHDRAWAL":
-			return pendingWithdrawal(1)
-		case "FINALIZE_WITHDRAWAL":
-			return pendingWithdrawal(2)
-		case "TO_FINALIZE":
-			return isDeposit ? pendingDeposit(2) : pendingWithdrawal(2)
-		case "PAUSED":
-			return { text: "Paused", kind: "pending" }
-		case "IDLE":
-			return { text: "Idle", kind: "pending" }
-		default:
-			return isDeposit ? pendingDeposit(1) : pendingWithdrawal(1)
+		if (state === "PENDING_DEPOSIT") return pendingDeposit(1)
+		if (state === "PENDING_WITHDRAWAL") return pendingWithdrawal(1)
+		if (state === "TO_FINALIZE") return isDeposit ? pendingDeposit(2) : pendingWithdrawal(2)
+		if (state === "PAUSED") return { text: "Paused", kind: "pending" }
+		if (state === "IDLE") return { text: "Idle", kind: "pending" }
 	}
+	if (typeof state === "object") {
+		if ("SUBMIT_DEPOSIT" in state) return pendingDeposit(0)
+		if ("SUBMIT_WITHDRAWAL" in state) return pendingWithdrawal(0)
+		if ("FINALIZE_DEPOSIT" in state) return pendingDeposit(2)
+		if ("FINALIZE_WITHDRAWAL" in state) return pendingWithdrawal(2)
+	}
+	return isDeposit ? pendingDeposit(1) : pendingWithdrawal(1)
 }

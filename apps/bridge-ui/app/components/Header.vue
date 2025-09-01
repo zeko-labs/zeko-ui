@@ -10,6 +10,13 @@ const currentMina = computed(() => {
 	).toString()
 })
 const granted = computed(() => n.notificationPermission === "granted")
+const refetchBalance = () => {
+	bs.wallet.send({
+		type: "FetchBalance",
+		network: bs.currentNetwork,
+		tokens: []
+	})
+}
 </script>
 <template>
   <header>
@@ -17,7 +24,7 @@ const granted = computed(() => n.notificationPermission === "granted")
       <SvgZekoLogoRings />
     </div>
     <div class="MinaNetwork Badge">
-      <div class="Mina">
+      <div class="Mina" @click="refetchBalance">
         <SvgMinaToken width="24" height="24" />
         <span>
           {{ currentMina }}

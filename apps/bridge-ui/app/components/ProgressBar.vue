@@ -149,14 +149,14 @@ const nodeSize = {
 .absolute-step-label {
   position: absolute;
   width: 20%;
-  margin: v-bind("`${nodeSize.rem} -${nodeSize.value / 6}rem`");
+  margin: v-bind("`${nodeSize.rem} -${nodeSize.value / 5}rem`");
 }
 
 .last-label {
   position: absolute;
   min-width: 24ch;
-  margin-bottom: -4rem;
-  margin-right: -4rem;
+  margin-bottom: -4.2rem;
+  margin-right: -2rem;
 }
 
 /* Container query: once the progress bar has enough horizontal space, show all labels */

@@ -32,6 +32,7 @@
 		"@zeko/layer": "workspace:^",
 		"comlink": "^4.4.2",
 		"consola": "^3.4.2",
+		"immer": "^10.1.1",
 		"lucide-vue-next": "^0.453.0",
 		"nanoid": "^5.0.9",
 		"nuxt": "^4.0.1",

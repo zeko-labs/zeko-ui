@@ -22,6 +22,7 @@ const colors = theme.config.colors
         type="number"
         step="0.01"
         min="0"
+        @wheel.prevent="() => {}"
         v-model="modelValue"
         placeholder="Enter Amount"
       />

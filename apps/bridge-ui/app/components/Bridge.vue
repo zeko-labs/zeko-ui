@@ -29,7 +29,10 @@ const otherOperations = computed(() => {
   <Disabled
     v-if='
       bs.currentNetwork.includes("mainnet") ||
-      (bs.address.length === 0 && !bs.bridge.snapshot.matches("IDLE"))
+      bs.wallet.snapshot.error ||
+      bs.wallet.snapshot.matches("CONNECTING") ||
+      (bs.address.length === 0 && !bs.bridge.snapshot.matches("IDLE")) ||
+      (bs.address.length === 0 && bs.wallet.snapshot.matches("INIT"))
     '
   />
   <div

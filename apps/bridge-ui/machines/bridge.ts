@@ -66,6 +66,7 @@ export interface BridgeContext {
 	operationsToUnpause: string[]
 	wallet: Wallet
 	walletReady: boolean
+	accountReady: boolean
 	activeOperation: string | null
 	worker: OperationWorker
 }
@@ -97,23 +98,21 @@ export const bridgeMachine = setup({
 	actors: {
 		bridgeOperationMachine,
 		detectWalletChange,
-		findPendingOperations: fromPromise<PendingOperations, PendingOperationsInput>(
-			async ({ input }) => {
-				return act("findPendingOperation", async () => {
-					const { wallet, worker, sourceNetwork, destinationNetwork } = input
-					const account = wallet.getSnapshot().context.account
+		findPendingOperations: fromPromise<PendingOperations, PendingOperationsInput>(({ input }) => {
+			return act("findPendingOperation", async () => {
+				const { wallet, worker, sourceNetwork, destinationNetwork } = input
+				const account = wallet.getSnapshot().context.account
 
-					const l1 = sourceNetwork.includes("mina") ? sourceNetwork : destinationNetwork
-					const l2 = sourceNetwork.includes("zeko") ? sourceNetwork : destinationNetwork
+				const l1 = sourceNetwork.includes("mina") ? sourceNetwork : destinationNetwork
+				const l2 = sourceNetwork.includes("zeko") ? sourceNetwork : destinationNetwork
 
-					const result = await worker.findPendingOperations({ account, l1, l2 })
-					console.log(
-						`Found ${result.deposits.length} deposits and ${result.withdrawals.length} withdrawals`
-					)
-					return result
-				})
-			}
-		)
+				const result = await worker.findPendingOperations({ account, l1, l2 })
+				console.log(
+					`Found ${result.deposits.length} deposits and ${result.withdrawals.length} withdrawals`
+				)
+				return result
+			})
+		})
 	},
 	actions: {
 		startOperation: assign(({ context, self, spawn }, settings: StartOperationSettings) => {
@@ -216,6 +215,7 @@ export const bridgeMachine = setup({
 			sourceNetwork,
 			destinationNetwork,
 			walletReady: false,
+			accountReady: false,
 			activeOperation: null
 		}
 	},
@@ -224,10 +224,15 @@ export const bridgeMachine = setup({
 	}),
 	on: {
 		AccountChanged: [
+			{ guard: ({ context }) => !context.accountReady, actions: assign({ accountReady: true }) },
 			{
 				target: ".FIND_OPERATIONS",
-				guard: ({ context }) => context.walletReady,
+				guard: ({ context }) => context.accountReady && context.walletReady,
 				actions: enqueueActions(({ enqueue, context }) => {
+					// biome-ignore lint/complexity/noForEach: <explanation>
+					context.operations.forEach(({ operation }) => {
+						operation.send({ type: "Destroy" })
+					})
 					context.operations.clear()
 					enqueue.assign({ operations: new Map(), operationsToUnpause: [], activeOperation: null })
 				})
@@ -246,7 +251,8 @@ export const bridgeMachine = setup({
 			},
 			{
 				target: ".FIND_OPERATIONS",
-				description: "This is taken automatically as the Auro will send the event on page load.",
+				description:
+					"This is taken automatically for the first time as Auro will send the event on page load.",
 				guard: ({ context }) => !context.walletReady,
 				actions: enqueueActions(({ enqueue, event }) => {
 					const sourceNetwork = event.network

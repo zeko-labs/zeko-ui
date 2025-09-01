@@ -31,15 +31,15 @@ const data = computed(() =>
 				source: state.value.context.source,
 				destination: state.value.context.destination,
 				amount: state.value.context.amount,
-				hash: state.value.context.transaction?.hash ?? "no-hash",
+				hash: state.value.context.transaction?.hash ?? "",
 				date:
-					state.value.context.transaction?.date.toLocaleDateString() ??
-					new Date().toLocaleDateString()
+					state.value.context.transaction?.date.toISOString() ??
+					new Date().toISOString()
 			}
 		})
 		.toSorted((a, b) => {
-			const aIsDone = a.status.includes("DONE")
-			const bIsDone = b.status.includes("DONE")
+			const aIsDone = typeof a.status === "string" && a.status.includes("DONE")
+			const bIsDone = typeof b.status === "string" && b.status.includes("DONE")
 			if (aIsDone && !bIsDone) return 1 // If a is DONE and b is NOT DONE, a goes after b (return 1).
 			if (!aIsDone && bIsDone) return -1 // If a is NOT DONE and b is DONE, a goes before b (return -1).
 			return b.date.localeCompare(a.date) // If both both DONE or both not DONE, sort them by date.
@@ -116,7 +116,8 @@ const table = useVueTable({
 
           <!-- Date cell: placeholder date -->
           <td>
-            {{ String(row.getValue("date")) }}
+            {{ new Date(row.original.date).toLocaleDateString() }}
+            <!-- {{ row.original.hash }} -->
           </td>
         </tr>
 

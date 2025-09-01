@@ -10,25 +10,32 @@ const { operation } = defineProps<{
 }>()
 const machine = useSelector(operation, (state) => state)
 const steps = computed(() =>
-	machine.value.value ?? machine.value.context.direction === "deposit"
-		? depositSteps
-		: withdrawalSteps
+	machine.value.context.direction === "deposit" ? depositSteps : withdrawalSteps
 )
 
+//TODO: Use xstate tags or metadata for easier rendering
 const step = computed(() => {
-	switch (machine.value.value) {
-		case "SUBMIT_DEPOSIT":
-		case "SUBMIT_WITHDRAWAL":
+	switch (true) {
+		case machine.value.matches({ SUBMIT_DEPOSIT: "transaction" }):
+		case machine.value.matches({ SUBMIT_WITHDRAWAL: "transaction" }):
 			return 0
-		case "PENDING_DEPOSIT":
-		case "PENDING_WITHDRAWAL":
+		case machine.value.matches({ SUBMIT_DEPOSIT: "send_and_confirm" }):
+		case machine.value.matches({ SUBMIT_DEPOSIT: "done" }):
+		case machine.value.matches({ SUBMIT_WITHDRAWAL: "send_and_confirm" }):
+		case machine.value.matches({ SUBMIT_WITHDRAWAL: "done" }):
+		case machine.value.matches("PENDING_DEPOSIT"):
+		case machine.value.matches("PENDING_WITHDRAWAL"):
 			return 1
-		case "TO_FINALIZE":
-		case "FINALIZE_DEPOSIT":
-		case "FINALIZE_WITHDRAWAL":
+		case machine.value.matches("TO_FINALIZE"):
+		case machine.value.matches({ FINALIZE_DEPOSIT: "transaction" }):
+		case machine.value.matches({ FINALIZE_WITHDRAWAL: "transaction" }):
 			return 2
-		case "BRIDGE_OPERATION_DONE":
-		case "BRIDGE_OPERATION_DONE_NOOP":
+		case machine.value.matches({ FINALIZE_DEPOSIT: "send_and_confirm" }):
+		case machine.value.matches({ FINALIZE_DEPOSIT: "done" }):
+		case machine.value.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" }):
+		case machine.value.matches({ FINALIZE_WITHDRAWAL: "done" }):
+		case machine.value.matches("BRIDGE_OPERATION_DONE"):
+		case machine.value.matches("BRIDGE_OPERATION_DONE_NOOP"):
 			return 3
 		default:
 			return 0
@@ -54,7 +61,7 @@ const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
       <div class="Table">
         <div class="Row">
           <div>Status</div>
-          <Label :title="machine.value" :is="status.kind">
+          <Label :title="JSON.stringify(machine.value)" :is="status.kind">
             {{ status.text }}
           </Label>
         </div>
@@ -85,7 +92,8 @@ const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
           </Match>
           <Match :when='machine.matches("PENDING_WITHDRAWAL")'>
             Waiting for the withdrawal transaction to be confirmed on Zeko L2.
-            This should be pretty fast.
+            This can take several minutes as we are waiting for several blocks
+            for security reasons.
           </Match>
           <Match :when='machine.matches("INIT_BRIDGE_OPERATION")'>
             The bridge operation process is starting.
@@ -101,9 +109,23 @@ const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
           <Match :when='machine.matches("TO_FINALIZE")'>
             You must click on the "Finalize" button to complete the operation.
           </Match>
-          <Match :when='machine.matches("FINALIZE_DEPOSIT")'>
+          <Match
+            :when='
+              machine.matches({ FINALIZE_DEPOSIT: "transaction" }) ||
+              machine.matches({ FINALIZE_WITHDRAWAL: "transaction" })
+            '>
             We are generating a proof on the sequencer. You'll have to sign
             next.
+          </Match>
+          <Match
+            :when='machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" })'>
+            Finalize Withdrawal Transaction has been sent, waiting on L1
+            confirmation.
+          </Match>
+          <Match
+            :when='machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })'>
+            Finalize Deposit Transaction has been sent, waiting on L2
+            confirmation.
           </Match>
         </Switch>
       </div>

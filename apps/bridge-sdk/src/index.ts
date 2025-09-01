@@ -790,7 +790,6 @@ export class Bridge {
 	}
 	public async fetchInnerActionsWithStates(pk: PublicKey): Promise<InnerActionWithState[]> {
 		const withdrawals = await this.fetchUserWithdrawals(pk)
-		console.log({ withdrawals })
 		const auxesMap = new Map<bigint, Withdrawal>()
 		for (const withdrawal of withdrawals) {
 			const aux = withdrawalAux(withdrawal)
