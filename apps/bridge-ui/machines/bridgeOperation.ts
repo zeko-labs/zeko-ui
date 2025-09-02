@@ -20,9 +20,9 @@ import {
 import { finalizeNotification } from "../app/service-worker/notificationList"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
-import { getBridgeConfig, type processHash } from "./helpers"
+import { getBridgeConfig } from "./helpers"
 import type { ActionState } from "./operations.worker"
-import { transactionMachine } from "./transaction"
+import { type Result, transactionMachine } from "./transaction"
 
 const { act, logger, measure } = createLogger("[BRIDGE OPERATION]")
 
@@ -63,7 +63,11 @@ const sendAndConfirm = (
 	key: keyof BridgeOperationContext["transactions"]
 ) => {
 	if (!context.transactions[key]) throw new Error("No transaction to confirm")
-	return { transaction: context.transactions[key].transaction, wallet: context.wallet }
+	return {
+		id: context.id,
+		transaction: context.transactions[key].transaction,
+		wallet: context.wallet
+	}
 }
 
 type BridgeMachine = ActorRef<Snapshot<unknown> & { context: BridgeContext }, BridgeEvents>
@@ -78,8 +82,6 @@ export type ReturnTo =
 	| "TO_FINALIZE"
 
 type Direction = "deposit" | "withdrawal"
-
-type Result = ReturnType<typeof processHash>
 
 type WalletTransaction = { transaction: string; result: Result | null } | null
 
@@ -117,6 +119,13 @@ export interface BridgeOperationContext {
 }
 const currentNetwork = (context: BridgeOperationContext) =>
 	context.wallet.getSnapshot().context.currentNetwork
+
+const fetchMina = ({ network }: { network: Networks }) =>
+	({
+		type: "FetchBalance",
+		network,
+		tokens: [] as []
+	}) as const
 
 const POLL_INTERVAL = 20_000
 const POLL_TIMEOUT = 3_600_000
@@ -462,7 +471,13 @@ export const bridgeOperationMachine = setup({
 						}
 					}
 				},
-				done: { type: "final" }
+				done: {
+					type: "final",
+					entry: sendTo(
+						({ context }) => context.wallet,
+						({ context }) => fetchMina({ network: context.source })
+					)
+				}
 			},
 			onDone: [
 				{
@@ -533,6 +548,12 @@ export const bridgeOperationMachine = setup({
 							actions: assign(({ context, event }) =>
 								addToContext({ context, key: "finalizeDeposit", result: event.output.result })
 							)
+						},
+						onError: {
+							target: "#bridgeOperation.FAILED",
+							actions: assign(({ context, event }) => ({
+								errors: [...context.errors, event.error as Error]
+							}))
 						}
 					}
 				},
@@ -574,7 +595,13 @@ export const bridgeOperationMachine = setup({
 						}
 					}
 				},
-				done: { type: "final" }
+				done: {
+					type: "final",
+					entry: sendTo(
+						({ context }) => context.wallet,
+						({ context }) => fetchMina({ network: context.source })
+					)
+				}
 			},
 			onDone: [
 				{
@@ -645,25 +672,31 @@ export const bridgeOperationMachine = setup({
 							actions: assign(({ context, event }) =>
 								addToContext({ context, key: "finalizeWithdrawal", result: event.output.result })
 							)
+						},
+						onError: {
+							target: "#bridgeOperation.FAILED",
+							actions: assign(({ context, event }) => ({
+								errors: [...context.errors, event.error as Error]
+							}))
 						}
 					}
 				},
-				done: { type: "final" }
+				done: {
+					type: "final",
+					entry: sendTo(
+						({ context }) => context.wallet,
+						({ context }) => fetchMina({ network: context.destination })
+					)
+				}
 			},
 			onDone: { target: "BRIDGE_OPERATION_DONE" }
 		},
 		BRIDGE_OPERATION_DONE: {
 			type: "final",
-			entry: [
-				sendTo(
-					({ context }) => context.bridgeMachine,
-					({ self }) => ({ type: "CompleteOperation", id: self.id })
-				),
-				sendTo(
-					({ context }) => context.wallet,
-					({ context }) => ({ type: "FetchBalance", network: context.destination, tokens: [] })
-				)
-			]
+			entry: sendTo(
+				({ context }) => context.bridgeMachine,
+				({ self }) => ({ type: "CompleteOperation", id: self.id })
+			)
 		},
 		BRIDGE_OPERATION_DONE_NOOP: { type: "final" },
 		FAILED: { type: "final" }

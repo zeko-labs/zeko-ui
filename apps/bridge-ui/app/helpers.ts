@@ -1,3 +1,4 @@
+import { createToaster } from "@ark-ui/vue/toast"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 
 export const depositSteps = [
@@ -51,3 +52,9 @@ export const statusFromState = (
 	}
 	return isDeposit ? pendingDeposit(1) : pendingWithdrawal(1)
 }
+
+export const errorToaster = createToaster({
+	placement: "bottom-end",
+	overlap: true,
+	gap: 24
+})

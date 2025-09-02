@@ -24,7 +24,7 @@ export const useBridgeStore = defineStore("bridge", () => {
 	/** Bridge */
 	const bridge = useMachine(bridgeMachine, { input: { wallet: wallet.actorRef } })
 
-	onMounted(() => {
+	onBeforeMount(() => {
 		// auto-connect
 		if (wallet.snapshot.value.matches("INIT")) {
 			wallet.send({ type: "Connect" })

@@ -52,7 +52,7 @@ async function findPendingOperations({ account, l1, l2 }: FindArgs): Promise<Pen
 		bridge.fetchInnerActionsWithStates(recipient)
 	])) as [OuterActionWithState[], InnerActionWithState[]]
 
-	const toAmount = (n: bigint) => (n / BigInt(10e8)).toString()
+	const toAmount = (n: bigint) => Number(Number(n / BigInt(10e8)).toFixed(2)).toString()
 
 	const deposits = outerActions
 		.map((action, index) => {

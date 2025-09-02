@@ -1,28 +1,48 @@
 <script lang="ts" setup>
 import { useSelector } from "@lumina-dex/sdk/vue"
+import { errorToaster } from "~/helpers"
 
 const bs = useBridgeStore()
 
 const amountToBridge = ref<number | undefined>(undefined)
 
-const allOperations = useSelector(bs.bridge.actorRef, (state) =>
-	[...state.context.operations.entries()].map(([id, value]) => ({
-		id,
-		status: value.status,
-		operation: value.operation
-	}))
+// const allOperations = useSelector(bs.bridge.actorRef, (state) => [
+// 	...state.context.operations.values()
+// ])
+
+const firstNonCompleteOperation = useSelector(
+	bs.bridge.actorRef,
+	(state) =>
+		[...state.context.operations.values()].find(
+			(op) => op.status !== "completed"
+		)?.operation
 )
 
-const firstNonCompleteOperation = computed(
-	() => allOperations.value.find((op) => op.status !== "completed")?.operation
+const otherOperations = useSelector(bs.bridge.actorRef, (state) =>
+	[...state.context.operations.values()]
+		.filter((op) => op.operation.id !== firstNonCompleteOperation.value?.id)
+		.map(({ operation, status }) => ({
+			id: operation.id,
+			status,
+			operation
+		}))
 )
-const otherOperations = computed(() => {
-	if (firstNonCompleteOperation.value) {
-		return allOperations.value.filter(
-			(op) => op.id !== firstNonCompleteOperation.value?.id
-		)
+
+const firstNonCompleteOperationErrors = computed(
+	() => firstNonCompleteOperation.value?.getSnapshot().context.errors
+)
+
+watch(firstNonCompleteOperationErrors, (errors) => {
+	if (errors) {
+		const [e] = errors.toReversed()
+		if (e) {
+			errorToaster.create({
+				title: "Error",
+				description: e.message,
+				type: "error"
+			})
+		}
 	}
-	return allOperations.value
 })
 </script>
 <template>
@@ -30,14 +50,12 @@ const otherOperations = computed(() => {
     v-if='
       bs.currentNetwork.includes("mainnet") ||
       bs.wallet.snapshot.error ||
-      bs.wallet.snapshot.matches("CONNECTING") ||
-      (bs.address.length === 0 && !bs.bridge.snapshot.matches("IDLE")) ||
       (bs.address.length === 0 && bs.wallet.snapshot.matches("INIT"))
     '
   />
   <div
     class="Bridge"
-    v-else-if='!bs.currentNetwork.includes("mainnet") && bs.address.length > 0'>
+    v-else-if='!bs.currentNetwork.includes("mainnet")'>
     <div
       class="MainOperation"
       :class="{ NoOperation: !firstNonCompleteOperation }">
@@ -60,7 +78,7 @@ const otherOperations = computed(() => {
             	amount: (amountToBridge ?? 0).toString()
             })
           '
-          :disabled="!amountToBridge || amountToBridge <= 0">
+          :disabled="!amountToBridge || amountToBridge <= 0 || bs.address.length === 0">
           Bridge
         </Button>
       </div>
@@ -83,6 +101,7 @@ const otherOperations = computed(() => {
   <div v-else>
     Loading ...
   </div>
+  <Toast :toaster="errorToaster" />
 </template>
 <style lang="postcss" scoped>
 :deep(.InputBox) {

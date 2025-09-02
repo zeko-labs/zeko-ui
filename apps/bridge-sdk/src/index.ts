@@ -293,6 +293,7 @@ export class Bridge {
 			attempts++
 
 			const resultResponse = await this.l2Client.query(provedForestQuery, { key })
+			if (resultResponse.error) throw resultResponse.error
 			provedForest = resultResponse.data?.provedForest ?? null
 		}
 

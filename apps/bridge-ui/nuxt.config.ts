@@ -28,6 +28,15 @@ export default defineNuxtConfig({
 			exclude: ["@lumina-dex/sdk", "@urql/vue"]
 		}
 	},
+	hooks: {
+		//Necessary for Nuxt DevTools
+		"vite:serverCreated": (server) => {
+			server.middlewares.use((_request, response, next) => {
+				response.setHeaders(new Headers(headers))
+				next()
+			})
+		}
+	},
 	postcss: {
 		plugins: {
 			"postcss-nesting": { edition: "2024-02" }

@@ -1,14 +1,7 @@
-import type { Networks, walletMachine } from "@lumina-dex/sdk"
-import type { ActorRefFromLogic } from "xstate"
-
-type Wallet = ActorRefFromLogic<typeof walletMachine>
-
-const baseUrl = {
-	"mina:devnet": "https://mxinascan.io/devnet",
-	"mina:mainnet": "https://minascan.io/mainnet",
-	"zeko:testnet": "https://zekoscan.io/testnet",
-	"zeko:mainnet": "https://zekoscan.io/mainnet"
-} as const
+import type { ZkappCommand } from "@aurowallet/mina-provider"
+import type { Networks } from "@lumina-dex/sdk"
+import { type DBSchema, openDB } from "idb"
+import { hash } from "ohash"
 
 const urls = {
 	l1: {
@@ -48,18 +41,89 @@ export const getBridgeConfig = ({ l1, l2 }: { l1: Networks; l2: Networks }) => {
 	} as const
 }
 
-export const processHash = ({
-	hash,
-	wallet,
-	transaction
-}: { hash: string; wallet: Wallet; transaction: string }) => {
-	const timestamp = Date.now()
-	const { currentNetwork, account } = wallet.getSnapshot().context
-	const storageKey = `zeko-bridge-tx-${timestamp}-${currentNetwork}-${account}-${hash}`
-	const toStore = { timestamp, currentNetwork, account, hash, transaction }
-	localStorage.setItem(storageKey, JSON.stringify(toStore))
-	console.log("Transaction sent and saved to localStorage", { storageKey, ...toStore })
-	return { hash, url: createExplorerUrl({ network: currentNetwork, hash }) }
+export interface SavedTransaction {
+	timestamp: number
+	confirmed: boolean
+	network: Networks
+	account: string
+	transaction: string
+	zkappCommand: ZkappCommand
+	hash: string
+	id: string
+}
+
+interface ZekoBridgeDB extends DBSchema {
+	transactions: {
+		value: SavedTransaction
+		key: string
+		indexes: { "by-id": string }
+	}
+}
+
+export type HashDb = ReturnType<typeof hashDb>
+
+const baseUrl = {
+	"mina:devnet": "https://mxinascan.io/devnet",
+	"mina:mainnet": "https://minascan.io/mainnet",
+	"zeko:testnet": "https://zekoscan.io/testnet",
+	"zeko:mainnet": "https://zekoscan.io/mainnet"
+} as const
+
+export const createDb = () =>
+	openDB<ZekoBridgeDB>("Zeko-Bridge", 1, {
+		upgrade(db) {
+			const store = db.createObjectStore("transactions", { keyPath: "id" })
+			store.createIndex("by-id", "id")
+		}
+	})
+
+export const hashDb = ({
+	network,
+	account,
+	transaction,
+	db = createDb()
+}: {
+	db?: ReturnType<typeof createDb>
+	network: Networks
+	account: string
+	transaction: string
+}) => {
+	const id = hash(transaction)
+	const findUnconfirmed = async () => {
+		const transactions = await (await db).getAllFromIndex("transactions", "by-id", id)
+		return transactions.find((t) => t.confirmed === false)
+	}
+
+	const saveSigned = async ({
+		hash,
+		confirmed,
+		zkappCommand
+	}: { hash: string; confirmed: boolean; zkappCommand: ZkappCommand }) => {
+		const toStore = {
+			id,
+			timestamp: Date.now(),
+			network,
+			account,
+			hash,
+			zkappCommand,
+			transaction
+		}
+		await (await db).put("transactions", { ...toStore, confirmed })
+		console.log(`Transaction confirmed:${confirmed} saved.`, toStore)
+	}
+
+	const confirmTransaction = async () => {
+		const DB = await db
+		const tx = await DB.get("transactions", id)
+		if (!tx) throw new Error("Transaction not found")
+		tx.confirmed = true
+		await DB.put("transactions", tx)
+	}
+
+	const createResult = ({ hash }: { hash: string }) => {
+		return { hash, url: createExplorerUrl({ network, hash }) }
+	}
+	return { saveSigned, confirmTransaction, findUnconfirmed, createResult }
 }
 
 export const createExplorerUrl = ({ network, hash }: { network: Networks; hash: string }) =>
