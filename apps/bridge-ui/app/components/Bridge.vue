@@ -97,7 +97,7 @@ watch(currentOperationErrors, (errors) => {
           variant="cta2"
           @click="startBridge"
           :disabled="!amountToBridge || amountToBridge <= 0 || bs.address.length === 0">
-          Bridge
+          Send
         </Button>
       </div>
       <CurrentOperation
