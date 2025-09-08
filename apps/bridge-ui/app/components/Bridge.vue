@@ -6,33 +6,56 @@ const bs = useBridgeStore()
 
 const amountToBridge = ref<number | undefined>(undefined)
 
-// const allOperations = useSelector(bs.bridge.actorRef, (state) => [
-// 	...state.context.operations.values()
-// ])
-
-const firstNonCompleteOperation = useSelector(
-	bs.bridge.actorRef,
-	(state) =>
-		[...state.context.operations.values()].find(
-			(op) => op.status !== "completed"
-		)?.operation
-)
-
-const otherOperations = useSelector(bs.bridge.actorRef, (state) =>
-	[...state.context.operations.values()]
-		.filter((op) => op.operation.id !== firstNonCompleteOperation.value?.id)
-		.map(({ operation, status }) => ({
+const allOperations = useSelector(bs.bridge.actorRef, (state) =>
+	Object.groupBy(
+		[...state.context.operations.values()].map(({ operation, status }) => ({
 			id: operation.id,
 			status,
 			operation
-		}))
+		})),
+		({ status }) => (status === "completed" ? "complete" : "uncomplete")
+	)
 )
 
-const firstNonCompleteOperationErrors = computed(
-	() => firstNonCompleteOperation.value?.getSnapshot().context.errors
+const completedOperations = computed(() => allOperations.value.complete ?? [])
+
+const currentOperation = computed(
+	() => allOperations.value.uncomplete?.[0]?.operation
 )
 
-watch(firstNonCompleteOperationErrors, (errors) => {
+const queuedOperations = computed(
+	() =>
+		allOperations.value.uncomplete
+			?.slice(1)
+			.map(({ operation }) => operation) ?? []
+	// Array.from({ length: 10 }).map(
+	// 	() =>
+	// 		useMachine(bridgeOperationMachine, {
+	// 			input: {
+	// 				bridgeMachine: bs.bridge.actorRef,
+	// 				wallet: bs.wallet.actorRef,
+	// 				amount: "10",
+	// 				direction: "withdrawal",
+	// 				source: "zeko:testnet",
+	// 				destination: "mina:devnet"
+	// 			}
+	// 		}).actorRef
+	// )
+)
+
+const currentOperationErrors = computed(
+	() => currentOperation.value?.getSnapshot().context.errors
+)
+
+const startBridge = () => {
+	bs.bridge.send({
+		type: "StartOperation",
+		amount: (amountToBridge ?? 0).toString()
+	})
+	amountToBridge.value = undefined
+}
+
+watch(currentOperationErrors, (errors) => {
 	if (errors) {
 		const [e] = errors.toReversed()
 		if (e) {
@@ -58,7 +81,7 @@ watch(firstNonCompleteOperationErrors, (errors) => {
     v-else-if='!bs.currentNetwork.includes("mainnet")'>
     <div
       class="MainOperation"
-      :class="{ NoOperation: !firstNonCompleteOperation }">
+      :class="{ NoOperation: !currentOperation }">
       <div class="MainOperationInput">
         <div class="InputBox">
           <h4>Sending</h4>
@@ -72,34 +95,45 @@ watch(firstNonCompleteOperationErrors, (errors) => {
         <Button
           class="BridgeButton"
           variant="cta2"
-          @click='
-            bs.bridge.send({
-            	type: "StartOperation",
-            	amount: (amountToBridge ?? 0).toString()
-            })
-          '
+          @click="startBridge"
           :disabled="!amountToBridge || amountToBridge <= 0 || bs.address.length === 0">
           Bridge
         </Button>
       </div>
       <CurrentOperation
-        v-if="firstNonCompleteOperation"
-        :operation="firstNonCompleteOperation"
+        v-if="currentOperation"
+        :operation="currentOperation"
       />
     </div>
-    <div class="RecentTransactions">
-      <h3>Recent Transactions</h3>
-      <span
-        v-if='bs.bridge.snapshot.matches("FIND_OPERATIONS")'>Loading...</span>
+    <!-- <pre>{{  allOperations }}</pre> -->
+    <div v-if="queuedOperations.length > 0" class="PendingTransactions">
+      <!-- <h3>Next Transactions</h3> -->
+      <div class="QueuedOperations">
+        <QueuedOperation
+          v-for="(operation, index) of queuedOperations"
+          :operation
+          :index
+        />
+      </div>
+      <h4>
+        You will be able to complete these transactions once the current
+        transaction is completed.
+      </h4>
+    </div>
+    <div class="CompletedTransactions">
+      <h3>Completed Transactions</h3>
+      <AnimatedLoadingSpinner
+        v-if='bs.bridge.snapshot.matches("FIND_OPERATIONS")'
+      />
       <BridgeOperations
         v-else
-        :operations="otherOperations"
+        :operations="completedOperations"
       />
     </div>
   </div>
 
   <div v-else>
-    Loading ...
+    <AnimatedLoadingSpinner />
   </div>
   <Toast :toaster="errorToaster" />
 </template>
@@ -114,7 +148,7 @@ watch(firstNonCompleteOperationErrors, (errors) => {
 }
 .MainOperation {
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: minmax(auto, 50%) minmax(auto, 50%);
   gap: 2ch;
   max-width: 100vw;
   &.NoOperation {
@@ -124,14 +158,30 @@ watch(firstNonCompleteOperationErrors, (errors) => {
   }
   @media (max-width: 1024px) {
     grid-template-columns: auto;
+    grid-template-rows: auto auto;
     gap: 2rem;
   }
 }
 .MainOperationInput {
   display: grid;
   gap: 1rem;
-  border: 1px solid var(--colors-alpha-soft-gray1);
   border-radius: 1rem;
+  background: oklch(1 0 0 / 0.6);
   padding: 2rem;
+}
+
+.PendingTransactions {
+  margin-top: 2rem;
+  h4 {
+    font-style: italic;
+  }
+}
+
+.QueuedOperations {
+  display: flex;
+  gap: 3ch;
+  max-width: calc(100vw - 2 * var(--page-padding, 0));
+  overflow-y: scroll;
+  padding: 1rem 0;
 }
 </style>

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { theme } from "@zeko/design"
-
 const { steps, step } = defineProps<{
 	steps: readonly string[]
 	step: number
@@ -18,8 +16,6 @@ const progressClass = (index: number) => {
 	return { completed, current, future: !completed && !current }
 }
 
-const cosmicGold = theme.config.colors.cosmicGold
-const gray = theme.config.colors.gray[200].value
 const rawNodeSize = 24
 
 const nodeSize = {
@@ -38,9 +34,9 @@ const nodeSize = {
   <svg width="0" height="0" style="position: absolute">
     <defs>
       <linearGradient id="goldenGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" :stop-color="cosmicGold[200].value" />
-        <stop offset="50%" :stop-color="cosmicGold[100].value" />
-        <stop offset="100%" :stop-color="cosmicGold[50].value" />
+        <stop offset="0%" stop-color="var(--color-cosmicGold-200)" />
+        <stop offset="50%" stop-color="var(--color-cosmicGold-100)" />
+        <stop offset="100%" stop-color="var(--color-cosmicGold-50)" />
       </linearGradient>
     </defs>
   </svg>
@@ -135,12 +131,12 @@ const nodeSize = {
   font-size: 14px;
   font-weight: 400;
   display: none;
-  color: v-bind("theme.config.colors.gray[500].value");
+  color: var(--color-gray-500);
   align-items: center;
   min-width: 20ch;
   &.current {
     display: grid;
-    color: v-bind("theme.config.colors.gray[950].value");
+    color: var(--color-gray-950);
     font-weight: 600;
     font-size: 16px;
   }
@@ -169,12 +165,10 @@ const nodeSize = {
 .progress-line {
   flex-grow: 1;
   height: 2px;
-  background: v-bind("gray");
+  background: var(--color-gray-200);
   transition: background 0.6s ease-out;
   &.completed {
-    background: v-bind(
-      "theme.config.gradients.goldGradient[3].inversedBackground.value"
-    );
+    background: var(--gradient-goldGradient-3-inversed);
   }
 }
 
@@ -193,7 +187,7 @@ const nodeSize = {
   z-index: 1;
   circle {
     fill: transparent;
-    stroke: v-bind("gray");
+    stroke: var(--color-gray-200);
     stroke-width: 2;
     transition: fill 0.5s ease-out, stroke 0.5s ease-out;
     &.current {
@@ -211,7 +205,7 @@ const nodeSize = {
     }
     &.future {
       fill: transparent;
-      stroke: v-bind("gray");
+      stroke: var(--color-gray-200);
       stroke-width: 2;
     }
   }

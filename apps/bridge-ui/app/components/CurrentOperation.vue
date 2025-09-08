@@ -37,6 +37,15 @@ const step = computed(() => {
 		case machine.value.matches("BRIDGE_OPERATION_DONE"):
 		case machine.value.matches("BRIDGE_OPERATION_DONE_NOOP"):
 			return 3
+		case machine.value.matches("WAITING_FOR_NETWORK"): {
+			if (!machine.value.context.returnTo) return 0
+			return {
+				INIT_BRIDGE_OPERATION: 0,
+				FINALIZE_DEPOSIT: 2,
+				FINALIZE_WITHDRAWAL: 2,
+				TO_FINALIZE: 2
+			}[machine.value.context.returnTo]
+		}
 		default:
 			return 0
 	}
@@ -45,9 +54,35 @@ const status = computed(() =>
 	statusFromState(machine.value.value, machine.value.context.direction)
 )
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
+const isLoading = computed(() => {
+	switch (true) {
+		case machine.value.matches({ SUBMIT_DEPOSIT: "transaction" }):
+		case machine.value.matches({ SUBMIT_DEPOSIT: "send_and_confirm" }):
+		case machine.value.matches({ SUBMIT_WITHDRAWAL: "transaction" }):
+		case machine.value.matches({ SUBMIT_WITHDRAWAL: "send_and_confirm" }):
+		case machine.value.matches({ FINALIZE_DEPOSIT: "transaction" }):
+		case machine.value.matches({ FINALIZE_DEPOSIT: "send_and_confirm" }):
+		case machine.value.matches({ FINALIZE_WITHDRAWAL: "transaction" }):
+		case machine.value.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" }):
+		case machine.value.matches("PENDING_DEPOSIT"):
+		case machine.value.matches("PENDING_WITHDRAWAL"):
+		case machine.value.matches("WAITING_FOR_NETWORK"):
+			return true
+		case machine.value.matches("TO_FINALIZE"):
+		case machine.value.matches({ FINALIZE_DEPOSIT: "done" }):
+		case machine.value.matches({ FINALIZE_WITHDRAWAL: "done" }):
+		case machine.value.matches({ SUBMIT_DEPOSIT: "done" }):
+		case machine.value.matches({ SUBMIT_WITHDRAWAL: "done" }):
+		case machine.value.matches("BRIDGE_OPERATION_DONE_NOOP"):
+		case machine.value.matches("BRIDGE_OPERATION_DONE"):
+			return false
+		default:
+			return false
+	}
+})
 </script>
 <template>
-  <div :class="{ CurrentOperationWrapper: true }">
+  <div :class="{ CurrentOperationWrapper: true, isLoading }">
     <div class="ProgressBar">
       <ProgressBar :steps :step />
     </div>
@@ -70,14 +105,25 @@ const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
         <div class="Row">
           <div>Amount</div>
           <div class="Mina">
-            <span>{{ machine.context.amount }}</span>
             <SvgMinaToken width="24" height="24" />
+            <span>{{ machine.context.amount }}</span>
           </div>
         </div>
       </div>
       <div class="Bottom">
         <div>
           <Button
+            v-if='machine.matches("WAITING_FOR_NETWORK")'
+            variant="cta2"
+            @click='
+              machine.context.wallet.send({
+              	type: "RequestNetworkChange",
+              	network: machine.context.changeNetworkTo
+              })
+            '>Change Network</Button>
+
+          <Button
+            v-else
             variant="cta2"
             :disabled="!toFinalize"
             @click='operation.send({ type: "Finalize" })'>Finalize</Button>
@@ -143,24 +189,76 @@ const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
               confirmation.
             </Match>
             <Match :when='machine.matches("WAITING_FOR_NETWORK")'>
-              Swap to the correct network
+              <div class="Flex">
+                <span> You must swap to&nbsp;</span>
+                <NetworkBadge :network="machine.context.changeNetworkTo" />
+                <span>.</span>
+              </div>
+            </Match>
+            <Match :when='machine.matches("FAILED")'>
+              <div class="error">
+                <span>Something went wrong :</span>
+                <pre v-for="error of machine.context.errors">{{  error }}</pre>
+              </div>
             </Match>
           </Switch>
+        </div>
+        <div class="Loading">
+          <AnimatedLoadingSpinner v-if="isLoading" class="animation" />
+          <AnimatedGreenCheckmark
+            class="animation"
+            v-else-if='machine.matches("BRIDGE_OPERATION_DONE")'
+          />
         </div>
       </div>
     </div>
   </div>
 </template>
 <style lang="postcss" scoped>
+@keyframes spinning-border {
+  0%,
+  100% {
+    clip-path: inset(0 0 var(--spinning-border-clip-path-size) 0);
+  }
+  25% {
+    clip-path: inset(0 0 0 var(--spinning-border-clip-path-size));
+  }
+  50% {
+    clip-path: inset(var(--spinning-border-clip-path-size) 0 0 0);
+  }
+  75% {
+    clip-path: inset(0 var(--spinning-border-clip-path-size) 0 0);
+  }
+}
 .CurrentOperationWrapper {
+  --spinning-border-clip-path-size: 99%;
+  --background: oklch(1 0 0 / 0.6);
+  --border-radius: 1rem;
+  --border-size: 2px;
+  --border-color: var(--color-cosmicGold-50);
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 1rem;
   height: 100%;
-  background: oklch(1 0 0 / 0.7);
   padding: 2rem;
-  border-radius: 1rem;
+  background: var(--background);
+  border-radius: var(--border-radius);
+  &.isLoading {
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border: var(--border-size) solid var(--border-color);
+      border-radius: var(--border-radius);
+      transition: all 0.5s;
+      animation: spinning-border 3s infinite linear;
+    }
+  }
 }
 .Operation {
   display: grid;
@@ -185,17 +283,30 @@ const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
   }
   .Bottom {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto 1fr auto;
     gap: 2ch;
     align-items: flex-end;
     .Explanation {
       font-style: italic;
       max-width: 60ch;
-      font-size: var(--fonts-lexend-typescale-scale-s);
+      font-size: var(--typography-lexend-s);
+      .Flex {
+        display: flex;
+      }
       p {
         margin: 0;
       }
     }
   }
+}
+
+.animation {
+  --size: 6rem;
+  height: var(--size);
+  width: var(--size);
+}
+
+.error {
+  color: var(--color-persianRed-600);
 }
 </style>

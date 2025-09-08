@@ -98,7 +98,7 @@ header {
     display: flex;
     place-items: center;
     gap: 0.5ch;
-    border-right: 1px solid var(--colors-alpha-soft-gray1);
+    border-right: 1px solid var(--color-alpha-soft-gray1);
     padding-right: 1ch;
   }
 }
@@ -117,13 +117,13 @@ header {
     place-items: center;
   }
   &.granted {
-    color: var(--colors-cosmicGold-medium);
+    color: var(--color-cosmicGold-medium);
   }
   &.denied {
-    color: var(--colors-persianRed-400);
+    color: var(--color-persianRed-400);
   }
   &.default {
-    color: var(--colors-persianRed-400);
+    color: var(--color-persianRed-400);
   }
 }
 </style>

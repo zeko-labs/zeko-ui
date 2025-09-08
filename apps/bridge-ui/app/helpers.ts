@@ -33,7 +33,7 @@ const pendingWithdrawal = withdrawal("pending")
 export const statusFromState = (
 	state: MachineStates,
 	direction: Direction
-): { text: string; kind: "pending" | "complete" } => {
+): { text: string; kind: "pending" | "complete" | "error" } => {
 	const isDeposit = direction === "deposit"
 	if (typeof state === "string") {
 		if (state.includes("DONE"))
@@ -43,6 +43,8 @@ export const statusFromState = (
 		if (state === "TO_FINALIZE") return isDeposit ? pendingDeposit(2) : pendingWithdrawal(2)
 		if (state === "PAUSED") return { text: "Paused", kind: "pending" }
 		if (state === "IDLE") return { text: "Idle", kind: "pending" }
+		if (state === "FAILED") return { text: "Failed", kind: "error" }
+		if (state === "WAITING_FOR_NETWORK") return { text: "Waiting for network", kind: "pending" }
 	}
 	if (typeof state === "object") {
 		if ("SUBMIT_DEPOSIT" in state) return pendingDeposit(0)

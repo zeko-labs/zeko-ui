@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, useSlots } from "vue"
-import { theme } from "@zeko/design"
 
 interface Props {
 	variant?: "auro" | "black" | "cta1" | "cta2" | "cta3" | "default"
@@ -9,17 +8,18 @@ interface Props {
 defineOptions({ inheritAttrs: false })
 
 const { variant = "default" } = defineProps<Props>()
+const cssforge = useCssforge()
 
 const isCta = computed(() => variant !== "default")
 
 const size = computed(() => (isCta.value ? "cta" : "default"))
 
 const buttonStyle = computed(() => {
-	const sizes = theme.config.sizes.button[size.value]
-	const colors = theme.config.colors
+	const sizes = cssforge.primitives.button.value[size.value]
+	const colors = cssforge.colors.palette.value
 
 	const baseStyles = {
-		color: theme.config.colors.gray[50].value,
+		color: colors.gray[50].value,
 		width: sizes.width.value,
 		height: sizes.height.value,
 		padding: sizes.padding.value,
@@ -34,11 +34,11 @@ const buttonStyle = computed(() => {
 	} as const
 	const cta = {
 		...baseStyles,
-		borderColor: theme.config.semantic.border.primary.value,
+		borderColor: cssforge.colors.theme.value.light.border.primary.value,
 		disabled: {
-			color: theme.config.semantic.content.secondary.value,
-			borderColor: theme.config.semantic.border.primaryDark.value,
-			background: theme.config.semantic.background.secondary.value
+			color: cssforge.colors.theme.value.light.content.secondary.value,
+			borderColor: cssforge.colors.theme.value.light.border.primaryDark.value,
+			background: cssforge.colors.theme.value.light.background.secondary.value
 		},
 		hover: { background: "inherit", borderColor: "inherit", opacity: 0.9 },
 		active: { background: "inherit", borderColor: "inherit", opacity: 0.8 }
@@ -49,32 +49,35 @@ const buttonStyle = computed(() => {
 			background: colors.gray[950].value,
 			borderColor: colors.gray[950].value,
 			disabled: {
-				color: theme.config.semantic.content.tertiary.value,
-				borderColor: theme.config.semantic.background.secondary.value,
-				background: theme.config.semantic.background.secondary.value
+				color: cssforge.colors.theme.value.light.content.tertiary.value,
+				borderColor: cssforge.colors.theme.value.light.border.secondary.value,
+				background: cssforge.colors.theme.value.light.background.secondary.value
 			},
 			hover: {
 				opacity: "inherit",
-				background: theme.config.colors.gray[900].value,
-				borderColor: theme.config.colors.gray[900].value
+				background: cssforge.colors.palette.value.gray[900].value,
+				borderColor: cssforge.colors.palette.value.gray[900].value
 			},
 			active: {
 				opacity: "inherit",
-				background: theme.config.colors.gray[800].value,
-				borderColor: theme.config.colors.gray[800].value
+				background: cssforge.colors.palette.value.gray[800].value,
+				borderColor: cssforge.colors.palette.value.gray[800].value
 			}
 		},
 		cta1: {
 			...cta,
-			background: theme.config.gradients.buttonGradients.cta1.background.value
+			background:
+				cssforge.colors.gradients.value.goldGradient["button-cta-1"].value
 		},
 		cta2: {
 			...cta,
-			background: theme.config.gradients.buttonGradients.cta2.background.value
+			background:
+				cssforge.colors.gradients.value.goldGradient["button-cta-2"].value
 		},
 		cta3: {
 			...cta,
-			background: theme.config.gradients.buttonGradients.cta3.background.value
+			background:
+				cssforge.colors.gradients.value.goldGradient["button-cta-3"].value
 		},
 		auro: {
 			...cta,
@@ -84,7 +87,7 @@ const buttonStyle = computed(() => {
 		black: {
 			...cta,
 			background:
-				"linear-gradient(263deg, var(--colors-gray-950) 0%, var(--colors-gray-700) 100%)",
+				"linear-gradient(263deg, var(--color-gray-950) 0%, var(--color-gray-700) 100%)",
 			borderColor: "rgba(255, 255, 255, 0.20)"
 		}
 	} as const
@@ -150,20 +153,20 @@ const className = computed(
 
 .ZekoButtonBlack {
   &:disabled {
-    background: var(--semantic-background-secondary);
-    color: var(--colors-gray-400);
+    background: var(--theme-light-background-secondary);
+    color: var(--color-gray-400);
     box-shadow: inset 0 0 0 1px oklch(0.8607 0 0);
     cursor: not-allowed;
   }
   &:not(:disabled) {
     &:hover {
       background: linear-gradient(
-        var(--colors-gray-950),
-        var(--colors-gray-950)
+        var(--color-gray-950),
+        var(--color-gray-950)
       );
     }
     &:active {
-      background: var(--colors-gray-950);
+      background: var(--color-gray-950);
       box-shadow: inset 0 0 0 3px v-bind("buttonStyle.borderColor");
     }
   }

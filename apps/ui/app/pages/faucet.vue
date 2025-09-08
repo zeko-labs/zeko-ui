@@ -177,8 +177,8 @@ main {
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: min-content auto;
-  color: var(--colors-gray-900);
-  font-size: var(--fonts-lexend-typescale-scale-m);
+  color: var(--color-gray-900);
+  font-size: var(--typography-lexend-m);
   :deep(.Navigation) {
     padding: 2.5rem 0rem;
   }
@@ -199,13 +199,13 @@ main {
   }
 }
 h3 {
-  font-size: var(--fonts-lexend-typescale-scale-h3);
-  color: var(--colors-gray-950);
+  font-size: var(--typography-lexend-h3);
+  color: var(--color-gray-950);
   padding: 0;
   margin: 0;
 }
 a {
-  color: var(--colors-cosmicGold-200);
+  color: var(--color-cosmicGold-200);
   text-decoration: none;
 }
 
@@ -275,9 +275,9 @@ a {
 
 .Faucet {
   p {
-    color: var(--colors-gray-800);
+    color: var(--color-gray-800);
     &.success {
-      color: var(--colors-complete-content);
+      color: var(--color-complete-content);
     }
   }
   .error {
@@ -285,7 +285,7 @@ a {
     align-items: center;
     justify-content: flex-start;
     gap: 0.5rem;
-    color: var(--colors-persianRed-500);
+    color: var(--color-persianRed-500);
   }
 }
 
@@ -321,19 +321,19 @@ a {
   .InputWrapper {
     display: inline-flex;
     align-items: center;
-    color: var(--colors-gray-900);
+    color: var(--color-gray-900);
     background-color: white;
     opacity: 0.75;
     border-radius: 0.5rem;
-    border: 1px solid var(--colors-gray-200);
+    border: 1px solid var(--color-gray-200);
     padding-left: 1rem;
     width: 100%;
     input {
       width: 100%;
     }
     &:has(input:focus) {
-      background: var(--gradients-border-mainnetEra-background);
-      border: var(--gradients-border-mainnetEra-border);
+      background: var(--border-mainnetEra-background);
+      border: var(--border-mainnetEra-border);
     }
   }
 
@@ -341,7 +341,7 @@ a {
   [data-scope="field"][data-part="input"] {
     background: transparent;
     border: none;
-    font-size: var(--fonts-lexend-typescale-scale-s);
+    font-size: var(--typography-lexend-s);
     padding: 12px 16px;
     outline: none;
     height: 100%;
@@ -356,12 +356,12 @@ a {
 
   /* Label */
   [data-scope="field"][data-part="label"] {
-    font-size: var(--fonts-lexend-typescale-scale-xs);
-    color: var(--semantic-content-tertiary);
+    font-size: var(--typography-lexend-xs);
+    color: var(--theme-light-content-tertiary);
   }
 
   [data-scope="field"][data-part="helper-text"] {
-    font-size: var(--fonts-lexend-typescale-scale-xs);
+    font-size: var(--typography-lexend-xs);
     font-style: italic;
   }
 
@@ -376,8 +376,8 @@ a {
 }
 
 footer {
-  font-size: var(--fonts-lexend-typescale-scale-s);
-  color: var(--colors-gray-500);
+  font-size: var(--typography-lexend-s);
+  color: var(--color-gray-500);
   padding: 4rem 0 4rem 0;
   /* Tablet & Desktop */
   @media (min-width: 480px) {

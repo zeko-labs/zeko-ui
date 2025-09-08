@@ -37,13 +37,13 @@ const isExternal = (url: string) => url.startsWith("http")
 </template>
 <style lang="postcss" scoped>
 button {
-  font-size: var(--fonts-lexend-typescale-scale-m);
+  font-size: var(--typography-lexend-m);
   font-family: inherit;
   font-weight: 500;
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  color: var(--colors-gray-950);
+  color: var(--color-gray-950);
   border: none;
   background: none;
   padding: 0;
@@ -54,15 +54,15 @@ button {
 }
 [data-scope="menu"][data-part="item"] {
   a {
-    color: var(--colors-gray-950);
-    font-size: var(--fonts-lexend-typescale-scale-s);
+    color: var(--color-gray-950);
+    font-size: var(--typography-lexend-s);
     text-decoration: none;
     font-weight: 500;
     outline: none;
   }
   &[data-highlighted] {
     a {
-      color: var(--colors-cosmicGold-100);
+      color: var(--color-cosmicGold-100);
     }
   }
 }
@@ -74,7 +74,7 @@ button {
   }
   [data-scope="menu"][data-part="item"] {
     a {
-      font-size: var(--fonts-lexend-typescale-scale-l);
+      font-size: var(--typography-lexend-l);
     }
   }
 }

@@ -102,14 +102,14 @@ h2, p {
   text-align: center;
   gap: 1rem;
   .Title {
-    font-size: var(--fonts-lexend-typescale-scale-h4);
+    font-size: var(--typography-lexend-h4);
     font-weight: 500;
     line-height: 140%;
     width: 15ch;
   }
   .Description {
     padding: 1rem 0 0.5rem 0;
-    font-size: var(--fonts-lexend-typescale-scale-m);
+    font-size: var(--typography-lexend-m);
     font-weight: 500;
     width: 40ch;
     color: oklch(100 0 0 / 0.8);
@@ -126,7 +126,7 @@ h2, p {
   padding: 2rem 0rem;
   .Date {
     grid-area: date;
-    font-size: var(--fonts-lexend-typescale-scale-xs);
+    font-size: var(--typography-lexend-xs);
     font-weight: 400;
     opacity: 0.5;
     justify-self: start;
@@ -144,7 +144,7 @@ h2, p {
     display: flex;
     gap: 1.5rem;
     justify-self: end;
-    font-size: var(--fonts-lexend-typescale-scale-xs);
+    font-size: var(--typography-lexend-xs);
     font-weight: 400;
     opacity: 0.8;
     a {
@@ -166,14 +166,14 @@ h2, p {
     padding: 0;
     .Date {
       justify-self: center;
-      font-size: var(--fonts-lexend-typescale-scale-s);
+      font-size: var(--typography-lexend-s);
     }
     .Logos {
       justify-self: center;
     }
     .TOS {
       justify-self: center;
-      font-size: var(--fonts-lexend-typescale-scale-s);
+      font-size: var(--typography-lexend-s);
     }
   }
 }

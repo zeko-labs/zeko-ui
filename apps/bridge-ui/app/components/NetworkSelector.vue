@@ -5,7 +5,6 @@ import { Field } from "@ark-ui/vue/field"
 // biome-ignore lint/style/useImportType: <explanation>
 import { Select, createListCollection, useSelect } from "@ark-ui/vue/select"
 import type { Networks } from "@lumina-dex/sdk"
-import { theme } from "@zeko/design"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ChevronDownIcon } from "lucide-vue-next"
 
@@ -37,8 +36,6 @@ const collection = createListCollection({
 		return true
 	})
 })
-
-const colors = theme.config.colors
 
 const onValueChange = (details: Select.ValueChangeDetails) => {
 	if (target === "source") {
@@ -78,11 +75,12 @@ watch(
           <div class="TriggerWrapper">
             <Select.Trigger>
               <div class="TriggerContent">
-                <div class="TextWithLogo">
-                  <Select.ValueText placeholder="Placeholder" as-child>
-                    <NetworkBadge :network="select.value[0] as Networks" />
-                  </Select.ValueText>
-                </div>
+                <Select.ValueText placeholder="Placeholder" as-child>
+                  <NetworkBadge
+                    :icon="true"
+                    :network="select.value[0] as Networks"
+                  />
+                </Select.ValueText>
                 <Select.Indicator style="display: none">
                   <ChevronDownIcon :stroke-width="1" />
                 </Select.Indicator>
@@ -97,7 +95,7 @@ watch(
                 <Select.ItemGroupLabel>Networks</Select.ItemGroupLabel>
                 <Select.Item v-for="item of collection.items" :key="item" :item>
                   <Select.ItemText>
-                    <NetworkBadge :network="item" />
+                    <NetworkBadge :icon="true" :network="item" />
                   </Select.ItemText>
                   <Select.ItemIndicator>✓</Select.ItemIndicator>
                 </Select.Item>
@@ -121,9 +119,9 @@ span, button {
 [data-scope="field"][data-part="root"] {
   display: grid;
   grid-template-columns: 1fr;
-  background-color: v-bind("colors.spaceBlue.value");
+  background-color: var(--color-basic-spaceBlue);
   border-radius: 8px;
-  border: 1px solid v-bind("colors.gray[200].value");
+  border: 1px solid var(--color-gray-200);
   overflow: hidden;
 }
 
@@ -135,20 +133,14 @@ span, button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  .TextWithLogo {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-gap: 1ch;
-    align-items: center;
-  }
 }
 
 /* Select button */
 [data-scope="select"][data-part="trigger"] {
   display: grid;
   align-items: center;
-  background-color: v-bind("colors.spaceBlue.value");
-  color: v-bind("colors.gray[900].value");
+  background-color: var(--color-basic-spaceBlue);
+  color: var(--color-gray-900);
   cursor: pointer;
   border: 0;
   border-radius: 4px;
@@ -157,7 +149,7 @@ span, button {
   font-size: 16px;
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 1px v-bind("colors.gray[200].value");
+    box-shadow: 0 0 0 1px var(--color-gray-200);
   }
 }
 
@@ -168,8 +160,8 @@ select[aria-hidden="true"] {
 
 /* Select dropdown menu*/
 [data-scope="select"][data-part="content"] {
-  color: v-bind("colors.gray[900].value");
-  background-color: v-bind("colors.gray[200].value");
+  color: var(--color-gray-900);
+  background-color: var(--color-gray-200);
   border: 1px solid white;
   border-radius: 4px;
   padding: 10px 8px;
@@ -178,7 +170,7 @@ select[aria-hidden="true"] {
   transform: scale(1.02);
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 1px v-bind("colors.gray[200].value");
+    box-shadow: 0 0 0 1px var(--color-gray-200);
   }
 }
 
@@ -204,18 +196,18 @@ select[aria-hidden="true"] {
   }
 
   &[data-highlighted] {
-    box-shadow: 0 0 0 1px rgba(250, 250, 250, 1);
+    box-shadow: 0 0 0 1px var(--color-basic-white);
   }
 
   &:hover, [data-highlighted] {
-    color: v-bind("colors.white.value");
+    color: var(--color-basic-white);
   }
 
   &[aria-selected="true"] {
     &:hover, [data-highlighted] {
-      color: v-bind("colors.gray[950].value");
+      color: var(--color-gray-950);
     }
-    background-color: rgba(250, 250, 250, 1);
+    background-color: var(--color-basic-white);
   }
 }
 </style>

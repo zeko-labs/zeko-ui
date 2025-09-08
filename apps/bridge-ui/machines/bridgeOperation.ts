@@ -551,6 +551,8 @@ export const bridgeOperationMachine = setup({
 						},
 						onError: {
 							target: "#bridgeOperation.FAILED",
+							// target: "send_and_confirm",
+							// reenter: true,
 							actions: assign(({ context, event }) => ({
 								errors: [...context.errors, event.error as Error]
 							}))

@@ -9,9 +9,11 @@
 		"build": "nuxt build playground",
 		"generate": "nuxt generate playground",
 		"postinstall": "nuxt prepare playground",
-		"preview": "nuxt preview playground"
+		"preview": "nuxt preview playground",
+		"cssforge": "node node_modules/@hebilicious/cssforge/src/cli --css app/assets/styles/cssforge.css"
 	},
 	"devDependencies": {
+		"@hebilicious/cssforge": "npm:@jsr/hebilicious__cssforge@^0.1.1",
 		"nuxt": "^4.0.3",
 		"typescript": "^5.8.3",
 		"vue": "latest"

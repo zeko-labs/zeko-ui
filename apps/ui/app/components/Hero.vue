@@ -34,8 +34,8 @@
   display: grid;
   grid-template-rows: 1fr auto;
   height: 100%;
-  color: var(--colors-gray-950);
-  font-size: var(--fonts-lexend-typescale-scale-m);
+  color: var(--color-gray-950);
+  font-size: var(--typography-lexend-m);
 }
 
 @media (max-width: 1024px) {
@@ -87,7 +87,7 @@
   gap: 0.5rem;
   align-self: stretch;
   .Title {
-    font-size: var(--fonts-lexend-typescale-scale-h3);
+    font-size: var(--typography-lexend-h3);
     font-weight: 500;
     b {
       font-weight: 600;
@@ -96,8 +96,8 @@
   .Description {
     width: 50ch;
     text-wrap: balance;
-    color: var(--colors-gray-700);
-    font-size: var(--fonts-lexend-typescale-scale-m);
+    color: var(--color-gray-700);
+    font-size: var(--typography-lexend-m);
     font-weight: 300;
     line-height: 155%;
     b {
@@ -113,7 +113,7 @@
     text-align: center;
     text-wrap: balance;
     .Title {
-      font-size: var(--fonts-lexend-typescale-scale-xxl);
+      font-size: var(--typography-lexend-xxl);
     }
     .Description {
       width: auto;
@@ -146,7 +146,7 @@
   background: rgba(255, 255, 255, 0.24);
   backdrop-filter: blur(2px);
   :deep(a) {
-    color: var(--colors-gray-950);
+    color: var(--color-gray-950);
   }
 }
 

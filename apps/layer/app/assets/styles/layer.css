@@ -1,0 +1,9 @@
+h1 {
+  font-size: var(--typography-lexend-h1);
+}
+h2 {
+  font-size: var(--typography-lexend-h2);
+}
+h3 {
+  font-size: var(--typography-lexend-h3);
+}

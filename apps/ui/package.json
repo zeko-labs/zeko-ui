@@ -29,7 +29,7 @@
 		"@zeko/layer": "workspace:^",
 		"arktype": "^2.1.0",
 		"lucide-vue-next": "^0.453.0",
-		"nuxt": "3.16.2",
+		"nuxt": "^4.0.3",
 		"vue": "latest",
 		"xstate": "^5.19.0"
 	},

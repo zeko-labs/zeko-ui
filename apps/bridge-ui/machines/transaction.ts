@@ -55,13 +55,21 @@ export const transactionMachine = setup({
 		signTransaction: fromPromise<ZkappCommand, { transaction: string }>(({ input }) => {
 			return act("signTransaction", async () => {
 				const { transaction } = input
-				const result = await window.mina.sendTransaction({ onlySign: true, transaction })
+				const originalTransaction = JSON.parse(transaction) as ZkappCommand
+				console.log({ originalTransaction })
+				if (originalTransaction.feePayer.body.fee === "0") {
+					originalTransaction.feePayer.body.fee = "1"
+				}
+				const result = await window.mina.sendTransaction({
+					onlySign: true,
+					transaction: JSON.stringify(originalTransaction)
+				})
 				if (result instanceof Error) throw result
 				if ("signedData" in result) {
-					logger.success("Transaction signed", result)
 					// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-					const parsedJson = (JSON.parse(result.signedData) as any).zkappCommand as ZkappCommand
-					return parsedJson
+					const zkappCommand = (JSON.parse(result.signedData) as any).zkappCommand as ZkappCommand
+					console.log({ zkappCommand })
+					return zkappCommand
 				}
 				throw new Error("Couldn't find signedData")
 			})
@@ -69,6 +77,7 @@ export const transactionMachine = setup({
 		sendSignedTransaction: fromPromise<Mina.PendingTransaction, SendSignedTxInput>(({ input }) => {
 			return act("sendSignedTransaction", async () => {
 				const { signedTransaction: zkappCommand, db, zeko } = input
+				console.log({ zkappCommand })
 				const sentTransaction = await Transaction.fromJSON(zkappCommand).send()
 				logger.success("Transaction sent", sentTransaction)
 				await db.saveSigned({ hash: sentTransaction.hash, confirmed: zeko, zkappCommand })
@@ -134,11 +143,7 @@ export const transactionMachine = setup({
 							enqueue.assign({ savedTransaction: event.output })
 						})
 					}
-				],
-				onError: {
-					target: "FAILED",
-					actions: assign({ result: ({ event }) => event.error as Error })
-				}
+				]
 			}
 		},
 		SIGNING: {
@@ -149,17 +154,13 @@ export const transactionMachine = setup({
 				onDone: {
 					target: "SENDING",
 					actions: assign({ signedTransaction: ({ event }) => event.output })
-				},
-				onError: {
-					target: "FAILED",
-					actions: assign({ result: ({ event }) => event.error as Error })
 				}
 			}
 		},
 		SENDING: {
+			description: "Send a signed transaction with o1js, and save it to idb.",
 			invoke: {
 				src: "sendSignedTransaction",
-				description: "Send a signed transaction with o1js, and save it to idb.",
 				input: ({ context: { signedTransaction, db, wallet } }) => {
 					if (!signedTransaction) throw new Error("No signed transaction to send")
 					return {
@@ -184,11 +185,7 @@ export const transactionMachine = setup({
 							result: context.db.createResult({ hash: event.output.hash })
 						}))
 					}
-				],
-				onError: {
-					target: "FAILED",
-					actions: assign({ result: ({ event }) => event.error as Error })
-				}
+				]
 			}
 		},
 		WAITING: {
@@ -207,14 +204,9 @@ export const transactionMachine = setup({
 						enqueue.assign({ result: db.createResult({ hash: event.output }) })
 						db.confirmTransaction()
 					})
-				},
-				onError: {
-					target: "FAILED",
-					actions: assign({ result: ({ event }) => event.error as Error })
 				}
 			}
 		},
-		DONE: { type: "final" },
-		FAILED: { type: "final" }
+		DONE: { type: "final" }
 	}
 })

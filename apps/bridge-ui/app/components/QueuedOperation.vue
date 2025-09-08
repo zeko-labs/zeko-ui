@@ -1,0 +1,92 @@
+<script setup lang="ts">
+import { useSelector } from "@lumina-dex/sdk/vue"
+// biome-ignore lint/correctness/noUnusedImports: <explanation>
+import { ArrowBigRightDashIcon } from "lucide-vue-next"
+import type { ActorRefFromLogic } from "xstate"
+import { statusFromState } from "~/helpers"
+import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+
+const { operation, index = 0 } = defineProps<{
+	index: number
+	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
+}>()
+const machine = useSelector(operation, (state) => state)
+
+const status = computed(() =>
+	statusFromState(machine.value.value, machine.value.context.direction)
+)
+</script>
+<template>
+  <div class="Wrapper">
+    <div class="Top">
+      <div class="Index">#{{ index + 1 }}</div>
+    </div>
+    <div class="Middle">
+      <NetworkBadge :icon="true" :network="machine.context.source" />
+      <ArrowBigRightDashIcon class="arrow" />
+      <NetworkBadge :icon="true" :network="machine.context.destination" />
+    </div>
+    <div class="Bottom">
+      <Label :is="status.kind">{{ status.text }}</Label>
+      <div class="Mina">
+        <SvgMinaToken width="24" height="24" />
+        <span>{{ machine.context.amount }}</span>
+      </div>
+    </div>
+  </div>
+</template>
+<style lang="postcss" scoped>
+.Wrapper {
+  --background: oklch(1 0 0 / 0.6);
+  position: relative;
+  z-index: 0;
+  display: grid;
+  gap: 1ch;
+  width: fit-content;
+  background: var(--background);
+  border: 1px solid var(--background);
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  &:hover {
+    border: 1px solid var(--color-cosmicGold-medium);
+    transition: all 0.1s;
+  }
+  .Top {
+    display: flex;
+    justify-content: flex-end;
+    .Index {
+      --size: 3ch;
+      border-radius: 4rem;
+      min-width: var(--size);
+      min-height: var(--size);
+      padding: 0.25rem;
+      aspect-ratio: 1 / 1;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--color-alpha-soft-gray1);
+      background: oklch(from var(--color-cosmicGold-50) l c h / 0.1);
+      font-size: var(--typography-lexend-xs);
+    }
+  }
+  .Middle {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(max-content, 1fr));
+    align-items: center;
+    gap: 1ch;
+    font-size: var(--typography-lexend-l);
+    .arrow {
+      color: var(--color-yellow-500);
+    }
+  }
+  .Bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    .Mina {
+      display: flex;
+      place-items: center;
+      gap: 0.5ch;
+    }
+  }
+}
+</style>

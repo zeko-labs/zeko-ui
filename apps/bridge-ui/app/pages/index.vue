@@ -27,18 +27,23 @@
     <Label is="complete" />
   </div> -->
 </template>
+<style lang="postcss">
+:root {
+  --page-padding: 3rem;
+  @media (max-width: 1024px) {
+    --page-padding: 0rem;
+  }
+}
+</style>
 <style lang="postcss" scoped>
 .Container {
   position: relative;
   width: 100vw;
   min-height: 100vh;
   overflow-x: hidden;
-  padding: 0 3rem;
+  padding: 0 var(--page-padding);
   display: grid;
   grid-template-rows: auto 1fr;
-  @media (max-width: 1024px) {
-    padding: 0rem;
-  }
 }
 
 .Content {
@@ -46,21 +51,20 @@
   gap: 2ch;
   grid-template-rows: auto 1fr;
   position: relative;
-  color: var(--colors-gray-950);
+  color: var(--color-gray-950);
 }
 
 main {
   display: grid;
   gap: 4ch;
-  padding: 0 1rem;
   h2 {
     text-align: center;
   }
 }
 
 footer {
-  font-size: var(--fonts-lexend-typescale-scale-s);
-  color: var(--colors-gray-500);
+  font-size: var(--typography-lexend-s);
+  color: var(--color-gray-500);
   padding: 4rem 1rem;
   /* Tablet & Desktop */
   @media (min-width: 480px) {

@@ -96,12 +96,12 @@ const table = useVueTable({
 
           <!-- From cell: network label -->
           <td>
-            <NetworkBadge :network="row.original.source"></NetworkBadge>
+            <NetworkBadge :network="row.original.source" />
           </td>
 
           <!-- To cell: network label -->
           <td>
-            <NetworkBadge :network="row.original.destination"></NetworkBadge>
+            <NetworkBadge :network="row.original.destination" />
           </td>
 
           <!-- Amount cell: add MINA suffix -->
@@ -123,7 +123,7 @@ const table = useVueTable({
 
         <!-- Empty state -->
         <tr v-if="data.length === 0">
-          <td :colspan="columns.length">No recent transactions.</td>
+          <td :colspan="columns.length">No transactions.</td>
         </tr>
       </tbody>
     </table>

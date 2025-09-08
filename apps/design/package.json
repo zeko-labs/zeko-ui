@@ -2,5 +2,8 @@
 	"name": "@zeko/design",
 	"private": true,
 	"type": "module",
-	"main": "src/index.ts"
+	"main": "src/index.ts",
+	"dependencies": {
+		"@hebilicious/cssforge": "npm:@jsr/hebilicious__cssforge@^0.1.1"
+	}
 }

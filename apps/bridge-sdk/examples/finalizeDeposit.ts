@@ -1,6 +1,7 @@
 import { env } from "node:process"
 import { PrivateKey } from "o1js"
 import { Bridge } from "../src/index"
+import { writeLog } from "./write-log"
 
 if (!env.MINA_PRIVATE_KEY) {
 	throw new Error("MINA_PRIVATE_KEY is not set")
@@ -22,9 +23,11 @@ async function main() {
 
 	const txn = await bridge.finalizeDeposit(recipient)
 
-	console.log(txn.toPretty())
+	const signed = txn.sign([signer])
+	console.log(signed.toJSON())
+	writeLog({ log: signed, name: "finalize-deposit" })
 
-	const result = await txn.sign([signer]).send()
+	const result = await signed.send()
 
 	console.log(result.hash)
 }

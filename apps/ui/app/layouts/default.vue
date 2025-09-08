@@ -1,8 +1,3 @@
-<script lang="ts" setup>
-import { theme } from "@zeko/design"
-const styles = theme
-</script>
-
 <template>
   <div class="page-background">
     <video class="desktop background-video" autoplay loop muted playsinline>
@@ -19,7 +14,7 @@ const styles = theme
       />
       Your browser does not support the video tag.
     </video>
-    <div class="Layout" :style="styles.css.string">
+    <div class="Layout">
       <slot />
     </div>
   </div>

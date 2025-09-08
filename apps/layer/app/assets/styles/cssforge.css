@@ -1,0 +1,185 @@
+/*____ CSSForge ____*/
+:root {
+  /*____ Colors ____*/
+  /* Palette */
+  --color-basic-white: oklch(100% 0 0);
+  --color-basic-black: oklch(0% 0 0);
+  --color-basic-spaceBlue: oklch(97.315% 0 0 / 56.00000000000001%);
+  --color-alpha-soft-gray1: oklch(14.48% 0 0 / 12%);
+  --color-alpha-soft-gray2: oklch(14.48% 0 0 / 24%);
+  --color-gray-50: oklch(97.315% 0 0);
+  --color-gray-100: oklch(92.797% 0 0);
+  --color-gray-200: oklch(86.069% 0 0);
+  --color-gray-300: oklch(75.7% 0 0);
+  --color-gray-400: oklch(62.7% 0 0);
+  --color-gray-500: oklch(53.476% 0 0);
+  --color-gray-600: oklch(47.8% 0 0);
+  --color-gray-700: oklch(42.8% 0 0);
+  --color-gray-800: oklch(39.042% 0 0);
+  --color-gray-900: oklch(36.002% 0 0);
+  --color-gray-950: oklch(14.479% 0 0);
+  --color-cosmicGold-50: oklch(91.642% 0.15696 98.188);
+  --color-cosmicGold-90: oklch(73.683% 0.13788 73.881);
+  --color-cosmicGold-100: oklch(72.311% 0.13818 71.166);
+  --color-cosmicGold-200: oklch(59.222% 0.10877 74.108);
+  --color-cosmicGold-medium: oklch(76.12% 0.1554 79.54);
+  --color-yellow-50: oklch(97.7% 0.016 99);
+  --color-yellow-100: oklch(94.3% 0.041 98.1);
+  --color-yellow-200: oklch(88.9% 0.079 96.6);
+  --color-yellow-300: oklch(81.8% 0.114 93.6);
+  --color-yellow-400: oklch(75.2% 0.13 87.9);
+  --color-yellow-500: oklch(69.2% 0.124 83.1);
+  --color-yellow-600: oklch(59.2% 0.109 74.1);
+  --color-yellow-700: oklch(49.5% 0.091 64.9);
+  --color-blue-50: oklch(97.5% 0.013 244.3);
+  --color-blue-100: oklch(94.2% 0.028 248.1);
+  --color-blue-200: oklch(90% 0.05 246.5);
+  --color-blue-300: oklch(83.8% 0.083 245.6);
+  --color-blue-400: oklch(76% 0.121 248.4);
+  --color-blue-500: oklch(67.7% 0.157 256);
+  --color-blue-600: oklch(59.9% 0.183 261.2);
+  --color-blue-700: oklch(51.7% 0.179 263.6);
+  --color-blue-800: oklch(46.7% 0.156 264.5);
+  --color-blue-900: oklch(41.2% 0.118 263.4);
+  --color-blue-950: oklch(30% 0.077 266.7);
+  --color-persianRed-50: oklch(97.1% 0.01 17.3);
+  --color-persianRed-100: oklch(94% 0.021 21.2);
+  --color-persianRed-200: oklch(89.1% 0.042 21.6);
+  --color-persianRed-300: oklch(81.6% 0.073 24);
+  --color-persianRed-400: oklch(71.1% 0.122 24.3);
+  --color-persianRed-500: oklch(62.4% 0.161 26.8);
+  --color-persianRed-600: oklch(55.3% 0.173 28);
+  --color-persianRed-700: oklch(48.2% 0.153 28.2);
+  --color-persianRed-800: oklch(42.7% 0.127 28);
+  --color-persianRed-900: oklch(42.7% 0.127 28);
+  --color-persianRed-950: oklch(24.9% 0.071 26.2);
+  --color-pending-background: oklch(94.6% 0.029 67.5);
+  --color-pending-border: oklch(87.2% 0.073 67.3);
+  --color-pending-content: oklch(64% 0.148 57.8);
+  --color-complete-background: oklch(95.9% 0.021 156.8);
+  --color-complete-border: oklch(87.5% 0.064 155.7);
+  --color-complete-content: oklch(64.1% 0.142 150.6);
+  --color-error-background: oklch(89.1% 0.042 21.6);
+  --color-error-border: oklch(81.6% 0.073 24);
+  --color-error-content: oklch(48.2% 0.153 28.2);
+  /*  Gradients  */
+  --gradient-goldGradient-1: linear-gradient(
+    251deg,
+    var(--color-cosmicGold-50) 33.63%,
+    var(--color-cosmicGold-90) 55.54%,
+    var(--color-cosmicGold-100) 64.51%,
+    var(--color-cosmicGold-200) 81.94%
+  );
+  --gradient-goldGradient-2: linear-gradient(
+    261.78deg,
+    var(--color-cosmicGold-50) 33.1%,
+    var(--color-cosmicGold-90) 56.3%,
+    var(--color-cosmicGold-100) 65.78%,
+    var(--color-gray-200) 84.23%
+  );
+  --gradient-goldGradient-3: linear-gradient(
+    270.62deg,
+    var(--color-cosmicGold-50) 2.88%,
+    var(--color-cosmicGold-90) 79.48%,
+    var(--color-cosmicGold-100) 98.1%
+  );
+  --gradient-goldGradient-3-inversed: linear-gradient(
+    270.62deg,
+    var(--color-cosmicGold-100) 2.88%,
+    var(--color-cosmicGold-90) 79.48%,
+    var(--color-cosmicGold-50) 98.1%
+  );
+  --gradient-goldGradient-button-cta-1: radial-gradient(
+    100% 68.86% at 100% 100%,
+    var(--color-cosmicGold-50) 0%,
+    var(--color-cosmicGold-100) 50.19%,
+    var(--color-cosmicGold-200) 100%
+  );
+  --gradient-goldGradient-button-cta-2:
+    radial-gradient(
+    137.88% 94.94% at 100% 100%,
+    var(--color-cosmicGold-50) 0%,
+    var(--color-cosmicGold-100) 50%,
+    var(--color-cosmicGold-200) 100%
+  ), linear-gradient(
+    0deg,
+    var(--color-alpha-soft-gray1),
+    var(--color-alpha-soft-gray1)
+  );
+  --gradient-goldGradient-button-cta-3:
+    linear-gradient(
+    0deg,
+    var(--color-alpha-soft-gray2),
+    var(--color-alpha-soft-gray2)
+  ), radial-gradient(
+    172.98% 251.21% at 100% 100%,
+    var(--color-cosmicGold-50) 0%,
+    var(--color-cosmicGold-100) 50%,
+    var(--color-cosmicGold-200) 100%
+  );
+  /* Theme: light */
+  /* border */
+  --theme-light-border-primary: var(--color-gray-200);
+  --theme-light-border-primaryDark: var(--color-gray-700);
+  --theme-light-border-secondary: var(--color-gray-300);
+  /* background */
+  --theme-light-background-secondary: var(--color-gray-100);
+  /* content */
+  --theme-light-content-secondary: var(--color-gray-700);
+  --theme-light-content-tertiary: var(--color-gray-900);
+  /*____ Spacing ____*/
+  --size-1: 0.25rem;
+  --size-2: 0.5rem;
+  --size-3: 0.75rem;
+  --size-4: 0.8755rem;
+  --size-5: 1rem;
+  --size-6: 1.25rem;
+  /*____ Typography ____*/
+  --typography-lexend-h1: clamp(4.1723rem, 4.0013rem + 0.8553vw, 4.7684rem);
+  --typography-lexend-h2: clamp(3.3379rem, 3.201rem + 0.6843vw, 3.8147rem);
+  --typography-lexend-h3: clamp(2.6703rem, 2.5608rem + 0.5474vw, 3.0518rem);
+  --typography-lexend-h4: clamp(2.1362rem, 2.0486rem + 0.4379vw, 2.4414rem);
+  --typography-lexend-xxl: clamp(1.709rem, 1.6389rem + 0.3503vw, 1.9531rem);
+  --typography-lexend-xl: clamp(1.3672rem, 1.3111rem + 0.2803vw, 1.5625rem);
+  --typography-lexend-l: clamp(1.0938rem, 1.0489rem + 0.2242vw, 1.25rem);
+  --typography-lexend-m: clamp(0.875rem, 0.8391rem + 0.1794vw, 1rem);
+  --typography-lexend-s: clamp(0.7rem, 0.6713rem + 0.1435vw, 0.8rem);
+  --typography-lexend-xs: clamp(0.56rem, 0.537rem + 0.1148vw, 0.64rem);
+  --weight-lexend-regular: 400;
+  --weight-lexend-medium: 500;
+  --weight-lexend-semibold: 600;
+  /*____ Primitives ____*/
+  /* border */
+  --border-mainnetEra-background:
+    linear-gradient(white, white) padding-box, linear-gradient(
+    90deg,
+    var(--color-basic-white) -26.02%,
+    var(--color-cosmicGold-medium) 19.61%,
+    var(--color-cosmicGold-50) 48.48%,
+    var(--color-cosmicGold-50) 81.9%,
+    var(--color-basic-white) 127.78%
+  ) border-box;
+  --border-mainnetEra-border: 1px solid transparent;
+  /* zeko-token */
+  --zeko-token-background-color: var(--color-cosmicGold-90);
+  --zeko-token-foreground-color: var(--color-basic-white);
+  /* button */
+  --button-default-width: 8.4375rem;
+  --button-default-height: 2.5rem;
+  --button-default-fontSize: var(--typography-lexend-m);
+  --button-default-fontWeight: var(--weight-lexend-regular);
+  --button-default-radius: var(--size-2);
+  --button-default-padding: var(--size-4) var(--size-3);
+  --button-cta-width: 10.3125rem;
+  --button-cta-height: 3.25rem;
+  --button-cta-fontSize: var(--typography-lexend-m);
+  --button-cta-fontWeight: var(--weight-lexend-medium);
+  --button-cta-radius: var(--size-2);
+  --button-cta-padding: var(--size-3) var(--size-5);
+  --button-large-width: 12.5rem;
+  --button-large-height: 3.75rem;
+  --button-large-fontSize: var(--typography-lexend-xl);
+  --button-large-fontWeight: var(--weight-lexend-medium);
+  --button-large-radius: var(--size-2);
+  --button-large-padding: var(--size-5) var(--size-6);
+}

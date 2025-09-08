@@ -1,8 +1,7 @@
-import { mkdirSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
 import { env } from "node:process"
 import { PrivateKey } from "o1js"
 import { Bridge } from "../src/index"
+import { writeLog } from "./write-log"
 
 if (!env.MINA_PRIVATE_KEY) {
 	throw new Error("MINA_PRIVATE_KEY is not set")
@@ -80,18 +79,8 @@ async function main() {
 		throw new Error("should not be reachable")
 	})
 
-	// Write full array to disk (untruncated) before logging
-	try {
-		const tmpDir = join(process.cwd(), "tmp")
-		mkdirSync(tmpDir, { recursive: true })
-		const logPath = join(tmpDir, "outer-actions.log")
-		writeFileSync(logPath, JSON.stringify(formattedActions, null, 2), "utf8")
-		console.log(`Full outer actions written to ${logPath}`)
-	} catch (e) {
-		console.error("Failed to write outer actions log:", e)
-	}
-
 	console.log(formattedActions)
+	writeLog({ log: formattedActions, name: "outer-actions" })
 }
 
 main().catch(console.error)
