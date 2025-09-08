@@ -17,29 +17,29 @@
 		"postinstall": "nuxt prepare"
 	},
 	"dependencies": {
-		"@ark-ui/vue": "^5.9.1",
-		"@hebilicious/nuxt-switch-match": "^0.1.1",
-		"@lumina-dex/sdk": "0.5.0",
-		"@nuxt/fonts": "^0.10.2",
-		"@unhead/vue": "1.11.19",
-		"@unocss/reset": "^0.63.6",
-		"@vueuse/core": "^12.7.0",
-		"@xstate/vue": "^3.1.4",
+		"@ark-ui/vue": "catalog:",
+		"@hebilicious/nuxt-switch-match": "catalog:",
+		"@nuxt/fonts": "catalog:",
+		"@unhead/vue": "catalog:",
+		"@unocss/reset": "catalog:",
+		"@vueuse/core": "catalog:",
+		"@xstate/vue": "catalog:",
 		"@zeko/design": "workspace:^",
 		"@zeko/layer": "workspace:^",
 		"arktype": "^2.1.0",
-		"lucide-vue-next": "^0.453.0",
-		"nuxt": "^4.0.3",
-		"vue": "latest",
-		"xstate": "^5.19.0"
+		"lucide-vue-next": "catalog:",
+		"nuxt": "catalog:",
+		"vue": "catalog:",
+		"xstate": "catalog:"
 	},
 	"devDependencies": {
-		"@aurowallet/mina-provider": "^1.0.6",
-		"@total-typescript/ts-reset": "^0.6.1",
+		"@aurowallet/mina-provider": "catalog:",
+		"@hebilicious/vue-switch-match": "catalog:",
+		"@total-typescript/ts-reset": "catalog:",
 		"@types/node": "^22.14.0",
-		"nitro-cloudflare-dev": "^0.2.2",
-		"postcss-nesting": "^13.0.1",
+		"nitro-cloudflare-dev": "catalog:",
+		"postcss-nesting": "catalog:",
 		"rimraf": "^6.0.1",
-		"wrangler": "4.9.1"
+		"wrangler": "catalog:"
 	}
 }

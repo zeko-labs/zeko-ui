@@ -4,6 +4,6 @@
 	"type": "module",
 	"main": "src/index.ts",
 	"dependencies": {
-		"@hebilicious/cssforge": "npm:@jsr/hebilicious__cssforge@^0.1.1"
+		"@hebilicious/cssforge": "catalog:"
 	}
 }

@@ -3,4 +3,24 @@ packages:
 onlyBuiltDependencies:
   - lefthook
 catalog:
+  "@ark-ui/vue": ^5.9.1
+  "@aurowallet/mina-provider": ^1.0.6
+  "@hebilicious/nuxt-switch-match": ^0.1.1
+  "@hebilicious/vue-switch-match": ^0.1.1
+  "@hebilicious/cssforge": npm:@jsr/hebilicious__cssforge@^0.1.1
+  "@lumina-dex/sdk": ^0.21.1
+  "@nuxt/fonts": ^0.10.2
+  "@total-typescript/ts-reset": ^0.6.1
+  "@unhead/vue": ^1.11.19
+  "@unocss/reset": ^0.63.6
+  "@vueuse/core": ^12.7.0
+  "@xstate/vue": ^3.1.4
   o1js: ^2.8.0
+  postcss-nesting: ^13.0.1
+  lucide-vue-next: ^0.453.0
+  nitro-cloudflare-dev: ^0.2.2
+  nuxt: ^4.0.1
+  wrangler: ^4.28.1
+  xstate: 5.20.1
+  vue: ^3.5.21
+  typescript: ^5.8.3
