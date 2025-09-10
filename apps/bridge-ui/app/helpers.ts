@@ -46,7 +46,7 @@ export const statusFromState = (
 ): { text: string; kind: "pending" | "complete" | "error" } => {
 	const isDeposit = direction === "deposit"
 	if (typeof state === "string") {
-		if (state.includes("DONE"))
+		if (state.includes("DONE") || state === "BRIDGE_OPERATION_COMPLETED")
 			return isDeposit ? deposit("complete")(3) : withdrawal("complete")(3)
 		if (state === "PENDING_DEPOSIT") return pendingDeposit(1)
 		if (state === "PENDING_WITHDRAWAL") return pendingWithdrawal(1)

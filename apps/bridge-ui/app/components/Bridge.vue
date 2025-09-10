@@ -48,10 +48,8 @@ const currentOperationErrors = computed(
 )
 
 const startBridge = () => {
-	bs.bridge.send({
-		type: "StartOperation",
-		amount: (amountToBridge ?? 0).toString()
-	})
+	const amount = (amountToBridge.value ?? 0).toString()
+	bs.bridge.send({ type: "StartOperation", amount })
 	amountToBridge.value = undefined
 }
 

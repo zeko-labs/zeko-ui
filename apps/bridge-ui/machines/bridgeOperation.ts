@@ -505,7 +505,7 @@ export const bridgeOperationMachine = setup({
 				},
 				done: { type: "final" }
 			},
-			onDone: { target: "BRIDGE_OPERATION_DONE" }
+			onDone: { target: "BRIDGE_OPERATION_COMPLETED" }
 		},
 		SUBMIT_WITHDRAWAL: {
 			initial: "transaction",
@@ -637,19 +637,19 @@ export const bridgeOperationMachine = setup({
 					)
 				}
 			},
-			onDone: { target: "BRIDGE_OPERATION_DONE" }
+			onDone: { target: "BRIDGE_OPERATION_COMPLETED" }
+		},
+		BRIDGE_OPERATION_COMPLETED: {
+			meta: { step: 3 },
+			after: { exitTimeout: "BRIDGE_OPERATION_DONE" }
 		},
 		BRIDGE_OPERATION_DONE: {
 			meta: { step: 3 },
 			type: "final",
-			after: {
-				exitTimeout: {
-					actions: sendTo(
-						({ context }) => context.bridge,
-						({ self }) => ({ type: "CompleteOperation", id: self.id })
-					)
-				}
-			}
+			entry: sendTo(
+				({ context }) => context.bridge,
+				({ self }) => ({ type: "CompleteOperation", id: self.id })
+			)
 		},
 		BRIDGE_OPERATION_DONE_NOOP: {
 			meta: { step: 3 },

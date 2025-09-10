@@ -161,7 +161,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
           <AnimatedLoadingSpinner v-if="isLoading" class="animation" />
           <AnimatedGreenCheckmark
             class="animation"
-            v-else-if='machine.matches("BRIDGE_OPERATION_DONE")'
+            v-else-if='machine.matches("BRIDGE_OPERATION_COMPLETED")'
           />
         </div>
       </div>

@@ -17,6 +17,7 @@ export type TransactionMachineContext = {
 	id: string
 	transaction: string
 	wallet: Wallet
+	user: string
 	savedTransaction: SavedTransaction | null
 	signedTransaction: ZkappCommand | null
 	sentTransaction: Mina.PendingTransaction | null
@@ -52,28 +53,36 @@ export const transactionMachine = setup({
 				})
 			}
 		),
-		signTransaction: fromPromise<ZkappCommand, { transaction: string }>(({ input }) => {
-			return act("signTransaction", async () => {
-				const { transaction } = input
-				const originalTransaction = JSON.parse(transaction) as ZkappCommand
-				console.log({ originalTransaction })
-				if (originalTransaction.feePayer.body.fee === "0") {
-					originalTransaction.feePayer.body.fee = "1"
-				}
-				const result = await window.mina.sendTransaction({
-					onlySign: true,
-					transaction: JSON.stringify(originalTransaction)
+		signTransaction: fromPromise<ZkappCommand, { transaction: string; user: string }>(
+			({ input }) => {
+				return act("signTransaction", async () => {
+					const { transaction, user } = input
+					const originalTransaction = JSON.parse(transaction) as ZkappCommand
+					console.log({ originalTransaction })
+					// If the fee is 0, set it to 1 to avoid auro wallet error
+					if (originalTransaction.feePayer.body.fee === "0") {
+						originalTransaction.feePayer.body.fee = "1"
+					}
+					const result = await window.mina.sendTransaction({
+						onlySign: true,
+						transaction: JSON.stringify(originalTransaction)
+					})
+					if (result instanceof Error) throw result
+					if ("signedData" in result) {
+						// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+						const zkappCommand = (JSON.parse(result.signedData) as any).zkappCommand as ZkappCommand
+						console.log({ zkappCommand })
+						// If the feePayer is not the user, we need to set the authorization to a dummy value
+						if (zkappCommand.feePayer.body.publicKey !== user) {
+							zkappCommand.feePayer.authorization =
+								"7mWxjLYgbJUkZNcGouvhVj5tJ8yu9hoexb9ntvPK8t5LHqzmrL6QJjjKtf5SgmxB4QWkDw7qoMMbbNGtHVpsbJHPyTy2EzRQ"
+						}
+						return zkappCommand
+					}
+					throw new Error("Couldn't find signedData")
 				})
-				if (result instanceof Error) throw result
-				if ("signedData" in result) {
-					// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-					const zkappCommand = (JSON.parse(result.signedData) as any).zkappCommand as ZkappCommand
-					console.log({ zkappCommand })
-					return zkappCommand
-				}
-				throw new Error("Couldn't find signedData")
-			})
-		}),
+			}
+		),
 		sendSignedTransaction: fromPromise<Mina.PendingTransaction, SendSignedTxInput>(({ input }) => {
 			return act("sendSignedTransaction", async () => {
 				const { signedTransaction: zkappCommand, db, zeko } = input
@@ -116,6 +125,7 @@ export const transactionMachine = setup({
 			id,
 			transaction,
 			wallet,
+			user: account,
 			savedTransaction: null,
 			signedTransaction: null,
 			sentTransaction: null,
@@ -150,7 +160,7 @@ export const transactionMachine = setup({
 			description: "Sign a transaction and return the signed zkappCommand.",
 			invoke: {
 				src: "signTransaction",
-				input: ({ context: { transaction } }) => ({ transaction }),
+				input: ({ context: { transaction, user } }) => ({ transaction, user }),
 				onDone: {
 					target: "SENDING",
 					actions: assign({ signedTransaction: ({ event }) => event.output })
