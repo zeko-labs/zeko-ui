@@ -1,7 +1,5 @@
 import type { Networks, walletMachine } from "@lumina-dex/sdk"
-import { Bridge } from "@zeko/bridge-sdk"
 import { produce } from "immer"
-import { PublicKey, UInt32, UInt64 } from "o1js"
 import {
 	type ActionArgs,
 	type ActorRef,
@@ -20,16 +18,13 @@ import {
 import { finalizeNotification } from "../app/service-worker/notificationList"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
-import { getBridgeConfig } from "./helpers"
 import type { ActionState } from "./operations.worker"
 import { type Result, transactionMachine } from "./transaction"
 
 const { act, logger, measure } = createLogger("[BRIDGE OPERATION]")
 
-const bridgeAndWallet = (context: BridgeOperationContext) => {
-	const bridge = context.bridge
-	if (!bridge) throw new Error("Bridge is not initialized")
-	return { bridge, wallet: context.wallet }
+const bridgeParameters = ({ bridge, user, l1, l2 }: BridgeOperationContext) => {
+	return { bridge, user, l1, l2 }
 }
 
 const addError =
@@ -70,8 +65,8 @@ const sendAndConfirm = (
 	}
 }
 
-type BridgeMachine = ActorRef<Snapshot<unknown> & { context: BridgeContext }, BridgeEvents>
-
+//To avoid circular dependencies
+type Bridge = ActorRef<Snapshot<unknown> & { context: BridgeContext }, BridgeEvents>
 type Wallet = ActorRefFromLogic<typeof walletMachine>
 
 export type ReturnTo =
@@ -98,13 +93,15 @@ type BridgeOperationEvents =
 
 export interface BridgeOperationContext {
 	id: string
-	bridgeMachine: BridgeMachine
-	bridge: Bridge | null
+	bridge: Bridge
 	wallet: Wallet
+	user: string
 	direction: Direction
-	amount: string
 	source: Networks
 	destination: Networks
+	l1: Networks
+	l2: Networks
+	amount: string
 	paused: boolean
 	transaction?: ActionState["transaction"]
 	errors: Error[]
@@ -128,14 +125,16 @@ const fetchMina = ({ network }: { network: Networks }) =>
 	}) as const
 
 const POLL_INTERVAL = 20_000
-const POLL_TIMEOUT = 3_600_000
+
+type BridgeWorker = { bridge: Bridge; l1: Networks; l2: Networks; user: string }
+const worker = (bridge: Bridge) => bridge.getSnapshot().context.worker
 
 //TODO: Error handling
 export const bridgeOperationMachine = setup({
 	types: {
 		context: {} as BridgeOperationContext,
 		input: {} as {
-			bridgeMachine: BridgeMachine
+			bridge: Bridge
 			wallet: Wallet
 			direction: Direction
 			source: Networks
@@ -143,117 +142,74 @@ export const bridgeOperationMachine = setup({
 			amount: string
 			transaction?: ActionState["transaction"]
 		},
-		events: {} as BridgeOperationEvents
+		events: {} as BridgeOperationEvents,
+		tags: {} as "loading" | "cta",
+		meta: {} as { step: number }
 	},
 	actors: {
 		transactionMachine,
-		initializeBridge: fromPromise<Bridge, { source: Networks; destination: Networks }>(
-			({ input }) => {
-				return act("initializeBridge", async () => {
-					const { source, destination } = input
-					const l1 = source.includes("mina") ? source : destination
-					const l2 = source.includes("zeko") ? source : destination
-					const config = getBridgeConfig({ l1, l2 })
-					const bridge = await Bridge.init({ ...config, pollTimeout: POLL_TIMEOUT })
-					return bridge
-				})
-			}
-		),
-		submitDeposit: fromPromise<string, { bridge: Bridge; amount: string; wallet: Wallet }>(
-			({ input }) => {
-				return act("submitDeposit", async () => {
-					const { bridge, amount, wallet } = input
-					const recipient = PublicKey.fromBase58(wallet.getSnapshot().context.account)
-					const tx = await bridge.submitDeposit(
-						{ sender: recipient, fee: 0.1 * 10e8 },
-						{
-							recipient,
-							amount: UInt64.from(Number(amount) * 10e8),
-							timeout: UInt32.MAXINT(),
-							holderAccountL1: bridge.outerHolders[0]
-						}
-					)
-					return tx.toJSON()
-				})
-			}
-		),
-		pendingDeposit: fromCallback<EventObject, { bridge: Bridge; wallet: Wallet }>(
-			({ sendBack, input }) => {
-				const label = "pendingDeposit"
-				const stop = measure(label)
-				logger.start(label)
-				const { bridge, wallet } = input
-				const recipient = PublicKey.fromBase58(wallet.getSnapshot().context.account)
-				const checkDepositStatus = async () => {
-					logger.info("Checking deposit status ...")
-					const can = await bridge.canFinalizeDeposit(recipient)
-					if (can) sendBack({ type: "CanFinalize" })
-				}
-				checkDepositStatus()
-				const interval = setInterval(checkDepositStatus, POLL_INTERVAL)
-				return () => {
-					clearInterval(interval)
-					logger.success(label)
-					stop()
-				}
-			}
-		),
-		finalizeDeposit: fromPromise<string, { bridge: Bridge; wallet: Wallet }>(({ input }) => {
-			return act("finalizeDeposit", async () => {
-				const { bridge, wallet } = input
-				const tx = await bridge.finalizeDeposit(
-					PublicKey.fromBase58(wallet.getSnapshot().context.account)
-				)
-				return tx.toJSON()
+		submitDeposit: fromPromise<string, BridgeWorker & { amount: string }>(({ input }) => {
+			return act("submitDeposit", async () => {
+				const { bridge, l1, l2, amount, user } = input
+				const tx = await worker(bridge).submitDeposit({ l1, l2, user, amount })
+				return tx
 			})
 		}),
-		submitWithdrawal: fromPromise<string, { bridge: Bridge; amount: string; wallet: Wallet }>(
-			({ input }) => {
-				return act("submitWithdrawal", async () => {
-					const { bridge, amount, wallet } = input
-					const recipient = PublicKey.fromBase58(wallet.getSnapshot().context.account)
-					const tx = await bridge.submitWithdrawal(
-						{ sender: recipient, fee: 0.1 * 10e8 },
-						{
-							recipient,
-							amount: UInt64.from(Number(amount) * 10e8)
-						}
-					)
-					return tx.toJSON()
-				})
+		pendingDeposit: fromCallback<EventObject, BridgeWorker>(({ sendBack, input }) => {
+			const label = "pendingDeposit"
+			const stop = measure(label)
+			logger.start(label)
+			const { bridge, l1, l2, user } = input
+			const checkDepositStatus = async () => {
+				logger.info("Checking deposit status ...")
+				const can = await worker(bridge).canFinalizeDeposit({ l1, l2, user })
+				if (can) sendBack({ type: "CanFinalize" })
 			}
-		),
-		pendingWithdrawal: fromCallback<EventObject, { bridge: Bridge; wallet: Wallet }>(
-			({ sendBack, input }) => {
-				const label = "pendingWithdrawal"
-				const stop = measure(label)
-				logger.start(label)
-				const { bridge, wallet } = input
-				const recipient = PublicKey.fromBase58(wallet.getSnapshot().context.account)
-				const checkWithdrawalStatus = async () => {
-					logger.info("Checking withdrawal status...")
-					const can = await bridge.canFinalizeWithdrawal(recipient)
-					if (can) sendBack({ type: "CanFinalize" })
-				}
-				checkWithdrawalStatus()
-				const interval = setInterval(checkWithdrawalStatus, POLL_INTERVAL)
-				return () => {
-					clearInterval(interval)
-					logger.success(label)
-					stop()
-				}
+			checkDepositStatus()
+			const interval = setInterval(checkDepositStatus, POLL_INTERVAL)
+			return () => {
+				clearInterval(interval)
+				logger.success(label)
+				stop()
 			}
-		),
-		finalizeWithdrawal: fromPromise<string, { bridge: Bridge; wallet: Wallet }>(({ input }) => {
+		}),
+		finalizeDeposit: fromPromise<string, BridgeWorker>(({ input }) => {
+			return act("finalizeDeposit", async () => {
+				const { bridge, l1, l2, user } = input
+				const tx = await worker(bridge).finalizeDeposit({ l1, l2, user })
+				return tx
+			})
+		}),
+		submitWithdrawal: fromPromise<string, BridgeWorker & { amount: string }>(({ input }) => {
+			return act("submitWithdrawal", async () => {
+				const { bridge, l1, l2, amount, user } = input
+				const tx = await worker(bridge).submitWithdrawal({ l1, l2, user, amount })
+				return tx
+			})
+		}),
+		pendingWithdrawal: fromCallback<EventObject, BridgeWorker>(({ sendBack, input }) => {
+			const label = "pendingWithdrawal"
+			const stop = measure(label)
+			logger.start(label)
+			const { bridge, user, l1, l2 } = input
+			const checkWithdrawalStatus = async () => {
+				logger.info("Checking withdrawal status...")
+				const can = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
+				if (can) sendBack({ type: "CanFinalize" })
+			}
+			checkWithdrawalStatus()
+			const interval = setInterval(checkWithdrawalStatus, POLL_INTERVAL)
+			return () => {
+				clearInterval(interval)
+				logger.success(label)
+				stop()
+			}
+		}),
+		finalizeWithdrawal: fromPromise<string, BridgeWorker>(({ input }) => {
 			return act("finalizeWithdrawal", async () => {
-				const { bridge, wallet } = input
-				const recipient = PublicKey.fromBase58(wallet.getSnapshot().context.account)
-				const tx = await bridge.finalizeWithdrawal(
-					recipient,
-					{ sender: recipient, fee: 0.1 * 10e8 },
-					bridge.outerHolders[0]
-				)
-				return tx.toJSON()
+				const { bridge, l1, l2, user } = input
+				const tx = await worker(bridge).finalizeWithdrawal({ l1, l2, user })
+				return tx
 			})
 		})
 	},
@@ -267,21 +223,24 @@ export const bridgeOperationMachine = setup({
 		toFinalizeWithdrawal: ({ context: { returnTo } }) => returnTo === "FINALIZE_WITHDRAWAL",
 		toFinalize: ({ context: { returnTo } }) => returnTo === "TO_FINALIZE",
 		anotherOperationIsActive: ({ context }) => {
-			const ao = context.bridgeMachine.getSnapshot().context.activeOperation
+			const ao = context.bridge.getSnapshot().context.activeOperation
 			return ao !== null && context.id !== ao
 		}
+	},
+	delays: {
+		exitTimeout: () => 2_000
 	}
 }).createMachine({
 	id: "bridgeOperation",
 	initial: "IDLE",
 	context: ({
-		input: { direction, source, destination, amount, bridgeMachine, wallet, transaction },
+		input: { direction, source, destination, amount, bridge, wallet, transaction },
 		self: { id }
 	}) => ({
 		id,
 		wallet,
-		bridgeMachine,
-		bridge: null,
+		bridge,
+		user: wallet.getSnapshot().context.account,
 		direction,
 		changeNetworkTo: source,
 		source,
@@ -296,7 +255,9 @@ export const bridgeOperationMachine = setup({
 			finalizeDeposit: null,
 			submitWithdrawal: null,
 			finalizeWithdrawal: null
-		}
+		},
+		l1: source.includes("mina") ? source : destination,
+		l2: source.includes("zeko") ? source : destination
 	}),
 	on: {
 		Destroy: {
@@ -340,19 +301,11 @@ export const bridgeOperationMachine = setup({
 			}
 		},
 		PAUSED: {
-			description: "Paused with bridge initialized.",
 			on: {
-				Resume: { target: "TO_PENDING", actions: assign({ paused: ({ event }) => event.paused }) }
+				Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) }
 			}
 		},
 		RESUMING: {
-			invoke: {
-				src: "initializeBridge",
-				input: ({ context: { source, destination } }) => ({ source, destination }),
-				onDone: { target: "TO_PENDING", actions: assign({ bridge: ({ event }) => event.output }) }
-			}
-		},
-		TO_PENDING: {
 			description: "This state always immediately transitions.",
 			always: [
 				{ target: "PAUSED", guard: ({ context }) => context.paused === true },
@@ -361,6 +314,8 @@ export const bridgeOperationMachine = setup({
 			]
 		},
 		TO_FINALIZE: {
+			tags: ["cta"],
+			meta: { step: 2 },
 			description: "This state needs an event to transition.",
 			always: [
 				{ target: "PAUSED", guard: ({ context }) => context.paused === true },
@@ -420,30 +375,20 @@ export const bridgeOperationMachine = setup({
 			}
 		},
 		INIT_BRIDGE_OPERATION: {
-			invoke: {
-				src: "initializeBridge",
-				input: ({ context: { source, destination } }) => ({ source, destination }),
-				onDone: [
-					{
-						target: "SUBMIT_DEPOSIT",
-						guard: ({ context }) => context.direction === "deposit",
-						actions: assign({ bridge: ({ event }) => event.output })
-					},
-					{
-						target: "SUBMIT_WITHDRAWAL",
-						guard: ({ context }) => context.direction === "withdrawal",
-						actions: assign({ bridge: ({ event }) => event.output })
-					}
-				]
-			}
+			always: [
+				{ target: "SUBMIT_DEPOSIT", guard: "deposit" },
+				{ target: "SUBMIT_WITHDRAWAL", guard: "withdrawal" }
+			]
 		},
 		SUBMIT_DEPOSIT: {
 			initial: "transaction",
 			states: {
 				transaction: {
+					tags: ["loading"],
+					meta: { step: 0 },
 					invoke: {
 						src: "submitDeposit",
-						input: ({ context }) => ({ ...bridgeAndWallet(context), amount: context.amount }),
+						input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount }),
 						onDone: {
 							target: "send_and_confirm",
 							actions: assign(({ context, event }) =>
@@ -453,13 +398,15 @@ export const bridgeOperationMachine = setup({
 						onError: {
 							target: "#bridgeOperation.FAILED",
 							actions: sendTo(
-								({ context }) => context.bridgeMachine,
+								({ context }) => context.bridge,
 								({ self }) => ({ type: "TerminateOperation", id: self.id })
 							)
 						}
 					}
 				},
 				send_and_confirm: {
+					tags: ["loading"],
+					meta: { step: 1 },
 					invoke: {
 						src: "transactionMachine",
 						input: ({ context }) => ({ ...sendAndConfirm(context, "submitDeposit") }),
@@ -473,6 +420,7 @@ export const bridgeOperationMachine = setup({
 				},
 				done: {
 					type: "final",
+					meta: { step: 1 },
 					entry: sendTo(
 						({ context }) => context.wallet,
 						({ context }) => fetchMina({ network: context.source })
@@ -485,7 +433,7 @@ export const bridgeOperationMachine = setup({
 					guard: "anotherOperationIsActive",
 					actions: [
 						sendTo(
-							({ context }) => context.bridgeMachine,
+							({ context }) => context.bridge,
 							({ self }) => ({ type: "PauseOperation", id: self.id })
 						),
 						assign({ paused: true })
@@ -495,31 +443,25 @@ export const bridgeOperationMachine = setup({
 			]
 		},
 		PENDING_DEPOSIT: {
+			tags: ["loading"],
+			meta: { step: 1 },
 			invoke: {
 				src: "pendingDeposit",
-				input: ({ context }) => ({ ...bridgeAndWallet(context), amount: context.amount })
+				input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount })
 			},
 			on: {
-				CanFinalize: [
-					{ target: "TO_FINALIZE", guard: "currentNetworkIsDestination" },
-					{
-						target: "WAITING_FOR_NETWORK",
-						guard: "currentNetworkIsSource",
-						actions: assign({
-							returnTo: "TO_FINALIZE",
-							changeNetworkTo: ({ context }) => context.destination
-						})
-					}
-				]
+				CanFinalize: { target: "TO_FINALIZE" }
 			}
 		},
 		FINALIZE_DEPOSIT: {
 			initial: "transaction",
 			states: {
 				transaction: {
+					tags: ["loading"],
+					meta: { step: 2 },
 					invoke: {
 						src: "finalizeDeposit",
-						input: ({ context }) => ({ ...bridgeAndWallet(context) }),
+						input: ({ context }) => ({ ...bridgeParameters(context) }),
 						onDone: {
 							target: "send_and_confirm",
 							actions: assign(({ context, event }) =>
@@ -540,6 +482,8 @@ export const bridgeOperationMachine = setup({
 					}
 				},
 				send_and_confirm: {
+					tags: ["loading"],
+					meta: { step: 3 },
 					invoke: {
 						src: "transactionMachine",
 						input: ({ context }) => ({ ...sendAndConfirm(context, "finalizeDeposit") }),
@@ -567,9 +511,11 @@ export const bridgeOperationMachine = setup({
 			initial: "transaction",
 			states: {
 				transaction: {
+					tags: ["loading"],
+					meta: { step: 0 },
 					invoke: {
 						src: "submitWithdrawal",
-						input: ({ context }) => ({ ...bridgeAndWallet(context), amount: context.amount }),
+						input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount }),
 						onDone: {
 							target: "send_and_confirm",
 							actions: assign(({ context, event }) =>
@@ -579,13 +525,15 @@ export const bridgeOperationMachine = setup({
 						onError: {
 							target: "#bridgeOperation.FAILED",
 							actions: sendTo(
-								({ context }) => context.bridgeMachine,
+								({ context }) => context.bridge,
 								({ self }) => ({ type: "TerminateOperation", id: self.id })
 							)
 						}
 					}
 				},
 				send_and_confirm: {
+					tags: ["loading"],
+					meta: { step: 1 },
 					invoke: {
 						src: "transactionMachine",
 						input: ({ context }) => ({ ...sendAndConfirm(context, "submitWithdrawal") }),
@@ -598,6 +546,7 @@ export const bridgeOperationMachine = setup({
 					}
 				},
 				done: {
+					meta: { step: 1 },
 					type: "final",
 					entry: sendTo(
 						({ context }) => context.wallet,
@@ -611,7 +560,7 @@ export const bridgeOperationMachine = setup({
 					guard: "anotherOperationIsActive",
 					actions: [
 						sendTo(
-							({ context }) => context.bridgeMachine,
+							({ context }) => context.bridge,
 							({ self }) => ({ type: "PauseOperation", id: self.id })
 						),
 						assign({ paused: true })
@@ -621,31 +570,25 @@ export const bridgeOperationMachine = setup({
 			]
 		},
 		PENDING_WITHDRAWAL: {
+			tags: ["loading"],
+			meta: { step: 1 },
 			invoke: {
 				src: "pendingWithdrawal",
-				input: ({ context }) => ({ ...bridgeAndWallet(context), amount: context.amount })
+				input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount })
 			},
 			on: {
-				CanFinalize: [
-					{ target: "TO_FINALIZE", guard: "currentNetworkIsSource" },
-					{
-						target: "WAITING_FOR_NETWORK",
-						guard: "currentNetworkIsDestination",
-						actions: assign({
-							returnTo: "TO_FINALIZE",
-							changeNetworkTo: ({ context }) => context.source
-						})
-					}
-				]
+				CanFinalize: { target: "TO_FINALIZE" }
 			}
 		},
 		FINALIZE_WITHDRAWAL: {
 			initial: "transaction",
 			states: {
 				transaction: {
+					tags: ["loading"],
+					meta: { step: 2 },
 					invoke: {
 						src: "finalizeWithdrawal",
-						input: ({ context }) => ({ ...bridgeAndWallet(context) }),
+						input: ({ context }) => ({ ...bridgeParameters(context) }),
 						onDone: {
 							target: "send_and_confirm",
 							actions: assign(({ context, event }) =>
@@ -666,6 +609,8 @@ export const bridgeOperationMachine = setup({
 					}
 				},
 				send_and_confirm: {
+					tags: ["loading"],
+					meta: { step: 3 },
 					invoke: {
 						src: "transactionMachine",
 						input: ({ context }) => ({ ...sendAndConfirm(context, "finalizeWithdrawal") }),
@@ -685,6 +630,7 @@ export const bridgeOperationMachine = setup({
 				},
 				done: {
 					type: "final",
+					meta: { step: 3 },
 					entry: sendTo(
 						({ context }) => context.wallet,
 						({ context }) => fetchMina({ network: context.destination })
@@ -694,13 +640,21 @@ export const bridgeOperationMachine = setup({
 			onDone: { target: "BRIDGE_OPERATION_DONE" }
 		},
 		BRIDGE_OPERATION_DONE: {
+			meta: { step: 3 },
 			type: "final",
-			entry: sendTo(
-				({ context }) => context.bridgeMachine,
-				({ self }) => ({ type: "CompleteOperation", id: self.id })
-			)
+			after: {
+				exitTimeout: {
+					actions: sendTo(
+						({ context }) => context.bridge,
+						({ self }) => ({ type: "CompleteOperation", id: self.id })
+					)
+				}
+			}
 		},
-		BRIDGE_OPERATION_DONE_NOOP: { type: "final" },
+		BRIDGE_OPERATION_DONE_NOOP: {
+			meta: { step: 3 },
+			type: "final"
+		},
 		FAILED: { type: "final" }
 	}
 })

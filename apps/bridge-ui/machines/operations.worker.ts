@@ -7,7 +7,7 @@ import type {
 	OuterActionWithState
 } from "@zeko/bridge-sdk"
 import * as Comlink from "comlink"
-import { PublicKey } from "o1js"
+import { PublicKey, UInt32, UInt64 } from "o1js"
 import { getBridgeConfig } from "./helpers"
 
 export type ActionState = {
@@ -29,28 +29,31 @@ export type PendingOperations = {
 	deposits: ActionState[]
 	withdrawals: ActionState[]
 }
-
-type FindArgs = {
-	account: string
-	l1: Networks
-	l2: Networks
-}
+type L1L2 = { l1: Networks; l2: Networks }
 
 const bridges = new Map<string, Bridge>()
 
-async function findPendingOperations({ account, l1, l2 }: FindArgs): Promise<PendingOperations> {
+async function initBridge({ l1, l2 }: L1L2) {
 	let bridge = bridges.get(`${l1}_${l2}`)
 	if (!bridge) {
 		const config = getBridgeConfig({ l1, l2 })
 		bridge = await Bridge.init(config)
 		bridges.set(`${l1}_${l2}`, bridge)
 	}
+	return bridge
+}
 
+async function findPendingOperations({
+	account,
+	l1,
+	l2
+}: { account: string } & L1L2): Promise<PendingOperations> {
+	const bridge = await initBridge({ l1, l2 })
 	const recipient = PublicKey.fromBase58(account)
 	const [outerActions, innerActions] = (await Promise.all([
 		bridge.fetchOuterActionsWithStates(recipient),
 		bridge.fetchInnerActionsWithStates(recipient)
-	])) as [OuterActionWithState[], InnerActionWithState[]]
+	])) satisfies [OuterActionWithState[], InnerActionWithState[]]
 
 	const toAmount = (n: bigint) => Number(Number(n / BigInt(10e8)).toFixed(2)).toString()
 
@@ -74,7 +77,7 @@ async function findPendingOperations({ account, l1, l2 }: FindArgs): Promise<Pen
 				} as const
 			}
 		})
-		.filter(Boolean) as ActionState[]
+		.filter(Boolean) satisfies ActionState[]
 
 	const withdrawals = innerActions
 		.map((action, index) => {
@@ -96,12 +99,82 @@ async function findPendingOperations({ account, l1, l2 }: FindArgs): Promise<Pen
 				} as const
 			}
 		})
-		.filter(Boolean) as ActionState[]
+		.filter(Boolean) satisfies ActionState[]
 
 	return { deposits, withdrawals }
 }
 
-export const operations = { findPendingOperations }
+async function submitDeposit({
+	l1,
+	l2,
+	user,
+	amount
+}: L1L2 & { user: string; amount: string }): Promise<string> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
+	const submitDeposit = {
+		recipient,
+		amount: UInt64.from(Number(amount) * 10e8),
+		timeout: UInt32.MAXINT()
+	}
+	const transaction = await bridge.submitDeposit(feePayer, submitDeposit)
+	return transaction.toJSON()
+}
+
+async function submitWithdrawal({
+	l1,
+	l2,
+	user,
+	amount
+}: L1L2 & { user: string; amount: string }): Promise<string> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
+	const submitWithdrawal = {
+		recipient,
+		amount: UInt64.from(Number(amount) * 10e8)
+	}
+	const transaction = await bridge.submitWithdrawal(feePayer, submitWithdrawal)
+	return transaction.toJSON()
+}
+
+async function canFinalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	return bridge.canFinalizeDeposit(recipient)
+}
+
+async function canFinalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	return bridge.canFinalizeWithdrawal(recipient)
+}
+
+async function finalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	const transaction = await bridge.finalizeDeposit(recipient)
+	return transaction.toJSON()
+}
+
+async function finalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
+	const transaction = await bridge.finalizeWithdrawal(recipient, feePayer)
+	return transaction.toJSON()
+}
+
+export const operations = {
+	findPendingOperations,
+	submitDeposit,
+	canFinalizeDeposit,
+	finalizeDeposit,
+	submitWithdrawal,
+	canFinalizeWithdrawal,
+	finalizeWithdrawal
+}
 
 // Worker
 console.info("Initializing Operation Worker")

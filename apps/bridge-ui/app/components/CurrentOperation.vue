@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useSelector } from "@lumina-dex/sdk/vue"
 import type { ActorRefFromLogic } from "xstate"
-import { depositSteps, withdrawalSteps } from "~/helpers"
+import { depositSteps, statePath, withdrawalSteps } from "~/helpers"
 import { statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 
@@ -13,76 +13,30 @@ const steps = computed(() =>
 	machine.value.context.direction === "deposit" ? depositSteps : withdrawalSteps
 )
 
-//TODO: Use xstate tags or metadata for easier rendering
 const step = computed(() => {
-	switch (true) {
-		case machine.value.matches({ SUBMIT_DEPOSIT: "transaction" }):
-		case machine.value.matches({ SUBMIT_WITHDRAWAL: "transaction" }):
-			return 0
-		case machine.value.matches({ SUBMIT_DEPOSIT: "send_and_confirm" }):
-		case machine.value.matches({ SUBMIT_DEPOSIT: "done" }):
-		case machine.value.matches({ SUBMIT_WITHDRAWAL: "send_and_confirm" }):
-		case machine.value.matches({ SUBMIT_WITHDRAWAL: "done" }):
-		case machine.value.matches("PENDING_DEPOSIT"):
-		case machine.value.matches("PENDING_WITHDRAWAL"):
-			return 1
-		case machine.value.matches("TO_FINALIZE"):
-		case machine.value.matches({ FINALIZE_DEPOSIT: "transaction" }):
-		case machine.value.matches({ FINALIZE_WITHDRAWAL: "transaction" }):
-			return 2
-		case machine.value.matches({ FINALIZE_DEPOSIT: "send_and_confirm" }):
-		case machine.value.matches({ FINALIZE_DEPOSIT: "done" }):
-		case machine.value.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" }):
-		case machine.value.matches({ FINALIZE_WITHDRAWAL: "done" }):
-		case machine.value.matches("BRIDGE_OPERATION_DONE"):
-		case machine.value.matches("BRIDGE_OPERATION_DONE_NOOP"):
-			return 3
-		case machine.value.matches("WAITING_FOR_NETWORK"): {
-			if (!machine.value.context.returnTo) return 0
-			return {
-				INIT_BRIDGE_OPERATION: 0,
-				FINALIZE_DEPOSIT: 2,
-				FINALIZE_WITHDRAWAL: 2,
-				TO_FINALIZE: 2
-			}[machine.value.context.returnTo]
-		}
-		default:
-			return 0
+	// Special case for `WAITING_FOR_NETWORK` state
+	if (machine.value.matches("WAITING_FOR_NETWORK")) {
+		if (!machine.value.context.returnTo) return 0
+		return {
+			INIT_BRIDGE_OPERATION: 0,
+			FINALIZE_DEPOSIT: 2,
+			FINALIZE_WITHDRAWAL: 2,
+			TO_FINALIZE: 2
+		}[machine.value.context.returnTo]
 	}
+	const meta = machine.value.getMeta()
+	return meta[statePath(machine.value.value)]?.step ?? 0
 })
+
 const status = computed(() =>
 	statusFromState(machine.value.value, machine.value.context.direction)
 )
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
-const isLoading = computed(() => {
-	switch (true) {
-		case machine.value.matches({ SUBMIT_DEPOSIT: "transaction" }):
-		case machine.value.matches({ SUBMIT_DEPOSIT: "send_and_confirm" }):
-		case machine.value.matches({ SUBMIT_WITHDRAWAL: "transaction" }):
-		case machine.value.matches({ SUBMIT_WITHDRAWAL: "send_and_confirm" }):
-		case machine.value.matches({ FINALIZE_DEPOSIT: "transaction" }):
-		case machine.value.matches({ FINALIZE_DEPOSIT: "send_and_confirm" }):
-		case machine.value.matches({ FINALIZE_WITHDRAWAL: "transaction" }):
-		case machine.value.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" }):
-		case machine.value.matches("PENDING_DEPOSIT"):
-		case machine.value.matches("PENDING_WITHDRAWAL"):
-		case machine.value.matches("WAITING_FOR_NETWORK"):
-			return true
-		case machine.value.matches("TO_FINALIZE"):
-		case machine.value.matches({ FINALIZE_DEPOSIT: "done" }):
-		case machine.value.matches({ FINALIZE_WITHDRAWAL: "done" }):
-		case machine.value.matches({ SUBMIT_DEPOSIT: "done" }):
-		case machine.value.matches({ SUBMIT_WITHDRAWAL: "done" }):
-		case machine.value.matches("BRIDGE_OPERATION_DONE_NOOP"):
-		case machine.value.matches("BRIDGE_OPERATION_DONE"):
-			return false
-		default:
-			return false
-	}
-})
+const isLoading = computed(() => machine.value.hasTag("loading"))
+const hasCTA = computed(() => machine.value.hasTag("cta"))
 </script>
 <template>
-  <div :class="{ CurrentOperationWrapper: true, isLoading }">
+  <div :class="{ CurrentOperationWrapper: true, isLoading, hasCTA }">
     <div class="ProgressBar">
       <ProgressBar :steps :step />
     </div>
@@ -245,6 +199,9 @@ const isLoading = computed(() => {
   padding: 2rem;
   background: var(--background);
   border-radius: var(--border-radius);
+  &.hasCTA {
+    box-shadow: 0 0 10vw 100vw oklch(0 0 0 / 0.2);
+  }
   &.isLoading {
     &::before {
       content: "";

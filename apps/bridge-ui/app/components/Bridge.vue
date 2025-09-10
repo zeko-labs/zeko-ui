@@ -106,7 +106,7 @@ watch(currentOperationErrors, (errors) => {
       />
     </div>
     <!-- <pre>{{  allOperations }}</pre> -->
-    <div v-if="queuedOperations.length > 0" class="PendingTransactions">
+    <div v-if="queuedOperations.length > 0" class="NextTransactions">
       <!-- <h3>Next Transactions</h3> -->
       <div class="QueuedOperations">
         <QueuedOperation
@@ -121,14 +121,14 @@ watch(currentOperationErrors, (errors) => {
       </h4>
     </div>
     <div class="CompletedTransactions">
-      <h3>Completed Transactions</h3>
       <AnimatedLoadingSpinner
+        class="Spinner"
         v-if='bs.bridge.snapshot.matches("FIND_OPERATIONS")'
       />
-      <BridgeOperations
-        v-else
-        :operations="completedOperations"
-      />
+      <template v-else>
+        <h3>Completed Transactions</h3>
+        <BridgeOperations :operations="completedOperations" />
+      </template>
     </div>
   </div>
 
@@ -148,7 +148,7 @@ watch(currentOperationErrors, (errors) => {
 }
 .MainOperation {
   display: grid;
-  grid-template-columns: minmax(auto, 50%) minmax(auto, 50%);
+  grid-template-columns: 1fr 1fr;
   gap: 2ch;
   max-width: 100vw;
   &.NoOperation {
@@ -170,18 +170,29 @@ watch(currentOperationErrors, (errors) => {
   padding: 2rem;
 }
 
-.PendingTransactions {
+.NextTransactions {
   margin-top: 2rem;
   h4 {
     font-style: italic;
   }
+  .QueuedOperations {
+    display: flex;
+    gap: 3ch;
+    max-width: calc(100vw - 2 * var(--page-padding, 0));
+    overflow-y: scroll;
+    padding: 1rem 0;
+  }
 }
 
-.QueuedOperations {
-  display: flex;
-  gap: 3ch;
-  max-width: calc(100vw - 2 * var(--page-padding, 0));
-  overflow-y: scroll;
-  padding: 1rem 0;
+.CompletedTransactions {
+  display: grid;
+  &:has(.Spinner) {
+    place-items: center;
+  }
+  .Spinner {
+    --size: 25rem;
+    height: auto;
+    width: var(--size);
+  }
 }
 </style>

@@ -2,15 +2,7 @@ import { type Networks, type WalletEmit, detectWalletChange } from "@lumina-dex/
 import type { walletMachine } from "@lumina-dex/sdk"
 import * as Comlink from "comlink"
 import { nanoid } from "nanoid"
-import {
-	type ActorRefFromLogic,
-	and,
-	assign,
-	enqueueActions,
-	fromPromise,
-	setup,
-	spawnChild
-} from "xstate"
+import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
 import { createLogger } from "./debug"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
@@ -136,7 +128,7 @@ export const bridgeMachine = setup({
 				id,
 				systemId: id,
 				input: {
-					bridgeMachine: self,
+					bridge: self,
 					wallet,
 					source,
 					destination,
@@ -219,9 +211,11 @@ export const bridgeMachine = setup({
 			activeOperation: null
 		}
 	},
-	entry: spawnChild("detectWalletChange", {
+	invoke: {
+		src: "detectWalletChange",
+		systemId: "wallet",
 		input: ({ context }) => ({ wallet: context.wallet })
-	}),
+	},
 	on: {
 		AccountChanged: [
 			{ guard: ({ context }) => !context.accountReady, actions: assign({ accountReady: true }) },

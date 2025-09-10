@@ -1,7 +1,10 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks } from "@lumina-dex/sdk"
+import type { Bridge } from "@zeko/bridge-sdk"
 import { type DBSchema, openDB } from "idb"
 import { hash } from "ohash"
+
+const POLL_TIMEOUT = 3_600_000
 
 const urls = {
 	l1: {
@@ -37,8 +40,9 @@ export const getBridgeConfig = ({ l1, l2 }: { l1: Networks; l2: Networks }) => {
 		...l1Urls,
 		...l2Urls,
 		l1Network: l1.includes("mainnet") ? "mainnet" : "testnet",
-		l2Network: l2.includes("mainnet") ? "mainnet" : "testnet"
-	} as const
+		l2Network: l2.includes("mainnet") ? "mainnet" : "testnet",
+		pollTimeout: POLL_TIMEOUT
+	} satisfies Parameters<typeof Bridge.init>[0]
 }
 
 export interface SavedTransaction {

@@ -1,4 +1,5 @@
 import { createToaster } from "@ark-ui/vue/toast"
+import type { Entries } from "type-fest"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 
 export const depositSteps = [
@@ -29,6 +30,15 @@ const withdrawal = (kind: "pending" | "complete") => (step: number) => ({
 })
 const pendingDeposit = deposit("pending")
 const pendingWithdrawal = withdrawal("pending")
+
+export const statePath = (state: MachineStates) => {
+	if (typeof state === "string") return `bridgeOperation.${state}` as const
+	const [path] = (Object.entries(state) as Entries<typeof state>).map(
+		([k, v]) => `bridgeOperation.${k}.${v}` as const
+	)
+	if (!path) throw new Error(`Invalid state path for state: ${JSON.stringify(state)}`)
+	return path
+}
 
 export const statusFromState = (
 	state: MachineStates,

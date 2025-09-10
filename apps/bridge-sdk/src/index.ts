@@ -306,12 +306,12 @@ export class Bridge {
 			recipient,
 			amount,
 			timeout,
-			holderAccountL1
+			holderAccountL1 = this.outerHolders[0]
 		}: {
 			recipient: PublicKey
 			amount: UInt64
 			timeout: UInt32
-			holderAccountL1: PublicKey
+			holderAccountL1?: PublicKey
 		}
 	): Promise<Mina.Transaction<false, false>> {
 		this.setL1()
@@ -649,7 +649,7 @@ export class Bridge {
 	public async finalizeWithdrawal(
 		pk: PublicKey,
 		feePayer: Mina.FeePayerSpec,
-		outerHolder: PublicKey
+		outerHolder = this.outerHolders[0]
 	): Promise<Mina.Transaction<false, false>> {
 		const witnesses = await this.fetchWithdrawalFinalizationWitnesses(pk, outerHolder)
 

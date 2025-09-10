@@ -46,7 +46,7 @@ export default defineNuxtConfig({
 	css: [
 		"@unocss/reset/sanitize/sanitize.css",
 		"@unocss/reset/sanitize/assets.css",
-		"~/assets/styles/fonts.css"
+		"~/assets/styles/main.css"
 	],
 	pwa: {
 		srcDir: "service-worker",
