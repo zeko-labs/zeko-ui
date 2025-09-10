@@ -649,8 +649,9 @@ export class Bridge {
 	public async finalizeWithdrawal(
 		pk: PublicKey,
 		feePayer: Mina.FeePayerSpec,
-		outerHolder = this.outerHolders[0]
+		_outerHolder?: PublicKey
 	): Promise<Mina.Transaction<false, false>> {
+		const outerHolder = _outerHolder ?? this.outerHolders[0]
 		const witnesses = await this.fetchWithdrawalFinalizationWitnesses(pk, outerHolder)
 
 		if (!witnesses) throw new Error("Did not find any withdrawal to finalize")
