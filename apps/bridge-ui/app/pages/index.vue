@@ -31,7 +31,7 @@
 :root {
   --page-padding: 3rem;
   @media (max-width: 1024px) {
-    --page-padding: 0rem;
+    --page-padding: 1rem;
   }
 }
 </style>
