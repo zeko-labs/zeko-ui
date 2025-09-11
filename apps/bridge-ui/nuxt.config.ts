@@ -92,6 +92,7 @@ export default defineNuxtConfig({
 	runtimeConfig: {
 		public: {
 			release: process.env.SENTRY_RELEASE || "development",
+			environment: process.env.SENTRY_ENVIRONMENT || "development",
 			sentry: {
 				// Use a public environment variable for the DSN
 				dsn: process.env.SENTRY_DSN_PUBLIC

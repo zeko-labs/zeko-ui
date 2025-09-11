@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nuxt"
 Sentry.init({
 	dsn: useRuntimeConfig().public.sentry.dsn,
 	release: useRuntimeConfig().public.release,
+	environment: useRuntimeConfig().public.environment,
 	// https://docs.sentry.io/platforms/javascript/troubleshooting/#using-the-tunnel-option
 	tunnel: "/tunnel",
 	// modify depending on your custom runtime config
