@@ -220,6 +220,9 @@ importers:
       '@hebilicious/vue-switch-match':
         specifier: 'catalog:'
         version: 0.1.1(typescript@5.9.2)
+      '@sentry/cli':
+        specifier: ^2.53.0
+        version: 2.53.0
       '@sentry/vite-plugin':
         specifier: ^4.3.0
         version: 4.3.0

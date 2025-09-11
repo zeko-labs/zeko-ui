@@ -485,9 +485,8 @@ export class Bridge {
 
 			if (currentSyncedOuterActionState.state.equals(aseTarget.state).toBoolean()) {
 				return { depositForest, depositParams, helperAccount }
-			} else {
-				return await prove(attempts - 1)
 			}
+			return await prove(attempts - 1)
 		}
 
 		const { depositForest, depositParams, helperAccount } = await prove(attempts)
