@@ -1,4 +1,4 @@
-# This is the CI script to build the project and create a Sentry release with sourcemaps.
+# This is the CI script to build the project and create a Sentry release with sourcemaps and deploy it to Cloudflare Workers.
 # In an ideal world, the Nuxt Module / Vite plugin would work, but it doesn't.
 # Make sure that the following variables are set in the environment:
 # SENTRY_ORG
@@ -6,7 +6,7 @@
 # SENTRY_DSN_PUBLIC
 # SENTRY_AUTH_TOKEN
 
-OUTPUT_DIR="./.output/public/_nuxt"
+OUTPUT_DIR="./.output"
 
 # We set the environment and release based on the branch name.
 # WORKERS_CI_BRANCH and WORKERS_CI_COMMIT_SHA are set by Cloudflare Workers CI (https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#default-variables)
@@ -39,3 +39,11 @@ echo "Releasing version $SENTRY_RELEASE to Sentry in environment $SENTRY_ENVIRON
 ./node_modules/.bin/sentry-cli deploys new --release=$SENTRY_RELEASE -e $SENTRY_ENVIRONMENT
 
 echo "Sentry release process completed."
+
+echo "Deploying to Cloudflare Workers"
+
+if [[ "$WORKERS_CI_BRANCH" == "main" ]]; then
+  wrangler deploy
+else 
+  wrangler versions upload
+fi
