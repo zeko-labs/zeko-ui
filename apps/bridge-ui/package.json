@@ -4,15 +4,16 @@
 	"private": true,
 	"scripts": {
 		"build": "nuxt build",
-		"build:cf": "NITRO_PRESET=cloudflare_module nuxt build",
+		"build:cf": "NODE_OPTIONS=--max-old-space-size=8192 SENTRY_LOG_LEVEL=debug nuxt build --logLevel verbose",
 		"dev": "nuxt dev",
 		"dev:cf": "wrangler dev .output/server/index.mjs --assets .output/public/",
 		"type:cf": "wrangler types",
+		"typechecl": "nuxt typecheck",
 		"generate": "nuxt generate",
 		"preview": "nuxt preview",
 		"postinstall": "nuxt prepare",
 		"deploy": "wrangler deploy",
-		"deploy:dev": "rimraf .output .wrangler .nuxt && NITRO_PRESET=cloudflare_module nuxt build && wrangler deploy",
+		"deploy:dev": "rimraf .output .wrangler .nuxt && nuxt build && wrangler deploy",
 		"test": "vitest run",
 		"test:watch": "vitest"
 	},
@@ -23,6 +24,7 @@
 		"@lumina-dex/sdk": "catalog:",
 		"@nuxt/fonts": "catalog:",
 		"@pinia/nuxt": "0.9.0",
+		"@sentry/nuxt": "^10.11.0",
 		"@tanstack/vue-table": "^8.21.3",
 		"@unhead/vue": "catalog:",
 		"@unocss/reset": "catalog:",
@@ -50,14 +52,17 @@
 	"devDependencies": {
 		"@aurowallet/mina-provider": "catalog:",
 		"@hebilicious/vue-switch-match": "catalog:",
+		"@sentry/vite-plugin": "^4.3.0",
 		"@total-typescript/ts-reset": "catalog:",
 		"@vitest/browser": "^3.2.4",
 		"nitro-cloudflare-dev": "catalog:",
 		"playwright": "^1.55.0",
 		"postcss-nesting": "catalog:",
 		"type-fest": "^4.41.0",
+		"typescript": "^5.9.2",
 		"vite": "^7.1.2",
 		"vitest": "^3.2.4",
+		"vue-tsc": "^3.0.6",
 		"wrangler": "catalog:"
 	}
 }

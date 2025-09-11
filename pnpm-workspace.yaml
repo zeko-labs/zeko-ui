@@ -19,7 +19,7 @@ catalog:
   postcss-nesting: ^13.0.1
   lucide-vue-next: ^0.453.0
   nitro-cloudflare-dev: ^0.2.2
-  nuxt: ^4.0.1
+  nuxt: 4.1.1
   wrangler: ^4.28.1
   xstate: 5.20.1
   vue: ^3.5.21

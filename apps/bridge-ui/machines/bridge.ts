@@ -1,5 +1,6 @@
 import { type Networks, type WalletEmit, detectWalletChange } from "@lumina-dex/sdk"
 import type { walletMachine } from "@lumina-dex/sdk"
+import * as Sentry from "@sentry/nuxt"
 import * as Comlink from "comlink"
 import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
@@ -7,6 +8,9 @@ import { bridgeOperationMachine } from "./bridgeOperation"
 import { createLogger } from "./debug"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
 import workerUrl from "./operations.worker?worker&url"
+
+const worker = new Worker(new URL(workerUrl, import.meta.url), { type: "module" })
+Sentry.addIntegration(Sentry.webWorkerIntegration({ worker }))
 
 const { act, logger } = createLogger("[BRIDGE]")
 
@@ -195,13 +199,9 @@ export const bridgeMachine = setup({
 	context: ({ input: { wallet } }) => {
 		const sourceNetwork = wallet.getSnapshot().context.currentNetwork
 		const destinationNetwork = bridgeDirections[sourceNetwork]
-
-		const ww = new Worker(new URL(workerUrl, import.meta.url), { type: "module" })
-		const worker = Comlink.wrap<OperationsWorker>(ww)
-
 		return {
 			wallet,
-			worker,
+			worker: Comlink.wrap<OperationsWorker>(worker),
 			operations: new Map(),
 			operationsToUnpause: [],
 			sourceNetwork,

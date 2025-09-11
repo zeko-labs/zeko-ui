@@ -1,4 +1,5 @@
 import type { Networks } from "@lumina-dex/sdk"
+import * as Sentry from "@sentry/nuxt"
 import { Bridge } from "@zeko/bridge-sdk"
 import type {
 	InnerActionWithState,
@@ -176,8 +177,12 @@ export const operations = {
 	finalizeWithdrawal
 }
 
-// Worker
-console.info("Initializing Operation Worker")
+console.info("Initializing Operation Worker: Sentry")
+Sentry.registerWebWorker({ self })
+
+console.info("Initializing Operation Worker: Comlink")
 Comlink.expose(operations)
+
+console.info("Operation Worker: Ready")
 
 export type OperationsWorker = typeof operations

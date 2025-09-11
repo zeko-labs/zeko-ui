@@ -1,33 +1,40 @@
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+import { sentryVitePlugin } from "@sentry/vite-plugin"
+
+const currentDir = dirname(fileURLToPath(import.meta.url))
+
 const headers = {
 	"Cross-Origin-Resource-Policy": "same-site",
 	"Cross-Origin-Embedder-Policy": "require-corp",
 	"Cross-Origin-Opener-Policy": "same-origin"
 } as const
+
+const sentryOptions = {
+	org: "zeko-labs",
+	project: "zeko-bridge",
+	telemetry: true,
+	debug: true,
+	//TODO: Creating releases with the module/plugin causes the build to fail
+	release: { create: false, inject: false, finalize: false }
+} as const
+//TODO: Uploading source maps with the module/plugin causes the build to fail
+const sentryViteOptions = { sourcemaps: { disable: false } } as const
+
+const sentryPlugin = sentryVitePlugin({ ...sentryOptions, ...sentryViteOptions })
+
 export default defineNuxtConfig({
 	compatibilityDate: "2025-07-15",
-	devtools: { enabled: true },
 	modules: [
 		"@nuxt/fonts",
 		"@pinia/nuxt",
 		"@hebilicious/nuxt-switch-match",
 		"nitro-cloudflare-dev",
-		"@vite-pwa/nuxt"
+		"@vite-pwa/nuxt",
+		"@sentry/nuxt/module"
 	],
-	extends: ["@zeko/layer"],
-	routeRules: {
-		"/": { ssr: false, static: true, prerender: true, headers }
-	},
-	nitro: { minify: false },
-	vite: {
-		server: { headers },
-		worker: {
-			format: "es"
-		},
-		optimizeDeps: {
-			include: ["@lumina-dex/sdk > react"],
-			exclude: ["@lumina-dex/sdk", "@urql/vue"]
-		}
-	},
+	devtools: { enabled: true },
+	debug: true,
 	hooks: {
 		//Necessary for Nuxt DevTools
 		"vite:serverCreated": (server) => {
@@ -37,10 +44,14 @@ export default defineNuxtConfig({
 			})
 		}
 	},
-	postcss: {
-		plugins: {
-			"postcss-nesting": { edition: "2024-02" }
+	extends: ["@zeko/layer"],
+	typescript: {
+		tsConfig: {
+			include: [join(currentDir, "sentry.client.config.ts"), join(currentDir, "machines")]
 		}
+	},
+	postcss: {
+		plugins: { "postcss-nesting": { edition: "2024-02" } }
 	},
 	fonts: { provider: "google" },
 	css: [
@@ -48,18 +59,41 @@ export default defineNuxtConfig({
 		"@unocss/reset/sanitize/assets.css",
 		"~/assets/styles/main.css"
 	],
+	routeRules: {
+		"/": { ssr: false, static: true, prerender: true, headers }
+	},
+	sourcemap: { client: true },
+	nitro: { preset: "cloudflare-module", minify: false },
+	vite: {
+		server: { headers },
+		optimizeDeps: {
+			include: ["@lumina-dex/sdk > react"],
+			exclude: ["@lumina-dex/sdk", "@urql/vue"]
+		},
+		worker: {
+			format: "es",
+			plugins: () => [...sentryPlugin]
+		}
+	},
 	pwa: {
 		srcDir: "service-worker",
 		filename: "sw.ts",
 		strategies: "injectManifest",
 		manifest: false,
 		injectRegister: false,
-		injectManifest: {
-			injectionPoint: undefined
-		},
-		devOptions: {
-			enabled: true,
-			type: "module"
+		injectManifest: { injectionPoint: undefined, buildPlugins: { vite: [sentryPlugin] } },
+		devOptions: { enabled: true, type: "module" }
+	},
+	sentry: {
+		...sentryOptions,
+		unstable_sentryBundlerPluginOptions: sentryViteOptions
+		// authToken: process.env.SENTRY_AUTH_TOKEN,
+	},
+	runtimeConfig: {
+		public: {
+			sentry: {
+				dsn: process.env.SENTRY_DSN_PUBLIC // Use a public environment variable for the DSN
+			}
 		}
 	}
 })
