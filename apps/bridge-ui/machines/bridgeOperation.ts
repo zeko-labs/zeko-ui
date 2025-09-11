@@ -415,6 +415,13 @@ export const bridgeOperationMachine = setup({
 							actions: assign(({ context, event }) =>
 								addToContext({ context, key: "submitDeposit", result: event.output.result })
 							)
+						},
+						onError: {
+							target: "#bridgeOperation.FAILED",
+							actions: sendTo(
+								({ context }) => context.bridge,
+								({ self }) => ({ type: "TerminateOperation", id: self.id })
+							)
 						}
 					}
 				},
@@ -541,6 +548,13 @@ export const bridgeOperationMachine = setup({
 							target: "done",
 							actions: assign(({ context, event }) =>
 								addToContext({ context, key: "submitWithdrawal", result: event.output.result })
+							)
+						},
+						onError: {
+							target: "#bridgeOperation.FAILED",
+							actions: sendTo(
+								({ context }) => context.bridge,
+								({ self }) => ({ type: "TerminateOperation", id: self.id })
 							)
 						}
 					}

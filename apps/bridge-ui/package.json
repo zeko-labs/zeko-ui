@@ -4,7 +4,7 @@
 	"private": true,
 	"scripts": {
 		"build": "nuxt build",
-		"build:cf": "NODE_OPTIONS=--max-old-space-size=8192 SENTRY_LOG_LEVEL=debug nuxt build --logLevel verbose",
+		"build:cf": "SENTRY_LOG_LEVEL=debug nuxt build --logLevel verbose",
 		"dev": "nuxt dev",
 		"dev:cf": "wrangler dev .output/server/index.mjs --assets .output/public/",
 		"type:cf": "wrangler types",

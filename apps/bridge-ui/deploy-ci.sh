@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # This is the CI script to build the project and create a Sentry release with sourcemaps and deploy it to Cloudflare Workers.
 # In an ideal world, the Nuxt Module / Vite plugin would work, but it doesn't.
 # Make sure that the following variables are set in the environment:
