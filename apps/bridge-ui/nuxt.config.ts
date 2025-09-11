@@ -19,7 +19,7 @@ const sentryOptions = {
 	release: { create: false, inject: false, finalize: false }
 } as const
 //TODO: Uploading source maps with the module/plugin causes the build to fail
-const sentryViteOptions = { sourcemaps: { disable: false } } as const
+const sentryViteOptions = { sourcemaps: { disable: true } } as const
 
 const sentryPlugin = sentryVitePlugin({ ...sentryOptions, ...sentryViteOptions })
 
