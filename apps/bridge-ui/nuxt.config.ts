@@ -62,7 +62,7 @@ export default defineNuxtConfig({
 	routeRules: {
 		"/": { ssr: false, static: true, prerender: true, headers }
 	},
-	sourcemap: { client: true },
+	sourcemap: { client: "hidden" },
 	nitro: { preset: "cloudflare-module", minify: false },
 	vite: {
 		server: { headers },
@@ -91,8 +91,10 @@ export default defineNuxtConfig({
 	},
 	runtimeConfig: {
 		public: {
+			release: process.env.SENTRY_RELEASE || "development",
 			sentry: {
-				dsn: process.env.SENTRY_DSN_PUBLIC // Use a public environment variable for the DSN
+				// Use a public environment variable for the DSN
+				dsn: process.env.SENTRY_DSN_PUBLIC
 			}
 		}
 	}
