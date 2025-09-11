@@ -5,12 +5,19 @@
 # SENTRY_DSN_PUBLIC
 # SENTRY_AUTH_TOKEN
 
-# This could come from the CI, but we have only one environment for now
-ENVIRONMENT=production 
-VERSION=$(./node_modules/.bin/sentry-cli releases propose-version)
 OUTPUT_DIR="./.output/public/_nuxt"
 
-echo "Releasing version $VERSION to Sentry" 
+# WORKERS_CI_BRANCH and WORKERS_CI_COMMIT_SHA are set by Cloudflare Workers CI (https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#default-variables)
+if [[ "$WORKERS_CI_BRANCH" == "main" ]]; then
+  ENVIRONMENT="production"
+  VERSION=$(./node_modules/.bin/sentry-cli releases propose-version)
+else
+  ENVIRONMENT="preview-$WORKERS_CI_BRANCH"
+  VERSION="$WORKERS_CI_BRANCH-$WORKERS_CI_COMMIT_SHA"
+fi
+
+echo "Releasing version $VERSION to Sentry in environment $ENVIRONMENT"
+
 # Create a release
 ./node_modules/.bin/sentry-cli releases new -p zeko-bridge $VERSION
 # Associate commits with the release
