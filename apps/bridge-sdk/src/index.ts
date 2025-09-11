@@ -428,6 +428,7 @@ export class Bridge {
 			.map(({ action }) => fromList([action.action]).hash)
 
 		return {
+			aseTarget: syncedOuterActionState,
 			depositParams,
 			helperAccount,
 			witness: {
@@ -461,20 +462,35 @@ export class Bridge {
 
 	public async finalizeDeposit(
 		pk: PublicKey,
-		fee: UInt64 = UInt64.zero
+		fee: UInt64 = UInt64.zero,
+		attempts = 5
 	): Promise<Mina.Transaction<false, false>> {
-		const witnesses = await this.fetchDepositFinalizationWitnesses(pk)
+		const prove = async (attempts: number) => {
+			if (attempts === 0) throw new Error("Failed to prove deposit finalization")
 
-		if (!witnesses) throw new Error("Did not find any deposit to finalize")
+			const witnesses = await this.fetchDepositFinalizationWitnesses(pk)
 
-		const { witness, depositParams, helperAccount } = witnesses
+			if (!witnesses) throw new Error("Did not find any deposit to finalize")
 
-		const { data } = await this.l2Client.mutation(finalizeDepositMutation, {
-			input: witness
-		})
+			const { witness, depositParams, helperAccount, aseTarget } = witnesses
 
-		if (!data?.request?.key) throw new Error("No key returned from mutation")
-		const depositForest = await this.pollQuery(data.request.key)
+			const { data } = await this.l2Client.mutation(finalizeDepositMutation, {
+				input: witness
+			})
+
+			if (!data?.request?.key) throw new Error("No key returned from mutation")
+			const depositForest = await this.pollQuery(data.request.key)
+
+			const currentSyncedOuterActionState = await this.fetchSyncedOuterActionState()
+
+			if (currentSyncedOuterActionState.state.equals(aseTarget.state).toBoolean()) {
+				return { depositForest, depositParams, helperAccount }
+			} else {
+				return await prove(attempts - 1)
+			}
+		}
+
+		const { depositForest, depositParams, helperAccount } = await prove(attempts)
 
 		for (let i = 0; i < depositForest.length; i++) {
 			if (!depositForest[i].publicKey.equals(pk).toBoolean()) continue
