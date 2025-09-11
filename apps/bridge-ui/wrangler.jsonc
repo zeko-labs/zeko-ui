@@ -23,5 +23,8 @@
 			"pattern": "alpha.bridge.zeko.io",
 			"custom_domain": true
 		}
-	]
+	],
+	"vars": {
+		"SENTRY_PROJECT_IDS": ["zeko-bridge"]
+	}
 }

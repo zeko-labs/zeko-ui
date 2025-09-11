@@ -1,3 +1,5 @@
+/// <reference types="vite-plugin-comlink/client" />
+
 import "@total-typescript/ts-reset"
 import type Mina from "@aurowallet/mina-provider"
 

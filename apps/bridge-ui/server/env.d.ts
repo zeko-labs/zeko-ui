@@ -1,5 +1,5 @@
-/// <reference types="./worker-configuration.d.ts" />
-/// <reference types="vite-plugin-comlink/client" />
+/// <reference types="../worker-configuration.d.ts" />
+import "@total-typescript/ts-reset"
 
 declare module "h3" {
 	interface H3EventContext {
@@ -11,5 +11,3 @@ declare module "h3" {
 		}
 	}
 }
-
-export {}
