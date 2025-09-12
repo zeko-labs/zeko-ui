@@ -14,4 +14,15 @@ The following configuration from the nuxt/vite plugin causes the build to fail s
 
 The nitro preset doesn't seem to be the issue, as switching to `node` preset still causes the same issue.
 
-Manually creating a release with `sentry-cli releases set-commits --auto --ignore-missing <release>` appears to work.
+Manually creating a release with the cli is working, altough the build tends to fail silently sometimes.
+The CI script does the following :
+
+- Set environment variables (the CI must pass them)
+- Build the App
+- Create a sentry release
+- Inject the sourcemaps
+- Upload the sourcemaps
+- Deploys to Sentry
+- Deploy to Cloudflare
+
+In an ideal world, the nuxt/sentry module would handle all of this automatically. But it doesn't.
