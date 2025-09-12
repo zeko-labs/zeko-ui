@@ -2,8 +2,6 @@ packages:
   - apps/**
 onlyBuiltDependencies:
   - lefthook
-overrides:
-  nitropack: 2.12.6
 catalog:
   "@ark-ui/vue": ^5.9.1
   "@aurowallet/mina-provider": ^1.0.6
