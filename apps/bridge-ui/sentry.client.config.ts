@@ -13,7 +13,10 @@ Sentry.init({
 	//  session-replay
 	// Replay may only be enabled for the client-side
 	integrations: [
-		Sentry.replayIntegration({ maskAllInputs: false, maskAllText: false, blockAllMedia: false })
+		Sentry.replayIntegration({ maskAllInputs: false, maskAllText: false, blockAllMedia: false }),
+		Sentry.browserTracingIntegration(),
+		Sentry.browserProfilingIntegration(),
+		Sentry.piniaIntegration(usePinia())
 	],
 	//  session-replay
 	//  performance
@@ -34,6 +37,6 @@ Sentry.init({
 	//  session-replay
 	//  logs
 	// Enable logs to be sent to Sentry
+	//TODO: Integrate with consola log reporter https://github.com/getsentry/sentry-javascript/issues/16659
 	enableLogs: true
-	//  logs
 })

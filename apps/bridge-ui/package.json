@@ -12,6 +12,7 @@
 		"generate": "nuxt generate",
 		"preview": "nuxt preview",
 		"postinstall": "nuxt prepare",
+		"analyze": "nuxt analyze",
 		"deploy:dev": "rimraf .output .wrangler .nuxt && nuxt build && wrangler deploy",
 		"test": "vitest run",
 		"test:watch": "vitest"

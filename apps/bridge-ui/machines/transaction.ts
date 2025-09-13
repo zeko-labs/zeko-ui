@@ -1,11 +1,11 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { walletMachine } from "@lumina-dex/sdk"
-import {} from "idb"
-import { type Mina, Transaction, fetchTransactionStatus } from "o1js"
+import type { Mina } from "o1js"
 import { assign, enqueueActions, fromPromise, setup } from "xstate"
 import type { ActorRefFromLogic } from "xstate"
 import { createLogger } from "./debug"
 import { type HashDb, type SavedTransaction, hashDb } from "./helpers"
+import type { OperationsWorker } from "./operations.worker"
 
 const { act, logger } = createLogger("[TRANSACTION]")
 
@@ -17,25 +17,33 @@ export type TransactionMachineContext = {
 	id: string
 	transaction: string
 	wallet: Wallet
+	worker: OperationsWorker
 	user: string
 	savedTransaction: SavedTransaction | null
 	signedTransaction: ZkappCommand | null
-	sentTransaction: Mina.PendingTransaction | null
+	sentTransactionHash: string | null
 	result: Result | Error
 	db: HashDb
+	zeko: boolean
 }
 
 type TransactionMachineInput = {
 	id: string
 	transaction: Mina.Transaction<false, false> | string
 	wallet: Wallet
+	worker: OperationsWorker
 }
 
 type TransactionMachineOutput = { result: Result | Error }
 
-type SendSignedTxInput = { zeko: boolean; signedTransaction: ZkappCommand; db: HashDb }
+type SendSignedTxInput = {
+	zeko: boolean
+	signedTransaction: ZkappCommand
+	db: HashDb
+	worker: OperationsWorker
+}
 
-type WaitForTxInput = { transaction: Mina.PendingTransaction | string }
+type WaitForTxInput = { hash: string; worker: OperationsWorker }
 
 export const transactionMachine = setup({
 	types: {
@@ -58,7 +66,7 @@ export const transactionMachine = setup({
 				return act("signTransaction", async () => {
 					const { transaction, user } = input
 					const originalTransaction = JSON.parse(transaction) as ZkappCommand
-					console.log({ originalTransaction })
+					logger.info({ originalTransaction })
 					// If the fee is 0, set it to 1 to avoid auro wallet error
 					if (originalTransaction.feePayer.body.fee === "0") {
 						originalTransaction.feePayer.body.fee = "1"
@@ -71,66 +79,63 @@ export const transactionMachine = setup({
 					if ("signedData" in result) {
 						// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 						const zkappCommand = (JSON.parse(result.signedData) as any).zkappCommand as ZkappCommand
-						console.log({ zkappCommand })
 						// If the feePayer is not the user, we need to set the authorization to a dummy value
 						if (zkappCommand.feePayer.body.publicKey !== user) {
 							zkappCommand.feePayer.authorization =
 								"7mWxjLYgbJUkZNcGouvhVj5tJ8yu9hoexb9ntvPK8t5LHqzmrL6QJjjKtf5SgmxB4QWkDw7qoMMbbNGtHVpsbJHPyTy2EzRQ"
 						}
+						logger.success({ zkappCommand })
 						return zkappCommand
 					}
 					throw new Error("Couldn't find signedData")
 				})
 			}
 		),
-		sendSignedTransaction: fromPromise<Mina.PendingTransaction, SendSignedTxInput>(({ input }) => {
+		sendSignedTransaction: fromPromise<string, SendSignedTxInput>(({ input }) => {
 			return act("sendSignedTransaction", async () => {
-				const { signedTransaction: zkappCommand, db, zeko } = input
-				console.log({ zkappCommand })
-				const sentTransaction = await Transaction.fromJSON(zkappCommand).send()
-				logger.success("Transaction sent", sentTransaction)
-				await db.saveSigned({ hash: sentTransaction.hash, confirmed: zeko, zkappCommand })
-				return sentTransaction
+				const { signedTransaction: zkappCommand, db, zeko, worker } = input
+				const hash = await worker.sendZkAppCommand(zkappCommand)
+				logger.success("Transaction sent", hash)
+				await db.saveSigned({ hash, confirmed: zeko, zkappCommand })
+				return hash
 			})
 		}),
 		waitForTransaction: fromPromise<string, WaitForTxInput>(({ input }) => {
 			return act("waitForTransaction", async () => {
-				const { transaction } = input
-				if (typeof transaction === "string") {
-					const transactionStatus = async () => {
-						const result = await fetchTransactionStatus(transaction)
-						if (result === "PENDING") {
-							await new Promise((r) => setTimeout(r, 2000))
-							return transactionStatus()
-						}
-						if (result === "INCLUDED") return true
-						throw new Error("Transactions status is unknown.")
+				const { hash, worker } = input
+				const transactionStatus = async (delay = 2000) => {
+					const result = await worker.transactionStatus(hash)
+					if (result === "PENDING") {
+						await new Promise((r) => setTimeout(r, delay))
+						return transactionStatus(delay)
 					}
-					await transactionStatus()
-					return transaction
+					if (result === "INCLUDED") return true
+					throw new Error("Transactions status is unknown.")
 				}
-				const result = await transaction.wait()
-				logger.success("Transaction included:", result)
-				return result.hash
+				await transactionStatus()
+				logger.success("Transaction included:", hash)
+				return hash
 			})
 		})
 	}
 }).createMachine({
 	id: "transaction",
 	initial: "RESUMING",
-	context: ({ input: { id, transaction: tx, wallet } }) => {
+	context: ({ input: { id, transaction: tx, wallet, worker } }) => {
 		const transaction = typeof tx === "string" ? tx : tx.toJSON()
 		const { account, currentNetwork: network } = wallet.getSnapshot().context
 		return {
 			id,
 			transaction,
 			wallet,
+			worker,
 			user: account,
 			savedTransaction: null,
 			signedTransaction: null,
-			sentTransaction: null,
+			sentTransactionHash: null,
 			result: new Error("Transaction failed"),
-			db: hashDb({ network, account, transaction })
+			db: hashDb({ network, account, transaction }),
+			zeko: network.includes("zeko")
 		}
 	},
 	output: ({ context: { result } }) => ({ result }),
@@ -171,28 +176,24 @@ export const transactionMachine = setup({
 			description: "Send a signed transaction with o1js, and save it to idb.",
 			invoke: {
 				src: "sendSignedTransaction",
-				input: ({ context: { signedTransaction, db, wallet } }) => {
+				input: ({ context: { signedTransaction, db, zeko, worker } }) => {
 					if (!signedTransaction) throw new Error("No signed transaction to send")
-					return {
-						signedTransaction,
-						db,
-						zeko: wallet.getSnapshot().context.currentNetwork.includes("zeko")
-					}
+					return { signedTransaction, db, worker, zeko }
 				},
 				onDone: [
 					{
 						target: "WAITING",
 						guard: ({ context }) =>
 							context.wallet.getSnapshot().context.currentNetwork.includes("mina"),
-						actions: assign({ sentTransaction: ({ event }) => event.output })
+						actions: assign({ sentTransactionHash: ({ event }) => event.output })
 					},
 					{
 						guard: ({ context }) =>
 							context.wallet.getSnapshot().context.currentNetwork.includes("zeko"),
 						target: "DONE",
 						actions: assign(({ context, event }) => ({
-							sentTransaction: event.output,
-							result: context.db.createResult({ hash: event.output.hash })
+							sentTransactionHash: event.output,
+							result: context.db.createResult({ hash: event.output })
 						}))
 					}
 				]
@@ -202,10 +203,9 @@ export const transactionMachine = setup({
 			description: "Wait for a transaction to be confirmed on L1.",
 			invoke: {
 				src: "waitForTransaction",
-				input: ({ context: { sentTransaction, savedTransaction } }) => {
-					if (savedTransaction) return { transaction: savedTransaction.hash }
-					if (sentTransaction) return { transaction: sentTransaction }
-					throw new Error("No sent transaction or savedTransaction.")
+				input: ({ context: { sentTransactionHash: hash, worker } }) => {
+					if (hash) return { hash, worker }
+					throw new Error("No sent transaction hash.")
 				},
 				onDone: {
 					target: "DONE",

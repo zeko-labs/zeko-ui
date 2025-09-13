@@ -40,13 +40,17 @@ sentry-cli sourcemaps inject $OUTPUT_DIR
 sentry-cli sourcemaps upload --release=$SENTRY_RELEASE $OUTPUT_DIR
 # Create a production deploy
 sentry-cli deploys new --release=$SENTRY_RELEASE -e $SENTRY_ENVIRONMENT
-
-echo "Sentry release process completed."
+echo "Sentry release and sourcemaps done."
 
 echo "Deploying to Cloudflare Workers"
-
 if [[ "$WORKERS_CI_BRANCH" == "main" ]]; then
   wrangler deploy
 else 
   wrangler versions upload
 fi
+echo "Deployment completed for branch $WORKERS_CI_BRANCH."
+
+# Finalize the release
+echo "Finalizing Sentry release $SENTRY_RELEASE"
+sentry-cli releases finalize $SENTRY_RELEASE
+echo "Sentry release $SENTRY_RELEASE finalized."

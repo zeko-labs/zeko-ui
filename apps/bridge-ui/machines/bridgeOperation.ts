@@ -53,15 +53,18 @@ const addToContext = ({
 		}
 	})
 
+const worker = (bridge: Bridge) => bridge.getSnapshot().context.worker
+
 const sendAndConfirm = (
 	context: BridgeOperationContext,
 	key: keyof BridgeOperationContext["transactions"]
 ) => {
-	if (!context.transactions[key]) throw new Error("No transaction to confirm")
+	if (!context.transactions[key]) throw new Error(`No ${key} transaction found`)
 	return {
 		id: context.id,
 		transaction: context.transactions[key].transaction,
-		wallet: context.wallet
+		wallet: context.wallet,
+		worker: worker(context.bridge)
 	}
 }
 
@@ -127,7 +130,6 @@ const fetchMina = ({ network }: { network: Networks }) =>
 const POLL_INTERVAL = 20_000
 
 type BridgeWorker = { bridge: Bridge; l1: Networks; l2: Networks; user: string }
-const worker = (bridge: Bridge) => bridge.getSnapshot().context.worker
 
 //TODO: Error handling
 export const bridgeOperationMachine = setup({

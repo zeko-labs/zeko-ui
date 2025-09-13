@@ -7,7 +7,9 @@ const currentDir = dirname(fileURLToPath(import.meta.url))
 const headers = {
 	"Cross-Origin-Resource-Policy": "same-site",
 	"Cross-Origin-Embedder-Policy": "require-corp",
-	"Cross-Origin-Opener-Policy": "same-origin"
+	"Cross-Origin-Opener-Policy": "same-origin",
+	"Content-Security-Policy": "worker-src 'self' blob:; child-src 'self' blob:",
+	"Document-Policy": "js-profiling"
 } as const
 
 const sentryOptions = {
@@ -59,7 +61,7 @@ export default defineNuxtConfig({
 		"~/assets/styles/main.css"
 	],
 	routeRules: {
-		"/": { ssr: false, static: true, prerender: true, headers }
+		"/**": { ssr: false, static: true, prerender: true, headers }
 	},
 	sourcemap: { client: "hidden" },
 	nitro: { preset: "cloudflare-module", minify: false },

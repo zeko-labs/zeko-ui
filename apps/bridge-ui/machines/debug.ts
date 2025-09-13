@@ -15,11 +15,11 @@ export const getDebugConfig = () => {
 	}
 }
 
-export const logger = createConsola({
+const logger = createConsola({
 	level: getDebugConfig().debugLogs
 }).withTag("BRIDGE")
 
-export const prefixedLogger = (prefix: string) =>
+const prefixedLogger = (prefix: string) =>
 	new Proxy(logger, {
 		get(target, prop) {
 			const originalMethod = target[prop as keyof typeof target]
@@ -35,7 +35,7 @@ export const prefixedLogger = (prefix: string) =>
 		}
 	})
 
-export const createMeasure = (l: ConsolaInstance) => (label: string) => {
+const createMeasure = (l: ConsolaInstance) => (label: string) => {
 	const start = performance.now()
 	let done = false
 	return () => {

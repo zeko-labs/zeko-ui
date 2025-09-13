@@ -10,7 +10,9 @@ import type { ActionState, OperationsWorker, PendingOperations } from "./operati
 import workerUrl from "./operations.worker?worker&url"
 
 const worker = new Worker(new URL(workerUrl, import.meta.url), { type: "module" })
-Sentry.addIntegration(Sentry.webWorkerIntegration({ worker }))
+if (import.meta.client) {
+	Sentry.addIntegration(Sentry.webWorkerIntegration({ worker }))
+}
 
 const { act, logger } = createLogger("[BRIDGE]")
 

@@ -1,3 +1,4 @@
+import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
 import { Bridge } from "@zeko/bridge-sdk"
@@ -8,7 +9,7 @@ import type {
 	OuterActionWithState
 } from "@zeko/bridge-sdk"
 import * as Comlink from "comlink"
-import { PublicKey, UInt32, UInt64 } from "o1js"
+import { PublicKey, Transaction, UInt32, UInt64, fetchTransactionStatus } from "o1js"
 import { getBridgeConfig } from "./helpers"
 
 export type ActionState = {
@@ -167,6 +168,16 @@ async function finalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }): Pr
 	return transaction.toJSON()
 }
 
+async function transactionStatus(hash: string) {
+	const result = await fetchTransactionStatus(hash)
+	return result
+}
+
+async function sendZkAppCommand(zkappCommand: ZkappCommand) {
+	const sentTransaction = await Transaction.fromJSON(zkappCommand).send()
+	return sentTransaction.hash
+}
+
 export const operations = {
 	findPendingOperations,
 	submitDeposit,
@@ -174,7 +185,9 @@ export const operations = {
 	finalizeDeposit,
 	submitWithdrawal,
 	canFinalizeWithdrawal,
-	finalizeWithdrawal
+	finalizeWithdrawal,
+	transactionStatus,
+	sendZkAppCommand
 }
 
 console.info("Initializing Operation Worker: Sentry")
