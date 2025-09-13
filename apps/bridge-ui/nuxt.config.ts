@@ -17,9 +17,10 @@ const sentryOptions = {
 	project: "zeko-bridge",
 	telemetry: true,
 	debug: true,
+	applicationKey: "@zeko/bridge-ui",
 	//TODO: Creating releases with the module/plugin causes the build to fail
 	release: { create: false, inject: false, finalize: false }
-} as const
+} satisfies Parameters<typeof sentryVitePlugin>[0]
 //TODO: Uploading source maps with the module/plugin causes the build to fail
 const sentryViteOptions = { sourcemaps: { disable: true } } as const
 

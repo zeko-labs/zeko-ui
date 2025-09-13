@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nuxt"
+import { QuietError } from "~/errors"
 
 Sentry.init({
 	dsn: useRuntimeConfig().public.sentry.dsn,
@@ -6,6 +7,10 @@ Sentry.init({
 	environment: useRuntimeConfig().public.environment,
 	// https://docs.sentry.io/platforms/javascript/troubleshooting/#using-the-tunnel-option
 	tunnel: "/tunnel",
+	beforeSend(event, hint) {
+		if (hint?.originalException instanceof QuietError) return null
+		return event
+	},
 	// modify depending on your custom runtime config
 	// Adds request headers and IP for users, for more info visit:
 	// https://docs.sentry.io/platforms/javascript/guides/nuxt/configuration/options/#sendDefaultPii
@@ -16,8 +21,13 @@ Sentry.init({
 		Sentry.replayIntegration({ maskAllInputs: false, maskAllText: false, blockAllMedia: false }),
 		Sentry.browserTracingIntegration(),
 		Sentry.browserProfilingIntegration(),
-		Sentry.piniaIntegration(usePinia())
+		Sentry.piniaIntegration(usePinia()),
+		Sentry.thirdPartyErrorFilterIntegration({
+			filterKeys: ["@zeko/bridge-ui"],
+			behaviour: "apply-tag-if-exclusively-contains-third-party-frames"
+		})
 	],
+	normalizeDepth: 7,
 	//  session-replay
 	//  performance
 	// Set tracesSampleRate to 1.0 to capture 100%

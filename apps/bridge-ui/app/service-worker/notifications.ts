@@ -1,3 +1,5 @@
+import { QuietError } from "~/errors"
+
 export const dispatch = async ({
 	title,
 	options
@@ -18,14 +20,14 @@ export const askPermission = async () => {
 	if ("Notification" in window) {
 		console.log("Asking permission for notification...")
 		const permission = await Notification.requestPermission()
-		if (permission !== "granted") throw new Error("Permission denied")
+		if (permission !== "granted") throw new QuietError("Permission denied")
 		console.log("Permission granted for notification.", permission)
 		return permission
 	}
 	//iOS doesn't support Notification API
 	const serviceWorker = await navigator.serviceWorker.getRegistration()
 	console.log(serviceWorker)
-	if (!serviceWorker) throw new Error("Service worker not registered")
+	if (!serviceWorker) throw new QuietError("Service worker not registered")
 	const pushManager = serviceWorker.pushManager
 	if (!pushManager) {
 		console.error(`PushManager is not present in service worker registration: ${pushManager}`)
@@ -37,7 +39,7 @@ export const askPermission = async () => {
 
 export const checkWebpushCompability = (): void => {
 	if (!("serviceWorker" in navigator)) {
-		throw new Error("Service worker is not supported in this browser.")
+		throw new QuietError("Service worker is not supported in this browser.")
 	}
 	console.log("Webpush is supported in this browser.")
 }
