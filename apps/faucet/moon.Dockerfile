@@ -20,6 +20,7 @@ RUN moon docker scaffold faucet
 FROM base AS build
 USER nodejs
 ENV MOON_LOG=trace
+ENV MOON_DEBUG_PROCESS_ENV=true
 
 # Copy workspace skeleton
 COPY --from=skeleton /app/.moon/docker/workspace .

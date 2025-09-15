@@ -6,6 +6,10 @@ toolchain:
   default: "unstable_node"
 
 tasks:
+  container-dev:
+    command: bun --hot src/index.ts
+  container-start:
+    command: bun src/index.ts
   dev:
     command: wrangler dev
   type-cf:

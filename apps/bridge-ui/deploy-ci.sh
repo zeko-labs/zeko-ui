@@ -9,6 +9,7 @@ set -e
 # SENTRY_DSN_PUBLIC
 # SENTRY_AUTH_TOKEN
 
+export SENTRY_LOG_LEVEL="debug"
 export PATH="$PATH:./node_modules/.bin"
 OUTPUT_DIR="./.output"
 
@@ -27,7 +28,7 @@ fi
 
 # NUXT
 echo "Building RELEASE $SENTRY_RELEASE with DSN $SENTRY_DSN_PUBLIC on environment $SENTRY_ENVIRONMENT"
-moon run build
+nuxt build --logLevel verbose
 echo "Build completed."
 
 # SENTRY

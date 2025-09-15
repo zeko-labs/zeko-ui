@@ -7,7 +7,7 @@ on:
       - "apps/bridge-ui/**"
 
 jobs:
-  format:
+  test:
     permissions:
       id-token: write
       contents: write
@@ -22,10 +22,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: "./.github/actions/moon"
+      - uses: "moonrepo/setup-toolchain@v0"
 
       - name: Install Playwright Browsers
-        run: pnpx playwright install chromium --with-deps --no-shell
+        run: npx playwright install chromium --with-deps --no-shell
 
       - run: "moon run zeko-ui:test"
 
