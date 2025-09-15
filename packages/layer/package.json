@@ -4,13 +4,7 @@
 	"private": true,
 	"main": "./nuxt.config.ts",
 	"scripts": {
-		"dev": "nuxi dev playground",
-		"dev:prepare": "nuxt prepare playground",
-		"build": "nuxt build playground",
-		"generate": "nuxt generate playground",
-		"postinstall": "nuxt prepare playground",
-		"preview": "nuxt preview playground",
-		"cssforge": "node node_modules/@hebilicious/cssforge/src/cli --css app/assets/styles/cssforge.css"
+		"postinstall": "nuxt prepare playground"
 	},
 	"devDependencies": {
 		"@hebilicious/cssforge": "catalog:",

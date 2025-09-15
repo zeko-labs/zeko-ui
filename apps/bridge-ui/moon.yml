@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: application
+language: typescript
+toolchain:
+  default: "unstable_node"
+
+dependsOn:
+  - design
+  - layer
+  - bridge-sdk
+
+fileGroups:
+  sources:
+    - app/**/*
+    - public/**/*
+    - server/**/*
+    - machines/**/*
+    - worker-configuration.d.ts
+    - sentry.client.config.ts
+    - global.d.ts
+    - nuxt.config.ts
+    - tsconfig.json
+    - package.json
+  test:
+    - tests/**/*
+    - vitest.config.ts
+
+tasks:
+  format:
+    inputs:
+      - "@group(sources)"
+  format-fix:
+    inputs:
+      - "@group(sources)"
+  dev:
+    command: nuxt dev
+  build:
+    command: nuxt build
+    args:
+      - "--logLevel"
+      - "verbose"
+    env:
+      SENTRY_LOG_LEVEL: debug
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - .nuxt/
+      - .output/
+  dev-cf:
+    command: wrangler dev .output/server/index.mjs --assets .output/public/
+    preset: "server"
+    deps:
+      - build
+    inputs:
+      - .output/
+  type-cf:
+    command: wrangler types
+    inputs:
+      - wrangler.jsonc
+    outputs:
+      - worker-configuration.d.ts
+  preview:
+    command: nuxt preview
+    preset: "server"
+  prepare:
+    command: nuxt prepare
+    outputs:
+      - .nuxt/
+  analyze:
+    command: nuxt analyze
+    preset: "server"
+  deploy-dev:
+    description: "Build and Deploy to Cloudflare Workers. Use with caution, prefer using CI/CD."
+    script: rimraf .output .wrangler .nuxt && nuxt build && wrangler deploy
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - .nuxt/
+      - .output/
+      - .wrangler/
+  test:
+    command: vitest run
+    inputs:
+      - "@group(sources)"
+      - "@group(test)"
+  test-watch:
+    command: vitest
+    preset: "watcher"

@@ -1,7 +1,14 @@
 packages:
   - apps/**
+  - packages/**
 onlyBuiltDependencies:
   - lefthook
+patchedDependencies: 
+  "@gql.tada/internal": "patches/@gql.tada__internal.patch"
+overrides: 
+  "o1js": "catalog:"
+  "nitropack": "2.12.6"
+  "vite": "npm:rolldown-vite@7.1.9"
 catalog:
   "@ark-ui/vue": ^5.9.1
   "@aurowallet/mina-provider": ^1.0.6

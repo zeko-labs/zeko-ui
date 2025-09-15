@@ -3,19 +3,7 @@
 	"type": "module",
 	"private": true,
 	"scripts": {
-		"build": "nuxt build",
-		"build:cf": "SENTRY_LOG_LEVEL=debug nuxt build --logLevel verbose",
-		"dev": "nuxt dev",
-		"dev:cf": "wrangler dev .output/server/index.mjs --assets .output/public/",
-		"type:cf": "wrangler types",
-		"typechecl": "nuxt typecheck",
-		"generate": "nuxt generate",
-		"preview": "nuxt preview",
-		"postinstall": "nuxt prepare",
-		"analyze": "nuxt analyze",
-		"deploy:dev": "rimraf .output .wrangler .nuxt && nuxt build && wrangler deploy",
-		"test": "vitest run",
-		"test:watch": "vitest"
+		"postinstall": "nuxt prepare"
 	},
 	"dependencies": {
 		"@ark-ui/vue": "catalog:",
@@ -65,5 +53,6 @@
 		"vitest": "^3.2.4",
 		"vue-tsc": "^3.0.6",
 		"wrangler": "catalog:"
-	}
+	},
+	"packageManager": "pnpm@10.16.1"
 }

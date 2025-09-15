@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=./cache/schemas/tasks.json
+
+taskOptions:
+  runInCI: false
+tasks:
+  format:
+    command: dprint check
+    options:
+      runInCI: true
+  format-fix:
+    command: dprint fmt --allow-no-files
+  format-all:
+    command: dprint fmt --allow-no-files
+  check-all:
+    command: dprint check --allow-no-files
+  test:
+    options:
+      runInCI: true
+  build:
+    options:
+      runInCI: true
+  lint:
+    options:
+      runInCI: true
+  typecheck:
+    options:
+      runInCI: true

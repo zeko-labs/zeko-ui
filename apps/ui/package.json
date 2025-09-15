@@ -3,18 +3,6 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"format": "dprint fmt --verbose",
-		"build": "nuxt build",
-		"build:cf": "NITRO_PRESET=cloudflare_module nuxt build",
-		"build:netlify": "NITRO_PRESET=netlify_edge nuxt build",
-		"deploy": "wrangler deploy",
-		"deploy:pr": "wrangler versions upload",
-		"dev:cf": "wrangler dev .output/server/index.mjs --assets .output/public/",
-		"type:cf": "wrangler types",
-		"deploy:dev": "rimraf .output .wrangler .nuxt && NITRO_PRESET=cloudflare_module nuxt build && wrangler deploy",
-		"dev": "nuxt dev",
-		"generate": "nuxt generate",
-		"preview": "nuxt preview",
 		"postinstall": "nuxt prepare"
 	},
 	"dependencies": {

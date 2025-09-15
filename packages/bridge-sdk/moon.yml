@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: library
+language: typescript
+toolchain:
+  default: "unstable_node"
+
+fileGroups:
+  src:
+    - src/**/*
+    - tsconfig.json
+    - tsconfig.build.json
+    - tsdown.config.ts
+    - package.json
+  examples:
+    - examples/**/*
+
+tasks:
+  format:
+    inputs:
+      - "@globs(src)"
+  format-fix:
+    inputs:
+      - "@globs(src)"
+  build:
+    command: tsdown
+    inputs:
+      - "@globs(src)"
+    outputs:
+      - dist/**
+  lint:
+    command: biome lint
+    inputs:
+      - "@globs(src)"
+  lint-fix:
+    command: biome lint --fix --unsafe
+    inputs:
+      - "@globs(src)"
+  typecheck:
+    command: tsc --noEmit
+    inputs:
+      - "@globs(src)"
+  schema-get-zeko:
+    command: gql-tada generate schema 'https://testnet.zeko.io/graphql' --output './src/graphql/generated/zeko.graphql'
+    outputs:
+      - "src/graphql/generated/zeko.graphql"
+  schema-get-mina:
+    command: gql-tada generate schema 'https://api.minascan.io/node/devnet/v1/graphql' --output './src/graphql/generated/mina.graphql'
+    outputs:
+      - "src/graphql/generated/mina.graphql"
+  schema-get-mina-archive:
+    command: gql-tada generate schema 'https://api.minascan.io/archive/devnet/v1/graphql' --output './src/graphql/generated/mina-archive.graphql'
+    outputs:
+      - "src/graphql/generated/mina-archive.graphql"
+  schema-get-zeko-archive:
+    command: gql-tada generate schema 'https://archive.testnet.zeko.io/graphql' --output './src/graphql/generated/zeko-archive.graphql'
+    outputs:
+      - "src/graphql/generated/zeko-archive.graphql"
+  schema-get:
+    deps:
+      - "schema-get-zeko"
+      - "schema-get-mina"
+      - "schema-get-mina-archive"
+      - "schema-get-zeko-archive"
+  fetchOuterActions:
+    command: bun examples/fetchOuterActions.ts
+  fetchInnerActions:
+    command: bun examples/fetchInnerActions.ts
+  submitDeposit:
+    command: bun examples/submitDeposit.ts
+  finalizeDeposit:
+    command: bun examples/finalizeDeposit.ts
+  submitWithdrawal:
+    command: bun examples/submitWithdrawal.ts
+  finalizeWithdrawal:
+    command: bun examples/finalizeWithdrawal.ts
+  canFinalizeDeposit:
+    command: bun examples/canFinalizeDeposit.ts
+  canFinalizeWithdrawal:
+    command: bun examples/canFinalizeWithdrawal.ts

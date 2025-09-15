@@ -6,7 +6,7 @@
 		"useIgnoreFile": true
 	},
 	"linter": {
-		"ignore": ["**/generated/*.d.ts"],
+		"ignore": ["**/generated/*.d.ts", "settings.json"],
 		"rules": {
 			"correctness": {
 				"noUnusedImports": {

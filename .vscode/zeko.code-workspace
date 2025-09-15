@@ -1,10 +1,10 @@
 {
     "folders": [
       {
-        "path": "../apps/layer"
+        "path": "../packages/layer"
       },
       {
-        "path": "../apps/design"
+        "path": "../packages/design"
       },
       {
         "path": "../apps/ui",
@@ -13,7 +13,7 @@
         "path": "../apps/bridge-ui",
       },
       {
-        "path": "../apps/bridge-sdk",
+        "path": "../packages/bridge-sdk",
       },
       {
         "path": "../apps/faucet",
@@ -23,12 +23,13 @@
       },
 
       {
+        "name": "#root",
         "path": "..",
       },
     ],
     "settings": {
       "typescript.tsdk": "node_modules/typescript/lib",
-      "typescript.enablePromptUseWorkspaceTsdk": true
+      "typescript.enablePromptUseWorkspaceTsdk": true,
     },
     "extensions": {
       "recommendations": [

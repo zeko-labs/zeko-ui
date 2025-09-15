@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: application
+language: typescript
+toolchain:
+  default: "unstable_node"
+
+fileGroups:
+  sources:
+    - content/**/*
+    - .vitepress/**/*
+    - worker.ts
+    - package.json
+
+tasks:
+  dev:
+    command: vitepress dev
+  build:
+    command: vitepress build
+    inputs:
+      - "@globs(sources)"
+    outputs:
+      - .vitepress/dist/**
+  type-cf:
+    command: wrangler types
+    inputs:
+      - wrangler.jsonc
+    outputs:
+      - worker-configuration.d.ts
+  preview:
+    command: vitepress preview
+    preset: "server"
+    deps:
+      - build
+  deploy:
+    command: wrangler deploy
+  deploy-preview:
+    command: wrangler versions upload

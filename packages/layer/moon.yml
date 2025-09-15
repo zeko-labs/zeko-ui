@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: library
+language: typescript
+toolchain:
+  default: "unstable_node"
+
+dependsOn:
+  - design
+
+fileGroups:
+  sources:
+    - app/**/*
+    - components/**/*
+    - playground/**/*
+    - nuxt.config.ts
+    - playground/nuxt.config.ts
+    - tsconfig.json
+    - cssforge.config.ts
+    - package.json
+tasks:
+  format:
+    inputs:
+      - "@group(sources)"
+  format-fix:
+    inputs:
+      - "@group(sources)"
+  cssforge:
+    command: node node_modules/@hebilicious/cssforge/src/cli --css app/assets/styles/cssforge.css
+    inputs:
+      - "@group(sources)"
+      - /apps/design/src/**/*
+      - /apps/design/package.json
+    outputs:
+      - .cssforge/
+      - app/assets/styles/cssforge.css
+  playground-dev:
+    command: nuxi dev playground
+    inputs:
+      - "@group(sources)"
+  playground-prepare:
+    command: nuxt prepare playground
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - playground/.nuxt/
+  playground-build:
+    command: nuxt build playground
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - playground/.nuxt/
+      - playground/.output/
+      - playground/dist/

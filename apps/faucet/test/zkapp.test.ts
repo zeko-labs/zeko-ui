@@ -1,7 +1,7 @@
 import { AccountUpdate, Bool, Mina, PrivateKey, type PublicKey, UInt64 } from "o1js"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 
-import { Faucet, type FaucetClaimEvent, type FaucetDepositEvent } from "../zkapp"
+import { Faucet, type FaucetClaimEvent, type FaucetDepositEvent } from "../src/zkapp"
 
 describe("Faucet Contract", () => {
 	const proofsEnabled = false

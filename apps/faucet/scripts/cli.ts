@@ -2,7 +2,7 @@ import { archiveUrls, urls } from "@lumina-dex/sdk"
 import { defineCommand, runMain } from "citty"
 import { AccountUpdate, Mina, PrivateKey, UInt64 } from "o1js"
 import * as v from "valibot"
-import { Faucet } from "../zkapp"
+import { Faucet } from "../src/zkapp"
 
 type FaucetArgs = {
 	network: keyof typeof urls

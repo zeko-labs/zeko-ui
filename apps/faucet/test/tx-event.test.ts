@@ -1,7 +1,7 @@
 import { Field, Mina, type PrivateKey, PublicKey } from "o1js"
 import { beforeEach, describe, expect, it } from "vitest"
 
-import { sendPayment } from "../faucet"
+import { sendPayment } from "../src/faucet"
 describe("Faucet Transaction", () => {
 	const proofsEnabled = false
 	let senderAccount: PublicKey

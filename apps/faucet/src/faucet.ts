@@ -10,11 +10,11 @@ import {
 	UInt64,
 	fetchAccount
 } from "o1js"
-import { prefixes } from "./node_modules/o1js/dist/node/bindings/crypto/constants"
+import { prefixes } from "../node_modules/o1js/dist/node/bindings/crypto/constants"
 import {
 	emptyHashWithPrefix,
 	hashWithPrefix
-} from "./node_modules/o1js/dist/node/lib/provable/crypto/poseidon"
+} from "../node_modules/o1js/dist/node/lib/provable/crypto/poseidon"
 
 export async function sendPayment({
 	address,

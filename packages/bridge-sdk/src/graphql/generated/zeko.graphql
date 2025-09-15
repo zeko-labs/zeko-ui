@@ -727,6 +727,8 @@ type TransactionInfo {
   hash: TransactionHash!
   memo: String!
   authorizationKind: String!
+  sequenceNumber: Int!
+  zkappAccountUpdateIds: [Int!]!
 }
 
 type BlockInfo {
@@ -757,6 +759,7 @@ type ZekoCircuitsConfig {
   chainL1: String!
   chainL2: String!
   withdrawalDelay: Int!
+  outerActionDelay: Int!
 }
 
 type StateHashes {

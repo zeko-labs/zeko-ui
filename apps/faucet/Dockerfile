@@ -3,28 +3,20 @@
 # Adjust bun version as desired
 FROM oven/bun:latest AS base
 
-LABEL fly_launch_runtime="Bun"
-
 # Node.js app lives here
 WORKDIR /app
 
 # Set production environment
 ENV NODE_ENV="production"
 
+RUN bun install -g pnpm
+
 # Throw-away build stage to reduce size of final image
 FROM base AS build
 
-# Install packages needed to build node modules
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential dumb-init pkg-config python-is-python3
-
 # Install node modules
-COPY container/bun.lock container/package.json ./
-RUN bun install --production
-
-# Copy application code
-COPY container/ .
-
+COPY . .
+RUN pnpm install --production --filter faucet
 
 # Final stage for app image
 FROM base
@@ -33,5 +25,6 @@ FROM base
 COPY --from=build /app /app
 
 # Start the server by default, this can be overwritten at runtime
+WORKDIR /app/apps/faucet
 EXPOSE 3000
 CMD [ "bun", "run", "start" ]

@@ -33,6 +33,7 @@ export default defineNuxtConfig({
 		}
 	},
 	nitro: {
+		preset: "cloudflare_module",
 		//TODO: enable when supported by Nitro
 		// cloudflare: { nodeCompat: true, deployConfig: true },
 		minify: false

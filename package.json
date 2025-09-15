@@ -2,31 +2,15 @@
 	"name": "zeko-ui-monorepo",
 	"private": true,
 	"type": "module",
-	"scripts": {
-		"format": "dprint check",
-		"format:fix": "dprint fmt",
-		"format:all:fix": "dprint fmt --verbose --allow-no-files"
-	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.1",
+		"@moonrepo/cli": "^1.40.2",
 		"dprint": "^0.47.2",
 		"lefthook": "^1.12.2",
 		"typescript": "^5.6.2"
 	},
 	"engines": {
-		"node": "24.5.0",
-		"pnpm": "9.12.0"
+		"node": "24.5.0"
 	},
-	"packageManager": "pnpm@9.12.0",
-	"pnpm": {
-		"overrides": {
-			"o1js": "catalog:",
-			"nitropack": "2.12.6",
-			"vite": "npm:rolldown-vite@7.1.9"
-		},
-		"onlyBuiltDependencies": ["lefthook"],
-		"patchedDependencies": {
-			"@gql.tada/internal": "patches/@gql.tada__internal.patch"
-		}
-	}
+	"packageManager": "pnpm@10.16.1"
 }
