@@ -195,7 +195,7 @@ export const transactionMachine = setup({
 							context.wallet.getSnapshot().context.currentNetwork.includes("zeko"),
 						target: "DONE",
 						actions: assign(({ context, event }) => ({
-							sentTransactionHash: event.output,
+							sentTransaction: event.output,
 							result: context.db.createResult({ hash: event.output.hash })
 						}))
 					}
