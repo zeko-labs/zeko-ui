@@ -53,6 +53,7 @@ export interface SavedTransaction {
 	transaction: string
 	zkappCommand: ZkappCommand
 	hash: string
+	zkAppId: string
 	id: string
 }
 
