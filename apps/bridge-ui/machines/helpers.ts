@@ -101,14 +101,16 @@ export const hashDb = ({
 	const saveSigned = async ({
 		hash,
 		confirmed,
+		zkAppId,
 		zkappCommand
-	}: { hash: string; confirmed: boolean; zkappCommand: ZkappCommand }) => {
+	}: { hash: string; confirmed: boolean; zkAppId: string; zkappCommand: ZkappCommand }) => {
 		const toStore = {
 			id,
 			timestamp: Date.now(),
 			network,
 			account,
 			hash,
+			zkAppId,
 			zkappCommand,
 			transaction
 		}

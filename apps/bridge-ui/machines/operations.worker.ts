@@ -168,14 +168,18 @@ async function finalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }): Pr
 	return transaction.toJSON()
 }
 
-async function transactionStatus(hash: string) {
-	const result = await fetchTransactionStatus(hash)
+async function transactionStatus({ zkAppId, url }: { zkAppId: string; url?: string }) {
+	const result = await fetchTransactionStatus(zkAppId, url)
 	return result
 }
 
 async function sendZkAppCommand(zkappCommand: ZkappCommand) {
 	const sentTransaction = await Transaction.fromJSON(zkappCommand).send()
-	return sentTransaction.hash
+	if (!sentTransaction.data)
+		throw new Error(
+			JSON.stringify({ message: "Transaction failed", errors: sentTransaction.errors })
+		)
+	return { hash: sentTransaction.hash, zkAppId: sentTransaction.data.sendZkapp.zkapp.id }
 }
 
 export const operations = {

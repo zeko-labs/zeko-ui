@@ -1,5 +1,5 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
-import type { walletMachine } from "@lumina-dex/sdk"
+import { type Networks, urls, type walletMachine } from "@lumina-dex/sdk"
 import type { Mina } from "o1js"
 import { assign, enqueueActions, fromPromise, setup } from "xstate"
 import type { ActorRefFromLogic } from "xstate"
@@ -13,6 +13,8 @@ type Wallet = ActorRefFromLogic<typeof walletMachine>
 
 export type Result = ReturnType<HashDb["createResult"]>
 
+type SentTransaction = { hash: string; zkAppId: string }
+
 export type TransactionMachineContext = {
 	id: string
 	transaction: string
@@ -21,10 +23,10 @@ export type TransactionMachineContext = {
 	user: string
 	savedTransaction: SavedTransaction | null
 	signedTransaction: ZkappCommand | null
-	sentTransactionHash: string | null
+	sentTransaction: SentTransaction | null
 	result: Result | Error
 	db: HashDb
-	zeko: boolean
+	network: Networks
 }
 
 type TransactionMachineInput = {
@@ -43,7 +45,7 @@ type SendSignedTxInput = {
 	worker: OperationsWorker
 }
 
-type WaitForTxInput = { hash: string; worker: OperationsWorker }
+type WaitForTxInput = SentTransaction & { network: Networks; worker: OperationsWorker }
 
 export const transactionMachine = setup({
 	types: {
@@ -91,20 +93,21 @@ export const transactionMachine = setup({
 				})
 			}
 		),
-		sendSignedTransaction: fromPromise<string, SendSignedTxInput>(({ input }) => {
+		sendSignedTransaction: fromPromise<SentTransaction, SendSignedTxInput>(({ input }) => {
 			return act("sendSignedTransaction", async () => {
 				const { signedTransaction: zkappCommand, db, zeko, worker } = input
-				const hash = await worker.sendZkAppCommand(zkappCommand)
+				const { hash, zkAppId } = await worker.sendZkAppCommand(zkappCommand)
 				logger.success("Transaction sent", hash)
-				await db.saveSigned({ hash, confirmed: zeko, zkappCommand })
-				return hash
+				await db.saveSigned({ hash, zkAppId, confirmed: zeko, zkappCommand })
+				return { hash, zkAppId }
 			})
 		}),
 		waitForTransaction: fromPromise<string, WaitForTxInput>(({ input }) => {
 			return act("waitForTransaction", async () => {
-				const { hash, worker } = input
+				const { zkAppId, hash, worker, network } = input
 				const transactionStatus = async (delay = 2000) => {
-					const result = await worker.transactionStatus(hash)
+					const url = urls[network]
+					const result = await worker.transactionStatus({ zkAppId, url })
 					if (result === "PENDING") {
 						await new Promise((r) => setTimeout(r, delay))
 						return transactionStatus(delay)
@@ -132,10 +135,10 @@ export const transactionMachine = setup({
 			user: account,
 			savedTransaction: null,
 			signedTransaction: null,
-			sentTransactionHash: null,
+			sentTransaction: null,
 			result: new Error("Transaction failed"),
 			db: hashDb({ network, account, transaction }),
-			zeko: network.includes("zeko")
+			network
 		}
 	},
 	output: ({ context: { result } }) => ({ result }),
@@ -176,16 +179,16 @@ export const transactionMachine = setup({
 			description: "Send a signed transaction with o1js, and save it to idb.",
 			invoke: {
 				src: "sendSignedTransaction",
-				input: ({ context: { signedTransaction, db, zeko, worker } }) => {
+				input: ({ context: { signedTransaction, db, network, worker } }) => {
 					if (!signedTransaction) throw new Error("No signed transaction to send")
-					return { signedTransaction, db, worker, zeko }
+					return { signedTransaction, db, worker, zeko: network.includes("zeko") }
 				},
 				onDone: [
 					{
 						target: "WAITING",
 						guard: ({ context }) =>
 							context.wallet.getSnapshot().context.currentNetwork.includes("mina"),
-						actions: assign({ sentTransactionHash: ({ event }) => event.output })
+						actions: assign({ sentTransaction: ({ event }) => event.output })
 					},
 					{
 						guard: ({ context }) =>
@@ -193,7 +196,7 @@ export const transactionMachine = setup({
 						target: "DONE",
 						actions: assign(({ context, event }) => ({
 							sentTransactionHash: event.output,
-							result: context.db.createResult({ hash: event.output })
+							result: context.db.createResult({ hash: event.output.hash })
 						}))
 					}
 				]
@@ -203,9 +206,9 @@ export const transactionMachine = setup({
 			description: "Wait for a transaction to be confirmed on L1.",
 			invoke: {
 				src: "waitForTransaction",
-				input: ({ context: { sentTransactionHash: hash, worker } }) => {
-					if (hash) return { hash, worker }
-					throw new Error("No sent transaction hash.")
+				input: ({ context: { sentTransaction, worker, network } }) => {
+					if (sentTransaction) return { ...sentTransaction, worker, network }
+					throw new Error("No sent transaction was found.")
 				},
 				onDone: {
 					target: "DONE",

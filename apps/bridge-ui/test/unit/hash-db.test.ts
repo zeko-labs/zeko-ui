@@ -32,7 +32,8 @@ describe("hashDb tests", () => {
 		const db = hashDb(makeSettings(1))
 
 		const hashValue = "HASH_ABC"
-		await db.saveSigned({ hash: hashValue, confirmed: false, zkappCommand })
+		const zkAppId = "ID_123"
+		await db.saveSigned({ hash: hashValue, zkAppId, confirmed: false, zkappCommand })
 		const transaction = await db.findUnconfirmed()
 		expect(transaction?.hash).toBe(hashValue)
 		expect(transaction?.confirmed).toBe(false)
@@ -42,21 +43,22 @@ describe("hashDb tests", () => {
 		const db = hashDb(makeSettings(2))
 
 		const hash = "HASH_DEF"
-		await db.saveSigned({ hash, confirmed: true, zkappCommand })
+		const zkAppId = "ID_456"
+		await db.saveSigned({ hash, zkAppId, confirmed: true, zkappCommand })
 		const transaction = await db.findUnconfirmed()
 		expect(transaction).toBeUndefined()
 	})
 
 	it("can store multiple ids and only unconfirmed ones are found", async () => {
 		const txs = [
-			{ hash: "H1", confirmed: false },
-			{ hash: "H2", confirmed: true },
-			{ hash: "H3", confirmed: false }
+			{ hash: "H1", zkAppId: "Z1", confirmed: false },
+			{ hash: "H2", zkAppId: "Z2", confirmed: true },
+			{ hash: "H3", zkAppId: "Z3", confirmed: false }
 		]
 
-		for (const { hash, confirmed } of txs) {
+		for (const { hash, confirmed, zkAppId } of txs) {
 			const db = hashDb({ ...makeSettings(3) })
-			await db.saveSigned({ hash, confirmed, zkappCommand })
+			await db.saveSigned({ hash, zkAppId, confirmed, zkappCommand })
 			const tx = await db.findUnconfirmed()
 			expect(tx?.hash).toBe(confirmed ? undefined : hash)
 		}
@@ -65,14 +67,15 @@ describe("hashDb tests", () => {
 	it("createResult returns explorer url", async () => {
 		const db = hashDb(makeSettings(4))
 		const hash = "HX"
-		await db.saveSigned({ hash, confirmed: false, zkappCommand })
+		const zkAppId = "ID_123"
+		await db.saveSigned({ hash, zkAppId, confirmed: false, zkappCommand })
 		const res = db.createResult({ hash })
 		expect(res.url).toBe(createExplorerUrl({ network: "zeko:testnet", hash }))
 	})
 
 	it("can update a transaction from unconfirmed to confirmed", async () => {
 		const db = hashDb(makeSettings(5))
-		await db.saveSigned({ hash: "HREP", confirmed: false, zkappCommand })
+		await db.saveSigned({ hash: "HREP", zkAppId: "IREP", confirmed: false, zkappCommand })
 		const first = await db.findUnconfirmed()
 		expect(first?.confirmed).toBe(false)
 
