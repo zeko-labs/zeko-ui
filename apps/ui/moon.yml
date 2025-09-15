@@ -55,10 +55,6 @@ tasks:
     command: nuxt prepare
     outputs:
       - .nuxt/
-  deploy:
-    command: wrangler deploy
-  deploy-preview:
-    command: wrangler versions upload
   deploy-dev:
     description: "Build and Deploy to Cloudflare Workers. Use with caution, prefer using CI/CD."
     script: rimraf .output .wrangler .nuxt && nuxt build && wrangler deploy
@@ -68,3 +64,11 @@ tasks:
       - .nuxt/
       - .output/
       - .wrangler/
+  deploy:
+    command: wrangler deploy
+    deps:
+      - build
+  deploy-preview:
+    command: wrangler versions upload
+    deps:
+      - build
