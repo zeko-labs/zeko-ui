@@ -22,15 +22,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Cache Moonrepo
-        uses: actions/cache@v4
-        with:
-          path: .moon/cache
-          key: ${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-
+      - name: Install D2
+        run: |
+          curl -fsSL https://d2lang.com/install.sh | sh -s --
 
-      - uses: "moonrepo/setup-toolchain@v0"
+      - uses: "./.github/actions/moon"
 
       - run: "moon ci"
 

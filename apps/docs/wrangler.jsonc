@@ -3,6 +3,7 @@
 	"name": "zeko-docs",
 	"compatibility_date": "2025-01-16",
 	"main": "worker.ts",
+	"preview_urls": true,
 	"routes": [{ "pattern": "docs.zeko.io", "custom_domain": true }],
 	"assets": {
 		"directory": ".vitepress/dist",

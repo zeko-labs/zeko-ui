@@ -5,6 +5,7 @@
 	"compatibility_date": "2025-01-16",
 	"compatibility_flags": ["nodejs_compat"], //Optional
 	"main": "./.output/server/index.mjs",
+	"preview_urls": true,
 	"assets": {
 		"directory": "./.output/public/",
 		"binding": "ASSETS"

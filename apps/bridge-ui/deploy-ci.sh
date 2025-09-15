@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # This is the CI script to build the project and create a Sentry release with sourcemaps and deploy it to Cloudflare Workers.
 # In an ideal world, the Nuxt Module / Vite plugin would work, but it doesn't.
@@ -26,7 +27,7 @@ fi
 
 # NUXT
 echo "Building RELEASE $SENTRY_RELEASE with DSN $SENTRY_DSN_PUBLIC on environment $SENTRY_ENVIRONMENT"
-pnpm build:cf
+moon run build
 echo "Build completed."
 
 # SENTRY

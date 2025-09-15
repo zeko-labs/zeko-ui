@@ -1,0 +1,35 @@
+name: Playwright Tests
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "apps/bridge-ui/**"
+
+jobs:
+  format:
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+      checks: write
+      statuses: write
+      deployments: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: "./.github/actions/moon"
+
+      - name: Install Playwright Browsers
+        run: pnpx playwright install chromium --with-deps --no-shell
+
+      - run: "moon run zeko-ui:test"
+
+      - uses: "moonrepo/run-report-action@v1"
+        if: success() || failure()
+        with:
+          access-token: ${{ secrets.GITHUB_TOKEN }}
