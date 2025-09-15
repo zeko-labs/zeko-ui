@@ -1,4 +1,4 @@
-# Docs rewrite
+# Docs
 
 - Introduction
   - Blockchain, Bitcoin, Wallets
