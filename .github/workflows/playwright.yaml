@@ -23,9 +23,12 @@ jobs:
           fetch-depth: 0
 
       - uses: "moonrepo/setup-toolchain@v0"
+        with:
+          auto-install: true
+          auto-setup: true
 
       - name: Install Playwright Browsers
-        run: npx playwright install chromium --with-deps --no-shell
+        run: npx playwright install chromium --with-deps
 
       - run: "moon run bridge-ui:test"
 

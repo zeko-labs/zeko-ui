@@ -11,6 +11,14 @@
 			"env": {
 				"MOON_WORKSPACE_ROOT": "${workspaceFolder}"
 			}
+		},
+		"playwright": {
+			"command": "npx",
+			"args": ["@playwright/mcp@latest"]
+		},
+		"cloudflare-documentation": {
+			"command": "npx",
+			"args": ["mcp-remote", "https://docs.mcp.cloudflare.com/sse"]
 		}
 	}
 }
