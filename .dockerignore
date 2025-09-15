@@ -24,6 +24,8 @@ logs
 .env.*
 !.env.example
 
+.wrangler
+
 # Moon
 .moon/cache
 .git
