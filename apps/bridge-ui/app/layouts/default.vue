@@ -16,9 +16,18 @@
     </video>
     <div class="Layout">
       <slot />
+      <footer>© {{ new Date().getFullYear() }} Zeko Labs</footer>
     </div>
   </div>
 </template>
+<style lang="postcss">
+:root {
+  --page-padding: 3rem;
+  @media (max-width: 1024px) {
+    --page-padding: 1rem;
+  }
+}
+</style>
 <style lang="postcss" scoped>
 .page-background {
   position: relative;

@@ -7,7 +7,7 @@
         <Bridge />
       </main>
     </div>
-    <footer>© {{ new Date().getFullYear() }} Zeko Labs</footer>
+    <Footer />
   </div>
   <!-- <div>
     <hr />
@@ -27,14 +27,6 @@
     <Label is="complete" />
   </div> -->
 </template>
-<style lang="postcss">
-:root {
-  --page-padding: 3rem;
-  @media (max-width: 1024px) {
-    --page-padding: 1rem;
-  }
-}
-</style>
 <style lang="postcss" scoped>
 .Container {
   position: relative;
