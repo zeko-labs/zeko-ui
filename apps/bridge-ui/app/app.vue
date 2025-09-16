@@ -5,6 +5,7 @@ const url = "https://bridge.zeko.io"
 const image = `${url}/og-image.png`
 const imageAlt = "Zeko Logo on a black background."
 useHead({
+	title,
 	htmlAttrs: { lang: "en" },
 	meta: [
 		{ property: "apple-mobile-web-app-title", content: title },

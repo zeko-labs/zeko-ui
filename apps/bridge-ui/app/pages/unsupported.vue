@@ -1,4 +1,3 @@
-import { Disabled } from '../../.nuxt/components';
 <script lang="ts" setup>
 useHead({ title: "Zeko Bridge - Unsupported device" })
 </script>
