@@ -32,4 +32,5 @@ jobs:
       - uses: "moonrepo/run-report-action@v1"
         if: success() || failure()
         with:
+          matrix: "playwright"
           access-token: ${{ secrets.GITHUB_TOKEN }}
