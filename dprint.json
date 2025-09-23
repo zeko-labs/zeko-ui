@@ -5,7 +5,9 @@
 		"semicolons": "asNeeded",
 		"trailingCommas": "none"
 	},
-	"malva": {},
+	"malva": {
+		"printWidth": 150
+	},
 	"markup": {
 		"quotes": "double",
 		"closingBracketSameLine": true,

@@ -101,17 +101,9 @@
     var(--palette-cosmicGold-50) 0%,
     var(--palette-cosmicGold-100) 50%,
     var(--palette-cosmicGold-200) 100%
-  ), linear-gradient(
-    0deg,
-    var(--palette-alpha-soft-gray1),
-    var(--palette-alpha-soft-gray1)
-  );
+  ), linear-gradient(0deg, var(--palette-alpha-soft-gray1), var(--palette-alpha-soft-gray1));
   --gradients-goldGradient-button-cta-3:
-    linear-gradient(
-    0deg,
-    var(--palette-alpha-soft-gray2),
-    var(--palette-alpha-soft-gray2)
-  ), radial-gradient(
+    linear-gradient(0deg, var(--palette-alpha-soft-gray2), var(--palette-alpha-soft-gray2)), radial-gradient(
     172.98% 251.21% at 100% 100%,
     var(--palette-cosmicGold-50) 0%,
     var(--palette-cosmicGold-100) 50%,
@@ -135,36 +127,12 @@
   --spacing-size-5: 1rem;
   --spacing-size-6: 1.25rem;
   /*____ Typography ____*/
-  --typography_fluid-lexend-h1: clamp(
-    4.1723rem,
-    4.0013rem + 0.8553vw,
-    4.7684rem
-  );
-  --typography_fluid-lexend-h2: clamp(
-    3.3379rem,
-    3.201rem + 0.6843vw,
-    3.8147rem
-  );
-  --typography_fluid-lexend-h3: clamp(
-    2.6703rem,
-    2.5608rem + 0.5474vw,
-    3.0518rem
-  );
-  --typography_fluid-lexend-h4: clamp(
-    2.1362rem,
-    2.0486rem + 0.4379vw,
-    2.4414rem
-  );
-  --typography_fluid-lexend-xxl: clamp(
-    1.709rem,
-    1.6389rem + 0.3503vw,
-    1.9531rem
-  );
-  --typography_fluid-lexend-xl: clamp(
-    1.3672rem,
-    1.3111rem + 0.2803vw,
-    1.5625rem
-  );
+  --typography_fluid-lexend-h1: clamp(4.1723rem, 4.0013rem + 0.8553vw, 4.7684rem);
+  --typography_fluid-lexend-h2: clamp(3.3379rem, 3.201rem + 0.6843vw, 3.8147rem);
+  --typography_fluid-lexend-h3: clamp(2.6703rem, 2.5608rem + 0.5474vw, 3.0518rem);
+  --typography_fluid-lexend-h4: clamp(2.1362rem, 2.0486rem + 0.4379vw, 2.4414rem);
+  --typography_fluid-lexend-xxl: clamp(1.709rem, 1.6389rem + 0.3503vw, 1.9531rem);
+  --typography_fluid-lexend-xl: clamp(1.3672rem, 1.3111rem + 0.2803vw, 1.5625rem);
   --typography_fluid-lexend-l: clamp(1.0938rem, 1.0489rem + 0.2242vw, 1.25rem);
   --typography_fluid-lexend-m: clamp(0.875rem, 0.8391rem + 0.1794vw, 1rem);
   --typography_fluid-lexend-s: clamp(0.7rem, 0.6713rem + 0.1435vw, 0.8rem);
