@@ -59,7 +59,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
         <div class="Row">
           <div>Amount</div>
           <div class="Mina">
-            <SvgMinaToken width="24" height="24" />
+            <SvgMinaLogo width="24" height="24" />
             <span>{{ machine.context.amount }}</span>
           </div>
         </div>
@@ -151,8 +151,14 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
             </Match>
             <Match :when='machine.matches("FAILED")'>
               <div class="error">
-                <span>Something went wrong :</span>
-                <pre v-for="error of machine.context.errors">{{  error }}</pre>
+                <p>
+                  The bridge has encountered an error that is not recoverable
+                </p>
+                <p>
+                  Don't worry, your funds are safe. <a
+                    href="https://discord.gg/vSDxqAchUY"
+                    target="_blank">Contact us on Discord</a>.
+                </p>
               </div>
             </Match>
           </Switch>
@@ -264,6 +270,8 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
 }
 
 .error {
-  color: var(--palette-persianRed-600);
+  &, a {
+    color: var(--palette-persianRed-600);
+  }
 }
 </style>

@@ -16,7 +16,6 @@
     </video>
     <div class="Layout">
       <slot />
-      <footer>© {{ new Date().getFullYear() }} Zeko Labs</footer>
     </div>
   </div>
 </template>

@@ -53,7 +53,7 @@ export default defineNuxtConfig({
 		}
 	},
 	postcss: {
-		plugins: { "postcss-nesting": { edition: "2024-02" } }
+		plugins: { "postcss-preset-env": { browsers: "last 2 versions" } }
 	},
 	fonts: { provider: "google" },
 	css: [

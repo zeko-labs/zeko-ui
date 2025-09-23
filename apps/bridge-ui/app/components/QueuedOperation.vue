@@ -29,7 +29,7 @@ const status = computed(() =>
     <div class="Bottom">
       <Label :is="status.kind">{{ status.text }}</Label>
       <div class="Mina">
-        <SvgMinaToken width="24" height="24" />
+        <SvgMinaLogo width="24" height="24" />
         <span>{{ machine.context.amount }}</span>
       </div>
     </div>

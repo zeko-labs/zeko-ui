@@ -25,7 +25,7 @@ const refetchBalance = () => {
     </div>
     <div class="MinaNetwork Badge">
       <div class="Mina" @click="refetchBalance">
-        <SvgMinaToken width="24" height="24" />
+        <SvgMinaLogo width="24" height="24" />
         <span>
           {{ currentMina }}
         </span>

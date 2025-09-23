@@ -28,8 +28,12 @@ const bridgeParameters = ({ bridge, user, l1, l2 }: BridgeOperationContext) => {
 }
 
 const addError =
-	(e: Error) =>
-	({ context }: ActionArgs<BridgeOperationContext, ErrorActorEvent, BridgeOperationEvents>) => {
+	(error: Error) =>
+	({
+		context,
+		event
+	}: ActionArgs<BridgeOperationContext, ErrorActorEvent, BridgeOperationEvents>) => {
+		const e = event.error instanceof Error ? event.error : error
 		logger.error(e)
 		return { errors: [...context.errors, e] }
 	}
@@ -480,11 +484,11 @@ export const bridgeOperationMachine = setup({
 						onError: [
 							{
 								target: "#bridgeOperation.FAILED",
-								guard: ({ context }) => context.errors.length > 3,
+								guard: ({ context }) => context.errors.length >= 3,
 								actions: assign(addError(new Error("Failed to finalize deposit")))
 							},
 							{
-								target: "#bridgeOperation.PENDING_DEPOSIT",
+								target: "#bridgeOperation.FINALIZE_DEPOSIT",
 								actions: assign(addError(new Error("Failed to finalize deposit")))
 							}
 						]
@@ -614,7 +618,7 @@ export const bridgeOperationMachine = setup({
 						onError: [
 							{
 								target: "#bridgeOperation.FAILED",
-								guard: ({ context }) => context.errors.length > 3,
+								guard: ({ context }) => context.errors.length >= 3,
 								actions: assign(addError(new Error("Failed to finalize withdrawal")))
 							},
 							{

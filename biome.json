@@ -18,6 +18,10 @@
 				"useConst": {
 					"level": "warn",
 					"fix": "safe"
+				},
+				"useNumberNamespace": {
+					"level": "warn",
+					"fix": "safe"
 				}
 			}
 		}

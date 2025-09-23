@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { useSelector } from "@lumina-dex/sdk/vue"
-import { errorToaster } from "~/helpers"
 
 const bs = useBridgeStore()
 
@@ -43,32 +42,16 @@ const queuedOperations = computed(
 	// )
 )
 
-const currentOperationErrors = computed(
-	() => currentOperation.value?.getSnapshot().context.errors
-)
-
 const startBridge = () => {
 	const amount = (amountToBridge.value ?? 0).toString()
 	bs.bridge.send({ type: "StartOperation", amount })
 	amountToBridge.value = undefined
 }
-
-watch(currentOperationErrors, (errors) => {
-	if (errors) {
-		const [e] = errors.toReversed()
-		if (e) {
-			errorToaster.create({
-				title: "Error",
-				description: e.message,
-				type: "error"
-			})
-		}
-	}
-})
 </script>
 <template>
   <Disabled
     v-if='
+      bs.wallet.snapshot.matches("UNSUPPORTED") ||
       bs.currentNetwork.includes("mainnet") ||
       bs.wallet.snapshot.error ||
       (bs.address.length === 0 && bs.wallet.snapshot.matches("INIT"))
@@ -76,11 +59,9 @@ watch(currentOperationErrors, (errors) => {
   />
   <div
     class="Bridge"
-    v-else-if='!bs.currentNetwork.includes("mainnet")'>
-    <div
-      class="MainOperation"
-      :class="{ NoOperation: !currentOperation }">
-      <div class="MainOperationInput">
+    v-else-if='bs.bridge.snapshot.matches("READY")'>
+    <div class="MainOperation">
+      <div class="MainOperationInput" v-if="!currentOperation">
         <div class="InputBox">
           <h4>Sending</h4>
           <BridgeAmountSelector v-model="amountToBridge" />
@@ -98,10 +79,7 @@ watch(currentOperationErrors, (errors) => {
           Send
         </Button>
       </div>
-      <CurrentOperation
-        v-if="currentOperation"
-        :operation="currentOperation"
-      />
+      <CurrentOperation v-else :operation="currentOperation" />
     </div>
     <!-- <pre>{{  allOperations }}</pre> -->
     <div v-if="queuedOperations.length > 0" class="NextTransactions">
@@ -130,10 +108,9 @@ watch(currentOperationErrors, (errors) => {
     </div>
   </div>
 
-  <div v-else>
-    <AnimatedLoadingSpinner />
-  </div>
-  <Toast :toaster="errorToaster" />
+  <AnimatedLoadingSpinner class="BigSpinner" v-else />
+
+  <CurrentErrors v-if="currentOperation" :operation="currentOperation" />
 </template>
 <style lang="postcss" scoped>
 :deep(.InputBox) {
@@ -146,14 +123,9 @@ watch(currentOperationErrors, (errors) => {
 }
 .MainOperation {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2ch;
-  max-width: 100vw;
-  &.NoOperation {
-    grid-template-columns: auto;
-    margin: auto;
-    max-width: 120ch;
-  }
+  grid-template-columns: auto;
+  margin: auto;
+  max-width: 60rem;
   @media (max-width: 1024px) {
     grid-template-columns: auto;
     grid-template-rows: auto auto;
@@ -192,5 +164,12 @@ watch(currentOperationErrors, (errors) => {
     height: auto;
     width: var(--size);
   }
+}
+
+.BigSpinner {
+  place-self: center;
+  --size: 40rem;
+  height: auto;
+  width: var(--size);
 }
 </style>

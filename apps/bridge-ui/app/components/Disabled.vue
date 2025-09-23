@@ -9,11 +9,23 @@ const bs = useBridgeStore()
         href="https://docs.zeko.io">Zeko Docs</a> for information about other
       bridges.
     </p>
-    <div class="WalletConnection" v-if="!bs.walletLoaded">
+    <div
+      class="WalletConnection"
+      v-if='bs.wallet.snapshot.matches("UNSUPPORTED")'>
+      <p>Please Download AuroWallet and use a compatible browser.</p>
+      <a href="https://www.aurowallet.com" target="_blank">
+        <Button variant="auro">
+          Download AuroWallet
+        </Button>
+      </a>
+    </div>
+    <div class="WalletConnection" v-else-if="!bs.walletLoaded">
       <p>Please connect your wallet to start bridging.</p>
       <Button
         variant="auro"
-        @click='bs.wallet.send({ type: "Connect" })'>Connect Wallet</Button>
+        @click='bs.wallet.send({ type: "Connect" })'>
+        Connect Wallet
+      </Button>
     </div>
     <p class="MainnetOnly" v-else-if='bs.currentNetwork.includes("mainnet")'>
       The Rollup Bridge is not available on Mainnet. Please
@@ -42,5 +54,8 @@ const bs = useBridgeStore()
 .WalletConnection {
   display: grid;
   place-items: center;
+  a {
+    all: unset;
+  }
 }
 </style>

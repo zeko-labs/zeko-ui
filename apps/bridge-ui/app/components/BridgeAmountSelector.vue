@@ -31,7 +31,7 @@ const collection = createListCollection({
             <Select.Trigger>
               <div class="TriggerContent">
                 <div class="TextWithLogo">
-                  <SvgMinaToken width="24" height="24" />
+                  <SvgMinaLogo width="24" height="24" />
                   <Select.ValueText placeholder="Placeholder" />
                 </div>
                 <Select.Indicator style="display: none">
