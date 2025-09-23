@@ -147,7 +147,7 @@
     display: none;
   }
   .Title {
-    font-size: var(--typography-lexend-xl);
+    font-size: var(--typography_fluid-lexend-xl);
     font-weight: 500;
   }
   img {
@@ -195,7 +195,7 @@
   backdrop-filter: blur(0.125rem);
   border-radius: 0.5rem;
   padding: 1rem;
-  font-size: var(--typography-lexend-s);
+  font-size: var(--typography_fluid-lexend-s);
   font-weight: 400;
   text-wrap: balance;
 }

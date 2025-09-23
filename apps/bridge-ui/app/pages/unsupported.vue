@@ -34,16 +34,16 @@ main {
 }
 
 p {
-  color: var(--color-gray-700);
+  color: var(--palette-gray-700);
 }
 .Tip {
-  color: var(--color-gray-600);
-  font: var(--typography-lexend-s);
+  color: var(--palette-gray-600);
+  font: var(--typography_fluid-lexend-s);
 }
 
 footer {
-  font-size: var(--typography-lexend-s);
-  color: var(--color-gray-500);
+  font-size: var(--typography_fluid-lexend-s);
+  color: var(--palette-gray-500);
   padding: 4rem 1rem;
 }
 </style>

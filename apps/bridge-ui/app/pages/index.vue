@@ -43,7 +43,7 @@
   gap: 2ch;
   grid-template-rows: auto 1fr;
   position: relative;
-  color: var(--color-gray-950);
+  color: var(--palette-gray-950);
 }
 
 main {
@@ -55,8 +55,8 @@ main {
 }
 
 footer {
-  font-size: var(--typography-lexend-s);
-  color: var(--color-gray-500);
+  font-size: var(--typography_fluid-lexend-s);
+  color: var(--palette-gray-500);
   padding: 4rem 1rem;
   /* Tablet & Desktop */
   @media (min-width: 480px) {

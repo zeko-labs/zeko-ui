@@ -67,9 +67,9 @@ const collection = createListCollection({
   display: grid;
   justify-content: space-between;
   grid-template-columns: 1fr auto;
-  background-color: var(--color-basic-spaceBlue);
+  background-color: var(--palette-basic-spaceBlue);
   border-radius: 8px;
-  border: 1px solid var(--color-gray-200);
+  border: 1px solid var(--palette-gray-200);
   overflow: hidden;
 }
 
@@ -82,8 +82,8 @@ span, input {
 [data-scope="field"][data-part="input"] {
   background: transparent;
   border: none;
-  color: var(--color-gray-900);
-  font-size: var(--typography-lexend-s);
+  color: var(--palette-gray-900);
+  font-size: var(--typography_fluid-lexend-s);
   padding: 12px 0px 12px 16px;
   outline: none;
   height: 100%;
@@ -97,7 +97,7 @@ span, input {
 
 .TriggerWrapper {
   padding: 10px 8px;
-  background-color: var(--color-basic-spaceBlue);
+  background-color: var(--palette-basic-spaceBlue);
 }
 
 .TriggerContent {
@@ -114,7 +114,7 @@ span, input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: var(--color-gray-900);
+  color: var(--palette-gray-900);
   cursor: pointer;
   border: 0;
   border-radius: 4px;
@@ -124,21 +124,21 @@ span, input {
   padding: 12px 16px;
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 1px var(--color-gray-200);
+    box-shadow: 0 0 0 1px var(--palette-gray-200);
   }
 }
 
 /* Select dropdown menu*/
 [data-scope="select"][data-part="content"] {
-  color: var(--color-gray-900);
-  background-color: var(--color-gray-100);
+  color: var(--palette-gray-900);
+  background-color: var(--palette-gray-100);
   border: 0;
   border-radius: 4px;
   width: 122px;
   padding: 10px 6px;
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 1px var(--color-gray-200);
+    box-shadow: 0 0 0 1px var(--palette-gray-200);
   }
 }
 
@@ -156,7 +156,7 @@ span, input {
   padding: 0px 8px;
   border-radius: 4px;
   &[data-highlighted] {
-    box-shadow: 0 0 0 1px var(--color-gray-200);
+    box-shadow: 0 0 0 1px var(--palette-gray-200);
   }
 
   &:hover, [data-highlighted] {
@@ -165,7 +165,7 @@ span, input {
 
   &[aria-selected="true"] {
     &:hover, [data-highlighted] {
-      color: var(--color-gray-900);
+      color: var(--palette-gray-900);
     }
     background-color: rgba(250, 250, 250, 0.8);
   }
@@ -179,7 +179,7 @@ span, input {
 
 /* Dropdown indicator */
 [data-scope="select"][data-part="indicator"] {
-  color: var(--color-gray-500);
+  color: var(--palette-gray-500);
 }
 
 /* Hide the native select element */

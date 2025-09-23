@@ -48,7 +48,7 @@ const status = computed(() =>
   padding: 0.5rem 1rem;
   border-radius: 1rem;
   &:hover {
-    border: 1px solid var(--color-cosmicGold-medium);
+    border: 1px solid var(--palette-cosmicGold-medium);
     transition: all 0.1s;
   }
   .Top {
@@ -63,9 +63,9 @@ const status = computed(() =>
       aspect-ratio: 1 / 1;
       display: grid;
       place-items: center;
-      border: 1px solid var(--color-alpha-soft-gray1);
-      background: oklch(from var(--color-cosmicGold-50) l c h / 0.1);
-      font-size: var(--typography-lexend-xs);
+      border: 1px solid var(--palette-alpha-soft-gray1);
+      background: oklch(from var(--palette-cosmicGold-50) l c h / 0.1);
+      font-size: var(--typography_fluid-lexend-xs);
     }
   }
   .Middle {
@@ -73,9 +73,9 @@ const status = computed(() =>
     grid-template-columns: repeat(3, minmax(max-content, 1fr));
     align-items: center;
     gap: 1ch;
-    font-size: var(--typography-lexend-l);
+    font-size: var(--typography_fluid-lexend-l);
     .arrow {
-      color: var(--color-yellow-500);
+      color: var(--palette-yellow-500);
     }
   }
   .Bottom {

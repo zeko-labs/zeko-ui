@@ -189,7 +189,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
   --background: oklch(1 0 0 / 0.6);
   --border-radius: 1rem;
   --border-size: 2px;
-  --border-color: var(--color-cosmicGold-50);
+  --border-color: var(--palette-cosmicGold-50);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -246,7 +246,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
     .Explanation {
       font-style: italic;
       max-width: 60ch;
-      font-size: var(--typography-lexend-s);
+      font-size: var(--typography_fluid-lexend-s);
       .Flex {
         display: flex;
       }
@@ -264,6 +264,6 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
 }
 
 .error {
-  color: var(--color-persianRed-600);
+  color: var(--palette-persianRed-600);
 }
 </style>

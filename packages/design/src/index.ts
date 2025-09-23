@@ -2,27 +2,22 @@ import { defineConfig } from "@hebilicious/cssforge"
 
 export const config = defineConfig({
 	spacing: {
-		size: {
-			value: {
-				1: "0.25rem",
-				2: "0.5rem",
-				3: "0.75rem",
-				4: "0.8755rem",
-				5: "1rem",
-				6: "1.25rem"
+		custom: {
+			size: {
+				value: {
+					1: "0.25rem",
+					2: "0.5rem",
+					3: "0.75rem",
+					4: "0.8755rem",
+					5: "1rem",
+					6: "1.25rem"
+				}
 			}
 		}
 	},
 	typography: {
-		lexend: {
-			weight: {
-				value: {
-					regular: "400",
-					medium: "500",
-					semibold: "600"
-				}
-			},
-			typescale: {
+		fluid: {
+			lexend: {
 				value: {
 					minWidth: 320,
 					minFontSize: 14,
@@ -47,6 +42,15 @@ export const config = defineConfig({
 						"6": "h2",
 						"7": "h1"
 					}
+				}
+			}
+		},
+		weight: {
+			lexend: {
+				value: {
+					regular: "400",
+					medium: "500",
+					semibold: "600"
 				}
 			}
 		}
@@ -145,10 +149,10 @@ export const config = defineConfig({
 							value:
 								"linear-gradient(251deg, var(--1) 33.63%, var(--2) 55.54%, var(--3) 64.51%, var(--4) 81.94%)",
 							variables: {
-								1: "colors.palette.value.cosmicGold.50",
-								2: "colors.palette.value.cosmicGold.90",
-								3: "colors.palette.value.cosmicGold.100",
-								4: "colors.palette.value.cosmicGold.200"
+								1: "palette.value.cosmicGold.50",
+								2: "palette.value.cosmicGold.90",
+								3: "palette.value.cosmicGold.100",
+								4: "palette.value.cosmicGold.200"
 							}
 						},
 						// linear-gradient(262deg, #FFE459 33.1%, #DD9B34 56.3%, #DB9531 65.78%, #A47327 84.23%);
@@ -156,27 +160,27 @@ export const config = defineConfig({
 							value:
 								"linear-gradient(261.78deg, var(--1) 33.1%, var(--2) 56.3%, var(--3) 65.78%, var(--4) 84.23%)",
 							variables: {
-								1: "colors.palette.value.cosmicGold.50",
-								2: "colors.palette.value.cosmicGold.90",
-								3: "colors.palette.value.cosmicGold.100",
-								4: "colors.palette.value.gray.200"
+								1: "palette.value.cosmicGold.50",
+								2: "palette.value.cosmicGold.90",
+								3: "palette.value.cosmicGold.100",
+								4: "palette.value.gray.200"
 							}
 						},
 						// linear-gradient(271deg, #FFE459 2.88%, #DD9B34 79.48%, #DB9531 98.1%);
 						3: {
 							value: "linear-gradient(270.62deg, var(--1) 2.88%, var(--2) 79.48%, var(--3) 98.1%)",
 							variables: {
-								1: "colors.palette.value.cosmicGold.50",
-								2: "colors.palette.value.cosmicGold.90",
-								3: "colors.palette.value.cosmicGold.100"
+								1: "palette.value.cosmicGold.50",
+								2: "palette.value.cosmicGold.90",
+								3: "palette.value.cosmicGold.100"
 							}
 						},
 						"3-inversed": {
 							value: "linear-gradient(270.62deg, var(--1) 2.88%, var(--2) 79.48%, var(--3) 98.1%)",
 							variables: {
-								1: "colors.palette.value.cosmicGold.100",
-								2: "colors.palette.value.cosmicGold.90",
-								3: "colors.palette.value.cosmicGold.50"
+								1: "palette.value.cosmicGold.100",
+								2: "palette.value.cosmicGold.90",
+								3: "palette.value.cosmicGold.50"
 							}
 						},
 						// radial-gradient(68.86% 100% at 100% 100%, #FFE459 0%, #DB9531 50.19%, #A47327 100%);
@@ -184,9 +188,9 @@ export const config = defineConfig({
 							value:
 								"radial-gradient(100% 68.86% at 100% 100%, var(--1) 0%, var(--2) 50.19%, var(--3) 100%)",
 							variables: {
-								1: "colors.palette.value.cosmicGold.50",
-								2: "colors.palette.value.cosmicGold.100",
-								3: "colors.palette.value.cosmicGold.200"
+								1: "palette.value.cosmicGold.50",
+								2: "palette.value.cosmicGold.100",
+								3: "palette.value.cosmicGold.200"
 							}
 						},
 						// linear-gradient(0deg, rgba(10, 10, 10, 0.12) 0%, rgba(10, 10, 10, 0.12) 100%), radial-gradient(94.94% 137.88% at 100% 100%, #FFE459 0%, #DB9531 50%, #A47327 100%);
@@ -194,10 +198,10 @@ export const config = defineConfig({
 							value:
 								"radial-gradient(137.88% 94.94% at 100% 100%, var(--1) 0%, var(--2) 50%, var(--3) 100%), linear-gradient(0deg, var(--4), var(--4))",
 							variables: {
-								1: "colors.palette.value.cosmicGold.50",
-								2: "colors.palette.value.cosmicGold.100",
-								3: "colors.palette.value.cosmicGold.200",
-								4: "colors.palette.value.alpha.soft-gray1"
+								1: "palette.value.cosmicGold.50",
+								2: "palette.value.cosmicGold.100",
+								3: "palette.value.cosmicGold.200",
+								4: "palette.value.alpha.soft-gray1"
 							}
 						},
 						// linear-gradient(0deg, rgba(10, 10, 10, 0.24) 0%, rgba(10, 10, 10, 0.24) 100%), radial-gradient(172.98% 251.21% at 100% 100%, #FFE459 0%, #DB9531 50%, #A47327 100%);
@@ -205,10 +209,10 @@ export const config = defineConfig({
 							value:
 								"linear-gradient(0deg, var(--4), var(--4)), radial-gradient(172.98% 251.21% at 100% 100%, var(--1) 0%, var(--2) 50%, var(--3) 100%)",
 							variables: {
-								1: "colors.palette.value.cosmicGold.50",
-								2: "colors.palette.value.cosmicGold.100",
-								3: "colors.palette.value.cosmicGold.200",
-								4: "colors.palette.value.alpha.soft-gray2"
+								1: "palette.value.cosmicGold.50",
+								2: "palette.value.cosmicGold.100",
+								3: "palette.value.cosmicGold.200",
+								4: "palette.value.alpha.soft-gray2"
 							}
 						}
 					}
@@ -225,9 +229,9 @@ export const config = defineConfig({
 							secondary: "var(--3)"
 						},
 						variables: {
-							1: "colors.palette.value.gray.200",
-							2: "colors.palette.value.gray.700",
-							3: "colors.palette.value.gray.300"
+							1: "palette.value.gray.200",
+							2: "palette.value.gray.700",
+							3: "palette.value.gray.300"
 						}
 					},
 					background: {
@@ -235,7 +239,7 @@ export const config = defineConfig({
 							secondary: "var(--1)"
 						},
 						variables: {
-							1: "colors.palette.value.gray.100"
+							1: "palette.value.gray.100"
 						}
 					},
 					content: {
@@ -244,8 +248,8 @@ export const config = defineConfig({
 							tertiary: "var(--2)"
 						},
 						variables: {
-							1: "colors.palette.value.gray.700",
-							2: "colors.palette.value.gray.900"
+							1: "palette.value.gray.700",
+							2: "palette.value.gray.900"
 						}
 					}
 				}
@@ -262,9 +266,9 @@ export const config = defineConfig({
 						border: "1px solid transparent"
 					},
 					variables: {
-						white: "colors.palette.value.basic.white",
-						g50: "colors.palette.value.cosmicGold.50",
-						gm: "colors.palette.value.cosmicGold.medium"
+						white: "palette.value.basic.white",
+						g50: "palette.value.cosmicGold.50",
+						gm: "palette.value.cosmicGold.medium"
 					}
 				}
 			}
@@ -272,12 +276,12 @@ export const config = defineConfig({
 		"zeko-token": {
 			value: {
 				background: {
-					value: { color: "var(--1)" },
-					variables: { 1: "colors.palette.value.cosmicGold.90" }
+					value: { shade: "var(--1)" },
+					variables: { 1: "palette.value.cosmicGold.90" }
 				},
 				foreground: {
-					value: { color: "var(--1)" },
-					variables: { 1: "colors.palette.value.basic.white" }
+					value: { shade: "var(--1)" },
+					variables: { 1: "palette.value.basic.white" }
 				}
 			}
 		},
@@ -293,11 +297,11 @@ export const config = defineConfig({
 						padding: "var(--s4) var(--s3)"
 					},
 					variables: {
-						t1: "typography.lexend.typescale@m",
-						t2: "typography.lexend.weight.value.regular",
-						s2: "spacing.size.value.2",
-						s3: "spacing.size.value.3",
-						s4: "spacing.size.value.4"
+						t1: "typography_fluid.lexend@m",
+						t2: "typography.weight.lexend.value.regular",
+						s2: "spacing.custom.size.value.2",
+						s3: "spacing.custom.size.value.3",
+						s4: "spacing.custom.size.value.4"
 					}
 				},
 				cta: {
@@ -310,11 +314,11 @@ export const config = defineConfig({
 						padding: "var(--s3) var(--s5)"
 					},
 					variables: {
-						t1: "typography.lexend.typescale@m",
-						t2: "typography.lexend.weight.value.medium",
-						s2: "spacing.size.value.2",
-						s3: "spacing.size.value.3",
-						s5: "spacing.size.value.5"
+						t1: "typography_fluid.lexend@m",
+						t2: "typography.weight.lexend.value.medium",
+						s2: "spacing.custom.size.value.2",
+						s3: "spacing.custom.size.value.3",
+						s5: "spacing.custom.size.value.5"
 					}
 				},
 				large: {
@@ -327,11 +331,11 @@ export const config = defineConfig({
 						padding: "var(--s5) var(--s6)"
 					},
 					variables: {
-						t1: "typography.lexend.typescale@xl",
-						t2: "typography.lexend.weight.value.medium",
-						s2: "spacing.size.value.2",
-						s5: "spacing.size.value.5",
-						s6: "spacing.size.value.6"
+						t1: "typography_fluid.lexend@xl",
+						t2: "typography.weight.lexend.value.medium",
+						s2: "spacing.custom.size.value.2",
+						s5: "spacing.custom.size.value.5",
+						s6: "spacing.custom.size.value.6"
 					}
 				}
 			}

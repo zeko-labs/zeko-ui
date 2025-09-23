@@ -119,9 +119,9 @@ span, button {
 [data-scope="field"][data-part="root"] {
   display: grid;
   grid-template-columns: 1fr;
-  background-color: var(--color-basic-spaceBlue);
+  background-color: var(--palette-basic-spaceBlue);
   border-radius: 8px;
-  border: 1px solid var(--color-gray-200);
+  border: 1px solid var(--palette-gray-200);
   overflow: hidden;
 }
 
@@ -139,8 +139,8 @@ span, button {
 [data-scope="select"][data-part="trigger"] {
   display: grid;
   align-items: center;
-  background-color: var(--color-basic-spaceBlue);
-  color: var(--color-gray-900);
+  background-color: var(--palette-basic-spaceBlue);
+  color: var(--palette-gray-900);
   cursor: pointer;
   border: 0;
   border-radius: 4px;
@@ -149,7 +149,7 @@ span, button {
   font-size: 16px;
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 1px var(--color-gray-200);
+    box-shadow: 0 0 0 1px var(--palette-gray-200);
   }
 }
 
@@ -160,8 +160,8 @@ select[aria-hidden="true"] {
 
 /* Select dropdown menu*/
 [data-scope="select"][data-part="content"] {
-  color: var(--color-gray-900);
-  background-color: var(--color-gray-200);
+  color: var(--palette-gray-900);
+  background-color: var(--palette-gray-200);
   border: 1px solid white;
   border-radius: 4px;
   padding: 10px 8px;
@@ -170,7 +170,7 @@ select[aria-hidden="true"] {
   transform: scale(1.02);
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 1px var(--color-gray-200);
+    box-shadow: 0 0 0 1px var(--palette-gray-200);
   }
 }
 
@@ -196,18 +196,18 @@ select[aria-hidden="true"] {
   }
 
   &[data-highlighted] {
-    box-shadow: 0 0 0 1px var(--color-basic-white);
+    box-shadow: 0 0 0 1px var(--palette-basic-white);
   }
 
   &:hover, [data-highlighted] {
-    color: var(--color-basic-white);
+    color: var(--palette-basic-white);
   }
 
   &[aria-selected="true"] {
     &:hover, [data-highlighted] {
-      color: var(--color-gray-950);
+      color: var(--palette-gray-950);
     }
-    background-color: var(--color-basic-white);
+    background-color: var(--palette-basic-white);
   }
 }
 </style>

@@ -27,17 +27,17 @@ body:has(.switch-button-checkbox:checked) {
     color: white;
   }
   .switch-button:before {
-    color: var(--color-gray-950);
+    color: var(--palette-gray-950);
   }
 }
 
 .switch-button-label {
-  color: var(--color-gray-950);
+  color: var(--palette-gray-950);
   transition: all 300ms;
 }
 
 .switch-button {
-  background: var(--color-gray-950);
+  background: var(--palette-gray-950);
   border-radius: 30px;
   overflow: hidden;
   width: 240px;
@@ -93,9 +93,9 @@ body:has(.switch-button-checkbox:checked) {
 }
 .switch-button-checkbox + .switch-button-label:before {
   content: "";
-  border: 4px solid var(--color-gray-950);
+  border: 4px solid var(--palette-gray-950);
   background: white;
-  color: var(--color-gray-950);
+  color: var(--palette-gray-950);
   height: 100%;
   width: 100%;
   position: absolute;

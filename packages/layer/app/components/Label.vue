@@ -30,25 +30,25 @@ const { is } = defineProps<{ is: "pending" | "complete" | "error" }>()
   width: fit-content;
   gap: 0.25rem;
   border-radius: 0.5rem;
-  font-size: var(--typography-lexend-s);
-  font-weight: var(--weight-lexend-semibold);
+  font-size: var(--typography_fluid-lexend-s);
+  font-weight: var(--typography-weight-lexend-semibold);
 }
 
 .complete {
-  border: 1px solid var(--color-complete-border);
-  background: var(--color-complete-background);
-  color: var(--color-complete-content);
+  border: 1px solid var(--palette-complete-border);
+  background: var(--palette-complete-background);
+  color: var(--palette-complete-content);
 }
 
 .pending {
-  border: 1px solid var(--color-pending-border);
-  background: var(--color-pending-background);
-  color: var(--color-pending-content);
+  border: 1px solid var(--palette-pending-border);
+  background: var(--palette-pending-background);
+  color: var(--palette-pending-content);
 }
 
 .error {
-  border: 1px solid var(--color-error-border);
-  background: var(--color-error-background);
-  color: var(--color-error-content);
+  border: 1px solid var(--palette-error-border);
+  background: var(--palette-error-background);
+  color: var(--palette-error-content);
 }
 </style>

@@ -46,7 +46,7 @@ h2, p {
 }
 
 .Title {
-  font-size: var(--typography-lexend-xxl);
+  font-size: var(--typography_fluid-lexend-xxl);
   font-weight: 500;
 }
 

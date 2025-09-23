@@ -16,7 +16,7 @@ const size = computed(() => (isCta.value ? "cta" : "default"))
 
 const buttonStyle = computed(() => {
 	const sizes = cssforge.primitives.button.value[size.value]
-	const colors = cssforge.colors.palette.value
+	const colors = cssforge.palette.value
 
 	const baseStyles = {
 		color: colors.gray[50].value,
@@ -34,11 +34,11 @@ const buttonStyle = computed(() => {
 	} as const
 	const cta = {
 		...baseStyles,
-		borderColor: cssforge.colors.theme.value.light.border.primary.value,
+		borderColor: cssforge.theme.value.light.border.primary.value,
 		disabled: {
-			color: cssforge.colors.theme.value.light.content.secondary.value,
-			borderColor: cssforge.colors.theme.value.light.border.primaryDark.value,
-			background: cssforge.colors.theme.value.light.background.secondary.value
+			color: cssforge.theme.value.light.content.secondary.value,
+			borderColor: cssforge.theme.value.light.border.primaryDark.value,
+			background: cssforge.theme.value.light.background.secondary.value
 		},
 		hover: { background: "inherit", borderColor: "inherit", opacity: 0.9 },
 		active: { background: "inherit", borderColor: "inherit", opacity: 0.8 }
@@ -49,35 +49,32 @@ const buttonStyle = computed(() => {
 			background: colors.gray[950].value,
 			borderColor: colors.gray[950].value,
 			disabled: {
-				color: cssforge.colors.theme.value.light.content.tertiary.value,
-				borderColor: cssforge.colors.theme.value.light.border.secondary.value,
-				background: cssforge.colors.theme.value.light.background.secondary.value
+				color: cssforge.theme.value.light.content.tertiary.value,
+				borderColor: cssforge.theme.value.light.border.secondary.value,
+				background: cssforge.theme.value.light.background.secondary.value
 			},
 			hover: {
 				opacity: "inherit",
-				background: cssforge.colors.palette.value.gray[900].value,
-				borderColor: cssforge.colors.palette.value.gray[900].value
+				background: cssforge.palette.value.gray[900].value,
+				borderColor: cssforge.palette.value.gray[900].value
 			},
 			active: {
 				opacity: "inherit",
-				background: cssforge.colors.palette.value.gray[800].value,
-				borderColor: cssforge.colors.palette.value.gray[800].value
+				background: cssforge.palette.value.gray[800].value,
+				borderColor: cssforge.palette.value.gray[800].value
 			}
 		},
 		cta1: {
 			...cta,
-			background:
-				cssforge.colors.gradients.value.goldGradient["button-cta-1"].value
+			background: cssforge.gradients.value.goldGradient["button-cta-1"].value
 		},
 		cta2: {
 			...cta,
-			background:
-				cssforge.colors.gradients.value.goldGradient["button-cta-2"].value
+			background: cssforge.gradients.value.goldGradient["button-cta-2"].value
 		},
 		cta3: {
 			...cta,
-			background:
-				cssforge.colors.gradients.value.goldGradient["button-cta-3"].value
+			background: cssforge.gradients.value.goldGradient["button-cta-3"].value
 		},
 		auro: {
 			...cta,
@@ -87,7 +84,7 @@ const buttonStyle = computed(() => {
 		black: {
 			...cta,
 			background:
-				"linear-gradient(263deg, var(--color-gray-950) 0%, var(--color-gray-700) 100%)",
+				"linear-gradient(263deg, var(--palette-gray-950) 0%, var(--palette-gray-700) 100%)",
 			borderColor: "rgba(255, 255, 255, 0.20)"
 		}
 	} as const
@@ -154,19 +151,19 @@ const className = computed(
 .ZekoButtonBlack {
   &:disabled {
     background: var(--theme-light-background-secondary);
-    color: var(--color-gray-400);
+    color: var(--palette-gray-400);
     box-shadow: inset 0 0 0 1px oklch(0.8607 0 0);
     cursor: not-allowed;
   }
   &:not(:disabled) {
     &:hover {
       background: linear-gradient(
-        var(--color-gray-950),
-        var(--color-gray-950)
+        var(--palette-gray-950),
+        var(--palette-gray-950)
       );
     }
     &:active {
-      background: var(--color-gray-950);
+      background: var(--palette-gray-950);
       box-shadow: inset 0 0 0 3px v-bind("buttonStyle.borderColor");
     }
   }

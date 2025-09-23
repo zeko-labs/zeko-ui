@@ -104,7 +104,7 @@ const communityItems = [
   place-items: center;
   transition: var(--transition);
   &:hover {
-    background-color: var(--color-cosmicGold-100);
+    background-color: var(--palette-cosmicGold-100);
     transform: scale(1.1);
     transition: var(--transition);
   }

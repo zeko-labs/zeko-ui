@@ -1,9 +1,9 @@
 h1 {
-  font-size: var(--typography-lexend-h1);
+  font-size: var(--typography_fluid-lexend-h1);
 }
 h2 {
-  font-size: var(--typography-lexend-h2);
+  font-size: var(--typography_fluid-lexend-h2);
 }
 h3 {
-  font-size: var(--typography-lexend-h3);
+  font-size: var(--typography_fluid-lexend-h3);
 }

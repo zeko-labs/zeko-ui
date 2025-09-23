@@ -39,8 +39,8 @@ main {
   position: relative;
   min-height: 100svh;
   width: 100vw;
-  color: var(--color-gray-950);
-  font-size: var(--typography-lexend-m);
+  color: var(--palette-gray-950);
+  font-size: var(--typography_fluid-lexend-m);
   padding: 0;
 }
 header {
@@ -55,7 +55,7 @@ header {
 }
 .ProblemSolution {
   grid-area: first;
-  background-color: var(--color-gray-950);
+  background-color: var(--palette-gray-950);
   color: white;
   width: 100vw;
   max-height: 100svh;
@@ -87,7 +87,7 @@ header {
 footer {
   grid-area: footer;
   width: 100vw;
-  background-color: var(--color-gray-950);
+  background-color: var(--palette-gray-950);
   color: white;
 }
 </style>

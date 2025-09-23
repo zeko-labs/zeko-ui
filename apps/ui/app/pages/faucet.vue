@@ -177,8 +177,8 @@ main {
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: min-content auto;
-  color: var(--color-gray-900);
-  font-size: var(--typography-lexend-m);
+  color: var(--palette-gray-900);
+  font-size: var(--typography_fluid-lexend-m);
   :deep(.Navigation) {
     padding: 2.5rem 0rem;
   }
@@ -199,13 +199,13 @@ main {
   }
 }
 h3 {
-  font-size: var(--typography-lexend-h3);
-  color: var(--color-gray-950);
+  font-size: var(--typography_fluid-lexend-h3);
+  color: var(--palette-gray-950);
   padding: 0;
   margin: 0;
 }
 a {
-  color: var(--color-cosmicGold-200);
+  color: var(--palette-cosmicGold-200);
   text-decoration: none;
 }
 
@@ -275,9 +275,9 @@ a {
 
 .Faucet {
   p {
-    color: var(--color-gray-800);
+    color: var(--palette-gray-800);
     &.success {
-      color: var(--color-complete-content);
+      color: var(--palette-complete-content);
     }
   }
   .error {
@@ -285,7 +285,7 @@ a {
     align-items: center;
     justify-content: flex-start;
     gap: 0.5rem;
-    color: var(--color-persianRed-500);
+    color: var(--palette-persianRed-500);
   }
 }
 
@@ -321,11 +321,11 @@ a {
   .InputWrapper {
     display: inline-flex;
     align-items: center;
-    color: var(--color-gray-900);
+    color: var(--palette-gray-900);
     background-color: white;
     opacity: 0.75;
     border-radius: 0.5rem;
-    border: 1px solid var(--color-gray-200);
+    border: 1px solid var(--palette-gray-200);
     padding-left: 1rem;
     width: 100%;
     input {
@@ -341,7 +341,7 @@ a {
   [data-scope="field"][data-part="input"] {
     background: transparent;
     border: none;
-    font-size: var(--typography-lexend-s);
+    font-size: var(--typography_fluid-lexend-s);
     padding: 12px 16px;
     outline: none;
     height: 100%;
@@ -356,12 +356,12 @@ a {
 
   /* Label */
   [data-scope="field"][data-part="label"] {
-    font-size: var(--typography-lexend-xs);
+    font-size: var(--typography_fluid-lexend-xs);
     color: var(--theme-light-content-tertiary);
   }
 
   [data-scope="field"][data-part="helper-text"] {
-    font-size: var(--typography-lexend-xs);
+    font-size: var(--typography_fluid-lexend-xs);
     font-style: italic;
   }
 
@@ -376,8 +376,8 @@ a {
 }
 
 footer {
-  font-size: var(--typography-lexend-s);
-  color: var(--color-gray-500);
+  font-size: var(--typography_fluid-lexend-s);
+  color: var(--palette-gray-500);
   padding: 4rem 0 4rem 0;
   /* Tablet & Desktop */
   @media (min-width: 480px) {

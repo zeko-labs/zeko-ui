@@ -34,9 +34,9 @@ const nodeSize = {
   <svg width="0" height="0" style="position: absolute">
     <defs>
       <linearGradient id="goldenGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="var(--color-cosmicGold-200)" />
-        <stop offset="50%" stop-color="var(--color-cosmicGold-100)" />
-        <stop offset="100%" stop-color="var(--color-cosmicGold-50)" />
+        <stop offset="0%" stop-color="var(--palette-cosmicGold-200)" />
+        <stop offset="50%" stop-color="var(--palette-cosmicGold-100)" />
+        <stop offset="100%" stop-color="var(--palette-cosmicGold-50)" />
       </linearGradient>
     </defs>
   </svg>
@@ -131,12 +131,12 @@ const nodeSize = {
   font-size: 14px;
   font-weight: 400;
   display: none;
-  color: var(--color-gray-500);
+  color: var(--palette-gray-500);
   align-items: center;
   min-width: 20ch;
   &.current {
     display: grid;
-    color: var(--color-gray-950);
+    color: var(--palette-gray-950);
     font-weight: 600;
     font-size: 16px;
   }
@@ -165,10 +165,10 @@ const nodeSize = {
 .progress-line {
   flex-grow: 1;
   height: 2px;
-  background: var(--color-gray-200);
+  background: var(--palette-gray-200);
   transition: background 0.6s ease-out;
   &.completed {
-    background: var(--gradient-goldGradient-3-inversed);
+    background: var(--gradients-goldGradient-3-inversed);
   }
 }
 
@@ -187,7 +187,7 @@ const nodeSize = {
   z-index: 1;
   circle {
     fill: transparent;
-    stroke: var(--color-gray-200);
+    stroke: var(--palette-gray-200);
     stroke-width: 2;
     transition: fill 0.5s ease-out, stroke 0.5s ease-out;
     &.current {
@@ -205,7 +205,7 @@ const nodeSize = {
     }
     &.future {
       fill: transparent;
-      stroke: var(--color-gray-200);
+      stroke: var(--palette-gray-200);
       stroke-width: 2;
     }
   }
