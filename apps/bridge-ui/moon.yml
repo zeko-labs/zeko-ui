@@ -85,7 +85,7 @@ tasks:
       - "@group(sources)"
       - "@group(test)"
   playwright-install:
-    command: playwright install --with-deps
+    command: playwright install chromium --with-deps
   test-ci:
     extends: test
     deps: [playwright-install]
