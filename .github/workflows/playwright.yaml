@@ -27,10 +27,7 @@ jobs:
           auto-install: true
           auto-setup: true
 
-      - name: Install Playwright Browsers
-        run: npx playwright install
-
-      - run: "moon run bridge-ui:test"
+      - run: moon run bridge-ui:test-ci
 
       - uses: "moonrepo/run-report-action@v1"
         if: success() || failure()

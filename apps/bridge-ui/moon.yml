@@ -84,6 +84,11 @@ tasks:
     inputs:
       - "@group(sources)"
       - "@group(test)"
+  playwright-install:
+    command: playwright install --with-deps
+  test-ci:
+    extends: test
+    deps: [playwright-install]
   test-watch:
     command: vitest
     preset: "watcher"
