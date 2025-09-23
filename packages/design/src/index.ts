@@ -276,11 +276,11 @@ export const config = defineConfig({
 		"zeko-token": {
 			value: {
 				background: {
-					value: { shade: "var(--1)" },
+					value: { color: "var(--1)" },
 					variables: { 1: "palette.value.cosmicGold.90" }
 				},
 				foreground: {
-					value: { shade: "var(--1)" },
+					value: { color: "var(--1)" },
 					variables: { 1: "palette.value.basic.white" }
 				}
 			}

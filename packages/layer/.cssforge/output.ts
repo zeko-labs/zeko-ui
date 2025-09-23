@@ -555,17 +555,17 @@ export const cssForge = {
 		"zeko-token": {
 			value: {
 				background: {
-					shade: {
-						key: "--zeko-token-background-shade",
+					color: {
+						key: "--zeko-token-background-color",
 						value: "var(--palette-cosmicGold-90)",
-						variable: "--zeko-token-background-shade: var(--palette-cosmicGold-90);"
+						variable: "--zeko-token-background-color: var(--palette-cosmicGold-90);"
 					}
 				},
 				foreground: {
-					shade: {
-						key: "--zeko-token-foreground-shade",
+					color: {
+						key: "--zeko-token-foreground-color",
 						value: "var(--palette-basic-white)",
-						variable: "--zeko-token-foreground-shade: var(--palette-basic-white);"
+						variable: "--zeko-token-foreground-color: var(--palette-basic-white);"
 					}
 				}
 			}

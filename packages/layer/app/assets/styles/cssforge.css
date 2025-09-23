@@ -185,8 +185,8 @@
   ) border-box;
   --border-mainnetEra-border: 1px solid transparent;
   /* zeko-token */
-  --zeko-token-background-shade: var(--palette-cosmicGold-90);
-  --zeko-token-foreground-shade: var(--palette-basic-white);
+  --zeko-token-background-color: var(--palette-cosmicGold-90);
+  --zeko-token-foreground-color: var(--palette-basic-white);
   /* button */
   --button-default-width: 8.4375rem;
   --button-default-height: 2.5rem;

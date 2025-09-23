@@ -24,6 +24,7 @@ tasks:
       - "@group(sources)"
   cssforge:
     command: node node_modules/@hebilicious/cssforge/src/cli --css app/assets/styles/cssforge.css
+    deps: ["design:build"]
     inputs:
       - "@group(sources)"
       - /apps/design/src/**/*

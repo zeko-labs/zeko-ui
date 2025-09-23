@@ -9,10 +9,6 @@ tasks:
       runInCI: true
   format-fix:
     command: dprint fmt --allow-no-files
-  format-all:
-    command: dprint fmt --allow-no-files
-  check-all:
-    command: dprint check --allow-no-files
   test:
     options:
       runInCI: true
