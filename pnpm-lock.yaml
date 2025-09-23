@@ -54,6 +54,9 @@ catalogs:
     postcss-nesting:
       specifier: ^13.0.1
       version: 13.0.1
+    postcss-preset-env:
+      specifier: ^10.4.0
+      version: 10.4.0
     typescript:
       specifier: ^5.8.3
       version: 5.9.2
@@ -218,7 +221,7 @@ importers:
         specifier: 'catalog:'
         version: 13.0.1(postcss@8.5.6)
       postcss-preset-env:
-        specifier: ^10.4.0
+        specifier: 'catalog:'
         version: 10.4.0(postcss@8.5.6)
       type-fest:
         specifier: ^4.41.0

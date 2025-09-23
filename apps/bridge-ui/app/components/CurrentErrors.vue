@@ -9,11 +9,11 @@ const { operation } = defineProps<{
 
 const errors = useSelector(operation, (state) => state.context.errors)
 
-watch(errors, (errors) => {
-	if (errors) {
-		const [e] = errors.toReversed()
+watch(errors, (newErrors) => {
+	if (newErrors) {
+		const [e] = newErrors.toReversed()
 		if (e) {
-			console.error(`A total of ${errors.length} errors have occurred.`)
+			console.error(`A total of ${newErrors.length} errors have occurred.`)
 			errorToaster.create({
 				title: "Error",
 				description: e.message,

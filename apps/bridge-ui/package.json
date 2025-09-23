@@ -47,7 +47,7 @@
 		"nitro-cloudflare-dev": "catalog:",
 		"playwright": "^1.55.0",
 		"postcss-nesting": "catalog:",
-		"postcss-preset-env": "^10.4.0",
+		"postcss-preset-env": "catalog:",
 		"type-fest": "^4.41.0",
 		"typescript": "^5.9.2",
 		"vite": "^7.1.2",

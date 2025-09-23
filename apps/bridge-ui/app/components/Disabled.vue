@@ -12,7 +12,7 @@ const bs = useBridgeStore()
     <div
       class="WalletConnection"
       v-if='bs.wallet.snapshot.matches("UNSUPPORTED")'>
-      <p>Please Download AuroWallet and use a compatible browser.</p>
+      <p>Please Download Auro Wallet and use a compatible browser.</p>
       <a href="https://www.aurowallet.com" target="_blank">
         <Button variant="auro">
           Download AuroWallet
