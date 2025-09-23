@@ -28,7 +28,7 @@ jobs:
           auto-setup: true
 
       - name: Install Playwright Browsers
-        run: npx playwright install chromium --with-deps
+        run: npx playwright install
 
       - run: "moon run bridge-ui:test"
 
