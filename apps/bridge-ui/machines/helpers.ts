@@ -68,7 +68,7 @@ interface ZekoBridgeDB extends DBSchema {
 export type HashDb = ReturnType<typeof hashDb>
 
 const baseUrl = {
-	"mina:devnet": "https://mxinascan.io/devnet",
+	"mina:devnet": "https://minascan.io/devnet",
 	"mina:mainnet": "https://minascan.io/mainnet",
 	"zeko:testnet": "https://zekoscan.io/testnet",
 	"zeko:mainnet": "https://zekoscan.io/mainnet"
