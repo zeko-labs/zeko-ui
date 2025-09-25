@@ -46,7 +46,6 @@
 		"@vitest/browser": "^3.2.4",
 		"nitro-cloudflare-dev": "catalog:",
 		"playwright": "^1.55.0",
-		"postcss-nesting": "catalog:",
 		"postcss-preset-env": "catalog:",
 		"type-fest": "^4.41.0",
 		"typescript": "^5.9.2",
@@ -54,6 +53,5 @@
 		"vitest": "^3.2.4",
 		"vue-tsc": "^3.0.6",
 		"wrangler": "catalog:"
-	},
-	"packageManager": "pnpm@10.16.1"
+	}
 }

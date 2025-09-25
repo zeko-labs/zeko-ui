@@ -33,5 +33,5 @@ jobs:
       - uses: "moonrepo/run-report-action@v1"
         if: success() || failure()
         with:
-          matrix: "ci"
+          matrix: '{"ci":true}'
           access-token: ${{ secrets.GITHUB_TOKEN }}
