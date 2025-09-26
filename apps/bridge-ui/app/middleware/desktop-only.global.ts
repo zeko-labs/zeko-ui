@@ -1,7 +1,8 @@
-export default defineNuxtRouteMiddleware((to) => {
+export default defineNuxtRouteMiddleware((to, from) => {
 	if (import.meta.server) return
 	const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 	if (isMobile) {
+		if (from.query.desktop === "true") return
 		if (to.path.startsWith("/unsupported")) return
 		return navigateTo({ path: "/unsupported", query: { r: to.fullPath } }, { replace: true })
 	}

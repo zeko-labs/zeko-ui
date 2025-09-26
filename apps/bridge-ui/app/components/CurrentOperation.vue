@@ -206,7 +206,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
   background: var(--background);
   border-radius: var(--border-radius);
   &.hasCTA {
-    box-shadow: 0 0 10vw 100vw oklch(0 0 0 / 0.2);
+    box-shadow: 0 0 10vw 300vw oklch(0 0 0 / 0.2);
   }
   &.isLoading {
     &::before {

@@ -177,6 +177,7 @@ const pageCount = computed(() =>
   max-width: 95vw;
   overflow-x: auto;
   display: grid;
+  padding-bottom: 0.5rem;
   --rows-per-page: v-bind(pageSize);
   --bridge-row-height: 3rem;
   --bridge-border-color: var(--theme-light-border-secondary);

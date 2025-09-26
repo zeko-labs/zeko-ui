@@ -128,7 +128,6 @@ const startBridge = () => {
   max-width: 60rem;
   @media (max-width: 1024px) {
     grid-template-columns: auto;
-    grid-template-rows: auto auto;
     gap: 2rem;
   }
 }
@@ -168,8 +167,8 @@ const startBridge = () => {
 
 .BigSpinner {
   place-self: center;
-  --size: 40rem;
   height: auto;
-  width: var(--size);
+  width: 40rem;
+  max-width: 75vw;
 }
 </style>
