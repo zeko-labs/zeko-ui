@@ -192,9 +192,17 @@ main {
   }
 
   .NavigationSectionWrapper {
+    /* Center content on wide screens */
+    max-width: 1400px;
+    margin: 0 auto;
     /* Mobile */
     @media (max-width: 480px) {
       min-height: 100svh;
+    }
+    /* Tablet - ensure proper centering */
+    @media (min-width: 768px) and (max-width: 1199px) {
+      max-width: 100%;
+      padding: 0 2rem;
     }
   }
 }
@@ -215,6 +223,26 @@ a {
   gap: 1.25rem;
   padding: 4.5rem 0 0 0;
 
+  /* Wide screens - add some breathing room */
+  @media (min-width: 1200px) {
+    gap: 3rem;
+    padding: 4.5rem 2rem 0 2rem;
+  }
+
+  /* Very wide screens - increase gap further */
+  @media (min-width: 1600px) {
+    gap: 4rem;
+    padding: 4.5rem 4rem 0 4rem;
+  }
+
+  /* Tablet - stack sections on smaller tablets */
+  @media (max-width: 768px) and (min-width: 481px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    gap: 3rem;
+    padding: 2rem 0 0 0;
+  }
+
   /* Mobile */
   @media (max-width: 480px) {
     padding: 0;
@@ -222,6 +250,7 @@ a {
     grid-template-rows: auto auto;
     gap: 4rem;
   }
+}
 
   section {
     display: flex;
@@ -379,6 +408,9 @@ footer {
   font-size: var(--typography_fluid-lexend-s);
   color: var(--palette-gray-500);
   padding: 4rem 0 4rem 0;
+  /* Center footer content on wide screens */
+  max-width: 1400px;
+  margin: 0 auto;
   /* Tablet & Desktop */
   @media (min-width: 480px) {
     display: flex;
