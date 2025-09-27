@@ -214,6 +214,8 @@ a {
   grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
   padding: 4.5rem 0 0 0;
+  max-width: 1200px;
+  margin: 0 auto;
 
   /* Mobile */
   @media (max-width: 480px) {
@@ -221,6 +223,11 @@ a {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
     gap: 4rem;
+  }
+
+  /* Wide screens - increase max-width for very large displays */
+  @media (min-width: 1400px) {
+    max-width: 1400px;
   }
 
   section {
