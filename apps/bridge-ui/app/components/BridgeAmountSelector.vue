@@ -21,6 +21,7 @@ const collection = createListCollection({
         min="0"
         @wheel.prevent="() => {}"
         v-model="modelValue"
+        v-bind="$attrs"
         placeholder="Enter Amount"
       />
     </Field.Root>
@@ -65,6 +66,7 @@ const collection = createListCollection({
 /* Main container */
 .SelectWrapper {
   display: grid;
+  cursor: default;
   justify-content: space-between;
   grid-template-columns: 1fr auto;
   background-color: var(--palette-basic-spaceBlue);
@@ -115,7 +117,8 @@ span, input {
   align-items: center;
   justify-content: space-between;
   color: var(--palette-gray-900);
-  cursor: pointer;
+  background-color: transparent;
+  cursor: default;
   border: 0;
   border-radius: 4px;
   height: 36px;

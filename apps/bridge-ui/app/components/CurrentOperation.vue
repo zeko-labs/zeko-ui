@@ -163,21 +163,6 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
   </div>
 </template>
 <style lang="postcss" scoped>
-@keyframes spinning-border {
-  0%,
-  100% {
-    clip-path: inset(0 0 var(--spinning-border-clip-path-size) 0);
-  }
-  25% {
-    clip-path: inset(0 0 0 var(--spinning-border-clip-path-size));
-  }
-  50% {
-    clip-path: inset(var(--spinning-border-clip-path-size) 0 0 0);
-  }
-  75% {
-    clip-path: inset(0 var(--spinning-border-clip-path-size) 0 0);
-  }
-}
 .CurrentOperationWrapper {
   --spinning-border-clip-path-size: 99%;
   --background: oklch(1 0 0 / 0.6);
