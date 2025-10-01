@@ -10,23 +10,29 @@ export async function fetchActions(
 	pk: PublicKey,
 	actionStates?: Mina.ActionStates
 ): Promise<Action[]> {
-	const { data } = await client.query(fetchActionsQuery, {
-		pk: pk.toBase58(),
-		fromActionState: actionStates?.fromActionState?.toString() ?? null,
-		endActionState: actionStates?.endActionState?.toString() ?? null
-	})
-	const dataWithDefault = data?.actions.map((a) => ({
-		...a,
-		actionData: a?.actionData?.map((ad) => ({
-			...ad,
-			transactionInfo: ad?.transactionInfo ?? { status: "status", hash: "hash" }
-		})),
-		blockInfo: { timestamp: String(a?.blockInfo?.timestamp ?? "0") }
-	}))
-	const result = v.safeParse(
-		v.array(
+	const fetchActions = async ({ fromBlock, toBlock }: { fromBlock?: number; toBlock?: number }) => {
+		const { data } = await client.query(fetchActionsQuery, {
+			pk: pk.toBase58(),
+			fromActionState: actionStates?.fromActionState?.toString() ?? null,
+			endActionState: actionStates?.endActionState?.toString() ?? null,
+			from: fromBlock ?? null,
+			to: toBlock ?? null
+		})
+		const dataWithDefault = data?.actions.map((a) => ({
+			...a,
+			actionData: a?.actionData?.map((ad) => ({
+				...ad,
+				transactionInfo: ad?.transactionInfo ?? { status: "status", hash: "hash" }
+			})),
+			blockInfo: {
+				timestamp: String(a?.blockInfo?.timestamp ?? "0"),
+				height: Number(a?.blockInfo?.height ?? 0)
+			}
+		}))
+
+		const schema = v.array(
 			v.object({
-				blockInfo: v.object({ timestamp: v.string() }),
+				blockInfo: v.object({ timestamp: v.string(), height: v.number() }),
 				actionState: v.object({
 					actionStateOne: v.string(),
 					actionStateTwo: v.string()
@@ -38,11 +44,23 @@ export async function fetchActions(
 					})
 				)
 			})
-		),
-		dataWithDefault
-	)
-	if (!result.success) throw new Error("Invalid actions data")
-	return result.output.flatMap(
+		)
+
+		const result = v.safeParse(schema, dataWithDefault)
+		if (!result.success) throw new Error("Invalid actions data")
+
+		if (result.output.length === 0) return result.output
+		else {
+			const prevOutput: v.InferOutput<typeof schema> = await fetchActions({
+				fromBlock: result.output[0].blockInfo.height - 10_000
+			})
+			return [...prevOutput, ...result.output]
+		}
+	}
+
+	const output = await fetchActions({})
+
+	return output.flatMap(
 		({
 			actionState: { actionStateTwo: actionStateBefore },
 			actionData,
