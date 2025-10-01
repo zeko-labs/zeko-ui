@@ -79,16 +79,20 @@ tasks:
       - .wrangler/
   test:
     command: vitest run
-    options:
-      runInCI: false
     inputs:
       - "@group(sources)"
       - "@group(test)"
+    options:
+      runInCI: false
   playwright-install:
     command: playwright install chromium --with-deps
+    options:
+      runInCI: true
   test-ci:
     extends: test
     deps: [playwright-install]
+    options:
+      runInCI: true
   test-watch:
     command: vitest
     preset: "watcher"

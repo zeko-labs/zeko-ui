@@ -85,66 +85,54 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
         <div class="Explanation">
           <Switch>
             <Match :when='machine.matches({ SUBMIT_DEPOSIT: "transaction" })'>
-              We are generating a transaction to deposit your funds from Mina L1
-              to Zeko L2.
+              Zeko Bridge is generating a transaction to sign with your wallet.
             </Match>
             <Match
               :when='machine.matches({ SUBMIT_DEPOSIT: "send_and_confirm" })'>
               Waiting for the transaction to be confirmed.
             </Match>
             <Match :when='machine.matches("SUBMIT_WITHDRAWAL")'>
-              We are generating a transaction to withdraw your funds from Zeko
-              L2 to Mina L1.
+              Zeko Bridge is generating a transaction to sign with your wallet.
             </Match>
-
             <Match :when='machine.matches("PENDING_DEPOSIT")'>
-              <p>
-                Waiting for the deposit transaction to be confirmed on Mina L1.
-              </p>
-              <p>
-                This can take several minutes as we are waiting for 5 blocks or
-                more.
-              </p>
+              Your Send Transaction is awaiting Confirmation. This can take 15
+              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5
+              blocks).
             </Match>
             <Match :when='machine.matches("PENDING_WITHDRAWAL")'>
-              <p>
-                Waiting for the withdrawal transaction to be confirmed on Zeko
-                L2.
-              </p>
-              <p>
-                This usually takes several minutes, but can take up to an hour
-                as we are waiting for multiple blocks on L1 for security
-                reasons.
-              </p>
+              Your Send Transaction is awaiting Confirmation. This can take 15
+              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5
+              blocks).
             </Match>
             <Match :when='machine.matches("INIT_BRIDGE_OPERATION")'>
-              The bridge operation process is starting.
+              Please wait…the Zeko Bridge is loading your wallet's latest
+              transaction history and status.
             </Match>
-
             <Match :when='machine.matches("TO_FINALIZE")'>
-              You must click on the "Finalize" button to complete the operation.
+              Claim generates a zero-knowledge proof to sign with your wallet on
+              the destination chain.
             </Match>
             <Match
               :when='
                 machine.matches({ FINALIZE_DEPOSIT: "transaction" }) ||
                 machine.matches({ FINALIZE_WITHDRAWAL: "transaction" })
               '>
-              We are generating a proof on the sequencer. You'll have to sign
-              next.
+              Zeko Bridge is generating a sequencer proof to sign with your
+              wallet.
             </Match>
             <Match
-              :when='machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" })'>
-              Finalize Withdrawal Transaction has been sent, waiting on L1
-              confirmation.
-            </Match>
-            <Match
-              :when='machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })'>
-              Finalize Deposit Transaction has been sent, waiting on L2
-              confirmation.
+              :when='
+                machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" }) ||
+                machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })
+              '>
+              Your Bridge Transaction is Claimed. The status is still Pending
+              until it's finalized to the destination chain. This can take 15
+              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5
+              blocks). Completed Transactions appear below.
             </Match>
             <Match :when='machine.matches("WAITING_FOR_NETWORK")'>
               <div class="Flex">
-                <span> You must swap to&nbsp;</span>
+                <span>Switch your wallet to&nbsp;</span>
                 <NetworkBadge :network="machine.context.changeNetworkTo" />
                 <span>.</span>
               </div>
@@ -152,7 +140,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
             <Match :when='machine.matches("FAILED")'>
               <div class="error">
                 <p>
-                  The bridge has encountered an error that is not recoverable
+                  Something went wrong.
                 </p>
                 <p>
                   Don't worry, your funds are safe. <a
@@ -175,21 +163,6 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
   </div>
 </template>
 <style lang="postcss" scoped>
-@keyframes spinning-border {
-  0%,
-  100% {
-    clip-path: inset(0 0 var(--spinning-border-clip-path-size) 0);
-  }
-  25% {
-    clip-path: inset(0 0 0 var(--spinning-border-clip-path-size));
-  }
-  50% {
-    clip-path: inset(var(--spinning-border-clip-path-size) 0 0 0);
-  }
-  75% {
-    clip-path: inset(0 var(--spinning-border-clip-path-size) 0 0);
-  }
-}
 .CurrentOperationWrapper {
   --spinning-border-clip-path-size: 99%;
   --background: oklch(1 0 0 / 0.6);

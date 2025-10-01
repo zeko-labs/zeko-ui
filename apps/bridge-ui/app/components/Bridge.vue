@@ -3,8 +3,6 @@ import { useSelector } from "@lumina-dex/sdk/vue"
 
 const bs = useBridgeStore()
 
-const amountToBridge = ref<number | undefined>(undefined)
-
 const allOperations = useSelector(bs.bridge.actorRef, (state) =>
 	Object.groupBy(
 		[...state.context.operations.values()].map(({ operation, status }) => ({
@@ -41,12 +39,6 @@ const queuedOperations = computed(
 	// 		}).actorRef
 	// )
 )
-
-const startBridge = () => {
-	const amount = (amountToBridge.value ?? 0).toString()
-	bs.bridge.send({ type: "StartOperation", amount })
-	amountToBridge.value = undefined
-}
 </script>
 <template>
   <Disabled
@@ -57,28 +49,9 @@ const startBridge = () => {
       (bs.address.length === 0 && bs.wallet.snapshot.matches("INIT"))
     '
   />
-  <div
-    class="Bridge"
-    v-else-if='bs.bridge.snapshot.matches("READY")'>
+  <div class="Bridge" v-else>
     <div class="MainOperation">
-      <div class="MainOperationInput" v-if="!currentOperation">
-        <div class="InputBox">
-          <h4>Sending</h4>
-          <BridgeAmountSelector v-model="amountToBridge" />
-        </div>
-
-        <FromTo
-          :source="bs.bridge.snapshot.context.sourceNetwork"
-          :destination="bs.bridge.snapshot.context.destinationNetwork"
-        />
-        <Button
-          class="BridgeButton"
-          variant="cta2"
-          @click="startBridge"
-          :disabled="!amountToBridge || amountToBridge <= 0 || bs.address.length === 0">
-          Send
-        </Button>
-      </div>
+      <Inputs v-if="!currentOperation" />
       <CurrentOperation v-else :operation="currentOperation" />
     </div>
     <!-- <pre>{{  allOperations }}</pre> -->
@@ -108,19 +81,9 @@ const startBridge = () => {
     </div>
   </div>
 
-  <AnimatedLoadingSpinner class="BigSpinner" v-else />
-
   <CurrentErrors v-if="currentOperation" :operation="currentOperation" />
 </template>
 <style lang="postcss" scoped>
-:deep(.InputBox) {
-  display: grid;
-  grid-template-columns: 20ch 1fr;
-  align-items: center;
-  @media (max-width: 1024px) {
-    grid-template-columns: 10ch 1fr;
-  }
-}
 .MainOperation {
   display: grid;
   grid-template-columns: auto;
@@ -130,13 +93,6 @@ const startBridge = () => {
     grid-template-columns: auto;
     gap: 2rem;
   }
-}
-.MainOperationInput {
-  display: grid;
-  gap: 1rem;
-  border-radius: 1rem;
-  background: oklch(1 0 0 / 0.6);
-  padding: 2rem;
 }
 
 .NextTransactions {
@@ -163,12 +119,5 @@ const startBridge = () => {
     height: auto;
     width: var(--size);
   }
-}
-
-.BigSpinner {
-  place-self: center;
-  height: auto;
-  width: 40rem;
-  max-width: 75vw;
 }
 </style>
