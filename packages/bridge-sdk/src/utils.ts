@@ -5,12 +5,19 @@ import { fromList, pushHash } from "./actions"
 import { fetchActionsQuery } from "./graphql/queries/mina-archive"
 import type { Account, Action, Deposit, Withdrawal } from "./types"
 
+// The graphQL schema server will limit the block scan range to a fixed number of blocks.
+// https://github.com/o1-labs/Archive-Node-API/blob/2d726955502fbd02c70d388f589284dd838bbb45/src/server/server.ts#L13
+const BLOCK_RANGE_SIZE = 10_000
+
 export async function fetchActions(
 	client: Client,
 	pk: PublicKey,
 	actionStates?: Mina.ActionStates
 ): Promise<Action[]> {
-	const fetchActions = async ({ fromBlock, toBlock }: { fromBlock?: number; toBlock?: number }) => {
+	const fetchActionsRecursive = async ({
+		fromBlock,
+		toBlock
+	}: { fromBlock?: number; toBlock?: number }) => {
 		const { data } = await client.query(fetchActionsQuery, {
 			pk: pk.toBase58(),
 			fromActionState: actionStates?.fromActionState?.toString() ?? null,
@@ -51,13 +58,13 @@ export async function fetchActions(
 
 		if (result.output.length === 0) return result.output
 
-		const prevOutput: v.InferOutput<typeof schema> = await fetchActions({
-			fromBlock: result.output[0].blockInfo.height - 10_000
+		const prevOutput: v.InferOutput<typeof schema> = await fetchActionsRecursive({
+			fromBlock: result.output[0].blockInfo.height - BLOCK_RANGE_SIZE
 		})
 		return [...prevOutput, ...result.output]
 	}
 
-	const output = await fetchActions({})
+	const output = await fetchActionsRecursive({})
 
 	return output.flatMap(
 		({
