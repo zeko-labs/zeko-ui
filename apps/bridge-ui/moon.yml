@@ -86,11 +86,10 @@ tasks:
       runInCI: false
   playwright-install:
     command: playwright install chromium --with-deps
+    options:
+      runInCI: true
   test-ci:
-    command: vitest run
-    inputs:
-      - "@group(sources)"
-      - "@group(test)"
+    extends: test
     deps: [playwright-install]
     options:
       runInCI: true
