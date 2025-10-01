@@ -50,12 +50,11 @@ export async function fetchActions(
 		if (!result.success) throw new Error("Invalid actions data")
 
 		if (result.output.length === 0) return result.output
-		else {
-			const prevOutput: v.InferOutput<typeof schema> = await fetchActions({
-				fromBlock: result.output[0].blockInfo.height - 10_000
-			})
-			return [...prevOutput, ...result.output]
-		}
+
+		const prevOutput: v.InferOutput<typeof schema> = await fetchActions({
+			fromBlock: result.output[0].blockInfo.height - 10_000
+		})
+		return [...prevOutput, ...result.output]
 	}
 
 	const output = await fetchActions({})
