@@ -96,8 +96,8 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
             </Match>
             <Match :when='machine.matches("PENDING_DEPOSIT")'>
               Your Send Transaction is awaiting Confirmation. This can take 15
-              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation +
-              5blocks).
+              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5
+              blocks).
             </Match>
             <Match :when='machine.matches("PENDING_WITHDRAWAL")'>
               Your Send Transaction is awaiting Confirmation. This can take 15
