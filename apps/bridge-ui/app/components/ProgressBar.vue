@@ -23,11 +23,6 @@ const nodeSize = {
 	rem: `${rawNodeSize / 16}rem`,
 	value: rawNodeSize
 }
-
-/**
- * Note: We are using grid-template-areas and margin tricks to reproduce the design as faithfully as possible.
- *
- */
 </script>
 
 <template>
@@ -145,14 +140,14 @@ const nodeSize = {
 .absolute-step-label {
   position: absolute;
   width: 20%;
-  margin: v-bind("`${nodeSize.rem} -${nodeSize.value / 5}rem`");
+  margin: v-bind("`${nodeSize.rem} -${nodeSize.value / 10}rem`");
 }
 
 .last-label {
   position: absolute;
   min-width: 24ch;
   margin-bottom: -4.2rem;
-  margin-right: -2rem;
+  margin-right: -8rem;
 }
 
 /* Container query: once the progress bar has enough horizontal space, show all labels */

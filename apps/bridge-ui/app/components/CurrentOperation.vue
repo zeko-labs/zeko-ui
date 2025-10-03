@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { useSelector } from "@lumina-dex/sdk/vue"
 import type { ActorRefFromLogic } from "xstate"
-import { depositSteps, statePath, withdrawalSteps } from "~/helpers"
+// biome-ignore lint/correctness/noUnusedImports: template
+import { errorToaster, statePath, steps } from "~/helpers"
 import { statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 
@@ -9,9 +10,6 @@ const { operation } = defineProps<{
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 }>()
 const machine = useSelector(operation, (state) => state)
-const steps = computed(() =>
-	machine.value.context.direction === "deposit" ? depositSteps : withdrawalSteps
-)
 
 const step = computed(() => {
 	// Special case for `WAITING_FOR_NETWORK` state
@@ -34,6 +32,21 @@ const status = computed(() =>
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
 const isLoading = computed(() => machine.value.hasTag("loading"))
 const hasCTA = computed(() => machine.value.hasTag("cta"))
+
+watch(machine.value.context.errors, (newErrors) => {
+	if (newErrors) {
+		const [e] = newErrors.toReversed()
+		if (e) {
+			console.error(`A total of ${newErrors.length} errors have occurred.`)
+			errorToaster.create({
+				title: "Error",
+				description: e.message,
+				type: "error",
+				duration: Number.POSITIVE_INFINITY
+			})
+		}
+	}
+})
 </script>
 <template>
   <div :class="{ CurrentOperationWrapper: true, isLoading, hasCTA }">
@@ -45,7 +58,13 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
         <div class="Row">
           <div>Status</div>
           <Label :title="JSON.stringify(machine.value)" :is="status.kind">
-            {{ status.text }}
+            {{
+              {
+              	complete: "Completed",
+              	pending: "Pending",
+              	error: "Failed"
+              }[status.kind]
+            }}
           </Label>
         </div>
         <div class="Row">
@@ -59,8 +78,9 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
         <div class="Row">
           <div>Amount</div>
           <div class="Mina">
-            <SvgMinaLogo width="24" height="24" />
             <span>{{ machine.context.amount }}</span>
+            <SvgMinaLogo width="24" height="24" />
+            <span>MINA</span>
           </div>
         </div>
       </div>
@@ -68,7 +88,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
         <div>
           <Button
             v-if='machine.matches("WAITING_FOR_NETWORK")'
-            variant="cta2"
+            variant="main"
             @click='
               machine.context.wallet.send({
               	type: "RequestNetworkChange",
@@ -78,7 +98,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
 
           <Button
             v-else
-            variant="cta2"
+            variant="main"
             :disabled="!toFinalize"
             @click='operation.send({ type: "Finalize" })'>Finalize</Button>
         </div>
@@ -151,13 +171,6 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
             </Match>
           </Switch>
         </div>
-        <div class="Loading">
-          <AnimatedLoadingSpinner v-if="isLoading" class="animation" />
-          <AnimatedGreenCheckmark
-            class="animation"
-            v-else-if='machine.matches("BRIDGE_OPERATION_COMPLETED")'
-          />
-        </div>
       </div>
     </div>
   </div>
@@ -170,6 +183,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
   --border-size: 2px;
   --border-color: var(--palette-cosmicGold-50);
   position: relative;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -179,7 +193,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
   background: var(--background);
   border-radius: var(--border-radius);
   &.hasCTA {
-    box-shadow: 0 0 10vw 300vw oklch(0 0 0 / 0.2);
+    box-shadow: 0 0 10vw 300vw oklch(0 0 0 / 0.3);
   }
   &.isLoading {
     &::before {

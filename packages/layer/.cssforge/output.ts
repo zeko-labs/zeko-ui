@@ -108,10 +108,20 @@ export const cssForge = {
 					value: "oklch(59.222% 0.10877 74.108)",
 					variable: "--palette-cosmicGold-200: oklch(59.222% 0.10877 74.108);"
 				},
+				light: {
+					key: "--palette-cosmicGold-light",
+					value: "oklch(91.413% 0.1578 97.82074 / 100%)",
+					variable: "--palette-cosmicGold-light: oklch(91.413% 0.1578 97.82074 / 100%);"
+				},
 				medium: {
 					key: "--palette-cosmicGold-medium",
-					value: "oklch(76.12% 0.1554 79.54)",
-					variable: "--palette-cosmicGold-medium: oklch(76.12% 0.1554 79.54);"
+					value: "oklch(76.296% 0.15537 80.12696 / 100%)",
+					variable: "--palette-cosmicGold-medium: oklch(76.296% 0.15537 80.12696 / 100%);"
+				},
+				dark: {
+					key: "--palette-cosmicGold-dark",
+					value: "oklch(59.299% 0.10967 73.11241 / 100%)",
+					variable: "--palette-cosmicGold-dark: oklch(59.299% 0.10967 73.11241 / 100%);"
 				}
 			},
 			yellow: {
@@ -354,6 +364,13 @@ export const cssForge = {
 					value:
 						"linear-gradient(270.62deg, var(--palette-cosmicGold-100) 2.88%, var(--palette-cosmicGold-90) 79.48%, var(--palette-cosmicGold-50) 98.1%)"
 				},
+				"button-main": {
+					variable:
+						"--gradients-goldGradient-button-main: linear-gradient(0deg, var(--palette-cosmicGold-dark) -37.5%, var(--palette-cosmicGold-medium) 50.22%, var(--palette-cosmicGold-light) 121.15%);",
+					key: "--gradients-goldGradient-button-main",
+					value:
+						"linear-gradient(0deg, var(--palette-cosmicGold-dark) -37.5%, var(--palette-cosmicGold-medium) 50.22%, var(--palette-cosmicGold-light) 121.15%)"
+				},
 				"button-cta-1": {
 					variable:
 						"--gradients-goldGradient-button-cta-1: radial-gradient(100% 68.86% at 100% 100%, var(--palette-cosmicGold-50) 0%, var(--palette-cosmicGold-100) 50.19%, var(--palette-cosmicGold-200) 100%);",
@@ -406,15 +423,30 @@ export const cssForge = {
 					}
 				},
 				content: {
+					primary: {
+						key: "--theme-light-content-primary",
+						value: "var(--palette-gray-950)",
+						variable: "--theme-light-content-primary: var(--palette-gray-950);"
+					},
 					secondary: {
 						key: "--theme-light-content-secondary",
-						value: "var(--palette-gray-700)",
-						variable: "--theme-light-content-secondary: var(--palette-gray-700);"
+						value: "var(--palette-gray-900)",
+						variable: "--theme-light-content-secondary: var(--palette-gray-900);"
 					},
 					tertiary: {
 						key: "--theme-light-content-tertiary",
-						value: "var(--palette-gray-900)",
-						variable: "--theme-light-content-tertiary: var(--palette-gray-900);"
+						value: "var(--palette-gray-700)",
+						variable: "--theme-light-content-tertiary: var(--palette-gray-700);"
+					},
+					quaternary: {
+						key: "--theme-light-content-quaternary",
+						value: "var(--palette-gray-500)",
+						variable: "--theme-light-content-quaternary: var(--palette-gray-500);"
+					},
+					light: {
+						key: "--theme-light-content-light",
+						value: "var(--palette-gray-50)",
+						variable: "--theme-light-content-light: var(--palette-gray-50);"
 					}
 				}
 			}

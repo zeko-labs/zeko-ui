@@ -70,33 +70,56 @@ const iconMap = {
 
     <Toaster :toaster #default="toast">
       <Toast.Root>
-        <div style="display: flex; align-items: flex-start; gap: 12px">
-          <component
-            :is="
-              toast.type
-              ? iconMap[toast.type as keyof typeof iconMap]
-              : InfoIcon
-            "
-          />
-          <div style="flex: 1">
+        <div class="Layout">
+          <div class="Top">
+            <div class="Icon">
+              <component
+                :is="
+                  toast.type
+                  ? iconMap[toast.type as keyof typeof iconMap]
+                  : InfoIcon
+                "
+              />
+            </div>
             <Toast.Title>{{ toast.title }}</Toast.Title>
+            <Toast.CloseTrigger>
+              <X />
+            </Toast.CloseTrigger>
+          </div>
+          <div class="Bottom">
             <Toast.Description>{{ toast.description }}</Toast.Description>
           </div>
-          <Toast.CloseTrigger>
-            <X />
-          </Toast.CloseTrigger>
         </div>
       </Toast.Root>
     </Toaster>
   </div>
 </template>
 <style lang="postcss" scoped>
+.Layout {
+  display: grid;
+  gap: 0.25rem;
+  .Top {
+    .Icon {
+      height: 1.5rem;
+      width: 1.5rem;
+    }
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
+  }
+  .Bottom {
+    padding: 0 calc(1.5rem + 1rem);
+    display: flex;
+  }
+}
 [data-scope="toast"][data-part="root"] {
   translate: var(--x) var(--y);
   scale: var(--scale);
   z-index: var(--z-index);
   height: var(--height);
   opacity: var(--opacity);
+  margin-top: 5rem;
   will-change: translate, opacity, scale;
   transition:
     translate 400ms,
@@ -124,8 +147,12 @@ const iconMap = {
 
 /* Toast variants */
 [data-scope="toast"][data-part="root"][data-type="error"] {
-  background: rgba(255, 59, 48, 0.85);
-  color: white;
+  background: var(--palette-persianRed-100);
+  color: var(--palette-persianRed-600);
+  border: 1px solid var(--palette-persianRed-300);
+  [data-part="description"], [data-part="close-trigger"] {
+    color: var(--palette-gray-700);
+  }
 }
 
 [data-scope="toast"][data-part="root"][data-type="info"] {

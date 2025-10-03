@@ -4,7 +4,6 @@ useHead({ title: "Zeko Bridge - Unsupported device" })
 
 <template>
   <div class="Unsupported">
-    <Header />
     <main>
       <h2>Mobile Disabled</h2>
       <p>
@@ -12,13 +11,11 @@ useHead({ title: "Zeko Bridge - Unsupported device" })
         desktop browser to continue.
       </p>
     </main>
-    <Footer />
   </div>
 </template>
 
 <style lang="postcss" scoped>
 .Unsupported {
-  min-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
   padding: 0 var(--page-padding, 3rem);
@@ -29,7 +26,6 @@ main {
   place-content: center;
   gap: 2rem;
   text-align: center;
-  max-width: 720px;
   margin-inline: auto;
 }
 

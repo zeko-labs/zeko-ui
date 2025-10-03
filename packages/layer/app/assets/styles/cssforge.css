@@ -22,7 +22,9 @@
   --palette-cosmicGold-90: oklch(73.683% 0.13788 73.881);
   --palette-cosmicGold-100: oklch(72.311% 0.13818 71.166);
   --palette-cosmicGold-200: oklch(59.222% 0.10877 74.108);
-  --palette-cosmicGold-medium: oklch(76.12% 0.1554 79.54);
+  --palette-cosmicGold-light: oklch(91.413% 0.1578 97.82074 / 100%);
+  --palette-cosmicGold-medium: oklch(76.296% 0.15537 80.12696 / 100%);
+  --palette-cosmicGold-dark: oklch(59.299% 0.10967 73.11241 / 100%);
   --palette-yellow-50: oklch(97.7% 0.016 99);
   --palette-yellow-100: oklch(94.3% 0.041 98.1);
   --palette-yellow-200: oklch(88.9% 0.079 96.6);
@@ -89,6 +91,12 @@
     var(--palette-cosmicGold-90) 79.48%,
     var(--palette-cosmicGold-50) 98.1%
   );
+  --gradients-goldGradient-button-main: linear-gradient(
+    0deg,
+    var(--palette-cosmicGold-dark) -37.5%,
+    var(--palette-cosmicGold-medium) 50.22%,
+    var(--palette-cosmicGold-light) 121.15%
+  );
   --gradients-goldGradient-button-cta-1: radial-gradient(
     100% 68.86% at 100% 100%,
     var(--palette-cosmicGold-50) 0%,
@@ -117,8 +125,11 @@
   /* background */
   --theme-light-background-secondary: var(--palette-gray-100);
   /* content */
-  --theme-light-content-secondary: var(--palette-gray-700);
-  --theme-light-content-tertiary: var(--palette-gray-900);
+  --theme-light-content-primary: var(--palette-gray-950);
+  --theme-light-content-secondary: var(--palette-gray-900);
+  --theme-light-content-tertiary: var(--palette-gray-700);
+  --theme-light-content-quaternary: var(--palette-gray-500);
+  --theme-light-content-light: var(--palette-gray-50);
   /*____ Spacing ____*/
   --spacing-size-1: 0.25rem;
   --spacing-size-2: 0.5rem;

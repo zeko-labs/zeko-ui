@@ -13,11 +13,13 @@ const emit = defineEmits(["select:network"])
 const {
 	currentValue,
 	target,
-	enabled = "testnet"
+	enabled = "testnet",
+	loading = false
 } = defineProps<{
 	currentValue: [Networks]
 	target: "source" | "destination"
 	enabled?: "testnet" | "mainnet" | "all"
+	loading?: boolean
 }>()
 
 const bs = useBridgeStore()
@@ -72,9 +74,10 @@ watch(
     <Field.Root>
       <Select.RootProvider :value="select">
         <Select.Control asChild>
-          <div class="TriggerWrapper">
+          <div :class="{ TriggerWrapper: true, isLoading: loading }">
+            <LoadingInput v-if="loading" />
             <Select.Trigger>
-              <div class="TriggerContent">
+              <div class="TriggerContent" v-show="!loading">
                 <Select.ValueText placeholder="Placeholder" as-child>
                   <NetworkBadge
                     :icon="true"
@@ -127,6 +130,11 @@ span, button {
 
 .TriggerWrapper {
   padding: 10px 8px;
+  position: relative;
+  &.isLoading {
+    padding: 10px 0;
+    cursor: not-allowed;
+  }
 }
 
 .TriggerContent {
@@ -150,6 +158,10 @@ span, button {
   &:focus-visible {
     outline: none;
     box-shadow: 0 0 0 1px var(--palette-gray-200);
+  }
+
+  .isLoading & {
+    cursor: not-allowed;
   }
 }
 

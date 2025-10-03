@@ -21,17 +21,18 @@ const disabledButton = computed(
   <div :class="{ Inputs: true, isLoading: loading }">
     <div class="InputBox">
       <h4>Sending</h4>
-      <BridgeAmountSelector v-model="amountToBridge" :disabled="loading" />
+      <BridgeAmountSelector v-model="amountToBridge" :loading />
     </div>
 
     <FromTo
+      :loading
       :source="bs.bridge.snapshot.context.sourceNetwork"
       :destination="bs.bridge.snapshot.context.destinationNetwork"
     />
     <div class="Bottom">
       <Button
         class="BridgeButton"
-        variant="cta2"
+        variant="main"
         @click="startBridge"
         :disabled="disabledButton">
         Send
@@ -54,7 +55,7 @@ const disabledButton = computed(
 <style lang="postcss" scoped>
 .Inputs {
   --spinning-border-clip-path-size: 99%;
-  --background: oklch(1 0 0 / 0.6);
+  --background: oklch(1 0 0 / 0.4);
   --border-radius: 1rem;
   --border-size: 2px;
   --border-color: var(--palette-cosmicGold-50);
@@ -64,6 +65,9 @@ const disabledButton = computed(
   padding: 2rem;
   background: var(--background);
   border-radius: var(--border-radius);
+  &:not(.isLoading) {
+    border: var(--border-size) solid var(--palette-gray-300);
+  }
   &.isLoading {
     &::before {
       content: "";

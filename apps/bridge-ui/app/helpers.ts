@@ -16,6 +16,8 @@ export const withdrawalSteps = [
 	"Withdrawal Completed"
 ] as const
 
+export const steps = ["Send", "Confirm", "Claim", "Finalizing"] as const
+
 type Direction = "deposit" | "withdrawal"
 
 type MachineStates = ReturnType<(typeof bridgeOperationMachine)["getInitialSnapshot"]>["value"]
@@ -66,7 +68,7 @@ export const statusFromState = (
 }
 
 export const errorToaster = createToaster({
-	placement: "bottom-end",
+	placement: "top-end",
 	overlap: true,
 	gap: 24
 })

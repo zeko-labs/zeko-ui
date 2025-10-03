@@ -85,7 +85,9 @@ export const config = defineConfig({
 					90: "oklch(73.683% 0.13788 73.881)",
 					100: "oklch(72.311% 0.13818 71.166)",
 					200: "oklch(59.222% 0.10877 74.108)",
-					medium: "oklch(76.12% 0.1554 79.54)"
+					light: "hsla(50, 100%, 67%, 1)",
+					medium: "hsla(42, 87%, 48%, 1)",
+					dark: "hsla(36, 62%, 40%, 1)"
 				},
 				yellow: {
 					50: "oklch(97.7% 0.016 99)",
@@ -183,6 +185,15 @@ export const config = defineConfig({
 								3: "palette.value.cosmicGold.50"
 							}
 						},
+						// background: linear-gradient(0deg, var(--Primary-Cosmic-Gold-Dark, #A47327) -37.5%, var(--Primary-Cosmic-Gold-Medium, #E5A40F) 50.22%, var(--Primary-Cosmic-Gold-Light, #FFE459) 121.15%);
+						"button-main": {
+							value: "linear-gradient(0deg, var(--1) -37.5%, var(--2) 50.22%, var(--3) 121.15%)",
+							variables: {
+								1: "palette.value.cosmicGold.dark",
+								2: "palette.value.cosmicGold.medium",
+								3: "palette.value.cosmicGold.light"
+							}
+						},
 						// radial-gradient(68.86% 100% at 100% 100%, #FFE459 0%, #DB9531 50.19%, #A47327 100%);
 						"button-cta-1": {
 							value:
@@ -244,12 +255,18 @@ export const config = defineConfig({
 					},
 					content: {
 						value: {
-							secondary: "var(--1)",
-							tertiary: "var(--2)"
+							primary: "var(--1)",
+							secondary: "var(--2)",
+							tertiary: "var(--3)",
+							quaternary: "var(--4)",
+							light: "var(--5)"
 						},
 						variables: {
-							1: "palette.value.gray.700",
-							2: "palette.value.gray.900"
+							1: "palette.value.gray.950",
+							2: "palette.value.gray.900",
+							3: "palette.value.gray.700",
+							4: "palette.value.gray.500",
+							5: "palette.value.gray.50"
 						}
 					}
 				}

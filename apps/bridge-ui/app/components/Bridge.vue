@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import { useSelector } from "@lumina-dex/sdk/vue"
+// biome-ignore lint/correctness/noUnusedImports: <explanation>
+import { errorToaster } from "~/helpers"
 
 const bs = useBridgeStore()
 
@@ -70,25 +72,19 @@ const queuedOperations = computed(
       </h4>
     </div>
     <div class="CompletedTransactions">
-      <AnimatedLoadingSpinner
-        class="Spinner"
-        v-if='bs.bridge.snapshot.matches("FIND_OPERATIONS")'
-      />
-      <template v-else>
-        <h3>Completed Transactions</h3>
-        <BridgeOperations :operations="completedOperations" />
-      </template>
+      <h3>Completed Transactions</h3>
+      <BridgeOperations :operations="completedOperations" />
     </div>
   </div>
 
-  <CurrentErrors v-if="currentOperation" :operation="currentOperation" />
+  <Toast :toaster="errorToaster" />
 </template>
 <style lang="postcss" scoped>
 .MainOperation {
   display: grid;
   grid-template-columns: auto;
   margin: auto;
-  max-width: 60rem;
+  max-width: 50rem;
   @media (max-width: 1024px) {
     grid-template-columns: auto;
     gap: 2rem;

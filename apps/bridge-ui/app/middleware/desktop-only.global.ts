@@ -1,5 +1,6 @@
 export default defineNuxtRouteMiddleware((to, from) => {
 	if (import.meta.server) return
+	if (import.meta.env.DEV) return
 	const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 	if (isMobile) {
 		if (to.query.desktop === "true" || from.query.desktop === "true") return
