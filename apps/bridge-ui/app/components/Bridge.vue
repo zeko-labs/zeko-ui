@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { useSelector } from "@lumina-dex/sdk/vue"
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
+// biome-ignore lint/correctness/noUnusedImports: vue-template
 import { errorToaster } from "~/helpers"
+import { useSelector } from "~~/machines/vue-xstate"
 
 const bs = useBridgeStore()
 
@@ -15,7 +15,6 @@ const allOperations = useSelector(bs.bridge.actorRef, (state) =>
 		({ status }) => (status === "completed" ? "complete" : "uncomplete")
 	)
 )
-
 const completedOperations = computed(() => allOperations.value.complete ?? [])
 
 const currentOperation = computed(

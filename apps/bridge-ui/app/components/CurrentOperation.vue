@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { useSelector } from "@lumina-dex/sdk/vue"
 import type { ActorRefFromLogic } from "xstate"
 // biome-ignore lint/correctness/noUnusedImports: template
 import { errorToaster, statePath, steps } from "~/helpers"
 import { statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import { useSelector } from "~~/machines/vue-xstate"
 
 const { operation } = defineProps<{
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>

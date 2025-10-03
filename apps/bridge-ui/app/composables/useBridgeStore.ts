@@ -1,7 +1,7 @@
 import { walletMachine } from "@lumina-dex/sdk"
-import { useMachine } from "@lumina-dex/sdk/vue"
 import { defineStore } from "pinia"
 import { bridgeMachine } from "~~/machines/bridge"
+import { useMachine } from "~~/machines/vue-xstate"
 
 export const useBridgeStore = defineStore("bridge", () => {
 	const wallet = useMachine(walletMachine)

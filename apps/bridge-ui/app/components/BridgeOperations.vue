@@ -12,6 +12,7 @@ import { computed } from "vue"
 import type { ActorRefFromLogic } from "xstate"
 import { statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import { useSelector } from "~~/machines/vue-xstate"
 
 const { operations } = defineProps<{
 	operations: {
@@ -26,8 +27,7 @@ const loading = computed(() => !bs.bridge.snapshot.matches("READY"))
 const data = computed(() =>
 	operations
 		.map(({ id, operation }) => {
-			// const state = useSelector(operation, (state) => state)
-			const state = computed(() => operation.getSnapshot())
+			const state = useSelector(operation, (state) => state)
 			const { text, kind } = statusFromState(
 				state.value.value,
 				state.value.context.direction
