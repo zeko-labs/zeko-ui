@@ -26,7 +26,6 @@ const nodeSize = {
 </script>
 
 <template>
-  {{ currentStepIndex }}
   <svg width="0" height="0" style="position: absolute">
     <defs>
       <linearGradient id="goldenGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -39,7 +38,6 @@ const nodeSize = {
   <div class="progress-bar">
     <div class="progress-track">
       <template v-for="(stepText, index) of steps" :key="index">
-        {{ index }} - {{ stepText }}
         <div class="node-wrapper">
           <svg
             class="progress-node"
