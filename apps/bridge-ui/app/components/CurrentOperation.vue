@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ActorRefFromLogic } from "xstate"
 // biome-ignore lint/correctness/noUnusedImports: template
-import { errorToaster, statePath, steps } from "~/helpers"
+import { bridgeMessages, errorToaster, statePath, steps } from "~/helpers"
 import { statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
@@ -103,52 +103,47 @@ watch(machine.value.context.errors, (newErrors) => {
         </div>
         <div class="Explanation">
           <Switch>
-            <Match :when='machine.matches({ SUBMIT_DEPOSIT: "transaction" })'>
-              Zeko Bridge is generating a transaction to sign with your wallet.
+            <Match
+              :when='
+                machine.matches("SUBMIT_WITHDRAWAL") ||
+                machine.matches({ SUBMIT_DEPOSIT: "transaction" })
+              '>
+              {{ bridgeMessages.submit }}
             </Match>
             <Match
               :when='machine.matches({ SUBMIT_DEPOSIT: "send_and_confirm" })'>
-              Waiting for the transaction to be confirmed.
+              {{ bridgeMessages.submitDeposit.sendAndConfirm }}
             </Match>
-            <Match :when='machine.matches("SUBMIT_WITHDRAWAL")'>
-              Zeko Bridge is generating a transaction to sign with your wallet.
-            </Match>
-            <Match :when='machine.matches("PENDING_DEPOSIT")'>
-              Your Send Transaction is awaiting Confirmation. This can take 15
-              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5
-              blocks).
-            </Match>
-            <Match :when='machine.matches("PENDING_WITHDRAWAL")'>
-              Your Send Transaction is awaiting Confirmation. This can take 15
-              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5
-              blocks).
+            <Match
+              :when='
+                machine.matches("PENDING_DEPOSIT") ||
+                machine.matches("PENDING_WITHDRAWAL")
+              '>
+              {{ bridgeMessages.pending }}
             </Match>
             <Match :when='machine.matches("INIT_BRIDGE_OPERATION")'>
-              Please wait…the Zeko Bridge is loading your wallet's latest
-              transaction history and status.
+              {{ bridgeMessages.initBridgeOperation }}
             </Match>
             <Match :when='machine.matches("TO_FINALIZE")'>
-              Claim generates a zero-knowledge proof to sign with your wallet on
-              the destination chain.
+              {{ bridgeMessages.toFinalize }}
             </Match>
             <Match
               :when='
                 machine.matches({ FINALIZE_DEPOSIT: "transaction" }) ||
                 machine.matches({ FINALIZE_WITHDRAWAL: "transaction" })
               '>
-              Zeko Bridge is generating a sequencer proof to sign with your
-              wallet.
+              {{ bridgeMessages.finalizeTransaction }}
             </Match>
             <Match
-              :when='
-                machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" }) ||
-                machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })
-              '>
-              Your Bridge Transaction is Claimed. The status is still Pending
-              until it's finalized to the destination chain. This can take 15
-              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5
-              blocks). Completed Transactions appear below.
+              :when='machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })'>
+              {{ bridgeMessages.finalizeDeposit.sendAndConfirm }}
             </Match>
+
+            <Match
+              :when='machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" })'>
+              {{ bridgeMessages.finalizeWithdrawal.sendAndConfirm }}
+            </Match>
+
             <Match :when='machine.matches("WAITING_FOR_NETWORK")'>
               <div class="Flex">
                 <span>Switch your wallet to&nbsp;</span>

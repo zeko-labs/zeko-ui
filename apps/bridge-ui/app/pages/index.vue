@@ -1,9 +1,24 @@
+<script setup lang="ts">
+// biome-ignore lint/correctness/noUnusedImports: vue-template
+import { errorToaster } from "~/helpers"
+const bs = useBridgeStore()
+</script>
 <template>
   <div class="Container">
     <div class="Content">
       <main>
         <h2>Zeko Bridge</h2>
-        <Bridge />
+        <Disabled
+          v-if='
+            bs.bridge.snapshot.matches("ERROR") ||
+            bs.wallet.snapshot.matches("UNSUPPORTED") ||
+            bs.currentNetwork.includes("mainnet") ||
+            bs.wallet.snapshot.error ||
+            (bs.address.length === 0 && bs.wallet.snapshot.matches("INIT"))
+          '
+        />
+        <Bridge v-else />
+        <Toast :toaster="errorToaster" />
       </main>
     </div>
   </div>

@@ -16,7 +16,7 @@ export const withdrawalSteps = [
 	"Withdrawal Completed"
 ] as const
 
-export const steps = ["Send", "Confirm", "Claim", "Finalizing"] as const
+export const steps = ["Send", "Confirming", "Claim", "Finalizing"] as const
 
 type Direction = "deposit" | "withdrawal"
 
@@ -72,3 +72,25 @@ export const errorToaster = createToaster({
 	overlap: true,
 	gap: 24
 })
+
+export const bridgeMessages = {
+	submit: "Zeko Bridge is generating a transaction to sign with your wallet.",
+	submitDeposit: {
+		sendAndConfirm: "Waiting for the transaction to be confirmed."
+	},
+	pending:
+		"Your Send Transaction is awaiting Confirmation. This can take up to 1 hour, to ensure Mina L1 finality (tx confirmation + 5 blocks).",
+	initBridgeOperation:
+		"Please wait… the Zeko Bridge is loading your wallet's latest transaction history and status.",
+	toFinalize:
+		"Claim generates a zero-knowledge proof to sign with your wallet on the destination chain.",
+	finalizeTransaction: "Zeko Bridge is generating a sequencer proof to sign with your wallet.",
+	finalizeDeposit: {
+		sendAndConfirm:
+			"Your Bridge Transaction is Claimed. The status is still Pending until it's finalized to the destination chain. This can take 15 minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5 blocks). Completed Transactions appear below."
+	},
+	finalizeWithdrawal: {
+		sendAndConfirm:
+			"Your Bridge Transaction is Claimed. The status is still Pending until it's finalized to the destination chain. This typically takes a few seconds. Completed Transactions appear below."
+	}
+} as const

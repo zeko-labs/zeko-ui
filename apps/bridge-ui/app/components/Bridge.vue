@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-// biome-ignore lint/correctness/noUnusedImports: vue-template
-import { errorToaster } from "~/helpers"
 import { useSelector } from "~~/machines/vue-xstate"
 
 const bs = useBridgeStore()
@@ -42,15 +40,7 @@ const queuedOperations = computed(
 )
 </script>
 <template>
-  <Disabled
-    v-if='
-      bs.wallet.snapshot.matches("UNSUPPORTED") ||
-      bs.currentNetwork.includes("mainnet") ||
-      bs.wallet.snapshot.error ||
-      (bs.address.length === 0 && bs.wallet.snapshot.matches("INIT"))
-    '
-  />
-  <div class="Bridge" v-else>
+  <div class="Bridge">
     <div class="MainOperation">
       <Inputs v-if="!currentOperation" />
       <CurrentOperation v-else :operation="currentOperation" />
@@ -75,8 +65,6 @@ const queuedOperations = computed(
       <BridgeOperations :operations="completedOperations" />
     </div>
   </div>
-
-  <Toast :toaster="errorToaster" />
 </template>
 <style lang="postcss" scoped>
 .MainOperation {

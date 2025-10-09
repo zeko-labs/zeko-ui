@@ -11,6 +11,7 @@ const noWalletExtension = computed(() =>
 )
 const notConnected = computed(() => !bs.walletLoaded)
 const wrongNetwork = computed(() => bs.currentNetwork.includes("mainnet"))
+const error = computed(() => bs.bridge.snapshot.matches("ERROR"))
 onMounted(async () => {
 	await nextTick()
 	if (unsupportedBrowser.value) {
@@ -38,6 +39,16 @@ onMounted(async () => {
 			title: "Wrong Network",
 			description:
 				"The Rollup Bridge is not available on Mainnet. Please switch to a testnet to start using the bridge.",
+			type: "error",
+			duration: Number.POSITIVE_INFINITY
+		})
+		return
+	}
+	if (error.value) {
+		errorToaster.create({
+			title: "Bridge Error",
+			description:
+				"An error has occurred with the bridge. Please try again later.",
 			type: "error",
 			duration: Number.POSITIVE_INFINITY
 		})
@@ -76,7 +87,7 @@ onMounted(async () => {
       <Match :when="notConnected">
         <p>Please connect your wallet to start bridging.</p>
         <Button
-          variant="auro"
+          variant="main"
           @click='bs.wallet.send({ type: "Connect" })'>
           Connect Wallet
         </Button>
@@ -87,6 +98,11 @@ onMounted(async () => {
           @click='bs.bridge.send({ type: "SwitchToTesnet" })'>
           Switch To Testnet
         </Button>
+      </Match>
+      <Match :when="error">
+        <p class="error">
+          An error has occurred with the bridge. Please try again later.
+        </p>
       </Match>
     </Switch>
   </div>
@@ -112,5 +128,8 @@ onMounted(async () => {
   a {
     all: unset;
   }
+}
+.error {
+  color: var(--palette-persianRed-500);
 }
 </style>
