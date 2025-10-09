@@ -280,8 +280,8 @@
       <p>
         You agree to comply with all applicable laws in connection with your use
         of the Services. To report security vulnerabilities or potential abuse,
-        contact [security@your-zeko.io] and follow any posted
-        responsible-disclosure guidelines.
+        contact [contact@zeko.io] and follow any posted responsible-disclosure
+        guidelines.
       </p>
     </section>
 
@@ -340,10 +340,9 @@
     <section>
       <h2>21. Contact Us</h2>
       <address>
-        <p>[Zeko Labs, Inc.]</p>
+        <p>Zeko Labs, Inc.</p>
         <p>Attn: Privacy</p>
-        <p>Email: [privacy@zeko.network]</p>
-        <p>Address: [Street, City, State/Region, Postal Code, Country]</p>
+        <p>Email: contact@zeko.io</p>
       </address>
     </section>
   </article>

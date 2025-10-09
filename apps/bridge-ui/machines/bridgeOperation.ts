@@ -412,7 +412,7 @@ export const bridgeOperationMachine = setup({
 				},
 				send_and_confirm: {
 					tags: ["loading"],
-					meta: { step: 1 },
+					meta: { step: 0 },
 					invoke: {
 						src: "transactionMachine",
 						input: ({ context }) => ({ ...sendAndConfirm(context, "submitDeposit") }),
@@ -660,11 +660,11 @@ export const bridgeOperationMachine = setup({
 			onDone: { target: "BRIDGE_OPERATION_COMPLETED" }
 		},
 		BRIDGE_OPERATION_COMPLETED: {
-			meta: { step: 3 },
+			meta: { step: 4 },
 			after: { exitTimeout: "BRIDGE_OPERATION_DONE" }
 		},
 		BRIDGE_OPERATION_DONE: {
-			meta: { step: 3 },
+			meta: { step: 4 },
 			type: "final",
 			entry: sendTo(
 				({ context }) => context.bridge,
@@ -672,7 +672,7 @@ export const bridgeOperationMachine = setup({
 			)
 		},
 		BRIDGE_OPERATION_DONE_NOOP: {
-			meta: { step: 3 },
+			meta: { step: 4 },
 			type: "final"
 		},
 		FAILED: { type: "final" }

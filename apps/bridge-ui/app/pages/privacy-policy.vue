@@ -11,10 +11,9 @@
     <section>
       <p>
         Please read this Privacy Policy ("Policy") carefully. It explains how
-        [Zeko Labs, Inc.] ("Zeko," "we," "us," or "our") collects, uses, shares,
-        and otherwise processes personal information when you use our websites,
-        products, and related services. If you have questions, contact us using
-        the methods in Contact Us below.
+        Zeko Labs, Inc. collects, uses, shares, and otherwise processes personal
+        information when you use our websites, products, and related services.
+        If you have questions, contact us using the methods in Contact Us below.
       </p>
 
       <p>
@@ -418,10 +417,9 @@
     <section>
       <h2>17. Contact Us</h2>
       <address>
-        <p>[Zeko Labs, Inc.]</p>
+        <p>Zeko Labs, Inc.</p>
         <p>Attn: Privacy</p>
-        <p>Email: [privacy@zeko.network]</p>
-        <p>Address: [Street, City, State/Region, Postal Code, Country]</p>
+        <p>Email: contact@zeko.io</p>
       </address>
     </section>
 

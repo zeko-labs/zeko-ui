@@ -5,13 +5,13 @@ const { steps, step } = defineProps<{
 }>()
 
 const currentStepIndex = computed(() =>
-	Math.min(Math.max(step, 0), steps.length - 1)
+	Math.min(Math.max(step, 0), steps.length)
 )
 
 const progressClass = (index: number) => {
 	const completed =
 		index < currentStepIndex.value ||
-		(index === steps.length - 1 && currentStepIndex.value === steps.length - 1)
+		(index === steps.length && currentStepIndex.value === steps.length)
 	const current = index === currentStepIndex.value
 	return { completed, current, future: !completed && !current }
 }
@@ -26,6 +26,7 @@ const nodeSize = {
 </script>
 
 <template>
+  {{ currentStepIndex }}
   <svg width="0" height="0" style="position: absolute">
     <defs>
       <linearGradient id="goldenGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -38,6 +39,7 @@ const nodeSize = {
   <div class="progress-bar">
     <div class="progress-track">
       <template v-for="(stepText, index) of steps" :key="index">
+        {{ index }} - {{ stepText }}
         <div class="node-wrapper">
           <svg
             class="progress-node"
@@ -52,14 +54,14 @@ const nodeSize = {
             />
           </svg>
           <SvgCheck
-            :class="{ check: true, completed: progressClass(index).completed }"
-            v-if="index === steps.length - 1"
+            :class="{ check: true, completed: currentStepIndex === steps.length }"
+            v-if="index + 1 === steps.length"
           />
           <span
             v-if="index === steps.length - 1"
             class="last-label step-label"
             :class="progressClass(steps.length - 1)">
-            {{ steps[steps.length - 1] }}
+            {{ steps.at(-1) }} h
           </span>
         </div>
 
@@ -133,7 +135,7 @@ const nodeSize = {
     display: grid;
     color: var(--palette-gray-950);
     font-weight: 600;
-    font-size: 16px;
+    font-size: 1rem;
   }
 }
 
@@ -145,9 +147,14 @@ const nodeSize = {
 
 .last-label {
   position: absolute;
-  min-width: 24ch;
+  min-width: 20ch;
   margin-bottom: -4.2rem;
   margin-right: -8rem;
+  &.completed {
+    color: var(--palette-gray-950);
+    font-weight: 600;
+    font-size: 1rem;
+  }
 }
 
 /* Container query: once the progress bar has enough horizontal space, show all labels */

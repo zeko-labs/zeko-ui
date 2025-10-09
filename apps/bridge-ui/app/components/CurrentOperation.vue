@@ -95,12 +95,11 @@ watch(machine.value.context.errors, (newErrors) => {
               	network: machine.context.changeNetworkTo
               })
             '>Change Network</Button>
-
           <Button
             v-else
             variant="main"
             :disabled="!toFinalize"
-            @click='operation.send({ type: "Finalize" })'>Finalize</Button>
+            @click='operation.send({ type: "Finalize" })'>Claim</Button>
         </div>
         <div class="Explanation">
           <Switch>
