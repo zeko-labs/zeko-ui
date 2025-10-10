@@ -18,7 +18,10 @@ This monorepo hosts Zeko UI apps and libraries. Use these notes to stay producti
 
 To install everything, run `pnpm i` from the root.
 
-Run all command from the root using moon. Project tasks are defined in each project’s `moon.yml`.
+Run all command from the root using moon.
+Project tasks are defined in each project’s `moon.yml`.
+For example to run the leaderboard api tests, run `moon run lb-api:test`
+You can disable moon caching by passing the `-u` flag to any command that has cached results.
 
 ## Conventions and patterns
 

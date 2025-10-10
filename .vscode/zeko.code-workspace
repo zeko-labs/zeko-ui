@@ -1,28 +1,40 @@
 {
   "folders": [
     {
+      "name": "🧩 UI Layer",
       "path": "../packages/layer"
     },
     {
+      "name": "🎨 Design",
       "path": "../packages/design"
     },
     {
+      "name": "🏘️ Landing",
       "path": "../apps/ui",
     },
     {
+      "name": "⛩️ Bridge UI",
       "path": "../apps/bridge-ui",
     },
     {
+      "name": "⛩️ Bridge SDK",
       "path": "../packages/bridge-sdk",
     },
     {
+      "name": "🚰 Faucet API",
       "path": "../apps/faucet",
     },
     {
+      "name": "📚 Zeko Docs",
       "path": "../apps/docs",
     },
     {
-      "path": "../apps/leaderboard",
+      "name": "🏆 Leaderboard Indexer",
+      "path": "../services/leaderboard/indexer",
+    },
+    {
+      "name": "🏆 Leaderboard API",
+      "path": "../services/leaderboard/api",
     },
     {
       "path": "..",
@@ -32,6 +44,7 @@
   "settings": {
     "typescript.tsdk": "node_modules/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true,
+    "oxc.enable": false
   },
   "extensions": {
     "recommendations": [

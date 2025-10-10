@@ -1,6 +1,7 @@
 packages:
   - apps/**
   - packages/**
+  - services/**
 onlyBuiltDependencies:
   - lefthook
 patchedDependencies: 
@@ -12,6 +13,7 @@ overrides:
 catalog:
   "@ark-ui/vue": ^5.9.1
   "@aurowallet/mina-provider": ^1.0.6
+  "@biomejs/biome": ^2.2.4
   "@hebilicious/nuxt-switch-match": ^0.1.1
   "@hebilicious/vue-switch-match": ^0.1.1
   "@hebilicious/cssforge": npm:@jsr/hebilicious__cssforge@0.2.1
