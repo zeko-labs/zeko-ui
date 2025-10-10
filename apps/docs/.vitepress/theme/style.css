@@ -44,12 +44,10 @@
  * -------------------------------------------------------------------------- */
 
 :root {
-
   --vp-c-indigo-1: oklch(67.7% 0.157 256);
   --vp-c-indigo-2: oklch(76% 0.121 248.4);
   --vp-c-indigo-3: oklch(83.8% 0.083 245.6);
   --vp-c-indigo-soft: oklch(83.8% 0.083 245.6 /0.5);
-
 
   --vp-c-default-1: var(--vp-c-gray-1);
   --vp-c-default-2: var(--vp-c-gray-2);
@@ -154,14 +152,14 @@
  * Component: D2 Diagram
  * -------------------------------------------------------------------------- */
 
-.d2-diagram{
+.d2-diagram {
   width: fit-content;
   height: fit-content;
   margin: auto auto;
   padding: 2rem 0;
 }
 
-.d2-diagram svg{
+.d2-diagram svg {
   max-height: 75ch;
   max-width: 75ch;
 }

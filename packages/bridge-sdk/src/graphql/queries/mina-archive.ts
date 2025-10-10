@@ -1,0 +1,31 @@
+import { minaArchive as graphql } from ".."
+
+export const fetchActionsQuery = graphql(`
+  query FetchActions($pk: String!, $fromActionState: String, $endActionState: String, $from: Int, $to: Int) {
+    actions(
+      input: {
+        address: $pk
+        fromActionState: $fromActionState
+        endActionState: $endActionState
+        from: $from
+        to: $to
+      }
+    ) {
+      blockInfo {
+        timestamp
+        height
+      }
+      actionState {
+        actionStateOne
+        actionStateTwo
+      }
+      actionData {
+        data
+        transactionInfo {
+          status
+          hash
+        }
+      }
+    }
+  }
+`)

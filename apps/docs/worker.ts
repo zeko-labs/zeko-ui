@@ -1,5 +1,3 @@
-import type { ExportedHandler, fetch } from "@cloudflare/workers-types"
-
 interface Env {
 	ASSETS: { fetch: typeof fetch }
 }

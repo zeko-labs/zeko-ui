@@ -1,0 +1,205 @@
+import type { ZkappCommand } from "@aurowallet/mina-provider"
+import type { Networks } from "@lumina-dex/sdk"
+import * as Sentry from "@sentry/nuxt"
+import { Bridge } from "@zeko/bridge-sdk"
+import type {
+	InnerActionWithState,
+	MaybeDeposit,
+	MaybeWithdrawal,
+	OuterActionWithState
+} from "@zeko/bridge-sdk"
+import * as Comlink from "comlink"
+import { PublicKey, Transaction, UInt32, UInt64, fetchTransactionStatus } from "o1js"
+import { getBridgeConfig } from "./helpers"
+
+export type ActionState = {
+	index: number
+	id: string
+	recipient: string
+	amount: string
+	finalised: boolean
+	transaction: {
+		date: Date
+		status: string
+		hash: string
+	}
+	source: Networks
+	destination: Networks
+}
+
+export type PendingOperations = {
+	deposits: ActionState[]
+	withdrawals: ActionState[]
+}
+type L1L2 = { l1: Networks; l2: Networks }
+
+const bridges = new Map<string, Bridge>()
+
+async function initBridge({ l1, l2 }: L1L2) {
+	let bridge = bridges.get(`${l1}_${l2}`)
+	if (!bridge) {
+		const config = getBridgeConfig({ l1, l2 })
+		bridge = await Bridge.init(config)
+		bridges.set(`${l1}_${l2}`, bridge)
+	}
+	return bridge
+}
+
+async function findPendingOperations({
+	account,
+	l1,
+	l2
+}: { account: string } & L1L2): Promise<PendingOperations> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(account)
+	const [outerActions, innerActions] = (await Promise.all([
+		bridge.fetchOuterActionsWithStates(recipient),
+		bridge.fetchInnerActionsWithStates(recipient)
+	])) satisfies [OuterActionWithState[], InnerActionWithState[]]
+
+	const toAmount = (n: bigint) => Number(Number(n / BigInt(10e8)).toFixed(2)).toString()
+
+	const deposits = outerActions
+		.map((action, index) => {
+			const maybe = action as MaybeDeposit
+			if (maybe.type === "witness" && maybe.deposit) {
+				return {
+					index,
+					id: maybe.action.afterActionState.toString(),
+					recipient: maybe.deposit.recipient.toBase58(),
+					amount: toAmount(maybe.deposit.amount.toBigInt()),
+					finalised: maybe.deposit.finalised,
+					transaction: {
+						date: new Date(Number(maybe.action.timestamp)),
+						status: maybe.action.status,
+						hash: maybe.action.hash
+					},
+					source: l1,
+					destination: l2
+				} as const
+			}
+		})
+		.filter(Boolean) satisfies ActionState[]
+
+	const withdrawals = innerActions
+		.map((action, index) => {
+			const maybe = action as MaybeWithdrawal
+			if (maybe.withdrawal) {
+				return {
+					index,
+					id: maybe.action.afterActionState.toString(),
+					recipient: maybe.withdrawal.recipient.toBase58(),
+					amount: toAmount(maybe.withdrawal.amount.toBigInt()),
+					finalised: maybe.withdrawal.finalised,
+					transaction: {
+						date: new Date(Number(maybe.action.timestamp)),
+						status: maybe.action.status,
+						hash: maybe.action.hash
+					},
+					source: l2,
+					destination: l1
+				} as const
+			}
+		})
+		.filter(Boolean) satisfies ActionState[]
+
+	return { deposits, withdrawals }
+}
+
+async function submitDeposit({
+	l1,
+	l2,
+	user,
+	amount
+}: L1L2 & { user: string; amount: string }): Promise<string> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
+	const submitDeposit = {
+		recipient,
+		amount: UInt64.from(Number(amount) * 10e8),
+		timeout: UInt32.MAXINT()
+	}
+	const transaction = await bridge.submitDeposit(feePayer, submitDeposit)
+	return transaction.toJSON()
+}
+
+async function submitWithdrawal({
+	l1,
+	l2,
+	user,
+	amount
+}: L1L2 & { user: string; amount: string }): Promise<string> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
+	const submitWithdrawal = {
+		recipient,
+		amount: UInt64.from(Number(amount) * 10e8)
+	}
+	const transaction = await bridge.submitWithdrawal(feePayer, submitWithdrawal)
+	return transaction.toJSON()
+}
+
+async function canFinalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	return bridge.canFinalizeDeposit(recipient)
+}
+
+async function canFinalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	return bridge.canFinalizeWithdrawal(recipient)
+}
+
+async function finalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	const transaction = await bridge.finalizeDeposit(recipient)
+	return transaction.toJSON()
+}
+
+async function finalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
+	const transaction = await bridge.finalizeWithdrawal(recipient, feePayer)
+	return transaction.toJSON()
+}
+
+async function transactionStatus({ zkAppId, url }: { zkAppId: string; url?: string }) {
+	const result = await fetchTransactionStatus(zkAppId, url)
+	return result
+}
+
+async function sendZkAppCommand(zkappCommand: ZkappCommand) {
+	const sentTransaction = await Transaction.fromJSON(zkappCommand).send()
+	if (!sentTransaction.data)
+		throw new Error(
+			JSON.stringify({ message: "Transaction failed", errors: sentTransaction.errors })
+		)
+	return { hash: sentTransaction.hash, zkAppId: sentTransaction.data.sendZkapp.zkapp.id }
+}
+
+export const operations = {
+	findPendingOperations,
+	submitDeposit,
+	canFinalizeDeposit,
+	finalizeDeposit,
+	submitWithdrawal,
+	canFinalizeWithdrawal,
+	finalizeWithdrawal,
+	transactionStatus,
+	sendZkAppCommand
+}
+
+console.info("Initializing Operation Worker: Sentry")
+Sentry.registerWebWorker({ self })
+
+console.info("Initializing Operation Worker: Comlink")
+Comlink.expose(operations)
+
+console.info("Operation Worker: Ready")
+
+export type OperationsWorker = typeof operations

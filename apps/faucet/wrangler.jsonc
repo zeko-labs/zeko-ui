@@ -2,7 +2,8 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"compatibility_date": "2025-04-08",
 	"name": "faucet",
-	"main": "src/index.ts",
+	"main": "worker.ts",
+	"preview_urls": true,
 	"observability": {
 		"enabled": true
 	},
@@ -27,7 +28,8 @@
 			"name": "faucet-container",
 			"class_name": "Faucet",
 			"image": "./Dockerfile",
-			"instance_type": "standard"
+			"instance_type": "standard",
+			"image_build_context": "../.."
 		}
 	],
 	"durable_objects": {

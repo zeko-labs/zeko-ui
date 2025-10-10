@@ -1,0 +1,31 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "bridge",
+	"main": "./.output/server/index.mjs",
+	"compatibility_date": "2025-08-07",
+	"compatibility_flags": ["nodejs_compat"],
+	"preview_urls": true,
+	"version_metadata": {
+		"binding": "CF_VERSION_METADATA"
+	},
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./.output/public/"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"routes": [
+		{
+			"pattern": "bridge.zeko.io",
+			"custom_domain": true
+		},
+		{
+			"pattern": "alpha.bridge.zeko.io",
+			"custom_domain": true
+		}
+	],
+	"vars": {
+		"SENTRY_PROJECT_IDS": ["4510000244326480"]
+	}
+}

@@ -6,7 +6,7 @@ declare namespace Cloudflare {
 		FAUCET_CLAIM: KVNamespace;
 		ZEKO_FAUCET_SENDER_PRIVATE_KEY: string;
 		ZEKO_FAUCET_SEND_AMOUNT: string;
-		FAUCET: DurableObjectNamespace<import("./src/index").Faucet>;
+		FAUCET: DurableObjectNamespace<import("./worker").Faucet>;
 	}
 }
 interface Env extends Cloudflare.Env {}

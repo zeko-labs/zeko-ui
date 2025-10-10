@@ -1,25 +1,42 @@
 {
-    "folders": [
-      {
-        "path": "../apps/ui",
-      },
-      {
-        "path": "../apps/faucet",
-      },
-      {
-        "path": "../apps/docs",
-      },
-      {
-        "path": "../apps/leaderboard",
-      },
-      {
-        "path": "..",
-        "name": "#root"
-      },
-    ],
-    "settings": {
-      "typescript.tsdk": "node_modules/typescript/lib",
-      "typescript.enablePromptUseWorkspaceTsdk": true
+  "folders": [
+    {
+      "path": "../packages/layer"
     },
+    {
+      "path": "../packages/design"
+    },
+    {
+      "path": "../apps/ui",
+    },
+    {
+      "path": "../apps/bridge-ui",
+    },
+    {
+      "path": "../packages/bridge-sdk",
+    },
+    {
+      "path": "../apps/faucet",
+    },
+    {
+      "path": "../apps/docs",
+    },
+    {
+      "path": "../apps/leaderboard",
+    },
+    {
+      "path": "..",
+      "name": "#root"
+    },
+  ],
+  "settings": {
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+  },
+  "extensions": {
+    "recommendations": [
+      "dprint.dprint",
+      "biomejs.biome"
+    ]
   }
-  
+}

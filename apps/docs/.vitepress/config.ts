@@ -7,22 +7,19 @@ import llmstxt from "vitepress-plugin-llms"
 export default defineConfig({
 	title: "Zeko Docs",
 	description: "Documentation for Zeko",
-	srcDir: 'content',
+	srcDir: "content",
 	vite: {
 		plugins: [llmstxt()]
 	},
 	markdown: {
 		config: (md) => {
-			md.use(
-				d2Plugin,
-				{
-					scale: 1,
-					padding: 16,
-					theme: Theme.NEUTRAL_DEFAULT,
-					darkTheme: Theme.DARK_MUAVE,
-					sketch: true
-				} satisfies Config
-			)
+			md.use(d2Plugin, {
+				scale: 1,
+				padding: 16,
+				theme: Theme.NEUTRAL_DEFAULT,
+				darkTheme: Theme.DARK_MUAVE,
+				sketch: true
+			} satisfies Config)
 		}
 	},
 	head: [
@@ -41,106 +38,110 @@ export default defineConfig({
 			}
 		},
 		nav: [
-			{ text: 'Docs', link: '/introduction/what-is-zeko' },
-			{ text: 'Glossary', link: '/about/glossary' },
-			{ text: 'Website', link: 'https://zeko.io', target: '_blank', rel: 'noopener noreferrer' },
+			{ text: "Docs", link: "/introduction/what-is-zeko" },
+			{ text: "Glossary", link: "/about/glossary" },
+			{ text: "Website", link: "https://zeko.io", target: "_blank", rel: "noopener noreferrer" }
 		],
 		logo: { light: "/logo.svg", dark: "/logo-dark.svg" },
 		sidebar: [
 			{
-				text: 'Introduction',
+				text: "Introduction",
 				collapsed: false,
 				items: [
-					{ text: 'What is Zeko?', link: '/introduction/what-is-zeko' },
-					{ text: 'Why Zeko?', link: '/introduction/why-zeko' },
-					{ text: 'Quick Start', link: '/introduction/quick-start' },
+					{ text: "What is Zeko?", link: "/introduction/what-is-zeko" },
+					{ text: "Why Zeko?", link: "/introduction/why-zeko" },
+					{ text: "Quick Start", link: "/introduction/quick-start" }
 				]
 			},
 			{
-				text: 'Background Concepts',
+				text: "Background Concepts",
 				collapsed: false,
 				items: [
-					{ text: 'Core Blockchain Concepts', link: '/background/core-blockchain-concepts' },
-					{ text: 'Smart Contracts', link: '/background/smart-contracts' },
-					{ text: 'Zero-Knowledge Proofs', link: '/background/zero-knowledge-proofs' },
-					{ text: 'Layer 2 Scaling Solutions', link: '/background/layer-2-scaling' },
-					{ text: 'Mina Protocol', link: '/background/mina-protocol' }
+					{ text: "Core Blockchain Concepts", link: "/background/core-blockchain-concepts" },
+					{ text: "Smart Contracts", link: "/background/smart-contracts" },
+					{ text: "Zero-Knowledge Proofs", link: "/background/zero-knowledge-proofs" },
+					{ text: "Layer 2 Scaling Solutions", link: "/background/layer-2-scaling" },
+					{ text: "Mina Protocol", link: "/background/mina-protocol" }
 				]
 			},
 			{
-				text: 'Zeko Deep Dive',
+				text: "Zeko Deep Dive",
 				collapsed: false,
 				items: [
-					{ text: 'Zeko Core Concepts', link: '/architecture/zeko-core-concepts' },
-					{ text: 'Technical Architecture', link: '/architecture/technical-architecture' },
-					{ text: 'Security Model', link: '/architecture/security-model' }
+					{ text: "Zeko Core Concepts", link: "/architecture/zeko-core-concepts" },
+					{ text: "Technical Architecture", link: "/architecture/technical-architecture" },
+					{ text: "Security Model", link: "/architecture/security-model" }
 				]
 			},
 			{
-				text: 'Developing on Zeko (For Developers)',
+				text: "Developing on Zeko (For Developers)",
 				collapsed: true,
 				items: [
-					{ text: 'Getting Started', link: '/developers/getting-started' },
-					{ text: 'Core Developer Concepts', link: '/developers/core-developer-concepts' },
+					{ text: "Getting Started", link: "/developers/getting-started" },
+					{ text: "Core Developer Concepts", link: "/developers/core-developer-concepts" },
 					{
-						text: 'Guides & Tutorials', link: '/developers/guides-tutorials', collapsed: true,
+						text: "Guides & Tutorials",
+						link: "/developers/guides-tutorials",
+						collapsed: true,
 						items: [
-							{ text: "Custom Network", link: '/developers/guides/custom-network' },
-							{ text: "Creating a Faucet", link: '/developers/guides/create-faucet' },
+							{ text: "Custom Network", link: "/developers/guides/custom-network" },
+							{ text: "Creating a Faucet", link: "/developers/guides/create-faucet" }
 						]
 					},
-					{ text: 'Examples & Boilerplates', link: '/developers/examples-boilerplates' },
-					{ text: 'API Reference', link: '/developers/api-reference' },
-					{ text: 'Contributing to Zeko Development', link: '/developers/contributing' }
+					{ text: "Examples & Boilerplates", link: "/developers/examples-boilerplates" },
+					{ text: "API Reference", link: "/developers/api-reference" },
+					{ text: "Contributing to Zeko Development", link: "/developers/contributing" }
 				]
 			},
 			{
-				text: 'Using Zeko (For End Users)',
+				text: "Using Zeko (For End Users)",
 				collapsed: true,
 				items: [
-					{ text: 'Getting Started', link: '/users/getting-started' },
+					{ text: "Getting Started", link: "/users/getting-started" },
 					{
-						text: 'Guides & Tutorials', link: '/users/guides-tutorials', collapsed: true,
+						text: "Guides & Tutorials",
+						link: "/users/guides-tutorials",
+						collapsed: true,
 						items: [
-							{ text: 'Sending Tokens', link: '/users/guides/sending-tokens' },
-							{ text: 'Interacting with a Dapp', link: '/users/guides/dapp' },
-							{ text: 'Using Zeko Bridge', link: '/users/guides/zeko-bridge' },
-							{ text: 'Using Zekoscan Explorer', link: '/users/guides/zekoscan-explorer' },
+							{ text: "Sending Tokens", link: "/users/guides/sending-tokens" },
+							{ text: "Interacting with a Dapp", link: "/users/guides/dapp" },
+							{ text: "Using Zeko Bridge", link: "/users/guides/zeko-bridge" },
+							{ text: "Using Zekoscan Explorer", link: "/users/guides/zekoscan-explorer" }
 						]
 					},
 
-					{ text: 'User Concepts Explained', link: '/users/user-concepts-explained' }
+					{ text: "User Concepts Explained", link: "/users/user-concepts-explained" }
 				]
 			},
 			{
-				text: 'Running Network Infrastructure (For Operators)',
+				text: "Running Network Infrastructure (For Operators)",
 				collapsed: true,
 				items: [
-					{ text: 'Getting Started', link: '/operators/getting-started' },
+					{ text: "Getting Started", link: "/operators/getting-started" },
 					{
-						text: 'Guides & Tutorials', link: '/operators/guides-tutorials', collapsed: true,
+						text: "Guides & Tutorials",
+						link: "/operators/guides-tutorials",
+						collapsed: true,
 						items: [
-							{ text: "DA Layer", link: '/operators/guides/da-layer' },
-							{ text: "Sequencer", link: '/operators/guides/sequencer' },
+							{ text: "DA Layer", link: "/operators/guides/da-layer" },
+							{ text: "Sequencer", link: "/operators/guides/sequencer" }
 						]
 					},
-					{ text: 'Concepts for Operators', link: '/operators/concepts-for-operators' },
-					{ text: 'Troubleshooting', link: '/operators/troubleshooting' }
+					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" },
+					{ text: "Troubleshooting", link: "/operators/troubleshooting" }
 				]
 			},
 			{
-				text: 'About',
+				text: "About",
 				collapsed: false,
 				items: [
-					{ text: 'Glossary', link: '/about/glossary' },
-					{ text: 'Frequently Asked Questions (FAQ)', link: '/about/faq' },
-					{ text: 'Community & Support', link: '/about/community' }
+					{ text: "Glossary", link: "/about/glossary" },
+					{ text: "Frequently Asked Questions (FAQ)", link: "/about/faq" },
+					{ text: "Community & Support", link: "/about/community" }
 				]
 			}
 		],
-		socialLinks: [
-			{ icon: "github", link: "https://github.com/zeko-labs" }
-		],
+		socialLinks: [{ icon: "github", link: "https://github.com/zeko-labs" }],
 		footer: {
 			message: "Released under the MIT License.",
 			copyright: "Copyright © 2025-present Zeko Labs"

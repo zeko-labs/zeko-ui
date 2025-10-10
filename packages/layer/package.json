@@ -1,0 +1,21 @@
+{
+	"name": "@zeko/layer",
+	"type": "module",
+	"private": true,
+	"main": "./nuxt.config.ts",
+	"scripts": {
+		"postinstall": "nuxt prepare playground"
+	},
+	"devDependencies": {
+		"@hebilicious/cssforge": "catalog:",
+		"nuxt": "catalog:",
+		"typescript": "catalog:",
+		"vue": "catalog:"
+	},
+	"dependencies": {
+		"@ark-ui/vue": "catalog:",
+		"@hebilicious/nuxt-switch-match": "catalog:",
+		"@zeko/design": "workspace:^",
+		"lucide-vue-next": "catalog:"
+	}
+}

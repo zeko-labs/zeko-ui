@@ -6,6 +6,7 @@ export default defineNuxtConfig({
 		"@unocss/reset/sanitize/assets.css",
 		"~/assets/styles/fonts.css"
 	],
+	extends: ["@zeko/layer"],
 	future: {
 		compatibilityVersion: 4
 	},
@@ -28,10 +29,11 @@ export default defineNuxtConfig({
 			telegram: "https://t.me/zekoprotocol",
 			discord: "https://discord.gg/vSDxqAchUY",
 			twitter: "https://twitter.com/ZekoLabs",
-			github: "https://github.com/zeko-labs",
+			github: "https://github.com/zeko-labs"
 		}
 	},
 	nitro: {
+		preset: "cloudflare_module",
 		//TODO: enable when supported by Nitro
 		// cloudflare: { nodeCompat: true, deployConfig: true },
 		minify: false
@@ -39,10 +41,10 @@ export default defineNuxtConfig({
 	vite: {
 		// build: { minify: false },
 		// build: { rollupOptions: { external: ["cloudflare:workers"] } },
-		optimizeDeps: {
-			include: ["@lumina-dex/sdk > react"],
-			exclude: ["@lumina-dex/sdk", "@urql/vue"]
-		}
+		// optimizeDeps: {
+		// 	include: ["@lumina-dex/sdk > react"],
+		// 	exclude: ["@lumina-dex/sdk", "@urql/vue"]
+		// }
 	},
 	postcss: {
 		plugins: {
@@ -52,7 +54,7 @@ export default defineNuxtConfig({
 		}
 	},
 	devtools: { enabled: true },
-	modules: ["@nuxt/fonts", "@pinia/nuxt", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
+	modules: ["@nuxt/fonts", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
 	fonts: {
 		provider: "google"
 	}

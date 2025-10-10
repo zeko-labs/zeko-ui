@@ -1,18 +1,25 @@
 {
 	"name": "faucet",
-	"scripts": {
-		"dev": "wrangler dev",
-		"deploy": "wrangler deploy",
-		"test": "vitest",
-		"zeko-faucet": "bun run scripts/cli.ts",
-		"type:cf": "wrangler types"
-	},
-	"main": "src/index.ts",
+	"private": true,
 	"type": "module",
+	"scripts": {
+		"dev": "bun --hot src/index.ts",
+		"start": "bun run src/index.ts",
+		"test": "vitest"
+	},
 	"dependencies": {
-		"@cloudflare/containers": "^0.0.13"
+		"@cloudflare/containers": "^0.0.13",
+		"hono": "^4.7.6",
+		"o1js": "catalog:"
 	},
 	"devDependencies": {
-		"wrangler": "4.22.0"
-	}
+		"@lumina-dex/sdk": "catalog:",
+		"@types/bun": "latest",
+		"citty": "^0.1.6",
+		"unplugin-swc": "^1.5.5",
+		"valibot": "^1.1.0",
+		"vitest": "^3.2.4",
+		"wrangler": "catalog:"
+	},
+	"packageManager": "pnpm@10.16.1"
 }
