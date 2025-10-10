@@ -59,7 +59,7 @@ const nodeSize = {
             v-if="index === steps.length - 1"
             class="last-label step-label"
             :class="progressClass(steps.length - 1)">
-            {{ steps.at(-1) }} h
+            {{ steps.at(-1) }}
           </span>
         </div>
 

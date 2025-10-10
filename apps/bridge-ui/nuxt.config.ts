@@ -67,7 +67,7 @@ export default defineNuxtConfig({
 	sourcemap: { client: "hidden" },
 	nitro: { preset: "cloudflare-module", minify: false },
 	vite: {
-		build: { minify: false },
+		build: { minify: true },
 		server: { headers },
 		optimizeDeps: {
 			include: ["@lumina-dex/sdk > react"],
