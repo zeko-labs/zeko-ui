@@ -140,10 +140,7 @@ const LeaderboardResultObject = builder
 	.objectRef<LeaderboardResult>("LeaderboardResult")
 	.implement({
 		fields: (t) => ({
-			entries: t.field({
-				type: [LeaderboardEntryObject],
-				resolve: (parent) => parent.entries
-			}),
+			entries: t.field({ type: [LeaderboardEntryObject], resolve: (r) => r.entries }),
 			hasMore: t.exposeBoolean("hasMore"),
 			total: t.exposeInt("total")
 		})
@@ -172,11 +169,7 @@ builder.queryType({
 					limit: PAGE_SIZE
 				})
 
-				return {
-					entries: result.entries,
-					hasMore: result.hasMore,
-					total: result.total
-				}
+				return result
 			}
 		})
 	})

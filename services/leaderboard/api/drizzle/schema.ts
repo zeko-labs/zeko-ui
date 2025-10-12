@@ -1,4 +1,4 @@
-import { defineRelations, sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 import { pgTable, text, timestamp, uuid, index, smallint } from "drizzle-orm/pg-core"
 
 const uuidv7 = sql`gen_random_uuid_v7()`

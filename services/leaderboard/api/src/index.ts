@@ -2,6 +2,7 @@ import { schema } from "./graphql"
 import { createYoga } from "graphql-yoga"
 import { CloudflareContext, rc, useDatabase } from "./db"
 import { Context } from "./builder"
+import { DistributorDO } from "./do"
 
 const yoga = createYoga<{ cloudflare: CloudflareContext }>({
 	schema,
@@ -34,3 +35,5 @@ export default {
 		return response
 	}
 } satisfies ExportedHandler<Env>
+
+export { DistributorDO, UserDo } from "./do"

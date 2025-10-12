@@ -1,7 +1,11 @@
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 
-export type CloudflareContext = { request: Request; env: Env; context: ExecutionContext }
+export interface CloudflareContext {
+	request: Request
+	env: Env
+	context: ExecutionContext
+}
 
 export const rc = new WeakMap<
 	Request,
