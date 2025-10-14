@@ -14,7 +14,7 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true,
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
 		"allowSyntheticDefaultImports": true,
 		"experimentalDecorators": true,
 		"emitDecoratorMetadata": true,
@@ -56,6 +56,13 @@
 			}
 		]
 	},
-	"include": ["src", "examples"],
+	"include": [
+		"src",
+		"examples",
+		"../graphql/src/queries",
+		"../graphql/src/mina-archive.ts",
+		"../graphql/src/mina.ts",
+		"../graphql/src/zeko.ts"
+	],
 	"exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

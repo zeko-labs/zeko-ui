@@ -25,6 +25,10 @@
       "path": "../apps/faucet",
     },
     {
+      "name": "🧬 GraphQL",
+      "path": "../packages/graphql",
+    },
+    {
       "name": "📚 Zeko Docs",
       "path": "../apps/docs",
     },

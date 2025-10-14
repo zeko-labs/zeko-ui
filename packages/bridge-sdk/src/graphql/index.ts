@@ -1,22 +1,5 @@
 import { retryExchange } from "@urql/exchange-retry"
-import { initGraphQLTada } from "gql.tada"
 import { Client, type ClientOptions, fetchExchange } from "urql"
-import type { introspection as minaArchiveSchema } from "./generated/mina-archive-env"
-import type { introspection as minaSchema } from "./generated/mina-env"
-import type { introspection as zekoSchema } from "./generated/zeko-env"
-
-type Scalars = {
-	UInt64: string
-	UInt32: string
-	PublicKey: string
-	TokenID: string
-	Fee: string
-	FieldElem: string
-}
-
-export const zeko = initGraphQLTada<{ introspection: zekoSchema; scalars: Scalars }>()
-export const mina = initGraphQLTada<{ introspection: minaSchema; scalars: Scalars }>()
-export const minaArchive = initGraphQLTada<{ introspection: minaArchiveSchema; scalars: Scalars }>()
 
 const clientCache = new Map<string, Client>()
 

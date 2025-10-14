@@ -1,8 +1,8 @@
 import { Field, type Mina, Poseidon, type PublicKey, UInt32 } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
+import { fetchActionsQuery } from "../../graphql/src/mina-archive"
 import { fromList, pushHash } from "./actions"
-import { fetchActionsQuery } from "./graphql/queries/mina-archive"
 import type { Account, Action, Deposit, Withdrawal } from "./types"
 
 // The graphQL schema server will limit the block scan range to a fixed number of blocks.

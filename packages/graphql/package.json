@@ -1,0 +1,34 @@
+{
+	"name": "@zeko/graphql",
+	"description": "Zeko Graphql",
+	"private": true,
+	"type": "module",
+	"keywords": ["typescript", "library"],
+	"license": "MIT",
+	"devDependencies": {
+		"gql.tada": "^1.8.13",
+		"tsdown": "^0.13.4",
+		"typescript": "^5.9.2"
+	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./mina": "./src/mina.ts",
+		"./mina-archive": "./src/mina-archive.ts",
+		"./zeko": "./src/zeko.ts",
+		"./zeko-archive": "./src/zeko-archive.ts",
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"exports": {
+			".": "./dist/index.js",
+			"./mina": "./dist/mina.js",
+			"./mina-archive": "./dist/mina-archive.js",
+			"./zeko": "./dist/zeko.js",
+			"./zeko-archive": "./dist/zeko-archive.js",
+			"./package.json": "./package.json"
+		}
+	}
+}

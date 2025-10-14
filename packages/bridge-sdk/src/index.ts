@@ -1,9 +1,4 @@
-import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
-import type { Client } from "urql"
-import * as v from "valibot"
-import { fromList, pushAction } from "./actions"
-import { createGraphqlClient } from "./graphql"
-import { accountQuery, genesisConstantsQueryL1, runtimeConfigQuery } from "./graphql/queries/mina"
+import { accountQuery, genesisConstantsQueryL1, runtimeConfigQuery } from "@zeko/graphql/mina"
 import {
 	fetchConfigQuery,
 	finalizeDepositMutation,
@@ -13,7 +8,12 @@ import {
 	sequencerPkQuery,
 	submitDepositMutation,
 	submitWithdrawalMutation
-} from "./graphql/queries/zeko"
+} from "@zeko/graphql/zeko"
+import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
+import type { Client } from "urql"
+import * as v from "valibot"
+import { fromList, pushAction } from "./actions"
+import { createGraphqlClient } from "./graphql"
 import type {
 	Config,
 	Deposit,

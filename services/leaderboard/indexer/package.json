@@ -2,14 +2,13 @@
 	"name": "@zeko/leaderboard",
 	"private": true,
 	"type": "module",
-	"scripts": {
-		"dev": "wrangler dev",
-		"deploy": "wrangler deploy",
-		"test": "vitest",
-		"type:cf": "wrangler types"
+	"dependencies": {
+		"@lumina-dex/sdk": "catalog:",
+		"@zeko/graphql": "workspace:^",
+		"o1js": "catalog:",
+		"p-limit": "catalog:"
 	},
 	"devDependencies": {
-		"@types/bun": "latest",
-		"wrangler": "^4.25.0"
+		"@types/bun": "latest"
 	}
 }
