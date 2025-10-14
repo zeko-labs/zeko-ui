@@ -6,6 +6,7 @@ import { Select, createListCollection } from "@ark-ui/vue/select"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ChevronDownIcon } from "lucide-vue-next"
 
+const { loading = false } = defineProps<{ loading?: boolean }>()
 const modelValue = defineModel({ required: true })
 const collection = createListCollection({
 	items: ["MINA", "ZEKO"] as const
@@ -15,6 +16,7 @@ const collection = createListCollection({
 <template>
   <div class="SelectWrapper">
     <Field.Root>
+      <LoadingInput v-if="loading" />
       <Field.Input
         type="number"
         step="0.01"
@@ -22,7 +24,8 @@ const collection = createListCollection({
         @wheel.prevent="() => {}"
         v-model="modelValue"
         v-bind="$attrs"
-        placeholder="Enter Amount"
+        :disabled="loading"
+        :placeholder='loading ? "" : "Enter Amount"'
       />
     </Field.Root>
     <Field.Root>
@@ -65,6 +68,7 @@ const collection = createListCollection({
 <style lang="postcss" scoped>
 /* Main container */
 .SelectWrapper {
+  position: relative;
   display: grid;
   cursor: default;
   justify-content: space-between;

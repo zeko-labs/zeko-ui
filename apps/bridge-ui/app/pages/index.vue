@@ -1,38 +1,33 @@
+<script setup lang="ts">
+// biome-ignore lint/correctness/noUnusedImports: vue-template
+import { errorToaster } from "~/helpers"
+const bs = useBridgeStore()
+</script>
 <template>
   <div class="Container">
     <div class="Content">
-      <Header />
       <main>
         <h2>Zeko Bridge</h2>
-        <Bridge />
+        <Disabled
+          v-if='
+            bs.bridge.snapshot.matches("ERROR") ||
+            bs.wallet.snapshot.matches("UNSUPPORTED") ||
+            bs.currentNetwork.includes("mainnet") ||
+            bs.wallet.snapshot.error ||
+            (bs.address.length === 0 && bs.wallet.snapshot.matches("INIT"))
+          '
+        />
+        <Bridge v-else />
+        <Toast :toaster="errorToaster" />
       </main>
     </div>
-    <Footer />
   </div>
-  <!-- <div>
-    <hr />
-
-    <Button variant="cta1">Connect Wallet</Button>
-    <Button variant="cta2">Send</Button>
-    <Button variant="cta3">Claim</Button>
-    <Button variant="cta1" disabled>Disabled</Button>
-
-    <hr />
-    <Button>Default</Button>
-    <Button>Add Token</Button>
-    <Button disabled>Add Token</Button>
-    <hr />
-
-    <Label is="pending" />
-    <Label is="complete" />
-  </div> -->
 </template>
 <style lang="postcss" scoped>
 .Container {
   position: relative;
-  width: 100vw;
+  z-index: 2;
   min-height: 100vh;
-  overflow-x: hidden;
   padding: 0 var(--page-padding);
   display: grid;
   grid-template-rows: 1fr auto;
@@ -42,7 +37,6 @@
   display: grid;
   gap: 2ch;
   grid-template-rows: auto 1fr;
-  position: relative;
   color: var(--palette-gray-950);
 }
 

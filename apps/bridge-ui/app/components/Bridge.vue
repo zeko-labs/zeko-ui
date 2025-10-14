@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useSelector } from "@lumina-dex/sdk/vue"
+import { useSelector } from "~~/machines/vue-xstate"
 
 const bs = useBridgeStore()
 
@@ -13,7 +13,6 @@ const allOperations = useSelector(bs.bridge.actorRef, (state) =>
 		({ status }) => (status === "completed" ? "complete" : "uncomplete")
 	)
 )
-
 const completedOperations = computed(() => allOperations.value.complete ?? [])
 
 const currentOperation = computed(
@@ -41,15 +40,7 @@ const queuedOperations = computed(
 )
 </script>
 <template>
-  <Disabled
-    v-if='
-      bs.wallet.snapshot.matches("UNSUPPORTED") ||
-      bs.currentNetwork.includes("mainnet") ||
-      bs.wallet.snapshot.error ||
-      (bs.address.length === 0 && bs.wallet.snapshot.matches("INIT"))
-    '
-  />
-  <div class="Bridge" v-else>
+  <div class="Bridge">
     <div class="MainOperation">
       <Inputs v-if="!currentOperation" />
       <CurrentOperation v-else :operation="currentOperation" />
@@ -70,25 +61,17 @@ const queuedOperations = computed(
       </h4>
     </div>
     <div class="CompletedTransactions">
-      <AnimatedLoadingSpinner
-        class="Spinner"
-        v-if='bs.bridge.snapshot.matches("FIND_OPERATIONS")'
-      />
-      <template v-else>
-        <h3>Completed Transactions</h3>
-        <BridgeOperations :operations="completedOperations" />
-      </template>
+      <h3>Completed Transactions</h3>
+      <BridgeOperations :operations="completedOperations" />
     </div>
   </div>
-
-  <CurrentErrors v-if="currentOperation" :operation="currentOperation" />
 </template>
 <style lang="postcss" scoped>
 .MainOperation {
   display: grid;
   grid-template-columns: auto;
   margin: auto;
-  max-width: 60rem;
+  max-width: 50rem;
   @media (max-width: 1024px) {
     grid-template-columns: auto;
     gap: 2rem;

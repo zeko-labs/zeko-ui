@@ -34,6 +34,7 @@ import {
 	filterNulls,
 	getNextDepositIndex,
 	getNextWithdrawalIndex,
+	refreshCache,
 	withdrawalAux
 } from "./utils"
 
@@ -316,6 +317,8 @@ export class Bridge {
 	): Promise<Mina.Transaction<false, false>> {
 		this.setL1()
 
+		await refreshCache(feePayer)
+
 		const txn = await Mina.transaction(feePayer, async () => {
 			const transferrer = AccountUpdate.createSigned(recipient)
 			transferrer.balance.subInPlace(amount)
@@ -505,6 +508,8 @@ export class Bridge {
 			l2Account ? UInt64.zero : this.l2AccountCreationFee
 		)
 
+		await refreshCache(this.sequencerPk)
+
 		const txn = await Mina.transaction(
 			{
 				sender: this.sequencerPk,
@@ -536,6 +541,8 @@ export class Bridge {
 		}
 	): Promise<Mina.Transaction<false, false>> {
 		this.setL2()
+
+		await refreshCache(feePayer)
 
 		const txn = await Mina.transaction(feePayer, async () => {
 			const transferrer = AccountUpdate.createSigned(recipient)
@@ -688,6 +695,8 @@ export class Bridge {
 		this.setL1()
 
 		const accountCreationFee = helperAccount ? UInt64.zero : this.l1AccountCreationFee
+
+		await refreshCache(feePayer)
 
 		const txn = await Mina.transaction(feePayer, async () => {
 			const transferrer = AccountUpdate.create(withdrawalParams.withdrawal.recipient)

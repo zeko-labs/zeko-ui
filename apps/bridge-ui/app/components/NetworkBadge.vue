@@ -34,7 +34,7 @@ const friendlyNetwork = (n: string) => {
 .network {
   display: flex;
   place-items: center;
-  font-size: var(--typography_fluid-lexend-s);
-  font-weight: 600;
+  font-size: var(--typography_fluid-lexend-m);
+  font-weight: 400;
 }
 </style>

@@ -1,4 +1,4 @@
-import { Field, type Mina, Poseidon, type PublicKey, UInt32 } from "o1js"
+import { fetchAccount, Field, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
 import { fetchActionsQuery } from "../../graphql/src/mina-archive"
@@ -131,4 +131,14 @@ export function filterNulls<T>(arr: (T | null)[]): T[] {
 		if (x === null) throw new Error("Unreachable")
 		return x
 	})
+}
+
+export async function refreshCache(feePayer: Mina.FeePayerSpec) {
+	if (feePayer instanceof PublicKey) {
+		await fetchAccount({ publicKey: feePayer })
+	} else if (feePayer) {
+		await fetchAccount({
+			publicKey: feePayer.sender
+		})
+	}
 }

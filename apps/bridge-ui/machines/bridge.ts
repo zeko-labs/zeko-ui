@@ -100,7 +100,7 @@ export const bridgeMachine = setup({
 			return act("findPendingOperation", async () => {
 				const { wallet, worker, sourceNetwork, destinationNetwork } = input
 				const account = wallet.getSnapshot().context.account
-
+				if (account.length === 0) throw new Error("No account found in the wallet")
 				const l1 = sourceNetwork.includes("mina") ? sourceNetwork : destinationNetwork
 				const l2 = sourceNetwork.includes("zeko") ? sourceNetwork : destinationNetwork
 
@@ -349,6 +349,7 @@ export const bridgeMachine = setup({
 			}
 		},
 		READY: {},
+		ERROR: {},
 		FIND_OPERATIONS: {
 			invoke: {
 				src: "findPendingOperations",
@@ -422,7 +423,8 @@ export const bridgeMachine = setup({
 						handlePending()
 						handleComplete()
 					})
-				}
+				},
+				onError: { target: "ERROR" }
 			}
 		}
 	}

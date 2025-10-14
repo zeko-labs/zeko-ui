@@ -15,7 +15,9 @@
       Your browser does not support the video tag.
     </video>
     <div class="Layout">
+      <Header />
       <slot />
+      <Footer />
     </div>
   </div>
 </template>
@@ -31,9 +33,7 @@
 .page-background {
   position: relative;
   width: 100vw;
-  max-width: 100vw;
   min-height: 100vh;
-  overflow-x: hidden;
 }
 
 .background-video {
@@ -51,6 +51,14 @@
 }
 .desktop {
   display: block;
+}
+
+.Layout {
+  position: relative;
+  z-index: 0;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
 }
 
 @media (max-width: 1024px) {

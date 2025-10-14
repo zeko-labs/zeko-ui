@@ -1,39 +1,110 @@
 <script lang="ts" setup>
+import { errorToaster } from "~/helpers"
+
 const bs = useBridgeStore()
+const unsupportedBrowser = computed(() => {
+	const ua = navigator.userAgent
+	return /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS|Edge/i.test(ua)
+})
+const noWalletExtension = computed(() =>
+	bs.wallet.snapshot.matches("UNSUPPORTED")
+)
+const notConnected = computed(() => !bs.walletLoaded)
+const wrongNetwork = computed(() => bs.currentNetwork.includes("mainnet"))
+const error = computed(() => bs.bridge.snapshot.matches("ERROR"))
+onMounted(async () => {
+	await nextTick()
+	if (unsupportedBrowser.value) {
+		errorToaster.create({
+			title: "Unsupported Browser",
+			description:
+				"The Rollup Bridge is not supported on Safari. Please use a different browser, such as Chrome or Firefox.",
+			type: "error",
+			duration: Number.POSITIVE_INFINITY
+		})
+		return
+	}
+	if (noWalletExtension.value) {
+		errorToaster.create({
+			title: "No Wallet Extension",
+			description:
+				"Please install the Auro Wallet extension to use the Rollup Bridge.",
+			type: "error",
+			duration: Number.POSITIVE_INFINITY
+		})
+		return
+	}
+	if (wrongNetwork.value) {
+		errorToaster.create({
+			title: "Wrong Network",
+			description:
+				"The Rollup Bridge is not available on Mainnet. Please switch to a testnet to start using the bridge.",
+			type: "error",
+			duration: Number.POSITIVE_INFINITY
+		})
+		return
+	}
+	if (error.value) {
+		errorToaster.create({
+			title: "Bridge Error",
+			description:
+				"An error has occurred with the bridge. Please try again later.",
+			type: "error",
+			duration: Number.POSITIVE_INFINITY
+		})
+		return
+	}
+})
 </script>
 <template>
   <div class="Disabled">
     <p>
       The Rollup Bridge is a trustless bridge for transferring tokens from Mina
-      L1 Devnet to Zeko L2 Testnet. Please check <a
-        href="https://docs.zeko.io">Zeko Docs</a> for information about other
-      bridges.
+      L1 Devnet to Zeko L2 Testnet.
     </p>
-    <div
-      class="WalletConnection"
-      v-if='bs.wallet.snapshot.matches("UNSUPPORTED")'>
-      <p>Please Download Auro Wallet and use a compatible browser.</p>
-      <a href="https://www.aurowallet.com" target="_blank">
-        <Button variant="auro">
-          Download AuroWallet
+    <p>
+      Please check <a href="https://docs.zeko.io">Zeko Docs</a> for more
+      information.
+    </p>
+    <Switch>
+      <Match :when="unsupportedBrowser">
+        <p>
+          The Rollup Bridge is not supported on Safari. Please use a different
+          browser, such as Chrome or Firefox.
+        </p>
+      </Match>
+      <Match :when="noWalletExtension">
+        <p>
+          Download and install the Auro Wallet extension to use the Rollup
+          Bridge.
+        </p>
+        <a href="https://www.aurowallet.com" target="_blank">
+          <Button variant="auro">
+            Download AuroWallet
+          </Button>
+        </a>
+      </Match>
+      <Match :when="notConnected">
+        <p>Please connect your wallet to start bridging.</p>
+        <Button
+          variant="main"
+          @click='bs.wallet.send({ type: "Connect" })'>
+          Connect Wallet
         </Button>
-      </a>
-    </div>
-    <div class="WalletConnection" v-else-if="!bs.walletLoaded">
-      <p>Please connect your wallet to start bridging.</p>
-      <Button
-        variant="auro"
-        @click='bs.wallet.send({ type: "Connect" })'>
-        Connect Wallet
-      </Button>
-    </div>
-    <p class="MainnetOnly" v-else-if='bs.currentNetwork.includes("mainnet")'>
-      The Rollup Bridge is not available on Mainnet. Please
-      <button @click='bs.bridge.send({ type: "SwitchToTesnet" })'>
-        switch to a testnet
-      </button>
-      to start using the bridge.
-    </p>
+      </Match>
+      <Match :when="wrongNetwork">
+        <Button
+          variant="main"
+          @click='bs.bridge.send({ type: "SwitchToTesnet" })'>
+          Switch To Testnet
+        </Button>
+      </Match>
+      <Match :when="error">
+        <p class="error">
+          An error has occurred with the bridge. Please try again later.
+        </p>
+      </Match>
+    </Switch>
   </div>
 </template>
 <style lang="postcss" scoped>
@@ -57,5 +128,8 @@ const bs = useBridgeStore()
   a {
     all: unset;
   }
+}
+.error {
+  color: var(--palette-persianRed-500);
 }
 </style>

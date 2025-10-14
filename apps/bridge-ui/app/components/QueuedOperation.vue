@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { useSelector } from "@lumina-dex/sdk/vue"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ArrowBigRightDashIcon } from "lucide-vue-next"
 import type { ActorRefFromLogic } from "xstate"
 import { statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import { useSelector } from "~~/machines/vue-xstate"
 
 const { operation, index = 0 } = defineProps<{
 	index: number

@@ -1,17 +1,15 @@
 <script lang="ts" setup>
-import { useSelector } from "@lumina-dex/sdk/vue"
 import type { ActorRefFromLogic } from "xstate"
-import { depositSteps, statePath, withdrawalSteps } from "~/helpers"
+// biome-ignore lint/correctness/noUnusedImports: template
+import { bridgeMessages, errorToaster, statePath, steps } from "~/helpers"
 import { statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import { useSelector } from "~~/machines/vue-xstate"
 
 const { operation } = defineProps<{
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 }>()
 const machine = useSelector(operation, (state) => state)
-const steps = computed(() =>
-	machine.value.context.direction === "deposit" ? depositSteps : withdrawalSteps
-)
 
 const step = computed(() => {
 	// Special case for `WAITING_FOR_NETWORK` state
@@ -34,6 +32,21 @@ const status = computed(() =>
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
 const isLoading = computed(() => machine.value.hasTag("loading"))
 const hasCTA = computed(() => machine.value.hasTag("cta"))
+
+watch(machine.value.context.errors, (newErrors) => {
+	if (newErrors) {
+		const [e] = newErrors.toReversed()
+		if (e) {
+			console.error(`A total of ${newErrors.length} errors have occurred.`)
+			errorToaster.create({
+				title: "Error",
+				description: e.message,
+				type: "error",
+				duration: Number.POSITIVE_INFINITY
+			})
+		}
+	}
+})
 </script>
 <template>
   <div :class="{ CurrentOperationWrapper: true, isLoading, hasCTA }">
@@ -45,7 +58,13 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
         <div class="Row">
           <div>Status</div>
           <Label :title="JSON.stringify(machine.value)" :is="status.kind">
-            {{ status.text }}
+            {{
+              {
+              	complete: "Completed",
+              	pending: "Pending",
+              	error: "Failed"
+              }[status.kind]
+            }}
           </Label>
         </div>
         <div class="Row">
@@ -59,8 +78,9 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
         <div class="Row">
           <div>Amount</div>
           <div class="Mina">
-            <SvgMinaLogo width="24" height="24" />
             <span>{{ machine.context.amount }}</span>
+            <SvgMinaLogo width="24" height="24" />
+            <span>MINA</span>
           </div>
         </div>
       </div>
@@ -68,68 +88,62 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
         <div>
           <Button
             v-if='machine.matches("WAITING_FOR_NETWORK")'
-            variant="cta2"
+            variant="main"
             @click='
               machine.context.wallet.send({
               	type: "RequestNetworkChange",
               	network: machine.context.changeNetworkTo
               })
             '>Change Network</Button>
-
           <Button
             v-else
-            variant="cta2"
+            variant="main"
             :disabled="!toFinalize"
-            @click='operation.send({ type: "Finalize" })'>Finalize</Button>
+            @click='operation.send({ type: "Finalize" })'>Claim</Button>
         </div>
         <div class="Explanation">
           <Switch>
-            <Match :when='machine.matches({ SUBMIT_DEPOSIT: "transaction" })'>
-              Zeko Bridge is generating a transaction to sign with your wallet.
+            <Match
+              :when='
+                machine.matches("SUBMIT_WITHDRAWAL") ||
+                machine.matches({ SUBMIT_DEPOSIT: "transaction" })
+              '>
+              {{ bridgeMessages.submit }}
             </Match>
             <Match
               :when='machine.matches({ SUBMIT_DEPOSIT: "send_and_confirm" })'>
-              Waiting for the transaction to be confirmed.
+              {{ bridgeMessages.submitDeposit.sendAndConfirm }}
             </Match>
-            <Match :when='machine.matches("SUBMIT_WITHDRAWAL")'>
-              Zeko Bridge is generating a transaction to sign with your wallet.
-            </Match>
-            <Match :when='machine.matches("PENDING_DEPOSIT")'>
-              Your Send Transaction is awaiting Confirmation. This can take 15
-              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5
-              blocks).
-            </Match>
-            <Match :when='machine.matches("PENDING_WITHDRAWAL")'>
-              Your Send Transaction is awaiting Confirmation. This can take 15
-              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5
-              blocks).
+            <Match
+              :when='
+                machine.matches("PENDING_DEPOSIT") ||
+                machine.matches("PENDING_WITHDRAWAL")
+              '>
+              {{ bridgeMessages.pending }}
             </Match>
             <Match :when='machine.matches("INIT_BRIDGE_OPERATION")'>
-              Please wait…the Zeko Bridge is loading your wallet's latest
-              transaction history and status.
+              {{ bridgeMessages.initBridgeOperation }}
             </Match>
             <Match :when='machine.matches("TO_FINALIZE")'>
-              Claim generates a zero-knowledge proof to sign with your wallet on
-              the destination chain.
+              {{ bridgeMessages.toFinalize }}
             </Match>
             <Match
               :when='
                 machine.matches({ FINALIZE_DEPOSIT: "transaction" }) ||
                 machine.matches({ FINALIZE_WITHDRAWAL: "transaction" })
               '>
-              Zeko Bridge is generating a sequencer proof to sign with your
-              wallet.
+              {{ bridgeMessages.finalizeTransaction }}
             </Match>
             <Match
-              :when='
-                machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" }) ||
-                machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })
-              '>
-              Your Bridge Transaction is Claimed. The status is still Pending
-              until it's finalized to the destination chain. This can take 15
-              minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5
-              blocks). Completed Transactions appear below.
+              :when='machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })'>
+              {{ bridgeMessages.finalizeDeposit.sendAndConfirm }}
             </Match>
+
+            <Match
+              :when='machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" })'>
+              {{ bridgeMessages.finalizeWithdrawal.sendAndConfirm }}
+            </Match>
+
             <Match :when='machine.matches("WAITING_FOR_NETWORK")'>
               <div class="Flex">
                 <span>Switch your wallet to&nbsp;</span>
@@ -151,13 +165,6 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
             </Match>
           </Switch>
         </div>
-        <div class="Loading">
-          <AnimatedLoadingSpinner v-if="isLoading" class="animation" />
-          <AnimatedGreenCheckmark
-            class="animation"
-            v-else-if='machine.matches("BRIDGE_OPERATION_COMPLETED")'
-          />
-        </div>
       </div>
     </div>
   </div>
@@ -170,6 +177,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
   --border-size: 2px;
   --border-color: var(--palette-cosmicGold-50);
   position: relative;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -179,7 +187,7 @@ const hasCTA = computed(() => machine.value.hasTag("cta"))
   background: var(--background);
   border-radius: var(--border-radius);
   &.hasCTA {
-    box-shadow: 0 0 10vw 300vw oklch(0 0 0 / 0.2);
+    box-shadow: 0 0 10vw 300vw oklch(0 0 0 / 0.3);
   }
   &.isLoading {
     &::before {

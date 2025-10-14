@@ -7,11 +7,13 @@ import {
 	useVueTable
 } from "@tanstack/vue-table"
 // biome-ignore lint/correctness/noUnusedImports: <explanation>
-import { StepBackIcon, StepForwardIcon } from "lucide-vue-next"
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-vue-next"
 import { computed } from "vue"
 import type { ActorRefFromLogic } from "xstate"
 import { statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import { useSelector } from "~~/machines/vue-xstate"
+
 const { operations } = defineProps<{
 	operations: {
 		id: string
@@ -19,11 +21,13 @@ const { operations } = defineProps<{
 	}[]
 }>()
 
+const bs = useBridgeStore()
+const loading = computed(() => !bs.bridge.snapshot.matches("READY"))
+
 const data = computed(() =>
 	operations
 		.map(({ id, operation }) => {
-			// const state = useSelector(operation, (state) => state)
-			const state = computed(() => operation.getSnapshot())
+			const state = useSelector(operation, (state) => state)
 			const { text, kind } = statusFromState(
 				state.value.value,
 				state.value.context.direction
@@ -75,6 +79,28 @@ const pageIndex = computed(() => table.getState().pagination.pageIndex)
 const pageCount = computed(() =>
 	Math.max(1, Math.ceil(data.value.length / pageSize))
 )
+
+const placeholderRows = computed(() =>
+	loading.value
+		? Array.from({ length: 3 }, (_, i) => ({ id: `placeholder-${i}` }))
+		: []
+)
+
+const visiblePages = computed(() => {
+	const total = pageCount.value
+	const current = pageIndex.value
+	if (total <= 5) return Array.from({ length: total }, (_, i) => i)
+
+	const pages: (number | string)[] = [0]
+	if (current <= 2) {
+		pages.push(1, 2, "...", total - 1)
+	} else if (current >= total - 3) {
+		pages.push("...", total - 3, total - 2, total - 1)
+	} else {
+		pages.push("...", current, "...", total - 1)
+	}
+	return pages
+})
 </script>
 
 <template>
@@ -101,14 +127,32 @@ const pageCount = computed(() =>
 
         <!-- Body -->
         <tbody>
+          <!-- Loading placeholder rows -->
           <tr
+            v-if="loading"
+            v-for="placeholder of placeholderRows"
+            :key="placeholder.id"
+            class="placeholder-row">
+            <td v-for="col of columns.length" :key="col">
+              <LoadingBar />
+            </td>
+          </tr>
+          <!-- Real data rows -->
+          <tr
+            v-else
             v-for="row of table.getRowModel().rows"
             :key="row.id"
             class="data-row">
             <!-- Status -->
             <td>
               <Label :title="row.original.status" :is="row.original.statusKind">
-                {{ row.original.statusText }}
+                {{
+                  {
+                  	complete: "Completed",
+                  	pending: "Pending",
+                  	error: "Failed"
+                  }[row.original.statusKind]
+                }}
               </Label>
             </td>
             <!-- From -->
@@ -118,14 +162,15 @@ const pageCount = computed(() =>
             <!-- Amount -->
             <td>
               <div class="AmountBox">
-                <SvgMinaLogo width="24" height="24" />
                 <span>{{ String(row.getValue("amount")) }}</span>
+                <SvgMinaLogo width="24" height="24" />
+                <span>MINA</span>
               </div>
             </td>
             <!-- Date -->
             <td>{{ new Date(row.original.date).toLocaleDateString() }}</td>
           </tr>
-          <tr v-if="table.getRowModel().rows.length === 0">
+          <tr v-if="!loading && table.getRowModel().rows.length === 0">
             <td :colspan="columns.length">No transactions.</td>
           </tr>
         </tbody>
@@ -138,35 +183,33 @@ const pageCount = computed(() =>
       aria-label="Pagination"
       aria-controls="bridge-operations-table">
       <button
-        class="PageButton"
+        class="PageButton PrevNext"
         :disabled="pageIndex === 0"
         @click="table.previousPage()"
         aria-label="Go to previous page">
-        <StepBackIcon />
+        <ChevronLeftIcon />
       </button>
       <ul class="PageList" role="list">
-        <li v-for="i of pageCount" :key="i - 1">
+        <li v-for="(page, idx) of visiblePages" :key="`page-${idx}`">
           <button
+            v-if='typeof page === "number"'
             class="PageButton"
-            :class="{ active: pageIndex === i - 1 }"
-            @click="table.setPageIndex(i - 1)"
-            :aria-label="`Go to page ${i}`"
-            :aria-current='pageIndex === i - 1 ? "page" : undefined'>
-            {{ i }}
+            :class="{ active: pageIndex === page }"
+            @click="table.setPageIndex(page)"
+            :aria-label="`Go to page ${page + 1}`"
+            :aria-current='pageIndex === page ? "page" : undefined'>
+            {{ page + 1 }}
           </button>
+          <span v-else class="Ellipsis" aria-hidden="true">...</span>
         </li>
       </ul>
       <button
-        class="PageButton"
+        class="PageButton PrevNext"
         :disabled="pageIndex >= pageCount - 1"
         @click="table.nextPage()"
         aria-label="Go to next page">
-        <StepForwardIcon />
+        <ChevronRightIcon />
       </button>
-      <span class="PageInfo" aria-live="polite">Page {{ pageIndex + 1 }} of {{
-          pageCount
-        }}
-      </span>
     </nav>
   </div>
 </template>
@@ -224,62 +267,92 @@ tbody tr:hover {
 }
 
 .PaginationBar {
-  margin: 1rem auto auto auto;
+  margin-block-start: 1rem;
+  margin-inline: auto;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
   align-items: center;
-  justify-content: center;
   font-size: var(--typography_fluid-lexend-s);
+  border: 1px solid var(--bridge-border-color);
+  border-radius: 0.5rem;
+  width: fit-content;
 }
 
 .PageList {
   display: flex;
-  gap: 0.25rem;
+  align-items: center;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 .PageButton {
-  --bg: var(--palette-basic-spaceBlue);
-  --fg: var(--theme-light-content-tertiary);
-  --bd: var(--bridge-border-color);
-  padding: 0.45rem 0.75rem;
-  border: 1px solid var(--bd);
+  --bg: transparent;
+  --fg: var(--theme-light-content-primary);
+  --bd: var(--palette-gray-200);
+  min-width: 2.5rem;
+  block-size: 2.5rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-inline-end: 1px solid var(--bd);
+  border-radius: 0;
   background: var(--bg);
   color: var(--fg);
-  border-radius: 0.375rem;
   cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    color 120ms ease,
-    border-color 120ms ease;
+  font-weight: 400;
+  transition: background-color 120ms ease;
   &.active {
-    --bg: var(--palette-yellow-200);
+    --bg: var(--palette-gray-100);
+    font-weight: 600;
+    border-inline: 1px solid var(--bd);
   }
-  &:hover:not([disabled]) {
-    background: color-mix(in oklab, var(--bg), var(--bridge-bg-alt) 40%);
+  &.PrevNext {
+    &:hover:not([disabled]) {
+      --bg: var(--bridge-bg-alt);
+    }
+    &:first-child {
+      border-start-start-radius: 0.5rem;
+      border-end-start-radius: 0.5rem;
+    }
+    &:last-child {
+      border-inline-end: none;
+      border-start-end-radius: 0.5rem;
+      border-end-end-radius: 0.5rem;
+    }
+  }
+  &:hover:not([disabled]):not(.active) {
+    --bg: var(--bridge-bg-alt);
   }
   &:focus-visible {
     outline: 2px solid var(--bridge-focus-color);
-    outline-offset: 2px;
+    outline-offset: -2px;
+    z-index: 1;
   }
   &[disabled] {
-    opacity: 0.45;
+    opacity: 0.3;
     cursor: not-allowed;
   }
   svg {
-    width: 1rem;
-    height: 1rem;
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
   }
 }
 
-.PageInfo {
-  margin-left: 0.5rem;
-  font-size: var(--typography_fluid-lexend-s);
-  opacity: 0.7;
-  cursor: default;
+.Ellipsis {
+  color: var(--theme-light-content-tertiary);
+  opacity: 0.6;
+  padding-inline: 0.5rem;
+  user-select: none;
+  border-inline-end: 1px solid var(--bridge-border-color);
+  display: flex;
+  align-items: center;
+  block-size: 2.5rem;
+}
+
+tbody tr.placeholder-row {
+  height: var(--bridge-row-height);
 }
 
 @media (prefers-reduced-motion: reduce) {

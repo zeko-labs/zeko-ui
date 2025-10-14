@@ -5,13 +5,13 @@ const { steps, step } = defineProps<{
 }>()
 
 const currentStepIndex = computed(() =>
-	Math.min(Math.max(step, 0), steps.length - 1)
+	Math.min(Math.max(step, 0), steps.length)
 )
 
 const progressClass = (index: number) => {
 	const completed =
 		index < currentStepIndex.value ||
-		(index === steps.length - 1 && currentStepIndex.value === steps.length - 1)
+		(index === steps.length && currentStepIndex.value === steps.length)
 	const current = index === currentStepIndex.value
 	return { completed, current, future: !completed && !current }
 }
@@ -23,11 +23,6 @@ const nodeSize = {
 	rem: `${rawNodeSize / 16}rem`,
 	value: rawNodeSize
 }
-
-/**
- * Note: We are using grid-template-areas and margin tricks to reproduce the design as faithfully as possible.
- *
- */
 </script>
 
 <template>
@@ -57,14 +52,14 @@ const nodeSize = {
             />
           </svg>
           <SvgCheck
-            :class="{ check: true, completed: progressClass(index).completed }"
-            v-if="index === steps.length - 1"
+            :class="{ check: true, completed: currentStepIndex === steps.length }"
+            v-if="index + 1 === steps.length"
           />
           <span
             v-if="index === steps.length - 1"
             class="last-label step-label"
             :class="progressClass(steps.length - 1)">
-            {{ steps[steps.length - 1] }}
+            {{ steps.at(-1) }}
           </span>
         </div>
 
@@ -138,21 +133,26 @@ const nodeSize = {
     display: grid;
     color: var(--palette-gray-950);
     font-weight: 600;
-    font-size: 16px;
+    font-size: 1rem;
   }
 }
 
 .absolute-step-label {
   position: absolute;
   width: 20%;
-  margin: v-bind("`${nodeSize.rem} -${nodeSize.value / 5}rem`");
+  margin: v-bind("`${nodeSize.rem} -${nodeSize.value / 10}rem`");
 }
 
 .last-label {
   position: absolute;
-  min-width: 24ch;
+  min-width: 20ch;
   margin-bottom: -4.2rem;
-  margin-right: -2rem;
+  margin-right: -8rem;
+  &.completed {
+    color: var(--palette-gray-950);
+    font-weight: 600;
+    font-size: 1rem;
+  }
 }
 
 /* Container query: once the progress bar has enough horizontal space, show all labels */

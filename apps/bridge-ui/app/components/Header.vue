@@ -21,17 +21,20 @@ const refetchBalance = () => {
 <template>
   <header>
     <div class="Logo">
-      <SvgZekoLogoRings />
+      <NuxtLink to="/">
+        <SvgZekoLogoRings />
+      </NuxtLink>
     </div>
     <div class="MinaNetwork Badge">
+      <div class="Network">
+        <NetworkBadge :network="bs.currentNetwork" />
+      </div>
       <div class="Mina" @click="refetchBalance">
-        <SvgMinaLogo width="24" height="24" />
         <span>
           {{ currentMina }}
         </span>
-      </div>
-      <div class="Network">
-        <NetworkBadge :network="bs.currentNetwork" />
+        <SvgMinaLogo width="24" height="24" />
+        <span>MINA</span>
       </div>
     </div>
     <div class="Address Badge" :title="bs.address">
@@ -53,13 +56,16 @@ const refetchBalance = () => {
 </template>
 <style lang="postcss" scoped>
 header {
-  background: rgba(255, 255, 255, 0.24);
+  position: relative;
+  z-index: -1;
+  background: var(--palette-gray-50);
   backdrop-filter: blur(4px);
   display: grid;
   grid-template-areas: "logo mina-network address notifications";
   grid-template-columns: 1fr auto auto auto;
   gap: 1rem;
-  padding: 1rem;
+  padding: 1rem var(--page-padding);
+  max-width: 100vw;
   @media (max-width: 1024px) {
     grid-template-areas:
       "logo address notifications"
@@ -98,8 +104,8 @@ header {
     display: flex;
     place-items: center;
     gap: 0.5ch;
-    border-right: 1px solid var(--palette-alpha-soft-gray1);
-    padding-right: 1ch;
+    border-left: 1px solid var(--palette-alpha-soft-gray1);
+    padding-left: 1ch;
   }
 }
 
@@ -116,7 +122,8 @@ header {
     display: flex;
     place-items: center;
   }
-  &.granted {
+  color: var(--palette-gray-950);
+  /* &.granted {
     color: var(--palette-cosmicGold-medium);
   }
   &.denied {
@@ -124,6 +131,6 @@ header {
   }
   &.default {
     color: var(--palette-persianRed-400);
-  }
+  } */
 }
 </style>
