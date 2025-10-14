@@ -136,7 +136,7 @@ export function filterNulls<T>(arr: (T | null)[]): T[] {
 export async function refreshCache(feePayer: Mina.FeePayerSpec) {
 	if (feePayer instanceof PublicKey) {
 		await fetchAccount({ publicKey: feePayer })
-	} else {
+	} else if (feePayer) {
 		await fetchAccount({
 			publicKey: feePayer.sender
 		})
