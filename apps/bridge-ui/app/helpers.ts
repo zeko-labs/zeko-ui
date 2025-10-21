@@ -79,7 +79,7 @@ export const bridgeMessages = {
 		sendAndConfirm: "Waiting for the transaction to be confirmed."
 	},
 	pending:
-		"Your Send Transaction is awaiting Confirmation. This can take up to 1 hour, to ensure Mina L1 finality (tx confirmation + 5 blocks).",
+		"Your Send Transaction is awaiting Confirmation. This can take up to 1 hour, to ensure Mina L1 finality.",
 	initBridgeOperation:
 		"Please wait… the Zeko Bridge is loading your wallet's latest transaction history and status.",
 	toFinalize:
@@ -87,10 +87,10 @@ export const bridgeMessages = {
 	finalizeTransaction: "Zeko Bridge is generating a sequencer proof to sign with your wallet.",
 	finalizeDeposit: {
 		sendAndConfirm:
-			"Your Bridge Transaction is Claimed. The status is still Pending until it's finalized to the destination chain. This can take 15 minutes to 1 hour, to ensure Mina L1 finality (tx confirmation + 5 blocks). Completed Transactions appear below."
+			"Your Bridge Transaction is Claimed. The status is still Pending until it's finalized on Zeko. This typically takes a few seconds. Completed Transactions appear below."
 	},
 	finalizeWithdrawal: {
 		sendAndConfirm:
-			"Your Bridge Transaction is Claimed. The status is still Pending until it's finalized to the destination chain. This typically takes a few seconds. Completed Transactions appear below."
+			"Your Bridge Transaction is Claimed. The status is still Pending until it's finalized on Mina. This can take up to 1 hour, to ensure Mina L1 finality. Completed Transactions appear below."
 	}
 } as const
