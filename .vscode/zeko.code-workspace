@@ -48,12 +48,14 @@
   "settings": {
     "typescript.tsdk": "node_modules/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true,
-    "oxc.enable": false
+    "oxc.enable": false,
+    "biome.enabled": true
   },
   "extensions": {
     "recommendations": [
       "dprint.dprint",
-      "biomejs.biome"
+      "biomejs.biome",
+      "moonrepo.moon-console"
     ]
   }
 }

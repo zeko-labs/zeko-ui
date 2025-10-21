@@ -1,7 +1,7 @@
-import { leaderboard } from "../../drizzle/schema"
 import { sql } from "drizzle-orm"
-import type { Database } from "../db"
+import { leaderboard } from "../../drizzle/schema"
 import { builder } from "../builder"
+import type { Database } from "../db"
 
 interface LeaderboardEntry {
 	rank: number

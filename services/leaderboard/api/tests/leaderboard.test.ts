@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest"
-import { drizzle } from "drizzle-orm/postgres-js"
-import postgres, { type Sql } from "postgres"
-import { seed } from "drizzle-seed"
 import { sql } from "drizzle-orm"
+import { drizzle } from "drizzle-orm/postgres-js"
+import { seed } from "drizzle-seed"
+import postgres, { type Sql } from "postgres"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { leaderboard } from "../drizzle/schema"
-import { queryLeaderboard } from "../src/schema/leaderboard"
-import { checkDatabaseConnectionString } from "../src/helpers/utils"
 import type { Database } from "../src/db"
+import { checkDatabaseConnectionString } from "../src/helpers/utils"
+import { queryLeaderboard } from "../src/schema/leaderboard"
 
 // Test configuration
 const TEST_ROW_COUNT = 10_000

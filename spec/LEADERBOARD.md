@@ -4,83 +4,129 @@
 
 This document outlines the high-level architecture for a real-time leaderboard for the Zeko (Mina L2) contest. The primary goal is to create a flexible, scalable, and maintainable system that can track on-chain user actions, display a live ranking, and adapt to changing business rules.
 
-The architecture is a **decoupled, custom stack** built on Cloudflare Workers and Supabase, centered around an **Event Sourcing** pattern. This approach prioritizes a clean separation of concerns, ensuring that the recording of raw data (indexing) is distinct from the interpretation and calculation of points (business logic).
+The architecture is a **decoupled, custom stack** built on Cloudflare Workers and PostgreSQL (Supabase), centered around an **Event Sourcing** pattern. This approach prioritizes a clean separation of concerns, ensuring that the recording of raw data (indexing) is distinct from the API layer that serves leaderboard data and real-time updates.
 
 ## 2. Core Principles
 
-- **Event Sourcing as the Source of Truth:** We will not store mutable scores directly. Instead, we will store an immutable log of all actions (`events`). The leaderboard is a projection of this log, calculated on the fly. This provides a full audit trail and allows business rules to be changed without data migration.
-- **Separation of Concerns:** The **Indexer** is a dumb pipeline responsible only for recording facts. The **API Layer** is responsible for interpreting those facts according to business rules.
-- **Flexibility Over Premature Optimization:** The design must gracefully handle changes to business logic, such as the "once per contest" vs. "once per day" requirement for awarding points.
+- **Event Sourcing as the Source of Truth:** We store an immutable log of all actions (`actions` table). The leaderboard is a projection of this log, pre-computed and stored in the `leaderboard` table. This provides a full audit trail and allows business rules to be changed without data migration by recalculating from the action log.
+- **Separation of Concerns:** The **Indexer** is a background service responsible for monitoring the blockchain and updating the database. The **API Layer** is responsible for serving leaderboard data and real-time updates to clients.
+- **Flexibility Over Premature Optimization:** The design handles changes to business logic gracefully through recalculation endpoints that can rebuild the leaderboard from the action log.
 
 ## 3. Component Breakdown
 
 ### 3.1. Database
 
-- **Technology:** **Supabase** (Postgres) with **Drizzle ORM**.
+- **Technology:** **PostgreSQL** (can be hosted on Supabase or similar) with **Drizzle ORM**.
 - **Role:** Acts as the single, durable source of truth for the entire system.
-- **Schema Pattern:** The database will store the immutable event log plus a pre-computed leaderboard table. Drizzle will be used to define the schema in TypeScript, providing type safety and easy migrations.
-  - `actions`: A log of all relevant on-chain actions performed by users (e.g., `FAUCET_USE`, `SWAP_ONCE`). It stores the raw fact, not the points.
-  - `manual_adjustments`: A log of points added or removed by the admin.
-  - `leaderboard`: A pre-computed table with wallet addresses and their total scores. Updated by the indexer.
+- **Schema Pattern:** The database stores the immutable event log plus a pre-computed leaderboard table. Drizzle is used to define the schema in TypeScript, providing type safety and easy migrations.
+  - `actions`: A log of all relevant on-chain actions performed by users (e.g., `FAUCET_ZEKO_TMINA`, `LUMINA_SWAP_MINA_TZEKO`). Stores the raw fact with transaction hash, block height, and timestamp.
+  - `leaderboard`: A pre-computed table with wallet addresses and their total scores. Updated by the indexer after processing each batch of actions.
   - `zeko_transactions`: A simple log of all transaction hashes on Zeko, used for the global transaction counter.
 
 ### 3.2. Indexing Layer
 
-- **Technology:** **Cloudflare Worker** running on a **Cron Trigger**.
-- **Role:** To observe the Mina and Zeko blockchains, persist raw data, and update the leaderboard table.
+- **Technology:** **Node.js/Bun** service with an HTTP control server protected by Bearer token authentication.
+- **Role:** To observe the Zeko blockchain, persist raw data, update the leaderboard table, and trigger real-time updates.
 - **Responsibilities:**
-  - Periodically fetch new on-chain events/state since its last run.
-  - Transform this data into the schema format (e.g., `userId`, `actionType`, `txHash`).
-  - Perform efficient batch `INSERT` operations into the Supabase tables (`actions`, `zeko_transactions`).
-  - **Calculate and update scores:** For each affected wallet, recalculate the total score using the business logic and `UPSERT` into the `leaderboard` table.
-  - The Indexer contains the business logic (via `scoring.ts`) to determine point values and apply caps per action type.
+  - Periodically fetch new on-chain events from Zeko blockchain since last processed block
+  - Transform blockchain data into action records and perform efficient batch operations into the database
+  - Calculate and update scores for each affected wallet using business logic and update the `leaderboard` table
+  - Trigger broadcasts to the API service to notify connected clients of updates
+  - Provide HTTP endpoints for administrative control (start/stop indexing, recalculate scores, rebuild leaderboard, manual broadcasts)
+  - The Indexer contains the business logic to determine point values and apply caps per action type
+- **Authentication:** All control endpoints are protected by Bearer token authentication for security
 
-### 3.3. API Layer
+### 3.3. API Layer with Real-time Updates
 
-- **Technology:** **Cloudflare Worker** running **GraphQL Yoga** with **Pothos** (for schema building) and **Drizzle ORM** (for querying). This can be the same Worker deployment as the Indexer.
-- **Role:** To provide a simple, performant GraphQL API for the frontend and admin UI.
-- **Responsibilities:**
-  - **Leaderboard Query:** Queries the pre-computed `leaderboard` table with simple cursor-based pagination. Calculates ranks on-the-fly using a window function.
-  - **Scoring System** (implemented in the indexer):
-    - **FAUCET_ZEKO_TMINA**: 10 points (only the first occurrence counts)
-    - **BRIDGE_MINA_TO_ZEKO**: 20 points (only the first occurrence counts)
-    - **BRIDGE_ZEKO_TO_MINA**: 20 points (only the first occurrence counts)
-    - **LUMINA_SWAP_MINA_TZEKO**: 5 points per swap, up to a maximum of 100 points total (only the first 20 occurrences count)
-    - **LUMINA_ADD_LIQUIDITY_MINA_TZEKO**: 10 points per liquidity addition, up to a maximum of 50 points total (only the first 5 occurrences count)
-  - **GraphQL Schema:** Exposes queries like `leaderboard(input: { cursor, searchWallet })` and `getZekoTransactionCount`.
-  - **Mutations:** Exposes the `adjustPoints` mutation for the admin.
-  - **Authentication:** Verifies signatures for protected mutations.
+- **Technology:** **Cloudflare Worker** running **GraphQL Yoga** with **Pothos** (for schema building), **Drizzle ORM** (for querying), and **Cloudflare Durable Objects** for real-time WebSocket connections.
+- **Role:** To provide a performant GraphQL API for the frontend and manage real-time updates via WebSocket subscriptions.
+- **GraphQL API Responsibilities:**
+  - Queries the pre-computed `leaderboard` table with efficient keyset-based pagination
+  - Supports wallet search to find specific user rankings
+  - Exposes global transaction counter for Zeko blockchain activity
+- **Real-time Update Architecture:**
+  - Uses a distributed pub/sub system with Cloudflare Durable Objects
+  - **UserDO (User Durable Object):** One instance per connected user, manages WebSocket connections
+  - **DistributorDO (Distributor Durable Object):** Fixed pool of 100 shards for scalable fan-out distribution
+  - When the indexer processes new data, it triggers all distributors in parallel, which fan out to subscribed users
+  - Automatic cleanup of failed/disconnected subscribers
+- **Scoring System** (implemented in the indexer):
+  - **FAUCET_ZEKO_TMINA**: 10 points (only first occurrence counts)
+  - **BRIDGE_MINA_TO_ZEKO** (Deposit): 20 points (only first occurrence counts)
+  - **BRIDGE_ZEKO_TO_MINA** (Withdrawal): 20 points (only first occurrence counts)
+  - **LUMINA_SWAP_MINA_TZEKO**: 5 points per swap, maximum 100 points total (first 20 occurrences)
+  - **LUMINA_ADD_LIQUIDITY_MINA_TZEKO**: 10 points per liquidity addition, maximum 50 points total (first 5 occurrences)
 
-### 3.4. Real-time Layer
-
-- **Technology:** **Cloudflare Durable Object**.
-- **Role:** To manage persistent client connections and push updates for a live experience.
-- **Responsibilities:**
-  - Acts as a simple **Pub/Sub hub** for GraphQL Subscriptions.
-  - When the API layer processes a mutation (like `adjustPoints`) or when the Indexer runs, the API layer will publish a notification (e.g., `'leaderboard_updated'`) to the Durable Object.
-  - The Durable Object broadcasts this notification to all connected frontend clients, which then triggers a refetch of the main `getLeaderboard` query.
-
-### 3.5. Frontend
+### 3.4. Frontend
 
 - **Technology:** **Vue.js** with **Urql** as the GraphQL client.
 - **Role:** The public-facing, user-centric leaderboard application.
 - **Responsibilities:**
-  - Display the leaderboard table and the global Zeko transaction counter.
-  - Implement the **Query + Subscription/Refetch** pattern. It will initially fetch data with a `getLeaderboard` query and then listen for updates via an `onLeaderboardUpdate` subscription to trigger seamless data refreshing.
+  - Display the leaderboard table with pagination and the global Zeko transaction counter
+  - Implement the **Query + Subscription** pattern: initially fetch data via GraphQL query, then maintain WebSocket connection for real-time updates
+  - Support wallet search functionality to find specific user rankings
 
-### 3.6. Admin
+### 3.5. Admin Interface
 
-- **Technology:** A simple, dedicated web UI (can be a separate route within the main Vue app).
-- **Role:** A purpose-built tool for the contest administrator.
+- **Technology:** Basic web UI protected by **Cloudflare Access** for authentication.
+- **Role:** Administrative control panel for managing the indexer service.
 - **Responsibilities:**
-  - Provide a simple form for the admin to add or remove points for a specific user.
-  - This form will call the `adjustPoints` GraphQL mutation, authenticating the request via a wallet signature.
+  - Provide UI to control the indexer service (start/stop indexing, monitor status)
+  - Trigger manual recalculation of leaderboard scores
+  - Rebuild the leaderboard from scratch when business rules change
+  - Manually trigger broadcasts to connected clients
+- **Security:** Protected by Cloudflare Access, communicates with indexer using Bearer token authentication
 
-### 3.7. Authentication
+## 4. Data Flow
 
-- **Technology:** **Mina Wallet Message Signing**.
-- **Role:** To secure the admin-only `adjustPoints` mutation.
-- **Flow:**
-  1. The admin UI prompts the designated admin user to sign a static message (e.g., a challenge token).
-  2. The resulting signature and the admin's public key are sent with the `adjustPoints` GraphQL request.
-  3. The API Layer verifies that the signature is valid and was produced by the known, hardcoded admin public key before executing the mutation. This provides a simple yet secure authentication mechanism for a single admin user.
+### 4.1. Indexing Flow
+
+1. Indexer periodically queries Zeko blockchain for new events since last processed block
+2. Transforms blockchain events into normalized action records
+3. Batch inserts actions into database with duplicate protection
+4. Calculates score changes for affected wallets based on business rules
+5. Updates leaderboard table with new scores
+6. Triggers broadcast to API service's distributor shards
+7. Distributors fan out updates to connected clients via WebSocket
+
+### 4.2. Real-time Update Flow
+
+1. Client connects to API service and establishes WebSocket connection
+2. Client is assigned to one of 100 distributor shards using consistent hashing
+3. When indexer processes new data, it triggers all distributors in parallel
+4. Each distributor broadcasts to its subscribed clients
+5. Clients receive updates and refetch leaderboard data
+
+### 4.3. Admin Control Flow
+
+1. Admin accesses admin UI (protected by Cloudflare Access)
+2. Admin UI displays indexer status and control options
+3. Admin actions (start/stop, recalculate, rebuild) are sent as authenticated requests to indexer
+4. Indexer executes commands and returns status
+
+## 5. Key Architecture Decisions
+
+### Why Separate Indexer and API?
+
+- **Scalability:** Indexer runs on dedicated infrastructure optimized for long-running processes, while API benefits from Cloudflare's edge network
+- **Reliability:** Indexer can be restarted or reconfigured without affecting API availability
+- **Security:** Indexer control is isolated and secured independently
+
+### Why Durable Objects for Real-time?
+
+- **Scalability:** 100-shard architecture distributes connection load and broadcast fan-out
+- **Cost-Effectiveness:** Only pay for active connections with automatic hibernation
+- **Low Latency:** Connections maintained at Cloudflare edge
+- **Reliability:** Automatic cleanup of failed connections
+
+### Why Pre-computed Leaderboard Table?
+
+- **Performance:** Fast query response times regardless of action log size
+- **Simplicity:** Standard SQL queries with window functions for ranking
+- **Flexibility:** Can rebuild from action log when business rules change
+
+### Why Event Sourcing?
+
+- **Audit Trail:** Complete history of all actions for debugging and compliance
+- **Flexibility:** Business rules can change without data migration—just recalculate from actions
+- **Data Integrity:** Immutable action log prevents accidental data corruption

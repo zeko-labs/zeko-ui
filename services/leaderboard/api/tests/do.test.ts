@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest"
-import { DistributorDO, UserDo } from "../src/do"
 import { env, runInDurableObject } from "cloudflare:test"
+import { describe, expect, it } from "vitest"
 import type { BroadcastMessagePayload } from "../src/do"
+import { DistributorDO, UserDo } from "../src/do"
 
 describe("DistributorDO", () => {
 	it("should initialize with zero subscribers", async () => {
@@ -518,7 +518,7 @@ describe("Integration: Distributor and User DOs", () => {
 			})
 
 			// Subscribe all users for this shard
-			const usersForShard = shardToUsers.get(shardId)!
+			const usersForShard = shardToUsers.get(shardId) ?? []
 			for (const userId of usersForShard) {
 				await runInDurableObject(distributorStub, async (instance: DistributorDO) => {
 					return instance.subscribe(userId)

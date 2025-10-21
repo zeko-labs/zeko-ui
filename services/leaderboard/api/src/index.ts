@@ -1,7 +1,7 @@
-import { schema } from "./graphql"
 import { createYoga } from "graphql-yoga"
-import { CloudflareContext, rc, useDatabase } from "./db"
-import { Context } from "./builder"
+import type { Context } from "./builder"
+import { type CloudflareContext, rc, useDatabase } from "./db"
+import { schema } from "./graphql"
 
 const yoga = createYoga<{ cloudflare: CloudflareContext }>({
 	schema,
