@@ -3,20 +3,20 @@ import { pgTable, text, timestamp, uuid, index, smallint } from "drizzle-orm/pg-
 
 const uuidv7 = sql`gen_random_uuid_v7()`
 
+export const actionTypes = [
+	"FAUCET_ZEKO_TMINA",
+	"BRIDGE_MINA_TO_ZEKO",
+	"BRIDGE_ZEKO_TO_MINA",
+	"LUMINA_SWAP_MINA_TZEKO",
+	"LUMINA_ADD_LIQUIDITY_MINA_TZEKO"
+] as const
+
 export const actions = pgTable(
 	"Actions",
 	{
 		id: uuid().primaryKey().default(uuidv7),
 		wallet: text().notNull(),
-		actionType: text({
-			enum: [
-				"FAUCET_ZEKO_TMINA",
-				"BRIDGE_MINA_TO_ZEKO",
-				"BRIDGE_ZEKO_TO_MINA",
-				"LUMINA_SWAP_MINA_TZEKO",
-				"LUMINA_ADD_LIQUIDITY_MINA_TZEKO"
-			] as const
-		}).notNull(),
+		actionType: text({ enum: actionTypes }).notNull(),
 		transactionHash: text().notNull().unique(),
 		timestamp: timestamp().notNull().defaultNow()
 	},

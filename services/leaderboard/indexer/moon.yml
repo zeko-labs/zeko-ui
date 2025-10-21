@@ -3,3 +3,16 @@
 id: lb-indexer
 layer: application
 stack: backend
+
+tasks:
+  dev:
+    command: bun --watch src/index.ts
+    preset: server
+  start:
+    command: bun src/index.ts
+    preset: server
+  test-integration:
+    command: vitest run
+    inputs:
+      - "src/**/*"
+      - "test/**/*"

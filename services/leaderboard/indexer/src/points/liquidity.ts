@@ -1,4 +1,4 @@
-import { type ArchiveEvents, TZEKO_MINA, fetchArchiveEvents, getPubK } from "../helper"
+import { type ArchiveEvents, TZEKO_MINA, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 const processAddLiquidityEvent = async (events: ArchiveEvents) => {
 	const parseAddLiquidityEvents = (data: string[]) => {
@@ -17,12 +17,21 @@ const processAddLiquidityEvent = async (events: ArchiveEvents) => {
 	return addLiquidityData
 }
 
+export const score = {
+	key: "LUMINA_ADD_LIQUIDITY_MINA_TZEKO",
+	points: 5,
+	maxOccurences: 2,
+	strategy: "daily"
+} as const
+
 export const handler = {
-	points: 10,
-	maxOccurences: 5,
-	fetch: async () => {
-		const events = await fetchArchiveEvents(TZEKO_MINA)
+	fetch: async (fromBlock: number, toBlock?: number) => {
+		const events = await fetchArchiveEvents({ address: TZEKO_MINA, fromBlock, toBlock })
+		logger.success(
+			`Fetched ${events.length} ${score.key} events from blocks ${fromBlock} to ${toBlock}`
+		)
 		const liquidityData = await processAddLiquidityEvent(events)
+		logger.success(`Processed ${liquidityData.length} ${score.key} liquidity events`)
 		return liquidityData
 	}
 }

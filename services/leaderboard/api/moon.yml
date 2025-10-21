@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=../../../.moon/cache/schemas/project.json
 
 id: lb-api
-layer: application
+layer: library
 stack: backend
 
 fileGroups:
@@ -19,7 +19,7 @@ tasks:
   dev:
     command: wrangler dev
     preset: "server"
-  test:
+  test-integration:
     command: vitest run
     inputs:
       - "@group(sources)"

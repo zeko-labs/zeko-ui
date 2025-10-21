@@ -4,22 +4,23 @@
 	"type": "module",
 	"dependencies": {
 		"@pothos/core": "^4.10.0",
-		"@pothos/plugin-drizzle": "^0.13.0",
 		"consola": "^3.4.0",
-		"drizzle-orm": "beta",
+		"drizzle-orm": "catalog:",
 		"graphql": "^16.11.0",
 		"graphql-yoga": "^5.14.0",
-		"postgres": "^3.4.7"
+		"postgres": "catalog:"
+	},
+	"exports": {
+		".": "./module.ts"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",
 		"@cloudflare/vitest-pool-workers": "^0.9.12",
-		"@types/bun": "^1.2.23",
-		"drizzle-kit": "beta",
-		"drizzle-seed": "beta",
+		"@types/bun": "catalog:",
+		"drizzle-kit": "catalog:",
+		"drizzle-seed": "catalog:",
 		"typescript": "catalog:",
-		"vitest": "^3.2.4",
+		"vitest": "catalog:",
 		"wrangler": "catalog:"
-	},
-	"packageManager": "pnpm@10.16.1"
+	}
 }

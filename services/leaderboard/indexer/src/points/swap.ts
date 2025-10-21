@@ -1,4 +1,4 @@
-import { TZEKO_MINA, fetchArchiveEvents, getPubK } from "../helper"
+import { TZEKO_MINA, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 const processSwapEvents = async (events: Awaited<ReturnType<typeof fetchArchiveEvents>>) => {
 	const parseSwapEvents = (data: string[]) => {
@@ -18,12 +18,21 @@ const processSwapEvents = async (events: Awaited<ReturnType<typeof fetchArchiveE
 	return swapData
 }
 
+export const score = {
+	key: "LUMINA_SWAP_MINA_TZEKO",
+	points: 1,
+	maxOccurences: 10,
+	strategy: "daily"
+} as const
+
 export const handler = {
-	points: 5,
-	maxOccurences: 20,
-	fetch: async () => {
-		const events = await fetchArchiveEvents(TZEKO_MINA)
+	fetch: async (fromBlock: number, toBlock?: number) => {
+		const events = await fetchArchiveEvents({ address: TZEKO_MINA, fromBlock, toBlock })
+		logger.success(
+			`Fetched ${events.length} ${score.key} events from blocks ${fromBlock} to ${toBlock}`
+		)
 		const swapData = await processSwapEvents(events)
+		logger.success(`Processed ${swapData.length} ${score.key} swap events`)
 		return swapData
 	}
 }

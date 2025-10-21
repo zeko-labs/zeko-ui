@@ -1,4 +1,4 @@
-import { type ArchiveEvents, fetchArchiveEvents, getPubK } from "../helper"
+import { type ArchiveEvents, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 const faucetAddress = "B62qnMgvs8iS6wVe56ajqcqtagAov2TGtvD3cWfEB7rAwfCU6x7HdgB"
 
@@ -17,12 +17,21 @@ const processFaucetEvents = async (events: ArchiveEvents) => {
 	return faucetData
 }
 
-export const handler = {
-	points: 10,
+export const score = {
+	key: "FAUCET_ZEKO_TMINA",
+	points: 20,
 	maxOccurences: 1,
-	fetch: async () => {
-		const events = await fetchArchiveEvents(faucetAddress)
+	strategy: "once"
+} as const
+
+export const handler = {
+	fetch: async (fromBlock: number, toBlock?: number) => {
+		const events = await fetchArchiveEvents({ address: faucetAddress, fromBlock, toBlock })
+		logger.success(
+			`Fetched ${events.length} ${score.key} events from blocks ${fromBlock} to ${toBlock}`
+		)
 		const faucetData = await processFaucetEvents(events)
+		logger.success(`Processed ${faucetData.length} ${score.key} faucet events`)
 		return faucetData
 	}
 }
