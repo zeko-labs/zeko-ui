@@ -1,3 +1,4 @@
+import { actions as actionsTable, leaderboard as leaderboardTable } from "@leaderboard/api"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import {
 	type ActionToInsert,
@@ -19,10 +20,14 @@ interface IndexerConfig {
 	maxRetries: number
 }
 
+interface ModuleState {
+	lastFetchedBlock: number
+}
+
 interface IndexerState {
 	isRunning: boolean
 	lastRunTimestamp: number | null
-	lastFetchedBlock: number
+	moduleStates: Record<string, ModuleState>
 	config: IndexerConfig
 	consecutiveErrors: number
 }
@@ -37,36 +42,50 @@ const ACTION_TYPE_MAP = {
 	swap: "LUMINA_SWAP_MINA_TZEKO",
 	withdrawal: "BRIDGE_ZEKO_TO_MINA"
 } as const satisfies Record<string, ActionType>
-
 /**
- * Helper: Fetch all actions from blockchain starting from a given block
- * This is shared logic used by both runIndexingLoop and rebuild
- * @param fromBlock - Starting block number (inclusive)
- * @param toBlock - Ending block number (inclusive). If not provided, will fetch until no more events found
+ * Helper: Recursively Fetch all actions from blockchain starting from a given block per module
  */
-async function fetchAllActions(fromBlock: number, toBlock?: number): Promise<ActionToInsert[]> {
-	// Fetch data from all points modules in parallel
-	const [depositData, faucetData, liquidityData, swapData, withdrawalData] = await Promise.all([
-		deposit.fetch(fromBlock, toBlock),
-		faucet.fetch(fromBlock, toBlock),
-		liquidity.fetch(fromBlock, toBlock),
-		swap.fetch(fromBlock, toBlock),
-		withdrawal.fetch(fromBlock, toBlock)
-	])
+async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promise<{
+	actionsToInsert: ActionToInsert[]
+	updatedModuleStates: Record<string, ModuleState>
+}> {
+	logger.box(`📡 Fetching all actions from their respective module states`)
+	logger.info("Module states:", moduleStates)
+	logger.info("Initiating parallel fetch across all point modules...")
 
-	logger.info("Fetched data:", {
-		deposit: depositData.length,
-		faucet: faucetData.length,
-		liquidity: liquidityData.length,
-		swap: swapData.length,
-		withdrawal: withdrawalData.length
+	const [depositResult, faucetResult, liquidityResult, swapResult, withdrawalResult] =
+		await Promise.all([
+			deposit.fetch(moduleStates.deposit.lastFetchedBlock),
+			faucet.fetch(moduleStates.faucet.lastFetchedBlock),
+			liquidity.fetch(moduleStates.liquidity.lastFetchedBlock),
+			swap.fetch(moduleStates.swap.lastFetchedBlock),
+			withdrawal.fetch(moduleStates.withdrawal.lastFetchedBlock)
+		])
+
+	logger.success("✅ All modules fetched successfully")
+	logger.info("📊 Fetch results summary:", {
+		deposit: `${depositResult.data.length} events (block ${depositResult.lastFetchedBlock})`,
+		faucet: `${faucetResult.data.length} events (block ${faucetResult.lastFetchedBlock})`,
+		liquidity: `${liquidityResult.data.length} events (block ${liquidityResult.lastFetchedBlock})`,
+		swap: `${swapResult.data.length} events (block ${swapResult.lastFetchedBlock})`,
+		withdrawal: `${withdrawalResult.data.length} events (block ${withdrawalResult.lastFetchedBlock})`
 	})
 
-	// Collect all actions to insert in a single batch
+	// Update module states with new last fetched blocks
+	const updatedModuleStates = {
+		deposit: { lastFetchedBlock: depositResult.lastFetchedBlock + 1 },
+		faucet: { lastFetchedBlock: faucetResult.lastFetchedBlock + 1 },
+		liquidity: { lastFetchedBlock: liquidityResult.lastFetchedBlock + 1 },
+		swap: { lastFetchedBlock: swapResult.lastFetchedBlock + 1 },
+		withdrawal: { lastFetchedBlock: withdrawalResult.lastFetchedBlock + 1 }
+	}
+
+	logger.info("Updated module states:", updatedModuleStates)
+	logger.info("📋 Converting events to actions...")
+
 	const actionsToInsert: ActionToInsert[] = []
 
-	// Process deposit actions
-	for (const item of depositData) {
+	for (const item of depositResult.data) {
 		if (!item.recipient || !item.amount) continue
 		actionsToInsert.push({
 			wallet: item.recipient.toBase58(),
@@ -75,8 +94,7 @@ async function fetchAllActions(fromBlock: number, toBlock?: number): Promise<Act
 		})
 	}
 
-	// Process faucet actions
-	for (const item of faucetData) {
+	for (const item of faucetResult.data) {
 		if (!item.claimer || !item.amount) continue
 		actionsToInsert.push({
 			wallet: item.claimer.toBase58(),
@@ -85,8 +103,7 @@ async function fetchAllActions(fromBlock: number, toBlock?: number): Promise<Act
 		})
 	}
 
-	// Process liquidity actions
-	for (const item of liquidityData) {
+	for (const item of liquidityResult.data) {
 		if (!item.sender || !item.amountIn) continue
 		actionsToInsert.push({
 			wallet: item.sender.toBase58(),
@@ -95,8 +112,7 @@ async function fetchAllActions(fromBlock: number, toBlock?: number): Promise<Act
 		})
 	}
 
-	// Process swap actions
-	for (const item of swapData) {
+	for (const item of swapResult.data) {
 		if (!item.sender || !item.amountToken0In) continue
 		actionsToInsert.push({
 			wallet: item.sender.toBase58(),
@@ -105,8 +121,7 @@ async function fetchAllActions(fromBlock: number, toBlock?: number): Promise<Act
 		})
 	}
 
-	// Process withdrawal actions
-	for (const item of withdrawalData) {
+	for (const item of withdrawalResult.data) {
 		if (!item.recipient || !item.amount) continue
 		actionsToInsert.push({
 			wallet: item.recipient.toBase58(),
@@ -115,7 +130,8 @@ async function fetchAllActions(fromBlock: number, toBlock?: number): Promise<Act
 		})
 	}
 
-	return actionsToInsert
+	logger.success(`✅ Converted to ${actionsToInsert.length} total actions`)
+	return { actionsToInsert, updatedModuleStates }
 }
 
 /**
@@ -127,33 +143,41 @@ async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerState): Pro
 		return
 	}
 
-	logger.info("Running indexing loop...")
-	logger.info(`Last fetched block: ${state.lastFetchedBlock}`)
+	logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	logger.info("🔄 Starting indexing loop iteration")
+	logger.info("📍 Current module states:", state.moduleStates)
 
 	try {
-		const fromBlock = state.lastFetchedBlock
-		const toBlock = fromBlock + 10_000 - 1 // Fetch exactly 10k blocks per iteration
+		// Fetch all available actions recursively until no more events are found
+		const { actionsToInsert, updatedModuleStates } = await fetchAllActions(state.moduleStates)
 
-		// Fetch actions using the helper
-		const actionsToInsert = await fetchAllActions(fromBlock, toBlock)
+		logger.info("🏁 Fetch complete for all modules")
+		logger.info(`💾 Ready to process ${actionsToInsert.length} actions`)
 
 		// Batch insert actions and update leaderboard
 		if (actionsToInsert.length > 0) {
+			logger.info("🔨 Inserting actions and updating leaderboard...")
 			await batchInsertActionsAndUpdateLeaderboard({
 				db,
 				actionsToInsert,
 				config: scoreConfig,
 				updateMode: "inserted" // Only update wallets with new actions
 			})
+			logger.success("✅ Database updated successfully")
+
+			logger.info("📢 Triggering distributor broadcast...")
 			await triggerDistributorBroadcast()
+		} else {
+			logger.info("⏭️  No new actions to process")
 		}
 
-		// ONLY update lastFetchedBlock on successful completion
-		state.lastFetchedBlock = toBlock + 1 // Start next iteration at the next block
+		// ONLY update moduleStates on successful completion
+		state.moduleStates = updatedModuleStates
 		state.lastRunTimestamp = Date.now()
 		state.consecutiveErrors = 0 // Reset error counter on success
 
-		logger.success("Indexing loop completed successfully")
+		logger.success("✨ Indexing loop completed successfully")
+		logger.info("⏭️  Next iteration will start from updated module states")
 	} catch (error) {
 		state.consecutiveErrors++
 		logger.error(
@@ -195,10 +219,16 @@ export class Indexer {
 		this.#state = {
 			isRunning: false,
 			lastRunTimestamp: null,
-			lastFetchedBlock: 0,
+			moduleStates: {
+				deposit: { lastFetchedBlock: 1 },
+				faucet: { lastFetchedBlock: 1 },
+				liquidity: { lastFetchedBlock: 1 },
+				swap: { lastFetchedBlock: 1 },
+				withdrawal: { lastFetchedBlock: 1 }
+			},
 			consecutiveErrors: 0,
 			config: {
-				startingBlock: 0,
+				startingBlock: 1, //TODO: There is a bug with the block 0 https://linear.app/zeko-labs/issue/EXT-17/archive-node-queries-block-0-is-not-functioning-properly
 				intervalSeconds: 2,
 				maxRetries: 5
 			}
@@ -217,8 +247,17 @@ export class Indexer {
 			// Update config if provided
 			if (config) {
 				if (config.startingBlock !== undefined) {
-					this.#state.config.startingBlock = config.startingBlock
-					this.#state.lastFetchedBlock = config.startingBlock
+					//TODO: There is a bug with the block 0 https://linear.app/zeko-labs/issue/EXT-17/archive-node-queries-block-0-is-not-functioning-properly
+					const sb = config.startingBlock === 0 ? 1 : config.startingBlock
+					this.#state.config.startingBlock = sb
+					// Update all module states to start from this block
+					this.#state.moduleStates = {
+						deposit: { lastFetchedBlock: sb },
+						faucet: { lastFetchedBlock: sb },
+						liquidity: { lastFetchedBlock: sb },
+						swap: { lastFetchedBlock: sb },
+						withdrawal: { lastFetchedBlock: sb }
+					}
 				}
 				if (config.intervalSeconds !== undefined) {
 					this.#state.config.intervalSeconds = config.intervalSeconds
@@ -263,7 +302,7 @@ export class Indexer {
 		return {
 			success: true,
 			message: "Indexing loop stopped",
-			lastFetchedBlock: this.#state.lastFetchedBlock
+			moduleStates: this.#state.moduleStates
 		}
 	}
 
@@ -277,7 +316,7 @@ export class Indexer {
 			lastRunDate: this.#state.lastRunTimestamp
 				? new Date(this.#state.lastRunTimestamp).toISOString()
 				: null,
-			lastFetchedBlock: this.#state.lastFetchedBlock,
+			moduleStates: this.#state.moduleStates,
 			consecutiveErrors: this.#state.consecutiveErrors,
 			config: this.#state.config
 		}
@@ -332,7 +371,7 @@ export class Indexer {
 	 * then recalculate the leaderboard
 	 * This is a full rebuild of both tables
 	 */
-	async rebuild(initialBlock = 0) {
+	async rebuild(initialBlock = 1) {
 		// Remember if we were running before
 		const wasRunning = this.#state.isRunning
 		const previousConfig = { ...this.#state.config }
@@ -346,17 +385,25 @@ export class Indexer {
 		try {
 			// Step 2: Clear both tables
 			logger.info("[Rebuild] Clearing actions and leaderboard tables...")
-			const { actions: actionsTable, leaderboard: leaderboardTable } = await import(
-				"@leaderboard/api"
-			)
 			await this.#db.delete(leaderboardTable)
 			await this.#db.delete(actionsTable)
 
-			// Step 3: Fetch all actions from blockchain starting from initialBlock
-			logger.info(`[Rebuild] Fetching actions from block ${initialBlock}...`)
-			const actionsToInsert = await fetchAllActions(initialBlock)
+			// Step 3: Reset all module states to initial block
+			const initialModuleStates = {
+				deposit: { lastFetchedBlock: initialBlock },
+				faucet: { lastFetchedBlock: initialBlock },
+				liquidity: { lastFetchedBlock: initialBlock },
+				swap: { lastFetchedBlock: initialBlock },
+				withdrawal: { lastFetchedBlock: initialBlock }
+			}
 
-			// Step 4: Insert all actions and build leaderboard
+			// Step 4: Fetch all actions from blockchain starting from initialBlock
+			logger.info(`[Rebuild] Fetching all actions from block ${initialBlock}...`)
+			const { actionsToInsert, updatedModuleStates } = await fetchAllActions(initialModuleStates)
+
+			logger.info("[Rebuild] Fetched all events from blockchain")
+
+			// Step 5: Insert all actions and build leaderboard
 			if (actionsToInsert.length > 0) {
 				logger.info(`[Rebuild] Inserting ${actionsToInsert.length} actions...`)
 				await batchInsertActionsAndUpdateLeaderboard({
@@ -367,9 +414,11 @@ export class Indexer {
 				})
 			}
 
+			this.#state.moduleStates = updatedModuleStates
+
 			logger.success("[Rebuild] Rebuild completed successfully")
 
-			// Step 5: Restart the indexing loop if it was running before
+			// Step 6: Restart the indexing loop if it was running before
 			if (wasRunning) {
 				logger.info("[Rebuild] Restarting indexing loop...")
 				this.start(previousConfig)
@@ -379,7 +428,8 @@ export class Indexer {
 				success: true,
 				message: "Rebuild completed successfully",
 				restarted: wasRunning,
-				actionsProcessed: actionsToInsert.length
+				actionsProcessed: actionsToInsert.length,
+				moduleStates: updatedModuleStates
 			} as const
 		} catch (error) {
 			logger.error("[Rebuild] Error during rebuild:", error)

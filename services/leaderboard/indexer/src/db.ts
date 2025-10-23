@@ -1,7 +1,7 @@
 import { actions, leaderboard } from "@leaderboard/api"
 import { inArray, sql } from "drizzle-orm"
-import { drizzle } from "drizzle-orm/postgres-js"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
+import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 import { logger } from "./helper"
 import { score as depositScore } from "./points/deposit"

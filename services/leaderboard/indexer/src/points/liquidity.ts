@@ -1,4 +1,4 @@
-import { type ArchiveEvents, TZEKO_MINA, fetchArchiveEvents, getPubK, logger } from "../helper"
+import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 const processAddLiquidityEvent = async (events: ArchiveEvents) => {
 	const parseAddLiquidityEvents = (data: string[]) => {
@@ -21,17 +21,29 @@ export const score = {
 	key: "LUMINA_ADD_LIQUIDITY_MINA_TZEKO",
 	points: 5,
 	maxOccurences: 2,
-	strategy: "daily"
+	strategy: "daily",
+	disabled: false
 } as const
 
 export const handler = {
-	fetch: async (fromBlock: number, toBlock?: number) => {
-		const events = await fetchArchiveEvents({ address: TZEKO_MINA, fromBlock, toBlock })
-		logger.success(
-			`Fetched ${events.length} ${score.key} events from blocks ${fromBlock} to ${toBlock}`
-		)
-		const liquidityData = await processAddLiquidityEvent(events)
-		logger.success(`Processed ${liquidityData.length} ${score.key} liquidity events`)
-		return liquidityData
+	fetch: async (fromBlock: number) => {
+		if (score.disabled) {
+			logger.info(`[${score.key}] Module is disabled, skipping fetch`)
+			return { data: [], lastFetchedBlock: fromBlock }
+		}
+
+		logger.info(`[${score.key}] Starting fetch from block ${fromBlock}`)
+
+		const { events, lastFetchedBlock } = await fetchArchiveEvents({
+			address: addresses.LUMINA_POOL_TZEKO_MINA,
+			fromBlock,
+			moduleName: score.key
+		})
+
+		logger.info(`[${score.key}] Processing ${events.length} raw events`)
+		const data = await processAddLiquidityEvent(events)
+		logger.success(`[${score.key}] Processed ${data.length} liquidity events`)
+
+		return { data, lastFetchedBlock }
 	}
 }

@@ -1,7 +1,7 @@
 import { actions, leaderboard } from "@leaderboard/api"
 import { sql } from "drizzle-orm"
 import type { Entries, RequireAtLeastOne } from "type-fest"
-import { beforeAll, beforeEach, describe, expect, test } from "vitest"
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest"
 import {
 	type ActionToInsert,
 	type ActionType,
@@ -12,8 +12,11 @@ import {
 
 const { db, clean } = createTestDatabase()
 
-// Clean database once before all tests start
 beforeAll(async () => {
+	await clean()
+})
+
+afterAll(async () => {
 	await clean()
 })
 

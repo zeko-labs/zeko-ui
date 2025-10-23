@@ -2,8 +2,18 @@
 
 id: lb-indexer
 layer: application
+language: typescript
 stack: backend
 
+fileGroups:
+  sources:
+    - src/**/*
+    - moon.yml
+    - package.json
+    - tsconfig.json
+  tests:
+    - test/**/*
+    - vitest.config.ts
 tasks:
   dev:
     command: bun --watch src/index.ts
@@ -14,5 +24,15 @@ tasks:
   test-integration:
     command: vitest run
     inputs:
-      - "src/**/*"
-      - "test/**/*"
+      - "@group(sources)"
+      - "@group(tests)"
+  lint:
+    command: biome check --formatter-enabled=false
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  lint-fix:
+    command: biome check --formatter-enabled=false --write
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"

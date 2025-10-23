@@ -1,10 +1,37 @@
-import { createMinaClient, urls } from "@lumina-dex/sdk"
+import { createMinaClient } from "@lumina-dex/sdk"
 import { FetchZekoArchiveEvents } from "@zeko/graphql/zeko-archive"
 import { createConsola } from "consola"
+import type { ResultOf } from "gql.tada"
 import { Field, PublicKey } from "o1js"
 
-//TODO: Replace with pool address
-export const TZEKO_MINA = "B62qjGGHziBe9brhAC4zkvQa2dyN7nisKnAhKC7rasGFtW31GiuTZoY"
+/**
+ * Archive Events Fetching Logic
+ *
+ * FUTURE REFACTORING PLAN:
+ * When the networkState query becomes available in the archive API, refactor as follows:
+ *
+ * 1. Replace getMaxBlockHeight() with a direct networkState query:
+ *    - Query: networkState { maxBlockHeight { canonicalMaxBlockHeight } }
+ *    - Remove dependency on querying events to determine chain height
+ *    - This will be faster and more reliable
+ *
+ * 2. Simplify fetchArchiveEvents():
+ *    - Call networkState query once at the start
+ *    - Remove discovery query logic
+ *    - Directly use canonicalMaxBlockHeight for recursion bounds
+ *
+ * 3. Benefits:
+ *    - Single query to get chain state instead of querying events
+ *    - More efficient especially for initial fetches
+ *    - Clearer separation of concerns (chain state vs event fetching)
+ */
+
+export const addresses = {
+	BRIDGE_MINA_TO_ZEKO: "B62qpXxjsnR6XfV8KUGobiiYqiSjvHq59KKhXgvSXL61pSffKc8ggcb",
+	FAUCET_ZEKO_TMINA: "B62qnMgvs8iS6wVe56ajqcqtagAov2TGtvD3cWfEB7rAwfCU6x7HdgB",
+	LUMINA_POOL_TZEKO_MINA: "B62qjGGHziBe9brhAC4zkvQa2dyN7nisKnAhKC7rasGFtW31GiuTZoY",
+	BRIDGE_ZEKO_TO_MINA: "B62qmqHbTA6X54y5M2nSxpuPae5EUE2TBQXacAEqqgn667NRVFKDSeA"
+} as const
 
 const MAX_BLOCKS_PER_FETCH = 10000
 
@@ -14,67 +41,191 @@ export const getPubK = (data: string[]) => (a: number, b: number) => {
 	return PublicKey.fromFields([Field.from(data[a]), Field.from(data[b])])
 }
 
-async function fetchEventsRaw(address: string, from: number, to: number) {
-	const client = createMinaClient(urls["zeko:testnet"])
-	const { data } = await client.query(FetchZekoArchiveEvents, {
-		input: { address, status: "CANONICAL", from, to }
-	})
-	logger.info(`Raw fetchEventsRaw returned ${data?.events?.length || 0} events`)
-	if (!data) throw new Error("No data found")
-	if (!data.events) throw new Error("No events found")
+export type ArchiveEvents = NonNullable<ResultOf<typeof FetchZekoArchiveEvents>["events"]>
+
+/**
+ * Fetch events from the archive without from/to parameters.
+ * Used for discovery queries to get recent events and chain state.
+ */
+async function fetchEventsRaw(address: string, from?: number, to?: number) {
+	const client = createMinaClient("https://archive.testnet.zeko.io/graphql")
+
+	const input = {
+		address,
+		status: "CANONICAL" as const,
+		...(from !== undefined && { from }),
+		...(to !== undefined && { to })
+	}
+
+	const { data, error } = await client.query(FetchZekoArchiveEvents, { input })
+
+	if (error) {
+		logger.error("GraphQL error:", error)
+		throw error
+	}
+	if (!data?.events) throw new Error("No events data returned from archive")
+
 	return data.events
 }
 
-export type ArchiveEvents = Awaited<ReturnType<typeof fetchEventsRaw>>
+/**
+ * Get the current maximum block height of the chain.
+ *
+ * TODO: Replace with networkState query when available.
+ * Future implementation should use:
+ * ```
+ * query NetworkState {
+ *   networkState {
+ *     maxBlockHeight {
+ *       canonicalMaxBlockHeight
+ *       pendingMaxBlockHeight
+ *     }
+ *   }
+ * }
+ * ```
+ * This will be more efficient than querying events to determine chain height.
+ */
+async function getMaxBlockHeight(address: string, fromBlock: number): Promise<number | null> {
+	const query =
+		fromBlock === 1
+			? await fetchEventsRaw(address)
+			: await fetchEventsRaw(address, fromBlock, fromBlock + MAX_BLOCKS_PER_FETCH)
 
-export interface FetchEventsOptions {
-	address: string
-	fromBlock: number
-	toBlock?: number
+	if (query.length === 0) return null
+
+	const firstEvent = query[0]
+	if (!firstEvent?.blockInfo) {
+		throw new Error("Query returned events without blockInfo")
+	}
+
+	const { height, distanceFromMaxBlockHeight } = firstEvent.blockInfo
+	return height + distanceFromMaxBlockHeight
 }
 
 interface FetchEventsRecursiveOptions {
 	address: string
 	currentFrom: number
-	toBlock: number | undefined
 	accumulated: ArchiveEvents
+	moduleName: string
+	maxBlockHeight: number
+	lastEventBlockHeight: number | null
 }
 
-async function fetchEventsRecursive(options: FetchEventsRecursiveOptions): Promise<ArchiveEvents> {
-	const { address, currentFrom, toBlock, accumulated } = options
+interface FetchResult {
+	events: ArchiveEvents
+	lastFetchedBlock: number
+}
 
-	const currentTo = toBlock
-		? Math.min(currentFrom + MAX_BLOCKS_PER_FETCH - 1, toBlock)
-		: currentFrom + MAX_BLOCKS_PER_FETCH - 1
+async function fetchEventsRecursive(options: FetchEventsRecursiveOptions): Promise<FetchResult> {
+	const { address, currentFrom, accumulated, moduleName, maxBlockHeight, lastEventBlockHeight } =
+		options
 
-	logger.info(`Fetching events from block ${currentFrom} to ${currentTo}`)
+	const currentTo = currentFrom + MAX_BLOCKS_PER_FETCH - 1
+	const logPrefix = `[${moduleName}]`
+
+	if (currentTo >= maxBlockHeight) {
+		logger.info(`${logPrefix} Reached max block height ${maxBlockHeight}`)
+		return {
+			events: accumulated,
+			lastFetchedBlock: lastEventBlockHeight ?? currentFrom - 1
+		}
+	}
+
+	logger.info(`${logPrefix} Fetching blocks ${currentFrom}-${currentTo}`)
 
 	const events = await fetchEventsRaw(address, currentFrom, currentTo)
+	const allEvents = [...accumulated, ...events]
 
-	logger.info(`Fetched ${events.length} events from block ${currentFrom} to ${currentTo}`)
+	logger.info(`${logPrefix} Fetched ${events.length} events (${allEvents.length} total)`)
 
-	const allEvents = accumulated.concat(events)
+	let currentLastEventBlockHeight = lastEventBlockHeight
 
-	if (toBlock && currentTo >= toBlock) return allEvents
+	if (events.length > 0) {
+		const lastEvent = events[events.length - 1]
 
-	if (events.length < MAX_BLOCKS_PER_FETCH) return allEvents
+		if (lastEvent?.blockInfo) {
+			const { height, distanceFromMaxBlockHeight } = lastEvent.blockInfo
+			currentLastEventBlockHeight = Math.max(currentLastEventBlockHeight ?? 0, height)
+
+			if (distanceFromMaxBlockHeight === 0) {
+				logger.info(`${logPrefix} Reached chain head at block ${height}`)
+				return { events: allEvents, lastFetchedBlock: height }
+			}
+
+			logger.info(
+				`${logPrefix} Last event at block ${height}, distance from head: ${distanceFromMaxBlockHeight}`
+			)
+		}
+
+		return fetchEventsRecursive({
+			address,
+			currentFrom: currentTo + 1,
+			accumulated: allEvents,
+			moduleName,
+			maxBlockHeight,
+			lastEventBlockHeight: currentLastEventBlockHeight
+		})
+	}
+
+	logger.info(`${logPrefix} Empty range ${currentFrom}-${currentTo}`)
 
 	return fetchEventsRecursive({
 		address,
 		currentFrom: currentTo + 1,
-		toBlock,
-		accumulated: allEvents
+		accumulated: allEvents,
+		moduleName,
+		maxBlockHeight,
+		lastEventBlockHeight: currentLastEventBlockHeight
 	})
 }
 
-export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<ArchiveEvents> => {
-	const { address, fromBlock, toBlock } = options
-	return fetchEventsRecursive({
+export interface FetchEventsOptions {
+	address: string
+	fromBlock: number
+	moduleName: string
+}
+
+export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<FetchResult> => {
+	const { address, fromBlock, moduleName } = options
+	const safeFromBlock = fromBlock === 0 ? 1 : fromBlock
+	const logPrefix = `[${moduleName}]`
+
+	logger.start(`${logPrefix} Starting fetch from block ${safeFromBlock}`)
+
+	const isInitialFetch = safeFromBlock === 1
+
+	const maxBlockHeight = await getMaxBlockHeight(address, safeFromBlock)
+
+	if (maxBlockHeight === null) {
+		logger.info(`${logPrefix} No events found, nothing to fetch`)
+		return {
+			events: [],
+			lastFetchedBlock: safeFromBlock - 1
+		}
+	}
+
+	if (isInitialFetch) {
+		logger.info(`${logPrefix} Initial fetch - chain max height: ${maxBlockHeight}`)
+	} else {
+		logger.info(
+			`${logPrefix} Continuing from block ${safeFromBlock} - chain max height: ${maxBlockHeight}`
+		)
+	}
+
+	const result = await fetchEventsRecursive({
 		address,
-		currentFrom: fromBlock,
-		toBlock,
-		accumulated: []
+		currentFrom: safeFromBlock,
+		accumulated: [],
+		moduleName,
+		maxBlockHeight,
+		lastEventBlockHeight: null
 	})
+
+	logger.success(
+		`${logPrefix} Completed: ${result.events.length} events, last block ${result.lastFetchedBlock}`
+	)
+
+	return result
 }
 
 export async function wait(seconds: number): Promise<void> {

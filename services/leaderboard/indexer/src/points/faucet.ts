@@ -1,6 +1,4 @@
-import { type ArchiveEvents, fetchArchiveEvents, getPubK, logger } from "../helper"
-
-const faucetAddress = "B62qnMgvs8iS6wVe56ajqcqtagAov2TGtvD3cWfEB7rAwfCU6x7HdgB"
+import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 const processFaucetEvents = async (events: ArchiveEvents) => {
 	const parseFaucetEvents = (data: string[]) => {
@@ -25,13 +23,19 @@ export const score = {
 } as const
 
 export const handler = {
-	fetch: async (fromBlock: number, toBlock?: number) => {
-		const events = await fetchArchiveEvents({ address: faucetAddress, fromBlock, toBlock })
-		logger.success(
-			`Fetched ${events.length} ${score.key} events from blocks ${fromBlock} to ${toBlock}`
-		)
-		const faucetData = await processFaucetEvents(events)
-		logger.success(`Processed ${faucetData.length} ${score.key} faucet events`)
-		return faucetData
+	fetch: async (fromBlock: number) => {
+		logger.info(`[${score.key}] Starting fetch from block ${fromBlock}`)
+
+		const { events, lastFetchedBlock } = await fetchArchiveEvents({
+			address: addresses.FAUCET_ZEKO_TMINA,
+			fromBlock,
+			moduleName: score.key
+		})
+
+		logger.info(`[${score.key}] Processing ${events.length} raw events`)
+		const data = await processFaucetEvents(events)
+		logger.success(`[${score.key}] Processed ${data.length} faucet events`)
+
+		return { data, lastFetchedBlock }
 	}
 }

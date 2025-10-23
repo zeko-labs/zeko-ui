@@ -1,6 +1,6 @@
-import { TZEKO_MINA, fetchArchiveEvents, getPubK, logger } from "../helper"
+import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
 
-const processSwapEvents = async (events: Awaited<ReturnType<typeof fetchArchiveEvents>>) => {
+const processSwapEvents = async (events: ArchiveEvents) => {
 	const parseSwapEvents = (data: string[]) => {
 		const pubk = getPubK(data)
 		return {
@@ -22,17 +22,29 @@ export const score = {
 	key: "LUMINA_SWAP_MINA_TZEKO",
 	points: 1,
 	maxOccurences: 10,
-	strategy: "daily"
+	strategy: "daily",
+	disabled: false
 } as const
 
 export const handler = {
-	fetch: async (fromBlock: number, toBlock?: number) => {
-		const events = await fetchArchiveEvents({ address: TZEKO_MINA, fromBlock, toBlock })
-		logger.success(
-			`Fetched ${events.length} ${score.key} events from blocks ${fromBlock} to ${toBlock}`
-		)
-		const swapData = await processSwapEvents(events)
-		logger.success(`Processed ${swapData.length} ${score.key} swap events`)
-		return swapData
+	fetch: async (fromBlock: number) => {
+		if (score.disabled) {
+			logger.info(`[${score.key}] Module is disabled, skipping fetch`)
+			return { data: [], lastFetchedBlock: fromBlock }
+		}
+
+		logger.info(`[${score.key}] Starting fetch from block ${fromBlock}`)
+
+		const { events, lastFetchedBlock } = await fetchArchiveEvents({
+			address: addresses.LUMINA_POOL_TZEKO_MINA,
+			fromBlock,
+			moduleName: score.key
+		})
+
+		logger.info(`[${score.key}] Processing ${events.length} raw events`)
+		const data = await processSwapEvents(events)
+		logger.success(`[${score.key}] Processed ${data.length} swap events`)
+
+		return { data, lastFetchedBlock }
 	}
 }

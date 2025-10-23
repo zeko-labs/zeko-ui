@@ -1,4 +1,4 @@
-import { type ArchiveEvents, fetchArchiveEvents, getPubK, logger } from "../helper"
+import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 // https://github.com/zeko-labs/zeko/blob/compatible/src/app/zeko/circuits/bridge_state.ml#L191
 //  type t = { children : C.t; amount : Currency.Amount.t; recipient : PC.t }
@@ -17,20 +17,25 @@ const processWithdrawalEvents = async (events: ArchiveEvents) => {
 
 export const score = {
 	key: "BRIDGE_ZEKO_TO_MINA",
-	address: "B62qmqHbTA6X54y5M2nSxpuPae5EUE2TBQXacAEqqgn667NRVFKDSeA",
 	points: 20,
 	maxOccurences: 1,
 	strategy: "once"
 } as const
 
 export const handler = {
-	fetch: async (fromBlock: number, toBlock?: number) => {
-		const events = await fetchArchiveEvents({ address: score.address, fromBlock, toBlock })
-		logger.success(
-			`Fetched ${events.length} ${score.key} events from blocks ${fromBlock} to ${toBlock}`
-		)
-		const withdrawalData = await processWithdrawalEvents(events)
-		logger.success(`Processed ${withdrawalData.length} ${score.key} withdrawal events`)
-		return withdrawalData
+	fetch: async (fromBlock: number) => {
+		logger.info(`[${score.key}] Starting fetch from block ${fromBlock}`)
+
+		const { events, lastFetchedBlock } = await fetchArchiveEvents({
+			address: addresses.BRIDGE_ZEKO_TO_MINA,
+			fromBlock,
+			moduleName: score.key
+		})
+
+		logger.info(`[${score.key}] Processing ${events.length} raw events`)
+		const data = await processWithdrawalEvents(events)
+		logger.success(`[${score.key}] Processed ${data.length} withdrawal events`)
+
+		return { data, lastFetchedBlock }
 	}
 }

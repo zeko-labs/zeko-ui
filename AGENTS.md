@@ -15,7 +15,7 @@ This is a monorepo using pnpm as the package manager, and moon as the task runne
 To install everything, run `pnpm i` from the root.
 
 - Run all command from the root using moon.
-- Project tasks are defined in each project’s `moon.yml`. For example to run the leaderboard api tests, run `moon run lb-api:test`
+- Project tasks are defined in each project’s `moon.yml`. Inspect this file _before_ running any commands in a given project.
 - You can disable moon caching by passing the `-u` flag to any command that has cached results.
 - If you need to run a command not specified in `moon.yml`, use `pnpm exec <command>`.
 
@@ -42,3 +42,12 @@ Handle failures one by one, methodologically, and make sure that the tests are s
 
 - Bun is only required when running certain scripts; standard builds use Node.
 - Prefer Moon over raw pnpm filters for common workflows to keep consistency with CI tasks.
+
+## Coding Style
+
+- NEVER use hacky workaround for the sake of making things works. Be thorough.
+- Your code must be clean and not literred with unnecessary comments.
+- Avoid mutating variables and prefer immutability.
+- Prefer a functional style, avoiding side effects.
+- Prefer readability over cleverness.
+- Do not be too cavalier when following instructions. If you are unsure about something, ask for clarification.

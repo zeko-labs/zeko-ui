@@ -1,12 +1,15 @@
 import { actions, leaderboard } from "@leaderboard/api"
-import { beforeAll, beforeEach, describe, expect, test } from "vitest"
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest"
 import { createTestDatabase, scoreConfig } from "../src/db"
 import { Indexer } from "../src/indexer"
 
 const { db, clean } = createTestDatabase()
 
-// Clean database once before all tests start
 beforeAll(async () => {
+	await clean()
+})
+
+afterAll(async () => {
 	await clean()
 })
 
