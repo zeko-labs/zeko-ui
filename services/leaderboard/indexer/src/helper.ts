@@ -130,7 +130,7 @@ async function fetchEventsRecursive(options: FetchEventsRecursiveOptions): Promi
 	logger.info(`${logPrefix} Fetching blocks ${currentFrom}-${currentTo}`)
 
 	const events = await fetchEventsRaw(address, currentFrom, currentTo)
-	const allEvents = [...accumulated, ...events]
+	const allEvents = accumulated.concat(events)
 
 	logger.info(`${logPrefix} Fetched ${events.length} events (${allEvents.length} total)`)
 

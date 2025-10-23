@@ -23,7 +23,7 @@ const processDepositEvents = async (events: ArchiveEvents) => {
 	}
 
 	const depositData = events
-		.filter((e) => e?.eventData?.[0]?.data[0] === "1") //TODO: Verify event is #1
+		.filter((e) => e?.eventData?.[0]?.data[0] === "0") //TODO: Verify event is #0
 		.map((e) =>
 			parse(
 				e?.eventData?.[0]?.data.filter(Boolean) ?? [],

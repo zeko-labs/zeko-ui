@@ -27,8 +27,6 @@ type ScoreConfigLike = Record<
 	{ points: number; maxOccurrences: number; strategy: "once" | "daily" }
 >
 
-// Helper to calculate score for a single action type with a specific count
-// Applies the cap and multiplies by points
 const calculateActionScore = (
 	actionType: ActionType,
 	count: number,
@@ -39,9 +37,6 @@ const calculateActionScore = (
 	return Math.min(count, actionConfig.maxOccurrences) * actionConfig.points
 }
 
-// Helper to calculate expected score for actions (once strategy)
-// For 'once' strategy: caps the total count
-// For 'daily' strategy: you must group by day first and pass each day's actions separately
 const calculateExpectedScore = (actionCounts: RequireAtLeastOne<ActionCounts>) => {
 	return (Object.entries(actionCounts) as Entries<ActionCounts>).reduce(
 		(total, [actionType, count]) => {
@@ -51,8 +46,6 @@ const calculateExpectedScore = (actionCounts: RequireAtLeastOne<ActionCounts>) =
 	)
 }
 
-// Helper to calculate score for actions with daily strategy
-// Groups actions by date, applies cap per day, then sums across all days
 const calculateScoreWithDailyStrategy = (actionsToInsert: ActionToInsert[]) => {
 	const actionsByDate = Object.groupBy(actionsToInsert, (action) => {
 		const date = new Date(Number(action.timestamp))

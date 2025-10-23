@@ -188,7 +188,6 @@ async function updateLeaderboardForWalletsBatch(options: {
 	const { db, wallets, config } = options
 	const timestamp = new Date().toISOString()
 
-	// Separate configs by strategy using Object.groupBy
 	const { daily, once } = Object.groupBy(Object.entries(config), ([_, cfg]) => cfg.strategy)
 
 	const walletFilter = or(...wallets.map((w) => eq(actions.wallet, w))) ?? sql`false`
@@ -323,7 +322,6 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 			.onConflictDoNothing({ target: actions.transactionHash })
 			.returning({ wallet: actions.wallet })
 
-		// If no actions were actually inserted (all were duplicates), nothing to do
 		if (insertedActions.length === 0) {
 			logger.info("No new actions inserted (all were duplicates), skipping leaderboard update")
 			return
@@ -342,7 +340,6 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 		)
 
 		// Step 3: Update leaderboard for affected wallets
-		// Note: This queries ALL actions for these wallets from the database and recalculates total scores
 		await updateLeaderboardForWallets({ db, wallets: walletsToUpdate, config })
 
 		logger.success(
