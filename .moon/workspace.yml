@@ -4,6 +4,7 @@ projects:
   - "."
   - "apps/*"
   - "packages/*"
+  - "services/*"
   - "services/leaderboard/*"
 
 vcs:
