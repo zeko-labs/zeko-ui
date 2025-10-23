@@ -21,17 +21,11 @@ export const score = {
 	key: "LUMINA_ADD_LIQUIDITY_MINA_TZEKO",
 	points: 5,
 	maxOccurences: 2,
-	strategy: "daily",
-	disabled: false
+	strategy: "daily"
 } as const
 
 export const handler = {
 	fetch: async (fromBlock: number) => {
-		if (score.disabled) {
-			logger.info(`[${score.key}] Module is disabled, skipping fetch`)
-			return { data: [], lastFetchedBlock: fromBlock }
-		}
-
 		logger.info(`[${score.key}] Starting fetch from block ${fromBlock}`)
 
 		const { events, lastFetchedBlock } = await fetchArchiveEvents({
