@@ -1,12 +1,29 @@
 {
 	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"root": true,
+	"files": {
+		"experimentalScannerIgnores": [".git"],
+		"includes": [
+			"**/*.tsx",
+			"**/*.jsx",
+			"**/*.ts",
+			"**/*.vue",
+			"**/*.js",
+			"!**/worker-configuration.d.ts",
+			"!**/graphql/*.d.ts",
+			"!**/generated/*.d.ts",
+			"settings.json"
+		]
+	},
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
 		"useIgnoreFile": true
 	},
+	"formatter": {
+		"enabled": false
+	},
 	"linter": {
-		"ignore": ["**/generated/*.d.ts", "settings.json"],
 		"rules": {
 			"correctness": {
 				"noUnusedImports": {

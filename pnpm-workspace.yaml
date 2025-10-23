@@ -1,34 +1,45 @@
 packages:
   - apps/**
   - packages/**
+  - services/**
 onlyBuiltDependencies:
   - lefthook
-patchedDependencies: 
-  "@gql.tada/internal": "patches/@gql.tada__internal.patch"
-overrides: 
-  "o1js": "catalog:"
-  "nitropack": "2.12.6"
-  "vite": "npm:rolldown-vite@7.1.9"
+patchedDependencies:
+  "@gql.tada/internal": patches/@gql.tada__internal.patch
+overrides:
+  nitropack: 2.12.6
+  o1js: "catalog:"
+  vite: npm:rolldown-vite@7.1.9
+
 catalog:
   "@ark-ui/vue": ^5.9.1
   "@aurowallet/mina-provider": ^1.0.6
+  "@biomejs/biome": ^2.2.4
+  "@hebilicious/cssforge": npm:@jsr/hebilicious__cssforge@0.2.1
   "@hebilicious/nuxt-switch-match": ^0.1.1
   "@hebilicious/vue-switch-match": ^0.1.1
-  "@hebilicious/cssforge": npm:@jsr/hebilicious__cssforge@0.2.1
-  "@lumina-dex/sdk": 0.23.0
+  "@lumina-dex/sdk": ^0.23.0
   "@nuxt/fonts": ^0.10.2
   "@total-typescript/ts-reset": ^0.6.1
+  "@types/bun": ^1.2.22
   "@unhead/vue": ^1.11.19
   "@unocss/reset": ^0.63.6
   "@vueuse/core": ^12.7.0
   "@xstate/vue": ^3.1.4
-  o1js: ^2.8.0
-  postcss-nesting: ^13.0.1
-  postcss-preset-env: ^10.4.0
+  drizzle-kit: beta
+  drizzle-orm: beta
+  drizzle-seed: beta
+  gql.tada: ^1.8.13
   lucide-vue-next: ^0.453.0
   nitro-cloudflare-dev: ^0.2.2
   nuxt: 4.1.1
+  o1js: ^2.8.0
+  p-limit: ^7.1.1
+  postcss-nesting: ^13.0.1
+  postcss-preset-env: ^10.4.0
+  postgres: ^3.4.7
+  typescript: ^5.8.3
+  vitest: 3.2.4
+  vue: ^3.5.21
   wrangler: ^4.28.1
   xstate: 5.20.1
-  vue: ^3.5.21
-  typescript: ^5.8.3

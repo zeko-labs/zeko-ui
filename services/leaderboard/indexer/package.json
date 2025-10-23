@@ -1,0 +1,26 @@
+{
+	"name": "@zeko/leaderboard",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"@elysiajs/bearer": "^1.4.1",
+		"@elysiajs/cors": "^1.4.0",
+		"@elysiajs/eden": "^1.4.4",
+		"@leaderboard/api": "workspace:^",
+		"@lumina-dex/sdk": "catalog:",
+		"@zeko/graphql": "workspace:^",
+		"consola": "^3.4.2",
+		"drizzle-orm": "catalog:",
+		"elysia": "^1.4.12",
+		"memoirist": "^0.4.0",
+		"o1js": "catalog:",
+		"p-limit": "catalog:",
+		"postgres": "catalog:"
+	},
+	"devDependencies": {
+		"@types/bun": "catalog:",
+		"gql.tada": "catalog:",
+		"type-fest": "^4.41.0",
+		"vitest": "catalog:"
+	}
+}

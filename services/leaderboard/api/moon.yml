@@ -1,0 +1,82 @@
+# yaml-language-server: $schema=../../../.moon/cache/schemas/project.json
+
+id: lb-api
+layer: library
+stack: backend
+
+fileGroups:
+  sources:
+    - src/**/*
+    - scripts/**/*
+    - drizzle.config.ts
+    - package.json
+    - tsconfig.json
+  tests:
+    - tests/**/*
+    - vitest.config.ts
+
+tasks:
+  dev:
+    command: wrangler dev
+    preset: "server"
+  test-integration:
+    command: vitest run
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  schema:
+    command: bun run graphql/printSchema.ts
+    inputs:
+      - src/graphql.ts
+    outputs:
+      - graphql/schema.graphql
+  type-cf:
+    command: wrangler types
+    inputs:
+      - wrangler.jsonc
+    outputs:
+      - worker-configuration.d.ts
+  db-generate:
+    description: Generate migrations files after a schema change.
+    command: drizzle-kit generate
+    options:
+      cache: false
+  db-migrate:
+    description: Run migrations. This leverages the DATABASE_URL env variable.
+    command: bun run scripts/migrate.ts
+    options:
+      cache: false
+  db-studio:
+    command: drizzle-kit studio
+    preset: "server"
+  db-seed:
+    description: Seed the database with initial data.
+    command: noop
+    options:
+      cache: false
+  services-start:
+    command: docker compose up -d
+    options:
+      cache: false
+  services-stop:
+    command: docker compose down
+    options:
+      cache: false
+  services-reset:
+    script: docker compose down -v && docker compose up -d --wait && moon lb-api:db-migrate && moon lb-api:db-seed
+    options:
+      cache: false
+  lint:
+    command: biome check --formatter-enabled=false
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  lint-fix:
+    command: biome check --formatter-enabled=false --write
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  deploy:
+    command: wrangler deploy
+  deploy-preview:
+    command: wrangler versions upload

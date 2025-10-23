@@ -1,0 +1,60 @@
+{
+	"compilerOptions": {
+		"target": "ES2020",
+		"module": "esnext",
+		"lib": ["ES2020"],
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+		"outDir": "./dist",
+		"isolatedDeclarations": false,
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"moduleResolution": "node",
+		"allowSyntheticDefaultImports": true,
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"removeComments": false,
+		"noImplicitAny": true,
+		"noImplicitReturns": true,
+		"noImplicitThis": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"plugins": [
+			{
+				"name": "gql.tada/ts-plugin",
+				"schemas": [
+					{
+						"name": "zeko",
+						"schema": "./src/generated/zeko.graphql",
+						"tadaOutputLocation": "./src/generated/zeko-env.d.ts",
+						"tadaTurboLocation": "./src/generated/zeko-cache.d.ts"
+					},
+					{
+						"name": "zeko-archive",
+						"schema": "./src/generated/zeko-archive.graphql",
+						"tadaOutputLocation": "./src/generated/zeko-archive-env.d.ts",
+						"tadaTurboLocation": "./src/generated/zeko-archive-cache.d.ts"
+					},
+					{
+						"name": "mina",
+						"schema": "./src/generated/mina.graphql",
+						"tadaOutputLocation": "./src/generated/mina-env.d.ts",
+						"tadaTurboLocation": "./src/generated/mina-cache.d.ts"
+					},
+					{
+						"name": "mina-archive",
+						"schema": "./src/generated/mina-archive.graphql",
+						"tadaOutputLocation": "./src/generated/mina-archive-env.d.ts",
+						"tadaTurboLocation": "./src/generated/mina-archive-cache.d.ts"
+					}
+				]
+			}
+		]
+	},
+	"include": ["src", "examples"],
+	"exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+}

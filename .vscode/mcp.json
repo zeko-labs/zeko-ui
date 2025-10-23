@@ -4,14 +4,6 @@
 			"command": "npx",
 			"args": ["-y", "@ark-ui/mcp"]
 		},
-		"moon": {
-			"type": "stdio",
-			"command": "moon",
-			"args": ["mcp"],
-			"env": {
-				"MOON_WORKSPACE_ROOT": "${workspaceFolder}"
-			}
-		},
 		"playwright": {
 			"command": "npx",
 			"args": ["@playwright/mcp@latest"]

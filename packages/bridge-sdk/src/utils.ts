@@ -1,8 +1,8 @@
-import { fetchAccount, Field, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
+import { Field, fetchAccount, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
+import { fetchActionsQuery } from "../../graphql/src/mina-archive"
 import { fromList, pushHash } from "./actions"
-import { fetchActionsQuery } from "./graphql/queries/mina-archive"
 import type { Account, Action, Deposit, Withdrawal } from "./types"
 
 // The graphQL schema server will limit the block scan range to a fixed number of blocks.
@@ -98,7 +98,7 @@ export async function fetchActions(
 	)
 }
 
-export function depositAux(deposit: Deposit) {
+export function depositAux(deposit: Deposit): Field {
 	return Poseidon.hashWithPrefix("Deposit_params - qFB3jXP*)", [
 		Field(0), // Empty children
 		...deposit.holderAccountL1.toFields(),
@@ -108,7 +108,7 @@ export function depositAux(deposit: Deposit) {
 	])
 }
 
-export function withdrawalAux(withdrawal: Withdrawal) {
+export function withdrawalAux(withdrawal: Withdrawal): Field {
 	return Poseidon.hashWithPrefix("Withdrawal_params - qFB3jXP*)", [
 		Field(0), // Empty children
 		...withdrawal.amount.toFields(),

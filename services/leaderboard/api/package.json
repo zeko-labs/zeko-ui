@@ -1,0 +1,26 @@
+{
+	"name": "@leaderboard/api",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"@pothos/core": "^4.10.0",
+		"consola": "^3.4.0",
+		"drizzle-orm": "catalog:",
+		"graphql": "^16.11.0",
+		"graphql-yoga": "^5.14.0",
+		"postgres": "catalog:"
+	},
+	"exports": {
+		".": "./module.ts"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "catalog:",
+		"@cloudflare/vitest-pool-workers": "^0.9.12",
+		"@types/bun": "catalog:",
+		"drizzle-kit": "catalog:",
+		"drizzle-seed": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"wrangler": "catalog:"
+	}
+}

@@ -1,0 +1,16 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"compatibility_date": "2025-10-08",
+	"name": "leaderboard-api",
+	"main": "src/index.ts",
+	"observability": {
+		"enabled": true
+	},
+	"durable_objects": {
+		"bindings": [
+			{ "name": "USER_DO", "class_name": "UserDo" },
+			{ "name": "DISTRIBUTOR_DO", "class_name": "DistributorDO" }
+		]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserDo", "DistributorDO"] }]
+}
