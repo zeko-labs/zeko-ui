@@ -15,7 +15,6 @@ import { handler as swap } from "./points/swap"
 import { handler as withdrawal } from "./points/withdrawal"
 
 interface IndexerConfig {
-	startingBlock: number
 	intervalSeconds: number
 	maxRetries: number
 }
@@ -88,45 +87,50 @@ async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promi
 	for (const item of depositResult.data) {
 		if (!item.recipient || !item.amount) continue
 		actionsToInsert.push({
-			wallet: item.recipient.toBase58(),
+			wallet: item.recipient,
 			actionType: ACTION_TYPE_MAP.deposit,
-			transactionHash: `deposit-${item.recipient.toBase58()}-${item.amount}`
+			timestamp: item.timestamp,
+			transactionHash: item.transactionHash
 		})
 	}
 
 	for (const item of faucetResult.data) {
 		if (!item.claimer || !item.amount) continue
 		actionsToInsert.push({
-			wallet: item.claimer.toBase58(),
+			wallet: item.claimer,
 			actionType: ACTION_TYPE_MAP.faucet,
-			transactionHash: `faucet-${item.claimer.toBase58()}-${item.amount}`
+			transactionHash: item.transactionHash,
+			timestamp: item.timestamp
 		})
 	}
 
 	for (const item of liquidityResult.data) {
 		if (!item.sender || !item.amountIn) continue
 		actionsToInsert.push({
-			wallet: item.sender.toBase58(),
+			wallet: item.sender,
 			actionType: ACTION_TYPE_MAP.liquidity,
-			transactionHash: `liquidity-${item.sender.toBase58()}-${item.amountIn}-${item.amountOut}`
+			transactionHash: item.transactionHash,
+			timestamp: item.timestamp
 		})
 	}
 
 	for (const item of swapResult.data) {
 		if (!item.sender || !item.amountToken0In) continue
 		actionsToInsert.push({
-			wallet: item.sender.toBase58(),
+			wallet: item.sender,
 			actionType: ACTION_TYPE_MAP.swap,
-			transactionHash: `swap-${item.sender.toBase58()}-${item.amountToken0In}-${item.amountToken1In}`
+			transactionHash: item.transactionHash,
+			timestamp: item.timestamp
 		})
 	}
 
 	for (const item of withdrawalResult.data) {
 		if (!item.recipient || !item.amount) continue
 		actionsToInsert.push({
-			wallet: item.recipient.toBase58(),
+			wallet: item.recipient,
 			actionType: ACTION_TYPE_MAP.withdrawal,
-			transactionHash: `withdrawal-${item.recipient.toBase58()}-${item.amount}`
+			transactionHash: item.transactionHash,
+			timestamp: item.timestamp
 		})
 	}
 
@@ -228,7 +232,6 @@ export class Indexer {
 			},
 			consecutiveErrors: 0,
 			config: {
-				startingBlock: 1, //TODO: There is a bug with the block 0 https://linear.app/zeko-labs/issue/EXT-17/archive-node-queries-block-0-is-not-functioning-properly
 				intervalSeconds: 2,
 				maxRetries: 5
 			}
@@ -238,18 +241,17 @@ export class Indexer {
 	/**
 	 * Start the indexing loop
 	 */
-	start(config?: Partial<IndexerConfig>) {
+	start(input?: { startingBlock?: number; intervalSeconds?: number; maxRetries?: number }) {
 		try {
 			if (this.#state.isRunning) {
 				return { success: false, message: "Indexer is already running" } as const
 			}
 
 			// Update config if provided
-			if (config) {
-				if (config.startingBlock !== undefined) {
+			if (input) {
+				if (input.startingBlock !== undefined) {
 					//TODO: There is a bug with the block 0 https://linear.app/zeko-labs/issue/EXT-17/archive-node-queries-block-0-is-not-functioning-properly
-					const sb = config.startingBlock === 0 ? 1 : config.startingBlock
-					this.#state.config.startingBlock = sb
+					const sb = input.startingBlock === 0 ? 1 : input.startingBlock
 					// Update all module states to start from this block
 					this.#state.moduleStates = {
 						deposit: { lastFetchedBlock: sb },
@@ -259,11 +261,11 @@ export class Indexer {
 						withdrawal: { lastFetchedBlock: sb }
 					}
 				}
-				if (config.intervalSeconds !== undefined) {
-					this.#state.config.intervalSeconds = config.intervalSeconds
+				if (input.intervalSeconds !== undefined) {
+					this.#state.config.intervalSeconds = input.intervalSeconds
 				}
-				if (config.maxRetries !== undefined) {
-					this.#state.config.maxRetries = config.maxRetries
+				if (input.maxRetries !== undefined) {
+					this.#state.config.maxRetries = input.maxRetries
 				}
 			}
 

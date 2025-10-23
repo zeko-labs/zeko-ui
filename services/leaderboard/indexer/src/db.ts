@@ -1,5 +1,5 @@
-import { actions, leaderboard } from "@leaderboard/api"
-import { inArray, sql } from "drizzle-orm"
+import { actions, type actionTypes, leaderboard } from "@leaderboard/api"
+import { and, eq, inArray, or, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
@@ -21,12 +21,14 @@ export interface ActionToInsert {
 	wallet: string
 	actionType: ActionType
 	transactionHash: string
+	timestamp: string
 }
 
 /**
- * Score configuration constructed from all score modules
- * This is the single source of truth for scoring logic
+ * Score configuration for each action type
+ * Defines points awarded, max occurrences, and accumulation strategy
  */
+
 export const scoreConfig = {
 	[faucetScore.key]: {
 		points: faucetScore.points,
@@ -56,7 +58,7 @@ export const scoreConfig = {
 } as const
 
 /**
- * Create database connection for production use
+ * Create a production database
  */
 export function createDatabase(connectionString?: string) {
 	const str =
@@ -103,8 +105,6 @@ export function createTestDatabase(connectionString?: string) {
  * This clears ONLY the leaderboard table and recalculates scores from existing actions
  * Does NOT touch the actions table or fetch from blockchain
  *
- * @param db - Database connection
- * @param config - Score configuration
  */
 export async function recalculateLeaderboard(
 	db: PostgresJsDatabase,
@@ -143,97 +143,152 @@ export async function recalculateLeaderboard(
 	})
 }
 
-function getUTCDayStart(): Date {
-	const now = new Date()
-	now.setUTCHours(0, 0, 0, 0)
-	return now
-}
-
 /**
  * Update leaderboard scores for specific wallets based on their existing actions in the database
  * This queries ALL actions for the given wallets and recalculates their total scores
+ *
+ * Performance optimizations:
+ * - Uses CTEs to eliminate N+1 query problem for daily strategy
+ * - Batches large wallet arrays to prevent inefficient IN clauses
+ * - Requires composite index on (wallet, actionType, timestamp) for optimal performance
  */
 async function updateLeaderboardForWallets(options: {
 	db: PostgresJsDatabase
 	wallets: string[]
 	config?: Partial<ScoreConfig>
+	batchSize?: number
 }) {
-	const { db, wallets, config = scoreConfig } = options
+	const { db, wallets, config = scoreConfig, batchSize = 1000 } = options
 	if (wallets.length === 0) return
 
-	const timestamp = new Date()
-	const todayStart = getUTCDayStart()
-	const timestampISO = timestamp.toISOString()
-	const todayStartISO = todayStart.toISOString()
-
-	// Step 1: Build CTEs for both "once" and "daily" strategies
-	// For "once" strategy: count all actions
-	// For "daily" strategy: count only actions from today (UTC)
-	const actionCountsCTE = db.$with("action_counts").as(
-		db
-			.select({
-				wallet: actions.wallet,
-				actionType: actions.actionType,
-				countAll: sql<number>`COUNT(*)::int`.as("count_all"),
-				countToday:
-					sql<number>`COUNT(*) FILTER (WHERE ${actions.timestamp} >= ${todayStartISO}::timestamp)::int`.as(
-						"count_today"
-					)
-			})
-			.from(actions)
-			.where(inArray(actions.wallet, wallets))
-			.groupBy(actions.wallet, actions.actionType)
-	)
-
-	// Step 2: Calculate scores based on strategy
-	const caseClauses = sql.empty()
-
-	for (const [actionType, scoreConfig] of Object.entries(config)) {
-		const countColumn =
-			scoreConfig.strategy === "daily" ? actionCountsCTE.countToday : actionCountsCTE.countAll
-		caseClauses.append(sql`
-			WHEN ${actionType} THEN 
-				LEAST(${countColumn}, ${scoreConfig.maxOccurrences}) * ${scoreConfig.points}
-		`)
+	// Batch large wallet arrays to prevent inefficient IN clauses
+	if (wallets.length > batchSize) {
+		logger.info(
+			`Batching ${wallets.length} wallets into chunks of ${batchSize} for leaderboard update`
+		)
+		for (let i = 0; i < wallets.length; i += batchSize) {
+			const batch = wallets.slice(i, i + batchSize)
+			await updateLeaderboardForWalletsBatch({ db, wallets: batch, config })
+		}
+		return
 	}
 
-	const walletScoresCTE = db.$with("wallet_scores").as(
-		db
-			.select({
-				wallet: actionCountsCTE.wallet,
-				totalScore: sql<number>`
-					SUM(
-						CASE ${actionCountsCTE.actionType}
-							${caseClauses}
-							ELSE 0
-						END
-					)::smallint
-				`.as("total_score")
-			})
-			.from(actionCountsCTE)
-			.groupBy(actionCountsCTE.wallet)
+	await updateLeaderboardForWalletsBatch({ db, wallets, config })
+}
+
+/**
+ * Internal function that performs the actual leaderboard update for a batch of wallets
+ * Uses CTE-based approach to avoid N+1 query problem with daily strategy
+ */
+async function updateLeaderboardForWalletsBatch(options: {
+	db: PostgresJsDatabase
+	wallets: string[]
+	config: Partial<ScoreConfig>
+}) {
+	const { db, wallets, config } = options
+	const timestamp = new Date().toISOString()
+
+	// Separate configs by strategy using Object.groupBy
+	const { daily, once } = Object.groupBy(Object.entries(config), ([_, cfg]) => cfg.strategy)
+
+	const walletFilter = or(...wallets.map((w) => eq(actions.wallet, w))) ?? sql`false`
+
+	const onceScoreParts = (once ?? []).map(
+		([actionType, cfg]) =>
+			sql`LEAST(COUNT(*) FILTER (WHERE ${actions.actionType} = ${actionType}), ${cfg.maxOccurrences}) * ${cfg.points}`
 	)
 
-	// Step 3: Insert/update leaderboard using the CTE
-	await db
-		.with(actionCountsCTE, walletScoresCTE)
-		.insert(leaderboard)
-		.select(
+	const totalOnceScore =
+		onceScoreParts.length > 0
+			? onceScoreParts.reduce((acc, part) => sql`${acc} + ${part}`, sql`0`)
+			: sql`0`
+
+	const conflictUpdate = {
+		target: leaderboard.wallet,
+		set: {
+			score: sql`EXCLUDED.score`,
+			updatedAt: sql`EXCLUDED."updatedAt"`
+		}
+	} as const
+
+	// If we have daily strategies, use CTE-based approach
+	if (daily) {
+		const dailyActionTypes = daily.map(([type, _]) => type) as Array<(typeof actionTypes)[number]>
+
+		// CTE 1: Get raw daily counts for all wallets and action types in one scan
+		const dailyCounts = db.$with("daily_counts").as(
 			db
 				.select({
-					wallet: walletScoresCTE.wallet,
-					score: walletScoresCTE.totalScore,
-					updatedAt: sql`${timestampISO}::timestamp`.as("updatedAt")
+					wallet: actions.wallet,
+					actionType: actions.actionType,
+					dailyCount: sql<number>`COUNT(*)::int`.as("daily_count")
 				})
-				.from(walletScoresCTE)
+				.from(actions)
+				.where(and(walletFilter, inArray(actions.actionType, dailyActionTypes)))
+				.groupBy(actions.wallet, actions.actionType, sql`DATE(${actions.timestamp})`)
 		)
-		.onConflictDoUpdate({
-			target: leaderboard.wallet,
-			set: {
-				score: sql`EXCLUDED.score`,
-				updatedAt: sql`EXCLUDED."updatedAt"`
-			}
-		})
+
+		const buildCaseStatement = (field: "maxOccurrences" | "points") =>
+			sql`${daily.reduce(
+				(acc, [actionType, cfg]) => sql`${acc} WHEN ${actionType} THEN ${cfg[field]}`,
+				sql`CASE "actionType"`
+			)} ELSE 0 END`
+
+		const maxOccurrencesCase = buildCaseStatement("maxOccurrences")
+		const pointsCase = buildCaseStatement("points")
+
+		// CTE 2: Apply capping/points and sum per wallet
+		const totalDailyScores = db.$with("total_daily_scores").as(
+			db
+				.select({
+					wallet: dailyCounts.wallet,
+					totalDailyScore:
+						sql<number>`COALESCE(SUM(LEAST("daily_count", ${maxOccurrencesCase}) * ${pointsCase}), 0)`.as(
+							"total_daily_score"
+						)
+				})
+				.from(dailyCounts)
+				.groupBy(dailyCounts.wallet)
+		)
+
+		// Final query with CTEs
+		await db
+			.with(dailyCounts, totalDailyScores)
+			.insert(leaderboard)
+			.select(() =>
+				db
+					.select({
+						wallet: actions.wallet,
+						score:
+							sql<number>`(${totalOnceScore} + COALESCE(tds.total_daily_score, 0))::smallint`.as(
+								"score"
+							),
+						updatedAt: sql<Date>`${timestamp}::timestamp`.as("updatedAt")
+					})
+					.from(actions)
+					.leftJoin(sql`${totalDailyScores} AS tds`, sql`${actions.wallet} = tds.wallet`)
+					.where(walletFilter)
+					.groupBy(actions.wallet, sql`tds.total_daily_score`)
+			)
+			.onConflictDoUpdate(conflictUpdate)
+	}
+	// No daily strategies, use simpler query without CTEs
+	else if (once) {
+		await db
+			.insert(leaderboard)
+			.select(() =>
+				db
+					.select({
+						wallet: actions.wallet,
+						score: sql<number>`(${totalOnceScore})::smallint`.as("score"),
+						updatedAt: sql<Date>`${timestamp}::timestamp`.as("updatedAt")
+					})
+					.from(actions)
+					.where(walletFilter)
+					.groupBy(actions.wallet)
+			)
+			.onConflictDoUpdate(conflictUpdate)
+	}
 }
 
 export async function batchInsertActionsAndUpdateLeaderboard(options: {
@@ -254,8 +309,6 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 	if (actionsToInsert.length === 0) return
 
 	try {
-		const timestamp = new Date()
-
 		// Step 1: Batch insert all actions (ignore duplicates) and get only newly inserted actions
 		const insertedActions = await db
 			.insert(actions)
@@ -264,7 +317,7 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 					wallet: action.wallet,
 					actionType: action.actionType,
 					transactionHash: action.transactionHash,
-					timestamp
+					timestamp: new Date(Number(action.timestamp))
 				}))
 			)
 			.onConflictDoNothing({ target: actions.transactionHash })

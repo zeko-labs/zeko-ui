@@ -9,20 +9,28 @@ import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } fr
 //     }
 
 const processDepositEvents = async (events: ArchiveEvents) => {
-	const parse = (data: string[]) => {
+	const parse = (data: string[], timestamp: string, transactionHash: string) => {
 		const pubk = getPubK(data)
 		return {
 			children: data[2],
 			holderAccountL1: pubk(3, 4),
 			amount: data[5],
 			recipient: pubk(6, 7),
-			timeout: data[8]
+			timeout: data[8],
+			timestamp,
+			transactionHash
 		}
 	}
 
 	const depositData = events
 		.filter((e) => e?.eventData?.[0]?.data[0] === "1") //TODO: Verify event is #1
-		.map((e) => parse(e?.eventData?.[0]?.data.filter(Boolean) ?? []))
+		.map((e) =>
+			parse(
+				e?.eventData?.[0]?.data.filter(Boolean) ?? [],
+				e?.blockInfo?.timestamp ?? Date.now().toString(),
+				e?.eventData?.[0]?.transactionInfo?.hash ?? `faucet_error_${Date.now()}`
+			)
+		)
 	return depositData
 }
 

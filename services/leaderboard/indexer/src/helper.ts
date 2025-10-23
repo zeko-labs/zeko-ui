@@ -38,15 +38,11 @@ const MAX_BLOCKS_PER_FETCH = 10000
 export const logger = createConsola().withTag("LEADERBOARD_INDEXER")
 
 export const getPubK = (data: string[]) => (a: number, b: number) => {
-	return PublicKey.fromFields([Field.from(data[a]), Field.from(data[b])])
+	return PublicKey.fromFields([Field.from(data[a]), Field.from(data[b])]).toBase58()
 }
 
 export type ArchiveEvents = NonNullable<ResultOf<typeof FetchZekoArchiveEvents>["events"]>
 
-/**
- * Fetch events from the archive without from/to parameters.
- * Used for discovery queries to get recent events and chain state.
- */
 async function fetchEventsRaw(address: string, from?: number, to?: number) {
 	const client = createMinaClient("https://archive.testnet.zeko.io/graphql")
 

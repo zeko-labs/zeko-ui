@@ -29,7 +29,6 @@ describe("Indexer", () => {
 		const startResult = indexer.start({ startingBlock: 0, intervalSeconds: 10 })
 		expect(startResult.success).toBe(true)
 		expect(indexer.getStatus().isRunning).toBe(true)
-		expect(indexer.getStatus().config.startingBlock).toBe(0)
 		expect(indexer.getStatus().config.intervalSeconds).toBe(10)
 
 		// Stop the indexer
@@ -50,13 +49,6 @@ describe("Indexer", () => {
 		const result = indexer.stop()
 		expect(result.success).toBe(false)
 		expect(result.message).toContain("not running")
-	})
-
-	test("should track lastFetchedBlock", () => {
-		const startResult = indexer.start({ startingBlock: 1000, intervalSeconds: 10 })
-		expect(startResult.success).toBe(true)
-		expect(indexer.getStatus().lastFetchedBlock).toBe(1000)
-		indexer.stop()
 	})
 
 	describe("recalculate", () => {
@@ -226,7 +218,7 @@ describe("Indexer", () => {
 			const yesterday = new Date()
 			yesterday.setUTCDate(yesterday.getUTCDate() - 1)
 
-			// Insert swap actions (which has 'daily' strategy)
+			// Insert swap actions (which has 'daily' strategy with maxOccurrences=10)
 			// 3 from yesterday, 2 from today
 			await db.insert(actions).values([
 				{
@@ -266,8 +258,11 @@ describe("Indexer", () => {
 			const leaderboardData = await db.select().from(leaderboard)
 			expect(leaderboardData).toHaveLength(1)
 
-			// Should only count today's 2 swaps (daily strategy)
-			expect(leaderboardData[0].score).toBe(scoreConfig.LUMINA_SWAP_MINA_TZEKO.points * 2)
+			// Daily strategy accumulates across ALL days
+			// Yesterday: min(3, 10) * 1 = 3 points
+			// Today: min(2, 10) * 1 = 2 points
+			// Total: 5 points
+			expect(leaderboardData[0].score).toBe(scoreConfig.LUMINA_SWAP_MINA_TZEKO.points * 5)
 		})
 
 		test("should handle mixed strategies during recalculate", async () => {
@@ -290,7 +285,7 @@ describe("Indexer", () => {
 					transactionHash: "tx2",
 					timestamp: yesterday
 				},
-				// Swap (daily) - yesterday, should NOT count
+				// Swap (daily) - yesterday, should count
 				{
 					wallet: "B62qtest1",
 					actionType: "LUMINA_SWAP_MINA_TZEKO",
@@ -311,10 +306,15 @@ describe("Indexer", () => {
 			const leaderboardData = await db.select().from(leaderboard)
 			expect(leaderboardData).toHaveLength(1)
 
+			// Faucet (once): 20 points
+			// Bridge (once): 20 points
+			// Swap yesterday: 1 point (capped at 10 per day)
+			// Swap today: 1 point (capped at 10 per day)
+			// Total: 42 points
 			const expectedScore =
 				scoreConfig.FAUCET_ZEKO_TMINA.points +
 				scoreConfig.BRIDGE_MINA_TO_ZEKO.points +
-				scoreConfig.LUMINA_SWAP_MINA_TZEKO.points // Only today's swap
+				scoreConfig.LUMINA_SWAP_MINA_TZEKO.points * 2 // Both yesterday and today
 
 			expect(leaderboardData[0].score).toBe(expectedScore)
 		})
@@ -329,10 +329,10 @@ describe("Indexer", () => {
 			const threeDaysAgo = new Date()
 			threeDaysAgo.setUTCDate(threeDaysAgo.getUTCDate() - 3)
 
-			// Insert swap actions (daily strategy) across multiple days
+			// Insert swap actions (daily strategy with maxOccurrences=10) across multiple days
 			// 2 from 3 days ago, 2 from 2 days ago, 3 from yesterday, 2 from today
 			await db.insert(actions).values([
-				// 3 days ago - should NOT count
+				// 3 days ago - 2 swaps (should count)
 				{
 					wallet: "B62qtest1",
 					actionType: "LUMINA_SWAP_MINA_TZEKO",
@@ -345,7 +345,7 @@ describe("Indexer", () => {
 					transactionHash: "tx-3d-2",
 					timestamp: threeDaysAgo
 				},
-				// 2 days ago - should NOT count
+				// 2 days ago - 2 swaps (should count)
 				{
 					wallet: "B62qtest1",
 					actionType: "LUMINA_SWAP_MINA_TZEKO",
@@ -358,7 +358,7 @@ describe("Indexer", () => {
 					transactionHash: "tx-2d-2",
 					timestamp: twoDaysAgo
 				},
-				// Yesterday - should NOT count
+				// Yesterday - 3 swaps (should count)
 				{
 					wallet: "B62qtest1",
 					actionType: "LUMINA_SWAP_MINA_TZEKO",
@@ -377,7 +377,7 @@ describe("Indexer", () => {
 					transactionHash: "tx-1d-3",
 					timestamp: yesterday
 				},
-				// Today - should count (only these 2)
+				// Today - 2 swaps (should count)
 				{
 					wallet: "B62qtest1",
 					actionType: "LUMINA_SWAP_MINA_TZEKO",
@@ -397,8 +397,13 @@ describe("Indexer", () => {
 			const leaderboardData = await db.select().from(leaderboard)
 			expect(leaderboardData).toHaveLength(1)
 
-			// Should only count today's 2 swaps (daily strategy)
-			const expectedScore = scoreConfig.LUMINA_SWAP_MINA_TZEKO.points * 2
+			// Daily strategy accumulates across ALL days, capped at 10 per day
+			// 3 days ago: min(2, 10) * 1 = 2 points
+			// 2 days ago: min(2, 10) * 1 = 2 points
+			// Yesterday: min(3, 10) * 1 = 3 points
+			// Today: min(2, 10) * 1 = 2 points
+			// Total: 9 points
+			const expectedScore = scoreConfig.LUMINA_SWAP_MINA_TZEKO.points * 9
 			expect(leaderboardData[0].score).toBe(expectedScore)
 		})
 
@@ -501,17 +506,17 @@ describe("Indexer", () => {
 			const leaderboardData = await db.select().from(leaderboard).orderBy(leaderboard.wallet)
 			expect(leaderboardData).toHaveLength(3)
 
-			// Wallet 1: 3 swaps today (should count all 3)
+			// Wallet 1: 1 from 2 days ago + 2 from yesterday + 3 from today = 6 total
 			expect(leaderboardData[0].wallet).toBe("B62qtest1")
-			expect(leaderboardData[0].score).toBe(scoreConfig.LUMINA_SWAP_MINA_TZEKO.points * 3)
+			expect(leaderboardData[0].score).toBe(scoreConfig.LUMINA_SWAP_MINA_TZEKO.points * 6)
 
-			// Wallet 2: 1 swap today (should count only 1)
+			// Wallet 2: 2 from yesterday + 1 from today = 3 total
 			expect(leaderboardData[1].wallet).toBe("B62qtest2")
-			expect(leaderboardData[1].score).toBe(scoreConfig.LUMINA_SWAP_MINA_TZEKO.points * 1)
+			expect(leaderboardData[1].score).toBe(scoreConfig.LUMINA_SWAP_MINA_TZEKO.points * 3)
 
-			// Wallet 3: 0 swaps today (should be 0)
+			// Wallet 3: 4 from 2 days ago = 4 total (capped at 10 per day)
 			expect(leaderboardData[2].wallet).toBe("B62qtest3")
-			expect(leaderboardData[2].score).toBe(0)
+			expect(leaderboardData[2].score).toBe(scoreConfig.LUMINA_SWAP_MINA_TZEKO.points * 4)
 		})
 
 		test("should handle multiple wallets during recalculate", async () => {

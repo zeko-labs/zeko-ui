@@ -114,9 +114,7 @@ export async function queryLeaderboard(
 		.orderBy(sql`${rankedCTE.score} DESC`, sql`${rankedCTE.wallet} ASC`)
 		.limit(limit + 1)
 
-	if (result.length === 0) {
-		return { entries: [], hasMore: false, total: 0 }
-	}
+	if (result.length === 0) return { entries: [], hasMore: false, total: 0 }
 
 	const hasMore = result.length > limit
 	const entries = result.slice(0, limit).map(({ wallet, score, rank }) => ({ wallet, score, rank }))
@@ -159,7 +157,7 @@ builder.queryType({
 		leaderboard: t.field({
 			type: LeaderboardResultObject,
 			args: { input: t.arg({ type: LeaderboardInput, required: false }) },
-			resolve: async (root, { input }, { database }) => {
+			resolve: async (_root, { input }, { database }) => {
 				using db = database()
 
 				const result = await queryLeaderboard(db, {

@@ -4,14 +4,20 @@ import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } fr
 //  type t = { children : C.t; amount : Currency.Amount.t; recipient : PC.t }
 
 const processWithdrawalEvents = async (events: ArchiveEvents) => {
-	const parse = (data: string[]) => {
+	const parse = (data: string[], timestamp: string, transactionHash: string) => {
 		const pubk = getPubK(data)
-		return { children: data[2], amount: data[3], recipient: pubk(4, 5) }
+		return { children: data[2], amount: data[3], recipient: pubk(4, 5), timestamp, transactionHash }
 	}
 
 	const withdrawalData = events
 		.filter((e) => e?.eventData?.[0]?.data[0] === "0") //TODO: Verify event is #0
-		.map((e) => parse(e?.eventData?.[0]?.data.filter(Boolean) ?? []))
+		.map((e) =>
+			parse(
+				e?.eventData?.[0]?.data.filter(Boolean) ?? [],
+				e?.blockInfo?.timestamp ?? Date.now().toString(),
+				e?.eventData?.[0]?.transactionInfo?.hash ?? `withdrawal_error_${Date.now()}`
+			)
+		)
 	return withdrawalData
 }
 

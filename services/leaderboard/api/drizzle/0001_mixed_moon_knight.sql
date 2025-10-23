@@ -22,12 +22,5 @@ CREATE TABLE "Manual_Adjustments" (
 	"timestamp" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "Zeko_Transactions" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid_v7() NOT NULL,
-	"transactionHash" text NOT NULL,
-	"timestamp" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "Zeko_Transactions_transactionHash_unique" UNIQUE("transactionHash")
-);
---> statement-breakpoint
-CREATE INDEX "wallet:action_type|index" ON "Actions" USING btree ("wallet","actionType");--> statement-breakpoint
+CREATE INDEX "wallet:action_type:timestamp|index" ON "Actions" USING btree ("wallet","actionType","timestamp");--> statement-breakpoint
 CREATE INDEX "score_wallet|index" ON "Leaderboard" USING btree ("score","wallet");

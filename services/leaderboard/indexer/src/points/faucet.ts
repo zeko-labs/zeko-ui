@@ -1,17 +1,21 @@
 import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 const processFaucetEvents = async (events: ArchiveEvents) => {
-	const parseFaucetEvents = (data: string[]) => {
+	const parse = (data: string[], timestamp: string, transactionHash: string) => {
 		const pubk = getPubK(data)
-		return { claimer: pubk(2, 3), amount: data[4] }
+		return { claimer: pubk(2, 3), amount: data[4], timestamp, transactionHash }
 	}
 
 	const faucetData = events
 		//TODO: Verify event is #0
 		.filter((e) => e?.eventData?.[0]?.data[0] === "0")
-		.map((e) => {
-			return parseFaucetEvents(e?.eventData?.[0]?.data.filter(Boolean) ?? [])
-		})
+		.map((e) =>
+			parse(
+				e?.eventData?.[0]?.data.filter(Boolean) ?? [],
+				e?.blockInfo?.timestamp ?? Date.now().toString(),
+				e?.eventData?.[0]?.transactionInfo?.hash ?? `faucet_error_${Date.now()}`
+			)
+		)
 	return faucetData
 }
 

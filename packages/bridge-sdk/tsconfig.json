@@ -56,13 +56,6 @@
 			}
 		]
 	},
-	"include": [
-		"src",
-		"examples",
-		"../graphql/src/queries",
-		"../graphql/src/mina-archive.ts",
-		"../graphql/src/mina.ts",
-		"../graphql/src/zeko.ts"
-	],
+	"include": ["src", "examples"],
 	"exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

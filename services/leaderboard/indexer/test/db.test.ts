@@ -21,17 +21,58 @@ afterAll(async () => {
 })
 
 type ActionCounts = Record<ActionType, number>
-// Helper to calculate expected score
+
+type ScoreConfigLike = Record<
+	string,
+	{ points: number; maxOccurrences: number; strategy: "once" | "daily" }
+>
+
+// Helper to calculate score for a single action type with a specific count
+// Applies the cap and multiplies by points
+const calculateActionScore = (
+	actionType: ActionType,
+	count: number,
+	config: ScoreConfigLike = scoreConfig
+) => {
+	const actionConfig = config[actionType]
+	if (!actionConfig) return 0
+	return Math.min(count, actionConfig.maxOccurrences) * actionConfig.points
+}
+
+// Helper to calculate expected score for actions (once strategy)
+// For 'once' strategy: caps the total count
+// For 'daily' strategy: you must group by day first and pass each day's actions separately
 const calculateExpectedScore = (actionCounts: RequireAtLeastOne<ActionCounts>) => {
 	return (Object.entries(actionCounts) as Entries<ActionCounts>).reduce(
 		(total, [actionType, count]) => {
-			const config = scoreConfig[actionType]
-			if (!config) return total
-			return total + Math.min(count, config.maxOccurrences) * config.points
+			return total + calculateActionScore(actionType, count)
 		},
 		0
 	)
 }
+
+// Helper to calculate score for actions with daily strategy
+// Groups actions by date, applies cap per day, then sums across all days
+const calculateScoreWithDailyStrategy = (actionsToInsert: ActionToInsert[]) => {
+	const actionsByDate = Object.groupBy(actionsToInsert, (action) => {
+		const date = new Date(Number(action.timestamp))
+		return date.toISOString().split("T")[0]
+	})
+
+	return Object.values(actionsByDate).reduce((total, dayActions) => {
+		if (!dayActions) return total
+		const actionsByType = Object.groupBy(dayActions, (a) => a.actionType)
+		return (
+			total +
+			Object.entries(actionsByType).reduce((dayTotal, [actionType, actions]) => {
+				if (!actions) return dayTotal
+				return dayTotal + calculateActionScore(actionType as ActionType, actions.length)
+			}, 0)
+		)
+	}, 0)
+}
+
+const getTimestamp = () => Date.now().toString()
 
 describe("batchInsertActionsAndUpdateLeaderboard", () => {
 	beforeEach(async () => {
@@ -53,7 +94,8 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 			{
 				wallet: "B62qtest1",
 				actionType: "FAUCET_ZEKO_TMINA",
-				transactionHash: "tx1"
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
 			}
 		]
 
@@ -75,7 +117,8 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 		const actionsToInsert: ActionToInsert[] = Array.from({ length: 3 }, (_, i) => ({
 			wallet: "B62qtest1",
 			actionType: "FAUCET_ZEKO_TMINA" as const,
-			transactionHash: `tx${i + 1}`
+			transactionHash: `tx${i + 1}`,
+			timestamp: getTimestamp()
 		}))
 
 		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
@@ -91,10 +134,30 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 
 	test("should handle multiple action types for same wallet", async () => {
 		const actionsToInsert: ActionToInsert[] = [
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx1" },
-			{ wallet: "B62qtest1", actionType: "BRIDGE_MINA_TO_ZEKO", transactionHash: "tx2" },
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx3" },
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx4" }
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "BRIDGE_MINA_TO_ZEKO",
+				transactionHash: "tx2",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx3",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx4",
+				timestamp: getTimestamp()
+			}
 		]
 
 		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
@@ -113,9 +176,24 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 
 	test("should handle multiple wallets in batch", async () => {
 		const actionsToInsert: ActionToInsert[] = [
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx1" },
-			{ wallet: "B62qtest2", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx2" },
-			{ wallet: "B62qtest3", actionType: "BRIDGE_MINA_TO_ZEKO", transactionHash: "tx3" }
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest2",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx2",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest3",
+				actionType: "BRIDGE_MINA_TO_ZEKO",
+				transactionHash: "tx3",
+				timestamp: getTimestamp()
+			}
 		]
 
 		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
@@ -133,8 +211,18 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 
 	test("should ignore duplicate transaction hashes", async () => {
 		const actionsToInsert: ActionToInsert[] = [
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx1" },
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx1" } // Duplicate
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			} // Duplicate
 		]
 
 		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
@@ -146,14 +234,54 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 	test("should handle cross-batch duplicates (restart from block 0 scenario)", async () => {
 		// Simulate first run: insert some actions (including multiple swaps to test cap)
 		const firstBatch: ActionToInsert[] = [
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx1" },
-			{ wallet: "B62qtest1", actionType: "BRIDGE_MINA_TO_ZEKO", transactionHash: "tx2" },
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx3" },
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx4" },
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx5" },
-			{ wallet: "B62qtest2", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx6" },
-			{ wallet: "B62qtest2", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx7" },
-			{ wallet: "B62qtest3", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx11" }
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "BRIDGE_MINA_TO_ZEKO",
+				transactionHash: "tx2",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx3",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx4",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx5",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest2",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx6",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest2",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx7",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest3",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx11",
+				timestamp: getTimestamp()
+			}
 		]
 
 		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert: firstBatch })
@@ -179,19 +307,84 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 
 		// Simulate service restart from block 0: try to insert the same actions again + some new ones
 		const secondBatch: ActionToInsert[] = [
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx1" }, // Duplicate
-			{ wallet: "B62qtest1", actionType: "BRIDGE_MINA_TO_ZEKO", transactionHash: "tx2" }, // Duplicate
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx3" }, // Duplicate
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx4" }, // Duplicate
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx5" }, // Duplicate
-			{ wallet: "B62qtest2", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx6" }, // Duplicate
-			{ wallet: "B62qtest2", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx7" }, // Duplicate
-			{ wallet: "B62qtest2", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx8" }, // New
-			{ wallet: "B62qtest2", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx9" }, // New
-			{ wallet: "B62qtest2", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx10" }, // New (should exceed cap)
-			{ wallet: "B62qtest3", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx11" }, // Duplicate
-			{ wallet: "B62qtest3", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx12" }, // New (below cap)
-			{ wallet: "B62qtest3", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx13" } // New (below cap)
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			}, // Duplicate
+			{
+				wallet: "B62qtest1",
+				actionType: "BRIDGE_MINA_TO_ZEKO",
+				transactionHash: "tx2",
+				timestamp: getTimestamp()
+			}, // Duplicate
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx3",
+				timestamp: getTimestamp()
+			}, // Duplicate
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx4",
+				timestamp: getTimestamp()
+			}, // Duplicate
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx5",
+				timestamp: getTimestamp()
+			}, // Duplicate
+			{
+				wallet: "B62qtest2",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx6",
+				timestamp: getTimestamp()
+			}, // Duplicate
+			{
+				wallet: "B62qtest2",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx7",
+				timestamp: getTimestamp()
+			}, // Duplicate
+			{
+				wallet: "B62qtest2",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx8",
+				timestamp: getTimestamp()
+			}, // New
+			{
+				wallet: "B62qtest2",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx9",
+				timestamp: getTimestamp()
+			}, // New
+			{
+				wallet: "B62qtest2",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx10",
+				timestamp: getTimestamp()
+			}, // New (should exceed cap)
+			{
+				wallet: "B62qtest3",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx11",
+				timestamp: getTimestamp()
+			}, // Duplicate
+			{
+				wallet: "B62qtest3",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx12",
+				timestamp: getTimestamp()
+			}, // New (below cap)
+			{
+				wallet: "B62qtest3",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx13",
+				timestamp: getTimestamp()
+			} // New (below cap)
 		]
 
 		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert: secondBatch })
@@ -231,7 +424,12 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 		await batchInsertActionsAndUpdateLeaderboard({
 			db,
 			actionsToInsert: [
-				{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx1" }
+				{
+					wallet: "B62qtest1",
+					actionType: "FAUCET_ZEKO_TMINA",
+					transactionHash: "tx1",
+					timestamp: getTimestamp()
+				}
 			]
 		})
 
@@ -242,7 +440,12 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 		await batchInsertActionsAndUpdateLeaderboard({
 			db,
 			actionsToInsert: [
-				{ wallet: "B62qtest1", actionType: "BRIDGE_MINA_TO_ZEKO", transactionHash: "tx2" }
+				{
+					wallet: "B62qtest1",
+					actionType: "BRIDGE_MINA_TO_ZEKO",
+					transactionHash: "tx2",
+					timestamp: getTimestamp()
+				}
 			]
 		})
 
@@ -253,7 +456,7 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 		)
 	})
 
-	test("should handle daily strategy - count only today's actions", async () => {
+	test("should handle daily strategy - count actions from all days", async () => {
 		// Insert an old action manually (simulate yesterday)
 		const yesterday = new Date()
 		yesterday.setUTCDate(yesterday.getUTCDate() - 1)
@@ -267,17 +470,29 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 
 		// Now insert today's actions via batch
 		const actionsToInsert: ActionToInsert[] = [
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx1" },
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx2" }
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx2",
+				timestamp: getTimestamp()
+			}
 		]
 
 		// Use custom config with daily strategy for this specific test
+		const customConfig = {
+			FAUCET_ZEKO_TMINA: { points: 10, maxOccurrences: 3, strategy: "daily" as const }
+		}
+
 		await batchInsertActionsAndUpdateLeaderboard({
 			db,
 			actionsToInsert,
-			config: {
-				FAUCET_ZEKO_TMINA: { points: 10, maxOccurrences: 3, strategy: "daily" }
-			}
+			config: customConfig
 		})
 
 		const allActions = await db.select().from(actions).where(sql`wallet = 'B62qtest1'`)
@@ -285,9 +500,12 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 
 		expect(allActions).toHaveLength(3) // 1 old + 2 new
 		expect(allLeaderboard).toHaveLength(1)
-		// Daily strategy: only count today's 2 actions, capped at maxOccurrences=3
-		// 2 * 10 = 20
-		expect(allLeaderboard[0].score).toBe(20)
+
+		// Calculate expected: yesterday (1 action) + today (2 actions), capped per day
+		const expectedScore =
+			calculateActionScore("FAUCET_ZEKO_TMINA", 1, customConfig) +
+			calculateActionScore("FAUCET_ZEKO_TMINA", 2, customConfig)
+		expect(allLeaderboard[0].score).toBe(expectedScore)
 	})
 
 	test("should handle mixed strategies - once and daily", async () => {
@@ -315,43 +533,59 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 				timestamp: yesterday
 			}
 		])
+
 		// Insert today's actions
 		const actionsToInsert: ActionToInsert[] = [
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx_faucet_new" }, // Should be ignored (maxOccurrences=1 with 'once')
 			{
 				wallet: "B62qtest1",
-				actionType: "LUMINA_SWAP_MINA_TZEKO",
-				transactionHash: "tx_swap_new_1"
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx_faucet_new",
+				timestamp: getTimestamp()
 			},
 			{
 				wallet: "B62qtest1",
 				actionType: "LUMINA_SWAP_MINA_TZEKO",
-				transactionHash: "tx_swap_new_2"
+				transactionHash: "tx_swap_new_1",
+				timestamp: getTimestamp()
 			},
 			{
 				wallet: "B62qtest1",
 				actionType: "LUMINA_SWAP_MINA_TZEKO",
-				transactionHash: "tx_swap_new_3"
+				transactionHash: "tx_swap_new_2",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx_swap_new_3",
+				timestamp: getTimestamp()
 			}
 		]
 
 		// Use custom mixed config for this specific test
+		const customConfig = {
+			FAUCET_ZEKO_TMINA: { points: 10, maxOccurrences: 1, strategy: "once" as const },
+			LUMINA_SWAP_MINA_TZEKO: { points: 5, maxOccurrences: 10, strategy: "daily" as const }
+		}
+
 		await batchInsertActionsAndUpdateLeaderboard({
 			db,
 			actionsToInsert,
-			config: {
-				FAUCET_ZEKO_TMINA: { points: 10, maxOccurrences: 1, strategy: "once" },
-				LUMINA_SWAP_MINA_TZEKO: { points: 5, maxOccurrences: 10, strategy: "daily" }
-			}
+			config: customConfig
 		})
 
 		const allLeaderboard = await db.select().from(leaderboard)
 
 		expect(allLeaderboard).toHaveLength(1)
-		// FAUCET (once): min(2 total, 1) * 10 = 10
-		// SWAP (daily): min(3 today, 10) * 5 = 15
-		// Total: 25
-		expect(allLeaderboard[0].score).toBe(25)
+
+		// FAUCET (once): total 2 actions, capped at 1
+		// SWAP (daily): yesterday 2 actions, today 3 actions
+		const expectedScore =
+			calculateActionScore("FAUCET_ZEKO_TMINA", 2, customConfig) +
+			calculateActionScore("LUMINA_SWAP_MINA_TZEKO", 2, customConfig) +
+			calculateActionScore("LUMINA_SWAP_MINA_TZEKO", 3, customConfig)
+
+		expect(allLeaderboard[0].score).toBe(expectedScore)
 	})
 
 	test("should handle complex scenario with multiple wallets and strategies", async () => {
@@ -368,38 +602,71 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 
 		// Batch insert new actions
 		const actionsToInsert: ActionToInsert[] = [
-			// Wallet 1: Try to claim faucet again (should not count due to 'once' strategy)
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx1_new" },
+			// Wallet 1: Try to claim faucet again
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1_new",
+				timestamp: getTimestamp()
+			},
 			// Wallet 1: Swaps today
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx1_swap1" },
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx1_swap2" },
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx1_swap1",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx1_swap2",
+				timestamp: getTimestamp()
+			},
 			// Wallet 2: First faucet claim
-			{ wallet: "B62qtest2", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "tx2_faucet" },
+			{
+				wallet: "B62qtest2",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx2_faucet",
+				timestamp: getTimestamp()
+			},
 			// Wallet 2: Swaps today
-			{ wallet: "B62qtest2", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "tx2_swap1" }
+			{
+				wallet: "B62qtest2",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx2_swap1",
+				timestamp: getTimestamp()
+			}
 		]
 
 		// Use custom mixed config for this specific test
+		const customConfig = {
+			FAUCET_ZEKO_TMINA: { points: 10, maxOccurrences: 1, strategy: "once" as const },
+			LUMINA_SWAP_MINA_TZEKO: { points: 5, maxOccurrences: 10, strategy: "daily" as const }
+		}
+
 		await batchInsertActionsAndUpdateLeaderboard({
 			db,
 			actionsToInsert,
-			config: {
-				FAUCET_ZEKO_TMINA: { points: 10, maxOccurrences: 1, strategy: "once" },
-				LUMINA_SWAP_MINA_TZEKO: { points: 5, maxOccurrences: 10, strategy: "daily" }
-			}
+			config: customConfig
 		})
 
 		const allLeaderboard = await db.select().from(leaderboard).orderBy(leaderboard.wallet)
 
 		expect(allLeaderboard).toHaveLength(2)
 
-		// Wallet 1: FAUCET (once, already claimed) = 10, SWAP (daily, 2 today) = 10 => 20
+		// Wallet 1: FAUCET (once, 2 total) + SWAP (daily, 2 today)
+		const wallet1Score =
+			calculateActionScore("FAUCET_ZEKO_TMINA", 2, customConfig) +
+			calculateActionScore("LUMINA_SWAP_MINA_TZEKO", 2, customConfig)
 		expect(allLeaderboard[0].wallet).toBe("B62qtest1")
-		expect(allLeaderboard[0].score).toBe(20)
+		expect(allLeaderboard[0].score).toBe(wallet1Score)
 
-		// Wallet 2: FAUCET (once, 1) = 10, SWAP (daily, 1 today) = 5 => 15
+		// Wallet 2: FAUCET (once, 1) + SWAP (daily, 1 today)
+		const wallet2Score =
+			calculateActionScore("FAUCET_ZEKO_TMINA", 1, customConfig) +
+			calculateActionScore("LUMINA_SWAP_MINA_TZEKO", 1, customConfig)
 		expect(allLeaderboard[1].wallet).toBe("B62qtest2")
-		expect(allLeaderboard[1].score).toBe(15)
+		expect(allLeaderboard[1].score).toBe(wallet2Score)
 	})
 
 	test("PRODUCTION: should enforce 'once' strategy caps even with excessive actions", async () => {
@@ -408,17 +675,20 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 			...Array.from({ length: 10 }, (_, i) => ({
 				wallet: "B62qtest1" as const,
 				actionType: "FAUCET_ZEKO_TMINA" as const,
-				transactionHash: `faucet_${i}`
+				transactionHash: `faucet_${i}`,
+				timestamp: getTimestamp()
 			})),
 			...Array.from({ length: 10 }, (_, i) => ({
 				wallet: "B62qtest1" as const,
 				actionType: "BRIDGE_MINA_TO_ZEKO" as const,
-				transactionHash: `deposit_${i}`
+				transactionHash: `deposit_${i}`,
+				timestamp: getTimestamp()
 			})),
 			...Array.from({ length: 10 }, (_, i) => ({
 				wallet: "B62qtest1" as const,
 				actionType: "BRIDGE_ZEKO_TO_MINA" as const,
-				transactionHash: `withdrawal_${i}`
+				transactionHash: `withdrawal_${i}`,
+				timestamp: getTimestamp()
 			}))
 		]
 
@@ -442,12 +712,14 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 			...Array.from({ length: 50 }, (_, i) => ({
 				wallet: "B62qtest1" as const,
 				actionType: "LUMINA_SWAP_MINA_TZEKO" as const,
-				transactionHash: `swap_${i}`
+				transactionHash: `swap_${i}`,
+				timestamp: getTimestamp()
 			})),
 			...Array.from({ length: 20 }, (_, i) => ({
 				wallet: "B62qtest1" as const,
 				actionType: "LUMINA_ADD_LIQUIDITY_MINA_TZEKO" as const,
-				transactionHash: `liquidity_${i}`
+				transactionHash: `liquidity_${i}`,
+				timestamp: getTimestamp()
 			}))
 		]
 
@@ -468,14 +740,30 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 	test("PRODUCTION: should calculate max possible score correctly", async () => {
 		const actionsToInsert: ActionToInsert[] = [
 			// All 'once' actions
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "faucet" },
-			{ wallet: "B62qtest1", actionType: "BRIDGE_MINA_TO_ZEKO", transactionHash: "deposit" },
-			{ wallet: "B62qtest1", actionType: "BRIDGE_ZEKO_TO_MINA", transactionHash: "withdrawal" },
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "faucet",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "BRIDGE_MINA_TO_ZEKO",
+				transactionHash: "deposit",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "BRIDGE_ZEKO_TO_MINA",
+				transactionHash: "withdrawal",
+				timestamp: getTimestamp()
+			},
 			// Max daily swaps
 			...Array.from({ length: scoreConfig.LUMINA_SWAP_MINA_TZEKO.maxOccurrences }, (_, i) => ({
 				wallet: "B62qtest1" as const,
 				actionType: "LUMINA_SWAP_MINA_TZEKO" as const,
-				transactionHash: `swap_${i}`
+				transactionHash: `swap_${i}`,
+				timestamp: getTimestamp()
 			})),
 			// Max daily liquidity
 			...Array.from(
@@ -483,7 +771,8 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 				(_, i) => ({
 					wallet: "B62qtest1" as const,
 					actionType: "LUMINA_ADD_LIQUIDITY_MINA_TZEKO" as const,
-					transactionHash: `liquidity_${i}`
+					transactionHash: `liquidity_${i}`,
+					timestamp: getTimestamp()
 				})
 			)
 		]
@@ -527,7 +816,8 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 		const actionsToInsert = Array.from({ length: maxSwaps }, (_, i) => ({
 			wallet: "B62qtest1" as const,
 			actionType: "LUMINA_SWAP_MINA_TZEKO" as const,
-			transactionHash: `swap_today_${i}`
+			transactionHash: `swap_today_${i}`,
+			timestamp: getTimestamp()
 		}))
 
 		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
@@ -537,40 +827,12 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 
 		expect(allActions).toHaveLength(maxSwaps * 2)
 		expect(allLeaderboard).toHaveLength(1)
-		// Should count only today's swaps
-		expect(allLeaderboard[0].score).toBe(
-			calculateExpectedScore({ LUMINA_SWAP_MINA_TZEKO: maxSwaps })
-		)
-	})
 
-	test("PRODUCTION: once strategy persists across days", async () => {
-		const yesterday = new Date()
-		yesterday.setUTCDate(yesterday.getUTCDate() - 1)
-
-		// User claimed faucet yesterday
-		await db.insert(actions).values({
-			wallet: "B62qtest1",
-			actionType: "FAUCET_ZEKO_TMINA",
-			transactionHash: "faucet_yesterday",
-			timestamp: yesterday
-		})
-
-		// User tries to claim again today - should not get more points
-		const actionsToInsert = Array.from({ length: 2 }, (_, i) => ({
-			wallet: "B62qtest1" as const,
-			actionType: "FAUCET_ZEKO_TMINA" as const,
-			transactionHash: `faucet_today_${i + 1}`
-		}))
-
-		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
-
-		const allActions = await db.select().from(actions).where(sql`wallet = 'B62qtest1'`)
-		const allLeaderboard = await db.select().from(leaderboard)
-
-		expect(allActions).toHaveLength(3) // All 3 actions recorded
-		expect(allLeaderboard).toHaveLength(1)
-		// Capped by maxOccurrences for 'once' strategy
-		expect(allLeaderboard[0].score).toBe(calculateExpectedScore({ FAUCET_ZEKO_TMINA: 3 }))
+		// Daily strategy: yesterday's swaps + today's swaps, each day capped
+		const expectedScore =
+			calculateActionScore("LUMINA_SWAP_MINA_TZEKO", maxSwaps) +
+			calculateActionScore("LUMINA_SWAP_MINA_TZEKO", maxSwaps)
+		expect(allLeaderboard[0].score).toBe(expectedScore)
 	})
 
 	test("PRODUCTION: multiple batches throughout the day", async () => {
@@ -580,7 +842,8 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 			actionsToInsert: Array.from({ length: 3 }, (_, i) => ({
 				wallet: "B62qtest1" as const,
 				actionType: "LUMINA_SWAP_MINA_TZEKO" as const,
-				transactionHash: `swap_${i + 1}`
+				transactionHash: `swap_${i + 1}`,
+				timestamp: getTimestamp()
 			}))
 		})
 
@@ -594,9 +857,15 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 				...Array.from({ length: 2 }, (_, i) => ({
 					wallet: "B62qtest1" as const,
 					actionType: "LUMINA_SWAP_MINA_TZEKO" as const,
-					transactionHash: `swap_${i + 4}`
+					transactionHash: `swap_${i + 4}`,
+					timestamp: getTimestamp()
 				})),
-				{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "faucet_1" }
+				{
+					wallet: "B62qtest1",
+					actionType: "FAUCET_ZEKO_TMINA",
+					transactionHash: "faucet_1",
+					timestamp: getTimestamp()
+				}
 			]
 		})
 		const leaderboard2 = await db.select().from(leaderboard)
@@ -611,12 +880,14 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 				...Array.from({ length: 7 }, (_, i) => ({
 					wallet: "B62qtest1" as const,
 					actionType: "LUMINA_SWAP_MINA_TZEKO" as const,
-					transactionHash: `swap_${i + 6}`
+					transactionHash: `swap_${i + 6}`,
+					timestamp: getTimestamp()
 				})),
 				...Array.from({ length: 2 }, (_, i) => ({
 					wallet: "B62qtest1" as const,
 					actionType: "LUMINA_ADD_LIQUIDITY_MINA_TZEKO" as const,
-					transactionHash: `liquidity_${i + 1}`
+					transactionHash: `liquidity_${i + 1}`,
+					timestamp: getTimestamp()
 				}))
 			]
 		})
@@ -637,12 +908,23 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 		const actionsToInsert = Array.from({ length: walletCount }, (_, i) => {
 			const wallet = `B62qtest${i.toString().padStart(3, "0")}`
 			return [
-				{ wallet, actionType: "FAUCET_ZEKO_TMINA" as const, transactionHash: `faucet_${i}` },
-				{ wallet, actionType: "BRIDGE_MINA_TO_ZEKO" as const, transactionHash: `deposit_${i}` },
+				{
+					wallet,
+					actionType: "FAUCET_ZEKO_TMINA" as const,
+					transactionHash: `faucet_${i}`,
+					timestamp: getTimestamp()
+				},
+				{
+					wallet,
+					actionType: "BRIDGE_MINA_TO_ZEKO" as const,
+					transactionHash: `deposit_${i}`,
+					timestamp: getTimestamp()
+				},
 				...Array.from({ length: 3 }, (_, j) => ({
 					wallet,
 					actionType: "LUMINA_SWAP_MINA_TZEKO" as const,
-					transactionHash: `swap_${i}_${j + 1}`
+					transactionHash: `swap_${i}_${j + 1}`,
+					timestamp: getTimestamp()
 				}))
 			]
 		}).flat()
@@ -667,18 +949,44 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 	test("PRODUCTION: handles partial success - some wallets exceed caps", async () => {
 		const actionsToInsert: ActionToInsert[] = [
 			// Wallet 1: Normal usage
-			{ wallet: "B62qtest1", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "w1_faucet" },
-			{ wallet: "B62qtest1", actionType: "LUMINA_SWAP_MINA_TZEKO", transactionHash: "w1_swap_1" },
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "w1_faucet",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "w1_swap_1",
+				timestamp: getTimestamp()
+			},
 			// Wallet 2: Exceeds swap cap
-			{ wallet: "B62qtest2", actionType: "FAUCET_ZEKO_TMINA", transactionHash: "w2_faucet" },
+			{
+				wallet: "B62qtest2",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "w2_faucet",
+				timestamp: getTimestamp()
+			},
 			...Array.from({ length: 15 }, (_, i) => ({
 				wallet: "B62qtest2" as const,
 				actionType: "LUMINA_SWAP_MINA_TZEKO" as const,
-				transactionHash: `w2_swap_${i}`
+				transactionHash: `w2_swap_${i}`,
+				timestamp: getTimestamp()
 			})),
 			// Wallet 3: Only bridge actions
-			{ wallet: "B62qtest3", actionType: "BRIDGE_MINA_TO_ZEKO", transactionHash: "w3_deposit" },
-			{ wallet: "B62qtest3", actionType: "BRIDGE_ZEKO_TO_MINA", transactionHash: "w3_withdrawal" }
+			{
+				wallet: "B62qtest3",
+				actionType: "BRIDGE_MINA_TO_ZEKO",
+				transactionHash: "w3_deposit",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest3",
+				actionType: "BRIDGE_ZEKO_TO_MINA",
+				transactionHash: "w3_withdrawal",
+				timestamp: getTimestamp()
+			}
 		]
 
 		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
@@ -762,12 +1070,14 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 			...Array.from({ length: 5 }, (_, i) => ({
 				wallet: "B62qtest1" as const,
 				actionType: "LUMINA_SWAP_MINA_TZEKO" as const,
-				transactionHash: `swap_today_${i}`
+				transactionHash: `swap_today_${i}`,
+				timestamp: getTimestamp()
 			})),
 			{
 				wallet: "B62qtest1" as const,
 				actionType: "LUMINA_ADD_LIQUIDITY_MINA_TZEKO" as const,
-				transactionHash: "liquidity_today"
+				transactionHash: "liquidity_today",
+				timestamp: getTimestamp()
 			}
 		]
 
@@ -779,14 +1089,55 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 		expect(allActions).toHaveLength(maxSwaps * 2 + maxLiquidity + 2 + 5 + 1)
 		expect(allLeaderboard).toHaveLength(1)
 
-		// 'once' actions from any day + 'daily' actions from today only
-		expect(allLeaderboard[0].score).toBe(
-			calculateExpectedScore({
-				FAUCET_ZEKO_TMINA: 1,
-				BRIDGE_MINA_TO_ZEKO: 1,
-				LUMINA_SWAP_MINA_TZEKO: 5,
-				LUMINA_ADD_LIQUIDITY_MINA_TZEKO: 1
-			})
-		)
+		// Calculate expected score:
+		// 'once' actions: count total, apply cap once
+		const onceScore =
+			calculateActionScore("FAUCET_ZEKO_TMINA", 1) + calculateActionScore("BRIDGE_MINA_TO_ZEKO", 1)
+
+		// 'daily' actions: count per day, apply cap per day, then sum
+		const dailyScore =
+			// Two days ago: maxSwaps swaps + maxLiquidity liquidity
+			calculateActionScore("LUMINA_SWAP_MINA_TZEKO", maxSwaps) +
+			calculateActionScore("LUMINA_ADD_LIQUIDITY_MINA_TZEKO", maxLiquidity) +
+			// Yesterday: maxSwaps swaps
+			calculateActionScore("LUMINA_SWAP_MINA_TZEKO", maxSwaps) +
+			// Today: 5 swaps + 1 liquidity
+			calculateActionScore("LUMINA_SWAP_MINA_TZEKO", 5) +
+			calculateActionScore("LUMINA_ADD_LIQUIDITY_MINA_TZEKO", 1)
+
+		expect(allLeaderboard[0].score).toBe(onceScore + dailyScore)
+	})
+
+	test("CRITICAL: daily strategy should accumulate points across ALL historical days", async () => {
+		const wallet = "B62qtest_historical"
+		const swapsPerDay = 3
+		const daysCount = 30
+
+		// Create actions for 30 consecutive days
+		const now = new Date()
+		const actionsToInsert: ActionToInsert[] = Array.from({ length: daysCount }, (_, dayOffset) => {
+			const actionDate = new Date(now)
+			actionDate.setDate(actionDate.getDate() - dayOffset)
+			actionDate.setHours(12, 0, 0, 0)
+
+			return Array.from({ length: swapsPerDay }, (_, swapIndex) => ({
+				wallet,
+				actionType: "LUMINA_SWAP_MINA_TZEKO" as const,
+				transactionHash: `swap_day${dayOffset}_${swapIndex}`,
+				timestamp: actionDate.getTime().toString()
+			}))
+		}).flat()
+
+		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
+
+		const leaderboardData = await db.select().from(leaderboard).where(sql`wallet = ${wallet}`)
+		const allActions = await db.select().from(actions).where(sql`wallet = ${wallet}`)
+
+		expect(allActions).toHaveLength(daysCount * swapsPerDay)
+		expect(leaderboardData).toHaveLength(1)
+
+		// Daily strategy: each day gets points for actions, capped per day
+		const expectedScore = calculateScoreWithDailyStrategy(actionsToInsert)
+		expect(leaderboardData[0].score).toBe(expectedScore)
 	})
 })

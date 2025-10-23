@@ -1,18 +1,26 @@
 import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 const processAddLiquidityEvent = async (events: ArchiveEvents) => {
-	const parseAddLiquidityEvents = (data: string[]) => {
+	const parse = (data: string[], timestamp: string, transactionHash: string) => {
 		const pubk = getPubK(data)
 		return {
 			sender: pubk(1, 2),
 			amountIn: data[3],
-			amountOut: data[4]
+			amountOut: data[4],
+			timestamp,
+			transactionHash
 		}
 	}
 	const addLiquidityData = events
 		//TODO: Verify event is #0
 		.filter((e) => e?.eventData?.[0]?.data[0] === "0")
-		.map((e) => parseAddLiquidityEvents(e?.eventData?.[0]?.data.filter(Boolean) ?? []))
+		.map((e) =>
+			parse(
+				e?.eventData?.[0]?.data.filter(Boolean) ?? [],
+				e?.blockInfo?.timestamp ?? Date.now().toString(),
+				e?.eventData?.[0]?.transactionInfo?.hash ?? `liquidity_error_${Date.now()}`
+			)
+		)
 
 	return addLiquidityData
 }

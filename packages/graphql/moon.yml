@@ -18,13 +18,13 @@ tasks:
     outputs:
       - dist/**
   lint:
-    command: biome lint
+    command: biome check --formatter-enabled=false
     inputs:
-      - "@globs(src)"
+      - "@group(src)"
   lint-fix:
-    command: biome lint --fix --unsafe
+    command: biome check --formatter-enabled=false --write
     inputs:
-      - "@globs(src)"
+      - "@group(src)"
   typecheck:
     command: tsc --noEmit
     inputs:

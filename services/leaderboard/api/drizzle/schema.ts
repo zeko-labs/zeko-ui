@@ -20,14 +20,11 @@ export const actions = pgTable(
 		transactionHash: text().notNull().unique(),
 		timestamp: timestamp().notNull().defaultNow()
 	},
-	(table) => [index("wallet:action_type|index").on(table.wallet, table.actionType)]
+	(table) => [
+		// Composite index for daily strategy performance (used in CTE queries)
+		index("wallet:action_type:timestamp|index").on(table.wallet, table.actionType, table.timestamp)
+	]
 )
-
-export const zekoTransactions = pgTable("Zeko_Transactions", {
-	id: uuid().primaryKey().default(uuidv7),
-	transactionHash: text().notNull().unique(),
-	timestamp: timestamp().notNull().defaultNow()
-})
 
 export const manualAdjustments = pgTable("Manual_Adjustments", {
 	id: uuid().primaryKey().default(uuidv7),

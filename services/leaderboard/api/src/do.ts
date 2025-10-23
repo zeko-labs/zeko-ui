@@ -44,7 +44,6 @@ export class DistributorDO extends DurableObject<Env> {
 	 * The distributor creates its own stub to the UserDO.
 	 */
 	async subscribe(userId: string) {
-		// Create our own stub to the UserDO
 		const userDoId = this.env.USER_DO.idFromName(userId)
 		const userDoStub = this.env.USER_DO.get(userDoId)
 
@@ -71,14 +70,12 @@ export class DistributorDO extends DurableObject<Env> {
 			`[DistributorDO:${this.#shardId}] Broadcasting to ${this.#subscribers.size} subscribers`
 		)
 
-		// Fan out to all subscribers in parallel
 		const promises = Array.from(this.#subscribers.entries()).map(([userId, stub]) =>
 			stub.receiveMessage(payload).catch((error) => {
 				console.error(
 					`[DistributorDO:${this.#shardId}] Failed to deliver to user ${userId}:`,
 					error
 				)
-				// Automatically remove failed subscriber (handles disconnections)
 				this.#subscribers.delete(userId)
 				return null
 			})
@@ -117,7 +114,7 @@ export class UserDo extends DurableObject<Env> {
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env)
 
-		// Restore state if waking from hibernation
+		// hibernation
 		const sockets = this.ctx.getWebSockets()
 		if (sockets.length > 0) {
 			const attachment = sockets[0].deserializeAttachment()
@@ -142,19 +139,12 @@ export class UserDo extends DurableObject<Env> {
 	 */
 	async fetch(request: Request) {
 		if (request.url.endsWith("/websocket")) {
-			// Expect to receive a WebSocket Upgrade request.
-			// If there is one, accept the request and return a WebSocket Response.
 			const upgradeHeader = request.headers.get("Upgrade")
 			if (!upgradeHeader || upgradeHeader !== "websocket") {
 				return new Response("Durable Object expected Upgrade: websocket", { status: 426 })
 			}
 
-			// Extract userId from X-User-ID header, or generate anonymous ID
-			let userId = request.headers.get("X-User-ID")
-			if (!userId) {
-				// Generate anonymous user ID for unauthenticated users
-				userId = `anon-${crypto.randomUUID()}`
-			}
+			const userId = request.headers.get("X-User-ID") ?? `anon-${crypto.randomUUID()}`
 
 			return this.createWebSocketClientResponse(userId)
 		}
@@ -169,26 +159,21 @@ export class UserDo extends DurableObject<Env> {
 	 * Could not serialize object of type "WebSocket". This type does not support serialization.
 	 */
 	createWebSocketClientResponse(userId: string) {
-		// Creates two ends of a WebSocket connection.
 		const webSocketPair = new WebSocketPair()
 		const [client, server] = Object.values(webSocketPair)
 		if (!client || !server) throw new Error("Failed to create WebSocket pair.")
 
-		// Calculate shard ID before accepting
 		const distributorShardId = this.calculateShardId(userId)
 		this.#distributorShardId = distributorShardId
 
-		// Serialize state for hibernation recovery
+		// hibernation
 		server.serializeAttachment({
 			userId,
 			shardId: distributorShardId,
-			isSubscribed: false // Will be set to true after subscription
+			isSubscribed: false
 		})
-
-		// Implement an Hibernating DO.
 		this.ctx.acceptWebSocket(server)
 
-		// After accepting the WebSocket, subscribe to the DistributorDO
 		this.subscribeToDistributor(userId).catch((error) => {
 			console.error(`[UserDO:${userId}] Failed to subscribe to distributor:`, error)
 		})
@@ -205,12 +190,10 @@ export class UserDo extends DurableObject<Env> {
 
 		const distributorName = `distributor-${this.#distributorShardId}`
 
-		// Get the DistributorDO stub and set its shard ID
 		const distributorId = this.env.DISTRIBUTOR_DO.idFromName(distributorName)
 		const distributorStub = this.env.DISTRIBUTOR_DO.get(distributorId)
 		distributorStub.setShardId(distributorName)
 
-		// Subscribe via RPC - distributor will create its own stub to this UserDO
 		await distributorStub.subscribe(userId)
 		this.#isSubscribed = true
 
@@ -241,7 +224,6 @@ export class UserDo extends DurableObject<Env> {
 		const sockets = this.ctx.getWebSockets()
 		if (sockets.length === 0) {
 			console.warn(`[UserDO:${this.#userId}] No active WebSocket connections`)
-			// Throw error to signal DistributorDO to remove this subscriber
 			throw new Error("No active WebSocket connections")
 		}
 
@@ -251,7 +233,6 @@ export class UserDo extends DurableObject<Env> {
 				ws.send(message)
 			} catch (error) {
 				console.error(`[UserDO:${this.#userId}] Failed to send message:`, error)
-				// Throw error to signal DistributorDO to remove this subscriber
 				throw error
 			}
 		}
@@ -259,19 +240,14 @@ export class UserDo extends DurableObject<Env> {
 		return { success: true, deliveredTo: sockets.length }
 	}
 
+	// The WebSocket is server-to-client only for broadcasts.
 	async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
-		// Client messages are not expected in this architecture.
-		// The WebSocket is server-to-client only for broadcasts.
-		// Extract userId from attachment
 		const attachment = ws.deserializeAttachment()
 		const userId = attachment?.userId ?? "unknown"
 		console.log(`[UserDO:${userId}] Client message received (unexpected):`, { message })
 	}
 
 	async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
-		// When the WebSocket closes, we don't need to explicitly unsubscribe.
-		// The DistributorDO will automatically remove this subscriber when
-		// the next broadcast attempt fails.
 		const attachment = ws.deserializeAttachment()
 		const userId = attachment?.userId ?? "unknown"
 		console.log(`[UserDO:${userId}] WebSocket closed:`, {

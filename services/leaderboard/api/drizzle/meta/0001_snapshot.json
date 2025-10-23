@@ -1,5 +1,5 @@
 {
-	"id": "f03b253e-d93a-4e91-862a-f9fa795b888c",
+	"id": "b41b5c17-432a-4f90-9246-7114adf9f1ff",
 	"prevId": "21cf3c71-54df-4b46-a9e4-8c06fca6ccc8",
 	"version": "7",
 	"dialect": "postgresql",
@@ -42,8 +42,8 @@
 				}
 			},
 			"indexes": {
-				"wallet:action_type|index": {
-					"name": "wallet:action_type|index",
+				"wallet:action_type:timestamp|index": {
+					"name": "wallet:action_type:timestamp|index",
 					"columns": [
 						{
 							"expression": "wallet",
@@ -53,6 +53,12 @@
 						},
 						{
 							"expression": "actionType",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "timestamp",
 							"isExpression": false,
 							"asc": true,
 							"nulls": "last"
@@ -179,45 +185,6 @@
 			"foreignKeys": {},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
-			"policies": {},
-			"checkConstraints": {},
-			"isRLSEnabled": false
-		},
-		"public.Zeko_Transactions": {
-			"name": "Zeko_Transactions",
-			"schema": "",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "uuid",
-					"primaryKey": true,
-					"notNull": true,
-					"default": "gen_random_uuid_v7()"
-				},
-				"transactionHash": {
-					"name": "transactionHash",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"timestamp": {
-					"name": "timestamp",
-					"type": "timestamp",
-					"primaryKey": false,
-					"notNull": true,
-					"default": "now()"
-				}
-			},
-			"indexes": {},
-			"foreignKeys": {},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {
-				"Zeko_Transactions_transactionHash_unique": {
-					"name": "Zeko_Transactions_transactionHash_unique",
-					"nullsNotDistinct": false,
-					"columns": ["transactionHash"]
-				}
-			},
 			"policies": {},
 			"checkConstraints": {},
 			"isRLSEnabled": false
