@@ -1,4 +1,4 @@
-import { type ArchiveEvents, BridgeAddress, fetchArchiveEvents, getPubK, logger } from "../helper"
+import { type ArchiveEvents, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 //https://github.com/zeko-labs/zeko/blob/compatible/src/app/zeko/circuits/bridge_state.ml#L160-L166
 //   type t =
@@ -28,6 +28,7 @@ const processDepositEvents = async (events: ArchiveEvents) => {
 
 export const score = {
 	key: "BRIDGE_MINA_TO_ZEKO",
+	address: "B62qpXxjsnR6XfV8KUGobiiYqiSjvHq59KKhXgvSXL61pSffKc8ggcb",
 	points: 20,
 	maxOccurences: 1,
 	strategy: "once"
@@ -35,7 +36,7 @@ export const score = {
 
 export const handler = {
 	fetch: async (fromBlock: number, toBlock?: number) => {
-		const events = await fetchArchiveEvents({ address: BridgeAddress, fromBlock, toBlock })
+		const events = await fetchArchiveEvents({ address: score.address, fromBlock, toBlock })
 		logger.success(
 			`Fetched ${events.length} ${score.key} events from blocks ${fromBlock} to ${toBlock}`
 		)

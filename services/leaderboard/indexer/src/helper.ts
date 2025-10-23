@@ -5,7 +5,6 @@ import { Field, PublicKey } from "o1js"
 
 //TODO: Replace with pool address
 export const TZEKO_MINA = "B62qjGGHziBe9brhAC4zkvQa2dyN7nisKnAhKC7rasGFtW31GiuTZoY"
-export const BridgeAddress = "bridgeAddress"
 
 const MAX_BLOCKS_PER_FETCH = 10000
 
