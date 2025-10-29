@@ -237,9 +237,9 @@ export async function wait(seconds: number): Promise<void> {
 export function broadcast() {
 	try {
 		logger.info(
-			`[Mock] Triggering broadcast to all 100 distributor shards via ${env.BROADCAST_URL}`
+			`[broadcast] Triggering broadcast to all 100 distributor shards via ${env.BROADCAST_URL}`
 		)
-		logger.info("[Mock] Each distributor will contact its subscribed users")
+		logger.info("[broadcast] Each distributor will contact its subscribed users")
 
 		fetch(`${env.BROADCAST_URL}/broadcast`, {
 			method: "POST",
