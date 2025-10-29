@@ -9,8 +9,8 @@ export default defineConfig({
 		"./src/zeko-archive.ts"
 	],
 	platform: "neutral",
-	dts: true,
-	tsconfig: "./tsconfig.build.json"
+	dts: true
+	// tsconfig: "./tsconfig.build.json"
 	// This change the package.json formatting, un-comment when needed.
 	// exports: {
 	// 	devExports: true

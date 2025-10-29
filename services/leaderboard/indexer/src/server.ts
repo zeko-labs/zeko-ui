@@ -2,7 +2,7 @@ import { bearer } from "@elysiajs/bearer"
 import { cors } from "@elysiajs/cors"
 import { Elysia, t } from "elysia"
 import { createDatabase } from "./db"
-import { triggerDistributorBroadcast } from "./helper"
+import { broadcast } from "./helper"
 import { Indexer } from "./indexer"
 
 const db = createDatabase()
@@ -44,7 +44,7 @@ export const createServer = () =>
 			const result = indexer.stop()
 			return status(result.success ? 200 : 500, result)
 		})
-		.post("/broadcast", () => triggerDistributorBroadcast())
+		.post("/broadcast", () => broadcast())
 		.post("/recalculate", async ({ status }) => {
 			const result = await indexer.recalculate()
 			return status(result.success ? 200 : 500, result)

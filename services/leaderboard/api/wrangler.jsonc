@@ -3,14 +3,21 @@
 	"compatibility_date": "2025-10-08",
 	"name": "leaderboard-api",
 	"main": "src/index.ts",
+	"preview_urls": true,
+	"compatibility_flags": ["nodejs_compat"],
 	"observability": {
 		"enabled": true
 	},
+	"routes": [{ "custom_domain": true, "pattern": "api.leaderboard.zeko.io" }],
 	"durable_objects": {
 		"bindings": [
 			{ "name": "USER_DO", "class_name": "UserDo" },
 			{ "name": "DISTRIBUTOR_DO", "class_name": "DistributorDO" }
 		]
 	},
-	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserDo", "DistributorDO"] }]
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserDo", "DistributorDO"] }],
+	"hyperdrive": [
+		{ "binding": "HYPERDRIVE", "id": "e93bc279913c4b549464d535ca9f0c6d" },
+		{ "binding": "HYPERDRIVE_NO_CACHE", "id": "b304d3ab823044d189cc332dfcc21ff6" }
+	]
 }

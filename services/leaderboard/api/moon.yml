@@ -11,14 +11,25 @@ fileGroups:
     - drizzle.config.ts
     - package.json
     - tsconfig.json
+    - tsdown.config.ts
   tests:
     - tests/**/*
     - vitest.config.ts
+
+dependsOn:
+  - graphql
 
 tasks:
   dev:
     command: wrangler dev
     preset: "server"
+  build:
+    command: tsdown
+    deps: [^:build]
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - dist/**
   test-integration:
     command: vitest run
     inputs:

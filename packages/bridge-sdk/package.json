@@ -16,16 +16,16 @@
 	},
 	"devDependencies": {
 		"@types/node": "^20.8.10",
-		"gql.tada": "^1.8.13",
-		"tsdown": "^0.13.4",
-		"typescript": "^5.9.2"
+		"gql.tada": "catalog:graphql",
+		"tsdown": "catalog:",
+		"typescript": "catalog:"
 	},
 	"dependencies": {
 		"@zeko/graphql": "workspace:^",
 		"@urql/exchange-retry": "^1.3.0",
 		"o1js": "catalog:",
 		"urql": "^4.2.2",
-		"valibot": "^1.1.0"
+		"valibot": "catalog:"
 	},
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
