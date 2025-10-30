@@ -2,23 +2,28 @@
 	"name": "@leaderboard/api",
 	"private": true,
 	"type": "module",
-	"dependencies": {
-		"@pothos/core": "^4.10.0",
-		"consola": "^3.4.0",
-		"drizzle-orm": "catalog:",
-		"graphql": "^16.11.0",
-		"graphql-yoga": "^5.14.0",
-		"postgres": "catalog:"
-	},
+	"main": "./dist/module.js",
+	"module": "./dist/module.js",
+	"types": "./dist/module.d.ts",
 	"exports": {
-		".": "./module.ts"
+		".": "./dist/module.js",
+		"./package.json": "./package.json"
+	},
+	"dependencies": {
+		"@pothos/core": "catalog:graphql",
+		"consola": "catalog:",
+		"drizzle-orm": "catalog:",
+		"graphql": "catalog:graphql",
+		"graphql-yoga": "catalog:graphql",
+		"postgres": "catalog:"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",
-		"@cloudflare/vitest-pool-workers": "^0.9.12",
+		"@cloudflare/vitest-pool-workers": "catalog:",
 		"@types/bun": "catalog:",
 		"drizzle-kit": "catalog:",
 		"drizzle-seed": "catalog:",
+		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
 		"wrangler": "catalog:"

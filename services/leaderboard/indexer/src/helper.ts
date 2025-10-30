@@ -3,6 +3,7 @@ import { FetchZekoArchiveEvents } from "@zeko/graphql/zeko-archive"
 import { createConsola } from "consola"
 import type { ResultOf } from "gql.tada"
 import { Field, PublicKey } from "o1js"
+import { env } from "./env"
 
 /**
  * Archive Events Fetching Logic
@@ -233,23 +234,19 @@ export async function wait(seconds: number): Promise<void> {
  * This will contact the API service which will broadcast to all DOs
  * Mock implementation for now
  */
-export async function triggerDistributorBroadcast() {
-	const API_URL = process.env.API_URL || "http://localhost:8787"
-
+export function broadcast() {
 	try {
-		// Mock: In production, this would POST to /api/broadcast or similar
-		logger.info(`[Mock] Triggering broadcast to all 100 distributor shards via ${API_URL}`)
-		logger.info("[Mock] Each distributor will contact its subscribed users")
+		logger.info(
+			`[broadcast] Triggering broadcast to all 100 distributor shards via ${env.BROADCAST_URL}`
+		)
+		logger.info("[broadcast] Each distributor will contact its subscribed users")
 
-		// TODO: Implement actual HTTP request to API service
-		// const response = await fetch(`${API_URL}/api/broadcast`, {
-		//   method: 'POST',
-		//   headers: { 'Content-Type': 'application/json' },
-		//   body: JSON.stringify({
-		//     type: 'LEADERBOARD_UPDATE',
-		//     timestamp: Date.now()
-		//   })
-		// })
+		fetch(`${env.BROADCAST_URL}/broadcast`, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${env.AUTH_TOKEN}`
+			}
+		})
 		return { success: true }
 	} catch (error) {
 		logger.error("Error triggering distributor broadcast:", error)

@@ -2,28 +2,33 @@
 	"name": "@zeko/leaderboard",
 	"private": true,
 	"type": "module",
+	"main": "./dist/server.js",
+	"module": "./dist/server.js",
 	"exports": {
-		".": "./src/server.ts"
+		".": "./dist/server.js",
+		"./package.json": "./package.json"
 	},
 	"dependencies": {
-		"@elysiajs/bearer": "^1.4.1",
-		"@elysiajs/cors": "^1.4.0",
-		"@elysiajs/eden": "^1.4.4",
+		"@elysiajs/bearer": "catalog:elysia",
+		"@elysiajs/cors": "catalog:elysia",
+		"@elysiajs/eden": "catalog:elysia",
 		"@leaderboard/api": "workspace:^",
 		"@lumina-dex/sdk": "catalog:",
 		"@zeko/graphql": "workspace:^",
-		"consola": "^3.4.2",
+		"consola": "catalog:",
 		"drizzle-orm": "catalog:",
-		"elysia": "^1.4.12",
-		"memoirist": "^0.4.0",
+		"elysia": "catalog:elysia",
+		"memoirist": "catalog:elysia",
 		"o1js": "catalog:",
 		"p-limit": "catalog:",
-		"postgres": "catalog:"
+		"postgres": "catalog:",
+		"valibot": "catalog:"
 	},
 	"devDependencies": {
 		"@types/bun": "catalog:",
-		"gql.tada": "catalog:",
-		"type-fest": "^4.41.0",
+		"gql.tada": "catalog:graphql",
+		"tsdown": "catalog:",
+		"type-fest": "catalog:",
 		"vitest": "catalog:"
 	}
 }

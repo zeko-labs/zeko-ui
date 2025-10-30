@@ -10,14 +10,25 @@ fileGroups:
     - src/**/*
     - moon.yml
     - package.json
-    - tsconfig.json
   tests:
     - test/**/*
     - vitest.config.ts
+
+dependsOn:
+  - lb-api
+  - graphql
+
 tasks:
   dev:
     command: bun --watch src/index.ts
     preset: server
+  build:
+    command: tsdown
+    deps: [^:build]
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - dist/index.js
   start:
     command: bun src/index.ts
     preset: server

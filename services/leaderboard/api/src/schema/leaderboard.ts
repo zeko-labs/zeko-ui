@@ -158,7 +158,7 @@ builder.queryType({
 			type: LeaderboardResultObject,
 			args: { input: t.arg({ type: LeaderboardInput, required: false }) },
 			resolve: async (_root, { input }, { database }) => {
-				using db = database()
+				using db = database({ cache: false })
 
 				const result = await queryLeaderboard(db, {
 					searchWallet: input?.searchWallet ?? undefined,

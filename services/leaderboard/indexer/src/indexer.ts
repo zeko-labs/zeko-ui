@@ -7,7 +7,7 @@ import {
 	recalculateLeaderboard,
 	scoreConfig
 } from "./db"
-import { logger, triggerDistributorBroadcast, wait } from "./helper"
+import { broadcast, logger, wait } from "./helper"
 import { handler as deposit } from "./points/deposit"
 import { handler as faucet } from "./points/faucet"
 import { handler as liquidity } from "./points/liquidity"
@@ -170,7 +170,7 @@ async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerState): Pro
 			logger.success("✅ Database updated successfully")
 
 			logger.info("📢 Triggering distributor broadcast...")
-			await triggerDistributorBroadcast()
+			broadcast()
 		} else {
 			logger.info("⏭️  No new actions to process")
 		}
