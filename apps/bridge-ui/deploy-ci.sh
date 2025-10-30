@@ -10,7 +10,7 @@ set -e
 # SENTRY_AUTH_TOKEN
 
 export SENTRY_LOG_LEVEL="debug"
-export PATH="$PATH:./node_modules/.bin"
+export PATH="$PATH:$(pwd)/node_modules/.bin:$(pwd)/../../node_modules/.bin"
 OUTPUT_DIR="./.output"
 
 # We set the environment and release based on the branch name.
@@ -28,7 +28,7 @@ fi
 
 # NUXT
 echo "Building RELEASE $SENTRY_RELEASE with DSN $SENTRY_DSN_PUBLIC on environment $SENTRY_ENVIRONMENT ..."
-nuxt build --logLevel verbose
+moon bridge-ui:build
 echo "Build completed."
 
 # SENTRY

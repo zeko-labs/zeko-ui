@@ -1,0 +1,17 @@
+{
+	"name": "@zeko/leaderboard-admin",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"@elysiajs/eden": "catalog:elysia",
+		"@picocss/pico": "^2.1.1",
+		"solid-js": "^1.9.9"
+	},
+	"devDependencies": {
+		"@types/node": "^24.6.0",
+		"typescript": "catalog:",
+		"vite": "npm:rolldown-vite@7.1.14",
+		"vite-plugin-solid": "^2.11.8",
+		"wrangler": "catalog:"
+	}
+}

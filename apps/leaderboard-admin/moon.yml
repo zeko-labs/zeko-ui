@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: application
+id: lb-admin
+
+fileGroups:
+  sources:
+    - src/**
+    - public/**
+    - index.html
+    - vite.config.ts
+    - tsconfig.json
+    - tsconfig.*
+    - package.json
+
+tasks:
+  dev:
+    command: vite
+    preset: server
+    inputs:
+      - "@group(sources)"
+  build:
+    command: vite build
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - dist/**
+  preview:
+    command: vite preview
+    inputs:
+      - "@group(sources)"
+  deploy:
+    command: wrangler deploy
+    deps:
+      - build
+  deploy-preview:
+    command: wrangler versions upload
+    deps:
+      - build
