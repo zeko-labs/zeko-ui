@@ -1,81 +1,64 @@
-const backends = [
-	{
-		name: "zeko-mina-archive-devnet",
-		url: "https://zeko-mina-archive.staketab.com"
-	},
-	{
-		name: "minascan-mina-archive-devnet",
-		url: "https://api.minascan.io/archive/devnet/v1/graphql"
-	}
-]
+/**
+ * Define the environment bindings if you have any (e.g., KV, R2).
+ */
+export interface Env {
+}
 
-// The name of the cookie used for sticky sessions
-const COOKIE_NAME = "mina-archive-devnet"
+const hostnames: string[] = [
+  "https://zeko-mina-archive.staketab.com",
+  "https://api.minascan.io/archive/devnet/v1/graphql"
+];
+
+function getRandomInt(max: number): number {
+  return Math.floor(Math.random() * max);
+}
 
 export default {
-	async fetch(request) {
-		const cookie = request.headers.get("Cookie") || ""
-		const stickyBackendName = getCookieValue(cookie, COOKIE_NAME)
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext
+  ): Promise<Response> {
 
-		const orderedBackends = getOrderedBackends(stickyBackendName)
+    const url = new URL(request.url);
 
-		for (const backend of orderedBackends) {
-			try {
-				console.log(`Trying backend: ${backend.name}`)
+    // Randomly pick the primary host
+    const primaryIndex = getRandomInt(hostnames.length);
+    url.hostname = hostnames[primaryIndex];
+    
+    const primaryRequest = new Request(url.toString(), request);
 
-				const response = await fetch(backend.url, request)
+    // Pick a *different* backup host (if possible)
+    let backupIndex = primaryIndex;
+    if (hostnames.length > 1) {
+      do {
+        backupIndex = getRandomInt(hostnames.length);
+      } while (backupIndex === primaryIndex);
+    }
 
-				if (response.ok) {
-					console.log(`Success with backend: ${backend.name}`)
+    const backupUrl = new URL(request.url);
+    backupUrl.hostname = hostnames[backupIndex];
+    const backupRequest = new Request(backupUrl.toString(), request);
 
-					const newResponse = new Response(response.body, response)
+    // Implement the failover logic
+    try {
+      const primaryFetch = fetch(primaryRequest);
 
-					newResponse.headers.set(
-						"Set-Cookie",
-						`${COOKIE_NAME}=${backend.name}; Path=/; HttpOnly; Secure; SameSite=Lax`
-					)
+      // Wait 2 seconds, and *then* start the backup fetch.
+      const backupFetch = new Promise<Response>((resolve) => {
+        setTimeout(() => {
+          console.log(`Primary fetch timed out, racing with backup: ${backupUrl.hostname}`);
+          resolve(fetch(backupRequest));
+        }, 2000);
+      });
 
-					return newResponse
-				}
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error)
-				console.error(`Backend ${backend.name} failed:`, message)
-			}
-		}
+      return await Promise.race([primaryFetch, backupFetch]);
 
-		return new Response("All GraphQL backends are currently unavailable.", {
-			status: 503,
-			statusText: "Service Unavailable"
-		})
-	}
-} satisfies ExportedHandler
-
-/**
- * Helper function to parse a cookie string and get a specific value
- */
-function getCookieValue(cookieString: string, key: string) {
-	const cookies = cookieString.split(";")
-	for (const cookie of cookies) {
-		const parts = cookie.split("=")
-		const name = parts.shift()?.trim()
-		if (name === key) {
-			return parts.join("=").trim()
-		}
-	}
-	return null
-}
-
-/**
- * Creates a prioritized list of backends, putting the sticky one first.
- */
-function getOrderedBackends(stickyBackendName: string | null) {
-	const preferredBackend = backends.find((b) => b.name === stickyBackendName)
-
-	if (preferredBackend) {
-		// If the sticky backend is found, put it at the front of the array to try first.
-		return [preferredBackend, ...backends.filter((b) => b.name !== stickyBackendName)]
-	}
-
-	// Otherwise, return the default order (or you could randomize it)
-	return backends
-}
+    } catch (e) {
+      if (e instanceof Error) {
+        return new Response("Origin fetch error: " + e.message, { status: 502 });
+      }
+      return new Response("Unknown origin error", { status: 502 });
+    }
+  },
+};
