@@ -1,64 +1,65 @@
-{
-  packages: ["apps/**", "packages/**", "services/**"],
-  onlyBuiltDependencies: ["lefthook"],
-  patchedDependencies:
-    { "@gql.tada/internal": "patches/@gql.tada__internal.patch" },
-  overrides:
-    { nitropack: "2.12.6", o1js: "catalog:", vite: "npm:rolldown-vite@7.1.9" },
-  catalog:
-    {
-      "@ark-ui/vue": "^5.9.1",
-      "@aurowallet/mina-provider": "^1.0.6",
-      "@biomejs/biome": "^2.2.4",
-      "@cloudflare/vitest-pool-workers": "^0.9.12",
-      "@hebilicious/cssforge": "npm:@jsr/hebilicious__cssforge@0.2.1",
-      "@hebilicious/nuxt-switch-match": "^0.1.1",
-      "@hebilicious/vue-switch-match": "^0.1.1",
-      "@lumina-dex/sdk": "^0.23.0",
-      "@nuxt/fonts": "^0.10.2",
-      "@total-typescript/ts-reset": "^0.6.1",
-      "@types/bun": "^1.2.22",
-      "@unhead/vue": "^1.11.19",
-      "@unocss/reset": "^0.63.6",
-      "@vueuse/core": "^12.7.0",
-      "@xstate/vue": "^3.1.4",
-      consola: "^3.4.2",
-      drizzle-kit: "beta",
-      drizzle-orm: "beta",
-      drizzle-seed: "beta",
-      lucide-vue-next: "^0.453.0",
-      nitro-cloudflare-dev: "^0.2.2",
-      nuxt: "4.1.1",
-      o1js: "^2.8.0",
-      p-limit: "^7.1.1",
-      postcss-nesting: "^13.0.1",
-      postcss-preset-env: "^10.4.0",
-      postgres: "^3.4.7",
-      tsdown: "^0.13.4",
-      type-fest: "^4.41.0",
-      typescript: "^5.9.2",
-      valibot: "^1.1.0",
-      vitest: "3.2.4",
-      vue: "^3.5.21",
-      wrangler: "^4.28.1",
-      xstate: "5.20.1",
-    },
-  catalogs:
-    {
-      elysia:
-        {
-          "@elysiajs/bearer": "^1.4.1",
-          "@elysiajs/cors": "^1.4.0",
-          "@elysiajs/eden": "^1.4.4",
-          "elysia": "^1.4.12",
-          "memoirist": "^0.4.0",
-        },
-      graphql:
-        {
-          "@pothos/core": "^4.10.0",
-          gql.tada: "^1.8.13",
-          graphql: "^16.11.0",
-          graphql-yoga: "^5.14.0",
-        },
-    },
-}
+packages:
+  - apps/**
+  - packages/**
+  - services/**
+
+catalog:
+  '@ark-ui/vue': ^5.9.1
+  '@aurowallet/mina-provider': ^1.0.6
+  '@biomejs/biome': ^2.2.4
+  '@cloudflare/vitest-pool-workers': ^0.9.12
+  '@hebilicious/cssforge': npm:@jsr/hebilicious__cssforge@0.2.1
+  '@hebilicious/nuxt-switch-match': ^0.1.1
+  '@hebilicious/vue-switch-match': ^0.1.1
+  '@lumina-dex/sdk': ^0.23.0
+  '@nuxt/fonts': ^0.10.2
+  '@total-typescript/ts-reset': ^0.6.1
+  '@types/bun': ^1.2.22
+  '@unhead/vue': ^1.11.19
+  '@unocss/reset': ^0.63.6
+  '@vueuse/core': ^12.7.0
+  '@xstate/vue': ^3.1.4
+  consola: ^3.4.2
+  drizzle-kit: beta
+  drizzle-orm: beta
+  drizzle-seed: beta
+  lucide-vue-next: ^0.453.0
+  nitro-cloudflare-dev: ^0.2.2
+  nuxt: 4.1.1
+  o1js: ^2.8.0
+  p-limit: ^7.1.1
+  postcss-nesting: ^13.0.1
+  postcss-preset-env: ^10.4.0
+  postgres: ^3.4.7
+  tsdown: ^0.13.4
+  type-fest: ^4.41.0
+  typescript: ^5.9.2
+  valibot: ^1.1.0
+  vitest: 3.2.4
+  vue: ^3.5.21
+  wrangler: 4.42.2
+  xstate: 5.20.1
+
+catalogs:
+  elysia:
+    '@elysiajs/bearer': 1.4.1
+    '@elysiajs/cors': 1.4.0
+    '@elysiajs/eden': 1.4.4
+    elysia: 1.4.12
+    memoirist: ^0.4.0
+  graphql:
+    '@pothos/core': ^4.10.0
+    gql.tada: ^1.8.13
+    graphql: ^16.11.0
+    graphql-yoga: ^5.14.0
+
+onlyBuiltDependencies:
+  - lefthook
+
+overrides:
+  nitropack: 2.12.6
+  o1js: 'catalog:'
+  vite: npm:rolldown-vite@7.1.9
+
+patchedDependencies:
+  '@gql.tada/internal': patches/@gql.tada__internal.patch

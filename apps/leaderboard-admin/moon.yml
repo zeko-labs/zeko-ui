@@ -14,31 +14,27 @@ fileGroups:
     - package.json
 
 tasks:
-  format:
-    inputs:
-      - "@group(sources)"
-  format-fix:
-    inputs:
-      - "@group(sources)"
   dev:
-    description: "Start Vite dev server"
     command: vite
+    preset: server
     inputs:
       - "@group(sources)"
   build:
-    description: "Typecheck, build TypeScript and produce production assets via Vite"
-    command: tsc -b && vite build
+    command: vite build
     inputs:
       - "@group(sources)"
     outputs:
       - dist/**
   preview:
-    description: "Preview the production build"
     command: vite preview
     inputs:
-      - dist/**
+      - "@group(sources)"
   typecheck:
     description: "Run TypeScript typecheck"
     command: tsc --noEmit
     inputs:
       - "@group(sources)"
+  deploy:
+    command: wrangler deploy
+  deploy-preview:
+    command: wrangler versions upload

@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=../../../.moon/cache/schemas/project.json
 
 id: lb-indexer
-layer: application
+layer: library
 language: typescript
 stack: backend
 
@@ -10,6 +10,7 @@ fileGroups:
     - src/**/*
     - moon.yml
     - package.json
+    - tsdown.config.ts
   tests:
     - test/**/*
     - vitest.config.ts

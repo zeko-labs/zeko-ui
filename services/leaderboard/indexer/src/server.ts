@@ -10,7 +10,7 @@ const indexer = new Indexer(db)
 
 const authToken = process.env.AUTH_TOKEN || "admin"
 
-export const server = new Elysia({ aot: true })
+export const server = new Elysia()
 	.use(bearer())
 	.use(
 		cors({
@@ -58,3 +58,5 @@ export const server = new Elysia({ aot: true })
 			body: t.Object({ fromBlock: t.Optional(t.Number()) })
 		}
 	)
+
+export type App = typeof server

@@ -1,7 +1,6 @@
-import { createServer } from "./server"
+import { server } from "./server"
 
 const port = Number(process.env.PORT) || 3000
-const server = createServer()
 server.listen(port)
 
 console.log(`Indexer service running on port ${port}`)

@@ -1,12 +1,14 @@
 {
-	"name": "@zeko/leaderboard",
+	"name": "@zeko/leaderboard-indexer",
 	"private": true,
 	"type": "module",
-	"main": "./dist/server.js",
-	"module": "./dist/server.js",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
-		".": "./dist/server.js",
-		"./package.json": "./package.json"
+		".": "./dist/index.js",
+		"./module": "./dist/module.js",
+		"./*": "./*"
 	},
 	"dependencies": {
 		"@elysiajs/bearer": "catalog:elysia",

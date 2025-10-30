@@ -1,88 +1,162 @@
-import { createResource, createSignal, Show } from "solid-js"
-import * as api from "./api"
+import { createResource, createSignal, onCleanup, onMount, Show } from "solid-js"
+import { clearStoredToken, getApi, getStoredToken, type Indexer, setStoredToken } from "./api"
+import Token from "./Token"
 
 function App() {
-	const [authToken, setAuthToken] = createSignal("admin")
-	const [status, setStatus] = createSignal("unknown")
+	const [opStatus, setOpStatus] = createSignal<Record<string, string>>({})
 	const [startingBlock, setStartingBlock] = createSignal(0)
-	const [intervalSeconds, setIntervalSeconds] = createSignal(60)
+	const [intervalSeconds, setIntervalSeconds] = createSignal(2)
 	const [maxRetries, setMaxRetries] = createSignal(5)
 	const [fromBlock, setFromBlock] = createSignal(0)
 
-	// Use createResource to fetch the indexer status. It re-fetches when authToken changes
-	const [statusResource, { refetch: refetchStatus }] = createResource(
-		() => authToken(),
-		async (token) => {
-			const res = await api.getStatus(token)
-			setStatus(res?.status ?? "unknown")
-			return res
-		}
-	)
+	const [token, setToken] = createSignal<string>(getStoredToken())
+	const [input, setInput] = createSignal("")
 
-	async function handleStart() {
-		const token = authToken()
-		const payload = {
-			startingBlock: startingBlock(),
-			intervalSeconds: intervalSeconds(),
-			maxRetries: maxRetries()
+	onMount(() => {
+		setToken(getStoredToken())
+	})
+
+	function save() {
+		const v = input().trim()
+		if (!v) return
+		setStoredToken(v)
+		setToken(getStoredToken())
+		setInput("")
+	}
+
+	function del() {
+		clearStoredToken()
+		setToken(getStoredToken())
+	}
+
+	const [statusResource, { refetch: refetchStatus }] = createResource<ReturnType<
+		Indexer["getStatus"]
+	> | null>(async () => {
+		try {
+			const res = await getApi().status.get()
+			if (res.status === 200 && res.data) {
+				setOpStatus((p) => ({ ...p, status: "ok" }))
+				return res.data
+			} else {
+				setOpStatus((p) => ({ ...p, status: `Error: ${res.status}` }))
+				return null
+			}
+		} catch (err) {
+			setOpStatus((p) => ({ ...p, status: (err as Error).message }))
+			return null
 		}
-		await api.start(token, payload)
-		await refetchStatus()
+	})
+
+	// Handlers for server actions
+	async function handleStart() {
+		try {
+			const body = {
+				startingBlock: startingBlock(),
+				intervalSeconds: intervalSeconds(),
+				maxRetries: maxRetries()
+			}
+			const res = await getApi().start.post(body)
+			// POST responses are operation results (success/message/config)
+			const msg = res.data ? JSON.stringify(res.data, null, 2) : `Status ${res.status}`
+			setOpStatus((p) => ({ ...p, start: msg }))
+			refetchStatus()
+		} catch (err) {
+			setOpStatus((p) => ({ ...p, start: (err as Error).message }))
+		}
 	}
 
 	async function handleStop() {
-		const token = authToken()
-		await api.stop(token)
-		await refetchStatus()
+		try {
+			const res = await getApi().stop.post()
+			const msg = res.data ? JSON.stringify(res.data, null, 2) : `Status ${res.status}`
+			setOpStatus((p) => ({ ...p, stop: msg }))
+			refetchStatus()
+		} catch (err) {
+			setOpStatus((p) => ({ ...p, stop: (err as Error).message }))
+		}
 	}
 
 	async function handleBroadcast() {
-		const token = authToken()
-		await api.broadcast(token)
-		await refetchStatus()
+		try {
+			const res = await getApi().broadcast.post()
+			const msg = res.data ? JSON.stringify(res.data, null, 2) : `Status ${res.status}`
+			setOpStatus((p) => ({ ...p, broadcast: msg }))
+		} catch (err) {
+			setOpStatus((p) => ({ ...p, broadcast: (err as Error).message }))
+		}
 	}
 
 	async function handleRecalculate() {
-		const token = authToken()
-		await api.recalculate(token)
-		await refetchStatus()
+		try {
+			const res = await getApi().recalculate.post()
+			const msg = res.data ? JSON.stringify(res.data, null, 2) : `Status ${res.status}`
+			setOpStatus((p) => ({ ...p, recalculate: msg }))
+		} catch (err) {
+			setOpStatus((p) => ({ ...p, recalculate: (err as Error).message }))
+		}
 	}
 
 	async function handleRebuild() {
-		const token = authToken()
-		await api.rebuild(token, { fromBlock: fromBlock() })
-		await refetchStatus()
+		try {
+			const res = await getApi().rebuild.post({ fromBlock: fromBlock() })
+			const msg = res.data ? JSON.stringify(res.data, null, 2) : `Status ${res.status}`
+			setOpStatus((p) => ({ ...p, rebuild: msg }))
+		} catch (err) {
+			setOpStatus((p) => ({ ...p, rebuild: (err as Error).message }))
+		}
 	}
+
+	onMount(() => {
+		refetchStatus()
+		const id = window.setInterval(() => {
+			if (typeof document !== "undefined" && document.visibilityState === "visible") {
+				refetchStatus()
+			}
+		}, 5000)
+		onCleanup(() => clearInterval(id))
+	})
 
 	return (
 		<main class="container">
 			<h1>Leaderboard Admin</h1>
-
-			<section>
-				<h2>Authentication</h2>
-				<label for="authToken">Auth Token</label>
-				<input
-					type="password"
-					id="authToken"
-					name="authToken"
-					value={authToken()}
-					onInput={(e) => setAuthToken(e.currentTarget.value)}
-				/>
-			</section>
-
+			<Token token={token} input={input} setInput={setInput} save={save} del={del} />
 			<section>
 				<h2>Indexer Status</h2>
 				<Show
-					when={statusResource.loading}
+					when={statusResource()}
 					fallback={
 						<p>
-							Current status: <strong>{status()}</strong>
+							Current status: <strong>{opStatus().fetch ?? "unknown"}</strong>
 						</p>
 					}
 				>
-					<p>Loading status…</p>
+					<div>
+						<dl>
+							<dt>Running</dt>
+							<dd>{String(statusResource()?.isRunning)}</dd>
+							<dt>Last Run</dt>
+							<dd>{statusResource()?.lastRunDate ?? "N/A"}</dd>
+							<dt>Config</dt>
+							<dd>
+								<pre style="white-space: pre-wrap">
+									{JSON.stringify(statusResource()?.config, null, 2)}
+								</pre>
+							</dd>
+						</dl>
+
+						<section>
+							<h4>Operation results</h4>
+							<ul>
+								{Object.entries(opStatus()).map(([k, v]) => (
+									<li>
+										<strong>{k}</strong>: <pre style="white-space: pre-wrap">{v}</pre>
+									</li>
+								))}
+							</ul>
+						</section>
+					</div>
 				</Show>
-				<button type="button" onClick={() => void refetchStatus()}>
+				<button type="button" onClick={() => refetchStatus()}>
 					Refresh Status
 				</button>
 			</section>
@@ -123,25 +197,24 @@ function App() {
 							/>
 						</label>
 					</div>
-					<button type="button" onClick={() => void handleStart()}>
-						Start
-					</button>
-				</article>
-				<article>
-					<h3>Stop Indexer</h3>
-					<button type="button" class="secondary" onClick={() => void handleStop()}>
-						Stop
-					</button>
+					<div class="grid">
+						<button type="button" onClick={() => handleStart()}>
+							Start
+						</button>
+						<button type="button" class="secondary" onClick={() => handleStop()}>
+							Stop
+						</button>
+					</div>
 				</article>
 			</section>
 
 			<section>
 				<h2>Actions</h2>
 				<div class="grid">
-					<button type="button" onClick={() => void handleBroadcast()}>
+					<button type="button" onClick={() => handleBroadcast()}>
 						Trigger Distributor Broadcast
 					</button>
-					<button type="button" onClick={() => void handleRecalculate()}>
+					<button type="button" onClick={() => handleRecalculate()}>
 						Recalculate Leaderboard
 					</button>
 				</div>
@@ -161,7 +234,7 @@ function App() {
 							onInput={(e) => setFromBlock(Number.parseInt(e.currentTarget.value))}
 						/>
 					</label>
-					<button type="button" onClick={() => void handleRebuild()}>
+					<button type="button" onClick={() => handleRebuild()}>
 						Rebuild
 					</button>
 				</article>

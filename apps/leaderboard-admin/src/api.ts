@@ -1,81 +1,39 @@
 import { treaty } from "@elysiajs/eden"
-import type { App } from "@zeko/leaderboard"
+import type { App } from "@zeko-types-indexer/server"
 
-const app = treaty<App>("localhost:3000")
+export type { Indexer } from "@zeko-types-indexer/indexer"
 
-const BASE_URL = (import.meta as { env: { VITE_INDEXER_URL?: string } }).env.VITE_INDEXER_URL ?? ""
+const BASE_URL = "https://indexer.leaderboard.zeko.io"
+const STORAGE_KEY = "indexer_api_token"
 
-function buildHeaders(token?: string) {
-	const headers: Record<string, string> = { "Content-Type": "application/json" }
-	if (token) headers["Authorization"] = `Bearer ${token}`
-	return headers
-}
-
-async function handleResponse(res: Response) {
-	const text = await res.text()
+export function getStoredToken(): string {
+	if (typeof window === "undefined") return ""
 	try {
-		const json = text ? JSON.parse(text) : null
-		if (!res.ok) throw json ?? { message: text }
-		return json
+		return localStorage.getItem(STORAGE_KEY) ?? ""
 	} catch {
-		// If JSON parsing failed, rethrow a simple object when non-OK; otherwise return null
-		if (!res.ok) throw { message: text }
-		return null
+		return ""
 	}
 }
 
-export async function getStatus(token?: string) {
-	const res = await fetch(`${BASE_URL}/status`, { headers: buildHeaders(token) })
-	return handleResponse(res)
+export function setStoredToken(token: string) {
+	if (typeof window === "undefined") return
+	try {
+		localStorage.setItem(STORAGE_KEY, token)
+	} catch {}
 }
 
-export async function start(token: string | undefined, body: Record<string, unknown>) {
-	const res = await fetch(`${BASE_URL}/start`, {
-		method: "POST",
-		headers: buildHeaders(token),
-		body: JSON.stringify(body)
-	})
-	return handleResponse(res)
+export function clearStoredToken() {
+	if (typeof window === "undefined") return
+	try {
+		localStorage.removeItem(STORAGE_KEY)
+	} catch {}
 }
 
-export async function stop(token?: string) {
-	const res = await fetch(`${BASE_URL}/stop`, {
-		method: "POST",
-		headers: buildHeaders(token)
-	})
-	return handleResponse(res)
-}
-
-export async function broadcast(token?: string) {
-	const res = await fetch(`${BASE_URL}/broadcast`, {
-		method: "POST",
-		headers: buildHeaders(token)
-	})
-	return handleResponse(res)
-}
-
-export async function recalculate(token?: string) {
-	const res = await fetch(`${BASE_URL}/recalculate`, {
-		method: "POST",
-		headers: buildHeaders(token)
-	})
-	return handleResponse(res)
-}
-
-export async function rebuild(token?: string, body?: { fromBlock?: number }) {
-	const res = await fetch(`${BASE_URL}/rebuild`, {
-		method: "POST",
-		headers: buildHeaders(token),
-		body: JSON.stringify(body ?? {})
-	})
-	return handleResponse(res)
-}
-
-export default {
-	getStatus,
-	start,
-	stop,
-	broadcast,
-	recalculate,
-	rebuild
+export function getApi() {
+	const token = getStoredToken()
+	if (token) {
+		const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
+		return treaty<App>(BASE_URL, { headers })
+	}
+	return treaty<App>(BASE_URL)
 }
