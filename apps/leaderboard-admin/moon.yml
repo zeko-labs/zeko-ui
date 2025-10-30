@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: application
+id: lb-admin
+
+fileGroups:
+  sources:
+    - src/**
+    - public/**
+    - index.html
+    - vite.config.ts
+    - tsconfig.json
+    - tsconfig.*
+    - package.json
+
+tasks:
+  format:
+    inputs:
+      - "@group(sources)"
+  format-fix:
+    inputs:
+      - "@group(sources)"
+  dev:
+    description: "Start Vite dev server"
+    command: vite
+    inputs:
+      - "@group(sources)"
+  build:
+    description: "Typecheck, build TypeScript and produce production assets via Vite"
+    command: tsc -b && vite build
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - dist/**
+  preview:
+    description: "Preview the production build"
+    command: vite preview
+    inputs:
+      - dist/**
+  typecheck:
+    description: "Run TypeScript typecheck"
+    command: tsc --noEmit
+    inputs:
+      - "@group(sources)"

@@ -1,7 +1,7 @@
 import { treaty } from "@elysiajs/eden"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import { createTestDatabase } from "../src/db"
-import { createServer } from "../src/server"
+import { server } from "../src/server"
 
 const { clean } = createTestDatabase()
 const authToken = process.env.AUTH_TOKEN || "admin"
@@ -15,7 +15,7 @@ afterAll(async () => {
 })
 
 describe("Elysia Server Integration", () => {
-	const client = treaty(createServer())
+	const client = treaty(server)
 
 	describe("Authentication", () => {
 		test("should reject requests without bearer token", async () => {

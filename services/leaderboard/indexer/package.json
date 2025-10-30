@@ -2,6 +2,9 @@
 	"name": "@zeko/leaderboard",
 	"private": true,
 	"type": "module",
+	"exports": {
+		".": "./src/server.ts"
+	},
 	"dependencies": {
 		"@elysiajs/bearer": "^1.4.1",
 		"@elysiajs/cors": "^1.4.0",
