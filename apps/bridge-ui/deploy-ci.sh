@@ -28,7 +28,7 @@ fi
 
 # NUXT
 echo "Building RELEASE $SENTRY_RELEASE with DSN $SENTRY_DSN_PUBLIC on environment $SENTRY_ENVIRONMENT ..."
-moon bridge-sdk:build
+moon bridge-ui:build
 echo "Build completed."
 
 # SENTRY
