@@ -2,8 +2,24 @@ import { createResource, createSignal, onCleanup, onMount, Show } from "solid-js
 import { clearStoredToken, getApi, getStoredToken, type Indexer, setStoredToken } from "./api"
 import Token from "./Token"
 
+interface Status {
+	status: string
+	start: string
+	stop: string
+	broadcast: string
+	recalculate: string
+	rebuild: string
+}
+
 function App() {
-	const [opStatus, setOpStatus] = createSignal<Record<string, string>>({})
+	const [opStatus, setOpStatus] = createSignal<Status>({
+		status: "",
+		start: "",
+		stop: "",
+		broadcast: "",
+		recalculate: "",
+		rebuild: ""
+	})
 	const [startingBlock, setStartingBlock] = createSignal(0)
 	const [intervalSeconds, setIntervalSeconds] = createSignal(2)
 	const [maxRetries, setMaxRetries] = createSignal(5)
@@ -11,10 +27,6 @@ function App() {
 
 	const [token, setToken] = createSignal<string>(getStoredToken())
 	const [input, setInput] = createSignal("")
-
-	onMount(() => {
-		setToken(getStoredToken())
-	})
 
 	function save() {
 		const v = input().trim()
@@ -27,6 +39,13 @@ function App() {
 	function del() {
 		clearStoredToken()
 		setToken(getStoredToken())
+	}
+
+	const setData = (response: { data: unknown; status: number }, key: keyof Status) => {
+		const message = response.data
+			? JSON.stringify(response.data, null, 2)
+			: `Status ${response.status}`
+		setOpStatus((p) => ({ ...p, [key]: message }))
 	}
 
 	const [statusResource, { refetch: refetchStatus }] = createResource<ReturnType<
@@ -56,9 +75,7 @@ function App() {
 				maxRetries: maxRetries()
 			}
 			const res = await getApi().start.post(body)
-			// POST responses are operation results (success/message/config)
-			const msg = res.data ? JSON.stringify(res.data, null, 2) : `Status ${res.status}`
-			setOpStatus((p) => ({ ...p, start: msg }))
+			setData(res, "start")
 			refetchStatus()
 		} catch (err) {
 			setOpStatus((p) => ({ ...p, start: (err as Error).message }))
@@ -68,9 +85,7 @@ function App() {
 	async function handleStop() {
 		try {
 			const res = await getApi().stop.post()
-			const msg = res.data ? JSON.stringify(res.data, null, 2) : `Status ${res.status}`
-			setOpStatus((p) => ({ ...p, stop: msg }))
-			refetchStatus()
+			setData(res, "stop")
 		} catch (err) {
 			setOpStatus((p) => ({ ...p, stop: (err as Error).message }))
 		}
@@ -79,8 +94,7 @@ function App() {
 	async function handleBroadcast() {
 		try {
 			const res = await getApi().broadcast.post()
-			const msg = res.data ? JSON.stringify(res.data, null, 2) : `Status ${res.status}`
-			setOpStatus((p) => ({ ...p, broadcast: msg }))
+			setData(res, "broadcast")
 		} catch (err) {
 			setOpStatus((p) => ({ ...p, broadcast: (err as Error).message }))
 		}
@@ -89,8 +103,7 @@ function App() {
 	async function handleRecalculate() {
 		try {
 			const res = await getApi().recalculate.post()
-			const msg = res.data ? JSON.stringify(res.data, null, 2) : `Status ${res.status}`
-			setOpStatus((p) => ({ ...p, recalculate: msg }))
+			setData(res, "recalculate")
 		} catch (err) {
 			setOpStatus((p) => ({ ...p, recalculate: (err as Error).message }))
 		}
@@ -99,8 +112,7 @@ function App() {
 	async function handleRebuild() {
 		try {
 			const res = await getApi().rebuild.post({ fromBlock: fromBlock() })
-			const msg = res.data ? JSON.stringify(res.data, null, 2) : `Status ${res.status}`
-			setOpStatus((p) => ({ ...p, rebuild: msg }))
+			setData(res, "rebuild")
 		} catch (err) {
 			setOpStatus((p) => ({ ...p, rebuild: (err as Error).message }))
 		}
@@ -126,7 +138,7 @@ function App() {
 					when={statusResource()}
 					fallback={
 						<p>
-							Current status: <strong>{opStatus().fetch ?? "unknown"}</strong>
+							Current status: <strong>{opStatus().status}</strong>
 						</p>
 					}
 				>
