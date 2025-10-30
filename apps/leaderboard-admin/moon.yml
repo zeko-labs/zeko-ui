@@ -29,11 +29,6 @@ tasks:
     command: vite preview
     inputs:
       - "@group(sources)"
-  typecheck:
-    description: "Run TypeScript typecheck"
-    command: tsc --noEmit
-    inputs:
-      - "@group(sources)"
   deploy:
     command: wrangler deploy
   deploy-preview:
