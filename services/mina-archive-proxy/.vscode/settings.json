@@ -1,17 +1,26 @@
 {
 	"editor.defaultFormatter": "dprint.dprint",
 	"editor.formatOnSave": true,
+	"biome.enabled": true,
 	"editor.codeActionsOnSave": {
-		"quickfix.biome": "explicit",
-		"source.organizeImports.biome": "explicit"
+		"source.fixAll.biome": "explicit"
+	},
+	"[javascript]": {
+		"editor.defaultFormatter": "dprint.dprint",
+		"editor.codeActionsOnSave": {
+			"source.fixAll.biome": "explicit"
+		}
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "dprint.dprint",
+		"editor.codeActionsOnSave": {
+			"source.fixAll.biome": "explicit"
+		}
 	},
 	"[json]": {
 		"editor.defaultFormatter": "dprint.dprint"
 	},
-	"[typescript]": {
-		"editor.defaultFormatter": "dprint.dprint"
-	},
-	"[javascript]": {
+	"[jsonc]": {
 		"editor.defaultFormatter": "dprint.dprint"
 	}
 }
