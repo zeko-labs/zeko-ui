@@ -4,7 +4,7 @@
 	"private": true,
 	"main": "./nuxt.config.ts",
 	"scripts": {
-		"postinstall": "nuxt prepare playground"
+		"pi": "nuxt prepare playground"
 	},
 	"devDependencies": {
 		"@hebilicious/cssforge": "catalog:",

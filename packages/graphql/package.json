@@ -10,11 +10,12 @@
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": "./dist/index.js",
+		"./leaderboard": "./dist/leaderboard.js",
 		"./mina": "./dist/mina.js",
 		"./mina-archive": "./dist/mina-archive.js",
 		"./zeko": "./dist/zeko.js",
 		"./zeko-archive": "./dist/zeko-archive.js",
-		"./package.json": "./package.json"
+		"./*": "./*"
 	},
 	"devDependencies": {
 		"gql.tada": "catalog:graphql",

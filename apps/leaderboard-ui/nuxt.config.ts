@@ -1,0 +1,30 @@
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+
+const currentDir = dirname(fileURLToPath(import.meta.url))
+
+export default defineNuxtConfig({
+	compatibilityDate: "2025-07-15",
+	modules: ["@nuxt/fonts", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
+	devtools: { enabled: true },
+	extends: ["@zeko/layer"],
+	typescript: {
+		tsConfig: {
+			include: [join(currentDir, "graphql")]
+		}
+	},
+	postcss: {
+		plugins: { "postcss-preset-env": { browsers: "baseline widely available" } }
+	},
+	fonts: { provider: "google" },
+	css: [
+		"@unocss/reset/sanitize/sanitize.css",
+		"@unocss/reset/sanitize/assets.css",
+		"~/assets/styles/main.css"
+	],
+	routeRules: {
+		"/**": { ssr: false, static: true, prerender: true }
+	},
+	sourcemap: { client: "hidden" },
+	nitro: { preset: "cloudflare-module", minify: false }
+})

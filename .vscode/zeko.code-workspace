@@ -33,6 +33,10 @@
       "path": "../apps/docs",
     },
     {
+      "name": "🏆 Leaderboard UI",
+      "path": "../apps/leaderboard-ui",
+    },
+    {
       "name": "🏆 Leaderboard Admin UI",
       "path": "../apps/leaderboard-admin",
     },

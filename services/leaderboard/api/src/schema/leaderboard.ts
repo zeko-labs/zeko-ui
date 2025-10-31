@@ -128,9 +128,9 @@ export async function queryLeaderboard(
 
 const LeaderboardEntryObject = builder.objectRef<LeaderboardEntry>("LeaderboardEntry").implement({
 	fields: (t) => ({
-		rank: t.exposeInt("rank"),
-		wallet: t.exposeString("wallet"),
-		score: t.exposeInt("score")
+		rank: t.exposeInt("rank", { nullable: false }),
+		wallet: t.exposeString("wallet", { nullable: false }),
+		score: t.exposeInt("score", { nullable: false })
 	})
 })
 
@@ -138,9 +138,13 @@ const LeaderboardResultObject = builder
 	.objectRef<LeaderboardResult>("LeaderboardResult")
 	.implement({
 		fields: (t) => ({
-			entries: t.field({ type: [LeaderboardEntryObject], resolve: (r) => r.entries }),
-			hasMore: t.exposeBoolean("hasMore"),
-			total: t.exposeInt("total")
+			entries: t.field({
+				type: [LeaderboardEntryObject],
+				resolve: (r) => r.entries,
+				nullable: false
+			}),
+			hasMore: t.exposeBoolean("hasMore", { nullable: false }),
+			total: t.exposeInt("total", { nullable: false })
 		})
 	})
 

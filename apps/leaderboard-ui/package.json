@@ -1,0 +1,42 @@
+{
+	"name": "@zeko/leaderboard-ui",
+	"private": true,
+	"scripts": {
+		"dev": "nuxt dev",
+		"build": "nuxt build",
+		"start": "nuxt start"
+	},
+	"dependencies": {
+		"@ark-ui/vue": "catalog:",
+		"@gql.tada/vue-support": "^1.0.1",
+		"@hebilicious/nuxt-switch-match": "catalog:",
+		"@lumina-dex/sdk": "catalog:",
+		"@nuxt/fonts": "catalog:",
+		"@tanstack/vue-table": "^8.21.3",
+		"@unhead/vue": "catalog:",
+		"@unocss/reset": "catalog:",
+		"@urql/vue": "^1.4.2",
+		"@vite-pwa/nuxt": "1.0.4",
+		"@vueuse/core": "catalog:",
+		"@xstate/vue": "catalog:",
+		"@zeko/bridge-sdk": "workspace:^",
+		"@zeko/design": "workspace:^",
+		"@zeko/graphql": "workspace:^",
+		"@zeko/layer": "workspace:^",
+		"consola": "^3.4.2",
+		"idb": "^8.0.3",
+		"immer": "^10.1.1",
+		"lucide-vue-next": "catalog:",
+		"nanoid": "^5.0.9",
+		"nuxt": "catalog:",
+		"ohash": "^2.0.11",
+		"pinia": "^2.3.0",
+		"vue": "catalog:",
+		"vue-router": "^4.5.1",
+		"xstate": "catalog:"
+	},
+	"devDependencies": {
+		"gql.tada": "catalog:graphql",
+		"wrangler": "catalog:"
+	}
+}

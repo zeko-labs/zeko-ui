@@ -32,6 +32,7 @@ tasks:
       - "@group(sources)"
   dev:
     command: nuxt dev
+    preset: "server"
   build:
     command: nuxt build
     deps: [^:build]

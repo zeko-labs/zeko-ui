@@ -3,7 +3,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"postinstall": "nuxt prepare"
+		"pi": "nuxt prepare"
 	},
 	"dependencies": {
 		"@ark-ui/vue": "catalog:",

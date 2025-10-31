@@ -1,7 +1,7 @@
 type LeaderboardEntry {
-  rank: Int
-  score: Int
-  wallet: String
+  rank: Int!
+  score: Int!
+  wallet: String!
 }
 
 input LeaderboardInput {
@@ -11,9 +11,9 @@ input LeaderboardInput {
 }
 
 type LeaderboardResult {
-  entries: [LeaderboardEntry!]
-  hasMore: Boolean
-  total: Int
+  entries: [LeaderboardEntry!]!
+  hasMore: Boolean!
+  total: Int!
 }
 
 type Query {
