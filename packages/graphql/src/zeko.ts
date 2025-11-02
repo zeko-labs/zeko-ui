@@ -61,6 +61,14 @@ export const finalizeWithdrawalMutation = graphql(`
   }
 `)
 
+export const cancelDepositMutation = graphql(`
+  mutation CancelDeposit($input: FinalizeCancelledDepositInput!) {
+    request: cancelDeposit(input: $input) {
+      key
+    }
+  }
+`)
+
 export const provedForestQuery = graphql(`
   query provedForest($key: String!) {
     provedForest(key: $key)

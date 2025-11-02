@@ -1,5 +1,6 @@
 import { accountQuery, genesisConstantsQueryL1, runtimeConfigQuery } from "@zeko/graphql/mina"
 import {
+	cancelDepositMutation,
 	fetchConfigQuery,
 	finalizeDepositMutation,
 	finalizeWithdrawalMutation,
@@ -29,9 +30,11 @@ import type {
 	Withdrawal
 } from "./types"
 import {
+	checkAccepted,
 	depositAux,
 	fetchActions,
 	filterNulls,
+	getNextCancelledDepositIndex,
 	getNextDepositIndex,
 	getNextWithdrawalIndex,
 	refreshCache,
@@ -159,7 +162,6 @@ export class Bridge {
 
 	private async fetchUserDeposits(pk: PublicKey): Promise<Deposit[]> {
 		const userOuterActions = await fetchActions(this.l1ArchiveClient, pk)
-		const currentSlot = await this.fetchCurrentSlot()
 
 		return filterNulls(
 			userOuterActions.map(({ action }) => {
@@ -201,8 +203,7 @@ export class Bridge {
 					recipient,
 					amount,
 					timeout,
-					holderAccountL1,
-					timedOut: timeout.lessThan(currentSlot).toBoolean()
+					holderAccountL1
 				}
 			})
 		)
@@ -236,7 +237,11 @@ export class Bridge {
 					return {
 						type: "witness",
 						aux: action[1],
-						action: { beforeActionState, afterActionState, action, hash, status, timestamp }
+						action: { beforeActionState, afterActionState, action, hash, status, timestamp },
+						slotRange: {
+							lower: UInt32.fromFields([action[3]]),
+							upper: UInt32.fromFields([action[4]])
+						}
 					}
 				}
 				throw new Error("Invalid outer action type")
@@ -360,16 +365,28 @@ export class Bridge {
 		}
 	}
 
-	private async fetchDepositFinalizationWitnesses(pk: PublicKey) {
-		const helperAccount = await this.fetchAccount(
+	private async findDeposit(outerActions: OuterAction[], pk: PublicKey) {
+		const helperAccountL1 = await this.fetchAccount(
+			this.l1Client,
+			pk,
+			TokenId.derive(this.outerTokenOwner)
+		)
+
+		const prevNextCancelledDeposit = helperAccountL1
+			? getNextCancelledDepositIndex(helperAccountL1)
+			: UInt32.zero
+
+		const helperAccountL2 = await this.fetchAccount(
 			this.l2Client,
 			pk,
 			TokenId.derive(this.innerHolder)
 		)
 
-		const prevNextDeposit = helperAccount ? getNextDepositIndex(helperAccount) : UInt32.zero
+		const prevNextDeposit = helperAccountL2 ? getNextDepositIndex(helperAccountL2) : UInt32.zero
 
-		const outerActions = await this.fetchOuterActions()
+		const minDepositIndex = prevNextDeposit.greaterThan(prevNextCancelledDeposit)
+			? prevNextDeposit
+			: prevNextCancelledDeposit
 
 		const deposits = (await this.fetchUserDeposits(pk)).map((deposit) => ({
 			deposit,
@@ -377,9 +394,7 @@ export class Bridge {
 		}))
 
 		const findMatchingDeposit = (action: OuterWitness) =>
-			deposits.find(
-				({ aux, deposit: { timedOut } }) => aux.equals(action.aux).toBoolean() && !timedOut
-			)
+			deposits.find(({ aux }) => aux.equals(action.aux).toBoolean())
 
 		const myDepositIndex = outerActions.findIndex((action, index) => {
 			if (action.type === "commit") return false
@@ -388,7 +403,7 @@ export class Bridge {
 
 			if (!matchingDeposit) return false
 
-			if (prevNextDeposit.greaterThan(UInt32.from(index)).toBoolean()) return false
+			if (minDepositIndex.greaterThan(UInt32.from(index)).toBoolean()) return false
 
 			return true
 		})
@@ -396,6 +411,43 @@ export class Bridge {
 		if (myDepositIndex === -1) return null
 
 		const myDeposit = outerActions[myDepositIndex] as OuterWitness
+
+		const depositParams = findMatchingDeposit(myDeposit)
+		if (!depositParams) throw new Error("Unreachable: Did not find deposit parameters")
+
+		return {
+			myDeposit,
+			myDepositIndex,
+			depositParams,
+			checkAccepted: checkAccepted(
+				outerActions,
+				UInt32.from(myDepositIndex),
+				depositParams.deposit
+			),
+			prevNextDeposit,
+			prevNextCancelledDeposit,
+			helperAccountL1,
+			helperAccountL2
+		}
+	}
+
+	private async fetchDepositFinalizationWitnesses(pk: PublicKey) {
+		const outerActions = await this.fetchOuterActions()
+
+		const deposit = await this.findDeposit(outerActions, pk)
+
+		if (!deposit) return null
+
+		const {
+			myDeposit,
+			myDepositIndex,
+			depositParams,
+			checkAccepted,
+			prevNextDeposit,
+			helperAccountL2
+		} = deposit
+
+		if (checkAccepted.isRejected || !checkAccepted.isAccepted) return null
 
 		const nextCommitIndex = outerActions.findIndex((action) => {
 			if (action.type !== "commit") return false
@@ -414,9 +466,6 @@ export class Bridge {
 
 		const nextCommit = outerActions[nextCommitIndex] as OuterCommit
 
-		const depositParams = findMatchingDeposit(myDeposit)
-		if (!depositParams) throw new Error("Unreachable: Did not find deposit parameters")
-
 		const syncedOuterActionState = await this.fetchSyncedOuterActionState()
 
 		const syncedOuterActionStateIndex = outerActions.findIndex(({ action }) =>
@@ -433,7 +482,7 @@ export class Bridge {
 		return {
 			aseTarget: syncedOuterActionState,
 			depositParams,
-			helperAccount,
+			helperAccountL2,
 			witness: {
 				prevNextDeposit: prevNextDeposit.toString(),
 				checkAccepted: {
@@ -475,7 +524,7 @@ export class Bridge {
 
 			if (!witnesses) throw new Error("Did not find any deposit to finalize")
 
-			const { witness, depositParams, helperAccount, aseTarget } = witnesses
+			const { witness, depositParams, helperAccountL2, aseTarget } = witnesses
 
 			const { data } = await this.l2Client.mutation(finalizeDepositMutation, {
 				input: witness
@@ -487,12 +536,12 @@ export class Bridge {
 			const currentSyncedOuterActionState = await this.fetchSyncedOuterActionState()
 
 			if (currentSyncedOuterActionState.state.equals(aseTarget.state).toBoolean()) {
-				return { depositForest, depositParams, helperAccount }
+				return { depositForest, depositParams, helperAccountL2 }
 			}
 			return await prove(attempts - 1)
 		}
 
-		const { depositForest, depositParams, helperAccount } = await prove(attempts)
+		const { depositForest, depositParams, helperAccountL2 } = await prove(attempts)
 
 		for (let i = 0; i < depositForest.length; i++) {
 			if (!depositForest[i].publicKey.equals(pk).toBoolean()) continue
@@ -504,7 +553,7 @@ export class Bridge {
 
 		const l2Account = await this.fetchAccount(this.l2Client, pk)
 
-		const accountCreationFee = (helperAccount ? UInt64.zero : this.l2AccountCreationFee).add(
+		const accountCreationFee = (helperAccountL2 ? UInt64.zero : this.l2AccountCreationFee).add(
 			l2Account ? UInt64.zero : this.l2AccountCreationFee
 		)
 
@@ -528,6 +577,135 @@ export class Bridge {
 
 	public async canFinalizeDeposit(pk: PublicKey): Promise<boolean> {
 		return !!(await this.fetchDepositFinalizationWitnesses(pk))
+	}
+
+	private async fetchDepositCancelationWitnesses(pk: PublicKey, outerHolder: PublicKey) {
+		const outerActions = await this.fetchOuterActions()
+
+		const deposit = await this.findDeposit(outerActions, pk)
+
+		if (!deposit) return null
+
+		const {
+			myDeposit,
+			myDepositIndex,
+			depositParams,
+			checkAccepted,
+			prevNextCancelledDeposit,
+			helperAccountL1
+		} = deposit
+
+		if (!checkAccepted.isRejected || checkAccepted.isAccepted) return null
+
+		const reversedOuterActions = outerActions.slice().reverse()
+		const reversedLastCommitIndex = reversedOuterActions.findIndex((action) => {
+			if (action.type !== "commit") return false
+
+			if (!action.isPastWithdrawalDelay) return false
+
+			return true
+		})
+
+		if (reversedLastCommitIndex === -1) return null
+
+		const lastCommitIndex = outerActions.length - reversedLastCommitIndex - 1
+		const lastCommit = outerActions[lastCommitIndex] as OuterCommit
+
+		const lastCommitAse = outerActions
+			.slice(lastCommitIndex + 1, outerActions.length)
+			.map(({ action }) => fromList([action.action]).hash)
+
+		const syncAse = outerActions
+			// Maybe off-1 error here
+			.slice(Number(lastCommit.synchronizedOuterActionStateLength.toBigint()), outerActions.length)
+			.map(({ action }) => fromList([action.action]).hash)
+
+		return {
+			depositParams,
+			helperAccountL1,
+			witness: {
+				publicKey: outerHolder.toBase58(),
+				commitAse: {
+					fields: lastCommitAse.map((elem) => elem.toString()),
+					stmt: { actionState: lastCommit.action.afterActionState.toString() }
+				},
+				commit: {
+					actions: lastCommit.action.action.map((a) => a.toString())
+				},
+				beforeCommit: { actionState: lastCommit.action.beforeActionState.toString() },
+				prevNextCancelledDeposit: prevNextCancelledDeposit.toString(),
+				checkAccepted: {
+					elems: outerActions
+						.slice(myDepositIndex, lastCommitIndex + 1)
+						.map(({ action }) => ({ actions: action.action.map((a) => a.toString()) })),
+					init: {
+						depositIndex: myDepositIndex.toString(),
+						orignalActionState: myDeposit.action.beforeActionState.toString(),
+						params: {
+							amount: depositParams.deposit.amount.toString(),
+							recipient: depositParams.deposit.recipient.toBase58(),
+							holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
+							timeout: +depositParams.deposit.timeout,
+							children: "[]"
+						}
+					}
+				},
+				checkAcceptedAse: {
+					fields: lastCommitAse.map((elem) => elem.toString()),
+					stmt: {
+						actionState: lastCommit.action.afterActionState.toString(),
+						length: (lastCommitIndex + 1).toString()
+					}
+				},
+				syncAse: {
+					fields: syncAse.map((elem) => elem.toString()),
+					stmt: {
+						actionState: lastCommit.synchronizedOuterActionState.toString(),
+						length: lastCommit.synchronizedOuterActionStateLength.toString()
+					}
+				}
+			}
+		}
+	}
+
+	public async cancelDeposit(
+		pk: PublicKey,
+		feePayer: Mina.FeePayerSpec,
+		_outerHolder?: PublicKey
+	): Promise<Mina.Transaction<false, false>> {
+		const outerHolder = _outerHolder ?? this.outerHolders[0]
+		const witnesses = await this.fetchDepositCancelationWitnesses(pk, outerHolder)
+
+		if (!witnesses) throw new Error("Did not find any withdrawal to finalize")
+
+		const { witness, depositParams, helperAccountL1 } = witnesses
+
+		const { data } = await this.l2Client.mutation(cancelDepositMutation, {
+			input: witness
+		})
+		if (!data?.request?.key) throw new Error("No key returned from mutation")
+		const cancelDepositForest = await this.pollQuery(data.request.key)
+
+		for (let i = 0; i < cancelDepositForest.length; i++) {
+			if (!cancelDepositForest[i].publicKey.equals(pk).toBoolean()) continue
+
+			cancelDepositForest[i].lazyAuthorization = { kind: "lazy-signature" }
+		}
+
+		this.setL1()
+
+		const accountCreationFee = helperAccountL1 ? UInt64.zero : this.l1AccountCreationFee
+
+		await refreshCache(feePayer)
+
+		const txn = await Mina.transaction(feePayer, async () => {
+			const transferrer = AccountUpdate.create(depositParams.deposit.recipient)
+			transferrer.balance.addInPlace(depositParams.deposit.amount.sub(accountCreationFee))
+		})
+
+		txn.transaction.accountUpdates.push(...cancelDepositForest)
+
+		return txn
 	}
 
 	public async submitWithdrawal(

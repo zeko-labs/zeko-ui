@@ -24,7 +24,6 @@ export type Deposit = {
 	amount: UInt64
 	timeout: UInt32
 	holderAccountL1: PublicKey
-	timedOut: boolean
 }
 
 export type Withdrawal = {
@@ -32,10 +31,16 @@ export type Withdrawal = {
 	amount: UInt64
 }
 
+export type SlotRange = {
+	lower: UInt32
+	upper: UInt32
+}
+
 export type OuterWitness = {
 	type: "witness"
 	aux: Field
 	action: Action
+	slotRange: SlotRange
 }
 
 export type OuterCommit = {
@@ -45,10 +50,7 @@ export type OuterCommit = {
 	innerActionStateLength: UInt32
 	synchronizedOuterActionState: Field
 	synchronizedOuterActionStateLength: UInt32
-	slotRange: {
-		lower: UInt32
-		upper: UInt32
-	}
+	slotRange: SlotRange
 	isPastWithdrawalDelay: boolean
 	action: Action
 }

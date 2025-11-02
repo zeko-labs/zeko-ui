@@ -1,9 +1,9 @@
-import { Field, fetchAccount, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
+import { Field, Poseidon, PublicKey, UInt32, fetchAccount, type Mina } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
 import { fetchActionsQuery } from "../../graphql/src/mina-archive"
 import { fromList, pushHash } from "./actions"
-import type { Account, Action, Deposit, Withdrawal } from "./types"
+import type { Account, Action, Deposit, OuterAction, Withdrawal } from "./types"
 
 // The graphQL schema server will limit the block scan range to a fixed number of blocks.
 // https://github.com/o1-labs/Archive-Node-API/blob/2d726955502fbd02c70d388f589284dd838bbb45/src/server/server.ts#L13
@@ -121,6 +121,11 @@ export function getNextDepositIndex(helperAccount: Account): UInt32 {
 	return UInt32.from(nextDepositIndex ?? 0)
 }
 
+export function getNextCancelledDepositIndex(helperAccount: Account): UInt32 {
+	const nextDepositIndex = helperAccount.zkappState?.at(0)
+	return UInt32.from(nextDepositIndex ?? 0)
+}
+
 export function getNextWithdrawalIndex(helperAccount: Account): UInt32 {
 	const nextWithdrawalIndex = helperAccount.zkappState?.at(1)
 	return UInt32.from(nextWithdrawalIndex ?? 0)
@@ -141,4 +146,34 @@ export async function refreshCache(feePayer: Mina.FeePayerSpec) {
 			publicKey: feePayer.sender
 		})
 	}
+}
+
+export function checkAccepted(
+	outerActions: OuterAction[],
+	depositIndex: UInt32,
+	depositParams: Deposit
+) {
+	let isRejected = false
+	let isAccepted = false
+
+	for (const action of outerActions) {
+		const slotRange = action.slotRange
+
+		isRejected =
+			isRejected || (!isAccepted && slotRange.lower.greaterThan(depositParams.timeout).toBoolean())
+
+		const depositIndexBeforeCommit =
+			action.type === "commit"
+				? action.synchronizedOuterActionStateLength.greaterThan(depositIndex).toBoolean()
+				: false
+
+		isAccepted =
+			isAccepted ||
+			(!isRejected &&
+				slotRange.upper.lessThanOrEqual(depositParams.timeout).toBoolean() &&
+				depositIndexBeforeCommit &&
+				action.type === "commit")
+	}
+
+	return { isRejected, isAccepted }
 }
