@@ -1,52 +1,66 @@
 const hostnames = [
-	"https://zeko-mina-archive.staketab.com",
-	"https://api.minascan.io/archive/devnet/v1/graphql"
+  "https://zeko-mina-archive.staketab.com",
+  "https://api.minascan.io/archive/devnet/v1/graphql"
 ]
 
 function getRandomInt(max: number): number {
-	return Math.floor(Math.random() * max)
+  return Math.floor(Math.random() * max)
 }
 
 export default {
-	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		const url = new URL(request.url)
+  async fetch(request: Request): Promise<Response> {
+    try {
+      // Preserve original URL
+      const sourceUrl = new URL(request.url);
 
-		// Randomly pick the primary host
-		const primaryIndex = getRandomInt(hostnames.length)
-		url.hostname = hostnames[primaryIndex]
+      // Pick primary and backup
+      const primaryIndex = getRandomInt(hostnames.length);
+      let backupIndex = primaryIndex
+      if (hostnames.length > 1) {
+        do {
+          backupIndex = getRandomInt(hostnames.length)
+        } while (backupIndex === primaryIndex)
+      }
+      // Combine backend base URL + original path + query
+      const makeTargetUrl = (base: string) => {
+        const baseUrl = new URL(base);
+        // join the backend base path + the incoming path
+        const joinedPath =
+          baseUrl.pathname.replace(/\/$/, "") +
+          "/" +
+          sourceUrl.pathname.replace(/^\//, "");
+        baseUrl.pathname = joinedPath;
+        baseUrl.search = sourceUrl.search; // preserve query string
+        return baseUrl;
+      };
 
-		const primaryRequest = new Request(url, request)
+      const primaryUrl = makeTargetUrl(hostnames[primaryIndex]);
+      const backupUrl = makeTargetUrl(hostnames[backupIndex]);
 
-		// Pick a *different* backup host (if possible)
-		let backupIndex = primaryIndex
-		if (hostnames.length > 1) {
-			do {
-				backupIndex = getRandomInt(hostnames.length)
-			} while (backupIndex === primaryIndex)
-		}
+      // Create requests using original request as template
+      const primaryRequest = new Request(primaryUrl.toString(), request);
+      const backupRequest = new Request(backupUrl.toString(), request);
+      console.log(`primary req: ${primaryUrl}`);
+      console.log(`backup  req: ${backupUrl}`);
 
-		const backupUrl = new URL(request.url)
-		backupUrl.hostname = hostnames[backupIndex]
-		const backupRequest = new Request(backupUrl, request)
+      // Start primary immediately
+      const primaryFetch = fetch(primaryRequest);
 
-		// Implement the failover logic
-		try {
-			const primaryFetch = fetch(primaryRequest)
+      // Start backup after 2s delay
+      const backupFetch = (async () => {
+        await new Promise((r) => setTimeout(r, 2000));
+        console.log(`Starting backup fetch: ${backupUrl.hostname}`);
+        return fetch(backupRequest);
+      })();
 
-			// Wait 2 seconds, and *then* start the backup fetch.
-			const backupFetch = new Promise<Response>((resolve) => {
-				setTimeout(() => {
-					console.log(`Primary fetch timed out, racing with backup: ${backupUrl.hostname}`)
-					resolve(fetch(backupRequest))
-				}, 2000)
-			})
+      // Race and return whichever finishes first
+      return await Promise.race([primaryFetch, backupFetch]);
 
-			return await Promise.race([primaryFetch, backupFetch])
-		} catch (e) {
-			if (e instanceof Error) {
-				return new Response("Origin fetch error: " + e.message, { status: 502 })
-			}
-			return new Response("Unknown origin error", { status: 502 })
-		}
-	}
-}
+    } catch (err) {
+      if (err instanceof Error) {
+        return new Response("Origin fetch error: " + err.message, { status: 502 });
+      }
+      return new Response("Unknown origin error", { status: 502 });
+    }
+  }
+};
