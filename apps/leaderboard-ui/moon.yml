@@ -12,8 +12,6 @@ fileGroups:
   sources:
     - app/**/*
     - public/**/*
-    - worker-configuration.d.ts
-    - sentry.client.config.ts
     - nuxt.config.ts
     - tsconfig.json
     - package.json
