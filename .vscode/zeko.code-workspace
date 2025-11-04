@@ -49,6 +49,10 @@
       "path": "../services/leaderboard/api",
     },
     {
+      "name": "🪙 Mina Archive Proxy",
+      "path": "../services/mina-archive-proxy",
+    },
+    {
       "path": "..",
       "name": "#root"
     },
