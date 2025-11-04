@@ -29,3 +29,14 @@ export const fetchActionsQuery = graphql(`
     }
   }
 `)
+
+export const networkStateQuery = graphql(`
+  query NetworkState {
+    networkState {
+      maxBlockHeight {
+        canonicalMaxBlockHeight
+        pendingMaxBlockHeight
+      }
+    }
+  }
+`)

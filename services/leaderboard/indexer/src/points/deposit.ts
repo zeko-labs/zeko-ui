@@ -1,4 +1,11 @@
-import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
+import {
+	type ActionConfig,
+	type ArchiveEvents,
+	addresses,
+	fetchArchiveEvents,
+	getPubK,
+	logger
+} from "../helper"
 
 //https://github.com/zeko-labs/zeko/blob/compatible/src/app/zeko/circuits/bridge_state.ml#L160-L166
 //   type t =
@@ -23,7 +30,7 @@ const processDepositEvents = async (events: ArchiveEvents) => {
 	}
 
 	const depositData = events
-		.filter((e) => e?.eventData?.[0]?.data[0] === "0") //TODO: Verify event is #0
+		.filter((e) => e?.eventData?.[0]?.data[1] === "0") //TODO: Verify event is #0
 		.map((e) =>
 			parse(
 				e?.eventData?.[0]?.data.filter(Boolean) ?? [],
@@ -42,13 +49,17 @@ export const score = {
 } as const
 
 export const handler = {
-	fetch: async (fromBlock: number) => {
-		logger.info(`[${score.key}] Starting fetch from block ${fromBlock}`)
+	fetch: async ({ startBlock, endBlock }: ActionConfig) => {
+		logger.info(
+			`[${score.key}] Starting fetch from block ${startBlock}${endBlock !== Number.POSITIVE_INFINITY ? ` to ${endBlock}` : ""}`
+		)
 
 		const { events, lastFetchedBlock } = await fetchArchiveEvents({
-			address: addresses.BRIDGE_MINA_TO_ZEKO,
-			fromBlock,
-			moduleName: score.key
+			address: addresses.L2.BRIDGE_MINA_TO_ZEKO,
+			startBlock,
+			endBlock,
+			moduleName: score.key,
+			layer: "L2"
 		})
 
 		logger.info(`[${score.key}] Processing ${events.length} raw events`)

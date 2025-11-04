@@ -1,4 +1,5 @@
 import { createResource, createSignal, onCleanup, onMount, Show } from "solid-js"
+import ActionConfig, { type ActionsConfig } from "./ActionConfig"
 import { clearStoredToken, getApi, getStoredToken, type Indexer, setStoredToken } from "./api"
 import Token from "./Token"
 
@@ -24,6 +25,8 @@ function App() {
 	const [intervalSeconds, setIntervalSeconds] = createSignal(2)
 	const [maxRetries, setMaxRetries] = createSignal(5)
 	const [fromBlock, setFromBlock] = createSignal(0)
+	const [startActions, setStartActions] = createSignal<ActionsConfig>({})
+	const [rebuildActions, setRebuildActions] = createSignal<ActionsConfig>({})
 
 	const [token, setToken] = createSignal<string>(getStoredToken())
 	const [input, setInput] = createSignal("")
@@ -69,10 +72,13 @@ function App() {
 	// Handlers for server actions
 	async function handleStart() {
 		try {
+			const actions = startActions()
+			const hasActions = Object.keys(actions).length > 0
 			const body = {
 				startingBlock: startingBlock(),
 				intervalSeconds: intervalSeconds(),
-				maxRetries: maxRetries()
+				maxRetries: maxRetries(),
+				...(hasActions && { actions })
 			}
 			const res = await getApi().start.post(body)
 			setData(res, "start")
@@ -111,7 +117,12 @@ function App() {
 
 	async function handleRebuild() {
 		try {
-			const res = await getApi().rebuild.post({ fromBlock: fromBlock() })
+			const actions = rebuildActions()
+			const hasActions = Object.keys(actions).length > 0
+			const res = await getApi().rebuild.post({
+				fromBlock: fromBlock(),
+				...(hasActions && { actions })
+			})
 			setData(res, "rebuild")
 		} catch (err) {
 			setOpStatus((p) => ({ ...p, rebuild: (err as Error).message }))
@@ -154,6 +165,12 @@ function App() {
 									{JSON.stringify(statusResource()?.config, null, 2)}
 								</pre>
 							</dd>
+							<dt>Module States</dt>
+							<dd>
+								<pre style="white-space: pre-wrap">
+									{JSON.stringify(statusResource()?.moduleStates, null, 2)}
+								</pre>
+							</dd>
 						</dl>
 
 						<section>
@@ -168,9 +185,6 @@ function App() {
 						</section>
 					</div>
 				</Show>
-				<button type="button" onClick={() => refetchStatus()}>
-					Refresh Status
-				</button>
 			</section>
 
 			<section>
@@ -179,7 +193,7 @@ function App() {
 					<h3>Start Indexer</h3>
 					<div class="grid">
 						<label for="startingBlock">
-							Starting Block
+							Global Starting Block
 							<input
 								type="number"
 								id="startingBlock"
@@ -209,11 +223,55 @@ function App() {
 							/>
 						</label>
 					</div>
+
+					<details>
+						<summary>Per-Action Configuration (Optional)</summary>
+						<ActionConfig
+							actionName="deposit"
+							label="Bridge Deposit"
+							config={startActions()}
+							setConfig={setStartActions}
+						/>
+						<ActionConfig
+							actionName="faucet"
+							label="Faucet"
+							config={startActions()}
+							setConfig={setStartActions}
+						/>
+						<ActionConfig
+							actionName="liquidity"
+							label="Add Liquidity"
+							config={startActions()}
+							setConfig={setStartActions}
+						/>
+						<ActionConfig
+							actionName="swap"
+							label="Swap"
+							config={startActions()}
+							setConfig={setStartActions}
+						/>
+						<ActionConfig
+							actionName="withdrawal"
+							label="Bridge Withdrawal"
+							config={startActions()}
+							setConfig={setStartActions}
+						/>
+					</details>
+
 					<div class="grid">
-						<button type="button" onClick={() => handleStart()}>
+						<button
+							type="button"
+							disabled={statusResource()?.isRunning === true}
+							onClick={() => handleStart()}
+						>
 							Start
 						</button>
-						<button type="button" class="secondary" onClick={() => handleStop()}>
+						<button
+							disabled={statusResource()?.isRunning === false}
+							type="button"
+							class="secondary"
+							onClick={() => handleStop()}
+						>
 							Stop
 						</button>
 					</div>
@@ -237,7 +295,7 @@ function App() {
 				<article>
 					<h3>Rebuild Leaderboard</h3>
 					<label for="fromBlock">
-						From Block
+						Global From Block
 						<input
 							type="number"
 							id="fromBlock"
@@ -246,6 +304,41 @@ function App() {
 							onInput={(e) => setFromBlock(Number.parseInt(e.currentTarget.value))}
 						/>
 					</label>
+
+					<details>
+						<summary>Per-Action Configuration (Optional)</summary>
+						<ActionConfig
+							actionName="deposit"
+							label="Bridge Deposit"
+							config={rebuildActions()}
+							setConfig={setRebuildActions}
+						/>
+						<ActionConfig
+							actionName="faucet"
+							label="Faucet"
+							config={rebuildActions()}
+							setConfig={setRebuildActions}
+						/>
+						<ActionConfig
+							actionName="liquidity"
+							label="Add Liquidity"
+							config={rebuildActions()}
+							setConfig={setRebuildActions}
+						/>
+						<ActionConfig
+							actionName="swap"
+							label="Swap"
+							config={rebuildActions()}
+							setConfig={setRebuildActions}
+						/>
+						<ActionConfig
+							actionName="withdrawal"
+							label="Bridge Withdrawal"
+							config={rebuildActions()}
+							setConfig={setRebuildActions}
+						/>
+					</details>
+
 					<button type="button" onClick={() => handleRebuild()}>
 						Rebuild
 					</button>

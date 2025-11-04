@@ -1,4 +1,11 @@
-import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
+import {
+	type ActionConfig,
+	type ArchiveEvents,
+	addresses,
+	fetchArchiveEvents,
+	getPubK,
+	logger
+} from "../helper"
 
 const processFaucetEvents = async (events: ArchiveEvents) => {
 	const parse = (data: string[], timestamp: string, transactionHash: string) => {
@@ -27,13 +34,17 @@ export const score = {
 } as const
 
 export const handler = {
-	fetch: async (fromBlock: number) => {
-		logger.info(`[${score.key}] Starting fetch from block ${fromBlock}`)
+	fetch: async ({ startBlock, endBlock }: ActionConfig) => {
+		logger.info(
+			`[${score.key}] Starting fetch from block ${startBlock}${endBlock !== Number.POSITIVE_INFINITY ? ` to ${endBlock}` : ""}`
+		)
 
 		const { events, lastFetchedBlock } = await fetchArchiveEvents({
-			address: addresses.FAUCET_ZEKO_TMINA,
-			fromBlock,
-			moduleName: score.key
+			address: addresses.L2.FAUCET_ZEKO_TMINA,
+			startBlock,
+			endBlock,
+			moduleName: score.key,
+			layer: "L2"
 		})
 
 		logger.info(`[${score.key}] Processing ${events.length} raw events`)

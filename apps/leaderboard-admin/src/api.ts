@@ -3,7 +3,9 @@ import type { App } from "@zeko-types-indexer/server"
 
 export type { Indexer } from "@zeko-types-indexer/indexer"
 
-const BASE_URL = "https://indexer.leaderboard.zeko.io"
+const BASE_URL = import.meta.env.DEV
+	? "http://localhost:3000"
+	: "https://indexer.leaderboard.zeko.io"
 const STORAGE_KEY = "indexer_api_token"
 
 export function getStoredToken(): string {

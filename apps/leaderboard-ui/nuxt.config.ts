@@ -5,6 +5,7 @@ const currentDir = dirname(fileURLToPath(import.meta.url))
 
 export default defineNuxtConfig({
 	compatibilityDate: "2025-07-15",
+	devServer: { port: 3069 },
 	modules: ["@nuxt/fonts", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
 	devtools: { enabled: true },
 	extends: ["@zeko/layer"],

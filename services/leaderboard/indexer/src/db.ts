@@ -159,7 +159,7 @@ async function updateLeaderboardForWallets(options: {
 	batchSize?: number
 }) {
 	const { db, wallets, config = scoreConfig, batchSize = 1000 } = options
-	if (wallets.length === 0) return
+	if (wallets.length === 0) return false
 
 	// Batch large wallet arrays to prevent inefficient IN clauses
 	if (wallets.length > batchSize) {
@@ -170,10 +170,11 @@ async function updateLeaderboardForWallets(options: {
 			const batch = wallets.slice(i, i + batchSize)
 			await updateLeaderboardForWalletsBatch({ db, wallets: batch, config })
 		}
-		return
+		return true
 	}
 
 	await updateLeaderboardForWalletsBatch({ db, wallets, config })
+	return true
 }
 
 /**
@@ -305,7 +306,7 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 	updateMode?: "inserted" | "all"
 }) {
 	const { db, actionsToInsert, config = scoreConfig, updateMode = "inserted" } = options
-	if (actionsToInsert.length === 0) return
+	if (actionsToInsert.length === 0) return false
 
 	try {
 		// Step 1: Batch insert all actions (ignore duplicates) and get only newly inserted actions
@@ -324,7 +325,7 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 
 		if (insertedActions.length === 0) {
 			logger.info("No new actions inserted (all were duplicates), skipping leaderboard update")
-			return
+			return false
 		}
 
 		// Step 2: Determine which wallets to update based on mode
@@ -340,11 +341,12 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 		)
 
 		// Step 3: Update leaderboard for affected wallets
-		await updateLeaderboardForWallets({ db, wallets: walletsToUpdate, config })
+		const updated = await updateLeaderboardForWallets({ db, wallets: walletsToUpdate, config })
 
 		logger.success(
 			`Leaderboard updated for ${walletsToUpdate.length} wallets (${insertedActions.length} actions inserted, ${duplicatesCount} duplicates)`
 		)
+		return updated
 	} catch (error) {
 		logger.error("Error in batch insert and update:", error)
 		throw error

@@ -10,6 +10,21 @@ const indexer = new Indexer(db)
 
 const authToken = process.env.AUTH_TOKEN || "admin"
 
+const ActionConfigSchema = t.Object({
+	startBlock: t.Number(),
+	endBlock: t.Number()
+})
+
+const PartialActionsConfigSchema = t.Partial(
+	t.Object({
+		deposit: ActionConfigSchema,
+		faucet: ActionConfigSchema,
+		liquidity: ActionConfigSchema,
+		swap: ActionConfigSchema,
+		withdrawal: ActionConfigSchema
+	})
+)
+
 export const server = new Elysia()
 	.use(bearer())
 	.use(
@@ -35,7 +50,8 @@ export const server = new Elysia()
 			body: t.Object({
 				startingBlock: t.Optional(t.Number()),
 				intervalSeconds: t.Optional(t.Number()),
-				maxRetries: t.Optional(t.Number())
+				maxRetries: t.Optional(t.Number()),
+				actions: t.Optional(PartialActionsConfigSchema)
 			})
 		}
 	)
@@ -51,11 +67,14 @@ export const server = new Elysia()
 	.post(
 		"/rebuild",
 		async ({ status, body }) => {
-			const result = await indexer.rebuild(body.fromBlock)
+			const result = await indexer.rebuild(body.fromBlock, body.actions)
 			return status(result.success ? 200 : 500, result)
 		},
 		{
-			body: t.Object({ fromBlock: t.Optional(t.Number()) })
+			body: t.Object({
+				fromBlock: t.Optional(t.Number()),
+				actions: t.Optional(PartialActionsConfigSchema)
+			})
 		}
 	)
 

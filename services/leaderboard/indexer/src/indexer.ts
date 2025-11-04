@@ -7,7 +7,7 @@ import {
 	recalculateLeaderboard,
 	scoreConfig
 } from "./db"
-import { broadcast, logger, wait } from "./helper"
+import { type ActionConfig, type ActionsConfig, broadcast, logger, wait } from "./helper"
 import { handler as deposit } from "./points/deposit"
 import { handler as faucet } from "./points/faucet"
 import { handler as liquidity } from "./points/liquidity"
@@ -21,6 +21,7 @@ interface IndexerConfig {
 
 interface ModuleState {
 	lastFetchedBlock: number
+	endBlock?: number
 }
 
 interface IndexerState {
@@ -29,6 +30,42 @@ interface IndexerState {
 	moduleStates: Record<string, ModuleState>
 	config: IndexerConfig
 	consecutiveErrors: number
+}
+
+type ModuleName = keyof ActionsConfig
+
+/**
+ * Normalize block number (convert 0 to 1 due to archive bug)
+ */
+const normalizeBlock = (block: number): number => (block === 0 ? 1 : block)
+
+/**
+ * Create module state from action config
+ */
+const createModuleState = (config: ActionConfig): ModuleState => ({
+	lastFetchedBlock: normalizeBlock(config.startBlock),
+	endBlock: config.endBlock === Number.POSITIVE_INFINITY ? undefined : config.endBlock
+})
+
+/**
+ * Create all module states from actions config with defaults
+ */
+const createModuleStates = (
+	actions: Partial<ActionsConfig>,
+	defaultStartBlock: number
+): Record<ModuleName, ModuleState> => {
+	const modules: ModuleName[] = ["deposit", "faucet", "liquidity", "swap", "withdrawal"]
+	const result: Record<string, ModuleState> = {}
+
+	for (const module of modules) {
+		const actionConfig = actions[module] ?? {
+			startBlock: defaultStartBlock,
+			endBlock: Number.POSITIVE_INFINITY
+		}
+		result[module] = createModuleState(actionConfig)
+	}
+
+	return result as Record<ModuleName, ModuleState>
 }
 
 /**
@@ -54,11 +91,26 @@ async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promi
 
 	const [depositResult, faucetResult, liquidityResult, swapResult, withdrawalResult] =
 		await Promise.all([
-			deposit.fetch(moduleStates.deposit.lastFetchedBlock),
-			faucet.fetch(moduleStates.faucet.lastFetchedBlock),
-			liquidity.fetch(moduleStates.liquidity.lastFetchedBlock),
-			swap.fetch(moduleStates.swap.lastFetchedBlock),
-			withdrawal.fetch(moduleStates.withdrawal.lastFetchedBlock)
+			deposit.fetch({
+				startBlock: moduleStates.deposit.lastFetchedBlock,
+				endBlock: moduleStates.deposit.endBlock ?? Number.POSITIVE_INFINITY
+			}),
+			faucet.fetch({
+				startBlock: moduleStates.faucet.lastFetchedBlock,
+				endBlock: moduleStates.faucet.endBlock ?? Number.POSITIVE_INFINITY
+			}),
+			liquidity.fetch({
+				startBlock: moduleStates.liquidity.lastFetchedBlock,
+				endBlock: moduleStates.liquidity.endBlock ?? Number.POSITIVE_INFINITY
+			}),
+			swap.fetch({
+				startBlock: moduleStates.swap.lastFetchedBlock,
+				endBlock: moduleStates.swap.endBlock ?? Number.POSITIVE_INFINITY
+			}),
+			withdrawal.fetch({
+				startBlock: moduleStates.withdrawal.lastFetchedBlock,
+				endBlock: moduleStates.withdrawal.endBlock ?? Number.POSITIVE_INFINITY
+			})
 		])
 
 	logger.success("✅ All modules fetched successfully")
@@ -70,13 +122,28 @@ async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promi
 		withdrawal: `${withdrawalResult.data.length} events (block ${withdrawalResult.lastFetchedBlock})`
 	})
 
-	// Update module states with new last fetched blocks
+	// Update module states with new last fetched blocks, preserving endBlock
 	const updatedModuleStates = {
-		deposit: { lastFetchedBlock: depositResult.lastFetchedBlock + 1 },
-		faucet: { lastFetchedBlock: faucetResult.lastFetchedBlock + 1 },
-		liquidity: { lastFetchedBlock: liquidityResult.lastFetchedBlock + 1 },
-		swap: { lastFetchedBlock: swapResult.lastFetchedBlock + 1 },
-		withdrawal: { lastFetchedBlock: withdrawalResult.lastFetchedBlock + 1 }
+		deposit: {
+			lastFetchedBlock: depositResult.lastFetchedBlock + 1,
+			endBlock: moduleStates.deposit.endBlock
+		},
+		faucet: {
+			lastFetchedBlock: faucetResult.lastFetchedBlock + 1,
+			endBlock: moduleStates.faucet.endBlock
+		},
+		liquidity: {
+			lastFetchedBlock: liquidityResult.lastFetchedBlock + 1,
+			endBlock: moduleStates.liquidity.endBlock
+		},
+		swap: {
+			lastFetchedBlock: swapResult.lastFetchedBlock + 1,
+			endBlock: moduleStates.swap.endBlock
+		},
+		withdrawal: {
+			lastFetchedBlock: withdrawalResult.lastFetchedBlock + 1,
+			endBlock: moduleStates.withdrawal.endBlock
+		}
 	}
 
 	logger.info("Updated module states:", updatedModuleStates)
@@ -161,16 +228,17 @@ async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerState): Pro
 		// Batch insert actions and update leaderboard
 		if (actionsToInsert.length > 0) {
 			logger.info("🔨 Inserting actions and updating leaderboard...")
-			await batchInsertActionsAndUpdateLeaderboard({
+			const triggerBroadcast = await batchInsertActionsAndUpdateLeaderboard({
 				db,
 				actionsToInsert,
 				config: scoreConfig,
 				updateMode: "inserted" // Only update wallets with new actions
 			})
 			logger.success("✅ Database updated successfully")
-
-			logger.info("📢 Triggering distributor broadcast...")
-			broadcast()
+			if (triggerBroadcast) {
+				logger.info("📢 Triggering distributor broadcast...")
+				broadcast()
+			}
 		} else {
 			logger.info("⏭️  No new actions to process")
 		}
@@ -241,7 +309,12 @@ export class Indexer {
 	/**
 	 * Start the indexing loop
 	 */
-	start(input?: { startingBlock?: number; intervalSeconds?: number; maxRetries?: number }) {
+	start(input?: {
+		startingBlock?: number
+		intervalSeconds?: number
+		maxRetries?: number
+		actions?: Partial<ActionsConfig>
+	}) {
 		try {
 			if (this.#state.isRunning) {
 				return { success: false, message: "Indexer is already running" } as const
@@ -249,17 +322,9 @@ export class Indexer {
 
 			// Update config if provided
 			if (input) {
-				if (input.startingBlock !== undefined) {
-					//TODO: There is a bug with the block 0 https://linear.app/zeko-labs/issue/EXT-17/archive-node-queries-block-0-is-not-functioning-properly
-					const sb = input.startingBlock === 0 ? 1 : input.startingBlock
-					// Update all module states to start from this block
-					this.#state.moduleStates = {
-						deposit: { lastFetchedBlock: sb },
-						faucet: { lastFetchedBlock: sb },
-						liquidity: { lastFetchedBlock: sb },
-						swap: { lastFetchedBlock: sb },
-						withdrawal: { lastFetchedBlock: sb }
-					}
+				if (input.startingBlock !== undefined || input.actions !== undefined) {
+					const defaultStartBlock = input.startingBlock ?? 0
+					this.#state.moduleStates = createModuleStates(input.actions ?? {}, defaultStartBlock)
 				}
 				if (input.intervalSeconds !== undefined) {
 					this.#state.config.intervalSeconds = input.intervalSeconds
@@ -373,7 +438,7 @@ export class Indexer {
 	 * then recalculate the leaderboard
 	 * This is a full rebuild of both tables
 	 */
-	async rebuild(initialBlock = 1) {
+	async rebuild(initialBlock = 0, actions?: Partial<ActionsConfig>) {
 		// Remember if we were running before
 		const wasRunning = this.#state.isRunning
 		const previousConfig = { ...this.#state.config }
@@ -390,17 +455,11 @@ export class Indexer {
 			await this.#db.delete(leaderboardTable)
 			await this.#db.delete(actionsTable)
 
-			// Step 3: Reset all module states to initial block
-			const initialModuleStates = {
-				deposit: { lastFetchedBlock: initialBlock },
-				faucet: { lastFetchedBlock: initialBlock },
-				liquidity: { lastFetchedBlock: initialBlock },
-				swap: { lastFetchedBlock: initialBlock },
-				withdrawal: { lastFetchedBlock: initialBlock }
-			}
+			// Step 3: Reset all module states to initial block with action-specific configs
+			const initialModuleStates = createModuleStates(actions ?? {}, initialBlock)
 
 			// Step 4: Fetch all actions from blockchain starting from initialBlock
-			logger.info(`[Rebuild] Fetching all actions from block ${initialBlock}...`)
+			logger.info(`[Rebuild] Fetching all actions from configured blocks...`)
 			const { actionsToInsert, updatedModuleStates } = await fetchAllActions(initialModuleStates)
 
 			logger.info("[Rebuild] Fetched all events from blockchain")
