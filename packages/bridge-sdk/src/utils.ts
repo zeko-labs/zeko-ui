@@ -14,16 +14,16 @@ export async function fetchActions(
 	pk: PublicKey,
 	actionStates?: Mina.ActionStates
 ): Promise<Action[]> {
-	const fetchActionsRecursive = async ({
-		fromBlock,
-		toBlock
-	}: { fromBlock?: number; toBlock?: number }) => {
+	const fetchActionsRecursive = async (fromBlock?: number, emptyResults: number = 0) => {
+		if (fromBlock !== undefined && fromBlock < 0) return []
+
+		if (emptyResults > 10) return []
+
 		const { data } = await client.query(fetchActionsQuery, {
 			pk: pk.toBase58(),
 			fromActionState: actionStates?.fromActionState?.toString() ?? null,
 			endActionState: actionStates?.endActionState?.toString() ?? null,
-			from: fromBlock ?? null,
-			to: toBlock ?? null
+			from: fromBlock ?? null
 		})
 		const dataWithDefault = data?.actions.map((a) => ({
 			...a,
@@ -56,15 +56,21 @@ export async function fetchActions(
 		const result = v.safeParse(schema, dataWithDefault)
 		if (!result.success) throw new Error("Invalid actions data")
 
-		if (result.output.length === 0) return result.output
+		if (result.output.length === 0 && fromBlock === undefined) {
+			console.log("WARNING: No actions found in first batch")
+			return []
+		}
 
-		const prevOutput: v.InferOutput<typeof schema> = await fetchActionsRecursive({
-			fromBlock: result.output[0].blockInfo.height - BLOCK_RANGE_SIZE
-		})
+		const prevOutput: v.InferOutput<typeof schema> = await fetchActionsRecursive(
+			result.output.length === 0
+				? fromBlock! - BLOCK_RANGE_SIZE
+				: result.output[0].blockInfo.height - BLOCK_RANGE_SIZE,
+			result.output.length === 0 ? emptyResults + 1 : 0
+		)
 		return [...prevOutput, ...result.output]
 	}
 
-	const output = await fetchActionsRecursive({})
+	const output = await fetchActionsRecursive()
 
 	return output.flatMap(
 		({
