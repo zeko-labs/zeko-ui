@@ -450,33 +450,36 @@ export class Indexer {
 		}
 
 		try {
-			// Step 2: Clear both tables
-			logger.info("[Rebuild] Clearing actions and leaderboard tables...")
-			await this.#db.delete(leaderboardTable)
-			await this.#db.delete(actionsTable)
-
-			// Step 3: Reset all module states to initial block with action-specific configs
+			// Step 1: Reset all module states to initial block with action-specific configs
 			const initialModuleStates = createModuleStates(actions ?? {}, initialBlock)
 
-			// Step 4: Fetch all actions from blockchain starting from initialBlock
+			// Step 2: Fetch all actions from blockchain starting from initialBlock
 			logger.info(`[Rebuild] Fetching all actions from configured blocks...`)
 			const { actionsToInsert, updatedModuleStates } = await fetchAllActions(initialModuleStates)
-
 			logger.info("[Rebuild] Fetched all events from blockchain")
 
-			// Step 5: Insert all actions and build leaderboard
-			if (actionsToInsert.length > 0) {
+			if (actionsToInsert.length === 0)
+				throw new Error("No actions fetched from blockchain for rebuild")
+
+			await this.#db.transaction(async (tx) => {
+				// Step 3: Clear both tables
+				logger.info("[Rebuild] Clearing actions and leaderboard tables...")
+
+				await tx.delete(leaderboardTable)
+				await tx.delete(actionsTable)
+
+				// Step 4: Insert all actions and build leaderboard
+
 				logger.info(`[Rebuild] Inserting ${actionsToInsert.length} actions...`)
 				await batchInsertActionsAndUpdateLeaderboard({
-					db: this.#db,
+					db: tx,
 					actionsToInsert,
 					config: scoreConfig,
 					updateMode: "all" // Rebuild should update all wallets
 				})
-			}
+			})
 
 			this.#state.moduleStates = updatedModuleStates
-
 			logger.success("[Rebuild] Rebuild completed successfully")
 
 			// Step 6: Restart the indexing loop if it was running before
