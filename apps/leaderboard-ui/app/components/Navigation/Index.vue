@@ -215,7 +215,7 @@ const openMenu = () => {
   position: relative;
   width: 100%;
   height: 100%;
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(255, 255, 255, 1);
   display: flex;
   flex-direction: column;
   animation: slideInRight 0.3s ease-out;

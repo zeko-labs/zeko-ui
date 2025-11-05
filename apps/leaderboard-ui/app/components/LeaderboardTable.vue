@@ -206,7 +206,15 @@ tbody {
   width: 100%;
   tr {
     padding: 1.5rem 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--palette-gray-200);
+    &:has(+ tr:hover) {
+      border-bottom: 1px solid transparent;
+    }
+    &:hover {
+      background: var(--palette-gray-50);
+      border-bottom: 1px solid transparent;
+      border-radius: 0.5rem;
+    }
     &:last-child {
       border-bottom: none;
     }

@@ -8,7 +8,6 @@ const play = () => {
 }
 onMounted(() => {
 	audio.loop = true
-	audio.src = ""
 })
 </script>
 <template>

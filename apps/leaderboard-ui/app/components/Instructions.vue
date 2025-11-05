@@ -38,44 +38,48 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
             <span class="Indicator"></span>
             <span>Instructions</span>
           </div>
-          <SvgCaretDown class="DropdownIcon" />
+          <SvgMiniCaretUp class="DropdownIcon" />
         </button>
 
-        <div v-show="instructionsExpanded" class="InstructionContent">
-          <hr class="Divider">
+        <hr class="Divider" :class="{ hidden: !instructionsExpanded }">
 
-          <div class="InstructionList">
-            <div class="InstructionItem">
-              <h3 class="ItemTitle">How to Join ZekoBOOM Sprints?</h3>
-              <p class="ItemText">
-                Visit the zkApp Sprints section below and follow the
-                instructions to complete all the main tasks to earn points.
-              </p>
-            </div>
+        <div
+          class="ContentWrapper"
+          :class="{ collapsed: !instructionsExpanded }">
+          <div class="InstructionContent">
+            <div class="InstructionList">
+              <div class="InstructionItem">
+                <h3 class="ItemTitle">How to Join ZekoBOOM Sprints?</h3>
+                <p class="ItemText">
+                  Visit the zkApp Sprints section below and follow the
+                  instructions to complete all the main tasks to earn points.
+                </p>
+              </div>
 
-            <div class="InstructionItem">
-              <h3 class="ItemTitle">
-                Win Big Points and Rank UP on the Leaderboard
-              </h3>
-              <p class="ItemText">
-                The more points you earn, the higher you climb on the
-                leaderboard. Top points earners will be very happy.
-              </p>
-            </div>
+              <div class="InstructionItem">
+                <h3 class="ItemTitle">
+                  Win Big Points and Rank UP on the Leaderboard
+                </h3>
+                <p class="ItemText">
+                  The more points you earn, the higher you climb on the
+                  leaderboard. Top points earners will be very happy.
+                </p>
+              </div>
 
-            <div class="InstructionItem">
-              <h3 class="ItemTitle">Tech Requirements</h3>
-              <ul class="RequirementsList">
-                <li>Chrome browser latest version</li>
-                <li>Auro Wallet Chrome extension latest version installed</li>
-              </ul>
-              <div class="DownloadLink">
-                <span class="LinkText">Auro Wallet not installed?</span>
-                <a
-                  href="https://www.aurowallet.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="LinkAction">Download here</a>
+              <div class="InstructionItem">
+                <h3 class="ItemTitle">Tech Requirements</h3>
+                <ul class="RequirementsList">
+                  <li>Chrome browser latest version</li>
+                  <li>Auro Wallet Chrome extension latest version installed</li>
+                </ul>
+                <div class="DownloadLink">
+                  <span class="LinkText">Auro Wallet not installed?</span>
+                  <a
+                    href="https://www.aurowallet.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="LinkAction">Download here</a>
+                </div>
               </div>
             </div>
           </div>
@@ -96,623 +100,629 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
             <span class="SprintsIndicator"></span>
             <h2>zkApp Sprints - Earn Points!</h2>
           </div>
-          <SvgCaretDown class="ExpandIcon" />
+          <SvgMiniCaretUp class="ExpandIcon" />
         </button>
 
-        <div v-show="sprintsExpanded" class="SprintsContent">
-          <hr class="Divider">
+        <hr class="Divider" :class="{ hidden: !sprintsExpanded }">
 
-          <div class="SprintsList">
-            <!-- SPRINT ONE -->
-            <article class="SprintCard" :class="{ expanded: sprints === 1 }">
-              <button
-                class="SprintHeader"
-                type="button"
-                :aria-expanded="sprints === 1"
-                @click="toggleSprint(1)">
-                <div class="SprintIcon">
-                  <SvgFaucet />
-                </div>
-
-                <div class="SprintInfo">
-                  <div class="SprintMeta">
-                    <span class="SprintNumber">Sprint 1</span>
-                    <div class="SprintTitleRow">
-                      <h3 class="SprintTitle">Faucet</h3>
-                      <span class="SprintPoints">20 Points</span>
-                    </div>
+        <div class="ContentWrapper" :class="{ collapsed: !sprintsExpanded }">
+          <div class="SprintsContent">
+            <div class="SprintsList">
+              <!-- SPRINT ONE -->
+              <article class="SprintCard" :class="{ expanded: sprints === 1 }">
+                <button
+                  class="SprintHeader"
+                  type="button"
+                  :aria-expanded="sprints === 1"
+                  @click="toggleSprint(1)">
+                  <div class="SprintIcon">
+                    <SvgFaucet />
                   </div>
-                  <p class="SprintDescription">
-                    Setup a new wallet & faucet funds on Zeko testnet
-                  </p>
-                </div>
-                <SvgToggleCaret :class="{ expanded: sprints === 1 }" />
-              </button>
 
-              <div v-if="sprints === 1" class="SprintDetails">
-                <p class="DetailsIntro">
-                  To complete this sprint and earn points
-                </p>
-
-                <div class="StepsList">
-                  <div class="Step">
-                    <div class="StepIndicator">
-                      <span class="StepDot"></span>
-                      <div class="StepLine"></div>
+                  <div class="SprintInfo">
+                    <div class="SprintMeta">
+                      <span class="SprintNumber">Sprint 1</span>
+                      <div class="SprintTitleRow">
+                        <h3 class="SprintTitle">Faucet</h3>
+                        <span class="SprintPoints">20 Points</span>
+                      </div>
                     </div>
+                    <p class="SprintDescription">
+                      Setup a new wallet & faucet funds on Zeko testnet
+                    </p>
+                  </div>
+                  <SvgToggleCaret :class="{ expanded: sprints === 1 }" />
+                </button>
 
-                    <div class="StepContent">
-                      <div class="StepText">
-                        <p>First you need to get a wallet:</p>
-                        <ul>
+                <div v-if="sprints === 1" class="SprintDetails">
+                  <p class="DetailsIntro">
+                    To complete this sprint and earn points
+                  </p>
+
+                  <div class="StepsList">
+                    <div class="Step">
+                      <div class="StepIndicator">
+                        <span class="StepDot"></span>
+                        <div class="StepLine"></div>
+                      </div>
+
+                      <div class="StepContent">
+                        <div class="StepText">
+                          <p>First you need to get a wallet:</p>
+                          <ul>
+                            <li>
+                              Visit AuroWallet.com to download and install the
+                              latest Auro Chrome/Firefox/Edge browser extension
+                              wallet, note the seed phase backup is important.
+                            </li>
+                          </ul>
+                        </div>
+
+                        <a
+                          :href="links.auroWallet"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="ActionButton">Download Wallet</a>
+
+                        <ul class="StepInstructions">
+                          <li>Change the wallet network to Zeko Testnet.</li>
                           <li>
-                            Visit AuroWallet.com to download and install the
-                            latest Auro Chrome/Firefox/Edge browser extension
-                            wallet, note the seed phase backup is important.
+                            Click the wallet icon in the upper right corner,
+                            then follow the instructions to Add Account → Create
+                            Account → Enter Account Name → Confirm
                           </li>
                         </ul>
                       </div>
-
-                      <a
-                        :href="links.auroWallet"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="ActionButton">Download Wallet</a>
-
-                      <ul class="StepInstructions">
-                        <li>Change the wallet network to Zeko Testnet.</li>
-                        <li>
-                          Click the wallet icon in the upper right corner, then
-                          follow the instructions to Add Account → Create
-                          Account → Enter Account Name → Confirm
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div class="Step">
-                    <div class="StepIndicator">
-                      <div class="StepLineTop"></div>
-                      <span class="StepDot"></span>
-                      <div class="StepLine"></div>
                     </div>
 
-                    <div class="StepContent">
-                      <div class="StepText">
-                        <p>Now you can faucet with testnet funds</p>
-                        <ul>
-                          <li>Visit the Zeko Faucet</li>
-                        </ul>
+                    <div class="Step">
+                      <div class="StepIndicator">
+                        <div class="StepLineTop"></div>
+                        <span class="StepDot"></span>
+                        <div class="StepLine"></div>
                       </div>
 
-                      <a
-                        :href="links.faucet"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="ActionButton withIcon">
-                        <SvgFaucet />
-                        <span>Zeko Faucet</span>
-                      </a>
+                      <div class="StepContent">
+                        <div class="StepText">
+                          <p>Now you can faucet with testnet funds</p>
+                          <ul>
+                            <li>Visit the Zeko Faucet</li>
+                          </ul>
+                        </div>
 
-                      <ul class="StepInstructions">
-                        <li>
-                          Enter your Auro Wallet address in Step 2 and click
-                          'Request tMINA'
-                        </li>
-                        <li>
-                          You should see a few tMINA deposited to your wallet
-                          within a few seconds (note you can faucet funds only
-                          once for your wallet)
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
+                        <a
+                          :href="links.faucet"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="ActionButton withIcon">
+                          <SvgFaucet />
+                          <span>Zeko Faucet</span>
+                        </a>
 
-                <div class="Congratulations">
-                  <h4 class="CongratsTitle">🎉 Congratulations</h4>
-                  <p class="CongratsText">
-                    You did it, your leaderboard points will be updated soon.
-                  </p>
-                </div>
-
-                <p class="SharePrompt">
-                  Now share with your network on X (pre-populated tweet+image
-                  link), and proceed to the next quest.
-                </p>
-
-                <a
-                  :href="links.x"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="ShareButton">
-                  <SvgSocialX />
-                  <span>Share on X</span>
-                </a>
-              </div>
-            </article>
-
-            <!-- SPRINT TWO -->
-            <article class="SprintCard" :class="{ expanded: sprints === 2 }">
-              <button
-                class="SprintHeader"
-                type="button"
-                :aria-expanded="sprints === 2"
-                @click="toggleSprint(2)">
-                <div class="SprintIcon bridge">
-                  <SvgBridgeIn />
-                </div>
-
-                <div class="SprintInfo">
-                  <div class="SprintMeta">
-                    <span class="SprintNumber">Sprint 2</span>
-                    <div class="SprintTitleRow">
-                      <h3 class="SprintTitle">Bridge to Zeko</h3>
-                      <span class="SprintPoints dark">20 Points</span>
-                    </div>
-                  </div>
-                  <p class="SprintDescription">
-                    Bridge MINA from Mina devnet to Zeko testnet
-                  </p>
-                </div>
-                <SvgToggleCaret :class="{ expanded: sprints === 2 }" />
-              </button>
-
-              <div v-if="sprints === 2" class="SprintDetails">
-                <p class="DetailsIntro">
-                  To complete Sprint 2 and earn Leaderboard points:
-                </p>
-
-                <div class="StepsList">
-                  <div class="Step">
-                    <div class="StepIndicator">
-                      <span class="StepDot"></span>
-                      <div class="StepLine"></div>
-                    </div>
-
-                    <div class="StepContent">
-                      <div class="StepText">
-                        <p>First you need to get some Mina devnet funds:</p>
-                        <ul>
-                          <li>Visit Mina devnet faucet</li>
+                        <ul class="StepInstructions">
+                          <li>
+                            Enter your Auro Wallet address in Step 2 and click
+                            'Request tMINA'
+                          </li>
+                          <li>
+                            You should see a few tMINA deposited to your wallet
+                            within a few seconds (note you can faucet funds only
+                            once for your wallet)
+                          </li>
                         </ul>
                       </div>
-
-                      <a
-                        :href="links.faucet"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="ActionButton">
-                        <span>Mina Faucet</span>
-                      </a>
-
-                      <ul class="StepInstructions">
-                        <li>Switch your Auro wallet network to Mina devnet</li>
-                        <li>Enter your wallet address → Click Request</li>
-                        <li>
-                          Your tMINA will be deposited to your wallet within a
-                          few minutes (note you can faucet only once per wallet)
-                        </li>
-                      </ul>
                     </div>
                   </div>
 
-                  <div class="Step">
-                    <div class="StepIndicator">
-                      <div class="StepConnector"></div>
-                      <span class="StepDot"></span>
-                      <div class="StepLine"></div>
-                    </div>
+                  <div class="Congratulations">
+                    <h4 class="CongratsTitle">🎉 Congratulations</h4>
+                    <p class="CongratsText">
+                      You did it, your leaderboard points will be updated soon.
+                    </p>
+                  </div>
 
-                    <div class="StepContent">
-                      <div class="StepText">
-                        <p>
-                          Now that you have tMINA on Mina devnet, Bridge funds
-                          from Mina devnet to Zeko testnet
-                        </p>
-                        <ul>
-                          <li>Visit the Zeko bridge</li>
-                        </ul>
+                  <p class="SharePrompt">
+                    Now share with your network on X (pre-populated tweet+image
+                    link), and proceed to the next quest.
+                  </p>
+
+                  <a
+                    :href="links.x"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ShareButton">
+                    <SvgSocialX />
+                    <span>Share on X</span>
+                  </a>
+                </div>
+              </article>
+
+              <!-- SPRINT TWO -->
+              <article class="SprintCard" :class="{ expanded: sprints === 2 }">
+                <button
+                  class="SprintHeader"
+                  type="button"
+                  :aria-expanded="sprints === 2"
+                  @click="toggleSprint(2)">
+                  <div class="SprintIcon bridge">
+                    <SvgBridgeIn />
+                  </div>
+
+                  <div class="SprintInfo">
+                    <div class="SprintMeta">
+                      <span class="SprintNumber">Sprint 2</span>
+                      <div class="SprintTitleRow">
+                        <h3 class="SprintTitle">Bridge to Zeko</h3>
+                        <span class="SprintPoints dark">20 Points</span>
+                      </div>
+                    </div>
+                    <p class="SprintDescription">
+                      Bridge MINA from Mina devnet to Zeko testnet
+                    </p>
+                  </div>
+                  <SvgToggleCaret :class="{ expanded: sprints === 2 }" />
+                </button>
+
+                <div v-if="sprints === 2" class="SprintDetails">
+                  <p class="DetailsIntro">
+                    To complete Sprint 2 and earn Leaderboard points:
+                  </p>
+
+                  <div class="StepsList">
+                    <div class="Step">
+                      <div class="StepIndicator">
+                        <span class="StepDot"></span>
+                        <div class="StepLine"></div>
                       </div>
 
-                      <a
-                        :href="links.zekoBridge"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="ActionButton withIcon">
-                        <SvgBridgeIn />
-                        <span>Zeko Bridge</span>
-                      </a>
+                      <div class="StepContent">
+                        <div class="StepText">
+                          <p>First you need to get some Mina devnet funds:</p>
+                          <ul>
+                            <li>Visit Mina devnet faucet</li>
+                          </ul>
+                        </div>
 
-                      <ul class="StepInstructions">
-                        <li>
-                          Enter an amount to bridge from Mina devnet to Zeko
-                          testnet, and follow the Bridge page instructions to
-                          completion.
-                        </li>
-                        <li>
-                          Visit the Zeko Community Discord if you have any
-                          questions
-                        </li>
-                      </ul>
+                        <a
+                          :href="links.faucet"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="ActionButton">
+                          <span>Mina Faucet</span>
+                        </a>
 
-                      <a
-                        :href="links.discord"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="ActionButton withIcon">
-                        <SvgSocialDiscord />
-                        <span>Visit Discord</span>
-                      </a>
+                        <ul class="StepInstructions">
+                          <li>
+                            Switch your Auro wallet network to Mina devnet
+                          </li>
+                          <li>Enter your wallet address → Click Request</li>
+                          <li>
+                            Your tMINA will be deposited to your wallet within a
+                            few minutes (note you can faucet only once per
+                            wallet)
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div class="Step">
+                      <div class="StepIndicator">
+                        <div class="StepConnector"></div>
+                        <span class="StepDot"></span>
+                        <div class="StepLine"></div>
+                      </div>
+
+                      <div class="StepContent">
+                        <div class="StepText">
+                          <p>
+                            Now that you have tMINA on Mina devnet, Bridge funds
+                            from Mina devnet to Zeko testnet
+                          </p>
+                          <ul>
+                            <li>Visit the Zeko bridge</li>
+                          </ul>
+                        </div>
+
+                        <a
+                          :href="links.zekoBridge"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="ActionButton withIcon">
+                          <SvgBridgeIn />
+                          <span>Zeko Bridge</span>
+                        </a>
+
+                        <ul class="StepInstructions">
+                          <li>
+                            Enter an amount to bridge from Mina devnet to Zeko
+                            testnet, and follow the Bridge page instructions to
+                            completion.
+                          </li>
+                          <li>
+                            Visit the Zeko Community Discord if you have any
+                            questions
+                          </li>
+                        </ul>
+
+                        <a
+                          :href="links.discord"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="ActionButton withIcon">
+                          <SvgSocialDiscord />
+                          <span>Visit Discord</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div class="Congratulations">
-                  <h4 class="CongratsTitle">🎉 Congratulations</h4>
-                  <p class="CongratsText">
-                    Victory unlocked! Wallet leaderboard points incoming. Blast
-                    it on X and gear up for the next quest. 🚀
+                  <div class="Congratulations">
+                    <h4 class="CongratsTitle">🎉 Congratulations</h4>
+                    <p class="CongratsText">
+                      Victory unlocked! Wallet leaderboard points incoming.
+                      Blast it on X and gear up for the next quest. 🚀
+                    </p>
+                  </div>
+
+                  <a
+                    :href="links.x"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ShareButton">
+                    <SvgSocialX />
+                    <span>Share on X</span>
+                  </a>
+                </div>
+              </article>
+
+              <!-- SPRINT THREE -->
+              <article class="SprintCard" :class="{ expanded: sprints === 3 }">
+                <button
+                  class="SprintHeader"
+                  type="button"
+                  :aria-expanded="sprints === 3"
+                  @click="toggleSprint(3)">
+                  <div class="SprintIcon swap">
+                    <SvgSwap />
+                  </div>
+
+                  <div class="SprintInfo">
+                    <div class="SprintMeta">
+                      <span class="SprintNumber">Sprint 3</span>
+                      <div class="SprintTitleRow">
+                        <h3 class="SprintTitle">Swap Tokens</h3>
+                        <span class="SprintPoints dark">100 Points</span>
+                      </div>
+                    </div>
+                    <p class="SprintDescription">
+                      Swap using Solis on Zeko testnet
+                    </p>
+                  </div>
+
+                  <SvgToggleCaret :class="{ expanded: sprints === 3 }" />
+                </button>
+
+                <div v-if="sprints === 3" class="SprintDetails">
+                  <p class="DetailsIntro">
+                    To complete Sprint 3 and earn Leaderboard points:
                   </p>
-                </div>
 
-                <a
-                  :href="links.x"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="ShareButton">
-                  <SvgSocialX />
-                  <span>Share on X</span>
-                </a>
-              </div>
-            </article>
+                  <div class="StepsList">
+                    <div class="Step">
+                      <div class="StepIndicator">
+                        <span class="StepDot"></span>
+                        <div class="StepLine"></div>
+                      </div>
 
-            <!-- SPRINT THREE -->
-            <article class="SprintCard" :class="{ expanded: sprints === 3 }">
-              <button
-                class="SprintHeader"
-                type="button"
-                :aria-expanded="sprints === 3"
-                @click="toggleSprint(3)">
-                <div class="SprintIcon swap">
-                  <SvgSwap />
-                </div>
+                      <div class="StepContent">
+                        <div class="StepText">
+                          <p>Visit Solis DEX, powered by Lumina SDK</p>
+                          <ul>
+                            <li>Make sure you're on Zeko Testnet network</li>
+                            <li>Swap some tMINA for tZEKO and vice-versa.</li>
+                            <li>tZEKO address 👇</li>
+                            <li class="address">
+                              B62qjUhPDbMskxMduyzkyGnK6LZwHksuuYPRjyF4owJM7UWLGJynN36
+                            </li>
+                          </ul>
+                        </div>
 
-                <div class="SprintInfo">
-                  <div class="SprintMeta">
-                    <span class="SprintNumber">Sprint 3</span>
-                    <div class="SprintTitleRow">
-                      <h3 class="SprintTitle">Swap Tokens</h3>
-                      <span class="SprintPoints dark">100 Points</span>
+                        <a
+                          :href="links.solisDex"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="ActionButton">
+                          <span>Solis DEX</span>
+                        </a>
+                      </div>
+                    </div>
+
+                    <div class="Step">
+                      <div class="StepIndicator">
+                        <div class="StepConnector"></div>
+                        <span class="StepDot"></span>
+                        <div class="StepLine"></div>
+                      </div>
+
+                      <div class="StepContent">
+                        <ul class="StepInstructions">
+                          <li>
+                            Earn 5 points for every swap between tMINA &lt;&gt;
+                            tZEKO, up to 100 points maximum per wallet
+                          </li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
-                  <p class="SprintDescription">
-                    Swap using Solis on Zeko testnet
-                  </p>
+
+                  <div class="Congratulations">
+                    <h4 class="CongratsTitle">🎉 Congratulations</h4>
+                    <p class="CongratsText">
+                      Mission complete, leaderboard bump incoming. Share your
+                      swap skills on X and prepare for the next quest. 🙌
+                    </p>
+                  </div>
+
+                  <a
+                    :href="links.x"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ShareButton">
+                    <SvgSocialX />
+                    <span>Share on X</span>
+                  </a>
+
+                  <div class="Congratulations">
+                    <h4 class="CongratsTitle">Shoutout to Lumina SDK</h4>
+                    <p class="CongratsText">
+                      Solis is powered by Lumina, a protocol for building DEXs
+                      on Zeko & Mina. Visit Lumina to learn more:
+                    </p>
+                  </div>
+
+                  <a
+                    :href="links.lumina"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ShareButton">
+                    <span>Visit Lumina</span>
+                  </a>
                 </div>
+              </article>
 
-                <SvgToggleCaret :class="{ expanded: sprints === 3 }" />
-              </button>
+              <!-- SPRINT FOUR -->
+              <article class="SprintCard" :class="{ expanded: sprints === 4 }">
+                <button
+                  class="SprintHeader"
+                  type="button"
+                  :aria-expanded="sprints === 4"
+                  @click="toggleSprint(4)">
+                  <div class="SprintIcon liquidity">
+                    <SvgLiquidity />
+                  </div>
 
-              <div v-if="sprints === 3" class="SprintDetails">
-                <p class="DetailsIntro">
-                  To complete Sprint 3 and earn Leaderboard points:
-                </p>
-
-                <div class="StepsList">
-                  <div class="Step">
-                    <div class="StepIndicator">
-                      <span class="StepDot"></span>
-                      <div class="StepLine"></div>
+                  <div class="SprintInfo">
+                    <div class="SprintMeta">
+                      <span class="SprintNumber">Sprint 4</span>
+                      <div class="SprintTitleRow">
+                        <h3 class="SprintTitle">Pool Liquidity</h3>
+                        <span class="SprintPoints dark">50 Points</span>
+                      </div>
                     </div>
+                    <p class="SprintDescription">
+                      Add liquidity to token pools on Zeko
+                    </p>
+                  </div>
 
-                    <div class="StepContent">
-                      <div class="StepText">
-                        <p>Visit Solis DEX, powered by Lumina SDK</p>
-                        <ul>
+                  <SvgToggleCaret :class="{ expanded: sprints === 4 }" />
+                </button>
+
+                <div v-if="sprints === 4" class="SprintDetails">
+                  <p class="DetailsIntro">
+                    To complete Sprint 4 and earn Leaderboard points, first add
+                    the tZEKO &lt;&gt; Mina pool:
+                  </p>
+
+                  <div class="StepsList">
+                    <div class="Step">
+                      <div class="StepIndicator">
+                        <span class="StepDot"></span>
+                        <div class="StepLine"></div>
+                      </div>
+
+                      <div class="StepContent">
+                        <ul class="StepInstructions">
+                          <li>Visit Solis DEX, powered by Lumina SDK</li>
+                        </ul>
+
+                        <a
+                          :href="links.solisDex"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="ActionButton">
+                          <span>Solis DEX</span>
+                        </a>
+
+                        <ul class="StepInstructions">
                           <li>Make sure you're on Zeko Testnet network</li>
-                          <li>Swap some tMINA for tZEKO and vice-versa.</li>
-                          <li>tZEKO address 👇</li>
+                          <li>Select 'Pool' from the Menu</li>
+                          <li>
+                            Click 'Import Pool', and paste the
+                            tZEKO&lt;&gt;tMINA pool address
+                          </li>
                           <li class="address">
-                            B62qjUhPDbMskxMduyzkyGnK6LZwHksuuYPRjyF4owJM7UWLGJynN36
+                            B62qrSyBR5jLgekkwjDdpt6UX8FfYntYB1uXydFyViWMFLkrGSceFEV
+                          </li>
+                          <li>Click 'Import Pool'</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div class="Step">
+                      <div class="StepIndicator">
+                        <div class="StepConnector"></div>
+                        <span class="StepDot"></span>
+                        <div class="StepLine"></div>
+                      </div>
+
+                      <div class="StepContent">
+                        <div class="StepText">
+                          <p>Now you're ready to add liquidity to the pool:</p>
+                        </div>
+
+                        <ul class="StepInstructions">
+                          <li>
+                            Visit Solis DEX → Click 'Pool' from the Menu, and
+                            navigate to → Your Pools
+                          </li>
+                          <li>
+                            Select 'Add Liquidity' action for the MINA / tZEKO
+                            pool
+                          </li>
+                          <li>
+                            Enter the token amounts to Pool → click 'Add
+                            Liquidity'
+                          </li>
+                          <li>
+                            Earn 10 points for every Add Liquidity action, up to
+                            50 points maximum per wallet
                           </li>
                         </ul>
                       </div>
-
-                      <a
-                        :href="links.solisDex"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="ActionButton">
-                        <span>Solis DEX</span>
-                      </a>
                     </div>
                   </div>
 
-                  <div class="Step">
-                    <div class="StepIndicator">
-                      <div class="StepConnector"></div>
-                      <span class="StepDot"></span>
-                      <div class="StepLine"></div>
-                    </div>
-
-                    <div class="StepContent">
-                      <ul class="StepInstructions">
-                        <li>
-                          Earn 5 points for every swap between tMINA &lt;&gt;
-                          tZEKO, up to 100 points maximum per wallet
-                        </li>
-                      </ul>
-                    </div>
+                  <div class="Congratulations">
+                    <h4 class="CongratsTitle">🎉 Congratulations</h4>
+                    <p class="CongratsText">
+                      You are a Pro Pooler! Leaderboard is syncing your points
+                      now. Flex your status on X and lock in for the next quest.
+                      🏊
+                    </p>
                   </div>
+
+                  <a
+                    :href="links.x"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ShareButton">
+                    <SvgSocialX />
+                    <span>Share on X</span>
+                  </a>
                 </div>
+              </article>
 
-                <div class="Congratulations">
-                  <h4 class="CongratsTitle">🎉 Congratulations</h4>
-                  <p class="CongratsText">
-                    Mission complete, leaderboard bump incoming. Share your swap
-                    skills on X and prepare for the next quest. 🙌
+              <!-- SPRINT FIVE -->
+              <article class="SprintCard" :class="{ expanded: sprints === 5 }">
+                <button
+                  class="SprintHeader"
+                  type="button"
+                  :aria-expanded="sprints === 5"
+                  @click="toggleSprint(5)">
+                  <div class="SprintIcon bridge">
+                    <SvgBridgeOut />
+                  </div>
+
+                  <div class="SprintInfo">
+                    <div class="SprintMeta">
+                      <span class="SprintNumber">Sprint 5</span>
+                      <div class="SprintTitleRow">
+                        <h3 class="SprintTitle">Bridge to Mina</h3>
+                        <span class="SprintPoints dark">20 Points</span>
+                      </div>
+                    </div>
+                    <p class="SprintDescription">
+                      Bridge MINA from Zeko testnet to Mina devnet
+                    </p>
+                  </div>
+
+                  <SvgToggleCaret :class="{ expanded: sprints === 5 }" />
+                </button>
+
+                <div v-if="sprints === 5" class="SprintDetails">
+                  <p class="DetailsIntro">
+                    To complete Sprint 5 and earn Leaderboard points, Bridge
+                    tMINA from Zeko testnet to Mina devnet
+                    <br>
+                    (Easy tip: Sprint 5 bridges in the reverse direction as
+                    Sprint 2)
                   </p>
-                </div>
 
-                <a
-                  :href="links.x"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="ShareButton">
-                  <SvgSocialX />
-                  <span>Share on X</span>
-                </a>
-
-                <div class="Congratulations">
-                  <h4 class="CongratsTitle">Shoutout to Lumina SDK</h4>
-                  <p class="CongratsText">
-                    Solis is powered by Lumina, a protocol for building DEXs on
-                    Zeko & Mina. Visit Lumina to learn more:
-                  </p>
-                </div>
-
-                <a
-                  :href="links.lumina"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="ShareButton">
-                  <span>Visit Lumina</span>
-                </a>
-              </div>
-            </article>
-
-            <!-- SPRINT FOUR -->
-            <article class="SprintCard" :class="{ expanded: sprints === 4 }">
-              <button
-                class="SprintHeader"
-                type="button"
-                :aria-expanded="sprints === 4"
-                @click="toggleSprint(4)">
-                <div class="SprintIcon liquidity">
-                  <SvgLiquidity />
-                </div>
-
-                <div class="SprintInfo">
-                  <div class="SprintMeta">
-                    <span class="SprintNumber">Sprint 4</span>
-                    <div class="SprintTitleRow">
-                      <h3 class="SprintTitle">Pool Liquidity</h3>
-                      <span class="SprintPoints dark">50 Points</span>
-                    </div>
-                  </div>
-                  <p class="SprintDescription">
-                    Add liquidity to token pools on Zeko
-                  </p>
-                </div>
-
-                <SvgToggleCaret :class="{ expanded: sprints === 4 }" />
-              </button>
-
-              <div v-if="sprints === 4" class="SprintDetails">
-                <p class="DetailsIntro">
-                  To complete Sprint 4 and earn Leaderboard points, first add
-                  the tZEKO &lt;&gt; Mina pool:
-                </p>
-
-                <div class="StepsList">
-                  <div class="Step">
-                    <div class="StepIndicator">
-                      <span class="StepDot"></span>
-                      <div class="StepLine"></div>
-                    </div>
-
-                    <div class="StepContent">
-                      <ul class="StepInstructions">
-                        <li>Visit Solis DEX, powered by Lumina SDK</li>
-                      </ul>
-
-                      <a
-                        :href="links.solisDex"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="ActionButton">
-                        <span>Solis DEX</span>
-                      </a>
-
-                      <ul class="StepInstructions">
-                        <li>Make sure you're on Zeko Testnet network</li>
-                        <li>Select 'Pool' from the Menu</li>
-                        <li>
-                          Click 'Import Pool', and paste the tZEKO&lt;&gt;tMINA
-                          pool address
-                        </li>
-                        <li class="address">
-                          B62qrSyBR5jLgekkwjDdpt6UX8FfYntYB1uXydFyViWMFLkrGSceFEV
-                        </li>
-                        <li>Click 'Import Pool'</li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div class="Step">
-                    <div class="StepIndicator">
-                      <div class="StepConnector"></div>
-                      <span class="StepDot"></span>
-                      <div class="StepLine"></div>
-                    </div>
-
-                    <div class="StepContent">
-                      <div class="StepText">
-                        <p>Now you're ready to add liquidity to the pool:</p>
+                  <div class="StepsList">
+                    <div class="Step">
+                      <div class="StepIndicator">
+                        <span class="StepDot"></span>
+                        <div class="StepLine"></div>
                       </div>
 
-                      <ul class="StepInstructions">
-                        <li>
-                          Visit Solis DEX → Click 'Pool' from the Menu, and
-                          navigate to → Your Pools
-                        </li>
-                        <li>
-                          Select 'Add Liquidity' action for the MINA / tZEKO
-                          pool
-                        </li>
-                        <li>
-                          Enter the token amounts to Pool → click 'Add
-                          Liquidity'
-                        </li>
-                        <li>
-                          Earn 10 points for every Add Liquidity action, up to
-                          50 points maximum per wallet
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
+                      <div class="StepContent">
+                        <div class="StepText">
+                          <p>Visit the Zeko bridge</p>
+                        </div>
 
-                <div class="Congratulations">
-                  <h4 class="CongratsTitle">🎉 Congratulations</h4>
-                  <p class="CongratsText">
-                    You are a Pro Pooler! Leaderboard is syncing your points
-                    now. Flex your status on X and lock in for the next quest.
-                    🏊
-                  </p>
-                </div>
+                        <a
+                          :href="links.zekoBridge"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="ActionButton withIcon">
+                          <SvgBridgeOut />
+                          <span>Zeko Bridge</span>
+                        </a>
 
-                <a
-                  :href="links.x"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="ShareButton">
-                  <SvgSocialX />
-                  <span>Share on X</span>
-                </a>
-              </div>
-            </article>
-
-            <!-- SPRINT FIVE -->
-            <article class="SprintCard" :class="{ expanded: sprints === 5 }">
-              <button
-                class="SprintHeader"
-                type="button"
-                :aria-expanded="sprints === 5"
-                @click="toggleSprint(5)">
-                <div class="SprintIcon bridge">
-                  <SvgBridgeOut />
-                </div>
-
-                <div class="SprintInfo">
-                  <div class="SprintMeta">
-                    <span class="SprintNumber">Sprint 5</span>
-                    <div class="SprintTitleRow">
-                      <h3 class="SprintTitle">Bridge to Mina</h3>
-                      <span class="SprintPoints dark">20 Points</span>
-                    </div>
-                  </div>
-                  <p class="SprintDescription">
-                    Bridge MINA from Zeko testnet to Mina devnet
-                  </p>
-                </div>
-
-                <SvgToggleCaret :class="{ expanded: sprints === 5 }" />
-              </button>
-
-              <div v-if="sprints === 5" class="SprintDetails">
-                <p class="DetailsIntro">
-                  To complete Sprint 5 and earn Leaderboard points, Bridge tMINA
-                  from Zeko testnet to Mina devnet
-                  <br>
-                  (Easy tip: Sprint 5 bridges in the reverse direction as Sprint
-                  2)
-                </p>
-
-                <div class="StepsList">
-                  <div class="Step">
-                    <div class="StepIndicator">
-                      <span class="StepDot"></span>
-                      <div class="StepLine"></div>
+                        <ul class="StepInstructions">
+                          <li>
+                            Enter an amount to bridge from Zeko testnet to Mina
+                            devnet, and follow the Bridge page instructions to
+                            completion.
+                          </li>
+                          <li>
+                            Visit the Zeko Community Discord if you have any
+                            questions
+                          </li>
+                        </ul>
+                      </div>
                     </div>
 
-                    <div class="StepContent">
-                      <div class="StepText">
-                        <p>Visit the Zeko bridge</p>
+                    <div class="Step">
+                      <div class="StepIndicator">
+                        <div class="StepConnector"></div>
+                        <span class="StepDot"></span>
+                        <div class="StepLine"></div>
                       </div>
 
-                      <a
-                        :href="links.zekoBridge"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="ActionButton withIcon">
-                        <SvgBridgeOut />
-                        <span>Zeko Bridge</span>
-                      </a>
-
-                      <ul class="StepInstructions">
-                        <li>
-                          Enter an amount to bridge from Zeko testnet to Mina
-                          devnet, and follow the Bridge page instructions to
-                          completion.
-                        </li>
-                        <li>
-                          Visit the Zeko Community Discord if you have any
-                          questions
-                        </li>
-                      </ul>
+                      <div class="StepContent">
+                        <a
+                          :href="links.discord"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="ActionButton withIcon">
+                          <SvgSocialDiscord />
+                          <span>Visit Discord</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
 
-                  <div class="Step">
-                    <div class="StepIndicator">
-                      <div class="StepConnector"></div>
-                      <span class="StepDot"></span>
-                      <div class="StepLine"></div>
-                    </div>
-
-                    <div class="StepContent">
-                      <a
-                        :href="links.discord"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="ActionButton withIcon">
-                        <SvgSocialDiscord />
-                        <span>Visit Discord</span>
-                      </a>
-                    </div>
+                  <div class="Congratulations">
+                    <h4 class="CongratsTitle">🎉 Congratulations</h4>
+                    <p class="CongratsText">
+                      GG hero, your wallet points are on the way. Sound the horn
+                      on X and look out for side quests to max out your level!
+                      🎮
+                    </p>
                   </div>
-                </div>
 
-                <div class="Congratulations">
-                  <h4 class="CongratsTitle">🎉 Congratulations</h4>
-                  <p class="CongratsText">
-                    GG hero, your wallet points are on the way. Sound the horn
-                    on X and look out for side quests to max out your level! 🎮
-                  </p>
+                  <a
+                    :href="links.x"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ShareButton">
+                    <SvgSocialX />
+                    <span>Share on X</span>
+                  </a>
                 </div>
-
-                <a
-                  :href="links.x"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="ShareButton">
-                  <SvgSocialX />
-                  <span>Share on X</span>
-                </a>
-              </div>
-            </article>
+              </article>
+            </div>
           </div>
         </div>
       </div>
@@ -722,6 +732,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
 
 <style lang="postcss" scoped>
 .Instructions {
+  --collapse-duration: 0.3s;
   grid-area: instructions;
   display: flex;
   flex-direction: column;
@@ -770,7 +781,9 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0;
+  transition: gap var(--collapse-duration, 0.3s) ease;
+
   .InstructionHeader {
     all: unset;
     display: flex;
@@ -799,12 +812,14 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
       width: 1.5rem;
       height: 1.5rem;
       color: var(--palette-gray-950);
+      transform: rotate(180deg);
       transition: transform 0.2s ease;
     }
   }
   &.expanded {
+    gap: 0.625rem;
     .DropdownIcon {
-      transform: rotate(180deg);
+      transform: rotate(0deg);
     }
   }
 }
@@ -884,6 +899,9 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
   &:not(:disabled):hover {
     opacity: 0.9;
   }
+  &:disabled {
+    cursor: not-allowed;
+  }
 }
 
 .SectionDivider {
@@ -906,7 +924,9 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
     padding: 0.75rem;
     display: flex;
     flex-direction: column;
-    gap: 0.625rem;
+    gap: 0;
+    transition: gap var(--collapse-duration, 0.3s) ease;
+
     .SprintsHeader {
       all: unset;
       display: flex;
@@ -938,12 +958,14 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
         width: 1.5rem;
         height: 1.5rem;
         color: var(--palette-gray-950);
+        transform: rotate(180deg);
         transition: transform 0.2s ease;
       }
     }
     &.expanded {
+      gap: 0.625rem;
       .ExpandIcon {
-        transform: rotate(180deg);
+        transform: rotate(0deg);
       }
     }
   }
@@ -1180,5 +1202,44 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
   height: 1px;
   background-color: var(--palette-gray-200);
   margin: 0;
+}
+
+@keyframes slideDown {
+  from {
+    grid-template-rows: 0fr;
+  }
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    grid-template-rows: 1fr;
+  }
+  to {
+    grid-template-rows: 0fr;
+  }
+}
+
+.ContentWrapper {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--collapse-duration) ease;
+
+  > * {
+    overflow: hidden;
+  }
+
+  &.collapsed {
+    grid-template-rows: 0fr;
+  }
+}
+
+.InstructionDropdown .Divider,
+.SprintsDropdown .Divider {
+  &.hidden {
+    display: none;
+  }
 }
 </style>

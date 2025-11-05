@@ -80,7 +80,7 @@ button {
 }
 
 [data-scope="menu"][data-part="content"] {
-  background-color: rgba(255, 255, 255, 0.98);
+  background-color: rgba(255, 255, 255, 1);
   backdrop-filter: blur(8px);
   padding: 0.5rem;
   border-radius: 0.75rem;
@@ -112,8 +112,6 @@ button {
     transition: color 0.2s ease-in-out;
 
     &:focus-visible {
-      outline: 2px solid var(--palette-cosmicGold-100);
-      outline-offset: 2px;
       border-radius: 0.25rem;
     }
   }
