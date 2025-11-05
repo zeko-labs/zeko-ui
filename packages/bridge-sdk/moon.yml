@@ -38,6 +38,7 @@ tasks:
     inputs:
       - "@globs(src)"
   typecheck:
+    deps: [^:build]
     command: tsc --noEmit
     inputs:
       - "@globs(src)"
