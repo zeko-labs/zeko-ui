@@ -116,7 +116,6 @@ const openMenu = () => {
   align-items: center;
   padding: 1rem 3rem;
   gap: 1.5rem;
-  min-height: 10svh;
 
   @media not (--desktop) {
     padding: 1rem 1.5rem;
@@ -237,7 +236,6 @@ const openMenu = () => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.5rem;
-  min-height: 10svh;
 }
 
 .MobileNav {

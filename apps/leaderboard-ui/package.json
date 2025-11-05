@@ -24,6 +24,5 @@
 	"devDependencies": {
 		"@csstools/postcss-global-data": "catalog:",
 		"wrangler": "catalog:"
-	},
-	"packageManager": "pnpm@10.16.1"
+	}
 }

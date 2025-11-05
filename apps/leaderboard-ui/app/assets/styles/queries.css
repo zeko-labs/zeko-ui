@@ -12,27 +12,3 @@
 @custom-media --large-desktop (width >= 1440px);
 @custom-media --wide-desktop (width >= 1920px);
 @custom-media --ultrawide-desktop (width >= 3440px);
-
-/* * {
-  @media (--phone) {
-    color: red;
-  }
-  @media (--tablet) {
-    color: blue;
-  }
-  @media (--desktop) {
-    text-decoration: underline;
-  }
-  @media (--small-desktop) {
-    color: green;
-  }
-  @media (--large-desktop) {
-    color: orange;
-  }
-  @media (--wide-desktop) {
-    color: purple;
-  }
-  @media (--ultrawide-desktop) {
-    color: pink;
-  }
-} */

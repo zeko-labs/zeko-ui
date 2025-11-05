@@ -9,11 +9,6 @@ export default defineNuxtConfig({
 	modules: ["@nuxt/fonts", "@pinia/nuxt", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
 	devtools: { enabled: true },
 	extends: ["@zeko/layer"],
-	typescript: {
-		tsConfig: {
-			include: [join(currentDir, "graphql")]
-		}
-	},
 	postcss: {
 		plugins: {
 			"@csstools/postcss-global-data": {
