@@ -1,4 +1,4 @@
-import { Field, fetchAccount, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
+import { Field, Poseidon, PublicKey, UInt32, fetchAccount, type Mina } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
 import { fetchActionsQuery } from "../../graphql/src/mina-archive"
@@ -63,7 +63,7 @@ export async function fetchActions(
 
 		const prevOutput: v.InferOutput<typeof schema> = await fetchActionsRecursive(
 			result.output.length === 0
-				? fromBlock! - BLOCK_RANGE_SIZE
+				? (fromBlock ?? 0) - BLOCK_RANGE_SIZE
 				: result.output[0].blockInfo.height - BLOCK_RANGE_SIZE,
 			result.output.length === 0 ? emptyResults + 1 : 0
 		)
