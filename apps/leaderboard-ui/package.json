@@ -1,0 +1,28 @@
+{
+	"name": "@zeko/leaderboard-ui",
+	"private": true,
+	"scripts": {
+		"postinstall": "nuxt prepare"
+	},
+	"dependencies": {
+		"@ark-ui/vue": "^5.27.1",
+		"@hebilicious/nuxt-switch-match": "catalog:",
+		"@nuxt/fonts": "catalog:",
+		"@tanstack/vue-table": "catalog:",
+		"@unhead/vue": "catalog:",
+		"@unocss/reset": "catalog:",
+		"@urql/vue": "catalog:",
+		"@vite-pwa/nuxt": "catalog:",
+		"@zeko/graphql": "workspace:^",
+		"@zeko/layer": "workspace:^",
+		"lucide-vue-next": "catalog:",
+		"nuxt": "catalog:",
+		"pinia": "catalog:",
+		"vue": "catalog:",
+		"vue-router": "catalog:"
+	},
+	"devDependencies": {
+		"@csstools/postcss-global-data": "catalog:",
+		"wrangler": "catalog:"
+	}
+}

@@ -30,7 +30,7 @@ Handle failures one by one, methodologically, and make sure that the tests are s
 ## Language Instructions
 
 - Always use Typescript instead of Javascript
-- Always use plain CSS with the latest features available in postcss. Do not use libraries like Tailwind or Bootstrap.
+- Always use plain CSS with the latest features available in postcss. Do not use libraries like Tailwind or Bootstrap. Use PascalCase for class names. Use CSS nesting when authoring styles.
 - Always prefer first principles to adding additional libraries. If using a library is necessary, always ask first before adding it, unless the user explicitly ask for a specific library to implement something.
 
 ## Nuxt and Vue Instructions

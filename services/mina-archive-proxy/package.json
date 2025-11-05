@@ -1,0 +1,7 @@
+{
+	"name": "mina-archive-proxy",
+	"private": true,
+	"devDependencies": {
+		"wrangler": "catalog:"
+	}
+}

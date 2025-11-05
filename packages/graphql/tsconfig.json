@@ -50,6 +50,12 @@
 						"schema": "./src/generated/mina-archive.graphql",
 						"tadaOutputLocation": "./src/generated/mina-archive-env.d.ts",
 						"tadaTurboLocation": "./src/generated/mina-archive-cache.d.ts"
+					},
+					{
+						"name": "leaderboard",
+						"schema": "./src/generated/leaderboard.graphql",
+						"tadaOutputLocation": "./src/generated/leaderboard-env.d.ts",
+						"tadaTurboLocation": "./src/generated/leaderboard-cache.d.ts"
 					}
 				]
 			}

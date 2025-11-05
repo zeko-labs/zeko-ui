@@ -93,3 +93,14 @@ moon run lb-indexer:test
 # Development mode with auto-restart
 moon run lb-indexer:dev
 ```
+
+Build and Test Dockerfile :
+
+```bash
+docker build -t lb-indexer -f ./services/leaderboard/indexer/Dockerfile .
+docker run --rm -it -p 3000:3000 \
+       -e DATABASE_URL="postgresql://postgres:postgres@localhost:5432/leaderboard" \
+       -e PORT=3000 \
+       -e AUTH_TOKEN="admin" \
+       lb-indexer
+```

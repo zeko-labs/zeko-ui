@@ -25,12 +25,6 @@
 	},
 	"linter": {
 		"rules": {
-			"correctness": {
-				"noUnusedImports": {
-					"level": "warn",
-					"fix": "safe"
-				}
-			},
 			"style": {
 				"useConst": {
 					"level": "warn",
@@ -41,6 +35,47 @@
 					"fix": "safe"
 				}
 			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["**/*.vue"],
+			"linter": {
+				"rules": {
+					"a11y": {
+						"useGenericFontNames": "warn"
+					},
+					"correctness": {
+						"noUnusedVariables": {
+							"level": "info",
+							"fix": "none"
+						},
+						"noUnknownMediaFeatureName": "info",
+						"noUnknownFunction": "info",
+						"noUnknownPseudoClass": "info",
+						"noUnusedImports": {
+							"level": "info",
+							"fix": "none"
+						}
+					}
+				}
+			}
+		}
+	],
+	"html": {
+		"experimentalFullSupportEnabled": true,
+		"linter": {
+			"enabled": true
+		},
+		"formatter": {
+			"enabled": true
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"lineWidth": 100,
+			"semicolons": "asNeeded",
+			"trailingCommas": "none"
 		}
 	}
 }

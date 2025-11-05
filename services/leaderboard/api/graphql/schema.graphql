@@ -1,19 +1,20 @@
 type LeaderboardEntry {
-  rank: Int
-  score: Int
-  wallet: String
+  rank: Int!
+  score: Int!
+  wallet: String!
 }
 
 input LeaderboardInput {
   cursorScore: Int
   cursorWallet: String
+  pageSize: Int = 20
   searchWallet: String
 }
 
 type LeaderboardResult {
-  entries: [LeaderboardEntry!]
-  hasMore: Boolean
-  total: Int
+  entries: [LeaderboardEntry!]!
+  hasMore: Boolean!
+  total: Int!
 }
 
 type Query {

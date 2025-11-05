@@ -1,26 +1,50 @@
-FROM oven/bun:latest AS base
-
+FROM node:latest AS base
+#### BASE STAGE
+#### Installs moon.
 WORKDIR /app
 
-# Set production environment
-ENV NODE_ENV="production"
+# Install moon binary
+RUN curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+ENV PATH="/root/.moon/bin:/root/.proto/bin:$PATH"
 
-# Throw-away build stage to reduce size of final image
+#### SKELETON STAGE
+#### Scaffolds repository skeleton structures.
+
+FROM base AS skeleton
+
+# Copy entire repository and scaffold
+COPY . .
+RUN moon docker scaffold lb-indexer
+
+#### BUILD STAGE
+#### Builds the project.
+
 FROM base AS build
 
-# Install node modules
-COPY container/bun.lock container/package.json ./
-RUN bun install --production
+# Copy workspace configs
+COPY --from=skeleton /app/.moon/docker/workspace .
+COPY --from=skeleton /app/patches ./patches
+# Install dependencies
+# ENV MOON_LOG=trace
+# ENV MOON_DEBUG_PROCESS_ENV=true
+RUN moon --version
+RUN moon docker setup
 
-# Copy application code
-COPY container/ .
+# Copy project sources
+COPY --from=skeleton /app/.moon/docker/sources .
 
-# Final stage for app image
-FROM base
+# Build the project
+RUN moon lb-indexer:build
 
-# Copy built application
-COPY --from=build /app /app
+    # Prune extraneous dependencies
+RUN moon docker prune
 
-# Start the server by default, this can be overwritten at runtime
+#### START STAGE
+#### Runs the project.
+FROM oven/bun AS start
+WORKDIR /app
+
+COPY --from=build /app .
 EXPOSE 3000
-CMD [ "bun", "run", "start" ]
+ENV NODE_ENV=production
+CMD ["bun", "./services/leaderboard/indexer/dist/index.js"]

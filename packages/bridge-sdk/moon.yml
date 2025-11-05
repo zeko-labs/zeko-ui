@@ -12,6 +12,9 @@ fileGroups:
   examples:
     - examples/**/*
 
+dependsOn:
+  - graphql
+
 tasks:
   format:
     inputs:
@@ -21,6 +24,7 @@ tasks:
       - "@globs(src)"
   build:
     command: tsdown
+    deps: [^:build]
     inputs:
       - "@globs(src)"
     outputs:

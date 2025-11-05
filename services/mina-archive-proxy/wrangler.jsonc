@@ -1,0 +1,16 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "mina-archive-proxy",
+	"compatibility_date": "2025-10-21",
+	"main": "worker.ts",
+	"preview_urls": true,
+	"routes": [
+		{
+			"pattern": "gateway.mina.archive.devnet.zeko.io",
+			"custom_domain": true
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
+}

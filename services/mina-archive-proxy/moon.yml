@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: application
+language: typescript
+stack: infrastructure
+id: archive
+
+tasks:
+  dev:
+    command: wrangler dev
+    preset: server
+  deploy:
+    command: wrangler deploy
+  deploy-preview:
+    command: wrangler versions upload
+  type-cf:
+    command: wrangler types
+    inputs:
+      - wrangler.jsonc
+    outputs:
+      - worker-configuration.d.ts

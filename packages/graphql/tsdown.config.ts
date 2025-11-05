@@ -6,10 +6,14 @@ export default defineConfig({
 		"./src/mina.ts",
 		"./src/mina-archive.ts",
 		"./src/zeko.ts",
-		"./src/zeko-archive.ts"
+		"./src/zeko-archive.ts",
+		"./src/leaderboard.ts"
 	],
 	platform: "neutral",
 	dts: true,
+	exports: {
+		all: true
+	},
 	tsconfig: "./tsconfig.build.json"
 	// This change the package.json formatting, un-comment when needed.
 	// exports: {

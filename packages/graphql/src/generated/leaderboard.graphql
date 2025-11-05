@@ -1,0 +1,21 @@
+type LeaderboardEntry {
+  rank: Int!
+  score: Int!
+  wallet: String!
+}
+
+input LeaderboardInput {
+  cursorScore: Int
+  cursorWallet: String
+  searchWallet: String
+}
+
+type LeaderboardResult {
+  entries: [LeaderboardEntry!]!
+  hasMore: Boolean!
+  total: Int!
+}
+
+type Query {
+  leaderboard(input: LeaderboardInput): LeaderboardResult
+}
