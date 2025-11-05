@@ -86,6 +86,7 @@ export const config = defineConfig({
 					100: "oklch(72.311% 0.13818 71.166)",
 					200: "oklch(59.222% 0.10877 74.108)",
 					light: "hsla(50, 100%, 67%, 1)",
+					lightest: "hsla(49, 100%, 97%, 1)",
 					medium: "hsla(42, 87%, 48%, 1)",
 					dark: "hsla(36, 62%, 40%, 1)"
 				},
@@ -185,6 +186,17 @@ export const config = defineConfig({
 								3: "palette.value.cosmicGold.50"
 							}
 						},
+						// background: linear-gradient(251deg, #FFE459 33.63%, #DD9B34 55.54%, #DB9531 64.51%, #A47327 81.94%);
+						"brand-logo": {
+							value:
+								"linear-gradient(251deg, var(--1) 33.63%, var(--2) 55.54%, var(--3) 64.51%, var(--4) 81.94%)",
+							variables: {
+								1: "palette.value.cosmicGold.light",
+								2: "palette.value.cosmicGold.90",
+								3: "palette.value.cosmicGold.100",
+								4: "palette.value.cosmicGold.dark"
+							}
+						},
 						// background: linear-gradient(0deg, var(--Primary-Cosmic-Gold-Dark, #A47327) -37.5%, var(--Primary-Cosmic-Gold-Medium, #E5A40F) 50.22%, var(--Primary-Cosmic-Gold-Light, #FFE459) 121.15%);
 						"button-main": {
 							value: "linear-gradient(0deg, var(--1) -37.5%, var(--2) 50.22%, var(--3) 121.15%)",
@@ -192,6 +204,14 @@ export const config = defineConfig({
 								1: "palette.value.cosmicGold.dark",
 								2: "palette.value.cosmicGold.medium",
 								3: "palette.value.cosmicGold.light"
+							}
+						},
+						// background: linear-gradient(260deg, var(--Primary-Cosmic-Gold-Medium, #E5A40F) 2.78%, var(--Primary-Cosmic-Gold-Light, #FFE459) 98.16%);
+						"button-main-2": {
+							value: "linear-gradient(260deg, var(--1) 2.78%, var(--2) 98.16%)",
+							variables: {
+								1: "palette.value.cosmicGold.medium",
+								2: "palette.value.cosmicGold.light"
 							}
 						},
 						// radial-gradient(68.86% 100% at 100% 100%, #FFE459 0%, #DB9531 50.19%, #A47327 100%);

@@ -113,6 +113,11 @@
 					"value": "oklch(91.413% 0.1578 97.82074 / 100%)",
 					"variable": "--palette-cosmicGold-light: oklch(91.413% 0.1578 97.82074 / 100%);"
 				},
+				"lightest": {
+					"key": "--palette-cosmicGold-lightest",
+					"value": "oklch(99.042% 0.01667 96.37158 / 100%)",
+					"variable": "--palette-cosmicGold-lightest: oklch(99.042% 0.01667 96.37158 / 100%);"
+				},
 				"medium": {
 					"key": "--palette-cosmicGold-medium",
 					"value": "oklch(76.296% 0.15537 80.12696 / 100%)",
@@ -356,10 +361,20 @@
 					"key": "--gradients-goldGradient-3-inversed",
 					"value": "linear-gradient(270.62deg, var(--palette-cosmicGold-100) 2.88%, var(--palette-cosmicGold-90) 79.48%, var(--palette-cosmicGold-50) 98.1%)"
 				},
+				"brand-logo": {
+					"variable": "--gradients-goldGradient-brand-logo: linear-gradient(251deg, var(--palette-cosmicGold-light) 33.63%, var(--palette-cosmicGold-90) 55.54%, var(--palette-cosmicGold-100) 64.51%, var(--palette-cosmicGold-dark) 81.94%);",
+					"key": "--gradients-goldGradient-brand-logo",
+					"value": "linear-gradient(251deg, var(--palette-cosmicGold-light) 33.63%, var(--palette-cosmicGold-90) 55.54%, var(--palette-cosmicGold-100) 64.51%, var(--palette-cosmicGold-dark) 81.94%)"
+				},
 				"button-main": {
 					"variable": "--gradients-goldGradient-button-main: linear-gradient(0deg, var(--palette-cosmicGold-dark) -37.5%, var(--palette-cosmicGold-medium) 50.22%, var(--palette-cosmicGold-light) 121.15%);",
 					"key": "--gradients-goldGradient-button-main",
 					"value": "linear-gradient(0deg, var(--palette-cosmicGold-dark) -37.5%, var(--palette-cosmicGold-medium) 50.22%, var(--palette-cosmicGold-light) 121.15%)"
+				},
+				"button-main-2": {
+					"variable": "--gradients-goldGradient-button-main-2: linear-gradient(260deg, var(--palette-cosmicGold-medium) 2.78%, var(--palette-cosmicGold-light) 98.16%);",
+					"key": "--gradients-goldGradient-button-main-2",
+					"value": "linear-gradient(260deg, var(--palette-cosmicGold-medium) 2.78%, var(--palette-cosmicGold-light) 98.16%)"
 				},
 				"button-cta-1": {
 					"variable": "--gradients-goldGradient-button-cta-1: radial-gradient(100% 68.86% at 100% 100%, var(--palette-cosmicGold-50) 0%, var(--palette-cosmicGold-100) 50.19%, var(--palette-cosmicGold-200) 100%);",

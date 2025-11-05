@@ -15,7 +15,7 @@ interface LeaderboardResult {
 	total: number
 }
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 20
 
 type DatabaseInstance = ReturnType<Database>
 
@@ -152,7 +152,8 @@ const LeaderboardInput = builder.inputType("LeaderboardInput", {
 	fields: (t) => ({
 		cursorScore: t.int({ required: false }),
 		cursorWallet: t.string({ required: false }),
-		searchWallet: t.string({ required: false })
+		searchWallet: t.string({ required: false }),
+		pageSize: t.int({ required: false, defaultValue: PAGE_SIZE })
 	})
 })
 
@@ -168,7 +169,7 @@ builder.queryType({
 					searchWallet: input?.searchWallet ?? undefined,
 					cursorScore: input?.cursorScore ?? undefined,
 					cursorWallet: input?.cursorWallet ?? undefined,
-					limit: PAGE_SIZE
+					limit: input?.pageSize ?? PAGE_SIZE
 				})
 
 				return result

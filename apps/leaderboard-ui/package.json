@@ -7,7 +7,7 @@
 		"start": "nuxt start"
 	},
 	"dependencies": {
-		"@ark-ui/vue": "catalog:",
+		"@ark-ui/vue": "5.27.1",
 		"@gql.tada/vue-support": "^1.0.1",
 		"@hebilicious/nuxt-switch-match": "catalog:",
 		"@lumina-dex/sdk": "catalog:",
@@ -36,6 +36,7 @@
 		"xstate": "catalog:"
 	},
 	"devDependencies": {
+		"@csstools/postcss-global-data": "^3.1.0",
 		"gql.tada": "catalog:graphql",
 		"wrangler": "catalog:"
 	}

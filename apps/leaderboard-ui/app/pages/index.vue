@@ -1,35 +1,28 @@
-<script setup lang="ts">
-const search = ref("")
-</script>
 <template>
-  <div class="LeaderBoardPage">
-    <header class="Header">
-      <h1>Leaderboard</h1>
-      <div class="Controls">
-        <input v-model="search" placeholder="Search your wallet" />
-      </div>
-    </header>
-
-    <LeaderboardTable :search />
+  <div class="Main">
+    <Header />
+    <LeaderboardTable />
+    <Instructions />
+    <Footer />
   </div>
 </template>
 
-<style scoped>
-.LeaderBoardPage {
-  max-width: 920px;
-  margin: 2rem auto;
-  background: white;
-  border-radius: 12px;
-  padding: 1rem;
-}
-.Header {
+<style lang="postcss" scoped>
+.Main {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.Controls input {
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #e6e6e6;
+  padding: 2.5rem 1rem;
+  flex-direction: column;
+  max-width: 100vw;
+  gap: 4rem;
+  @media (--small-desktop) {
+    display: grid;
+    padding: 2.5rem;
+    grid-template-areas:
+      "header header"
+      "instructions table"
+      "footer footer";
+    grid-template-columns: minmax(auto, 34.25rem) 1fr;
+    column-gap: 1.5rem;
+  }
 }
 </style>

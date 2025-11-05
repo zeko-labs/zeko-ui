@@ -11,5 +11,13 @@ export default defineNuxtConfig({
 	css: [
 		join(currentDir, "./app/assets/styles/cssforge.css"),
 		join(currentDir, "./app/assets/styles/layer.css")
-	]
+	],
+	runtimeConfig: {
+		public: {
+			telegram: "https://t.me/zekoprotocol",
+			discord: "https://discord.gg/vSDxqAchUY",
+			twitter: "https://twitter.com/ZekoLabs",
+			github: "https://github.com/zeko-labs"
+		}
+	}
 })

@@ -1,176 +1,226 @@
 <script lang="ts" setup>
-import {
-	getCoreRowModel,
-	getPaginationRowModel,
-	useVueTable
-} from "@tanstack/vue-table"
-import { useQuery } from "@urql/vue"
-import { leaderboardQuery } from "@zeko/graphql/leaderboard"
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
+import { Field } from "@ark-ui/vue/field"
 
-const props = defineProps<{ search?: string }>()
-
-// Server uses a PAGE_SIZE of 50; align client page size with server behavior
-const PAGE_SIZE = 50
-
-// Cursor stack for back navigation (used only when not searching)
-const cursorStack = ref<Array<{ score?: number; wallet?: string } | undefined>>(
-	[]
-)
-const cursor = ref<{ score?: number; wallet?: string } | undefined>(undefined)
-
-const isSearch = computed(() =>
-	Boolean(props.search && props.search.trim().length > 0)
-)
-
-const variables = computed(() => {
-	// When searching, server returns a centered window around the searched wallet; do not send cursor
-	if (isSearch.value) {
-		return { input: { searchWallet: props.search } }
-	}
-	return {
-		input: {
-			cursorScore: cursor.value?.score,
-			cursorWallet: cursor.value?.wallet
-		}
-	}
-})
-
-const { data, fetching, executeQuery } = useQuery({
-	query: leaderboardQuery,
-	variables,
-	requestPolicy: "network-only",
-	pause: false
-})
-
-// Poll every 5s
-let intervalId: number | undefined
-onMounted(() => {
-	// re-run poll by calling executeQuery in urql; useQuery auto-updates if variables refs change
-	intervalId = window.setInterval(() => {
-		executeQuery({ requestPolicy: "network-only" })
-	}, 5000)
-})
-onBeforeUnmount(() => {
-	if (intervalId) clearInterval(intervalId)
-})
-
-// Reset cursor when search changes
-watch(
-	() => props.search,
-	() => {
-		// Clear cursor state when search changes
-		cursor.value = undefined
-		cursorStack.value = []
-		executeQuery({ requestPolicy: "network-only" })
-	}
-)
-
-// Data and paging controls
-const entries = computed(() =>
-	(data.value?.leaderboard?.entries ?? []).map((e) => ({ ...e }))
-)
-const total = computed(() => data.value?.leaderboard?.total ?? 0)
-const hasMore = computed(() => data.value?.leaderboard?.hasMore ?? false)
-
-// Table setup
-const columns = [
-	{ accessorKey: "rank", header: "Rank" },
-	{ accessorKey: "wallet", header: "Wallet" },
-	{ accessorKey: "score", header: "Points" }
-]
-
-const table = useVueTable({
-	data: entries,
-	columns,
-	getCoreRowModel: getCoreRowModel(),
-	getPaginationRowModel: getPaginationRowModel(),
-	initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } }
-})
-
-function goNext() {
-	if (!hasMore.value || isSearch.value) return
-	const items = entries.value
-	if (items.length === 0) return
-
-	// push current cursor so we can go back
-	cursorStack.value.push(cursor.value ?? undefined)
-
-	const last = items[items.length - 1] as { score: number; wallet: string }
-	cursor.value = { score: last.score, wallet: last.wallet }
-	executeQuery({ requestPolicy: "network-only" })
-}
-
-function goPrev() {
-	if (cursorStack.value.length === 0 || isSearch.value) return
-	const prev = cursorStack.value.pop()
-	if (prev) cursor.value = prev
-	else cursor.value = undefined
-	executeQuery({ requestPolicy: "network-only" })
-}
+const lb = useLeaderboard()
 </script>
 
 <template>
-  <div class="LeaderboardTable">
-    <div class="Summary">
-      <div>Total: {{ total }}</div>
-      <div v-if="fetching">Updating…</div>
-    </div>
+  <div class="TableWrapper">
+    <div class="TableContainer">
+      <header class="Header">
+        <div class="Text">
+          <div class="Title">Leaderboard</div>
+          <div class="SubTitle">Real Time Updates</div>
+        </div>
+        <div class="Controls">
+          <Field.Root>
+            <div class="SearchWrapper">
+              <div class="SearchIcon">
+                <SvgMGlass />
+              </div>
+              <Field.Input
+                type="text"
+                v-model="lb.search"
+                placeholder="Search your wallet"
+              />
+            </div>
+          </Field.Root>
+        </div>
+      </header>
+      <hr>
+      <div class="LeaderboardTable">
+        <div class="Summary">
+          <div>ZEKOs</div>
+          <div>{{ lb.total }}&nbsp;points earned</div>
+        </div>
 
-    <div class="TableFrame">
-      <table>
-        <thead>
-          <tr>
-            <th v-for="h of table.getHeaderGroups()[0]?.headers" :key="h.id">
-              {{ h.column.columnDef.header }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="fetching && entries.length === 0">
-            <td :colspan="columns.length">Loading…</td>
-          </tr>
-          <tr v-for="row of table.getRowModel().rows" :key="row.id">
-            <td>{{ row.getValue("rank") }}</td>
-            <td>{{ row.getValue("wallet") }}</td>
-            <td>{{ row.getValue("score") }}</td>
-          </tr>
-          <tr v-if="!fetching && entries.length === 0">
-            <td :colspan="columns.length">No entries.</td>
-          </tr>
-        </tbody>
-      </table>
+        <table>
+          <thead>
+            <tr>
+              <th
+                v-for="h of lb.table.getHeaderGroups()[0]?.headers"
+                :key="h.id"
+                :class="h.column.columnDef.header">
+                {{ h.column.columnDef.header }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="lb.fetching && lb.entries.length === 0">
+              <td :colspan="lb.table.getHeaderGroups()[0]?.headers.length">
+                Loading…
+              </td>
+            </tr>
+            <tr
+              v-for="row of lb.table.getRowModel().rows"
+              :key="row.id"
+              :title='row.getValue("wallet")'>
+              <td class="Rank">{{ row.getValue("rank") }}</td>
+              <td class="Wallet">{{ row.getValue("wallet") }}</td>
+              <td class="Points">{{ row.getValue("score") }}</td>
+            </tr>
+            <tr v-if="!lb.fetching && lb.entries.length === 0">
+              <td :colspan="lb.columns.length">No entries.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-
-    <div class="Pager">
-      <button @click="goPrev" :disabled="cursorStack.length === 0">Prev</button>
-      <button @click="goNext" :disabled="!hasMore">Next</button>
-    </div>
+    <Pagination />
   </div>
 </template>
 
-<style scoped>
-.LeaderboardTable .Summary {
+<style lang="postcss" scoped>
+.TableWrapper {
+  grid-area: table;
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
+  flex-direction: column;
+  gap: 1.5rem;
+  .TableContainer {
+    display: flex;
+    flex-direction: column;
+    background: white;
+    padding: 1.5rem 1rem;
+    @media not (--mobile) {
+      padding: 1.5rem;
+    }
+    border-radius: 1rem;
+    border: 1px solid var(--palette-gray-300);
+    box-shadow: 16px 16px 24px 0 rgba(122, 122, 122, 0.15);
+    gap: 0.75rem;
+
+    hr {
+      border: none;
+      height: 1px;
+      background-color: var(--palette-gray-200);
+      width: 100%;
+      margin: 0;
+    }
+  }
 }
-.TableFrame {
-  overflow-x: auto;
+
+.Header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  @media (--small-desktop) {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .Text {
+    line-height: 155%;
+    .Title {
+      font-size: var(--typography_fluid-lexend-l);
+      font-weight: 500;
+      letter-spacing: -0.01125rem;
+    }
+    .SubTitle {
+      color: var(--palette-gray-800);
+      font-size: var(--typography_fluid-lexend-m);
+      font-weight: 400;
+      letter-spacing: -0.0175rem;
+    }
+  }
+  .Controls {
+    .SearchWrapper {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.625rem;
+      border: 1px solid var(--palette-gray-300);
+      width: 100%;
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+      &:has(input:focus) {
+        border-color: var(--palette-cosmicGold-50);
+        box-shadow: 0 0 0 3px
+          oklch(from var(--palette-cosmicGold-50) l c h / 0.4);
+      }
+    }
+
+    .SearchIcon {
+      display: grid;
+      place-items: center;
+      svg {
+        height: 1.25rem;
+        width: 1.25rem;
+      }
+    }
+
+    input {
+      all: unset;
+    }
+  }
 }
+
+.LeaderboardTable {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  .Summary {
+    display: flex;
+    justify-content: space-between;
+  }
+}
+
 table {
+  display: flex;
+  gap: 0.5rem;
+  flex-direction: column;
+  max-width: 100vw;
   width: 100%;
   border-collapse: collapse;
 }
-th, td {
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid #eee;
-  text-align: left;
+tr {
+  display: grid;
+  grid-template-columns: minmax(auto, 4rem) 1fr minmax(auto, 8.125rem);
+  border: none;
+  width: 100%;
 }
-.Pager {
+th,
+td {
+  &.Rank {
+    display: grid;
+    place-items: center;
+  }
+  &.Points {
+    display: grid;
+    place-items: center;
+  }
+}
+thead {
+  background: var(--palette-gray-50);
+  border-radius: 0.5rem;
+  padding: 0.75rem 0;
+  th {
+    &.Wallet {
+      text-align: left;
+    }
+    color: var(--palette-gray-800);
+    font-size: var(--typography_fluid-lexend-m);
+    font-weight: 500;
+    line-height: 155%;
+    letter-spacing: -0.0175rem;
+  }
+}
+tbody {
+  width: 100%;
+  tr {
+    padding: 1.5rem 0;
+    border-bottom: 1px solid #eee;
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  td {
+    text-wrap: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+.Pagination {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
-  margin-top: 0.75rem;
 }
 </style>

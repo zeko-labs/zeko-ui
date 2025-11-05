@@ -1,34 +1,29 @@
 <template>
   <div class="page-background">
     <video class="desktop background-video" autoplay loop muted playsinline>
-      <source
-        src="~/assets/videos/looped_desktop.webm"
-        type="video/webm"
-      />
+      <source src="~/assets/videos/looped_desktop.webm" type="video/webm">
       Your browser does not support the video tag.
     </video>
     <video class="mobile background-video" autoplay loop muted playsinline>
-      <source
-        src="~/assets/videos/looped_mobile.webm"
-        type="video/webm"
-      />
+      <source src="~/assets/videos/looped_mobile.webm" type="video/webm">
       Your browser does not support the video tag.
     </video>
     <div class="Layout">
-      <!-- <Header /> -->
+      <Navigation />
       <slot />
-      <!-- <Footer /> -->
     </div>
   </div>
 </template>
+
 <style lang="postcss">
 :root {
   --page-padding: 3rem;
-  @media (max-width: 1024px) {
+  @media not (--desktop) {
     --page-padding: 1rem;
   }
 }
 </style>
+
 <style lang="postcss" scoped>
 .page-background {
   position: relative;
