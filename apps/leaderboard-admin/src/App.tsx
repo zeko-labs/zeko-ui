@@ -1,5 +1,6 @@
 import { createResource, createSignal, onCleanup, onMount, Show } from "solid-js"
 import ActionConfig, { type ActionsConfig } from "./ActionConfig"
+import { ActionConfigs } from "./ActionConfigs"
 import { clearStoredToken, getApi, getStoredToken, type Indexer, setStoredToken } from "./api"
 import Token from "./Token"
 
@@ -224,39 +225,7 @@ function App() {
 						</label>
 					</div>
 
-					<details>
-						<summary>Per-Action Configuration (Optional)</summary>
-						<ActionConfig
-							actionName="deposit"
-							label="Bridge Deposit"
-							config={startActions()}
-							setConfig={setStartActions}
-						/>
-						<ActionConfig
-							actionName="faucet"
-							label="Faucet"
-							config={startActions()}
-							setConfig={setStartActions}
-						/>
-						<ActionConfig
-							actionName="liquidity"
-							label="Add Liquidity"
-							config={startActions()}
-							setConfig={setStartActions}
-						/>
-						<ActionConfig
-							actionName="swap"
-							label="Swap"
-							config={startActions()}
-							setConfig={setStartActions}
-						/>
-						<ActionConfig
-							actionName="withdrawal"
-							label="Bridge Withdrawal"
-							config={startActions()}
-							setConfig={setStartActions}
-						/>
-					</details>
+					<ActionConfigs config={startActions()} setConfig={setStartActions} />
 
 					<div class="grid">
 						<button
@@ -305,39 +274,7 @@ function App() {
 						/>
 					</label>
 
-					<details>
-						<summary>Per-Action Configuration (Optional)</summary>
-						<ActionConfig
-							actionName="deposit"
-							label="Bridge Deposit"
-							config={rebuildActions()}
-							setConfig={setRebuildActions}
-						/>
-						<ActionConfig
-							actionName="faucet"
-							label="Faucet"
-							config={rebuildActions()}
-							setConfig={setRebuildActions}
-						/>
-						<ActionConfig
-							actionName="liquidity"
-							label="Add Liquidity"
-							config={rebuildActions()}
-							setConfig={setRebuildActions}
-						/>
-						<ActionConfig
-							actionName="swap"
-							label="Swap"
-							config={rebuildActions()}
-							setConfig={setRebuildActions}
-						/>
-						<ActionConfig
-							actionName="withdrawal"
-							label="Bridge Withdrawal"
-							config={rebuildActions()}
-							setConfig={setRebuildActions}
-						/>
-					</details>
+					<ActionConfigs config={rebuildActions()} setConfig={setRebuildActions} />
 
 					<button type="button" onClick={() => handleRebuild()}>
 						Rebuild

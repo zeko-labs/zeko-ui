@@ -32,5 +32,10 @@ export default defineNuxtConfig({
 		"/**": { ssr: false, static: true, prerender: true }
 	},
 	sourcemap: { client: "hidden" },
-	nitro: { preset: "cloudflare-module", minify: false }
+	nitro: { preset: "cloudflare-module", minify: false },
+	runtimeConfig: {
+		public: {
+			graphqlEndpoint: "https://api.leaderboard.zeko.io/graphql"
+		}
+	}
 })

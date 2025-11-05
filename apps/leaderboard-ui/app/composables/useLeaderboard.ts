@@ -89,15 +89,12 @@ export const useLeaderboard = defineStore("leaderboard", () => {
 	})
 
 	// Reset cursor when search changes
-	watch(
-		() => search,
-		() => {
-			// Clear cursor state when search changes
-			cursor.value = undefined
-			cursorStack.value = []
-			executeQuery({ requestPolicy: "network-only" })
-		}
-	)
+	watch(search, () => {
+		// Clear cursor state when search changes
+		cursor.value = undefined
+		cursorStack.value = []
+		executeQuery({ requestPolicy: "network-only" })
+	})
 
 	return {
 		search,
