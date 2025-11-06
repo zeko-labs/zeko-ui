@@ -84,6 +84,7 @@ const ACTION_TYPE_MAP = {
 async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promise<{
 	actionsToInsert: ActionToInsert[]
 	updatedModuleStates: Record<string, ModuleState>
+	maxBlockHeight: number
 }> {
 	logger.box(`📡 Fetching all actions from their respective module states`)
 	logger.info("Module states:", moduleStates)
@@ -121,6 +122,16 @@ async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promi
 		swap: `${swapResult.data.length} events (block ${swapResult.lastFetchedBlock})`,
 		withdrawal: `${withdrawalResult.data.length} events (block ${withdrawalResult.lastFetchedBlock})`
 	})
+
+	// Calculate max block height from L2 modules only (withdrawal is L1)
+	const maxBlockHeight = Math.max(
+		depositResult.lastFetchedBlock,
+		faucetResult.lastFetchedBlock,
+		liquidityResult.lastFetchedBlock,
+		swapResult.lastFetchedBlock
+	)
+
+	logger.info(`📏 Max L2 block height: ${maxBlockHeight}`)
 
 	// Update module states with new last fetched blocks, preserving endBlock
 	const updatedModuleStates = {
@@ -202,7 +213,7 @@ async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promi
 	}
 
 	logger.success(`✅ Converted to ${actionsToInsert.length} total actions`)
-	return { actionsToInsert, updatedModuleStates }
+	return { actionsToInsert, updatedModuleStates, maxBlockHeight }
 }
 
 /**
@@ -220,28 +231,36 @@ async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerState): Pro
 
 	try {
 		// Fetch all available actions recursively until no more events are found
-		const { actionsToInsert, updatedModuleStates } = await fetchAllActions(state.moduleStates)
+		const { actionsToInsert, updatedModuleStates, maxBlockHeight } = await fetchAllActions(
+			state.moduleStates
+		)
 
 		logger.info("🏁 Fetch complete for all modules")
 		logger.info(`💾 Ready to process ${actionsToInsert.length} actions`)
 
 		// Batch insert actions and update leaderboard
-		if (actionsToInsert.length > 0) {
+		const writeNewEntries = async () => {
+			if (actionsToInsert.length === 0) {
+				logger.info("⏭️  No new actions to process")
+				return false
+			}
+
 			logger.info("🔨 Inserting actions and updating leaderboard...")
-			const triggerBroadcast = await batchInsertActionsAndUpdateLeaderboard({
+			const result = await batchInsertActionsAndUpdateLeaderboard({
 				db,
 				actionsToInsert,
 				config: scoreConfig,
 				updateMode: "inserted" // Only update wallets with new actions
 			})
 			logger.success("✅ Database updated successfully")
-			if (triggerBroadcast) {
-				logger.info("📢 Triggering distributor broadcast...")
-				broadcast()
-			}
-		} else {
-			logger.info("⏭️  No new actions to process")
+			return result
 		}
+
+		const hasNewEntries = await writeNewEntries()
+
+		// Always broadcast on every loop iteration with current chain state
+		logger.info("📢 Broadcasting to all connected clients...")
+		broadcast({ maxBlockHeight, hasNewEntries })
 
 		// ONLY update moduleStates on successful completion
 		state.moduleStates = updatedModuleStates
@@ -455,8 +474,9 @@ export class Indexer {
 
 			// Step 2: Fetch all actions from blockchain starting from initialBlock
 			logger.info(`[Rebuild] Fetching all actions from configured blocks...`)
-			const { actionsToInsert, updatedModuleStates } = await fetchAllActions(initialModuleStates)
-			logger.info("[Rebuild] Fetched all events from blockchain")
+			const { actionsToInsert, updatedModuleStates, maxBlockHeight } =
+				await fetchAllActions(initialModuleStates)
+			logger.info(`[Rebuild] Fetched all events from blockchain (max block: ${maxBlockHeight})`)
 
 			if (actionsToInsert.length === 0)
 				throw new Error("No actions fetched from blockchain for rebuild")

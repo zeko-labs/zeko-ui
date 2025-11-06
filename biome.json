@@ -25,6 +25,12 @@
 	},
 	"linter": {
 		"rules": {
+			"correctness": {
+				"noUnusedImports": {
+					"level": "warn",
+					"fix": "safe"
+				}
+			},
 			"style": {
 				"useConst": {
 					"level": "warn",

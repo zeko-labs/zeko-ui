@@ -17,6 +17,16 @@ type LeaderboardResult {
   total: Int!
 }
 
+type LeaderboardUpdate {
+  hasNewEntries: Boolean!
+  maxBlockHeight: Int!
+  timestamp: Int!
+}
+
 type Query {
   leaderboard(input: LeaderboardInput): LeaderboardResult
+}
+
+type Subscription {
+  onNewTransaction: LeaderboardUpdate
 }

@@ -15,7 +15,8 @@
 		"drizzle-orm": "catalog:",
 		"graphql": "catalog:graphql",
 		"graphql-yoga": "catalog:graphql",
-		"postgres": "catalog:"
+		"postgres": "catalog:",
+		"valibot": "catalog:"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",

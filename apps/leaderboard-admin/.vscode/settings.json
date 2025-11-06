@@ -3,7 +3,9 @@
 	"editor.formatOnSave": true,
 	"biome.enabled": true,
 	"editor.codeActionsOnSave": {
-		"source.fixAll.biome": "explicit"
+		"source.fixAll.biome": "explicit",
+		"quickfix.biome": "explicit",
+		"source.organizeImports.biome": "explicit"
 	},
 	"[javascript]": {
 		"editor.defaultFormatter": "dprint.dprint",

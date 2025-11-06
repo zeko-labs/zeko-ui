@@ -1,5 +1,5 @@
 import { createResource, createSignal, onCleanup, onMount, Show } from "solid-js"
-import ActionConfig, { type ActionsConfig } from "./ActionConfig"
+import type { ActionsConfig } from "./ActionConfig"
 import { ActionConfigs } from "./ActionConfigs"
 import { clearStoredToken, getApi, getStoredToken, type Indexer, setStoredToken } from "./api"
 import Token from "./Token"
@@ -98,15 +98,6 @@ function App() {
 		}
 	}
 
-	async function handleBroadcast() {
-		try {
-			const res = await getApi().broadcast.post()
-			setData(res, "broadcast")
-		} catch (err) {
-			setOpStatus((p) => ({ ...p, broadcast: (err as Error).message }))
-		}
-	}
-
 	async function handleRecalculate() {
 		try {
 			const res = await getApi().recalculate.post()
@@ -200,7 +191,7 @@ function App() {
 								id="startingBlock"
 								name="startingBlock"
 								value={startingBlock()}
-								onInput={(e) => setStartingBlock(Number.parseInt(e.currentTarget.value))}
+								onInput={(e) => setStartingBlock(Number.parseInt(e.currentTarget.value, 10))}
 							/>
 						</label>
 						<label for="intervalSeconds">
@@ -210,7 +201,7 @@ function App() {
 								id="intervalSeconds"
 								name="intervalSeconds"
 								value={intervalSeconds()}
-								onInput={(e) => setIntervalSeconds(Number.parseInt(e.currentTarget.value))}
+								onInput={(e) => setIntervalSeconds(Number.parseInt(e.currentTarget.value, 10))}
 							/>
 						</label>
 						<label for="maxRetries">
@@ -220,7 +211,7 @@ function App() {
 								id="maxRetries"
 								name="maxRetries"
 								value={maxRetries()}
-								onInput={(e) => setMaxRetries(Number.parseInt(e.currentTarget.value))}
+								onInput={(e) => setMaxRetries(Number.parseInt(e.currentTarget.value, 10))}
 							/>
 						</label>
 					</div>
@@ -249,14 +240,9 @@ function App() {
 
 			<section>
 				<h2>Actions</h2>
-				<div class="grid">
-					<button type="button" onClick={() => handleBroadcast()}>
-						Trigger Distributor Broadcast
-					</button>
-					<button type="button" onClick={() => handleRecalculate()}>
-						Recalculate Leaderboard
-					</button>
-				</div>
+				<button type="button" onClick={() => handleRecalculate()}>
+					Recalculate Leaderboard
+				</button>
 			</section>
 
 			<section>
@@ -270,7 +256,7 @@ function App() {
 							id="fromBlock"
 							name="fromBlock"
 							value={fromBlock()}
-							onInput={(e) => setFromBlock(Number.parseInt(e.currentTarget.value))}
+							onInput={(e) => setFromBlock(Number.parseInt(e.currentTarget.value, 10))}
 						/>
 					</label>
 

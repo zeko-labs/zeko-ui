@@ -1,3 +1,4 @@
+import type { BroadcastPayload } from "@leaderboard/api"
 import { createMinaClient } from "@lumina-dex/sdk"
 import { networkStateQuery } from "@zeko/graphql/mina-archive"
 import { FetchZekoArchiveEvents } from "@zeko/graphql/zeko-archive"
@@ -286,20 +287,23 @@ export async function wait(seconds: number): Promise<void> {
 /**
  * Trigger distributor broadcast to all 100 shards
  * This will contact the API service which will broadcast to all DOs
- * Mock implementation for now
  */
-export function broadcast() {
+export function broadcast(payload: BroadcastPayload) {
 	try {
 		logger.info(
 			`[broadcast] Triggering broadcast to all 100 distributor shards via ${env.BROADCAST_URL}`
 		)
-		logger.info("[broadcast] Each distributor will contact its subscribed users")
+		logger.info(
+			`[broadcast] Payload: maxBlockHeight=${payload.maxBlockHeight}, hasNewEntries=${payload.hasNewEntries}`
+		)
 
 		fetch(`${env.BROADCAST_URL}/broadcast`, {
 			method: "POST",
 			headers: {
-				Authorization: `Bearer ${env.AUTH_TOKEN}`
-			}
+				Authorization: `Bearer ${env.AUTH_TOKEN}`,
+				"Content-Type": "application/json"
+			},
+			body: JSON.stringify(payload)
 		})
 		return { success: true }
 	} catch (error) {

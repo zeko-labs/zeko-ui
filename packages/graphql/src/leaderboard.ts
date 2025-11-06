@@ -13,3 +13,13 @@ export const leaderboardQuery = graphql(`
     }
   }
 `)
+
+export const leaderboardUpdateSubscription = graphql(`
+  subscription LeaderboardUpdate {
+    onNewTransaction {
+      maxBlockHeight
+      hasNewEntries
+      timestamp
+    }
+  }
+`)

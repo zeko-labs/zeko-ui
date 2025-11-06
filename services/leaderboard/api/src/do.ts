@@ -11,10 +11,13 @@ import { DurableObject } from "cloudflare:workers"
 /**
  * Payload structure for broadcast messages
  */
-export interface BroadcastMessagePayload {
-	type: string
-	data: unknown
-	timestamp?: number
+export type BroadcastMessagePayload = {
+	type: "LEADERBOARD_UPDATE"
+	data: {
+		maxBlockHeight: number
+		hasNewEntries: boolean
+	}
+	timestamp: number
 }
 
 /**

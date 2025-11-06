@@ -1,8 +1,9 @@
 <script setup lang="ts">
-//TODO: Implement this to fetch real transaction count from GraphQL API
-const count = ref(2_298_948)
+const lb = useLeaderboard()
 
-const displayCount = computed(() => Number(count.value).toLocaleString("en-US"))
+const displayCount = computed(() =>
+	Number(lb.transactionCount).toLocaleString("en-US")
+)
 </script>
 <template>
   <div class="Header">
