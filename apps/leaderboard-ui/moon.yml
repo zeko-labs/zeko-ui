@@ -1,0 +1,76 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: application
+id: lb-ui
+
+dependsOn:
+  - design
+  - layer
+  - graphql
+
+fileGroups:
+  sources:
+    - app/**/*
+    - public/**/*
+    - nuxt.config.ts
+    - tsconfig.json
+    - package.json
+
+tasks:
+  format:
+    inputs:
+      - "@group(sources)"
+  format-fix:
+    inputs:
+      - "@group(sources)"
+  schema-get:
+    command: gql-tada generate schema 'https://api.leaderboard.zeko.io/graphql' --output './graphql/generated/leaderboard.graphql'
+    outputs:
+      - "graphql/generated/leaderboard.graphql"
+  dev:
+    command: nuxt dev
+    preset: server
+  build:
+    command: nuxt build
+    deps: [^:build]
+    args:
+      - "--logLevel"
+      - "verbose"
+    env:
+      NODE_OPTIONS: --max-old-space-size=8192
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - .nuxt/
+      - .output/
+  dev-cf:
+    command: wrangler dev .output/server/index.mjs --assets .output/public/
+    preset: server
+    deps:
+      - build
+    inputs:
+      - .output/
+  type-cf:
+    command: wrangler types
+    inputs:
+      - wrangler.jsonc
+    outputs:
+      - worker-configuration.d.ts
+  preview:
+    command: nuxt preview
+    preset: server
+  prepare:
+    command: nuxt prepare
+    outputs:
+      - .nuxt/
+  analyze:
+    command: nuxt analyze
+    preset: server
+  deploy:
+    command: wrangler deploy
+    deps:
+      - build
+  deploy-preview:
+    command: wrangler versions upload
+    deps:
+      - build

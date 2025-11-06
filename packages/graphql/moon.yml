@@ -45,9 +45,15 @@ tasks:
     command: gql-tada generate schema 'https://api.minascan.io/archive/devnet/v1/graphql' --output './src/generated/mina-archive.graphql'
     outputs:
       - "src/generated/mina-archive.graphql"
+  schema-get-leaderboard:
+    # command: gql-tada generate schema 'https://api.leaderboard.zeko.io/graphql' --output './src/generated/leaderboard.graphql'
+    command: cp ../../services/leaderboard/api/graphql/schema.graphql ./src/generated/leaderboard.graphql
+    outputs:
+      - "src/generated/leaderboard.graphql"
   schema-get:
     deps:
       - "schema-get-zeko"
       - "schema-get-zeko-archive"
       - "schema-get-mina"
       - "schema-get-mina-archive"
+      - "schema-get-leaderboard"

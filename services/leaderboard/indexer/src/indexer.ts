@@ -7,7 +7,7 @@ import {
 	recalculateLeaderboard,
 	scoreConfig
 } from "./db"
-import { logger, triggerDistributorBroadcast, wait } from "./helper"
+import { type ActionConfig, type ActionsConfig, broadcast, logger, wait } from "./helper"
 import { handler as deposit } from "./points/deposit"
 import { handler as faucet } from "./points/faucet"
 import { handler as liquidity } from "./points/liquidity"
@@ -21,6 +21,7 @@ interface IndexerConfig {
 
 interface ModuleState {
 	lastFetchedBlock: number
+	endBlock?: number
 }
 
 interface IndexerState {
@@ -29,6 +30,42 @@ interface IndexerState {
 	moduleStates: Record<string, ModuleState>
 	config: IndexerConfig
 	consecutiveErrors: number
+}
+
+type ModuleName = keyof ActionsConfig
+
+/**
+ * Normalize block number (convert 0 to 1 due to archive bug)
+ */
+const normalizeBlock = (block: number): number => (block === 0 ? 1 : block)
+
+/**
+ * Create module state from action config
+ */
+const createModuleState = (config: ActionConfig): ModuleState => ({
+	lastFetchedBlock: normalizeBlock(config.startBlock),
+	endBlock: config.endBlock === Number.POSITIVE_INFINITY ? undefined : config.endBlock
+})
+
+/**
+ * Create all module states from actions config with defaults
+ */
+const createModuleStates = (
+	actions: Partial<ActionsConfig>,
+	defaultStartBlock: number
+): Record<ModuleName, ModuleState> => {
+	const modules: ModuleName[] = ["deposit", "faucet", "liquidity", "swap", "withdrawal"]
+	const result: Record<string, ModuleState> = {}
+
+	for (const module of modules) {
+		const actionConfig = actions[module] ?? {
+			startBlock: defaultStartBlock,
+			endBlock: Number.POSITIVE_INFINITY
+		}
+		result[module] = createModuleState(actionConfig)
+	}
+
+	return result as Record<ModuleName, ModuleState>
 }
 
 /**
@@ -47,6 +84,7 @@ const ACTION_TYPE_MAP = {
 async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promise<{
 	actionsToInsert: ActionToInsert[]
 	updatedModuleStates: Record<string, ModuleState>
+	maxBlockHeight: number
 }> {
 	logger.box(`📡 Fetching all actions from their respective module states`)
 	logger.info("Module states:", moduleStates)
@@ -54,11 +92,26 @@ async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promi
 
 	const [depositResult, faucetResult, liquidityResult, swapResult, withdrawalResult] =
 		await Promise.all([
-			deposit.fetch(moduleStates.deposit.lastFetchedBlock),
-			faucet.fetch(moduleStates.faucet.lastFetchedBlock),
-			liquidity.fetch(moduleStates.liquidity.lastFetchedBlock),
-			swap.fetch(moduleStates.swap.lastFetchedBlock),
-			withdrawal.fetch(moduleStates.withdrawal.lastFetchedBlock)
+			deposit.fetch({
+				startBlock: moduleStates.deposit.lastFetchedBlock,
+				endBlock: moduleStates.deposit.endBlock ?? Number.POSITIVE_INFINITY
+			}),
+			faucet.fetch({
+				startBlock: moduleStates.faucet.lastFetchedBlock,
+				endBlock: moduleStates.faucet.endBlock ?? Number.POSITIVE_INFINITY
+			}),
+			liquidity.fetch({
+				startBlock: moduleStates.liquidity.lastFetchedBlock,
+				endBlock: moduleStates.liquidity.endBlock ?? Number.POSITIVE_INFINITY
+			}),
+			swap.fetch({
+				startBlock: moduleStates.swap.lastFetchedBlock,
+				endBlock: moduleStates.swap.endBlock ?? Number.POSITIVE_INFINITY
+			}),
+			withdrawal.fetch({
+				startBlock: moduleStates.withdrawal.lastFetchedBlock,
+				endBlock: moduleStates.withdrawal.endBlock ?? Number.POSITIVE_INFINITY
+			})
 		])
 
 	logger.success("✅ All modules fetched successfully")
@@ -70,13 +123,38 @@ async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promi
 		withdrawal: `${withdrawalResult.data.length} events (block ${withdrawalResult.lastFetchedBlock})`
 	})
 
-	// Update module states with new last fetched blocks
+	// Calculate max block height from L2 modules only (withdrawal is L1)
+	const maxBlockHeight = Math.max(
+		depositResult.lastFetchedBlock,
+		faucetResult.lastFetchedBlock,
+		liquidityResult.lastFetchedBlock,
+		swapResult.lastFetchedBlock
+	)
+
+	logger.info(`📏 Max L2 block height: ${maxBlockHeight}`)
+
+	// Update module states with new last fetched blocks, preserving endBlock
 	const updatedModuleStates = {
-		deposit: { lastFetchedBlock: depositResult.lastFetchedBlock + 1 },
-		faucet: { lastFetchedBlock: faucetResult.lastFetchedBlock + 1 },
-		liquidity: { lastFetchedBlock: liquidityResult.lastFetchedBlock + 1 },
-		swap: { lastFetchedBlock: swapResult.lastFetchedBlock + 1 },
-		withdrawal: { lastFetchedBlock: withdrawalResult.lastFetchedBlock + 1 }
+		deposit: {
+			lastFetchedBlock: depositResult.lastFetchedBlock + 1,
+			endBlock: moduleStates.deposit.endBlock
+		},
+		faucet: {
+			lastFetchedBlock: faucetResult.lastFetchedBlock + 1,
+			endBlock: moduleStates.faucet.endBlock
+		},
+		liquidity: {
+			lastFetchedBlock: liquidityResult.lastFetchedBlock + 1,
+			endBlock: moduleStates.liquidity.endBlock
+		},
+		swap: {
+			lastFetchedBlock: swapResult.lastFetchedBlock + 1,
+			endBlock: moduleStates.swap.endBlock
+		},
+		withdrawal: {
+			lastFetchedBlock: withdrawalResult.lastFetchedBlock + 1,
+			endBlock: moduleStates.withdrawal.endBlock
+		}
 	}
 
 	logger.info("Updated module states:", updatedModuleStates)
@@ -135,7 +213,7 @@ async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promi
 	}
 
 	logger.success(`✅ Converted to ${actionsToInsert.length} total actions`)
-	return { actionsToInsert, updatedModuleStates }
+	return { actionsToInsert, updatedModuleStates, maxBlockHeight }
 }
 
 /**
@@ -153,27 +231,36 @@ async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerState): Pro
 
 	try {
 		// Fetch all available actions recursively until no more events are found
-		const { actionsToInsert, updatedModuleStates } = await fetchAllActions(state.moduleStates)
+		const { actionsToInsert, updatedModuleStates, maxBlockHeight } = await fetchAllActions(
+			state.moduleStates
+		)
 
 		logger.info("🏁 Fetch complete for all modules")
 		logger.info(`💾 Ready to process ${actionsToInsert.length} actions`)
 
 		// Batch insert actions and update leaderboard
-		if (actionsToInsert.length > 0) {
+		const writeNewEntries = async () => {
+			if (actionsToInsert.length === 0) {
+				logger.info("⏭️  No new actions to process")
+				return false
+			}
+
 			logger.info("🔨 Inserting actions and updating leaderboard...")
-			await batchInsertActionsAndUpdateLeaderboard({
+			const result = await batchInsertActionsAndUpdateLeaderboard({
 				db,
 				actionsToInsert,
 				config: scoreConfig,
 				updateMode: "inserted" // Only update wallets with new actions
 			})
 			logger.success("✅ Database updated successfully")
-
-			logger.info("📢 Triggering distributor broadcast...")
-			await triggerDistributorBroadcast()
-		} else {
-			logger.info("⏭️  No new actions to process")
+			return result
 		}
+
+		const hasNewEntries = await writeNewEntries()
+
+		// Always broadcast on every loop iteration with current chain state
+		logger.info("📢 Broadcasting to all connected clients...")
+		broadcast({ maxBlockHeight, hasNewEntries })
 
 		// ONLY update moduleStates on successful completion
 		state.moduleStates = updatedModuleStates
@@ -241,7 +328,12 @@ export class Indexer {
 	/**
 	 * Start the indexing loop
 	 */
-	start(input?: { startingBlock?: number; intervalSeconds?: number; maxRetries?: number }) {
+	start(input?: {
+		startingBlock?: number
+		intervalSeconds?: number
+		maxRetries?: number
+		actions?: Partial<ActionsConfig>
+	}) {
 		try {
 			if (this.#state.isRunning) {
 				return { success: false, message: "Indexer is already running" } as const
@@ -249,17 +341,9 @@ export class Indexer {
 
 			// Update config if provided
 			if (input) {
-				if (input.startingBlock !== undefined) {
-					//TODO: There is a bug with the block 0 https://linear.app/zeko-labs/issue/EXT-17/archive-node-queries-block-0-is-not-functioning-properly
-					const sb = input.startingBlock === 0 ? 1 : input.startingBlock
-					// Update all module states to start from this block
-					this.#state.moduleStates = {
-						deposit: { lastFetchedBlock: sb },
-						faucet: { lastFetchedBlock: sb },
-						liquidity: { lastFetchedBlock: sb },
-						swap: { lastFetchedBlock: sb },
-						withdrawal: { lastFetchedBlock: sb }
-					}
+				if (input.startingBlock !== undefined || input.actions !== undefined) {
+					const defaultStartBlock = input.startingBlock ?? 0
+					this.#state.moduleStates = createModuleStates(input.actions ?? {}, defaultStartBlock)
 				}
 				if (input.intervalSeconds !== undefined) {
 					this.#state.config.intervalSeconds = input.intervalSeconds
@@ -373,7 +457,7 @@ export class Indexer {
 	 * then recalculate the leaderboard
 	 * This is a full rebuild of both tables
 	 */
-	async rebuild(initialBlock = 1) {
+	async rebuild(initialBlock = 0, actions?: Partial<ActionsConfig>) {
 		// Remember if we were running before
 		const wasRunning = this.#state.isRunning
 		const previousConfig = { ...this.#state.config }
@@ -385,39 +469,37 @@ export class Indexer {
 		}
 
 		try {
-			// Step 2: Clear both tables
-			logger.info("[Rebuild] Clearing actions and leaderboard tables...")
-			await this.#db.delete(leaderboardTable)
-			await this.#db.delete(actionsTable)
+			// Step 1: Reset all module states to initial block with action-specific configs
+			const initialModuleStates = createModuleStates(actions ?? {}, initialBlock)
 
-			// Step 3: Reset all module states to initial block
-			const initialModuleStates = {
-				deposit: { lastFetchedBlock: initialBlock },
-				faucet: { lastFetchedBlock: initialBlock },
-				liquidity: { lastFetchedBlock: initialBlock },
-				swap: { lastFetchedBlock: initialBlock },
-				withdrawal: { lastFetchedBlock: initialBlock }
-			}
+			// Step 2: Fetch all actions from blockchain starting from initialBlock
+			logger.info(`[Rebuild] Fetching all actions from configured blocks...`)
+			const { actionsToInsert, updatedModuleStates, maxBlockHeight } =
+				await fetchAllActions(initialModuleStates)
+			logger.info(`[Rebuild] Fetched all events from blockchain (max block: ${maxBlockHeight})`)
 
-			// Step 4: Fetch all actions from blockchain starting from initialBlock
-			logger.info(`[Rebuild] Fetching all actions from block ${initialBlock}...`)
-			const { actionsToInsert, updatedModuleStates } = await fetchAllActions(initialModuleStates)
+			if (actionsToInsert.length === 0)
+				throw new Error("No actions fetched from blockchain for rebuild")
 
-			logger.info("[Rebuild] Fetched all events from blockchain")
+			await this.#db.transaction(async (tx) => {
+				// Step 3: Clear both tables
+				logger.info("[Rebuild] Clearing actions and leaderboard tables...")
 
-			// Step 5: Insert all actions and build leaderboard
-			if (actionsToInsert.length > 0) {
+				await tx.delete(leaderboardTable)
+				await tx.delete(actionsTable)
+
+				// Step 4: Insert all actions and build leaderboard
+
 				logger.info(`[Rebuild] Inserting ${actionsToInsert.length} actions...`)
 				await batchInsertActionsAndUpdateLeaderboard({
-					db: this.#db,
+					db: tx,
 					actionsToInsert,
 					config: scoreConfig,
 					updateMode: "all" // Rebuild should update all wallets
 				})
-			}
+			})
 
 			this.#state.moduleStates = updatedModuleStates
-
 			logger.success("[Rebuild] Rebuild completed successfully")
 
 			// Step 6: Restart the indexing loop if it was running before

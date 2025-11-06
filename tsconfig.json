@@ -4,6 +4,10 @@
 		"strict": true,
 		"module": "preserve",
 		"moduleResolution": "bundler",
-		"noUncheckedIndexedAccess": false
+		"noUncheckedIndexedAccess": false,
+		"baseUrl": ".",
+		"paths": {
+			"@zeko-types-indexer/*": ["services/leaderboard/indexer/src/*"]
+		}
 	}
 }

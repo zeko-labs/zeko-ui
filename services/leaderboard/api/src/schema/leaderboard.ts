@@ -15,7 +15,7 @@ interface LeaderboardResult {
 	total: number
 }
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 20
 
 type DatabaseInstance = ReturnType<Database>
 
@@ -125,12 +125,11 @@ export async function queryLeaderboard(
 /**
  * GraphQL Schema
  */
-
 const LeaderboardEntryObject = builder.objectRef<LeaderboardEntry>("LeaderboardEntry").implement({
 	fields: (t) => ({
-		rank: t.exposeInt("rank"),
-		wallet: t.exposeString("wallet"),
-		score: t.exposeInt("score")
+		rank: t.exposeInt("rank", { nullable: false }),
+		wallet: t.exposeString("wallet", { nullable: false }),
+		score: t.exposeInt("score", { nullable: false })
 	})
 })
 
@@ -138,9 +137,13 @@ const LeaderboardResultObject = builder
 	.objectRef<LeaderboardResult>("LeaderboardResult")
 	.implement({
 		fields: (t) => ({
-			entries: t.field({ type: [LeaderboardEntryObject], resolve: (r) => r.entries }),
-			hasMore: t.exposeBoolean("hasMore"),
-			total: t.exposeInt("total")
+			entries: t.field({
+				type: [LeaderboardEntryObject],
+				resolve: (r) => r.entries,
+				nullable: false
+			}),
+			hasMore: t.exposeBoolean("hasMore", { nullable: false }),
+			total: t.exposeInt("total", { nullable: false })
 		})
 	})
 
@@ -148,7 +151,8 @@ const LeaderboardInput = builder.inputType("LeaderboardInput", {
 	fields: (t) => ({
 		cursorScore: t.int({ required: false }),
 		cursorWallet: t.string({ required: false }),
-		searchWallet: t.string({ required: false })
+		searchWallet: t.string({ required: false }),
+		pageSize: t.int({ required: false, defaultValue: PAGE_SIZE })
 	})
 })
 
@@ -158,13 +162,13 @@ builder.queryType({
 			type: LeaderboardResultObject,
 			args: { input: t.arg({ type: LeaderboardInput, required: false }) },
 			resolve: async (_root, { input }, { database }) => {
-				using db = database()
+				using db = database({ cache: false })
 
 				const result = await queryLeaderboard(db, {
 					searchWallet: input?.searchWallet ?? undefined,
 					cursorScore: input?.cursorScore ?? undefined,
 					cursorWallet: input?.cursorWallet ?? undefined,
-					limit: PAGE_SIZE
+					limit: input?.pageSize ?? PAGE_SIZE
 				})
 
 				return result

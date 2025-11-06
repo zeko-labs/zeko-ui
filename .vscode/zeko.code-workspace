@@ -33,12 +33,24 @@
       "path": "../apps/docs",
     },
     {
+      "name": "🏆 Leaderboard UI",
+      "path": "../apps/leaderboard-ui",
+    },
+    {
+      "name": "🏆 Leaderboard Admin UI",
+      "path": "../apps/leaderboard-admin",
+    },
+    {
       "name": "🏆 Leaderboard Indexer",
       "path": "../services/leaderboard/indexer",
     },
     {
       "name": "🏆 Leaderboard API",
       "path": "../services/leaderboard/api",
+    },
+    {
+      "name": "🪙 Mina Archive Proxy",
+      "path": "../services/mina-archive-proxy",
     },
     {
       "path": "..",

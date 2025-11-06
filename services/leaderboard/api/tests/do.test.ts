@@ -84,7 +84,7 @@ describe("DistributorDO", () => {
 			type: "TEST_MESSAGE",
 			data: { message: "Hello, World!" },
 			timestamp: Date.now()
-		}
+		} as any
 
 		const result = await runInDurableObject(distributorStub, async (instance: DistributorDO) => {
 			instance.setShardId(shardName)
@@ -119,7 +119,7 @@ describe("DistributorDO", () => {
 			type: "LEADERBOARD_UPDATE",
 			data: { rank: 1, score: 1000 },
 			timestamp: Date.now()
-		}
+		} as any
 
 		const result = await runInDurableObject(distributorStub, async (instance: DistributorDO) => {
 			return instance.broadcast(payload)
@@ -166,7 +166,7 @@ describe("DistributorDO", () => {
 			type: "TEST",
 			data: {},
 			timestamp: Date.now()
-		}
+		} as any
 
 		await runInDurableObject(distributorStub, async (instance: DistributorDO) => {
 			return instance.broadcast(payload)
@@ -337,7 +337,7 @@ describe("UserDO", () => {
 			type: "TEST",
 			data: {},
 			timestamp: Date.now()
-		}
+		} as any
 
 		await expect(
 			runInDurableObject(stub, async (instance: UserDo) => {
@@ -421,7 +421,7 @@ describe("Integration: Distributor and User DOs", () => {
 			type: "LEADERBOARD_UPDATE",
 			data: { topScore: 5000 },
 			timestamp: Date.now()
-		}
+		} as any
 
 		const result = await runInDurableObject(distributorStub, async (instance: DistributorDO) => {
 			return instance.broadcast(payload)
@@ -557,7 +557,7 @@ describe("Integration: Distributor and User DOs", () => {
 			type: "LEADERBOARD_UPDATE",
 			data: { message: "Scores updated", timestamp: Date.now() },
 			timestamp: Date.now()
-		}
+		} as any
 
 		const broadcastResults: {
 			shardId: number
