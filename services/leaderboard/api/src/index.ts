@@ -1,7 +1,14 @@
 import { createYoga } from "graphql-yoga"
+import * as v from "valibot"
+import type { BroadcastPayload } from "../module"
 import type { Context } from "./builder"
 import { type CloudflareContext, rc, useDatabase } from "./db"
 import { schema } from "./graphql"
+
+const BroadcastPayloadSchema = v.object({
+	maxBlockHeight: v.pipe(v.number(), v.integer(), v.minValue(0)),
+	hasNewEntries: v.boolean()
+}) satisfies v.GenericSchema<BroadcastPayload>
 
 const yoga = createYoga<{ cloudflare: CloudflareContext }>({
 	schema,
@@ -30,6 +37,19 @@ export default {
 		if (url.pathname === "/broadcast") {
 			const auth = request.headers.get("Authorization")
 			if (auth !== `Bearer ${env.AUTH_TOKEN}`) return new Response("Unauthorized", { status: 401 })
+
+			const body = await request.json()
+			const parseResult = v.safeParse(BroadcastPayloadSchema, body)
+
+			if (!parseResult.success) {
+				return Response.json(
+					{ error: "Invalid payload", issues: parseResult.issues },
+					{ status: 400 }
+				)
+			}
+
+			const { maxBlockHeight, hasNewEntries } = parseResult.output
+			const timestamp = Date.now()
 			const broadcastPromises = Array.from({ length: TOTAL_SHARDS }, async (_, shardId) => {
 				const shardName = `distributor-${shardId}`
 				const distributorId = env.DISTRIBUTOR_DO.idFromName(shardName)
@@ -37,8 +57,8 @@ export default {
 
 				const payload = {
 					type: "LEADERBOARD_UPDATE",
-					data: { message: "Scores updated", timestamp: Date.now() },
-					timestamp: Date.now()
+					data: { maxBlockHeight, hasNewEntries },
+					timestamp
 				} as const
 
 				return distributorStub.broadcast(payload)

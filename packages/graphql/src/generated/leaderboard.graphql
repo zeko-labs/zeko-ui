@@ -7,6 +7,7 @@ type LeaderboardEntry {
 input LeaderboardInput {
   cursorScore: Int
   cursorWallet: String
+  pageSize: Int = 20
   searchWallet: String
 }
 
@@ -16,6 +17,16 @@ type LeaderboardResult {
   total: Int!
 }
 
+type LeaderboardUpdate {
+  hasNewEntries: Boolean!
+  maxBlockHeight: Int!
+  timestamp: Int!
+}
+
 type Query {
   leaderboard(input: LeaderboardInput): LeaderboardResult
+}
+
+type Subscription {
+  onNewTransaction: LeaderboardUpdate
 }

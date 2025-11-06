@@ -6,10 +6,12 @@ export type introspection_types = {
     'Boolean': unknown;
     'Int': unknown;
     'LeaderboardEntry': { kind: 'OBJECT'; name: 'LeaderboardEntry'; fields: { 'rank': { name: 'rank'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'SCALAR'; name: 'Int'; ofType: null; }; } }; 'score': { name: 'score'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'SCALAR'; name: 'Int'; ofType: null; }; } }; 'wallet': { name: 'wallet'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'SCALAR'; name: 'String'; ofType: null; }; } }; }; };
-    'LeaderboardInput': { kind: 'INPUT_OBJECT'; name: 'LeaderboardInput'; isOneOf: false; inputFields: [{ name: 'cursorScore'; type: { kind: 'SCALAR'; name: 'Int'; ofType: null; }; defaultValue: null }, { name: 'cursorWallet'; type: { kind: 'SCALAR'; name: 'String'; ofType: null; }; defaultValue: null }, { name: 'searchWallet'; type: { kind: 'SCALAR'; name: 'String'; ofType: null; }; defaultValue: null }]; };
+    'LeaderboardInput': { kind: 'INPUT_OBJECT'; name: 'LeaderboardInput'; isOneOf: false; inputFields: [{ name: 'cursorScore'; type: { kind: 'SCALAR'; name: 'Int'; ofType: null; }; defaultValue: null }, { name: 'cursorWallet'; type: { kind: 'SCALAR'; name: 'String'; ofType: null; }; defaultValue: null }, { name: 'pageSize'; type: { kind: 'SCALAR'; name: 'Int'; ofType: null; }; defaultValue: "20" }, { name: 'searchWallet'; type: { kind: 'SCALAR'; name: 'String'; ofType: null; }; defaultValue: null }]; };
     'LeaderboardResult': { kind: 'OBJECT'; name: 'LeaderboardResult'; fields: { 'entries': { name: 'entries'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'LIST'; name: never; ofType: { kind: 'NON_NULL'; name: never; ofType: { kind: 'OBJECT'; name: 'LeaderboardEntry'; ofType: null; }; }; }; } }; 'hasMore': { name: 'hasMore'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'SCALAR'; name: 'Boolean'; ofType: null; }; } }; 'total': { name: 'total'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'SCALAR'; name: 'Int'; ofType: null; }; } }; }; };
+    'LeaderboardUpdate': { kind: 'OBJECT'; name: 'LeaderboardUpdate'; fields: { 'hasNewEntries': { name: 'hasNewEntries'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'SCALAR'; name: 'Boolean'; ofType: null; }; } }; 'maxBlockHeight': { name: 'maxBlockHeight'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'SCALAR'; name: 'Int'; ofType: null; }; } }; 'timestamp': { name: 'timestamp'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'SCALAR'; name: 'Int'; ofType: null; }; } }; }; };
     'Query': { kind: 'OBJECT'; name: 'Query'; fields: { 'leaderboard': { name: 'leaderboard'; type: { kind: 'OBJECT'; name: 'LeaderboardResult'; ofType: null; } }; }; };
     'String': unknown;
+    'Subscription': { kind: 'OBJECT'; name: 'Subscription'; fields: { 'onNewTransaction': { name: 'onNewTransaction'; type: { kind: 'OBJECT'; name: 'LeaderboardUpdate'; ofType: null; } }; }; };
 };
 
 /** An IntrospectionQuery representation of your schema.
@@ -24,7 +26,7 @@ export type introspection = {
   name: 'leaderboard';
   query: 'Query';
   mutation: never;
-  subscription: never;
+  subscription: 'Subscription';
   types: introspection_types;
 };
 

@@ -1,13 +1,13 @@
 import { getCoreRowModel, getPaginationRowModel, useVueTable } from "@tanstack/vue-table"
-import { useQuery } from "@urql/vue"
-import { leaderboardQuery } from "@zeko/graphql/leaderboard"
+import { useQuery, useSubscription } from "@urql/vue"
+import { leaderboardQuery, leaderboardUpdateSubscription } from "@zeko/graphql/leaderboard"
 import { defineStore } from "pinia"
 
-const pollingInterval = 5000
 const PAGE_SIZE = 20
 
 export const useLeaderboard = defineStore("leaderboard", () => {
 	const search = ref("")
+	const transactionCount = ref(0)
 
 	// Cursor stack for back navigation (used only when not searching)
 	const cursorStack = ref<Array<{ score?: number; wallet?: string } | undefined>>([])
@@ -76,17 +76,20 @@ export const useLeaderboard = defineStore("leaderboard", () => {
 		executeQuery({ requestPolicy: "network-only" })
 	}
 
-	// Poll every 5s
-	let intervalId: number | undefined
-	onMounted(() => {
-		// re-run poll by calling executeQuery in urql; useQuery auto-updates if variables refs change
-		intervalId = window.setInterval(() => {
-			executeQuery({ requestPolicy: "network-only" })
-		}, pollingInterval)
+	const { data: subscriptionData } = useSubscription({
+		query: leaderboardUpdateSubscription
 	})
-	onBeforeUnmount(() => {
-		if (intervalId) clearInterval(intervalId)
-	})
+
+	watch(
+		() => subscriptionData.value?.onNewTransaction,
+		(update) => {
+			if (!update) return
+			transactionCount.value = update.maxBlockHeight
+			if (update.hasNewEntries) {
+				executeQuery({ requestPolicy: "network-only" })
+			}
+		}
+	)
 
 	// Reset cursor when search changes
 	watch(search, () => {
@@ -109,6 +112,7 @@ export const useLeaderboard = defineStore("leaderboard", () => {
 		hasMore,
 		isSearch,
 		columns,
-		cursorStack
+		cursorStack,
+		transactionCount
 	}
 })

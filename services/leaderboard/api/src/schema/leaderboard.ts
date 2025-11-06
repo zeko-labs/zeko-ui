@@ -125,7 +125,6 @@ export async function queryLeaderboard(
 /**
  * GraphQL Schema
  */
-
 const LeaderboardEntryObject = builder.objectRef<LeaderboardEntry>("LeaderboardEntry").implement({
 	fields: (t) => ({
 		rank: t.exposeInt("rank", { nullable: false }),
