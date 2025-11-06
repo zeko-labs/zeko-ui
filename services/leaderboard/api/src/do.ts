@@ -31,14 +31,42 @@ export class DistributorDO extends DurableObject<Env> {
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env)
 		this.#subscribers = new Map()
+
+		// Restore state from storage on wake-up from hibernation
+		this.ctx.blockConcurrencyWhile(async () => {
+			const storedShardId = await this.ctx.storage.get<string>("shardId")
+			if (storedShardId) this.#shardId = storedShardId
+
+			const subscriberKeys = await this.ctx.storage.list<boolean>({ prefix: "subscriber:" })
+			for (const [key] of subscriberKeys) this.addSubscriber(key.replace("subscriber:", ""))
+
+			if (this.#subscribers.size > 0) {
+				console.log(
+					`[DistributorDO:${this.#shardId}] Restored ${this.#subscribers.size} subscribers from storage on shard ${this.#shardId}.`
+				)
+			}
+		})
 	}
 
 	/**
 	 * Set the shard ID for this distributor.
 	 * Should be called once when the DO is first accessed.
 	 */
-	setShardId(shardId: string) {
-		this.#shardId = shardId
+	async setShardId(shardId: string) {
+		if (this.#shardId !== shardId) {
+			this.#shardId = shardId
+			await this.ctx.storage.put("shardId", shardId)
+			console.log(`[DistributorDO] Shard ID set and persisted: ${shardId}`)
+		}
+	}
+
+	/**
+	 * Internal method to add a subscriber to in-memory map
+	 */
+	private addSubscriber(userId: string) {
+		const userDoId = this.env.USER_DO.idFromName(userId)
+		const userDoStub = this.env.USER_DO.get(userDoId)
+		this.#subscribers.set(userId, userDoStub)
 	}
 
 	/**
@@ -46,11 +74,10 @@ export class DistributorDO extends DurableObject<Env> {
 	 * Called via RPC from UserDO when a user connects.
 	 * The distributor creates its own stub to the UserDO.
 	 */
-	async subscribe(userId: string) {
-		const userDoId = this.env.USER_DO.idFromName(userId)
-		const userDoStub = this.env.USER_DO.get(userDoId)
+	subscribe(userId: string) {
+		this.addSubscriber(userId)
+		this.ctx.storage.put(`subscriber:${userId}`, true)
 
-		this.#subscribers.set(userId, userDoStub)
 		console.log(
 			`[DistributorDO:${this.#shardId}] User ${userId} subscribed. Total subscribers: ${this.#subscribers.size}`
 		)
@@ -79,6 +106,7 @@ export class DistributorDO extends DurableObject<Env> {
 					error
 				)
 				this.#subscribers.delete(userId)
+				this.ctx.storage.delete(`subscriber:${userId}`)
 				return null
 			})
 		)
@@ -111,19 +139,23 @@ export class DistributorDO extends DurableObject<Env> {
 export class UserDo extends DurableObject<Env> {
 	#userId: string | null = null
 	#distributorShardId: number | null = null
-	#isSubscribed = false
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env)
 
-		// hibernation
+		// Restore state from hibernation and re-subscribe
 		const sockets = this.ctx.getWebSockets()
 		if (sockets.length > 0) {
 			const attachment = sockets[0].deserializeAttachment()
 			if (attachment?.userId) {
 				this.#userId = attachment.userId
 				this.#distributorShardId = attachment.shardId
-				this.#isSubscribed = attachment.isSubscribed
+				console.log(
+					`[UserDO] Restored from hibernation: userId=${this.#userId}, shard=${this.#distributorShardId}`
+				)
+				this.subscribeToDistributor().catch((error: Error) => {
+					console.error(`[UserDO] Failed to re-subscribe on wake-up:`, error)
+				})
 			}
 		}
 	}
@@ -160,24 +192,20 @@ export class UserDo extends DurableObject<Env> {
 	 * The fetch handler is still needed as trying to use this directly over RPC will result in an error :
 	 * Could not serialize object of type "WebSocket". This type does not support serialization.
 	 */
-	createWebSocketClientResponse(userId: string) {
+	async createWebSocketClientResponse(userId: string) {
 		const webSocketPair = new WebSocketPair()
 		const [client, server] = Object.values(webSocketPair)
 		if (!client || !server) throw new Error("Failed to create WebSocket pair.")
 
-		const distributorShardId = this.calculateShardId(userId)
-		this.#distributorShardId = distributorShardId
+		this.#userId = userId
+		this.#distributorShardId = this.calculateShardId(userId)
 
-		// hibernation
-		server.serializeAttachment({
-			userId,
-			shardId: distributorShardId,
-			isSubscribed: false
-		})
+		// Serialize attachment for hibernation
+		server.serializeAttachment({ userId, shardId: this.#distributorShardId })
 		this.ctx.acceptWebSocket(server)
 
-		this.subscribeToDistributor(userId).catch((error) => {
-			console.error(`[UserDO:${userId}] Failed to subscribe to distributor:`, error)
+		this.subscribeToDistributor().catch((error: Error) => {
+			console.error(`[UserDO:${userId}] Failed to subscribe on connect:`, error)
 		})
 
 		return new Response(null, { status: 101, webSocket: client })
@@ -185,21 +213,21 @@ export class UserDo extends DurableObject<Env> {
 
 	/**
 	 * Subscribe this UserDO to its assigned DistributorDO shard.
-	 * Uses consistent hashing to determine which shard to subscribe to.
 	 */
-	private async subscribeToDistributor(userId: string) {
-		if (this.#isSubscribed || this.#distributorShardId === null) return
+	private async subscribeToDistributor() {
+		if (!this.#userId || this.#distributorShardId === null) {
+			throw new Error("Cannot subscribe: userId or distributorShardId not set")
+		}
 
 		const distributorName = `distributor-${this.#distributorShardId}`
-
 		const distributorId = this.env.DISTRIBUTOR_DO.idFromName(distributorName)
 		const distributorStub = this.env.DISTRIBUTOR_DO.get(distributorId)
 		distributorStub.setShardId(distributorName)
+		distributorStub.subscribe(this.#userId)
 
-		await distributorStub.subscribe(userId)
-		this.#isSubscribed = true
-
-		console.log(`[UserDO:${userId}] Subscribed to distributor shard ${this.#distributorShardId}`)
+		console.log(
+			`[UserDO:${this.#userId}] Subscribed to distributor shard ${this.#distributorShardId}`
+		)
 	}
 
 	/**
@@ -270,7 +298,6 @@ export class UserDo extends DurableObject<Env> {
 		return {
 			userId: this.#userId,
 			connections: this.ctx.getWebSockets().length,
-			isSubscribed: this.#isSubscribed,
 			shardId: this.#distributorShardId
 		}
 	}

@@ -44,13 +44,9 @@ builder.subscriptionType({
 
 				console.log("[Subscription] WebSocket connection established")
 				ws.accept()
-
+				const maxBlockHeight = await getMaxBlockHeightL2(client)
 				return new Repeater<LeaderboardUpdateData>(async (push, stop) => {
-					ws.addEventListener("open", async () => {
-						const maxBlockHeight = await getMaxBlockHeightL2(client)
-						push({ maxBlockHeight, hasNewEntries: false, timestamp: Date.now() })
-					})
-
+					push({ maxBlockHeight, hasNewEntries: false, timestamp: Date.now() })
 					ws.addEventListener("message", async (message) => {
 						console.log(`[Subscription] ${userId} Received message:`, message.data.toString())
 						try {

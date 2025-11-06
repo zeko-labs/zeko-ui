@@ -331,10 +331,7 @@ export class Indexer {
 				withdrawal: { lastFetchedBlock: 1 }
 			},
 			consecutiveErrors: 0,
-			config: {
-				intervalSeconds: 5,
-				maxRetries: 5
-			},
+			config: { intervalSeconds: 5, maxRetries: 10 },
 			lastMaxBlockHeight: undefined
 		}
 	}

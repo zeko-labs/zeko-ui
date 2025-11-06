@@ -24,7 +24,7 @@ function App() {
 	})
 	const [startingBlock, setStartingBlock] = createSignal(0)
 	const [intervalSeconds, setIntervalSeconds] = createSignal(5)
-	const [maxRetries, setMaxRetries] = createSignal(5)
+	const [maxRetries, setMaxRetries] = createSignal(10)
 	const [fromBlock, setFromBlock] = createSignal(0)
 	const [startActions, setStartActions] = createSignal<ActionsConfig>({})
 	const [rebuildActions, setRebuildActions] = createSignal<ActionsConfig>({})

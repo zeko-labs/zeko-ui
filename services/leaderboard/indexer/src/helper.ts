@@ -91,7 +91,7 @@ export async function getMaxBlockHeight(layer: Layer): Promise<number> {
 
 interface FetchEventsRecursiveOptions {
 	address: string
-	currentFrom: number
+	from: number
 	accumulated: ArchiveEvents
 	moduleName: string
 	maxBlockHeight: number
@@ -105,34 +105,28 @@ interface FetchResult {
 }
 
 async function fetchEventsRecursive(options: FetchEventsRecursiveOptions): Promise<FetchResult> {
-	const {
-		address,
-		currentFrom,
-		accumulated,
-		moduleName,
-		maxBlockHeight,
-		lastEventBlockHeight,
-		layer
-	} = options
+	const { address, from, accumulated, moduleName, maxBlockHeight, lastEventBlockHeight, layer } =
+		options
 
-	const currentTo = currentFrom + MAX_BLOCKS_PER_FETCH - 1
+	const to = from + MAX_BLOCKS_PER_FETCH - 1
 	const logPrefix = `[${moduleName}]`
 
-	if (currentFrom >= maxBlockHeight) {
+	if (from >= maxBlockHeight) {
 		logger.info(`${logPrefix} Reached max block height ${maxBlockHeight}`)
 		return {
 			events: accumulated,
-			lastFetchedBlock: lastEventBlockHeight ?? currentFrom - 1
+			lastFetchedBlock: lastEventBlockHeight ?? from - 1
 		}
 	}
 
-	logger.info(`${logPrefix} Fetching blocks ${currentFrom}-${currentTo}`)
 	const client = (layer === "L2" ? l2Client : l1Client) as Client
-	const events = await fetchEventsRaw({ address, from: currentFrom, to: currentTo, client })
+	//TODO: canonical blocks are not working with L1
+	const canonical = layer === "L2"
+	const events = await fetchEventsRaw({ address, from, to, client, canonical })
 	const allEvents = accumulated.concat(events)
 
 	logger.info(
-		`${logPrefix} Fetched ${events.length} events in blocks ${currentFrom}-${currentTo} (${allEvents.length} total)`
+		`${logPrefix} Fetched ${events.length} events in blocks ${from}-${to} (${allEvents.length} total)`
 	)
 
 	let currentLastEventBlockHeight = lastEventBlockHeight
@@ -148,28 +142,12 @@ async function fetchEventsRecursive(options: FetchEventsRecursiveOptions): Promi
 				logger.info(`${logPrefix} Reached chain head at block ${height}`)
 				return { events: allEvents, lastFetchedBlock: height }
 			}
-
-			logger.info(
-				`${logPrefix} Last event at block ${height}, distance from head: ${distanceFromMaxBlockHeight}`
-			)
 		}
-
-		return fetchEventsRecursive({
-			address,
-			currentFrom: currentTo + 1,
-			accumulated: allEvents,
-			moduleName,
-			maxBlockHeight,
-			lastEventBlockHeight: currentLastEventBlockHeight,
-			layer
-		})
 	}
-
-	logger.info(`${logPrefix} Empty range ${currentFrom}-${currentTo}`)
 
 	return fetchEventsRecursive({
 		address,
-		currentFrom: currentTo + 1,
+		from: to + 1,
 		accumulated: allEvents,
 		moduleName,
 		maxBlockHeight,
@@ -203,10 +181,10 @@ export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<F
 	}
 
 	const isInitialFetch = initialStartBlock === 1
-	const safeFetchFrom = isInitialFetch ? 1 : Math.max(1, initialStartBlock - blockPad)
+	const from = isInitialFetch ? 1 : Math.max(1, initialStartBlock - blockPad)
 
 	logger.start(
-		`${logPrefix} FetchArchiveEvents from ${safeFetchFrom} (initial: ${initialStartBlock})${hasEndBlockLimit ? ` to ${endBlock}` : ""}`
+		`${logPrefix} FetchArchiveEvents from ${from} (initial: ${initialStartBlock})${hasEndBlockLimit ? ` to ${endBlock}` : ""}`
 	)
 
 	const maxBlockHeight = await getMaxBlockHeight(layer)
@@ -217,12 +195,12 @@ export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<F
 	logger.info(
 		isInitialFetch
 			? `${logPrefix} Initial fetch - chain max height: ${maxBlockHeight}${hasEndBlockLimit ? `, end block limit: ${endBlock}` : ""}`
-			: `${logPrefix} Continuing from block ${safeFetchFrom} (refetch window: ${blockPad}) - chain max height: ${maxBlockHeight}${hasEndBlockLimit ? `, end block limit: ${endBlock}` : ""}`
+			: `${logPrefix} Continuing from block ${from} (refetch window: ${blockPad}) - chain max height: ${maxBlockHeight}${hasEndBlockLimit ? `, end block limit: ${endBlock}` : ""}`
 	)
 
 	const result = await fetchEventsRecursive({
 		address,
-		currentFrom: safeFetchFrom,
+		from,
 		accumulated: [],
 		moduleName,
 		maxBlockHeight: fetchToBlock,
