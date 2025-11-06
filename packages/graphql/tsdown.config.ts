@@ -11,12 +11,10 @@ export default defineConfig({
 	],
 	platform: "neutral",
 	dts: true,
-	exports: {
-		all: true
-	},
 	tsconfig: "./tsconfig.build.json"
 	// This change the package.json formatting, un-comment when needed.
 	// exports: {
+	// 	all: true,
 	// 	devExports: true
 	// }
 })
