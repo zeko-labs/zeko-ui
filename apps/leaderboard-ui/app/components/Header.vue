@@ -46,7 +46,7 @@
 }
 
 .Header {
-  --ring-scale: clamp(0.3, 0.3 + (100vw - 320px) / (3440px - 320px) * 2.2, 2.5);
+  --ring-scale: clamp(0.4, 0.4 + (100vw - 320px) / (3440px - 320px) * 2.2, 2.6);
   grid-area: header;
   position: relative;
   display: grid;
