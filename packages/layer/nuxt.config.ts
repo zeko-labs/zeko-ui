@@ -14,10 +14,12 @@ export default defineNuxtConfig({
 	],
 	runtimeConfig: {
 		public: {
-			telegram: "https://t.me/zekoprotocol",
-			discord: "https://discord.gg/vSDxqAchUY",
-			twitter: "https://twitter.com/ZekoLabs",
-			github: "https://github.com/zeko-labs"
+			socials: {
+				telegram: "https://t.me/zekoprotocol",
+				discord: "https://discord.gg/vSDxqAchUY",
+				twitter: "https://twitter.com/ZekoLabs",
+				github: "https://github.com/zeko-labs"
+			}
 		}
 	}
 })

@@ -1,18 +1,18 @@
 <script setup lang="ts">
-const config = useRuntimeConfig().public
+const { socials } = useRuntimeConfig().public
 </script>
 
 <template>
-  <NuxtLink :to="config.twitter" target="_blank ">
+  <NuxtLink :to="socials.twitter" target="_blank ">
     <SvgSocialX />
   </NuxtLink>
-  <NuxtLink :to="config.telegram" target="_blank">
+  <NuxtLink :to="socials.telegram" target="_blank">
     <SvgSocialTelegram />
   </NuxtLink>
-  <NuxtLink :to="config.discord" target="_blank ">
+  <NuxtLink :to="socials.discord" target="_blank ">
     <SvgSocialDiscord />
   </NuxtLink>
-  <NuxtLink :to="config.github" target="_blank ">
+  <NuxtLink :to="socials.github" target="_blank ">
     <SvgSocialGithub />
   </NuxtLink>
 </template>

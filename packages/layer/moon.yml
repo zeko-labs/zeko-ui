@@ -32,17 +32,17 @@ tasks:
     outputs:
       - .cssforge/
       - app/assets/styles/cssforge.css
-  playground-dev:
+  dev:
     command: nuxi dev playground
     inputs:
       - "@group(sources)"
-  playground-prepare:
+  prepare:
     command: nuxt prepare playground
     inputs:
       - "@group(sources)"
     outputs:
       - playground/.nuxt/
-  playground-build:
+  build:
     command: nuxt build playground
     inputs:
       - "@group(sources)"

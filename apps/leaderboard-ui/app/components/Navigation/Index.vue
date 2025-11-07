@@ -4,15 +4,17 @@ import { Dialog, useDialog } from "@ark-ui/vue/dialog"
 const { logo = true } = defineProps<{ logo?: boolean }>()
 
 const {
-	public: { telegram, discord, twitter }
-} = useRuntimeConfig()
+	links: { faucet, zekoBridge, docs },
+	socials: { telegram, discord, twitter }
+} = useRuntimeConfig().public
 
 const navigation = [
 	{
 		name: "Build",
 		children: [
-			{ name: "Docs", url: "https://docs.zeko.io" },
-			{ name: "Faucet", url: "https://zeko.io/faucet" }
+			{ name: "Docs", url: docs },
+			{ name: "Faucet", url: faucet },
+			{ name: "Bridge", url: zekoBridge }
 		]
 	},
 	{

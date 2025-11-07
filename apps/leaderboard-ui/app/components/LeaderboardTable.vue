@@ -2,6 +2,11 @@
 import { Field } from "@ark-ui/vue/field"
 
 const lb = useLeaderboard()
+
+const openLink = (wallet: string) => {
+	const url = `https://zekoscan.io/testnet/account/${wallet}/txs`
+	window.open(url, "_blank")
+}
 </script>
 
 <template>
@@ -54,7 +59,7 @@ const lb = useLeaderboard()
             <tr
               v-for="row of lb.table.getRowModel().rows"
               :key="row.id"
-              :title='row.getValue("wallet")'>
+              @click='openLink(row.getValue("wallet"))'>
               <td class="Rank">{{ row.getValue("rank") }}</td>
               <td class="Wallet">{{ row.getValue("wallet") }}</td>
               <td class="Points">{{ row.getValue("score") }}</td>
@@ -205,6 +210,7 @@ thead {
 tbody {
   width: 100%;
   tr {
+    cursor: pointer;
     padding: 1.5rem 0;
     border-bottom: 1px solid var(--palette-gray-200);
     &:has(+ tr:hover) {
