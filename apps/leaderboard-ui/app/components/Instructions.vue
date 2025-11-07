@@ -6,6 +6,7 @@ const sprintsExpanded = ref(true)
 const sprints = ref<0 | 1 | 2 | 3 | 4 | 5>(1)
 const links = {
 	...config.public.links,
+	discord: config.public.socials.discord,
 	x: {
 		1: "https://clicktotweet.com/TKb9I",
 		2: "https://clicktotweet.com/NXc3e",
@@ -621,8 +622,8 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                     <div class="Congratulations">
                       <h4 class="CongratsTitle">🎉 Congratulations</h4>
                       <p class="CongratsText">
-                        You are a Pro Pooler! Leaderbaord is syncing your points
-                        now. Flex your status on on X and lock in for the next
+                        You are a Pro Pooler! Leaderboard is syncing your points
+                        now. Flex your status on X and lock in for the next
                         quest. 🏊
                       </p>
                     </div>

@@ -42,11 +42,3 @@ tasks:
       - "@group(sources)"
     outputs:
       - playground/.nuxt/
-  build:
-    command: nuxt build playground
-    inputs:
-      - "@group(sources)"
-    outputs:
-      - playground/.nuxt/
-      - playground/.output/
-      - playground/dist/
