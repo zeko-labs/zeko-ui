@@ -1140,28 +1140,19 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                     justify-content: center;
                     gap: 0.25rem;
                     padding: 0.75rem 1rem;
-                    background: var(--palette-cosmicGold-lightest);
                     border-radius: 0.5rem;
                     color: var(--palette-gray-950);
                     text-decoration: none;
                     cursor: pointer;
                     transition: background-color 0.2s ease;
                     /* Gradient Border */
-                    &::before {
-                      content: "";
-                      position: absolute;
-                      inset: 0px;
-                      border-radius: inherit;
-                      /* this is the border width */
-                      padding: 1px;
-                      background: var(--gradients-goldGradient-button-main-2);
-                      mask:
-                        linear-gradient(#fff 0 0) content-box,
-                        linear-gradient(#fff 0 0);
-                      mask-composite: exclude;
-                    }
+                    --bg: var(--palette-cosmicGold-lightest);
+                    background:
+                      linear-gradient(var(--bg), var(--bg)) padding-box,
+                      var(--gradients-goldGradient-button-main-2) border-box;
+                    border: 1px solid transparent;
                     &:hover {
-                      background: var(--palette-yellow-50);
+                      --bg: var(--palette-yellow-50);
                     }
                     &.withIcon {
                       gap: 0.5rem;

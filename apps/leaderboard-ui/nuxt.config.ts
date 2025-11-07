@@ -7,7 +7,7 @@ export default defineNuxtConfig({
 	compatibilityDate: "2025-07-15",
 	devServer: { port: 3069 },
 	modules: ["@nuxt/fonts", "@pinia/nuxt", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
-	devtools: { enabled: true },
+	devtools: { enabled: false },
 	extends: ["@zeko/layer"],
 	postcss: {
 		plugins: {

@@ -33,6 +33,9 @@ catalogs:
     '@lumina-dex/sdk':
       specifier: ^0.23.0
       version: 0.23.0
+    '@number-flow/vue':
+      specifier: ^0.4.8
+      version: 0.4.8
     '@nuxt/fonts':
       specifier: ^0.10.2
       version: 0.10.2
@@ -52,7 +55,7 @@ catalogs:
       specifier: ^0.63.6
       version: 0.63.6
     '@vite-pwa/nuxt':
-      specifier: 1.0.4
+      specifier: ^1.0.4
       version: 1.0.4
     '@vueuse/core':
       specifier: ^12.7.0
@@ -422,6 +425,9 @@ importers:
       '@hebilicious/nuxt-switch-match':
         specifier: 'catalog:'
         version: 0.1.1(magicast@0.3.5)(typescript@5.9.3)
+      '@number-flow/vue':
+        specifier: 'catalog:'
+        version: 0.4.8(vue@3.5.22(typescript@5.9.3))
       '@nuxt/fonts':
         specifier: 'catalog:'
         version: 0.10.2(@netlify/blobs@9.1.2)(db0@0.3.2)(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(rollup@4.52.5)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))
@@ -2937,6 +2943,11 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@number-flow/vue@0.4.8':
+    resolution: {integrity: sha512-g1kh66wndJ4MYkX5Z00GvyLxdOMbRotiTeTQujzb1XS009dL/mVH0ZRI5slXH1mzpl78yzzsjz3vjzGhTMM3CA==}
+    peerDependencies:
+      vue: ^3
 
   '@nuxt/cli@3.29.3':
     resolution: {integrity: sha512-48GYmH4SyzR5pqd02UXVzBfrvEGaurPKMjSWxlHgqnpI5buwOYCvH+OqvHOmvnLrDP2bxR9hbDod/UIphOjMhg==}
@@ -5943,6 +5954,9 @@ packages:
       jiti:
         optional: true
 
+  esm-env@1.2.2:
+    resolution: {integrity: sha512-Epxrv+Nr/CaL4ZcFGPJIYLWFom+YeV1DqMLHJoEd9SYRxNbaFruBwfEX/kkHUJf55j2+TUbmDcmuilbP1TmXHA==}
+
   espree@10.4.0:
     resolution: {integrity: sha512-j6PAQ2uUr79PZhBjP5C5fhl8e39FmRnOjsD5lGnWrFU8i2G776tBK7+nP8KuQUTTyAZUwfQqXAgrVH5MbH9CYQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -7436,6 +7450,9 @@ packages:
 
   nth-check@2.1.1:
     resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
+
+  number-flow@0.5.8:
+    resolution: {integrity: sha512-FPr1DumWyGi5Nucoug14bC6xEz70A1TnhgSHhKyfqjgji2SOTz+iLJxKtv37N5JyJbteGYCm6NQ9p1O4KZ7iiA==}
 
   nuxt@4.1.1:
     resolution: {integrity: sha512-xLDbWgz3ggAfUjcbmTzmLLPWOEB61thnjnqyasZlYyh/Ty2EDT1qvOiM9HT+9ycBxElI2DmyYewY8WOPRxWMiQ==}
@@ -11939,6 +11956,12 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.17.1
 
+  '@number-flow/vue@0.4.8(vue@3.5.22(typescript@5.9.3))':
+    dependencies:
+      esm-env: 1.2.2
+      number-flow: 0.5.8
+      vue: 3.5.22(typescript@5.9.3)
+
   '@nuxt/cli@3.29.3(magicast@0.3.5)':
     dependencies:
       c12: 3.3.1(magicast@0.3.5)
@@ -15938,6 +15961,8 @@ snapshots:
       - supports-color
     optional: true
 
+  esm-env@1.2.2: {}
+
   espree@10.4.0:
     dependencies:
       acorn: 8.15.0
@@ -17686,6 +17711,10 @@ snapshots:
   nth-check@2.1.1:
     dependencies:
       boolbase: 1.0.0
+
+  number-flow@0.5.8:
+    dependencies:
+      esm-env: 1.2.2
 
   nuxt@4.1.1(@biomejs/biome@2.3.3)(@netlify/blobs@9.1.2)(@parcel/watcher@2.4.1)(@types/node@22.14.0)(@vue/compiler-sfc@3.5.22)(db0@0.3.2)(eslint@9.15.0(jiti@2.6.1))(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(meow@13.2.0)(optionator@0.9.4)(rolldown@1.0.0-beta.37)(rollup@4.52.5)(stylelint@16.24.0(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(typescript@5.9.3)(vite@7.1.5(@types/node@22.14.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(yaml@2.8.1):
     dependencies:

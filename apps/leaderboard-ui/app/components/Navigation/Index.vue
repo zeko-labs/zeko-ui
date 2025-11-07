@@ -118,6 +118,16 @@ const openMenu = () => {
   align-items: center;
   padding: 1rem 3rem;
   gap: 1.5rem;
+  &:has(a:hover) {
+    .LogoLink svg {
+      --transition: transform 0.15s ease-in-out;
+      transition: var(--transition);
+      &:hover {
+        transition: var(--transition);
+        transform: scale(1.05);
+      }
+    }
+  }
 
   @media not (--desktop) {
     padding: 1rem 1.5rem;
@@ -127,7 +137,6 @@ const openMenu = () => {
 .LogoLink {
   display: grid;
   place-items: center;
-
   svg {
     width: 4.0625rem;
     height: 2.5rem;

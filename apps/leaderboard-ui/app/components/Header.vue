@@ -1,10 +1,3 @@
-<script setup lang="ts">
-const lb = useLeaderboard()
-
-const displayCount = computed(() =>
-	Number(lb.transactionCount).toLocaleString("en-US")
-)
-</script>
 <template>
   <div class="Header">
     <NightSky />
@@ -17,7 +10,7 @@ const displayCount = computed(() =>
         <div class="Title">Testnet Contest</div>
       </div>
       <div class="TransactionBox">
-        <div class="Count">{{ displayCount }}</div>
+        <Counter />
         <div class="Label">Total Transactions</div>
       </div>
     </div>
@@ -103,6 +96,14 @@ const displayCount = computed(() =>
     letter-spacing: -0.01125rem;
     text-transform: uppercase;
   }
+  svg {
+    --transition: transform 0.15s ease-in-out;
+    transition: var(--transition);
+    &:hover {
+      transition: var(--transition);
+      transform: scale(1.15);
+    }
+  }
 }
 .TransactionBox {
   background: oklch(0.2484 0 0);
@@ -114,14 +115,6 @@ const displayCount = computed(() =>
   flex-direction: column;
   place-items: center;
   width: fit-content;
-  .Count {
-    font-family: "Russo One", sans-serif;
-    font-size: var(--typography_fluid-lexend-h3);
-    color: transparent;
-    background: var(--gradients-goldGradient-brand-logo);
-    background-clip: text;
-    line-height: 125%;
-  }
   .Label {
     color: oklch(1 0 0 / 75%);
     text-align: center;
