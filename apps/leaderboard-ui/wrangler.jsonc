@@ -16,5 +16,10 @@
 	"observability": {
 		"enabled": true
 	},
-	"routes": []
+	"routes": [
+		{
+			"pattern": "zekoboom.zeko.io",
+			"custom_domain": true
+		}
+	]
 }
