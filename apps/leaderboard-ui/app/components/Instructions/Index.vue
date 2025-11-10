@@ -295,7 +295,7 @@ const pointsBreakdown = [
           color: var(--palette-gray-700);
         }
         .LinkAction {
-          color: #5242eb;
+          color: hsla(246, 81%, 59%, 1);
           text-decoration: none;
           &:hover {
             text-decoration: underline;

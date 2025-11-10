@@ -71,7 +71,6 @@ footer {
       transition: var(--transition);
       &:hover {
         transform: scale(1.05);
-        transition: var(--transition);
       }
     }
   }

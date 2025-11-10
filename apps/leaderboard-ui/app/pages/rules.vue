@@ -1,13 +1,13 @@
 <template>
-  <article class="Terms">
-    <header class="Headear">
+  <article>
+    <header>
       <h1>
         Zeko Boom Testnet Contest General Rules, Waiver & Release, and Code of
         Conduct
       </h1>
     </header>
 
-    <section class="Section">
+    <section>
       <h2>Code of Conduct</h2>
       <p>
         This event is a community testnet contest intended for collaboration and
@@ -67,7 +67,7 @@
       </p>
     </section>
 
-    <section class="Section">
+    <section>
       <h2>Event Rules & Conditions</h2>
       <ol>
         <li>
@@ -286,7 +286,7 @@
             </li>
             <li>
               Any media, such as a blog post, that is created about winning the
-              Event, will first be shared with the Zekok team beforehand so that
+              Event, will first be shared with the Zeko team beforehand so that
               we can coordinate and help you spread the message.
             </li>
             <li>
@@ -302,11 +302,10 @@
 </template>
 
 <style lang="postcss" scoped>
-.Terms {
+article {
   max-width: 56rem;
   margin: 0 auto;
   padding: var(--page-padding);
-  /* background: white; */
   color: black;
   line-height: 1.6;
 
@@ -319,7 +318,7 @@
   }
 }
 
-.Headear {
+header {
   margin-block-end: 3rem;
 
   h1 {
@@ -335,7 +334,7 @@
   }
 }
 
-.Section {
+section {
   margin-block-end: 3rem;
 
   h2 {
