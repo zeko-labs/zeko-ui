@@ -34,7 +34,8 @@ export default defineNuxtConfig({
 			links: {
 				docs: "https://docs.zeko.io",
 				auroWallet: "https://www.aurowallet.com",
-				faucet: "https://zeko.io/faucet",
+				zekoFaucet: "https://zeko.io/faucet",
+				minaFaucet: "https://faucet.minaprotocol.com/",
 				zekoBridge: "https://alpha.bridge.zeko.io/",
 				solisDex: "https://solis.gizmolab.io/",
 				lumina: "https://beta.luminadex.com/"

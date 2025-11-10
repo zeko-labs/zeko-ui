@@ -11,13 +11,14 @@
     <div class="Layout">
       <Navigation />
       <slot />
+      <Footer />
     </div>
   </div>
 </template>
 
 <style lang="postcss">
 :root {
-  --page-padding: 3rem;
+  --page-padding: 2.5rem;
   @media not (--desktop) {
     --page-padding: 1rem;
   }
