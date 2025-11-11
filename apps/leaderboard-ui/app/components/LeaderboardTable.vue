@@ -15,7 +15,7 @@ const openLink = (wallet: string) => {
       <header class="Header">
         <div class="Text">
           <div class="Title">Leaderboard</div>
-          <div class="SubTitle">Real Time Updates</div>
+          <!-- <div class="SubTitle">Real Time Updates</div> -->
         </div>
         <div class="Controls">
           <Field.Root>

@@ -3,7 +3,6 @@
     <Header />
     <LeaderboardTable />
     <Instructions />
-    <Footer />
   </div>
 </template>
 
@@ -19,8 +18,7 @@
     padding: 2.5rem;
     grid-template-areas:
       "header header"
-      "instructions table"
-      "footer footer";
+      "instructions table";
     grid-template-columns: minmax(auto, 34.25rem) 1fr;
     column-gap: 1.5rem;
   }

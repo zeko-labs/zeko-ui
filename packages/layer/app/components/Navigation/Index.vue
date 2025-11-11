@@ -13,7 +13,7 @@ const navigation = [
 		name: "Build",
 		children: [
 			{ name: "Docs", url: docs },
-			{ name: "Faucet", url: faucet },
+			{ name: "Faucet", url: zekoFaucet },
 			{ name: "Bridge", url: zekoBridge }
 		]
 	},

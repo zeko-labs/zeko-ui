@@ -34,9 +34,6 @@ const show = ref(opacity[0])
     color: transparent;
     background: var(--gradients-goldGradient-brand-logo);
     background-clip: text;
-    &:hover {
-      background: none;
-    }
   }
 }
 </style>
