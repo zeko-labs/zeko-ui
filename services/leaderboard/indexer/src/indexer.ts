@@ -190,7 +190,7 @@ async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promi
 	}
 
 	for (const item of liquidityResult.data) {
-		if (!item.sender || !item.amountIn) continue
+		if (!item.sender) continue
 		actionsToInsert.push({
 			wallet: item.sender,
 			actionType: ACTION_TYPE_MAP.liquidity,
@@ -200,7 +200,7 @@ async function fetchAllActions(moduleStates: Record<string, ModuleState>): Promi
 	}
 
 	for (const item of swapResult.data) {
-		if (!item.sender || !item.amountToken0In) continue
+		if (!item.sender) continue
 		actionsToInsert.push({
 			wallet: item.sender,
 			actionType: ACTION_TYPE_MAP.swap,

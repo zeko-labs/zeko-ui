@@ -1,11 +1,4 @@
-import {
-	type ActionConfig,
-	type ArchiveEvents,
-	addresses,
-	fetchArchiveEvents,
-	getPubK,
-	logger
-} from "../helper"
+import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 // https://github.com/zeko-labs/zeko/blob/compatible/src/app/zeko/circuits/bridge_state.ml#L191
 // type t =
@@ -54,7 +47,7 @@ export const score = {
 } as const
 
 export const handler = {
-	fetch: async ({ startBlock, endBlock }: ActionConfig) => {
+	fetch: async ({ startBlock, endBlock }: { startBlock: number; endBlock: number }) => {
 		logger.info(
 			`[${score.key}] Starting fetch from block ${startBlock}${endBlock !== Number.POSITIVE_INFINITY ? ` to ${endBlock}` : ""}`
 		)

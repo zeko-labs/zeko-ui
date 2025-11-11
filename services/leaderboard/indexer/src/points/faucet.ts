@@ -1,11 +1,4 @@
-import {
-	type ActionConfig,
-	type ArchiveEvents,
-	addresses,
-	fetchArchiveEvents,
-	getPubK,
-	logger
-} from "../helper"
+import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 const processFaucetEvents = async (events: ArchiveEvents) => {
 	const parse = (data: string[], timestamp: string, transactionHash: string) => {
@@ -34,7 +27,7 @@ export const score = {
 } as const
 
 export const handler = {
-	fetch: async ({ startBlock, endBlock }: ActionConfig) => {
+	fetch: async ({ startBlock, endBlock }: { startBlock: number; endBlock: number }) => {
 		logger.info(
 			`[${score.key}] Starting fetch from block ${startBlock}${endBlock !== Number.POSITIVE_INFINITY ? ` to ${endBlock}` : ""}`
 		)

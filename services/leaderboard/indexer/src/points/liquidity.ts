@@ -1,11 +1,4 @@
-import {
-	type ActionConfig,
-	type ArchiveEvents,
-	addresses,
-	fetchArchiveEvents,
-	getPubK,
-	logger
-} from "../helper"
+import { type ArchiveEvents, addresses, fetchArchiveEvents, getPubK, logger } from "../helper"
 
 //    data: [ "0", "7994353054957568193498626604873088658666758397914343032172656113958151515402",
 //           "0", "1000000000", "4056640838", "9023684"
@@ -45,7 +38,7 @@ export const score = {
 } as const
 
 export const handler = {
-	fetch: async ({ startBlock, endBlock }: ActionConfig) => {
+	fetch: async ({ startBlock, endBlock }: { startBlock: number; endBlock: number }) => {
 		logger.info(
 			`[${score.key}] Starting fetch from block ${startBlock}${endBlock !== Number.POSITIVE_INFINITY ? ` to ${endBlock}` : ""}`
 		)
@@ -53,7 +46,7 @@ export const handler = {
 		const { events, lastFetchedBlock } = await fetchArchiveEvents({
 			address: addresses.L2.LUMINA_POOL_TZEKO_MINA,
 			startBlock,
-			endBlock: endBlock ?? Number.POSITIVE_INFINITY,
+			endBlock,
 			moduleName: score.key,
 			layer: "L2"
 		})
