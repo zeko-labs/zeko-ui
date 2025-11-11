@@ -3,7 +3,7 @@
  * Periodically inserts manual adjustments to the top 20 wallets and triggers broadcasts
  */
 
-import { leaderboard } from "@leaderboard/api"
+import { checkDatabaseConnectionString, leaderboard } from "@leaderboard/api"
 import { desc } from "drizzle-orm"
 import { batchInsertManualAdjustmentsAndUpdateLeaderboard, createDatabase } from "../src/db"
 import { broadcast, getMaxBlockHeight, logger } from "../src/helper"
@@ -62,14 +62,21 @@ async function fetchTopLeaderboard(db: ReturnType<typeof createDatabase>, limit:
 }
 
 /**
+ * Helper function to wait for a specified duration
+ */
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const db = createDatabase(checkDatabaseConnectionString())
+
+/**
  * Main loop: fetch top wallets, add adjustments, broadcast
  */
 async function runPeriodicAdjustments() {
-	const db = createDatabase()
-
 	logger.info(`Starting periodic adjustments script (interval: ${INTERVAL_MS}ms, top: ${TOP_N})`)
 
-	const runCycle = async (count = 0) => {
+	const runCycle = async (count = 0): Promise<void> => {
 		try {
 			logger.info(`Starting cycle ${count + 1}...`)
 			logger.info("Fetching top leaderboard entries...")
@@ -118,7 +125,8 @@ async function runPeriodicAdjustments() {
 			logger.error("Error in periodic adjustment cycle:", error)
 		}
 
-		setTimeout(() => runCycle(count + 1), INTERVAL_MS)
+		await delay(INTERVAL_MS)
+		await runCycle(count + 1)
 	}
 
 	await runCycle(0)
