@@ -118,7 +118,7 @@ export function ManualAdjustments() {
 			} else {
 				setSubmitResult({
 					success: false,
-					message: `Error: Status ${res.status}`
+					message: res.error?.value ?? `Error: Status ${res.status}`
 				})
 			}
 		} catch (err) {

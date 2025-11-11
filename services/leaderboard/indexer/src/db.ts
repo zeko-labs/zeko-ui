@@ -233,6 +233,32 @@ async function updateLeaderboardForWalletsBatch(options: {
 			.groupBy(manualAdjustments.wallet)
 	)
 
+	// CTE to get all unique wallets from both actions and manual adjustments
+	const allWalletsCTE = db.$with("all_wallets").as(
+		db
+			.select({ wallet: actions.wallet })
+			.from(actions)
+			.where(walletFilter)
+			.union(
+				db
+					.select({ wallet: manualAdjustments.wallet })
+					.from(manualAdjustments)
+					.where(manualAdjustmentsFilter)
+			)
+	)
+
+	// CTE to calculate once-strategy scores per wallet (single scan)
+	const onceScores = db.$with("once_scores").as(
+		db
+			.select({
+				wallet: actions.wallet,
+				onceScore: sql<number>`${totalOnceScore}`.as("once_score")
+			})
+			.from(actions)
+			.where(walletFilter)
+			.groupBy(actions.wallet)
+	)
+
 	// If we have daily strategies, use CTE-based approach
 	if (daily) {
 		const dailyActionTypes = daily.map(([type, _]) => type) as Array<(typeof actionTypes)[number]>
@@ -273,121 +299,47 @@ async function updateLeaderboardForWalletsBatch(options: {
 				.groupBy(dailyCounts.wallet)
 		)
 
-		// Final query with CTEs including manual adjustments
+		// Final query: Join all CTEs together
 		await db
-			.with(dailyCounts, totalDailyScores, manualAdjustmentsSum)
+			.with(allWalletsCTE, onceScores, dailyCounts, totalDailyScores, manualAdjustmentsSum)
 			.insert(leaderboard)
 			.select(() =>
 				db
 					.select({
-						wallet: actions.wallet,
+						wallet: allWalletsCTE.wallet,
 						score:
-							sql<number>`GREATEST(0, (${totalOnceScore} + COALESCE(tds.total_daily_score, 0) + COALESCE(mas.total_adjustment, 0)))::smallint`.as(
+							sql<number>`GREATEST(0, (COALESCE(os.once_score, 0) + COALESCE(tds.total_daily_score, 0) + COALESCE(mas.total_adjustment, 0)))::smallint`.as(
 								"score"
 							),
 						updatedAt: sql<Date>`${timestamp}::timestamp`.as("updatedAt")
 					})
-					.from(actions)
-					.leftJoin(sql`${totalDailyScores} AS tds`, sql`${actions.wallet} = tds.wallet`)
-					.leftJoin(sql`${manualAdjustmentsSum} AS mas`, sql`${actions.wallet} = mas.wallet`)
-					.where(walletFilter)
-					.groupBy(actions.wallet, sql`tds.total_daily_score`, sql`mas.total_adjustment`)
+					.from(allWalletsCTE)
+					.leftJoin(sql`${onceScores} AS os`, sql`${allWalletsCTE.wallet} = os.wallet`)
+					.leftJoin(sql`${totalDailyScores} AS tds`, sql`${allWalletsCTE.wallet} = tds.wallet`)
+					.leftJoin(sql`${manualAdjustmentsSum} AS mas`, sql`${allWalletsCTE.wallet} = mas.wallet`)
 			)
 			.onConflictDoUpdate(conflictUpdate)
-
-		// Handle wallets with ONLY manual adjustments (no actions)
-		const walletsWithActions = await db
-			.select({ wallet: actions.wallet })
-			.from(actions)
-			.where(walletFilter)
-
-		const walletsWithActionsSet = new Set(walletsWithActions.map((w) => w.wallet))
-		const walletsOnlyAdjustments = wallets.filter((w) => !walletsWithActionsSet.has(w))
-
-		if (walletsOnlyAdjustments.length > 0) {
-			const adjustmentsOnlyFilter =
-				or(...walletsOnlyAdjustments.map((w) => eq(manualAdjustments.wallet, w))) ?? sql`false`
-
-			await db
-				.with(manualAdjustmentsSum)
-				.insert(leaderboard)
-				.select(() =>
-					db
-						.select({
-							wallet: manualAdjustments.wallet,
-							score: sql<number>`GREATEST(0, COALESCE(mas.total_adjustment, 0))::smallint`.as(
-								"score"
-							),
-							updatedAt: sql<Date>`${timestamp}::timestamp`.as("updatedAt")
-						})
-						.from(manualAdjustments)
-						.leftJoin(
-							sql`${manualAdjustmentsSum} AS mas`,
-							sql`${manualAdjustments.wallet} = mas.wallet`
-						)
-						.where(adjustmentsOnlyFilter)
-						.groupBy(manualAdjustments.wallet, sql`mas.total_adjustment`)
-				)
-				.onConflictDoUpdate(conflictUpdate)
-		}
 	}
 	// No daily strategies, use simpler query
 	else if (once) {
 		await db
-			.with(manualAdjustmentsSum)
+			.with(allWalletsCTE, onceScores, manualAdjustmentsSum)
 			.insert(leaderboard)
 			.select(() =>
 				db
 					.select({
-						wallet: actions.wallet,
+						wallet: allWalletsCTE.wallet,
 						score:
-							sql<number>`GREATEST(0, (${totalOnceScore} + COALESCE(mas.total_adjustment, 0)))::smallint`.as(
+							sql<number>`GREATEST(0, (COALESCE(os.once_score, 0) + COALESCE(mas.total_adjustment, 0)))::smallint`.as(
 								"score"
 							),
 						updatedAt: sql<Date>`${timestamp}::timestamp`.as("updatedAt")
 					})
-					.from(actions)
-					.leftJoin(sql`${manualAdjustmentsSum} AS mas`, sql`${actions.wallet} = mas.wallet`)
-					.where(walletFilter)
-					.groupBy(actions.wallet, sql`mas.total_adjustment`)
+					.from(allWalletsCTE)
+					.leftJoin(sql`${onceScores} AS os`, sql`${allWalletsCTE.wallet} = os.wallet`)
+					.leftJoin(sql`${manualAdjustmentsSum} AS mas`, sql`${allWalletsCTE.wallet} = mas.wallet`)
 			)
 			.onConflictDoUpdate(conflictUpdate)
-
-		// Handle wallets with ONLY manual adjustments (no actions)
-		const walletsWithActions = await db
-			.select({ wallet: actions.wallet })
-			.from(actions)
-			.where(walletFilter)
-
-		const walletsWithActionsSet = new Set(walletsWithActions.map((w) => w.wallet))
-		const walletsOnlyAdjustments = wallets.filter((w) => !walletsWithActionsSet.has(w))
-
-		if (walletsOnlyAdjustments.length > 0) {
-			const adjustmentsOnlyFilter =
-				or(...walletsOnlyAdjustments.map((w) => eq(manualAdjustments.wallet, w))) ?? sql`false`
-
-			await db
-				.with(manualAdjustmentsSum)
-				.insert(leaderboard)
-				.select(() =>
-					db
-						.select({
-							wallet: manualAdjustments.wallet,
-							score: sql<number>`GREATEST(0, COALESCE(mas.total_adjustment, 0))::smallint`.as(
-								"score"
-							),
-							updatedAt: sql<Date>`${timestamp}::timestamp`.as("updatedAt")
-						})
-						.from(manualAdjustments)
-						.leftJoin(
-							sql`${manualAdjustmentsSum} AS mas`,
-							sql`${manualAdjustments.wallet} = mas.wallet`
-						)
-						.where(adjustmentsOnlyFilter)
-						.groupBy(manualAdjustments.wallet, sql`mas.total_adjustment`)
-				)
-				.onConflictDoUpdate(conflictUpdate)
-		}
 	}
 }
 
