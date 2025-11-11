@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { Field } from "@ark-ui/vue/field"
+import NumberFlow from "@number-flow/vue"
 
 const lb = useLeaderboard()
 
@@ -36,7 +37,15 @@ const openLink = (wallet: string) => {
       <div class="LeaderboardTable">
         <div class="Summary">
           <div>ZEKOs</div>
-          <div>{{ lb.total }}&nbsp;points earned</div>
+
+          <div>
+            <NumberFlow
+              class="Count"
+              :value="lb.total"
+              :format='{ notation: "standard", useGrouping: true }'
+            />
+            <span>&nbsp;points earned</span>
+          </div>
         </div>
 
         <table>
