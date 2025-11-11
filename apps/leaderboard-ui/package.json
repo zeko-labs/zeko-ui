@@ -5,6 +5,7 @@
 		"postinstall": "nuxt prepare"
 	},
 	"dependencies": {
+		"@ark-ui/vue": "catalog:",
 		"@number-flow/vue": "catalog:",
 		"@tanstack/vue-table": "catalog:",
 		"@unhead/vue": "catalog:",

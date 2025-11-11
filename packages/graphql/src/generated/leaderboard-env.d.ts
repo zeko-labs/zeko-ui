@@ -1,4 +1,4 @@
-// dprint-ignore-file
+  // dprint-ignore-file
 /* eslint-disable */
 /* prettier-ignore */
 
@@ -28,11 +28,6 @@ export type introspection = {
   query: 'Query';
   mutation: never;
   subscription: 'Subscription';
-  types: introspection_types;
-};
-
-import * as gqlTada from 'gql.tada';
-Subscription';
   types: introspection_types;
 };
 

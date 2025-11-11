@@ -355,10 +355,7 @@ a {
 
   .Submit {
     button {
-      @media (--phone) {
-        width: 100%;
-      }
-      @media (--tablet) {
+      @media not (--desktop) {
         width: 100%;
       }
     }
