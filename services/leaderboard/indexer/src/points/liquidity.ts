@@ -7,13 +7,18 @@ import {
 	logger
 } from "../helper"
 
+//    data: [ "0", "7994353054957568193498626604873088658666758397914343032172656113958151515402",
+//           "0", "1000000000", "4056640838", "9023684"
+//         ]
+
 const processAddLiquidityEvent = async (events: ArchiveEvents) => {
 	const parse = (data: string[], timestamp: string, transactionHash: string) => {
 		const pubk = getPubK(data)
 		return {
 			sender: pubk(1, 2),
-			amountIn: data[3],
-			amountOut: data[4],
+			amountToken0In: data[3],
+			amountToken1In: data[4],
+			amountLiquidityOut: data[5],
 			timestamp,
 			transactionHash
 		}
@@ -48,7 +53,7 @@ export const handler = {
 		const { events, lastFetchedBlock } = await fetchArchiveEvents({
 			address: addresses.L2.LUMINA_POOL_TZEKO_MINA,
 			startBlock,
-			endBlock,
+			endBlock: endBlock ?? Number.POSITIVE_INFINITY,
 			moduleName: score.key,
 			layer: "L2"
 		})
