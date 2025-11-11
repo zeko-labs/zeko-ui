@@ -94,5 +94,27 @@ describe("Elysia Server Integration", () => {
 			expect(data).toHaveProperty("success")
 			expect(data?.success).toBe(true)
 		})
+
+		test("POST /adjust should apply manual adjustments", async () => {
+			const { data, status } = await client.adjust.post(
+				[
+					{
+						wallet: "B62qtest_integration",
+						pointsChange: 100,
+						sidequest: "Integration Test",
+						reason: "Testing adjust endpoint"
+					}
+				],
+				{
+					headers: {
+						Authorization: `Bearer ${authToken}`
+					}
+				}
+			)
+
+			expect(status).toBe(200)
+			expect(data?.success).toBe(true)
+			expect(data?.message).toBe("Manual adjustments applied successfully")
+		})
 	})
 })

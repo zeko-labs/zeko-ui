@@ -75,5 +75,22 @@ export const server = new Elysia()
 			})
 		}
 	)
+	.post(
+		"/adjust",
+		async ({ status, body }) => {
+			const result = await indexer.adjust(body)
+			return status(result.success ? 200 : 500, result)
+		},
+		{
+			body: t.Array(
+				t.Object({
+					wallet: t.String(),
+					pointsChange: t.Number(),
+					sidequest: t.String(),
+					reason: t.Optional(t.String())
+				})
+			)
+		}
+	)
 
 export type App = typeof server

@@ -4,6 +4,8 @@ import {
 	type ActionToInsert,
 	type ActionType,
 	batchInsertActionsAndUpdateLeaderboard,
+	batchInsertManualAdjustmentsAndUpdateLeaderboard,
+	type ManualAdjustmentToInsert,
 	recalculateLeaderboard,
 	scoreConfig
 } from "./db"
@@ -531,6 +533,25 @@ export class Indexer {
 			return {
 				success: false,
 				message: `Rebuild failed: ${(error as Error).message}`
+			} as const
+		}
+	}
+
+	async adjust(adjustments: ManualAdjustmentToInsert[]) {
+		try {
+			await this.#db.transaction(async (tx) => {
+				await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+					db: tx,
+					adjustments
+				})
+			})
+
+			return { success: true, message: "Manual adjustments applied successfully" } as const
+		} catch (error) {
+			logger.error("[Adjust] Error applying manual adjustments:", error)
+			return {
+				success: false,
+				message: `Manual adjustments failed: ${(error as Error).message}`
 			} as const
 		}
 	}

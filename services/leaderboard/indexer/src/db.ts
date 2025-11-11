@@ -1,4 +1,4 @@
-import { actions, type actionTypes, leaderboard } from "@leaderboard/api"
+import { actions, type actionTypes, leaderboard, manualAdjustments } from "@leaderboard/api"
 import { and, eq, inArray, or, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { drizzle } from "drizzle-orm/postgres-js"
@@ -15,6 +15,11 @@ export type ActionType = typeof actions.$inferInsert.actionType
 export type ScoreConfig = Record<
 	ActionType,
 	{ points: number; maxOccurrences: number; strategy: "once" | "daily" }
+>
+
+export type ManualAdjustmentToInsert = Omit<
+	typeof manualAdjustments.$inferInsert,
+	"timestamp" | "id"
 >
 
 export interface ActionToInsert {
@@ -94,6 +99,7 @@ export function createTestDatabase(connectionString?: string) {
 	return {
 		db,
 		async clean() {
+			await db.delete(manualAdjustments)
 			await db.delete(actions)
 			await db.delete(leaderboard)
 		}
@@ -111,33 +117,34 @@ export async function recalculateLeaderboard(
 	config: Partial<ScoreConfig> = scoreConfig
 ) {
 	return db.transaction(async (tx) => {
-		// Step 1: Get all existing actions
-		logger.info("[Recalculate] Fetching all actions...")
-		const allActions = await tx.select().from(actions)
+		// Single query: Get all unique wallets from both tables using UNION
+		logger.info("[Recalculate] Fetching all unique wallets...")
+		const allWallets = await tx
+			.select({ wallet: actions.wallet })
+			.from(actions)
+			.union(tx.select({ wallet: manualAdjustments.wallet }).from(manualAdjustments))
 
-		if (allActions.length === 0) {
-			logger.info("[Recalculate] No actions found, leaderboard is empty")
+		if (allWallets.length === 0) {
+			logger.info("[Recalculate] No wallets found, leaderboard is empty")
 			return {
-				actionsProcessed: 0,
 				walletsUpdated: 0
 			}
 		}
 
-		// Step 2: Clear only the leaderboard table (keep actions)
+		// Clear only the leaderboard table (keep actions and adjustments)
 		logger.info("[Recalculate] Clearing leaderboard table...")
 		await tx.delete(leaderboard)
 
-		// Step 3: Get all unique wallets
-		const uniqueWallets = Array.from(new Set(allActions.map((a) => a.wallet)))
+		// Extract unique wallets
+		const uniqueWallets = allWallets.map((w) => w.wallet)
 
-		// Step 4: Recalculate and update leaderboard directly (no insert into actions)
-		logger.info(`[Recalculate] Recalculating scores for ${allActions.length} actions...`)
+		// Recalculate and update leaderboard
+		logger.info(`[Recalculate] Recalculating scores for ${uniqueWallets.length} wallets...`)
 		await updateLeaderboardForWallets({ db: tx, wallets: uniqueWallets, config })
 
 		logger.success("[Recalculate] Leaderboard recalculation completed")
 
 		return {
-			actionsProcessed: allActions.length,
 			walletsUpdated: uniqueWallets.length
 		}
 	})
@@ -186,12 +193,14 @@ async function updateLeaderboardForWalletsBatch(options: {
 	wallets: string[]
 	config: Partial<ScoreConfig>
 }) {
-	const { db, wallets, config } = options
+	const { db, wallets, config = scoreConfig } = options
 	const timestamp = new Date().toISOString()
 
 	const { daily, once } = Object.groupBy(Object.entries(config), ([_, cfg]) => cfg.strategy)
 
 	const walletFilter = or(...wallets.map((w) => eq(actions.wallet, w))) ?? sql`false`
+	const manualAdjustmentsFilter =
+		or(...wallets.map((w) => eq(manualAdjustments.wallet, w))) ?? sql`false`
 
 	const onceScoreParts = (once ?? []).map(
 		([actionType, cfg]) =>
@@ -210,6 +219,46 @@ async function updateLeaderboardForWalletsBatch(options: {
 			updatedAt: sql`EXCLUDED."updatedAt"`
 		}
 	} as const
+
+	// CTE for manual adjustments sum per wallet
+	const manualAdjustmentsSum = db.$with("manual_adjustments_sum").as(
+		db
+			.select({
+				wallet: manualAdjustments.wallet,
+				totalAdjustment: sql<number>`COALESCE(SUM(${manualAdjustments.pointsChange}), 0)`.as(
+					"total_adjustment"
+				)
+			})
+			.from(manualAdjustments)
+			.where(manualAdjustmentsFilter)
+			.groupBy(manualAdjustments.wallet)
+	)
+
+	// CTE to get all unique wallets from both actions and manual adjustments
+	const allWalletsCTE = db.$with("all_wallets").as(
+		db
+			.select({ wallet: actions.wallet })
+			.from(actions)
+			.where(walletFilter)
+			.union(
+				db
+					.select({ wallet: manualAdjustments.wallet })
+					.from(manualAdjustments)
+					.where(manualAdjustmentsFilter)
+			)
+	)
+
+	// CTE to calculate once-strategy scores per wallet (single scan)
+	const onceScores = db.$with("once_scores").as(
+		db
+			.select({
+				wallet: actions.wallet,
+				onceScore: sql<number>`${totalOnceScore}`.as("once_score")
+			})
+			.from(actions)
+			.where(walletFilter)
+			.groupBy(actions.wallet)
+	)
 
 	// If we have daily strategies, use CTE-based approach
 	if (daily) {
@@ -251,41 +300,45 @@ async function updateLeaderboardForWalletsBatch(options: {
 				.groupBy(dailyCounts.wallet)
 		)
 
-		// Final query with CTEs
+		// Final query: Join all CTEs together
 		await db
-			.with(dailyCounts, totalDailyScores)
+			.with(allWalletsCTE, onceScores, dailyCounts, totalDailyScores, manualAdjustmentsSum)
 			.insert(leaderboard)
 			.select(() =>
 				db
 					.select({
-						wallet: actions.wallet,
+						wallet: allWalletsCTE.wallet,
 						score:
-							sql<number>`(${totalOnceScore} + COALESCE(tds.total_daily_score, 0))::smallint`.as(
+							sql<number>`GREATEST(0, (COALESCE(os.once_score, 0) + COALESCE(tds.total_daily_score, 0) + COALESCE(mas.total_adjustment, 0)))::smallint`.as(
 								"score"
 							),
 						updatedAt: sql<Date>`${timestamp}::timestamp`.as("updatedAt")
 					})
-					.from(actions)
-					.leftJoin(sql`${totalDailyScores} AS tds`, sql`${actions.wallet} = tds.wallet`)
-					.where(walletFilter)
-					.groupBy(actions.wallet, sql`tds.total_daily_score`)
+					.from(allWalletsCTE)
+					.leftJoin(sql`${onceScores} AS os`, sql`${allWalletsCTE.wallet} = os.wallet`)
+					.leftJoin(sql`${totalDailyScores} AS tds`, sql`${allWalletsCTE.wallet} = tds.wallet`)
+					.leftJoin(sql`${manualAdjustmentsSum} AS mas`, sql`${allWalletsCTE.wallet} = mas.wallet`)
 			)
 			.onConflictDoUpdate(conflictUpdate)
 	}
-	// No daily strategies, use simpler query without CTEs
+	// No daily strategies, use simpler query
 	else if (once) {
 		await db
+			.with(allWalletsCTE, onceScores, manualAdjustmentsSum)
 			.insert(leaderboard)
 			.select(() =>
 				db
 					.select({
-						wallet: actions.wallet,
-						score: sql<number>`(${totalOnceScore})::smallint`.as("score"),
+						wallet: allWalletsCTE.wallet,
+						score:
+							sql<number>`GREATEST(0, (COALESCE(os.once_score, 0) + COALESCE(mas.total_adjustment, 0)))::smallint`.as(
+								"score"
+							),
 						updatedAt: sql<Date>`${timestamp}::timestamp`.as("updatedAt")
 					})
-					.from(actions)
-					.where(walletFilter)
-					.groupBy(actions.wallet)
+					.from(allWalletsCTE)
+					.leftJoin(sql`${onceScores} AS os`, sql`${allWalletsCTE.wallet} = os.wallet`)
+					.leftJoin(sql`${manualAdjustmentsSum} AS mas`, sql`${allWalletsCTE.wallet} = mas.wallet`)
 			)
 			.onConflictDoUpdate(conflictUpdate)
 	}
@@ -305,7 +358,7 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 	 */
 	updateMode?: "inserted" | "all"
 }) {
-	const { db, actionsToInsert, config = scoreConfig, updateMode = "inserted" } = options
+	const { db, actionsToInsert, config, updateMode = "inserted" } = options
 	if (actionsToInsert.length === 0) return false
 
 	try {
@@ -349,6 +402,31 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 		return updated
 	} catch (error) {
 		logger.error("Error in batch insert and update:", error)
+		throw error
+	}
+}
+
+export async function batchInsertManualAdjustmentsAndUpdateLeaderboard({
+	db,
+	adjustments
+}: { db: PostgresJsDatabase; adjustments: ManualAdjustmentToInsert[] }) {
+	try {
+		await db.insert(manualAdjustments).values(adjustments)
+
+		const walletsToUpdate = Array.from(new Set(adjustments.map((adj) => adj.wallet)))
+
+		logger.info(
+			`Added ${adjustments.length} manual adjustments, updating leaderboard for ${walletsToUpdate.length} wallets`
+		)
+
+		const updated = await updateLeaderboardForWallets({ db, wallets: walletsToUpdate })
+
+		logger.success(
+			`Added ${adjustments.length} manual adjustments, updated leaderboard for ${walletsToUpdate.length} wallets`
+		)
+		return updated
+	} catch (error) {
+		logger.error("Error adding manual adjustments:", error)
 		throw error
 	}
 }

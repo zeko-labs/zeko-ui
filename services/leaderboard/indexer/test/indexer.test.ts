@@ -90,7 +90,6 @@ describe("Indexer", () => {
 			const result = await indexer.recalculate()
 			expect(result.success).toBe(true)
 			if (result.success === true) {
-				expect(result.actionsProcessed).toBe(3)
 				expect(result.walletsUpdated).toBe(2)
 			}
 
@@ -111,7 +110,6 @@ describe("Indexer", () => {
 			const result = await indexer.recalculate()
 			expect(result.success).toBe(true)
 			if (result.success === true) {
-				expect(result.actionsProcessed).toBe(0)
 				expect(result.walletsUpdated).toBe(0)
 			}
 
@@ -582,7 +580,6 @@ describe("Indexer", () => {
 			const result = await indexer.recalculate()
 			expect(result.success).toBe(true)
 			if (result.success === true) {
-				expect(result.actionsProcessed).toBe(200)
 				expect(result.walletsUpdated).toBe(100)
 			}
 			const leaderboardData = await db.select().from(leaderboard)
@@ -592,6 +589,83 @@ describe("Indexer", () => {
 				scoreConfig.FAUCET_ZEKO_TMINA.points + scoreConfig.BRIDGE_MINA_TO_ZEKO.points
 			// Verify all wallets have the expected score
 			expect(leaderboardData.every((entry) => entry.score === expectedScore)).toBe(true)
+		})
+	})
+
+	describe("adjust", () => {
+		test("should apply manual adjustments successfully", async () => {
+			await db.insert(actions).values([
+				{
+					wallet: "B62qtest1",
+					actionType: "FAUCET_ZEKO_TMINA",
+					transactionHash: "tx1",
+					timestamp: new Date()
+				}
+			])
+
+			await indexer.recalculate()
+
+			const initialLeaderboard = await db.select().from(leaderboard)
+			const initialScore = initialLeaderboard[0].score
+
+			const result = await indexer.adjust([
+				{
+					wallet: "B62qtest1",
+					pointsChange: 50,
+					sidequest: "Community Event",
+					reason: "Won contest"
+				}
+			])
+
+			expect(result.success).toBe(true)
+			expect(result.message).toBe("Manual adjustments applied successfully")
+
+			const finalLeaderboard = await db.select().from(leaderboard)
+			expect(finalLeaderboard[0].score).toBe(initialScore + 50)
+		})
+
+		test("should handle adjustments for wallets without actions", async () => {
+			const result = await indexer.adjust([
+				{
+					wallet: "B62qnew_wallet",
+					pointsChange: 100,
+					sidequest: "Early Bird Bonus",
+					reason: "Special promotion"
+				}
+			])
+
+			expect(result.success).toBe(true)
+
+			const leaderboardData = await db.select().from(leaderboard)
+			const newWallet = leaderboardData.find((l) => l.wallet === "B62qnew_wallet")
+			expect(newWallet?.score).toBe(100)
+		})
+
+		test("should handle multiple adjustments in one call", async () => {
+			const result = await indexer.adjust([
+				{
+					wallet: "B62qtest1",
+					pointsChange: 25,
+					sidequest: "Twitter Campaign"
+				},
+				{
+					wallet: "B62qtest2",
+					pointsChange: 30,
+					sidequest: "Discord Activity"
+				},
+				{
+					wallet: "B62qtest3",
+					pointsChange: -5,
+					sidequest: "Minor Issue"
+				}
+			])
+
+			expect(result.success).toBe(true)
+
+			const leaderboardData = await db.select().from(leaderboard)
+			expect(leaderboardData.find((l) => l.wallet === "B62qtest1")?.score).toBe(25)
+			expect(leaderboardData.find((l) => l.wallet === "B62qtest2")?.score).toBe(30)
+			expect(leaderboardData.find((l) => l.wallet === "B62qtest3")?.score).toBe(0)
 		})
 	})
 })
