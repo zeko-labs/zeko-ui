@@ -90,7 +90,6 @@ describe("Indexer", () => {
 			const result = await indexer.recalculate()
 			expect(result.success).toBe(true)
 			if (result.success === true) {
-				expect(result.actionsProcessed).toBe(3)
 				expect(result.walletsUpdated).toBe(2)
 			}
 
@@ -111,7 +110,6 @@ describe("Indexer", () => {
 			const result = await indexer.recalculate()
 			expect(result.success).toBe(true)
 			if (result.success === true) {
-				expect(result.actionsProcessed).toBe(0)
 				expect(result.walletsUpdated).toBe(0)
 			}
 
@@ -582,7 +580,6 @@ describe("Indexer", () => {
 			const result = await indexer.recalculate()
 			expect(result.success).toBe(true)
 			if (result.success === true) {
-				expect(result.actionsProcessed).toBe(200)
 				expect(result.walletsUpdated).toBe(100)
 			}
 			const leaderboardData = await db.select().from(leaderboard)

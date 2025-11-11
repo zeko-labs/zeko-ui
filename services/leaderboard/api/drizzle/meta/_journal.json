@@ -15,6 +15,13 @@
 			"when": 1761243920426,
 			"tag": "0001_mixed_moon_knight",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1762898507082,
+			"tag": "0002_low_skin",
+			"breakpoints": true
 		}
 	]
 }

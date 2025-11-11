@@ -1,0 +1,1 @@
+CREATE INDEX "wallet|index" ON "Manual_Adjustments" USING btree ("wallet");

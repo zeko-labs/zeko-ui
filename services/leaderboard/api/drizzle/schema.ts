@@ -26,14 +26,18 @@ export const actions = pgTable(
 	]
 )
 
-export const manualAdjustments = pgTable("Manual_Adjustments", {
-	id: uuid().primaryKey().default(uuidv7),
-	wallet: text().notNull(),
-	pointsChange: smallint().notNull(),
-	sidequest: text().notNull(),
-	reason: text(),
-	timestamp: timestamp().notNull().defaultNow()
-})
+export const manualAdjustments = pgTable(
+	"Manual_Adjustments",
+	{
+		id: uuid().primaryKey().default(uuidv7),
+		wallet: text().notNull(),
+		pointsChange: smallint().notNull(),
+		sidequest: text().notNull(),
+		reason: text(),
+		timestamp: timestamp().notNull().defaultNow()
+	},
+	(table) => [index("wallet|index").on(table.wallet)]
+)
 
 export const leaderboard = pgTable(
 	"Leaderboard",

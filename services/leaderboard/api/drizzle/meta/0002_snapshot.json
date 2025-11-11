@@ -1,0 +1,220 @@
+{
+	"id": "59d215a2-3f2b-4a10-b976-05b08bef1db1",
+	"prevId": "b41b5c17-432a-4f90-9246-7114adf9f1ff",
+	"version": "7",
+	"dialect": "postgresql",
+	"tables": {
+		"public.Actions": {
+			"name": "Actions",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "uuid",
+					"primaryKey": true,
+					"notNull": true,
+					"default": "gen_random_uuid_v7()"
+				},
+				"wallet": {
+					"name": "wallet",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"actionType": {
+					"name": "actionType",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"transactionHash": {
+					"name": "transactionHash",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"timestamp": {
+					"name": "timestamp",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"wallet:action_type:timestamp|index": {
+					"name": "wallet:action_type:timestamp|index",
+					"columns": [
+						{
+							"expression": "wallet",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "actionType",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "timestamp",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"Actions_transactionHash_unique": {
+					"name": "Actions_transactionHash_unique",
+					"nullsNotDistinct": false,
+					"columns": ["transactionHash"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.Leaderboard": {
+			"name": "Leaderboard",
+			"schema": "",
+			"columns": {
+				"wallet": {
+					"name": "wallet",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"score": {
+					"name": "score",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"updatedAt": {
+					"name": "updatedAt",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"score_wallet|index": {
+					"name": "score_wallet|index",
+					"columns": [
+						{
+							"expression": "score",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "wallet",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.Manual_Adjustments": {
+			"name": "Manual_Adjustments",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "uuid",
+					"primaryKey": true,
+					"notNull": true,
+					"default": "gen_random_uuid_v7()"
+				},
+				"wallet": {
+					"name": "wallet",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"pointsChange": {
+					"name": "pointsChange",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"sidequest": {
+					"name": "sidequest",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"reason": {
+					"name": "reason",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"timestamp": {
+					"name": "timestamp",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"wallet|index": {
+					"name": "wallet|index",
+					"columns": [
+						{
+							"expression": "wallet",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		}
+	},
+	"enums": {},
+	"schemas": {},
+	"sequences": {},
+	"roles": {},
+	"policies": {},
+	"views": {},
+	"_meta": {
+		"columns": {},
+		"schemas": {},
+		"tables": {}
+	}
+}

@@ -117,33 +117,34 @@ export async function recalculateLeaderboard(
 	config: Partial<ScoreConfig> = scoreConfig
 ) {
 	return db.transaction(async (tx) => {
-		// Step 1: Get all existing actions
-		logger.info("[Recalculate] Fetching all actions...")
-		const allActions = await tx.select().from(actions)
+		// Single query: Get all unique wallets from both tables using UNION
+		logger.info("[Recalculate] Fetching all unique wallets...")
+		const allWallets = await tx
+			.select({ wallet: actions.wallet })
+			.from(actions)
+			.union(tx.select({ wallet: manualAdjustments.wallet }).from(manualAdjustments))
 
-		if (allActions.length === 0) {
-			logger.info("[Recalculate] No actions found, leaderboard is empty")
+		if (allWallets.length === 0) {
+			logger.info("[Recalculate] No wallets found, leaderboard is empty")
 			return {
-				actionsProcessed: 0,
 				walletsUpdated: 0
 			}
 		}
 
-		// Step 2: Clear only the leaderboard table (keep actions)
+		// Clear only the leaderboard table (keep actions and adjustments)
 		logger.info("[Recalculate] Clearing leaderboard table...")
 		await tx.delete(leaderboard)
 
-		// Step 3: Get all unique wallets
-		const uniqueWallets = Array.from(new Set(allActions.map((a) => a.wallet)))
+		// Extract unique wallets
+		const uniqueWallets = allWallets.map((w) => w.wallet)
 
-		// Step 4: Recalculate and update leaderboard directly (no insert into actions)
-		logger.info(`[Recalculate] Recalculating scores for ${allActions.length} actions...`)
+		// Recalculate and update leaderboard
+		logger.info(`[Recalculate] Recalculating scores for ${uniqueWallets.length} wallets...`)
 		await updateLeaderboardForWallets({ db: tx, wallets: uniqueWallets, config })
 
 		logger.success("[Recalculate] Leaderboard recalculation completed")
 
 		return {
-			actionsProcessed: allActions.length,
 			walletsUpdated: uniqueWallets.length
 		}
 	})
