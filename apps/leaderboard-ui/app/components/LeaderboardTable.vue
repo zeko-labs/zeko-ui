@@ -41,7 +41,7 @@ const openLink = (wallet: string) => {
           <div>
             <NumberFlow
               class="Count"
-              :value="lb.total"
+              :value="lb.totalPoints"
               :format='{ notation: "standard", useGrouping: true }'
             />
             <span>&nbsp;points earned</span>
