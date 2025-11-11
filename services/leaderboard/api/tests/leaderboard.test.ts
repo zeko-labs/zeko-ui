@@ -298,51 +298,6 @@ describe("queryLeaderboard", () => {
 			}
 		})
 
-		it("should find exact wallet even when many wallets share same score", async () => {
-			// Temporarily use a different database state
-			const originalData = await db.select().from(leaderboard)
-
-			await clearDb(db)
-			// Create a scenario similar to production: many wallets with score 20
-			const wallets = [
-				{ wallet: "B62qiaBUaRKdmHgisXcZm9cVtxAkUijphS7135C9GSSZQ8aHgGiCBHe", score: 20 },
-				{ wallet: "B62qiaEz3tHYg9Tqha7nhustEYeyqjsoyHZgaGgFWW5U7TcXMhizzpq", score: 20 },
-				{ wallet: "B62qibA4tjxouKcqsAPnGAX4hJEWy1eu8psdCC812PHNx1rvBTCqJQP", score: 20 },
-				{ wallet: "B62qpLxXFg4rmhce762uiJjNRnp5Bzc9PnCEAcraeaMkVWkPi7kgsWV", score: 20 }, // The searched wallet
-				{ wallet: "B62qz1anotherWallet1", score: 20 },
-				{ wallet: "B62qz2anotherWallet2", score: 20 },
-				{ wallet: "B62qz3anotherWallet3", score: 20 },
-				{ wallet: "B62qz4anotherWallet4", score: 20 },
-				{ wallet: "B62qz5anotherWallet5", score: 20 },
-				{ wallet: "B62qz6anotherWallet6", score: 20 }
-			]
-			await db.insert(leaderboard).values(wallets)
-
-			// Search for the specific wallet
-			const result = await queryLeaderboard(testDb, {
-				searchWallet: "B62qpLxXFg4rmhce762uiJjNRnp5Bzc9PnCEAcraeaMkVWkPi7kgsWV",
-				limit: 5,
-				page: 1
-			})
-
-			// The FIRST entry must be the searched wallet
-			expect(result.entries[0].wallet).toBe(
-				"B62qpLxXFg4rmhce762uiJjNRnp5Bzc9PnCEAcraeaMkVWkPi7kgsWV"
-			)
-			expect(result.entries[0].score).toBe(20)
-
-			// All entries should have the same or lower scores
-			for (const entry of result.entries) {
-				expect(entry.score).toBeLessThanOrEqual(20)
-			}
-
-			// Restore original data
-			await clearDb(db)
-			if (originalData.length > 0) {
-				await db.insert(leaderboard).values(originalData)
-			}
-		})
-
 		it("should return empty results for non-existent wallet", async () => {
 			const result = await queryLeaderboard(testDb, {
 				searchWallet: "non_existent_wallet_xyz",
@@ -394,6 +349,46 @@ describe("queryLeaderboard", () => {
 
 			for (const wallet of page2Wallets) {
 				expect(page1Wallets.has(wallet)).toBe(false)
+			}
+		})
+	})
+
+	describe("Realistic Data", () => {
+		beforeAll(async () => {
+			await clearDb(db)
+			// Create a scenario similar to production: many wallets with score 20
+			const wallets = [
+				{ wallet: "B62qiaBUaRKdmHgisXcZm9cVtxAkUijphS7135C9GSSZQ8aHgGiCBHe", score: 20 },
+				{ wallet: "B62qiaEz3tHYg9Tqha7nhustEYeyqjsoyHZgaGgFWW5U7TcXMhizzpq", score: 20 },
+				{ wallet: "B62qibA4tjxouKcqsAPnGAX4hJEWy1eu8psdCC812PHNx1rvBTCqJQP", score: 20 },
+				{ wallet: "B62qpLxXFg4rmhce762uiJjNRnp5Bzc9PnCEAcraeaMkVWkPi7kgsWV", score: 20 }, // The searched wallet
+				{ wallet: "B62qz1anotherWallet1", score: 20 },
+				{ wallet: "B62qz2anotherWallet2", score: 20 },
+				{ wallet: "B62qz3anotherWallet3", score: 20 },
+				{ wallet: "B62qz4anotherWallet4", score: 20 },
+				{ wallet: "B62qz5anotherWallet5", score: 20 },
+				{ wallet: "B62qz6anotherWallet6", score: 20 }
+			]
+			await db.insert(leaderboard).values(wallets)
+		})
+
+		it("should find exact wallet even when many wallets share same score", async () => {
+			// Search for the specific wallet
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "B62qpLxXFg4rmhce762uiJjNRnp5Bzc9PnCEAcraeaMkVWkPi7kgsWV",
+				limit: 5,
+				page: 1
+			})
+
+			// The FIRST entry must be the searched wallet
+			expect(result.entries[0].wallet).toBe(
+				"B62qpLxXFg4rmhce762uiJjNRnp5Bzc9PnCEAcraeaMkVWkPi7kgsWV"
+			)
+			expect(result.entries[0].score).toBe(20)
+
+			// All entries should have the same or lower scores
+			for (const entry of result.entries) {
+				expect(entry.score).toBeLessThanOrEqual(20)
 			}
 		})
 	})

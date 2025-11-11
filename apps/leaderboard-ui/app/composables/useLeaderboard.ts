@@ -98,6 +98,7 @@ export const useLeaderboard = defineStore("leaderboard", () => {
 
 	watch(search, (newSearch) => {
 		if (newSearch.length === WALLET_ADDRESS_LENGTH) {
+			page.value = 1
 			searchWallet.value = newSearch
 		} else {
 			searchWallet.value = ""
