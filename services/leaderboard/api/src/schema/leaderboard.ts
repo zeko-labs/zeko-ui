@@ -27,10 +27,12 @@ type DatabaseInstance = ReturnType<Database>
  * 2. Once we use ROW_NUMBER(), we must scan the entire qualifying dataset.
  * 3. COUNT(*) OVER() is computed in the SAME window pass as ROW_NUMBER(),
  *    adding negligible overhead since the window operation cost is already incurred.
- * 4. OFFSET on the CTE is efficient because it operates on the already-computed,
+ * 4. When searching, we filter by rank >= searched_wallet_rank, which is efficient
+ *    because ranks are already computed in the CTE.
+ * 5. OFFSET on the filtered CTE is efficient because it operates on the already-computed,
  *    ranked result set in memory, not on the raw table.
- * 5. The (score DESC, wallet ASC) index supports both the window function ordering
- *    and the final ORDER BY, making this approach optimal for our requirements.
+ * 6. The (score DESC, wallet ASC) index supports both the window function ordering
+ *    and ensures deterministic ranking when scores are tied.
  *
  * Alternative approaches considered:
  * - Keyset pagination: Would still require ROW_NUMBER() for ranks, making it more
@@ -42,11 +44,12 @@ export async function queryLeaderboard(
 	db: DatabaseInstance,
 	options: {
 		searchWallet?: string
-		page: number
+		page?: number
 		limit: number
 	}
 ) {
-	const { searchWallet, page, limit } = options
+	const { searchWallet, limit } = options
+	const page = options.page ?? DEFAULT_PAGE
 	const offset = (page - 1) * limit
 
 	const rankedCTE = db.drizzle.$with("ranked").as(
@@ -64,7 +67,7 @@ export async function queryLeaderboard(
 	)
 
 	const whereClause = searchWallet
-		? sql`${rankedCTE.score} <= (SELECT score FROM ${rankedCTE} WHERE wallet = ${searchWallet})`
+		? sql`${rankedCTE.rank} >= (SELECT rank FROM ${rankedCTE} WHERE wallet = ${searchWallet})`
 		: sql`1=1`
 
 	const { wallet, score, rank, total } = rankedCTE
@@ -73,7 +76,7 @@ export async function queryLeaderboard(
 		.select({ wallet, score, rank, total })
 		.from(rankedCTE)
 		.where(whereClause)
-		.orderBy(sql`${rankedCTE.score} DESC`, sql`${rankedCTE.wallet} ASC`)
+		.orderBy(sql`${rankedCTE.rank} ASC`)
 		.limit(limit + 1)
 		.offset(offset)
 

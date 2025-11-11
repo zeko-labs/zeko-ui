@@ -146,117 +146,208 @@ describe("queryLeaderboard", () => {
 	describe("searchWallet", () => {
 		beforeAll(async () => {
 			await clearDb(db)
-			await db.insert(leaderboard).values([
-				{ wallet: "search_a", score: 10 },
-				{ wallet: "search_b", score: 100 },
-				{ wallet: "search_c", score: 1_000 },
-				{ wallet: "search_d", score: 10_000 },
-				{ wallet: "search_e", score: 1 }
-			])
+			const wallets = Array.from({ length: 100 }, (_, i) => ({
+				wallet: `search_wallet_${String(i + 1).padStart(3, "0")}`,
+				score: 100 - i
+			}))
+			await db.insert(leaderboard).values(wallets)
 		})
 
-		it("should return leaderboard from searched wallet downwards (excluding higher scores)", async () => {
-			// Search for b (score 100): should get wallets with score <= 100
-			const resultB = await queryLeaderboard(testDb, {
-				searchWallet: "search_b",
-				limit: 10
+		it("should return leaderboard starting from searched wallet", async () => {
+			// Search for wallet with rank 10 (score 91)
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "search_wallet_010",
+				limit: 5,
+				page: 1
 			})
 
-			const wallets = resultB.entries.map((e) => e.wallet)
-			expect(wallets).toContain("search_b")
-			expect(wallets).toContain("search_a")
-			expect(wallets).toContain("search_e")
-			expect(wallets).not.toContain("search_d") // higher score
-			expect(wallets).not.toContain("search_c") // higher score
+			// The FIRST entry should be the searched wallet
+			expect(result.entries[0].wallet).toBe("search_wallet_010")
+			expect(result.entries[0].rank).toBe(10)
+			expect(result.entries[0].score).toBe(91)
 
-			// All entries should have score <= 100
-			for (const entry of resultB.entries) {
-				expect(entry.score).toBeLessThanOrEqual(100)
-			}
+			// The rest should be wallets that come after (ranks 11-14)
+			expect(result.entries[1].wallet).toBe("search_wallet_011")
+			expect(result.entries[1].rank).toBe(11)
+			expect(result.entries[2].wallet).toBe("search_wallet_012")
+			expect(result.entries[2].rank).toBe(12)
+			expect(result.entries[3].wallet).toBe("search_wallet_013")
+			expect(result.entries[3].rank).toBe(13)
+			expect(result.entries[4].wallet).toBe("search_wallet_014")
+			expect(result.entries[4].rank).toBe(14)
+		})
+
+		it("should show searched wallet as first result on page 1", async () => {
+			// Search for wallet with rank 50 (score 51)
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "search_wallet_050",
+				limit: 20,
+				page: 1
+			})
+
+			// The FIRST entry MUST be the searched wallet
+			expect(result.entries[0].wallet).toBe("search_wallet_050")
+			expect(result.entries[0].rank).toBe(50)
+			expect(result.entries[0].score).toBe(51)
+
+			// The rest should be wallets that come after (ranks 51-69)
+			expect(result.entries[1].rank).toBe(51)
+			expect(result.entries[2].rank).toBe(52)
+			expect(result.entries[19].rank).toBe(69)
+		})
+
+		it("should handle pagination after searched wallet", async () => {
+			// Search for wallet at rank 50, get page 2
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "search_wallet_050",
+				limit: 20,
+				page: 2
+			})
+
+			// Page 2 should start at rank 70 (50 + 20)
+			expect(result.entries[0].rank).toBe(70)
+			expect(result.entries[0].wallet).toBe("search_wallet_070")
+		})
+
+		it("should return page starting from searched wallet", async () => {
+			// Search for wallet at rank 60 (score 41), with limit 10
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "search_wallet_060",
+				limit: 10,
+				page: 1
+			})
+
+			// First entry should be the searched wallet
+			expect(result.entries[0].wallet).toBe("search_wallet_060")
+			expect(result.entries[0].rank).toBe(60)
+
+			// Rest should be the 9 wallets after it (ranks 61-69)
+			expect(result.entries[1].rank).toBe(61)
+			expect(result.entries[9].rank).toBe(69)
 		})
 
 		it("should handle search for lowest score wallet", async () => {
-			// Search for e (score 1): should only get wallets with score <= 1
-			const resultE = await queryLeaderboard(testDb, {
-				searchWallet: "search_e",
-				limit: 10
+			// Search for wallet with rank 100 (score 1)
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "search_wallet_100",
+				limit: 10,
+				page: 1
 			})
 
-			const wallets = resultE.entries.map((e) => e.wallet)
-			expect(wallets).toContain("search_e")
-			expect(wallets).not.toContain("search_a") // higher score
-			expect(wallets).not.toContain("search_b") // higher score
-			expect(wallets).not.toContain("search_c") // higher score
-			expect(wallets).not.toContain("search_d") // higher score
+			// First entry should be the searched wallet
+			expect(result.entries[0].wallet).toBe("search_wallet_100")
+			expect(result.entries[0].rank).toBe(100)
+			expect(result.entries[0].score).toBe(1)
 
-			// All entries should have score <= 1
-			for (const entry of resultE.entries) {
-				expect(entry.score).toBeLessThanOrEqual(1)
-			}
+			// Should only have 1 entry (no wallets after it)
+			expect(result.entries.length).toBe(1)
+			expect(result.hasMore).toBe(false)
 		})
 
 		it("should handle search for middle score wallet", async () => {
-			// Search for c (score 1000): should get wallets with score <= 1000
-			const resultC = await queryLeaderboard(testDb, {
-				searchWallet: "search_c",
-				limit: 10
+			// Search for wallet at rank 50 (score 51)
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "search_wallet_050",
+				limit: 10,
+				page: 1
 			})
 
-			const wallets = resultC.entries.map((e) => e.wallet)
-			expect(wallets).toContain("search_c")
-			expect(wallets).toContain("search_b")
-			expect(wallets).toContain("search_a")
-			expect(wallets).toContain("search_e")
-			expect(wallets).not.toContain("search_d") // higher score (10,000)
+			// First entry should be the searched wallet
+			expect(result.entries[0].wallet).toBe("search_wallet_050")
+			expect(result.entries[0].rank).toBe(50)
 
-			// All entries should have score <= 1000
-			for (const entry of resultC.entries) {
-				expect(entry.score).toBeLessThanOrEqual(1_000)
-			}
+			// Should have 10 entries total (searched wallet + 9 after)
+			expect(result.entries.length).toBe(10)
+			expect(result.entries[9].rank).toBe(59)
 		})
 
 		it("should handle search for highest score wallet", async () => {
-			// Search for d (score 10000): should get all wallets
-			const resultD = await queryLeaderboard(testDb, {
-				searchWallet: "search_d",
-				limit: 10
+			// Search for wallet at rank 1 (score 100)
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "search_wallet_001",
+				limit: 10,
+				page: 1
 			})
 
-			const wallets = resultD.entries.map((e) => e.wallet)
-			expect(wallets).toContain("search_d")
-			expect(wallets).toContain("search_c")
-			expect(wallets).toContain("search_b")
-			expect(wallets).toContain("search_a")
-			expect(wallets).toContain("search_e")
+			// First entry should be the searched wallet
+			expect(result.entries[0].wallet).toBe("search_wallet_001")
+			expect(result.entries[0].rank).toBe(1)
+			expect(result.entries[0].score).toBe(100)
 
-			// All entries should have score <= 10000
-			for (const entry of resultD.entries) {
-				expect(entry.score).toBeLessThanOrEqual(10_000)
+			// Should have 10 entries (rank 1-10)
+			expect(result.entries.length).toBe(10)
+			expect(result.entries[9].rank).toBe(10)
+		})
+
+		it("should maintain proper ordering from searched wallet", async () => {
+			// Search for wallet at rank 10
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "search_wallet_010",
+				limit: 20,
+				page: 1
+			})
+
+			// Verify ordering starts from searched wallet
+			expect(result.entries[0].rank).toBe(10)
+
+			// Verify sequential ordering
+			for (let i = 0; i < result.entries.length - 1; i++) {
+				const current = result.entries[i]
+				const next = result.entries[i + 1]
+				expect(next.rank).toBe(current.rank + 1)
 			}
 		})
 
-		it("should maintain proper ordering in subset", async () => {
-			// Search for c: results should be ordered by score DESC
-			const resultC = await queryLeaderboard(testDb, {
-				searchWallet: "search_c",
-				limit: 10
+		it("should find exact wallet even when many wallets share same score", async () => {
+			// Temporarily use a different database state
+			const originalData = await db.select().from(leaderboard)
+
+			await clearDb(db)
+			// Create a scenario similar to production: many wallets with score 20
+			const wallets = [
+				{ wallet: "B62qiaBUaRKdmHgisXcZm9cVtxAkUijphS7135C9GSSZQ8aHgGiCBHe", score: 20 },
+				{ wallet: "B62qiaEz3tHYg9Tqha7nhustEYeyqjsoyHZgaGgFWW5U7TcXMhizzpq", score: 20 },
+				{ wallet: "B62qibA4tjxouKcqsAPnGAX4hJEWy1eu8psdCC812PHNx1rvBTCqJQP", score: 20 },
+				{ wallet: "B62qpLxXFg4rmhce762uiJjNRnp5Bzc9PnCEAcraeaMkVWkPi7kgsWV", score: 20 }, // The searched wallet
+				{ wallet: "B62qz1anotherWallet1", score: 20 },
+				{ wallet: "B62qz2anotherWallet2", score: 20 },
+				{ wallet: "B62qz3anotherWallet3", score: 20 },
+				{ wallet: "B62qz4anotherWallet4", score: 20 },
+				{ wallet: "B62qz5anotherWallet5", score: 20 },
+				{ wallet: "B62qz6anotherWallet6", score: 20 }
+			]
+			await db.insert(leaderboard).values(wallets)
+
+			// Search for the specific wallet
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "B62qpLxXFg4rmhce762uiJjNRnp5Bzc9PnCEAcraeaMkVWkPi7kgsWV",
+				limit: 5,
+				page: 1
 			})
 
-			const searchWallets = resultC.entries.filter((e) =>
-				["search_a", "search_b", "search_c", "search_e"].includes(e.wallet)
+			// The FIRST entry must be the searched wallet
+			expect(result.entries[0].wallet).toBe(
+				"B62qpLxXFg4rmhce762uiJjNRnp5Bzc9PnCEAcraeaMkVWkPi7kgsWV"
 			)
+			expect(result.entries[0].score).toBe(20)
 
-			expect(searchWallets.length).toBe(4)
-			expect(searchWallets[0].wallet).toBe("search_c") // 1000
-			expect(searchWallets[1].wallet).toBe("search_b") // 100
-			expect(searchWallets[2].wallet).toBe("search_a") // 10
-			expect(searchWallets[3].wallet).toBe("search_e") // 1
+			// All entries should have the same or lower scores
+			for (const entry of result.entries) {
+				expect(entry.score).toBeLessThanOrEqual(20)
+			}
+
+			// Restore original data
+			await clearDb(db)
+			if (originalData.length > 0) {
+				await db.insert(leaderboard).values(originalData)
+			}
 		})
 
 		it("should return empty results for non-existent wallet", async () => {
 			const result = await queryLeaderboard(testDb, {
 				searchWallet: "non_existent_wallet_xyz",
-				limit: 50
+				limit: 50,
+				page: 1
 			})
 
 			expect(result.entries).toHaveLength(0)
@@ -265,32 +356,37 @@ describe("queryLeaderboard", () => {
 
 		it("should respect limit parameter", async () => {
 			const result = await queryLeaderboard(testDb, {
-				searchWallet: "search_d",
-				limit: 3
+				searchWallet: "search_wallet_001",
+				limit: 3,
+				page: 1
 			})
 
 			expect(result.entries.length).toBeLessThanOrEqual(3)
 		})
 
 		it("should support pagination with search", async () => {
-			// Page 1 of search results
+			// Page 1: search for wallet at rank 10
 			const page1 = await queryLeaderboard(testDb, {
-				searchWallet: "search_d",
+				searchWallet: "search_wallet_010",
 				page: 1,
-				limit: 2
+				limit: 10
 			})
 
-			expect(page1.entries.length).toBe(2)
+			// Page 1 should start with the searched wallet (rank 10)
+			expect(page1.entries[0].wallet).toBe("search_wallet_010")
+			expect(page1.entries[0].rank).toBe(10)
+			expect(page1.entries.length).toBe(10)
 			expect(page1.hasMore).toBe(true)
 
-			// Page 2 of search results
+			// Page 2 should continue from rank 20
 			const page2 = await queryLeaderboard(testDb, {
-				searchWallet: "search_d",
+				searchWallet: "search_wallet_010",
 				page: 2,
-				limit: 2
+				limit: 10
 			})
 
-			expect(page2.entries.length).toBe(2)
+			expect(page2.entries[0].rank).toBe(20)
+			expect(page2.entries.length).toBe(10)
 
 			// Ensure no overlap between pages
 			const page1Wallets = new Set(page1.entries.map((e) => e.wallet))
@@ -298,16 +394,6 @@ describe("queryLeaderboard", () => {
 
 			for (const wallet of page2Wallets) {
 				expect(page1Wallets.has(wallet)).toBe(false)
-			}
-
-			// Verify ordering continues correctly
-			const lastOfPage1 = page1.entries[page1.entries.length - 1]
-			const firstOfPage2 = page2.entries[0]
-
-			if (lastOfPage1.score === firstOfPage2.score) {
-				expect(lastOfPage1.wallet.localeCompare(firstOfPage2.wallet)).toBeLessThan(0)
-			} else {
-				expect(lastOfPage1.score).toBeGreaterThan(firstOfPage2.score)
 			}
 		})
 	})

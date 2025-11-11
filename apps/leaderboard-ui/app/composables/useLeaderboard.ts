@@ -4,19 +4,19 @@ import { leaderboardQuery, leaderboardUpdateSubscription } from "@zeko/graphql/l
 import { defineStore } from "pinia"
 
 const PAGE_SIZE = 20
+const WALLET_ADDRESS_LENGTH = 55
 
 export const useLeaderboard = defineStore("leaderboard", () => {
 	const search = ref("")
 	const transactionCount = ref(0)
 	const page = ref(1)
-
-	const isSearch = computed(() => search.value.trim().length > 0)
+	const searchWallet = ref("")
 
 	const variables = computed(() => ({
 		input: {
 			page: page.value,
 			pageSize: PAGE_SIZE,
-			searchWallet: isSearch.value ? search.value : undefined
+			searchWallet: searchWallet.value.length > 0 ? searchWallet.value : undefined
 		}
 	}))
 
@@ -96,9 +96,12 @@ export const useLeaderboard = defineStore("leaderboard", () => {
 		}
 	)
 
-	// Reset to page 1 when search changes
-	watch(search, () => {
-		page.value = 1
+	watch(search, (newSearch) => {
+		if (newSearch.length === WALLET_ADDRESS_LENGTH) {
+			searchWallet.value = newSearch
+		} else {
+			searchWallet.value = ""
+		}
 	})
 
 	return {
@@ -112,7 +115,6 @@ export const useLeaderboard = defineStore("leaderboard", () => {
 		goNext,
 		goPrev,
 		hasMore,
-		isSearch,
 		columns,
 		page,
 		transactionCount
