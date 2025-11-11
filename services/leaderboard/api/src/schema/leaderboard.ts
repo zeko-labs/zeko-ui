@@ -153,12 +153,7 @@ builder.queryType({
 					limit: input?.pageSize ?? PAGE_SIZE
 				})
 
-				return {
-					entries: result.entries,
-					hasMore: result.hasMore,
-					totalEntries: result.totalEntries,
-					totalPoints: result.totalPoints
-				}
+				return result
 			}
 		})
 	})
