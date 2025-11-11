@@ -26,6 +26,7 @@ Never attempt to create mocks unless specifically required.
 Never try to skip tests or make dumb assertions just to make test pass.
 If a test is failing, take your time to investigate why it is failing without jumping to conclusions.
 Handle failures one by one, methodologically, and make sure that the tests are sound, and that they verify the intended behavior.
+When testing, prefer using the test tool to run the tests.
 
 ## Language Instructions
 

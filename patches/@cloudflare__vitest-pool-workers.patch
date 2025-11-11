@@ -1,0 +1,15 @@
+diff --git a/dist/pool/index.mjs b/dist/pool/index.mjs
+index cc3fb3396356d60c3b75b09507982164c8b7be39..f5af5736ecb52375fe298f5103e0995e7bd73526 100644
+--- a/dist/pool/index.mjs
++++ b/dist/pool/index.mjs
+@@ -1600,6 +1600,10 @@ async function getProjectMiniflare(ctx, project) {
+     await forEachMiniflare(project.mf, (mf) => mf.setOptions(mfOptions));
+   } else {
+     log2.debug(`Reusing runtime for ${project.relativePath}...`);
++    await forEachMiniflare(project.mf, async (mf) => {
++      await waitForStorageReset(mf);
++      await mf.setOptions(mfOptions);
++    });
+   }
+   return project.mf;
+ }

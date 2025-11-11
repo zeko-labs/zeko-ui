@@ -30,7 +30,7 @@ export default defineNuxtConfig({
 	nitro: { preset: "cloudflare-module", minify: false },
 	runtimeConfig: {
 		public: {
-			graphqlEndpoint: "https://api.leaderboard.zeko.io/graphql",
+			graphqlEndpoint: process.env.GRAPHQL_ENDPOINT || "https://api.leaderboard.zeko.io/graphql",
 			links: {
 				docs: "https://docs.zeko.io",
 				auroWallet: "https://www.aurowallet.com",

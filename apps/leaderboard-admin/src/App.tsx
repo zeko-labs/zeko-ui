@@ -1,7 +1,7 @@
 import { createResource, createSignal, onCleanup, onMount, Show } from "solid-js"
 import type { ActionsConfig } from "./ActionConfig"
 import { ActionConfigs } from "./ActionConfigs"
-import { clearStoredToken, getApi, getStoredToken, type Indexer, setStoredToken } from "./api"
+import { clearStoredToken, getApi, getStored, type Indexer, STORAGE_KEYS, setStored } from "./api"
 import Token from "./Token"
 
 interface Status {
@@ -22,27 +22,44 @@ function App() {
 		recalculate: "",
 		rebuild: ""
 	})
-	const [startingBlock, setStartingBlock] = createSignal(0)
-	const [intervalSeconds, setIntervalSeconds] = createSignal(5)
-	const [maxRetries, setMaxRetries] = createSignal(10)
-	const [fromBlock, setFromBlock] = createSignal(0)
-	const [startActions, setStartActions] = createSignal<ActionsConfig>({})
-	const [rebuildActions, setRebuildActions] = createSignal<ActionsConfig>({})
+	const createPersistedSignal = <T,>(key: string, defaultValue: T) => {
+		const [signal, setSignalInternal] = createSignal<T>(getStored(key, defaultValue))
+		const setSignal = (value: T | ((prev: T) => T)) => {
+			const resolved = typeof value === "function" ? (value as (prev: T) => T)(signal()) : value
+			setSignalInternal(() => resolved)
+			setStored(key, resolved)
+		}
+		return [signal, setSignal] as const
+	}
 
-	const [token, setToken] = createSignal<string>(getStoredToken())
+	const [globalStartingBlock, setGlobalStartingBlock] = createPersistedSignal(
+		STORAGE_KEYS.globalStartingBlock,
+		0
+	)
+	const [intervalSeconds, setIntervalSeconds] = createPersistedSignal(
+		STORAGE_KEYS.intervalSeconds,
+		5
+	)
+	const [maxRetries, setMaxRetries] = createPersistedSignal(STORAGE_KEYS.maxRetries, 10)
+	const [actionsConfig, setActionsConfig] = createPersistedSignal<ActionsConfig>(
+		STORAGE_KEYS.actions,
+		{}
+	)
+
+	const [token, setToken] = createSignal<string>(getStored(STORAGE_KEYS.token, ""))
 	const [input, setInput] = createSignal("")
 
 	function save() {
 		const v = input().trim()
 		if (!v) return
-		setStoredToken(v)
-		setToken(getStoredToken())
+		setStored(STORAGE_KEYS.token, v)
+		setToken(getStored(STORAGE_KEYS.token, ""))
 		setInput("")
 	}
 
 	function del() {
 		clearStoredToken()
-		setToken(getStoredToken())
+		setToken(getStored(STORAGE_KEYS.token, ""))
 	}
 
 	const setData = (response: { data: unknown; status: number }, key: keyof Status) => {
@@ -73,10 +90,10 @@ function App() {
 	// Handlers for server actions
 	async function handleStart() {
 		try {
-			const actions = startActions()
+			const actions = actionsConfig()
 			const hasActions = Object.keys(actions).length > 0
 			const body = {
-				startingBlock: startingBlock(),
+				startingBlock: globalStartingBlock(),
 				intervalSeconds: intervalSeconds(),
 				maxRetries: maxRetries(),
 				...(hasActions && { actions })
@@ -109,10 +126,10 @@ function App() {
 
 	async function handleRebuild() {
 		try {
-			const actions = rebuildActions()
+			const actions = actionsConfig()
 			const hasActions = Object.keys(actions).length > 0
 			const res = await getApi().rebuild.post({
-				fromBlock: fromBlock(),
+				fromBlock: globalStartingBlock(),
 				...(hasActions && { actions })
 			})
 			setData(res, "rebuild")
@@ -184,16 +201,6 @@ function App() {
 				<article>
 					<h3>Start Indexer</h3>
 					<div class="grid">
-						<label for="startingBlock">
-							Global Starting Block
-							<input
-								type="number"
-								id="startingBlock"
-								name="startingBlock"
-								value={startingBlock()}
-								onInput={(e) => setStartingBlock(Number.parseInt(e.currentTarget.value, 10))}
-							/>
-						</label>
 						<label for="intervalSeconds">
 							Interval (seconds)
 							<input
@@ -215,8 +222,6 @@ function App() {
 							/>
 						</label>
 					</div>
-
-					<ActionConfigs config={startActions()} setConfig={setStartActions} />
 
 					<div class="grid">
 						<button
@@ -240,32 +245,31 @@ function App() {
 
 			<section>
 				<h2>Actions</h2>
-				<button type="button" onClick={() => handleRecalculate()}>
-					Recalculate Leaderboard
-				</button>
+				<article>
+					<div class="grid">
+						<button type="button" onClick={() => handleRebuild()}>
+							Rebuild
+						</button>
+						<button type="button" class="secondary" onClick={() => handleRecalculate()}>
+							Recalculate
+						</button>
+					</div>
+				</article>
 			</section>
 
 			<section>
-				<h2>Maintenance</h2>
-				<article>
-					<h3>Rebuild Leaderboard</h3>
-					<label for="fromBlock">
-						Global From Block
-						<input
-							type="number"
-							id="fromBlock"
-							name="fromBlock"
-							value={fromBlock()}
-							onInput={(e) => setFromBlock(Number.parseInt(e.currentTarget.value, 10))}
-						/>
-					</label>
-
-					<ActionConfigs config={rebuildActions()} setConfig={setRebuildActions} />
-
-					<button type="button" onClick={() => handleRebuild()}>
-						Rebuild
-					</button>
-				</article>
+				<h2>Configuration</h2>
+				<label for="globalStartingBlock">
+					Global Block
+					<input
+						type="number"
+						id="globalStartingBlock"
+						name="globalStartingBlock"
+						value={globalStartingBlock()}
+						onInput={(e) => setGlobalStartingBlock(Number.parseInt(e.currentTarget.value, 10))}
+					/>
+				</label>
+				<ActionConfigs config={actionsConfig()} setConfig={setActionsConfig} />
 			</section>
 		</main>
 	)

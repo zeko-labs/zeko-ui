@@ -11,7 +11,7 @@ const lb = useLeaderboard()
       aria-controls="bridge-operations-table">
       <button
         class="PageButton PrevNext"
-        :disabled="lb && lb.cursorStack.length === 0"
+        :disabled="lb && lb.page <= 1"
         @click="lb.goPrev"
         aria-label="Go to previous page">
         <ChevronLeftIcon />

@@ -6,33 +6,41 @@ export type { Indexer } from "@zeko-types-indexer/indexer"
 const BASE_URL = import.meta.env.DEV
 	? "http://localhost:3000"
 	: "https://indexer.leaderboard.zeko.io"
-const STORAGE_KEY = "indexer_api_token"
 
-export function getStoredToken(): string {
-	if (typeof window === "undefined") return ""
+export const STORAGE_KEYS = {
+	actions: "indexer_actions_config",
+	globalStartingBlock: "indexer_global_starting_block",
+	intervalSeconds: "indexer_interval_seconds",
+	maxRetries: "indexer_max_retries",
+	token: "indexer_api_token"
+} as const
+
+export function getStored<T>(key: string, defaultValue: T): T {
+	if (typeof window === "undefined") return defaultValue
 	try {
-		return localStorage.getItem(STORAGE_KEY) ?? ""
+		const stored = localStorage.getItem(key)
+		return stored ? JSON.parse(stored) : defaultValue
 	} catch {
-		return ""
+		return defaultValue
 	}
 }
 
-export function setStoredToken(token: string) {
+export function setStored<T>(key: string, value: T) {
 	if (typeof window === "undefined") return
 	try {
-		localStorage.setItem(STORAGE_KEY, token)
+		localStorage.setItem(key, JSON.stringify(value))
 	} catch {}
 }
 
 export function clearStoredToken() {
 	if (typeof window === "undefined") return
 	try {
-		localStorage.removeItem(STORAGE_KEY)
+		localStorage.removeItem(STORAGE_KEYS.token)
 	} catch {}
 }
 
 export function getApi() {
-	const token = getStoredToken()
+	const token = getStored(STORAGE_KEYS.token, "")
 	if (token) {
 		const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
 		return treaty<App>(BASE_URL, { headers })

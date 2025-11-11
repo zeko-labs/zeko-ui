@@ -8,8 +8,7 @@ interface ActionConfigsProps {
 
 export function ActionConfigs(props: ActionConfigsProps) {
 	return (
-		<details>
-			<summary>Per-Action Configuration (Optional)</summary>
+		<div>
 			{(
 				[
 					{ actionName: "deposit", label: "Bridge Deposit" },
@@ -26,6 +25,6 @@ export function ActionConfigs(props: ActionConfigsProps) {
 					setConfig={props.setConfig}
 				/>
 			))}
-		</details>
+		</div>
 	)
 }
