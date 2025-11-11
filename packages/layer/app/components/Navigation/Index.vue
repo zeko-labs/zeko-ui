@@ -4,7 +4,7 @@ import { Dialog, useDialog } from "@ark-ui/vue/dialog"
 const { logo = true } = defineProps<{ logo?: boolean }>()
 
 const {
-	links: { faucet, zekoBridge, docs, zekoBoom },
+	links: { zekoFaucet, zekoBridge, docs, zekoBoom },
 	socials: { telegram, discord, twitter }
 } = useRuntimeConfig().public
 
