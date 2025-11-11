@@ -29,3 +29,5 @@ logs
 .moon/docker
 
 .playwright-mcp
+
+.wrangler

@@ -5,9 +5,9 @@
 	"main": "src/index.ts",
 	"preview_urls": true,
 	"compatibility_flags": ["nodejs_compat"],
-	"observability": {
-		"enabled": true
-	},
+	"observability": { "enabled": true },
+	"dev": { "port": 9000 },
+	"vars": { "TOTAL_SHARDS": 5 },
 	"routes": [{ "custom_domain": true, "pattern": "api.leaderboard.zeko.io" }],
 	"durable_objects": {
 		"bindings": [
@@ -17,7 +17,15 @@
 	},
 	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserDo", "DistributorDO"] }],
 	"hyperdrive": [
-		{ "binding": "HYPERDRIVE", "id": "e93bc279913c4b549464d535ca9f0c6d" },
-		{ "binding": "HYPERDRIVE_NO_CACHE", "id": "b304d3ab823044d189cc332dfcc21ff6" }
+		{
+			"binding": "HYPERDRIVE",
+			"id": "e93bc279913c4b549464d535ca9f0c6d",
+			"localConnectionString": "postgresql://postgres:postgres@localhost:5432/leaderboard"
+		},
+		{
+			"binding": "HYPERDRIVE_NO_CACHE",
+			"id": "b304d3ab823044d189cc332dfcc21ff6",
+			"localConnectionString": "postgresql://postgres:postgres@localhost:5432/leaderboard"
+		}
 	]
 }

@@ -8,25 +8,17 @@ const PAGE_SIZE = 20
 export const useLeaderboard = defineStore("leaderboard", () => {
 	const search = ref("")
 	const transactionCount = ref(0)
-
-	// Cursor stack for back navigation (used only when not searching)
-	const cursorStack = ref<Array<{ score?: number; wallet?: string } | undefined>>([])
-	const cursor = ref<{ score?: number; wallet?: string } | undefined>(undefined)
+	const page = ref(1)
 
 	const isSearch = computed(() => search.value.trim().length > 0)
 
-	const variables = computed(() => {
-		// When searching, server returns a centered window around the searched wallet; do not send cursor
-		if (isSearch.value) {
-			return { input: { searchWallet: search } }
+	const variables = computed(() => ({
+		input: {
+			page: page.value,
+			pageSize: PAGE_SIZE,
+			searchWallet: isSearch.value ? search.value : undefined
 		}
-		return {
-			input: {
-				cursorScore: cursor.value?.score,
-				cursorWallet: cursor.value?.wallet
-			}
-		}
-	})
+	}))
 
 	const { data, fetching, executeQuery } = useQuery({
 		query: leaderboardQuery,
@@ -56,24 +48,13 @@ export const useLeaderboard = defineStore("leaderboard", () => {
 	})
 
 	function goNext() {
-		if (!hasMore.value || isSearch.value) return
-		const items = entries.value
-		if (items.length === 0) return
-
-		// push current cursor so we can go back
-		cursorStack.value.push(cursor.value ?? undefined)
-
-		const last = items[items.length - 1] as { score: number; wallet: string }
-		cursor.value = { score: last.score, wallet: last.wallet }
-		executeQuery()
+		if (!hasMore.value) return
+		page.value++
 	}
 
 	function goPrev() {
-		if (cursorStack.value.length === 0 || isSearch.value) return
-		const prev = cursorStack.value.pop()
-		if (prev) cursor.value = prev
-		else cursor.value = undefined
-		executeQuery()
+		if (page.value <= 1) return
+		page.value--
 	}
 
 	const {
@@ -115,12 +96,9 @@ export const useLeaderboard = defineStore("leaderboard", () => {
 		}
 	)
 
-	// Reset cursor when search changes
+	// Reset to page 1 when search changes
 	watch(search, () => {
-		// Clear cursor state when search changes
-		cursor.value = undefined
-		cursorStack.value = []
-		executeQuery()
+		page.value = 1
 	})
 
 	return {
@@ -136,7 +114,7 @@ export const useLeaderboard = defineStore("leaderboard", () => {
 		hasMore,
 		isSearch,
 		columns,
-		cursorStack,
+		page,
 		transactionCount
 	}
 })

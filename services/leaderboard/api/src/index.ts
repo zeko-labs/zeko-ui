@@ -29,8 +29,6 @@ const yoga = createYoga<{ cloudflare: CloudflareContext }>({
 	}
 })
 
-export const TOTAL_SHARDS = 5
-
 export default {
 	async fetch(request, env, context) {
 		const url = new URL(request.url)
@@ -62,8 +60,13 @@ export default {
 				timestamp
 			} as const
 
-			console.log("[/broadcast] Creating broadcast promises for", TOTAL_SHARDS, "shards", payload)
-			const broadcastPromises = Array.from({ length: TOTAL_SHARDS }, (_, shardId) => {
+			console.log(
+				"[/broadcast] Creating broadcast promises for",
+				env.TOTAL_SHARDS,
+				"shards",
+				payload
+			)
+			const broadcastPromises = Array.from({ length: env.TOTAL_SHARDS }, (_, shardId) => {
 				const shardName = `distributor-${shardId}`
 				const distributorId = env.DISTRIBUTOR_DO.idFromName(shardName)
 				const distributorStub = env.DISTRIBUTOR_DO.get(distributorId)

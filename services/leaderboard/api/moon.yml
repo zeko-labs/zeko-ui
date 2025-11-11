@@ -38,7 +38,7 @@ tasks:
   schema:
     command: bun run graphql/printSchema.ts
     inputs:
-      - src/graphql.ts
+      - "@group(sources)"
     outputs:
       - graphql/schema.graphql
   type-cf:

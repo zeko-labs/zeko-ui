@@ -23,65 +23,14 @@ export async function queryLeaderboard(
 	db: DatabaseInstance,
 	options: {
 		searchWallet?: string
-		cursorScore?: number
-		cursorWallet?: string
+		page?: number
 		limit: number
 	}
 ) {
-	const { searchWallet, cursorScore, cursorWallet, limit } = options
+	const { searchWallet, page = 1, limit } = options
+	const offset = (page - 1) * limit
 
-	if (searchWallet) {
-		// For search: Single query with window functions and subquery to center around target
-		const rankedCTE = db.drizzle.$with("ranked").as(
-			db.drizzle
-				.select({
-					wallet: leaderboard.wallet,
-					score: leaderboard.score,
-					rank: sql<number>`ROW_NUMBER() OVER (ORDER BY ${leaderboard.score} DESC, ${leaderboard.wallet} ASC)::int`.as(
-						"rank"
-					)
-				})
-				.from(leaderboard)
-				.where(sql`${leaderboard.score} > 0`)
-		)
-
-		// Single query: find target rank and fetch centered window
-		const result = await db.drizzle
-			.with(rankedCTE)
-			.select({
-				wallet: rankedCTE.wallet,
-				score: rankedCTE.score,
-				rank: rankedCTE.rank,
-				total: sql<number>`COUNT(*) OVER ()::int`.as("total"),
-				// Find the target's rank using window function (calculated once across all rows)
-				targetRank:
-					sql<number>`MAX(CASE WHEN ${rankedCTE.wallet} = ${searchWallet} THEN ${rankedCTE.rank} END) OVER ()::int`.as(
-						"target_rank"
-					)
-			})
-			.from(rankedCTE)
-			.where(
-				// Center the window around target rank (using scalar subquery)
-				sql`${rankedCTE.rank} >= GREATEST(1, 
-					(SELECT rank FROM ${rankedCTE} WHERE wallet = ${searchWallet}) - ${Math.floor(limit / 2)}
-				)`
-			)
-			.orderBy(rankedCTE.rank)
-			.limit(limit + 1)
-
-		if (result.length === 0 || result[0].targetRank === null) {
-			return { entries: [], hasMore: false, total: result[0]?.total ?? 0 }
-		}
-
-		const hasMore = result.length > limit
-		const entries = result
-			.slice(0, limit)
-			.map(({ wallet, score, rank }) => ({ wallet, score, rank }))
-
-		return { entries, hasMore, total: result[0].total }
-	}
-
-	// For pagination: Single CTE with true keyset cursor
+	// CTE with rank calculation and total count
 	const rankedCTE = db.drizzle.$with("ranked").as(
 		db.drizzle
 			.select({
@@ -89,30 +38,32 @@ export async function queryLeaderboard(
 				score: leaderboard.score,
 				rank: sql<number>`ROW_NUMBER() OVER (ORDER BY ${leaderboard.score} DESC, ${leaderboard.wallet} ASC)::int`.as(
 					"rank"
-				)
+				),
+				total: sql<number>`COUNT(*) OVER ()::int`.as("total")
 			})
 			.from(leaderboard)
 			.where(sql`${leaderboard.score} > 0`)
 	)
 
+	// Build WHERE clause based on search
+	const whereClause = searchWallet
+		? sql`${rankedCTE.score} <= (SELECT score FROM ${rankedCTE} WHERE wallet = ${searchWallet})`
+		: sql`1=1`
+
+	// Query for pagination
 	const result = await db.drizzle
 		.with(rankedCTE)
 		.select({
 			wallet: rankedCTE.wallet,
 			score: rankedCTE.score,
 			rank: rankedCTE.rank,
-			total: sql<number>`COUNT(*) OVER ()::int`.as("total")
+			total: rankedCTE.total
 		})
 		.from(rankedCTE)
-		.where(
-			cursorScore !== undefined && cursorWallet
-				? // True keyset pagination: compare composite key for DESC score, ASC wallet ordering
-					// For next page: score < cursorScore OR (score = cursorScore AND wallet > cursorWallet)
-					sql`(${rankedCTE.score} < ${cursorScore}) OR (${rankedCTE.score} = ${cursorScore} AND ${rankedCTE.wallet} > ${cursorWallet})`
-				: sql`1=1`
-		)
+		.where(whereClause)
 		.orderBy(sql`${rankedCTE.score} DESC`, sql`${rankedCTE.wallet} ASC`)
 		.limit(limit + 1)
+		.offset(offset)
 
 	if (result.length === 0) return { entries: [], hasMore: false, total: 0 }
 
@@ -149,8 +100,7 @@ const LeaderboardResultObject = builder
 
 const LeaderboardInput = builder.inputType("LeaderboardInput", {
 	fields: (t) => ({
-		cursorScore: t.int({ required: false }),
-		cursorWallet: t.string({ required: false }),
+		page: t.int({ required: false }),
 		searchWallet: t.string({ required: false }),
 		pageSize: t.int({ required: false, defaultValue: PAGE_SIZE })
 	})
@@ -166,8 +116,7 @@ builder.queryType({
 
 				const result = await queryLeaderboard(db, {
 					searchWallet: input?.searchWallet ?? undefined,
-					cursorScore: input?.cursorScore ?? undefined,
-					cursorWallet: input?.cursorWallet ?? undefined,
+					page: input?.page ?? undefined,
 					limit: input?.pageSize ?? PAGE_SIZE
 				})
 

@@ -16,8 +16,8 @@ catalogs:
       specifier: ^2.3.3
       version: 2.3.3
     '@cloudflare/vitest-pool-workers':
-      specifier: ^0.9.12
-      version: 0.9.12
+      specifier: ^0.10.5
+      version: 0.10.5
     '@csstools/postcss-global-data':
       specifier: ^3.1.0
       version: 3.1.0
@@ -68,13 +68,13 @@ catalogs:
       version: 3.4.2
     drizzle-kit:
       specifier: beta
-      version: 1.0.0-beta.1-dfa4db3
+      version: 1.0.0-beta.1-03a5cdc
     drizzle-orm:
       specifier: beta
-      version: 1.0.0-beta.1-dfa4db3
+      version: 1.0.0-beta.1-03a5cdc
     drizzle-seed:
       specifier: beta
-      version: 0.3.1-dfa4db3
+      version: 0.3.1-03a5cdc
     lucide-vue-next:
       specifier: ^0.453.0
       version: 0.453.0
@@ -174,6 +174,9 @@ overrides:
   vite: npm:rolldown-vite@7.1.9
 
 patchedDependencies:
+  '@cloudflare/vitest-pool-workers':
+    hash: 3574520d9ae98dbd52ab5b30fe7cf4d89c2950112d27acf200b4cb34461424b1
+    path: patches/@cloudflare__vitest-pool-workers.patch
   '@gql.tada/internal':
     hash: 06b3558863b07fa806898d063e7566b97d56e9c47889590907fc3f3a516038ae
     path: patches/@gql.tada__internal.patch
@@ -644,7 +647,7 @@ importers:
         version: 3.4.2
       drizzle-orm:
         specifier: 'catalog:'
-        version: 1.0.0-beta.1-dfa4db3(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
+        version: 1.0.0-beta.1-03a5cdc(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
       graphql:
         specifier: catalog:graphql
         version: 16.12.0
@@ -663,16 +666,16 @@ importers:
         version: 2.3.3
       '@cloudflare/vitest-pool-workers':
         specifier: 'catalog:'
-        version: 0.9.12(@vitest/runner@3.2.4)(@vitest/snapshot@3.2.4)(vitest@3.2.4)
+        version: 0.10.5(patch_hash=3574520d9ae98dbd52ab5b30fe7cf4d89c2950112d27acf200b4cb34461424b1)(@vitest/runner@3.2.4)(@vitest/snapshot@3.2.4)(vitest@3.2.4)
       '@types/bun':
         specifier: 'catalog:'
         version: 1.3.0(@types/react@19.1.9)
       drizzle-kit:
         specifier: 'catalog:'
-        version: 1.0.0-beta.1-dfa4db3
+        version: 1.0.0-beta.1-03a5cdc
       drizzle-seed:
         specifier: 'catalog:'
-        version: 0.3.1-dfa4db3(drizzle-orm@1.0.0-beta.1-dfa4db3(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7))
+        version: 0.3.1-03a5cdc(drizzle-orm@1.0.0-beta.1-03a5cdc(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7))
       tsdown:
         specifier: 'catalog:'
         version: 0.13.4(typescript@5.9.3)(vue-tsc@3.0.6(typescript@5.9.3))
@@ -711,7 +714,7 @@ importers:
         version: 3.4.2
       drizzle-orm:
         specifier: 'catalog:'
-        version: 1.0.0-beta.1-dfa4db3(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
+        version: 1.0.0-beta.1-03a5cdc(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
       elysia:
         specifier: catalog:elysia
         version: 1.4.12(@sinclair/typebox@0.34.41)(exact-mirror@0.2.2(@sinclair/typebox@0.34.41))(file-type@21.0.0)(openapi-types@12.1.3)(typescript@5.9.3)
@@ -1475,8 +1478,17 @@ packages:
       workerd:
         optional: true
 
-  '@cloudflare/vitest-pool-workers@0.9.12':
-    resolution: {integrity: sha512-MTHFgqyhji3VhdjNQX/CcKNYchAyaQMbjh23Hif8LFq2YaMCISSVoVAUBXoGMMS/+RblwqZOWfH2ZojTVhEr+Q==}
+  '@cloudflare/unenv-preset@2.7.9':
+    resolution: {integrity: sha512-Drm7qlTKnvncEv+DANiQNEonq0H0LyIsoFZYJ6tJ8OhAoy5udIE8yp6BsVDYcIjcYLIybp4M7c/P7ly/56SoHg==}
+    peerDependencies:
+      unenv: 2.0.0-rc.24
+      workerd: ^1.20250927.0
+    peerDependenciesMeta:
+      workerd:
+        optional: true
+
+  '@cloudflare/vitest-pool-workers@0.10.5':
+    resolution: {integrity: sha512-jUVzEOQga7bbRT9zq5ktnn8TkfR+PbQGEhxWu9EUoaCdr33zwXxNOqLyp1i1VueN2CMK+a5zNP40LZVTNPQoCw==}
     peerDependencies:
       '@vitest/runner': 2.0.x - 3.2.x
       '@vitest/snapshot': 2.0.x - 3.2.x
@@ -1488,8 +1500,20 @@ packages:
     cpu: [x64]
     os: [darwin]
 
+  '@cloudflare/workerd-darwin-64@1.20251105.0':
+    resolution: {integrity: sha512-nztUP35wTtUKM+681dBWtUNSySNWELTV+LY43oWy7ZhK19/iBJPQoFY7xpvF7zy4qOOShtise259B65DS4/71Q==}
+    engines: {node: '>=16'}
+    cpu: [x64]
+    os: [darwin]
+
   '@cloudflare/workerd-darwin-arm64@1.20251008.0':
     resolution: {integrity: sha512-Yc4lMGSbM4AEtYRpyDpmk77MsHb6X2BSwJgMgGsLVPmckM7ZHivZkJChfcNQjZ/MGR6nkhYc4iF6TcVS+UMEVw==}
+    engines: {node: '>=16'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@cloudflare/workerd-darwin-arm64@1.20251105.0':
+    resolution: {integrity: sha512-WS/dvPYTW/+gs8s0UvDqDY7wcuIAg/hUpjrMNGepr+Mo38vMU39FYhJQOly99oJCXxMluQqAnRKg09b/9Gr+Rg==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [darwin]
@@ -1500,14 +1524,32 @@ packages:
     cpu: [x64]
     os: [linux]
 
+  '@cloudflare/workerd-linux-64@1.20251105.0':
+    resolution: {integrity: sha512-RdHRHo/hpjR6sNw529FkmslVSz/K3Pb1+i3fIoqUrHCrZOUYzFyz3nLeZh4EYaAhcztLWiSTwBv54bcl4sG3wA==}
+    engines: {node: '>=16'}
+    cpu: [x64]
+    os: [linux]
+
   '@cloudflare/workerd-linux-arm64@1.20251008.0':
     resolution: {integrity: sha512-hRy9yyvzVq1HsqHZUmFkAr0C8JGjAD/PeeVEGCKL3jln3M9sNCKIrbDXiL+efe+EwajJNNlDxpO+s30uVWVaRg==}
     engines: {node: '>=16'}
     cpu: [arm64]
     os: [linux]
 
+  '@cloudflare/workerd-linux-arm64@1.20251105.0':
+    resolution: {integrity: sha512-5zkxQCqLjwrqZVVJh92J2Drv6xifkP8kN2ltjHdwZQlVzfDW48d7tAtCm1ZooUv204ixvZFarusCfL+IRjExZg==}
+    engines: {node: '>=16'}
+    cpu: [arm64]
+    os: [linux]
+
   '@cloudflare/workerd-windows-64@1.20251008.0':
     resolution: {integrity: sha512-Gm0RR+ehfNMsScn2pUcn3N9PDUpy7FyvV9ecHEyclKttvztyFOcmsF14bxEaSVv7iM4TxWEBn1rclmYHxDM4ow==}
+    engines: {node: '>=16'}
+    cpu: [x64]
+    os: [win32]
+
+  '@cloudflare/workerd-windows-64@1.20251105.0':
+    resolution: {integrity: sha512-6BpkfjBIbGR+4FBOcZGcWDLM0XQuoI6R9Dublj/BKf4pv0/xJ4zHdnaYUb5NIlC75L55Ouqw0CEJasoKlMjgnw==}
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
@@ -5667,12 +5709,12 @@ packages:
     resolution: {integrity: sha512-vCQC+IMHVZbISA5pxEj+yshQbozmQoVFA4lzcLlqJ8rzIAH8U+1DKvesN/2Uv3Bqz6rMW6W4WY7pYJQljmiZ8w==}
     hasBin: true
 
-  drizzle-kit@1.0.0-beta.1-dfa4db3:
-    resolution: {integrity: sha512-usNJpKtq2pLxDBo2hhV8xmqS1Txk1YUAsQY1JL9whsoLiND8QqH7Qr6txzAkOPQtTO7MjGHFz0fOJFPotSUsZA==}
+  drizzle-kit@1.0.0-beta.1-03a5cdc:
+    resolution: {integrity: sha512-Go+ecN3DNy3DAZWELd/OdV6AipFXVpKfaHv6WlVuGzuqZwEUeYN90tw2RRhMSN9riAnxP1VEl9LB6vIziYLySQ==}
     hasBin: true
 
-  drizzle-orm@1.0.0-beta.1-dfa4db3:
-    resolution: {integrity: sha512-VeRE9ZyM5VmMQNKMELqj3MSgXZJxn+1IMbeWtUWKnlSim8WcOMXL12mjK9xOPpz4cVeAb9PFD/YTLp2lLfOm4A==}
+  drizzle-orm@1.0.0-beta.1-03a5cdc:
+    resolution: {integrity: sha512-wYffszGOWZyb3B5MP1ZMZAktC0yRiZyjDgQrx7kLG+W1rY3e2jZqop3xFHQtexglyb5w9WhBJ3/HKbHPDa1Xww==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -5684,6 +5726,7 @@ packages:
       '@opentelemetry/api': ^1.4.1
       '@planetscale/database': '>=1.13'
       '@prisma/client': '*'
+      '@sqlitecloud/drivers': '>=1.0.653'
       '@tidbcloud/serverless': '*'
       '@tursodatabase/database': '>=0.2.1'
       '@tursodatabase/database-common': '>=0.2.1'
@@ -5724,6 +5767,8 @@ packages:
       '@planetscale/database':
         optional: true
       '@prisma/client':
+        optional: true
+      '@sqlitecloud/drivers':
         optional: true
       '@tidbcloud/serverless':
         optional: true
@@ -5766,8 +5811,8 @@ packages:
       sqlite3:
         optional: true
 
-  drizzle-seed@0.3.1-dfa4db3:
-    resolution: {integrity: sha512-Tj1ZWU6Y0XFLQ2/AUYxU8Jy8bKUWHniIoVbMaOacr6QcsIKT3xhgx4LlQggEmca+91lZQUaCBkG9YXzHTQ7cyg==}
+  drizzle-seed@0.3.1-03a5cdc:
+    resolution: {integrity: sha512-QXCsfI9DmvGgIE0PumkMaOFktm8cog1yzhGCkeLj86VkRwcqDpAZVC+N3mIxHkq1gQo3IRJ8n4ycqh8VUJhrzA==}
     peerDependencies:
       drizzle-orm: '>=1.0.0-beta.1'
     peerDependenciesMeta:
@@ -7261,6 +7306,11 @@ packages:
 
   miniflare@4.20251008.0:
     resolution: {integrity: sha512-sKCNYNzXG6l8qg0Oo7y8WcDKcpbgw0qwZsxNpdZilFTR4EavRow2TlcwuPSVN99jqAjhz0M4VXvTdSGdtJ2VfQ==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
+
+  miniflare@4.20251105.0:
+    resolution: {integrity: sha512-n+lCQbGLPjHFm5EKMohxCl+hLIki9rIlJSU9FkYKdJ62cGacetmTH5IgWUZhUFFM+NqhqZLOuWXTAsoZTm0hog==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -9013,6 +9063,9 @@ packages:
   unenv@2.0.0-rc.21:
     resolution: {integrity: sha512-Wj7/AMtE9MRnAXa6Su3Lk0LNCfqDYgfwVjwRFVum9U7wsto1imuHqk4kTm7Jni+5A0Hn7dttL6O/zjvUvoo+8A==}
 
+  unenv@2.0.0-rc.24:
+    resolution: {integrity: sha512-i7qRCmY42zmCwnYlh9H2SvLEypEFGye5iRmEMKjcGi7zk9UquigRjFtTLz0TYqr0ZGLZhaMHl/foy1bZR+Cwlw==}
+
   unhead@1.11.19:
     resolution: {integrity: sha512-O5AYb3+xUOzBlwDmPfC/DgGp9rDMoGkB4gFkhoaz8IonQqP8W8qqetxYf5ZyEdntvXnFsMWS8lZF//5176xo6Q==}
 
@@ -9607,12 +9660,27 @@ packages:
     engines: {node: '>=16'}
     hasBin: true
 
+  workerd@1.20251105.0:
+    resolution: {integrity: sha512-8D1UmsxrRr3Go7enbYCsYoiWeGn66u1WFNojPSgtjp7z8pV2cXskjr05vQ1OOzl7+rg1hDDofnCJqVwChMym8g==}
+    engines: {node: '>=16'}
+    hasBin: true
+
   wrangler@4.42.2:
     resolution: {integrity: sha512-1iTnbjB4F12KSP1zbfxQL495xarS+vdrZnulQP2SEcAxDTUGn7N9zk1O2WtFOc+Fhcgl+9/sdz/4AL9pF34Pwg==}
     engines: {node: '>=18.0.0'}
     hasBin: true
     peerDependencies:
       '@cloudflare/workers-types': ^4.20251008.0
+    peerDependenciesMeta:
+      '@cloudflare/workers-types':
+        optional: true
+
+  wrangler@4.46.0:
+    resolution: {integrity: sha512-WRROO7CL+MW/E44RMT4X7w32qPjufiPpGdey5D6H7iKzzVqfUkTRULxYBfWANiU1yGnsiCXQtu3Ap0G2TmohtA==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
+    peerDependencies:
+      '@cloudflare/workers-types': ^4.20251014.0
     peerDependenciesMeta:
       '@cloudflare/workers-types':
         optional: true
@@ -10711,17 +10779,23 @@ snapshots:
     optionalDependencies:
       workerd: 1.20251008.0
 
-  '@cloudflare/vitest-pool-workers@0.9.12(@vitest/runner@3.2.4)(@vitest/snapshot@3.2.4)(vitest@3.2.4)':
+  '@cloudflare/unenv-preset@2.7.9(unenv@2.0.0-rc.24)(workerd@1.20251105.0)':
+    dependencies:
+      unenv: 2.0.0-rc.24
+    optionalDependencies:
+      workerd: 1.20251105.0
+
+  '@cloudflare/vitest-pool-workers@0.10.5(patch_hash=3574520d9ae98dbd52ab5b30fe7cf4d89c2950112d27acf200b4cb34461424b1)(@vitest/runner@3.2.4)(@vitest/snapshot@3.2.4)(vitest@3.2.4)':
     dependencies:
       '@vitest/runner': 3.2.4
       '@vitest/snapshot': 3.2.4
       birpc: 0.2.14
       cjs-module-lexer: 1.4.3
       devalue: 5.3.2
-      miniflare: 4.20251008.0
+      miniflare: 4.20251105.0
       semver: 7.7.3
       vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.9.2)(@vitest/browser@3.2.4)(esbuild@0.25.12)(jiti@2.6.1)(msw@2.11.1(@types/node@24.9.2)(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
-      wrangler: 4.42.2
+      wrangler: 4.46.0
       zod: 3.22.3
     transitivePeerDependencies:
       - '@cloudflare/workers-types'
@@ -10731,16 +10805,31 @@ snapshots:
   '@cloudflare/workerd-darwin-64@1.20251008.0':
     optional: true
 
+  '@cloudflare/workerd-darwin-64@1.20251105.0':
+    optional: true
+
   '@cloudflare/workerd-darwin-arm64@1.20251008.0':
+    optional: true
+
+  '@cloudflare/workerd-darwin-arm64@1.20251105.0':
     optional: true
 
   '@cloudflare/workerd-linux-64@1.20251008.0':
     optional: true
 
+  '@cloudflare/workerd-linux-64@1.20251105.0':
+    optional: true
+
   '@cloudflare/workerd-linux-arm64@1.20251008.0':
     optional: true
 
+  '@cloudflare/workerd-linux-arm64@1.20251105.0':
+    optional: true
+
   '@cloudflare/workerd-windows-64@1.20251008.0':
+    optional: true
+
+  '@cloudflare/workerd-windows-64@1.20251105.0':
     optional: true
 
   '@cspotcode/source-map-support@0.8.1':
@@ -12458,7 +12547,7 @@ snapshots:
       rollup-plugin-visualizer: 6.0.5(rolldown@1.0.0-beta.37)(rollup@4.52.5)
       std-env: 3.9.0
       ufo: 1.6.1
-      unenv: 2.0.0-rc.21
+      unenv: 2.0.0-rc.24
       vite: rolldown-vite@7.1.9(@types/node@22.14.0)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
       vite-node: 3.2.4(@types/node@22.14.0)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-checker: 0.10.3(@biomejs/biome@2.3.3)(eslint@9.15.0(jiti@2.6.1))(meow@13.2.0)(optionator@0.9.4)(rolldown-vite@7.1.9(@types/node@22.14.0)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(stylelint@16.24.0(typescript@5.9.3))(typescript@5.9.3)
@@ -12514,7 +12603,7 @@ snapshots:
       rollup-plugin-visualizer: 6.0.5(rolldown@1.0.0-beta.37)(rollup@4.52.5)
       std-env: 3.9.0
       ufo: 1.6.1
-      unenv: 2.0.0-rc.21
+      unenv: 2.0.0-rc.24
       vite: rolldown-vite@7.1.9(@types/node@24.9.2)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
       vite-node: 3.2.4(@types/node@24.9.2)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-checker: 0.10.3(@biomejs/biome@2.3.3)(eslint@9.15.0(jiti@2.6.1))(meow@13.2.0)(optionator@0.9.4)(rolldown-vite@7.1.9(@types/node@24.9.2)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(stylelint@16.24.0(typescript@5.9.3))(typescript@5.9.3)(vue-tsc@3.0.6(typescript@5.9.3))
@@ -15613,7 +15702,7 @@ snapshots:
       '@dprint/win32-arm64': 0.47.6
       '@dprint/win32-x64': 0.47.6
 
-  drizzle-kit@1.0.0-beta.1-dfa4db3:
+  drizzle-kit@1.0.0-beta.1-03a5cdc:
     dependencies:
       '@drizzle-team/brocli': 0.10.2
       '@esbuild-kit/esm-loader': 2.6.5
@@ -15622,18 +15711,18 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@1.0.0-beta.1-dfa4db3(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7):
+  drizzle-orm@1.0.0-beta.1-03a5cdc(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7):
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/pg': 8.15.4
       bun-types: 1.3.0(@types/react@19.1.9)
       postgres: 3.4.7
 
-  drizzle-seed@0.3.1-dfa4db3(drizzle-orm@1.0.0-beta.1-dfa4db3(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)):
+  drizzle-seed@0.3.1-03a5cdc(drizzle-orm@1.0.0-beta.1-03a5cdc(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)):
     dependencies:
       pure-rand: 6.1.0
     optionalDependencies:
-      drizzle-orm: 1.0.0-beta.1-dfa4db3(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
+      drizzle-orm: 1.0.0-beta.1-03a5cdc(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
 
   dset@3.1.4: {}
 
@@ -17447,6 +17536,24 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
+  miniflare@4.20251105.0:
+    dependencies:
+      '@cspotcode/source-map-support': 0.8.1
+      acorn: 8.14.0
+      acorn-walk: 8.3.2
+      exit-hook: 2.2.1
+      glob-to-regexp: 0.4.1
+      sharp: 0.33.5
+      stoppable: 1.1.0
+      undici: 7.14.0
+      workerd: 1.20251105.0
+      ws: 8.18.0
+      youch: 4.1.0-beta.10
+      zod: 3.22.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
   minimatch@10.0.1:
     dependencies:
       brace-expansion: 2.0.1
@@ -17629,7 +17736,7 @@ snapshots:
       ultrahtml: 1.6.0
       uncrypto: 0.1.3
       unctx: 2.4.1
-      unenv: 2.0.0-rc.21
+      unenv: 2.0.0-rc.24
       unimport: 5.5.0
       unplugin-utils: 0.3.0
       unstorage: 1.17.1(@netlify/blobs@9.1.2)(db0@0.3.2)(idb-keyval@6.2.2)(ioredis@5.7.0)
@@ -19920,6 +20027,10 @@ snapshots:
       pathe: 2.0.3
       ufo: 1.6.1
 
+  unenv@2.0.0-rc.24:
+    dependencies:
+      pathe: 2.0.3
+
   unhead@1.11.19:
     dependencies:
       '@unhead/dom': 1.11.19
@@ -20842,6 +20953,14 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20251008.0
       '@cloudflare/workerd-windows-64': 1.20251008.0
 
+  workerd@1.20251105.0:
+    optionalDependencies:
+      '@cloudflare/workerd-darwin-64': 1.20251105.0
+      '@cloudflare/workerd-darwin-arm64': 1.20251105.0
+      '@cloudflare/workerd-linux-64': 1.20251105.0
+      '@cloudflare/workerd-linux-arm64': 1.20251105.0
+      '@cloudflare/workerd-windows-64': 1.20251105.0
+
   wrangler@4.42.2:
     dependencies:
       '@cloudflare/kv-asset-handler': 0.4.0
@@ -20852,6 +20971,22 @@ snapshots:
       path-to-regexp: 6.3.0
       unenv: 2.0.0-rc.21
       workerd: 1.20251008.0
+    optionalDependencies:
+      fsevents: 2.3.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  wrangler@4.46.0:
+    dependencies:
+      '@cloudflare/kv-asset-handler': 0.4.0
+      '@cloudflare/unenv-preset': 2.7.9(unenv@2.0.0-rc.24)(workerd@1.20251105.0)
+      blake3-wasm: 2.1.5
+      esbuild: 0.25.4
+      miniflare: 4.20251105.0
+      path-to-regexp: 6.3.0
+      unenv: 2.0.0-rc.24
+      workerd: 1.20251105.0
     optionalDependencies:
       fsevents: 2.3.3
     transitivePeerDependencies:

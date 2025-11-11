@@ -11,7 +11,7 @@ const authToken = process.env.AUTH_TOKEN || "admin"
 
 const ActionConfigSchema = t.Object({
 	startBlock: t.Number(),
-	endBlock: t.Number()
+	endBlock: t.Union([t.Number(), t.Null()])
 })
 
 const PartialActionsConfigSchema = t.Partial(

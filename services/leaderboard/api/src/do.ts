@@ -6,7 +6,6 @@
  */
 
 import { DurableObject } from "cloudflare:workers"
-import { TOTAL_SHARDS } from "./index"
 
 /**
  * Payload structure for broadcast messages
@@ -241,7 +240,7 @@ export class UserDo extends DurableObject<Env> {
 			hash = (hash << 5) - hash + char
 			hash = hash & hash // Convert to 32-bit integer
 		}
-		return Math.abs(hash) % TOTAL_SHARDS
+		return Math.abs(hash) % this.env.TOTAL_SHARDS
 	}
 
 	/**

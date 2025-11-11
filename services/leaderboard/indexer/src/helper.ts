@@ -14,7 +14,7 @@ import { env } from "./env"
 
 export interface ActionConfig {
 	startBlock: number
-	endBlock: number
+	endBlock: number | null
 }
 
 export interface ActionsConfig {
