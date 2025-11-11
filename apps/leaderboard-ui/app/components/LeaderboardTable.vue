@@ -71,7 +71,12 @@ const openLink = (wallet: string) => {
               @click='openLink(row.getValue("wallet"))'>
               <td class="Rank">{{ row.getValue("rank") }}</td>
               <td class="Wallet">{{ row.getValue("wallet") }}</td>
-              <td class="Points">{{ row.getValue("score") }}</td>
+              <td class="Points">
+                <NumberFlow
+                  :value='row.getValue("score")'
+                  :format='{ notation: "standard", useGrouping: true }'
+                />
+              </td>
             </tr>
             <tr v-if="!lb.fetching && lb.entries.length === 0">
               <td :colspan="lb.columns.length">No entries.</td>
