@@ -9,7 +9,8 @@ export const leaderboardQuery = graphql(`
         score
       }
       hasMore
-      total
+      totalEntries
+      totalPoints
     }
   }
 `)

@@ -12,7 +12,8 @@ interface LeaderboardEntry {
 interface LeaderboardResult {
 	entries: LeaderboardEntry[]
 	hasMore: boolean
-	total: number
+	totalEntries: number
+	totalPoints: number
 }
 
 const PAGE_SIZE = 20
@@ -60,7 +61,8 @@ export async function queryLeaderboard(
 				rank: sql<number>`ROW_NUMBER() OVER (ORDER BY ${leaderboard.score} DESC, ${leaderboard.wallet} ASC)::int`.as(
 					"rank"
 				),
-				total: sql<number>`COUNT(*) OVER ()::int`.as("total")
+				totalEntries: sql<number>`COUNT(*) OVER ()::int`.as("totalEntries"),
+				totalPoints: sql<number>`SUM(${leaderboard.score}) OVER ()::int`.as("totalPoints")
 			})
 			.from(leaderboard)
 			.where(sql`${leaderboard.score} > 0`)
@@ -70,22 +72,27 @@ export async function queryLeaderboard(
 		? sql`${rankedCTE.rank} >= (SELECT rank FROM ${rankedCTE} WHERE wallet = ${searchWallet})`
 		: sql`1=1`
 
-	const { wallet, score, rank, total } = rankedCTE
+	const { wallet, score, rank, totalEntries, totalPoints } = rankedCTE
 	const result = await db.drizzle
 		.with(rankedCTE)
-		.select({ wallet, score, rank, total })
+		.select({ wallet, score, rank, totalEntries, totalPoints })
 		.from(rankedCTE)
 		.where(whereClause)
 		.orderBy(sql`${rankedCTE.rank} ASC`)
 		.limit(limit + 1)
 		.offset(offset)
 
-	if (result.length === 0) return { entries: [], hasMore: false, total: 0 }
+	if (result.length === 0) return { entries: [], hasMore: false, totalEntries: 0, totalPoints: 0 }
 
 	const hasMore = result.length > limit
 	const entries = result.slice(0, limit).map(({ wallet, score, rank }) => ({ wallet, score, rank }))
 
-	return { entries, hasMore, total: result[0].total }
+	return {
+		entries,
+		hasMore,
+		totalEntries: result[0].totalEntries,
+		totalPoints: result[0].totalPoints
+	}
 }
 
 /**
@@ -106,10 +113,21 @@ const LeaderboardResultObject = builder
 			entries: t.field({
 				type: [LeaderboardEntryObject],
 				resolve: (r) => r.entries,
-				nullable: false
+				nullable: false,
+				description: "Ranked leaderboard wallets and their scores."
 			}),
-			hasMore: t.exposeBoolean("hasMore", { nullable: false }),
-			total: t.exposeInt("total", { nullable: false })
+			hasMore: t.exposeBoolean("hasMore", {
+				nullable: false,
+				description: "Indicates if there are more entries beyond the current page."
+			}),
+			totalEntries: t.exposeInt("totalEntries", {
+				nullable: false,
+				description: "Total number of entries in the leaderboard."
+			}),
+			totalPoints: t.exposeInt("totalPoints", {
+				nullable: false,
+				description: "Total points accumulated by all entries."
+			})
 		})
 	})
 
@@ -135,7 +153,12 @@ builder.queryType({
 					limit: input?.pageSize ?? PAGE_SIZE
 				})
 
-				return result
+				return {
+					entries: result.entries,
+					hasMore: result.hasMore,
+					totalEntries: result.totalEntries,
+					totalPoints: result.totalPoints
+				}
 			}
 		})
 	})

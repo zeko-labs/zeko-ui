@@ -29,7 +29,7 @@ export const useLeaderboard = defineStore("leaderboard", () => {
 
 	// Data and paging controls
 	const entries = computed(() => data.value?.leaderboard?.entries ?? [])
-	const total = computed(() => data.value?.leaderboard?.total ?? 0)
+	const total = computed(() => data.value?.leaderboard?.totalPoints ?? 0)
 	const hasMore = computed(() => data.value?.leaderboard?.hasMore ?? false)
 
 	// Table setup

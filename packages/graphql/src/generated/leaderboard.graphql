@@ -5,15 +5,23 @@ type LeaderboardEntry {
 }
 
 input LeaderboardInput {
-  page: Int
+  page: Int = 1
   pageSize: Int = 20
   searchWallet: String
 }
 
 type LeaderboardResult {
+  """Ranked leaderboard wallets and their scores."""
   entries: [LeaderboardEntry!]!
+
+  """Indicates if there are more entries beyond the current page."""
   hasMore: Boolean!
-  total: Int!
+
+  """Total number of entries in the leaderboard."""
+  totalEntries: Int!
+
+  """Total points accumulated by all entries."""
+  totalPoints: Int!
 }
 
 type LeaderboardUpdate {

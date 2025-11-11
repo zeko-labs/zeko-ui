@@ -3,6 +3,6 @@
 	"extends": "./.nuxt/tsconfig.json",
 	"compilerOptions": {
 		"noUncheckedIndexedAccess": false,
-		"types": ["./worker-configuration.d.ts", "node"]
+		"types": ["./worker-configuration.d.ts"]
 	}
 }
