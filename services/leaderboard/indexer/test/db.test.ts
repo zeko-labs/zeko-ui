@@ -6,6 +6,7 @@ import {
 	type ActionToInsert,
 	type ActionType,
 	batchInsertActionsAndUpdateLeaderboard,
+	batchInsertManualAdjustmentsAndUpdateLeaderboard,
 	createTestDatabase,
 	scoreConfig
 } from "../src/db"
@@ -1132,5 +1133,431 @@ describe("batchInsertActionsAndUpdateLeaderboard", () => {
 		// Daily strategy: each day gets points for actions, capped per day
 		const expectedScore = calculateScoreWithDailyStrategy(actionsToInsert)
 		expect(leaderboardData[0].score).toBe(expectedScore)
+	})
+})
+
+describe("Manual Adjustments", () => {
+	beforeEach(async () => {
+		await clean()
+	})
+
+	test("should add positive manual adjustment and update leaderboard", async () => {
+		const actionsToInsert: ActionToInsert[] = [
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			}
+		]
+
+		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
+
+		const initialLeaderboard = await db.select().from(leaderboard)
+		const initialScore = initialLeaderboard[0].score
+
+		await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+			db,
+			adjustments: [
+				{
+					wallet: "B62qtest1",
+					pointsChange: 50,
+					sidequest: "Community Event Participation",
+					reason: "Won the meme contest"
+				}
+			]
+		})
+
+		const finalLeaderboard = await db.select().from(leaderboard)
+		expect(finalLeaderboard[0].score).toBe(initialScore + 50)
+	})
+
+	test("should add negative manual adjustment and update leaderboard", async () => {
+		const actionsToInsert: ActionToInsert[] = [
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "BRIDGE_MINA_TO_ZEKO",
+				transactionHash: "tx2",
+				timestamp: getTimestamp()
+			}
+		]
+
+		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
+
+		const initialLeaderboard = await db.select().from(leaderboard)
+		const initialScore = initialLeaderboard[0].score
+
+		await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+			db,
+			adjustments: [
+				{
+					wallet: "B62qtest1",
+					pointsChange: -10,
+					sidequest: "Rule Violation",
+					reason: "Spam detected"
+				}
+			]
+		})
+
+		const finalLeaderboard = await db.select().from(leaderboard)
+		expect(finalLeaderboard[0].score).toBe(initialScore - 10)
+	})
+
+	test("should clamp score to 0 when negative adjustment exceeds current score", async () => {
+		const actionsToInsert: ActionToInsert[] = [
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			}
+		]
+
+		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
+
+		const initialLeaderboard = await db.select().from(leaderboard)
+		const initialScore = initialLeaderboard[0].score
+
+		await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+			db,
+			adjustments: [
+				{
+					wallet: "B62qtest1",
+					pointsChange: -(initialScore + 100),
+					sidequest: "Major Violation",
+					reason: "Bot detection"
+				}
+			]
+		})
+
+		const finalLeaderboard = await db.select().from(leaderboard)
+		expect(finalLeaderboard[0].score).toBe(0)
+	})
+
+	test("should handle multiple manual adjustments for same wallet", async () => {
+		const actionsToInsert: ActionToInsert[] = [
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			}
+		]
+
+		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
+
+		const initialLeaderboard = await db.select().from(leaderboard)
+		const initialScore = initialLeaderboard[0].score
+
+		await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+			db,
+			adjustments: [
+				{
+					wallet: "B62qtest1",
+					pointsChange: 25,
+					sidequest: "Twitter Campaign",
+					reason: "Retweeted announcement"
+				},
+				{
+					wallet: "B62qtest1",
+					pointsChange: 30,
+					sidequest: "Discord Activity",
+					reason: "Helped 5 new users"
+				},
+				{
+					wallet: "B62qtest1",
+					pointsChange: -5,
+					sidequest: "Minor Issue",
+					reason: "Off-topic message"
+				}
+			]
+		})
+
+		const finalLeaderboard = await db.select().from(leaderboard)
+		expect(finalLeaderboard[0].score).toBe(initialScore + 25 + 30 - 5)
+	})
+
+	test("should handle manual adjustments for wallet with no actions", async () => {
+		await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+			db,
+			adjustments: [
+				{
+					wallet: "B62qtest_new",
+					pointsChange: 100,
+					sidequest: "Early Bird Bonus",
+					reason: "Special promotion for early testers"
+				}
+			]
+		})
+
+		const finalLeaderboard = await db.select().from(leaderboard).where(sql`wallet = 'B62qtest_new'`)
+		expect(finalLeaderboard).toHaveLength(1)
+		expect(finalLeaderboard[0].score).toBe(100)
+	})
+
+	test("should handle manual adjustments for multiple wallets", async () => {
+		const actionsToInsert: ActionToInsert[] = [
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest2",
+				actionType: "BRIDGE_MINA_TO_ZEKO",
+				transactionHash: "tx2",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest3",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx3",
+				timestamp: getTimestamp()
+			}
+		]
+
+		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
+
+		const initialLeaderboard = await db.select().from(leaderboard).orderBy(leaderboard.wallet)
+		const initialScores = Object.fromEntries(
+			initialLeaderboard.map((entry) => [entry.wallet, entry.score])
+		)
+
+		await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+			db,
+			adjustments: [
+				{
+					wallet: "B62qtest1",
+					pointsChange: 10,
+					sidequest: "Quest A",
+					reason: "Completed"
+				},
+				{
+					wallet: "B62qtest2",
+					pointsChange: 20,
+					sidequest: "Quest B",
+					reason: "Completed"
+				},
+				{
+					wallet: "B62qtest3",
+					pointsChange: 30,
+					sidequest: "Quest C",
+					reason: "Completed"
+				}
+			]
+		})
+
+		const finalLeaderboard = await db.select().from(leaderboard).orderBy(leaderboard.wallet)
+
+		expect(finalLeaderboard[0].wallet).toBe("B62qtest1")
+		expect(finalLeaderboard[0].score).toBe(initialScores.B62qtest1 + 10)
+
+		expect(finalLeaderboard[1].wallet).toBe("B62qtest2")
+		expect(finalLeaderboard[1].score).toBe(initialScores.B62qtest2 + 20)
+
+		expect(finalLeaderboard[2].wallet).toBe("B62qtest3")
+		expect(finalLeaderboard[2].score).toBe(initialScores.B62qtest3 + 30)
+	})
+
+	test("should persist manual adjustments across leaderboard updates", async () => {
+		await batchInsertActionsAndUpdateLeaderboard({
+			db,
+			actionsToInsert: [
+				{
+					wallet: "B62qtest1",
+					actionType: "FAUCET_ZEKO_TMINA",
+					transactionHash: "tx1",
+					timestamp: getTimestamp()
+				}
+			]
+		})
+
+		await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+			db,
+			adjustments: [
+				{
+					wallet: "B62qtest1",
+					pointsChange: 50,
+					sidequest: "Special Event",
+					reason: "Participation reward"
+				}
+			]
+		})
+
+		const afterAdjustment = await db.select().from(leaderboard)
+		const scoreAfterAdjustment = afterAdjustment[0].score
+
+		await batchInsertActionsAndUpdateLeaderboard({
+			db,
+			actionsToInsert: [
+				{
+					wallet: "B62qtest1",
+					actionType: "BRIDGE_MINA_TO_ZEKO",
+					transactionHash: "tx2",
+					timestamp: getTimestamp()
+				}
+			]
+		})
+
+		const finalLeaderboard = await db.select().from(leaderboard)
+		const expectedScore =
+			calculateExpectedScore({ FAUCET_ZEKO_TMINA: 1, BRIDGE_MINA_TO_ZEKO: 1 }) + 50
+
+		expect(finalLeaderboard[0].score).toBe(expectedScore)
+		expect(finalLeaderboard[0].score).toBe(
+			scoreAfterAdjustment + scoreConfig.BRIDGE_MINA_TO_ZEKO.points
+		)
+	})
+
+	test("should handle manual adjustments with daily strategy actions", async () => {
+		const yesterday = new Date()
+		yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+
+		// Add actions across multiple days
+		await db.insert(actions).values([
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx_yesterday_1",
+				timestamp: yesterday
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "LUMINA_SWAP_MINA_TZEKO",
+				transactionHash: "tx_yesterday_2",
+				timestamp: yesterday
+			}
+		])
+
+		await batchInsertActionsAndUpdateLeaderboard({
+			db,
+			actionsToInsert: [
+				{
+					wallet: "B62qtest1",
+					actionType: "LUMINA_SWAP_MINA_TZEKO",
+					transactionHash: "tx_today_1",
+					timestamp: getTimestamp()
+				},
+				{
+					wallet: "B62qtest1",
+					actionType: "LUMINA_SWAP_MINA_TZEKO",
+					transactionHash: "tx_today_2",
+					timestamp: getTimestamp()
+				}
+			]
+		})
+
+		const beforeAdjustment = await db.select().from(leaderboard)
+		const scoreBeforeAdjustment = beforeAdjustment[0].score
+
+		// Add manual adjustment
+		await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+			db,
+			adjustments: [
+				{
+					wallet: "B62qtest1",
+					pointsChange: 75,
+					sidequest: "Weekly Challenge",
+					reason: "Completed 4 swaps across 2 days"
+				}
+			]
+		})
+
+		const afterAdjustment = await db.select().from(leaderboard)
+		expect(afterAdjustment[0].score).toBe(scoreBeforeAdjustment + 75)
+	})
+
+	test("should handle zero point adjustments", async () => {
+		await batchInsertActionsAndUpdateLeaderboard({
+			db,
+			actionsToInsert: [
+				{
+					wallet: "B62qtest1",
+					actionType: "FAUCET_ZEKO_TMINA",
+					transactionHash: "tx1",
+					timestamp: getTimestamp()
+				}
+			]
+		})
+
+		const initialLeaderboard = await db.select().from(leaderboard)
+		const initialScore = initialLeaderboard[0].score
+
+		await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+			db,
+			adjustments: [
+				{
+					wallet: "B62qtest1",
+					pointsChange: 0,
+					sidequest: "Info Only",
+					reason: "Logged for audit purposes"
+				}
+			]
+		})
+
+		const finalLeaderboard = await db.select().from(leaderboard)
+		expect(finalLeaderboard[0].score).toBe(initialScore)
+	})
+
+	test("PRODUCTION: manual adjustments should not interfere with action-based scoring", async () => {
+		// Wallet 1: Has actions + manual adjustment
+		// Wallet 2: Has same actions, no manual adjustment
+		const actionsToInsert: ActionToInsert[] = [
+			{
+				wallet: "B62qtest1",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx1",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest1",
+				actionType: "BRIDGE_MINA_TO_ZEKO",
+				transactionHash: "tx2",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest2",
+				actionType: "FAUCET_ZEKO_TMINA",
+				transactionHash: "tx3",
+				timestamp: getTimestamp()
+			},
+			{
+				wallet: "B62qtest2",
+				actionType: "BRIDGE_MINA_TO_ZEKO",
+				transactionHash: "tx4",
+				timestamp: getTimestamp()
+			}
+		]
+
+		await batchInsertActionsAndUpdateLeaderboard({ db, actionsToInsert })
+
+		// Add manual adjustment only to wallet 1
+		await batchInsertManualAdjustmentsAndUpdateLeaderboard({
+			db,
+			adjustments: [
+				{
+					wallet: "B62qtest1",
+					pointsChange: 100,
+					sidequest: "Bug Bounty",
+					reason: "Found critical bug"
+				}
+			]
+		})
+
+		const finalLeaderboard = await db.select().from(leaderboard).orderBy(leaderboard.wallet)
+		const baseScore = calculateExpectedScore({ FAUCET_ZEKO_TMINA: 1, BRIDGE_MINA_TO_ZEKO: 1 })
+
+		expect(finalLeaderboard[0].wallet).toBe("B62qtest1")
+		expect(finalLeaderboard[0].score).toBe(baseScore + 100)
+
+		expect(finalLeaderboard[1].wallet).toBe("B62qtest2")
+		expect(finalLeaderboard[1].score).toBe(baseScore)
 	})
 })

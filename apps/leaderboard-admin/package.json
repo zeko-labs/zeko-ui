@@ -5,7 +5,8 @@
 	"dependencies": {
 		"@elysiajs/eden": "catalog:elysia",
 		"@picocss/pico": "^2.1.1",
-		"solid-js": "^1.9.9"
+		"solid-js": "^1.9.9",
+		"valibot": "catalog:"
 	},
 	"devDependencies": {
 		"@types/node": "^24.6.0",

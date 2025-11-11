@@ -2,6 +2,7 @@ import { createResource, createSignal, onCleanup, onMount, Show } from "solid-js
 import type { ActionsConfig } from "./ActionConfig"
 import { ActionConfigs } from "./ActionConfigs"
 import { clearStoredToken, getApi, getStored, type Indexer, STORAGE_KEYS, setStored } from "./api"
+import { ManualAdjustments } from "./ManualAdjustments"
 import Token from "./Token"
 
 interface Status {
@@ -256,6 +257,8 @@ function App() {
 					</div>
 				</article>
 			</section>
+
+			<ManualAdjustments />
 
 			<section>
 				<h2>Configuration</h2>
