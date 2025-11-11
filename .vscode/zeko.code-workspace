@@ -9,10 +9,6 @@
       "path": "../packages/design"
     },
     {
-      "name": "🏘️ Landing",
-      "path": "../apps/ui",
-    },
-    {
       "name": "⛩️ Bridge UI",
       "path": "../apps/bridge-ui",
     },
