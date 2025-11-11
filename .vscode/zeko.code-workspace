@@ -25,6 +25,10 @@
       "path": "../apps/faucet",
     },
     {
+      "name": "🚰 Faucet UI",
+      "path": "../apps/faucet-ui",
+    },
+    {
       "name": "🧬 GraphQL",
       "path": "../packages/graphql",
     },

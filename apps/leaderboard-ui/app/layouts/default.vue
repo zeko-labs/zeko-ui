@@ -48,20 +48,20 @@
   display: block;
 }
 
-.Layout {
-  position: relative;
-  z-index: 0;
-  min-height: 100vh;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-}
-
-@media (max-width: 1024px) {
+@media not (--desktop) {
   .mobile {
     display: block;
   }
   .desktop {
     display: none;
   }
+}
+
+.Layout {
+  position: relative;
+  z-index: 0;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
 }
 </style>

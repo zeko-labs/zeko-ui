@@ -1,0 +1,30 @@
+{
+	"name": "@zeko-ui/webapp",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"postinstall": "nuxt prepare"
+	},
+	"dependencies": {
+		"@ark-ui/vue": "catalog:",
+		"@unhead/vue": "catalog:",
+		"@vueuse/core": "catalog:",
+		"@xstate/vue": "catalog:",
+		"@zeko/design": "workspace:^",
+		"@zeko/layer": "workspace:^",
+		"arktype": "^2.1.0",
+		"lucide-vue-next": "catalog:",
+		"nuxt": "catalog:",
+		"vue": "catalog:",
+		"xstate": "catalog:"
+	},
+	"devDependencies": {
+		"@csstools/postcss-global-data": "catalog:",
+		"@aurowallet/mina-provider": "catalog:",
+		"@total-typescript/ts-reset": "catalog:",
+		"@types/node": "^22.14.0",
+		"nitro-cloudflare-dev": "catalog:",
+		"rimraf": "^6.0.1",
+		"wrangler": "catalog:"
+	}
+}

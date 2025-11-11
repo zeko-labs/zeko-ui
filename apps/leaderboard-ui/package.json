@@ -5,13 +5,9 @@
 		"postinstall": "nuxt prepare"
 	},
 	"dependencies": {
-		"@ark-ui/vue": "^5.27.1",
-		"@hebilicious/nuxt-switch-match": "catalog:",
 		"@number-flow/vue": "catalog:",
-		"@nuxt/fonts": "catalog:",
 		"@tanstack/vue-table": "catalog:",
 		"@unhead/vue": "catalog:",
-		"@unocss/reset": "catalog:",
 		"@urql/exchange-retry": "catalog:graphql",
 		"@urql/vue": "catalog:graphql",
 		"@vite-pwa/nuxt": "catalog:",

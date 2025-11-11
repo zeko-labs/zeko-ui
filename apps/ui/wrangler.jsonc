@@ -17,10 +17,6 @@
 		{
 			"pattern": "zeko.io",
 			"custom_domain": true
-		},
-		{
-			"pattern": "faucet.zeko.io",
-			"custom_domain": true
 		}
 	],
 	"secrets_store_secrets": [

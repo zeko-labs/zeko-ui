@@ -86,7 +86,7 @@ const openLink = (wallet: string) => {
     flex-direction: column;
     background: white;
     padding: 1.5rem 1rem;
-    @media not (--mobile) {
+    @media not (--phone) {
       padding: 1.5rem;
     }
     border-radius: 1rem;

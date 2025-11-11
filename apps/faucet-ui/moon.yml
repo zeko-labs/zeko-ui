@@ -1,0 +1,71 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: application
+
+dependsOn:
+  - design
+  - layer
+
+fileGroups:
+  sources:
+    - app/**
+    - helpers/**
+    - public/**
+    - server/**
+    - nuxt.config.ts
+    - tsconfig.json
+    - package.json
+
+tasks:
+  format:
+    inputs:
+      - "@group(sources)"
+  format-fix:
+    inputs:
+      - "@group(sources)"
+  dev:
+    command: nuxt dev
+  build:
+    command: nuxt build
+    inputs:
+      - "@globs(sources)"
+    outputs:
+      - .nuxt/
+      - .output/
+  type-cf:
+    command: wrangler types
+    inputs:
+      - wrangler.jsonc
+    outputs:
+      - worker-configuration.d.ts
+  dev-cf:
+    command: wrangler dev .output/server/index.mjs --assets .output/public/
+    preset: "server"
+    deps:
+      - build
+    inputs:
+      - .output/
+  preview:
+    command: nuxt preview
+    preset: "server"
+  prepare:
+    command: nuxt prepare
+    outputs:
+      - .nuxt/
+  deploy-dev:
+    description: "Build and Deploy to Cloudflare Workers. Use with caution, prefer using CI/CD."
+    script: rimraf .output .wrangler .nuxt && nuxt build && wrangler deploy
+    inputs:
+      - "@globs(sources)"
+    outputs:
+      - .nuxt/
+      - .output/
+      - .wrangler/
+  deploy:
+    command: wrangler deploy
+    deps:
+      - build
+  deploy-preview:
+    command: wrangler versions upload
+    deps:
+      - build

@@ -1,0 +1,38 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "faucet-ui",
+	"main": "./.output/server/index.mjs",
+	"compatibility_date": "2025-08-07",
+	"compatibility_flags": ["nodejs_compat"], //Optional
+	"preview_urls": true,
+	"workers_dev": true,
+	"version_metadata": {
+		"binding": "CF_VERSION_METADATA"
+	},
+	"assets": {
+		"directory": "./.output/public/",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"secrets_store_secrets": [
+		{
+			"binding": "STORE_FAUCET_URL",
+			"store_id": "f83375a001d345db99acd892b01d7463",
+			"secret_name": "FAUCET_URL"
+		}
+	],
+	"services": [
+		{
+			"binding": "FAUCET",
+			"service": "faucet"
+		}
+	],
+	"routes": [
+		{
+			"pattern": "faucet.zeko.io",
+			"custom_domain": true
+		}
+	]
+}

@@ -32,3 +32,8 @@ export type introspection = {
 };
 
 import * as gqlTada from 'gql.tada';
+Subscription';
+  types: introspection_types;
+};
+
+import * as gqlTada from 'gql.tada';

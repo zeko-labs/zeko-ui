@@ -4,7 +4,7 @@ packages:
   - services/**
 
 catalog:
-  '@ark-ui/vue': ^5.9.1
+  '@ark-ui/vue': ^5.27.1
   '@aurowallet/mina-provider': ^1.0.6
   '@biomejs/biome': ^2.3.3
   '@cloudflare/vitest-pool-workers': ^0.10.5
