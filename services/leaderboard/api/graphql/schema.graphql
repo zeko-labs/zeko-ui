@@ -5,7 +5,7 @@ type LeaderboardEntry {
 }
 
 input LeaderboardInput {
-  page: Int
+  page: Int = 1
   pageSize: Int = 20
   searchWallet: String
 }

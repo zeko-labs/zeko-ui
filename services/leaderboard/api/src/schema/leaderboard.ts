@@ -16,21 +16,39 @@ interface LeaderboardResult {
 }
 
 const PAGE_SIZE = 20
+const DEFAULT_PAGE = 1
 
 type DatabaseInstance = ReturnType<Database>
 
+/**
+ * Performance considerations:
+ *
+ * 1. ROW_NUMBER() is required to calculate ranks for display.
+ * 2. Once we use ROW_NUMBER(), we must scan the entire qualifying dataset.
+ * 3. COUNT(*) OVER() is computed in the SAME window pass as ROW_NUMBER(),
+ *    adding negligible overhead since the window operation cost is already incurred.
+ * 4. OFFSET on the CTE is efficient because it operates on the already-computed,
+ *    ranked result set in memory, not on the raw table.
+ * 5. The (score DESC, wallet ASC) index supports both the window function ordering
+ *    and the final ORDER BY, making this approach optimal for our requirements.
+ *
+ * Alternative approaches considered:
+ * - Keyset pagination: Would still require ROW_NUMBER() for ranks, making it more
+ *   complex without performance benefit. Also doesn't support arbitrary page access.
+ * - Separate COUNT(*): Would require an additional table scan, which is slower
+ *   than computing COUNT(*) OVER() in the same window pass.
+ */
 export async function queryLeaderboard(
 	db: DatabaseInstance,
 	options: {
 		searchWallet?: string
-		page?: number
+		page: number
 		limit: number
 	}
 ) {
-	const { searchWallet, page = 1, limit } = options
+	const { searchWallet, page, limit } = options
 	const offset = (page - 1) * limit
 
-	// CTE with rank calculation and total count
 	const rankedCTE = db.drizzle.$with("ranked").as(
 		db.drizzle
 			.select({
@@ -45,20 +63,14 @@ export async function queryLeaderboard(
 			.where(sql`${leaderboard.score} > 0`)
 	)
 
-	// Build WHERE clause based on search
 	const whereClause = searchWallet
 		? sql`${rankedCTE.score} <= (SELECT score FROM ${rankedCTE} WHERE wallet = ${searchWallet})`
 		: sql`1=1`
 
-	// Query for pagination
+	const { wallet, score, rank, total } = rankedCTE
 	const result = await db.drizzle
 		.with(rankedCTE)
-		.select({
-			wallet: rankedCTE.wallet,
-			score: rankedCTE.score,
-			rank: rankedCTE.rank,
-			total: rankedCTE.total
-		})
+		.select({ wallet, score, rank, total })
 		.from(rankedCTE)
 		.where(whereClause)
 		.orderBy(sql`${rankedCTE.score} DESC`, sql`${rankedCTE.wallet} ASC`)
@@ -100,7 +112,7 @@ const LeaderboardResultObject = builder
 
 const LeaderboardInput = builder.inputType("LeaderboardInput", {
 	fields: (t) => ({
-		page: t.int({ required: false }),
+		page: t.int({ required: false, defaultValue: DEFAULT_PAGE }),
 		searchWallet: t.string({ required: false }),
 		pageSize: t.int({ required: false, defaultValue: PAGE_SIZE })
 	})
@@ -116,7 +128,7 @@ builder.queryType({
 
 				const result = await queryLeaderboard(db, {
 					searchWallet: input?.searchWallet ?? undefined,
-					page: input?.page ?? undefined,
+					page: input?.page ?? DEFAULT_PAGE,
 					limit: input?.pageSize ?? PAGE_SIZE
 				})
 
