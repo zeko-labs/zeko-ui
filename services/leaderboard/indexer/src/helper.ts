@@ -177,7 +177,7 @@ export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<F
 		logger.info(
 			`${logPrefix} Starting block ${initialStartBlock} exceeds end block ${endBlock}, skipping fetch`
 		)
-		return { events: [], lastFetchedBlock: endBlock }
+		return { events: [], lastFetchedBlock: startBlock }
 	}
 
 	const isInitialFetch = initialStartBlock === 1
@@ -188,6 +188,14 @@ export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<F
 	)
 
 	const maxBlockHeight = await getMaxBlockHeight(layer)
+
+	//If startBlock is past maxBlockHeight, return empty results
+	if (initialStartBlock > maxBlockHeight) {
+		logger.info(
+			`${logPrefix} Starting block ${initialStartBlock} exceeds chain max height ${maxBlockHeight}, skipping fetch`
+		)
+		return { events: [], lastFetchedBlock: startBlock }
+	}
 
 	const effectiveMaxBlock = hasEndBlockLimit ? Math.min(endBlock, maxBlockHeight) : maxBlockHeight
 	const fetchToBlock = effectiveMaxBlock + blockPad
