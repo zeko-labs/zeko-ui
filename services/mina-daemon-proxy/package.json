@@ -1,0 +1,7 @@
+{
+  "name": "mina-daemon-proxy",
+  "private": true,
+  "devDependencies": {
+    "wrangler": "catalog:"
+  }
+}
