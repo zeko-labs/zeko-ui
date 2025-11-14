@@ -1,0 +1,186 @@
+export interface CorsOptions {
+	/** List of allowed origins. Use ["*"] to allow all origins (e.g., "https://example.com", "http://localhost:3000") */
+	origins: string[]
+	/** If true, allows all subdomains of the specified origins (default: false) */
+	subdomainWildcard?: boolean
+}
+
+export interface ProxyHandlerOptions {
+	/** Delay in milliseconds before starting the backup request (default: 2000) */
+	backupDelay?: number
+	/** CORS configuration. If not provided, CORS is disabled */
+	cors?: CorsOptions
+}
+
+function getRandomInt(max: number): number {
+	return Math.floor(Math.random() * max)
+}
+
+function isOriginAllowed(params: {
+	requestOrigin: string
+	allowedOrigins: string[]
+	subdomainWildcard: boolean
+}): boolean {
+	const { requestOrigin, allowedOrigins, subdomainWildcard } = params
+
+	return allowedOrigins.some((allowed) => {
+		// Wildcard - allow all origins
+		if (allowed === "*") return true
+
+		// Exact match
+		if (allowed === requestOrigin) return true
+
+		// If subdomainWildcard is enabled, check for subdomain matches
+		if (subdomainWildcard) {
+			try {
+				const allowedUrl = new URL(allowed)
+				const requestUrl = new URL(requestOrigin)
+
+				const allowedHost = allowedUrl.hostname
+				const requestHost = requestUrl.hostname
+
+				// Check if request is a subdomain of allowed origin
+				// e.g., allowed: example.com, request: sub.example.com or example.com
+				return requestHost === allowedHost || requestHost.endsWith(`.${allowedHost}`)
+			} catch {
+				// Invalid URL, skip
+			}
+		}
+
+		return false
+	})
+}
+
+function getCorsHeaders(params: {
+	requestOrigin: string | null
+	corsConfig: CorsOptions
+}): Record<string, string> {
+	const { requestOrigin, corsConfig } = params
+	const headers: Record<string, string> = {
+		"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+		"Access-Control-Allow-Headers": "*",
+		"Access-Control-Max-Age": "86400"
+	}
+
+	// Check if wildcard is in origins
+	const hasWildcard = corsConfig.origins.includes("*")
+
+	if (hasWildcard) {
+		headers["Access-Control-Allow-Origin"] = "*"
+	} else if (
+		requestOrigin &&
+		isOriginAllowed({
+			requestOrigin,
+			allowedOrigins: corsConfig.origins,
+			subdomainWildcard: corsConfig.subdomainWildcard ?? false
+		})
+	) {
+		headers["Access-Control-Allow-Origin"] = requestOrigin
+		headers["Access-Control-Allow-Credentials"] = "true"
+	}
+
+	return headers
+}
+
+function applyCorsHeaders(params: {
+	response: Response
+	requestOrigin: string | null
+	corsConfig: CorsOptions
+}): Response {
+	const { response, requestOrigin, corsConfig } = params
+	const newHeaders = new Headers(response.headers)
+	const corsHeaders = getCorsHeaders({ requestOrigin, corsConfig })
+	for (const [key, value] of Object.entries(corsHeaders)) {
+		newHeaders.set(key, value)
+	}
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers: newHeaders
+	})
+}
+
+/**
+ * Creates a proxy request handler that forwards requests to backend hostnames
+ * with automatic failover support.
+ *
+ * @param hostnames - Array of backend URLs to proxy requests to
+ * @param options - Configuration options for the proxy handler
+ * @returns A function that accepts a Request and returns a Promise<Response>
+ */
+export function createProxyHandler(params: {
+	hostnames: readonly string[]
+	options?: ProxyHandlerOptions
+}): (request: Request) => Promise<Response> {
+	const { hostnames, options = {} } = params
+	const { backupDelay = 2000, cors } = options
+
+	return async (request: Request): Promise<Response> => {
+		const requestOrigin = request.headers.get("Origin")
+
+		// Handle CORS preflight
+		if (cors && request.method === "OPTIONS") {
+			return new Response(null, {
+				headers: getCorsHeaders({ requestOrigin, corsConfig: cors })
+			})
+		}
+		try {
+			// Preserve original URL
+			const sourceUrl = new URL(request.url)
+
+			// Pick primary and backup
+			const primaryIndex = getRandomInt(hostnames.length)
+			let backupIndex = primaryIndex
+			if (hostnames.length > 1) {
+				do {
+					backupIndex = getRandomInt(hostnames.length)
+				} while (backupIndex === primaryIndex)
+			}
+
+			// Combine backend base URL + original path + query
+			const makeTargetUrl = (base: string) => {
+				const baseUrl = new URL(base)
+				// join the backend base path + the incoming path
+				const joinedPath = `${baseUrl.pathname.replace(/\/$/, "")}/${sourceUrl.pathname.replace(/^\//, "")}`
+				baseUrl.pathname = joinedPath
+				baseUrl.search = sourceUrl.search // preserve query string
+				return baseUrl
+			}
+
+			const primaryUrl = makeTargetUrl(hostnames[primaryIndex])
+			const backupUrl = makeTargetUrl(hostnames[backupIndex])
+
+			// Create requests using original request as template
+			const primaryRequest = new Request(primaryUrl.toString(), request)
+			const backupRequest = new Request(backupUrl.toString(), request)
+			console.log(`primary req: ${primaryUrl}`)
+			console.log(`backup  req: ${backupUrl}`)
+
+			// Start primary immediately
+			const primaryFetch = fetch(primaryRequest)
+
+			// Start backup after configured delay
+			const backupFetch = (async () => {
+				await new Promise((r) => setTimeout(r, backupDelay))
+				console.log(`Starting backup fetch: ${backupUrl.hostname}`)
+				return fetch(backupRequest)
+			})()
+
+			// Race and return whichever finishes first
+			const response = await Promise.race([primaryFetch, backupFetch])
+
+			// Add CORS headers if enabled
+			return cors ? applyCorsHeaders({ response, requestOrigin, corsConfig: cors }) : response
+		} catch (err) {
+			const errorResponse =
+				err instanceof Error
+					? new Response(`Origin fetch error: ${err.message}`, { status: 502 })
+					: new Response("Unknown origin error", { status: 502 })
+
+			// Add CORS headers to error responses if enabled
+			return cors
+				? applyCorsHeaders({ response: errorResponse, requestOrigin, corsConfig: cors })
+				: errorResponse
+		}
+	}
+}

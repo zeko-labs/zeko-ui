@@ -49,12 +49,16 @@
       "path": "../services/leaderboard/api",
     },
     {
-      "name": "🪙 Mina Archive Proxy",
+      "name": "🗜️ Proxy Handler",
+      "path": "../packages/proxy-handler",
+    },
+    {
+      "name": "✈️ Mina Archive Proxy",
       "path": "../services/mina-archive-proxy",
     },
     {
-      "name": "🪙 Mina Daemon Proxy",
-      "path": "../services/mina-daemon-proxy",
+      "name": "✈️ Mina Proxy",
+      "path": "../services/mina-proxy",
     },
     {
       "path": "..",

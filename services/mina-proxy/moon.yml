@@ -3,7 +3,7 @@
 layer: application
 language: typescript
 stack: infrastructure
-id: daemon
+id: mina-proxy
 
 tasks:
   dev:

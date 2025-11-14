@@ -1,12 +1,12 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "mina-daemon-proxy",
+	"name": "mina-proxy",
 	"compatibility_date": "2025-10-21",
 	"main": "worker.ts",
 	"preview_urls": true,
 	"routes": [
 		{
-			"pattern": "gateway.mina.daemon.devnet.zeko.io",
+			"pattern": "gateway.mina.devnet.zeko.io",
 			"custom_domain": true
 		}
 	],

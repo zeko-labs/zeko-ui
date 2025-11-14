@@ -3,7 +3,7 @@
 layer: application
 language: typescript
 stack: infrastructure
-id: archive
+id: mina-archive-proxy
 
 tasks:
   dev:

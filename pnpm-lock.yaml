@@ -417,7 +417,7 @@ importers:
         version: 0.453.0(vue@3.5.22(typescript@5.9.3))
       nuxt:
         specifier: 'catalog:'
-        version: 4.1.1(@biomejs/biome@2.3.3)(@netlify/blobs@9.1.2)(@parcel/watcher@2.4.1)(@types/node@24.9.2)(@vue/compiler-sfc@3.5.22)(db0@0.3.2)(eslint@9.15.0(jiti@2.6.1))(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(meow@13.2.0)(optionator@0.9.4)(rolldown@1.0.0-beta.37)(rollup@4.52.5)(stylelint@16.24.0(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(typescript@5.9.3)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(vue-tsc@3.0.6(typescript@5.9.3))(yaml@2.8.1)
+        version: 4.1.1(@biomejs/biome@2.3.3)(@netlify/blobs@9.1.2)(@parcel/watcher@2.4.1)(@types/node@24.9.2)(@vue/compiler-sfc@3.5.22)(db0@0.3.2)(eslint@9.15.0(jiti@2.6.1))(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(meow@13.2.0)(optionator@0.9.4)(rolldown@1.0.0-beta.37)(rollup@4.52.5)(stylelint@16.24.0(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(typescript@5.9.3)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(yaml@2.8.1)
       vue:
         specifier: 'catalog:'
         version: 3.5.22(typescript@5.9.3)
@@ -506,7 +506,7 @@ importers:
         version: 0.453.0(vue@3.5.22(typescript@5.9.3))
       nuxt:
         specifier: 'catalog:'
-        version: 4.1.1(@biomejs/biome@2.3.3)(@netlify/blobs@9.1.2)(@parcel/watcher@2.4.1)(@types/node@24.9.2)(@vue/compiler-sfc@3.5.22)(db0@0.3.2)(eslint@9.15.0(jiti@2.6.1))(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(meow@13.2.0)(optionator@0.9.4)(rolldown@1.0.0-beta.37)(rollup@4.52.5)(stylelint@16.24.0(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(typescript@5.9.3)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(vue-tsc@3.0.6(typescript@5.9.3))(yaml@2.8.1)
+        version: 4.1.1(@biomejs/biome@2.3.3)(@netlify/blobs@9.1.2)(@parcel/watcher@2.4.1)(@types/node@24.9.2)(@vue/compiler-sfc@3.5.22)(db0@0.3.2)(eslint@9.15.0(jiti@2.6.1))(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(meow@13.2.0)(optionator@0.9.4)(rolldown@1.0.0-beta.37)(rollup@4.52.5)(stylelint@16.24.0(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(typescript@5.9.3)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(yaml@2.8.1)
       pinia:
         specifier: 'catalog:'
         version: 2.3.0(typescript@5.9.3)(vue@3.5.22(typescript@5.9.3))
@@ -583,13 +583,13 @@ importers:
         version: 0.1.1(magicast@0.3.5)(typescript@5.9.3)
       '@nuxt/fonts':
         specifier: 'catalog:'
-        version: 0.10.2(@netlify/blobs@9.1.2)(db0@0.3.2)(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(rolldown-vite@7.1.9(@types/node@24.9.2)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(rollup@4.52.5)
+        version: 0.10.2(@netlify/blobs@9.1.2)(db0@0.3.2)(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(rollup@4.52.5)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))
       lucide-vue-next:
         specifier: 'catalog:'
         version: 0.453.0(vue@3.5.22(typescript@5.9.3))
       nuxt:
         specifier: 'catalog:'
-        version: 4.1.1(@biomejs/biome@2.3.3)(@netlify/blobs@9.1.2)(@parcel/watcher@2.4.1)(@types/node@24.9.2)(@vue/compiler-sfc@3.5.22)(db0@0.3.2)(eslint@9.15.0(jiti@2.6.1))(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(meow@13.2.0)(optionator@0.9.4)(rolldown-vite@7.1.9(@types/node@24.9.2)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(rolldown@1.0.0-beta.37)(rollup@4.52.5)(stylelint@16.24.0(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(typescript@5.9.3)(vue-tsc@3.0.6(typescript@5.9.3))(yaml@2.8.1)
+        version: 4.1.1(@biomejs/biome@2.3.3)(@netlify/blobs@9.1.2)(@parcel/watcher@2.4.1)(@types/node@24.9.2)(@vue/compiler-sfc@3.5.22)(db0@0.3.2)(eslint@9.15.0(jiti@2.6.1))(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(meow@13.2.0)(optionator@0.9.4)(rolldown@1.0.0-beta.37)(rollup@4.52.5)(stylelint@16.24.0(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(typescript@5.9.3)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(yaml@2.8.1)
       vue:
         specifier: 'catalog:'
         version: 3.5.22(typescript@5.9.3)
@@ -606,6 +606,15 @@ importers:
       '@zeko/design':
         specifier: workspace:^
         version: link:../design
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  packages/proxy-handler:
+    devDependencies:
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.13.4(typescript@5.9.3)(vue-tsc@3.0.6(typescript@5.9.3))
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -730,12 +739,20 @@ importers:
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.9.2)(@vitest/browser@3.2.4)(esbuild@0.25.12)(jiti@2.6.1)(msw@2.11.1(@types/node@24.9.2)(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
 
   services/mina-archive-proxy:
+    dependencies:
+      '@zeko/proxy-handler':
+        specifier: workspace:*
+        version: link:../../packages/proxy-handler
     devDependencies:
       wrangler:
         specifier: 'catalog:'
         version: 4.42.2
 
-  services/mina-daemon-proxy:
+  services/mina-proxy:
+    dependencies:
+      '@zeko/proxy-handler':
+        specifier: workspace:*
+        version: link:../../packages/proxy-handler
     devDependencies:
       wrangler:
         specifier: 'catalog:'
@@ -12056,6 +12073,17 @@ snapshots:
       - rollup
       - supports-color
 
+  '@nuxt/devtools-kit@1.6.3(magicast@0.3.5)(rollup@4.52.5)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))':
+    dependencies:
+      '@nuxt/kit': 3.19.3(magicast@0.3.5)
+      '@nuxt/schema': 3.14.1592(magicast@0.3.5)(rollup@4.52.5)
+      execa: 7.2.0
+      vite: 7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
+    transitivePeerDependencies:
+      - magicast
+      - rollup
+      - supports-color
+
   '@nuxt/devtools-kit@2.7.0(magicast@0.3.5)(rolldown-vite@7.1.9(@types/node@24.9.2)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
       '@nuxt/kit': 3.19.3(magicast@0.3.5)
@@ -12168,6 +12196,54 @@ snapshots:
   '@nuxt/fonts@0.10.2(@netlify/blobs@9.1.2)(db0@0.3.2)(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(rolldown-vite@7.1.9(@types/node@24.9.2)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(rollup@4.52.5)':
     dependencies:
       '@nuxt/devtools-kit': 1.6.3(magicast@0.3.5)(rolldown-vite@7.1.9(@types/node@24.9.2)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(rollup@4.52.5)
+      '@nuxt/kit': 3.19.3(magicast@0.3.5)
+      chalk: 5.3.0
+      css-tree: 3.1.0
+      defu: 6.1.4
+      esbuild: 0.24.2
+      fontaine: 0.5.0
+      h3: 1.15.4
+      jiti: 2.6.1
+      magic-regexp: 0.8.0
+      magic-string: 0.30.19
+      node-fetch-native: 1.6.7
+      ohash: 1.1.4
+      pathe: 1.1.2
+      sirv: 3.0.2
+      tinyglobby: 0.2.15
+      ufo: 1.6.1
+      unifont: 0.1.6
+      unplugin: 1.16.0
+      unstorage: 1.17.1(@netlify/blobs@9.1.2)(db0@0.3.2)(idb-keyval@6.2.2)(ioredis@5.7.0)
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - aws4fetch
+      - db0
+      - encoding
+      - idb-keyval
+      - ioredis
+      - magicast
+      - rollup
+      - supports-color
+      - uploadthing
+      - vite
+
+  '@nuxt/fonts@0.10.2(@netlify/blobs@9.1.2)(db0@0.3.2)(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(rollup@4.52.5)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))':
+    dependencies:
+      '@nuxt/devtools-kit': 1.6.3(magicast@0.3.5)(rollup@4.52.5)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))
       '@nuxt/kit': 3.19.3(magicast@0.3.5)
       chalk: 5.3.0
       css-tree: 3.1.0
@@ -17633,7 +17709,7 @@ snapshots:
       - xml2js
       - yaml
 
-  nuxt@4.1.1(@biomejs/biome@2.3.3)(@netlify/blobs@9.1.2)(@parcel/watcher@2.4.1)(@types/node@24.9.2)(@vue/compiler-sfc@3.5.22)(db0@0.3.2)(eslint@9.15.0(jiti@2.6.1))(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(meow@13.2.0)(optionator@0.9.4)(rolldown@1.0.0-beta.37)(rollup@4.52.5)(stylelint@16.24.0(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(typescript@5.9.3)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(vue-tsc@3.0.6(typescript@5.9.3))(yaml@2.8.1):
+  nuxt@4.1.1(@biomejs/biome@2.3.3)(@netlify/blobs@9.1.2)(@parcel/watcher@2.4.1)(@types/node@24.9.2)(@vue/compiler-sfc@3.5.22)(db0@0.3.2)(eslint@9.15.0(jiti@2.6.1))(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(meow@13.2.0)(optionator@0.9.4)(rolldown@1.0.0-beta.37)(rollup@4.52.5)(stylelint@16.24.0(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(typescript@5.9.3)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(yaml@2.8.1):
     dependencies:
       '@nuxt/cli': 3.29.3(magicast@0.3.5)
       '@nuxt/devalue': 2.0.2
