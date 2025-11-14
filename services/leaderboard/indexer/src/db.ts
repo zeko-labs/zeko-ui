@@ -162,20 +162,6 @@ async function batchInsertActions(options: {
 	const { db, actionsToInsert, batchSize = 16000 } = options
 	if (actionsToInsert.length === 0) return []
 
-	const insertBatch = async (batch: ActionToInsert[]) =>
-		db
-			.insert(actions)
-			.values(
-				batch.map((action) => ({
-					wallet: action.wallet,
-					actionType: action.actionType,
-					transactionHash: action.transactionHash,
-					timestamp: new Date(Number(action.timestamp))
-				}))
-			)
-			.onConflictDoNothing({ target: actions.transactionHash })
-			.returning({ wallet: actions.wallet })
-
 	const insertedActions: { wallet: string }[] = []
 	const totalBatches = Math.ceil(actionsToInsert.length / batchSize)
 
@@ -191,7 +177,20 @@ async function batchInsertActions(options: {
 			const batchNumber = Math.floor(i / batchSize) + 1
 			logger.info(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} actions)`)
 		}
-		insertedActions.push(...(await insertBatch(batch)))
+		insertedActions.push(
+			...(await db
+				.insert(actions)
+				.values(
+					batch.map((action) => ({
+						wallet: action.wallet,
+						actionType: action.actionType,
+						transactionHash: action.transactionHash,
+						timestamp: new Date(Number(action.timestamp))
+					}))
+				)
+				.onConflictDoNothing({ target: actions.transactionHash })
+				.returning({ wallet: actions.wallet }))
+		)
 	}
 	return insertedActions
 }
