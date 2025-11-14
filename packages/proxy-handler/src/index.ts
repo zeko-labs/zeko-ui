@@ -42,8 +42,8 @@ function isOriginAllowed(params: {
 				// Check if request is a subdomain of allowed origin
 				// e.g., allowed: example.com, request: sub.example.com or example.com
 				return requestHost === allowedHost || requestHost.endsWith(`.${allowedHost}`)
-			} catch {
-				// Invalid URL, skip
+			} catch (error) {
+				console.error(`Invalid URL in allowedOrigins: "${allowed}"`, error)
 			}
 		}
 
@@ -82,7 +82,7 @@ function getCorsHeaders(params: {
 	return headers
 }
 
-function applyCorsHeaders(params: {
+function responseWithCors(params: {
 	response: Response
 	requestOrigin: string | null
 	corsConfig: CorsOptions
@@ -156,30 +156,27 @@ export function createProxyHandler(params: {
 			console.log(`primary req: ${primaryUrl}`)
 			console.log(`backup  req: ${backupUrl}`)
 
-			// Start primary immediately
-			const primaryFetch = fetch(primaryRequest)
+			const fetches = [fetch(primaryRequest)]
+			if (hostnames.length > 1) {
+				fetches.push(
+					(async () => {
+						await new Promise((r) => setTimeout(r, backupDelay))
+						return fetch(backupRequest)
+					})()
+				)
+			}
 
-			// Start backup after configured delay
-			const backupFetch = (async () => {
-				await new Promise((r) => setTimeout(r, backupDelay))
-				console.log(`Starting backup fetch: ${backupUrl.hostname}`)
-				return fetch(backupRequest)
-			})()
+			const response = await Promise.race(fetches)
 
-			// Race and return whichever finishes first
-			const response = await Promise.race([primaryFetch, backupFetch])
-
-			// Add CORS headers if enabled
-			return cors ? applyCorsHeaders({ response, requestOrigin, corsConfig: cors }) : response
+			return cors ? responseWithCors({ response, requestOrigin, corsConfig: cors }) : response
 		} catch (err) {
 			const errorResponse =
 				err instanceof Error
 					? new Response(`Origin fetch error: ${err.message}`, { status: 502 })
 					: new Response("Unknown origin error", { status: 502 })
 
-			// Add CORS headers to error responses if enabled
 			return cors
-				? applyCorsHeaders({ response: errorResponse, requestOrigin, corsConfig: cors })
+				? responseWithCors({ response: errorResponse, requestOrigin, corsConfig: cors })
 				: errorResponse
 		}
 	}
