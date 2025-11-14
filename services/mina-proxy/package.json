@@ -1,0 +1,10 @@
+{
+	"name": "@zeko/mina-proxy",
+	"private": true,
+	"dependencies": {
+		"@zeko/proxy-handler": "workspace:*"
+	},
+	"devDependencies": {
+		"wrangler": "catalog:"
+	}
+}

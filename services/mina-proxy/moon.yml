@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: application
+language: typescript
+stack: infrastructure
+id: mina-proxy
+
+dependsOn:
+  - proxy-handler
+
+tasks:
+  dev:
+    command: wrangler dev
+    preset: server
+  deploy:
+    command: wrangler deploy
+    deps: [^:build]
+  deploy-preview:
+    command: wrangler versions upload
+    deps: [^:build]
+  type-cf:
+    command: wrangler types
+    inputs:
+      - wrangler.jsonc
+    outputs:
+      - worker-configuration.d.ts

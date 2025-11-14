@@ -3,7 +3,10 @@
 layer: application
 language: typescript
 stack: infrastructure
-id: archive
+id: mina-archive-proxy
+
+dependsOn:
+  - proxy-handler
 
 tasks:
   dev:
@@ -11,8 +14,10 @@ tasks:
     preset: server
   deploy:
     command: wrangler deploy
+    deps: [^:build]
   deploy-preview:
     command: wrangler versions upload
+    deps: [^:build]
   type-cf:
     command: wrangler types
     inputs:

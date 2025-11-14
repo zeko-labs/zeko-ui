@@ -5,6 +5,7 @@ projects:
   - "apps/*"
   - "packages/*"
   - "services/mina-archive-proxy"
+  - "services/mina-proxy"
   - "services/leaderboard/*"
 
 vcs:
