@@ -1,5 +1,5 @@
 export interface CorsOptions {
-	/** List of allowed origins. Use ["*"] to allow all origins (e.g., "https://example.com", "http://localhost:3000") */
+	/** List of allowed origins. Use ["*"] to allow all origins, ["localhost"] to allow all localhost ports (e.g., "https://example.com", "http://localhost:3000") */
 	origins: string[]
 	/** If true, allows all subdomains of the specified origins (default: false) */
 	subdomainWildcard?: boolean
@@ -26,6 +26,17 @@ function isOriginAllowed(params: {
 	return allowedOrigins.some((allowed) => {
 		// Wildcard - allow all origins
 		if (allowed === "*") return true
+
+		// Localhost wildcard - allow all localhost ports
+		if (allowed === "localhost") {
+			try {
+				const requestUrl = new URL(requestOrigin)
+				return requestUrl.hostname === "localhost" || requestUrl.hostname === "127.0.0.1"
+			} catch (error) {
+				console.error(`Invalid request origin: "${requestOrigin}"`, error)
+				return false
+			}
+		}
 
 		// Exact match
 		if (allowed === requestOrigin) return true
@@ -118,38 +129,44 @@ export function createProxyHandler(params: {
 	return async (request: Request): Promise<Response> => {
 		const requestOrigin = request.headers.get("Origin")
 
-		// Handle CORS preflight
+		// Handle CORS preflight early
 		if (cors && request.method === "OPTIONS") {
 			return new Response(null, {
 				headers: getCorsHeaders({ requestOrigin, corsConfig: cors })
 			})
 		}
+
+		// Preserve original URL
+		const sourceUrl = new URL(request.url)
+
+		// Pick primary and backup hosts once
+		const primaryIndex = getRandomInt(hostnames.length)
+		let backupIndex = primaryIndex
+		if (hostnames.length > 1) {
+			do {
+				backupIndex = getRandomInt(hostnames.length)
+			} while (backupIndex === primaryIndex)
+		}
+
+		// Combine backend base URL + original path + query
+		const makeTargetUrl = (base: string) => {
+			const baseUrl = new URL(base)
+			const joinedPath = `${baseUrl.pathname.replace(/\/$/, "")}/${sourceUrl.pathname.replace(/^\//, "")}`
+			baseUrl.pathname = joinedPath
+			baseUrl.search = sourceUrl.search
+			return baseUrl
+		}
+
+		const primaryUrl = makeTargetUrl(hostnames[primaryIndex])
+		const backupUrl = makeTargetUrl(hostnames[backupIndex])
+
+		// Handle Websocket upgrade requests
+		const upgradeHeader = request.headers.get("Upgrade")
+		if (upgradeHeader?.toLowerCase() === "websocket") {
+			return fetch(new Request(primaryUrl.toString(), request))
+		}
+
 		try {
-			// Preserve original URL
-			const sourceUrl = new URL(request.url)
-
-			// Pick primary and backup
-			const primaryIndex = getRandomInt(hostnames.length)
-			let backupIndex = primaryIndex
-			if (hostnames.length > 1) {
-				do {
-					backupIndex = getRandomInt(hostnames.length)
-				} while (backupIndex === primaryIndex)
-			}
-
-			// Combine backend base URL + original path + query
-			const makeTargetUrl = (base: string) => {
-				const baseUrl = new URL(base)
-				// join the backend base path + the incoming path
-				const joinedPath = `${baseUrl.pathname.replace(/\/$/, "")}/${sourceUrl.pathname.replace(/^\//, "")}`
-				baseUrl.pathname = joinedPath
-				baseUrl.search = sourceUrl.search // preserve query string
-				return baseUrl
-			}
-
-			const primaryUrl = makeTargetUrl(hostnames[primaryIndex])
-			const backupUrl = makeTargetUrl(hostnames[backupIndex])
-
 			// Create requests using original request as template
 			const primaryRequest = new Request(primaryUrl.toString(), request)
 			const backupRequest = new Request(backupUrl.toString(), request)

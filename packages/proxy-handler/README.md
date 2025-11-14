@@ -6,6 +6,7 @@ Generic web-standard proxy request handler with failover support.
 
 - Random load balancing across multiple backend hostnames
 - Automatic failover with configurable delay
+- WebSocket support (proxies WebSocket upgrade requests)
 - Path and query string preservation
 - Configurable CORS support with subdomain wildcards
 - Web standard Request/Response API
@@ -44,6 +45,16 @@ const handler = createProxyHandler({
 	options: {
 		cors: {
 			origins: ["*"]
+		}
+	}
+})
+
+// Allow all localhost ports
+const handler = createProxyHandler({
+	hostnames,
+	options: {
+		cors: {
+			origins: ["localhost"]
 		}
 	}
 })
@@ -94,13 +105,14 @@ const handler = createProxyHandler({
 
 ### `CorsOptions`
 
-- `origins` (string[]): List of allowed origins. Use `["*"]` to allow all origins (e.g., `["https://example.com", "http://localhost:3000"]`)
+- `origins` (string[]): List of allowed origins. Use `["*"]` to allow all origins, or `["localhost"]` to allow all localhost ports (e.g., `["https://example.com", "http://localhost:3000"]`)
 - `subdomainWildcard` (boolean, optional): If `true`, allows all subdomains of the specified origins. Default: `false`
 
 ## How It Works
 
-1. **Load Balancing**: Randomly selects a primary backend from the hostnames list
-2. **Failover**: Starts a backup request to a different backend after the configured delay
-3. **Race**: Returns whichever response completes first
-4. **CORS**: Automatically handles preflight requests and injects appropriate headers
-5. **Path Preservation**: Combines the backend base URL with the original request path and query parameters
+1. **WebSocket Support**: Detects WebSocket upgrade requests and proxies them directly to a backend (no failover for WebSockets)
+2. **Load Balancing**: Randomly selects a primary backend from the hostnames list
+3. **Failover**: Starts a backup request to a different backend after the configured delay
+4. **Race**: Returns whichever response completes first
+5. **CORS**: Automatically handles preflight requests and injects appropriate headers
+6. **Path Preservation**: Combines the backend base URL with the original request path and query parameters
