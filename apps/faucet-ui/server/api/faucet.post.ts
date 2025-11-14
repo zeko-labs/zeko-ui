@@ -9,35 +9,45 @@ const validateBody = type({
 
 async function verifyTurnstile({
 	token,
-	remoteip,
+	ip,
 	secret
-}: { token: string; secret: string; remoteip: string }): Promise<boolean> {
-	const verifyEndpoint = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+}: { token: string; secret: string; ip: string }): Promise<boolean> {
+	try {
+		const verifyEndpoint = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
-	const response = await fetch(verifyEndpoint, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ secret, response: token, remoteip })
-	})
+		const response = await fetch(verifyEndpoint, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ secret, response: token, remoteip: ip })
+		})
 
-	const data = (await response.json()) as { success: boolean }
-	return data.success
+		const data = (await response.json()) as { success: boolean }
+		if (data.success) return true
+		console.error("Turnstile verification response:", data)
+		return false
+	} catch (error) {
+		console.error("Error verifying Turnstile token:", error)
+		return false
+	}
 }
 
 export default defineEventHandler(async (event) => {
 	const body = await readValidatedBody(event, validateBody)
 	if (body instanceof type.errors) return Response.json({ message: body.message }, { status: 400 })
-	const clientIP =
+	const ip =
 		getHeader(event, "cf-connecting-ip") ||
 		getHeader(event, "x-forwarded-for") ||
 		getHeader(event, "x-real-ip") ||
-		""
+		"unknown"
+
 	const isVerified = await verifyTurnstile({
 		token: body.cfToken,
 		secret: env.TURNSTILE_SECRET_KEY,
-		remoteip: clientIP
+		ip
 	})
+
 	if (!isVerified) {
+		console.error("Turnstile verification failed for IP:", ip)
 		return Response.json(
 			{ message: "Failed to verify you are human. Please try again." },
 			{ status: 403 }

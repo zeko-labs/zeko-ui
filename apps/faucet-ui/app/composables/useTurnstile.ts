@@ -48,17 +48,20 @@ export function useTurnstile(siteKey: string) {
 			container.style.display = "none"
 			document.body.appendChild(container)
 
+			const cleanup = () => {
+				isExecuting.value = false
+				document.body.removeChild(container)
+			}
+
 			widgetId.value = turnstile.render(container, {
 				sitekey: siteKey,
 				callback: (responseToken: string) => {
 					token.value = responseToken
-					isExecuting.value = false
-					document.body.removeChild(container)
+					cleanup()
 					resolve(responseToken)
 				},
 				"error-callback": () => {
-					isExecuting.value = false
-					document.body.removeChild(container)
+					cleanup()
 					reject(new Error("Turnstile verification failed"))
 				},
 				size: "normal"

@@ -24,7 +24,8 @@ const faucetMachine = setup({
 			let cfToken: string
 			try {
 				cfToken = await turnstile.execute()
-			} catch {
+			} catch (error) {
+				console.error("Turnstile execution failed:", error)
 				throw new Error("Failed to verify you are human. Please try again.")
 			}
 
