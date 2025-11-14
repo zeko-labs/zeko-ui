@@ -6,7 +6,7 @@ stack: infrastructure
 id: mina-archive-proxy
 
 dependsOn:
-  - packages/proxy-handler
+  - proxy-handler
 
 tasks:
   dev:
