@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // biome-ignore lint/correctness/noUnusedImports: vue-template
 import { errorToaster } from "~/helpers"
+
 const bs = useBridgeStore()
 </script>
 <template>

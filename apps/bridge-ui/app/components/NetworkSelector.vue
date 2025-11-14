@@ -1,11 +1,8 @@
 <script setup lang="ts">
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { Field } from "@ark-ui/vue/field"
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
-// biome-ignore lint/style/useImportType: <explanation>
-import { Select, createListCollection, useSelect } from "@ark-ui/vue/select"
+// biome-ignore lint/style/useImportType: vue/biome issue
+import { createListCollection, Select, useSelect } from "@ark-ui/vue/select"
 import type { Networks } from "@lumina-dex/sdk"
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ChevronDownIcon } from "lucide-vue-next"
 
 const emit = defineEmits(["select:network"])

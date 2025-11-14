@@ -1,12 +1,10 @@
 <script lang="ts" setup>
 import {
-	// biome-ignore lint/correctness/noUnusedImports: <explanation>
 	FlexRender,
 	getCoreRowModel,
 	getPaginationRowModel,
 	useVueTable
 } from "@tanstack/vue-table"
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-vue-next"
 import { computed } from "vue"
 import type { ActorRefFromLogic } from "xstate"

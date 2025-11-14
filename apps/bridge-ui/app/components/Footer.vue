@@ -4,7 +4,6 @@
       <div class="Links">
         <NuxtLink to="/privacy-policy">Privacy Policy</NuxtLink>
         <NuxtLink to="/terms-of-service">Terms of Service</NuxtLink>
-        <NuxtLink to="/support">Support</NuxtLink>
       </div>
       <div class="Socials">
         <FooterSocial />

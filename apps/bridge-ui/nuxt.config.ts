@@ -36,6 +36,7 @@ export default defineNuxtConfig({
 		"@vite-pwa/nuxt",
 		"@sentry/nuxt/module"
 	],
+	devServer: { port: 3090 },
 	devtools: { enabled: true },
 	hooks: {
 		//Necessary for Nuxt DevTools
