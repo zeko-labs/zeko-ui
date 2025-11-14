@@ -24,10 +24,7 @@ app.post("/", async (c) => {
 		return c.json({ message: "Successfully sent", data: result.data, hash: result.hash }, 200)
 	} catch (error) {
 		console.error(error)
-		return c.json(
-			{ message: `An error has occurred ${error instanceof Error ? error.message : error}` },
-			400
-		)
+		return c.json({ message: error instanceof Error ? error.message : error }, 400)
 	}
 })
 
