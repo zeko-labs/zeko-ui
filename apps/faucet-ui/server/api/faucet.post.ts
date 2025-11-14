@@ -52,30 +52,45 @@ export default defineEventHandler(async (event) => {
 			{ status: 403 }
 		)
 	}
-	const request = new Request("https://faucet.com", {
+	const response = await event.context.cloudflare.env.FAUCET.fetch("https://faucet.com/", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ address: body.address })
 	})
-	//TODO: Figure out how to user service bindings with nitro in dev mode
-	const response = import.meta.dev
-		? Response.json({ message: "claimed", hash: "test", data: {} })
-		: await event.context.cloudflare.env.FAUCET.fetch(request)
 	try {
 		const faucetResult = await response.json()
 		const faucetData = faucetBody(faucetResult)
+		// Response doesn't have a .message field
 		if (faucetData instanceof type.errors)
-			// This happens if the response doesn't have a .message field
-			return Response.json({ message: "An un-expected error has occurred." }, { status: 400 })
+			return Response.json({ message: "An unexpected error has occurred." }, { status: 400 })
+
+		// Already claimed
 		if (faucetData.message.includes("claimed"))
 			return Response.json({ message: "This address has already claimed tokens." }, { status: 403 })
-		if (faucetData.message.toLocaleLowerCase().includes("error"))
+
+		// Sequencer down (502)
+		if (faucetData.message.includes("sequencer is currently unavailable"))
+			return Response.json(
+				{ message: "The Zeko Sequencer is currently unavailable. Please try again later." },
+				{ status: 503 }
+			)
+
+		// Other errors
+		if (faucetData.message.toLowerCase().includes("error")) {
+			console.error("Faucet service returned an error message:", faucetData.message)
 			return Response.json(
 				{ message: `An unknown error has occurred: ${faucetData.message}` },
 				{ status: 400 }
 			)
+		}
+
 		return Response.json(faucetData, { status: 202 })
-	} catch {
-		return Response.json({ message: "The internal service is not available." }, { status: 502 })
+	} catch (error) {
+		console.error("Error processing faucet response:", error)
+		console.error("Response status:", response.status)
+		return Response.json(
+			{ message: "The faucet service is currently unavailable." },
+			{ status: 502 }
+		)
 	}
 })

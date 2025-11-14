@@ -54,6 +54,14 @@ export default {
 				`Response Status ${response.status} from container ${containerInstance.id}:`,
 				data
 			)
+
+			if (!response.ok && data.message.includes("502")) {
+				return Response.json(
+					{ message: "The Zeko sequencer is currently unavailable. Please try again later." },
+					{ status: 503 }
+				)
+			}
+
 			if (data.message === "Successfully sent") {
 				ctx.waitUntil(env.FAUCET_CLAIM.put(address, new Date().toISOString()))
 				console.log(`Stored claim for address ${address} at ${new Date().toISOString()}`)
