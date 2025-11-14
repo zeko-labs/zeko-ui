@@ -69,7 +69,7 @@ export async function queryLeaderboard(
 	)
 
 	const whereClause = searchWallet
-		? sql`${rankedCTE.rank} >= (SELECT rank FROM ${rankedCTE} WHERE wallet = ${searchWallet})`
+		? sql`${rankedCTE.rank} >= (SELECT ${rankedCTE.rank} FROM ${rankedCTE} WHERE ${rankedCTE.wallet} = ${searchWallet})`
 		: sql`1=1`
 
 	const { wallet, score, rank, totalEntries, totalPoints } = rankedCTE
@@ -82,7 +82,17 @@ export async function queryLeaderboard(
 		.limit(limit + 1)
 		.offset(offset)
 
-	if (result.length === 0) return { entries: [], hasMore: false, totalEntries: 0, totalPoints: 0 }
+	if (result.length === 0) {
+		// When search yields no results, we still need to return totalEntries and totalPoints
+		const totalsResult = await db.drizzle
+			.with(rankedCTE)
+			.select({ totalEntries, totalPoints })
+			.from(rankedCTE)
+			.limit(1)
+
+		const totals = totalsResult[0] ?? { totalEntries: 0, totalPoints: 0 }
+		return { entries: [], hasMore: false, ...totals }
+	}
 
 	const hasMore = result.length > limit
 	const entries = result.slice(0, limit).map(({ wallet, score, rank }) => ({ wallet, score, rank }))
@@ -145,7 +155,7 @@ builder.queryType({
 			type: LeaderboardResultObject,
 			args: { input: t.arg({ type: LeaderboardInput, required: false }) },
 			resolve: async (_root, { input }, { database }) => {
-				using db = database({ cache: false })
+				using db = database({ cache: true })
 
 				const result = await queryLeaderboard(db, {
 					searchWallet: input?.searchWallet ?? undefined,

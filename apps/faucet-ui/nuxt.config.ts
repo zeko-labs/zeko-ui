@@ -5,7 +5,7 @@ const currentDir = dirname(fileURLToPath(import.meta.url))
 export default defineNuxtConfig({
 	compatibilityDate: "2025-03-01",
 	devServer: { port: 3080 },
-	modules: ["nitro-cloudflare-dev"],
+	modules: ["nitro-cloudflare-dev", "@nuxt/scripts"],
 	devtools: { enabled: false },
 	extends: ["@zeko/layer"],
 	css: ["~/assets/styles/main.css"],
@@ -14,6 +14,11 @@ export default defineNuxtConfig({
 	},
 	sourcemap: { client: "hidden" },
 	nitro: { preset: "cloudflare_module", minify: false },
+	runtimeConfig: {
+		public: {
+			turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || "0x4AAAAAACAyca4tKieEXIyW"
+		}
+	},
 	postcss: {
 		plugins: {
 			"@csstools/postcss-global-data": {

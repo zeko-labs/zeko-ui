@@ -54,6 +54,17 @@ export default {
 				`Response Status ${response.status} from container ${containerInstance.id}:`,
 				data
 			)
+
+			if (!response.ok) {
+				console.error(`Error response from Faucet container ${containerInstance.id}:`, data.message)
+				if (data.message.includes("502"))
+					return Response.json(
+						{ message: "The Zeko sequencer is currently unavailable. Please try again later." },
+						{ status: 503 }
+					)
+				return Response.json({ message: data.message }, { status: response.status })
+			}
+
 			if (data.message === "Successfully sent") {
 				ctx.waitUntil(env.FAUCET_CLAIM.put(address, new Date().toISOString()))
 				console.log(`Stored claim for address ${address} at ${new Date().toISOString()}`)
