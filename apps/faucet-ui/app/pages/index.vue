@@ -10,6 +10,9 @@ const minaAddress = defineModel()
 
 const id = useId()
 
+const { turnstileSiteKey } = useRuntimeConfig().public
+const turnstile = useTurnstile(turnstileSiteKey)
+
 const faucetMachine = setup({
 	types: {
 		events: {} as { type: "SUBMIT" },
@@ -17,17 +20,27 @@ const faucetMachine = setup({
 	},
 	actors: {
 		submit: fromPromise(async () => {
+			// Get Turnstile token before submitting
+			let cfToken: string
+			try {
+				cfToken = await turnstile.execute()
+			} catch (error) {
+				console.error("Turnstile execution failed:", error)
+				throw new Error("Failed to verify you are human. Please try again.")
+			}
+
 			const response = await fetch("/api/faucet", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json"
 				},
-				body: JSON.stringify({ address: minaAddress.value })
+				body: JSON.stringify({ address: minaAddress.value, cfToken })
 			})
 			const result = await response.json()
 			const data = faucetBody(result)
 			if (data instanceof type.errors || !response.ok)
-				throw new Error(`An error has occurred: ${data.message}`)
+				throw new Error(data.message)
+			turnstile.reset()
 			return data
 		})
 	}
@@ -70,11 +83,13 @@ const zekoScanLink = computed(
 		`https://zekoscan.io/testnet/tx/${faucet.snapshot.value.context.hash}/txInfo?type=zk-tx`
 )
 
+const isValidAddress = computed(() => {
+	if (!minaAddress.value || typeof minaAddress.value !== "string") return false
+	return minaAddress.value.length === 55
+})
+
 const submitDisabled = computed(
-	() =>
-		pending.value ||
-		!minaAddress.value ||
-		(typeof minaAddress.value === "string" && minaAddress.value.length === 0)
+	() => pending.value || turnstile.isExecuting.value || !isValidAddress.value
 )
 </script>
 <template>
@@ -126,7 +141,13 @@ const submitDisabled = computed(
                     variant="black"
                     :disabled="submitDisabled"
                     @click='faucet.send({ type: "SUBMIT" })'>
-                    {{ pending ? "Requesting..." : "Request tMINA" }}
+                    {{
+                      pending
+                      ? turnstile.isExecuting
+                      	? "Verifying..."
+                      	: "Requesting..."
+                      : "Request tMINA"
+                    }}
                     <ArrowBigRight />
                   </Button>
                 </div>
@@ -199,12 +220,18 @@ a {
   grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
   padding: 4.5rem 0 0 0;
+  max-width: 1200px;
+  margin: 0 auto;
 
   @media (--phone) {
     padding: 0;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
     gap: 4rem;
+  }
+
+  @media (--large-desktop) {
+    max-width: 1400px;
   }
 
   section {

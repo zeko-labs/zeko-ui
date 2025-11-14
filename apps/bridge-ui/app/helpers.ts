@@ -79,7 +79,7 @@ export const bridgeMessages = {
 		sendAndConfirm: "Waiting for the transaction to be confirmed."
 	},
 	pending:
-		"Your Send Transaction is awaiting Confirmation. This can take up to 1 hour, to ensure Mina L1 finality.",
+		"Your Send Transaction is awaiting Confirmation. This can take 1 hour or more, to ensure Mina L1 finality.",
 	initBridgeOperation:
 		"Please wait… the Zeko Bridge is loading your wallet's latest transaction history and status.",
 	toFinalize:

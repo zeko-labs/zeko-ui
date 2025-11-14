@@ -14,7 +14,11 @@ export default defineNuxtPlugin((nuxtApp) => {
 				initialDelayMs: 1000,
 				maxNumberAttempts: 5,
 				randomDelay: true,
-				retryIf: (err) => !!err?.networkError
+				retryIf: (err) => {
+					if (err?.networkError) return true
+					if (err?.graphQLErrors && err.graphQLErrors.length > 0) return true
+					return false
+				}
 			}),
 			fetchExchange,
 			subscriptionExchange({

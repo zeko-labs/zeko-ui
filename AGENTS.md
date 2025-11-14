@@ -14,7 +14,7 @@ This is a monorepo using pnpm as the package manager, and moon as the task runne
 
 To install everything, run `pnpm i` from the root.
 
-- Run all command from the root using moon.
+- Run all commands from the root using `moon`. For example, to run the `dev` task for the `faucet-ui` project, go to the repository root and run `moon faucet-ui:dev`. Do not change into a project directory to run `moon` commands; they must be executed from the root.
 - Project tasks are defined in each project’s `moon.yml`. Inspect this file _before_ running any commands in a given project.
 - You can disable moon caching by passing the `-u` flag to any command that has cached results.
 - If you need to run a command not specified in `moon.yml`, use `pnpm exec <command>`.

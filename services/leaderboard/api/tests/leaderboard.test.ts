@@ -68,7 +68,7 @@ describe("queryLeaderboard", () => {
 			const result = await queryLeaderboard(testDb, { limit: 5 })
 
 			expect(result.entries).toHaveLength(5)
-			expect(result.total).toBeGreaterThan(TEST_ROW_COUNT * 0.99) // Allow for ~1% with score=0
+			expect(result.totalEntries).toBeGreaterThan(TEST_ROW_COUNT * 0.99) // Allow for ~1% with score=0
 			expect(result.hasMore).toBe(true) // We have more than 5 entries
 		})
 
@@ -442,6 +442,21 @@ describe("queryLeaderboard", () => {
 	})
 
 	describe("edge cases", () => {
+		it("should return empty results when searching for wallet with score 0", async () => {
+			await db.insert(leaderboard).values([{ wallet: "zero_score_search_test", score: 0 }])
+
+			const result = await queryLeaderboard(testDb, {
+				searchWallet: "zero_score_search_test",
+				limit: 5,
+				page: 1
+			})
+
+			expect(result.entries.length).toBe(0)
+			expect(result.hasMore).toBe(false)
+			expect(result.totalEntries).toBeGreaterThan(0)
+			expect(result.totalPoints).toBeGreaterThan(0)
+		})
+
 		it("should handle entries with score of 0", async () => {
 			await db.insert(leaderboard).values([
 				{ wallet: "zero_score_1", score: 0 },
@@ -479,23 +494,23 @@ describe("queryLeaderboard", () => {
 				.from(leaderboard)
 				.where(sql`${leaderboard.score} > 0`)
 
-			expect(result.total).toBe(countResult[0].count)
+			expect(result.totalEntries).toBe(countResult[0].count)
 		})
 
 		it("should return consistent total count across all pages", async () => {
 			// Get the total from first page
 			const firstPage = await queryLeaderboard(testDb, { page: 1, limit: 10 })
-			const expectedTotal = firstPage.total
+			const expectedTotal = firstPage.totalEntries
 
 			// Verify total is consistent across multiple pages
 			const secondPage = await queryLeaderboard(testDb, { page: 2, limit: 10 })
-			expect(secondPage.total).toBe(expectedTotal)
+			expect(secondPage.totalEntries).toBe(expectedTotal)
 
 			const thirdPage = await queryLeaderboard(testDb, { page: 3, limit: 10 })
-			expect(thirdPage.total).toBe(expectedTotal)
+			expect(thirdPage.totalEntries).toBe(expectedTotal)
 
 			const lastPage = await queryLeaderboard(testDb, { page: 100, limit: 10 })
-			expect(lastPage.total).toBe(expectedTotal)
+			expect(lastPage.totalEntries).toBe(expectedTotal)
 
 			// Verify total matches actual database count
 			const countResult = await db
@@ -513,8 +528,8 @@ describe("queryLeaderboard", () => {
 			const largePage = await queryLeaderboard(testDb, { limit: 500 })
 
 			// All should return the same total regardless of page size
-			expect(smallPage.total).toBe(mediumPage.total)
-			expect(mediumPage.total).toBe(largePage.total)
+			expect(smallPage.totalEntries).toBe(mediumPage.totalEntries)
+			expect(mediumPage.totalEntries).toBe(largePage.totalEntries)
 
 			// Verify against actual count
 			const countResult = await db
@@ -522,7 +537,7 @@ describe("queryLeaderboard", () => {
 				.from(leaderboard)
 				.where(sql`${leaderboard.score} > 0`)
 
-			expect(smallPage.total).toBe(countResult[0].count)
+			expect(smallPage.totalEntries).toBe(countResult[0].count)
 		})
 
 		it("should return correct total even when search filters results", async () => {
@@ -542,7 +557,7 @@ describe("queryLeaderboard", () => {
 			})
 
 			// Total should still be 5 (all entries), not 3 (filtered entries)
-			expect(searchResult.total).toBe(5)
+			expect(searchResult.totalEntries).toBe(5)
 
 			// But we should only get 3 entries back
 			expect(searchResult.entries.length).toBe(3)
