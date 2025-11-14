@@ -453,6 +453,8 @@ describe("queryLeaderboard", () => {
 
 			expect(result.entries.length).toBe(0)
 			expect(result.hasMore).toBe(false)
+			expect(result.totalEntries).toBeGreaterThan(0)
+			expect(result.totalPoints).toBeGreaterThan(0)
 		})
 
 		it("should handle entries with score of 0", async () => {

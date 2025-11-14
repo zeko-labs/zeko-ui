@@ -83,18 +83,15 @@ export async function queryLeaderboard(
 		.offset(offset)
 
 	if (result.length === 0) {
-		// When no results on current page, we need to fetch the total separately
-		// to distinguish between "no data at all" and "beyond last page"
+		// When search yields no results, we still need to return totalEntries and totalPoints
 		const totalsResult = await db.drizzle
 			.with(rankedCTE)
 			.select({ totalEntries, totalPoints })
 			.from(rankedCTE)
 			.limit(1)
 
-		if (totalsResult.length === 0)
-			return { entries: [], hasMore: false, totalEntries: 0, totalPoints: 0 }
-
-		return { entries: [], hasMore: false, ...totalsResult[0] }
+		const totals = totalsResult[0] ?? { totalEntries: 0, totalPoints: 0 }
+		return { entries: [], hasMore: false, ...totals }
 	}
 
 	const hasMore = result.length > limit
