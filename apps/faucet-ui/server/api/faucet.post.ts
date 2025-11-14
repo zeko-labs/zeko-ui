@@ -1,4 +1,3 @@
-import { env } from "cloudflare:workers"
 import { type } from "arktype"
 import { faucetBody } from "~~/helpers/validation"
 
@@ -42,7 +41,7 @@ export default defineEventHandler(async (event) => {
 
 	const isVerified = await verifyTurnstile({
 		token: body.cfToken,
-		secret: env.TURNSTILE_SECRET_KEY,
+		secret: event.context.cloudflare.env.TURNSTILE_SECRET_KEY,
 		ip
 	})
 

@@ -83,12 +83,13 @@ const zekoScanLink = computed(
 		`https://zekoscan.io/testnet/tx/${faucet.snapshot.value.context.hash}/txInfo?type=zk-tx`
 )
 
+const isValidAddress = computed(() => {
+	if (!minaAddress.value || typeof minaAddress.value !== "string") return false
+	return minaAddress.value.length === 55
+})
+
 const submitDisabled = computed(
-	() =>
-		pending.value ||
-		turnstile.isExecuting.value ||
-		!minaAddress.value ||
-		(typeof minaAddress.value === "string" && minaAddress.value.length === 0)
+	() => pending.value || turnstile.isExecuting.value || !isValidAddress.value
 )
 </script>
 <template>
@@ -141,11 +142,11 @@ const submitDisabled = computed(
                     :disabled="submitDisabled"
                     @click='faucet.send({ type: "SUBMIT" })'>
                     {{
-                      turnstile.isExecuting
-                      ? "Verifying..."
-                      : pending
-                      	? "Requesting..."
-                      	: "Request tMINA"
+                      pending
+                      ? turnstile.isExecuting
+                      	? "Verifying..."
+                      	: "Requesting..."
+                      : "Request tMINA"
                     }}
                     <ArrowBigRight />
                   </Button>
