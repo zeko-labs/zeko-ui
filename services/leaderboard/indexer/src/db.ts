@@ -151,6 +151,52 @@ export async function recalculateLeaderboard(
 }
 
 /**
+ * Insert actions in batches to avoid PostgreSQL parameter limit (65,534)
+ * With 4 parameters per action, max safe batch size is 16,000 actions
+ */
+async function batchInsertActions(options: {
+	db: PostgresJsDatabase
+	actionsToInsert: ActionToInsert[]
+	batchSize?: number
+}) {
+	const { db, actionsToInsert, batchSize = 16000 } = options
+	if (actionsToInsert.length === 0) return []
+
+	const insertBatch = async (batch: ActionToInsert[]) =>
+		db
+			.insert(actions)
+			.values(
+				batch.map((action) => ({
+					wallet: action.wallet,
+					actionType: action.actionType,
+					transactionHash: action.transactionHash,
+					timestamp: new Date(Number(action.timestamp))
+				}))
+			)
+			.onConflictDoNothing({ target: actions.transactionHash })
+			.returning({ wallet: actions.wallet })
+
+	if (actionsToInsert.length > batchSize) {
+		logger.info(
+			`Batching ${actionsToInsert.length} actions into chunks of ${batchSize} for insertion`
+		)
+		const insertedActions: { wallet: string }[] = []
+
+		for (let i = 0; i < actionsToInsert.length; i += batchSize) {
+			const batch = actionsToInsert.slice(i, i + batchSize)
+			const batchNumber = Math.floor(i / batchSize) + 1
+			const totalBatches = Math.ceil(actionsToInsert.length / batchSize)
+
+			logger.info(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} actions)`)
+			insertedActions.push(...(await insertBatch(batch)))
+		}
+		return insertedActions
+	}
+
+	return insertBatch(actionsToInsert)
+}
+
+/**
  * Update leaderboard scores for specific wallets based on their existing actions in the database
  * This queries ALL actions for the given wallets and recalculates their total scores
  *
@@ -363,18 +409,7 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 
 	try {
 		// Step 1: Batch insert all actions (ignore duplicates) and get only newly inserted actions
-		const insertedActions = await db
-			.insert(actions)
-			.values(
-				actionsToInsert.map((action) => ({
-					wallet: action.wallet,
-					actionType: action.actionType,
-					transactionHash: action.transactionHash,
-					timestamp: new Date(Number(action.timestamp))
-				}))
-			)
-			.onConflictDoNothing({ target: actions.transactionHash })
-			.returning({ wallet: actions.wallet })
+		const insertedActions = await batchInsertActions({ db, actionsToInsert })
 
 		if (insertedActions.length === 0) {
 			logger.info("No new actions inserted (all were duplicates), skipping leaderboard update")
