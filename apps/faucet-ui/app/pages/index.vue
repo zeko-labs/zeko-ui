@@ -10,6 +10,9 @@ const minaAddress = defineModel()
 
 const id = useId()
 
+const { turnstileSiteKey } = useRuntimeConfig().public
+const turnstile = useTurnstile(turnstileSiteKey)
+
 const faucetMachine = setup({
 	types: {
 		events: {} as { type: "SUBMIT" },
@@ -17,17 +20,26 @@ const faucetMachine = setup({
 	},
 	actors: {
 		submit: fromPromise(async () => {
+			// Get Turnstile token before submitting
+			let cfToken: string
+			try {
+				cfToken = await turnstile.execute()
+			} catch {
+				throw new Error("Failed to verify you are human. Please try again.")
+			}
+
 			const response = await fetch("/api/faucet", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json"
 				},
-				body: JSON.stringify({ address: minaAddress.value })
+				body: JSON.stringify({ address: minaAddress.value, cfToken })
 			})
 			const result = await response.json()
 			const data = faucetBody(result)
 			if (data instanceof type.errors || !response.ok)
 				throw new Error(`An error has occurred: ${data.message}`)
+			turnstile.reset()
 			return data
 		})
 	}
@@ -73,6 +85,7 @@ const zekoScanLink = computed(
 const submitDisabled = computed(
 	() =>
 		pending.value ||
+		turnstile.isExecuting.value ||
 		!minaAddress.value ||
 		(typeof minaAddress.value === "string" && minaAddress.value.length === 0)
 )
@@ -126,7 +139,13 @@ const submitDisabled = computed(
                     variant="black"
                     :disabled="submitDisabled"
                     @click='faucet.send({ type: "SUBMIT" })'>
-                    {{ pending ? "Requesting..." : "Request tMINA" }}
+                    {{
+                      turnstile.isExecuting
+                      ? "Verifying..."
+                      : pending
+                      	? "Requesting..."
+                      	: "Request tMINA"
+                    }}
                     <ArrowBigRight />
                   </Button>
                 </div>

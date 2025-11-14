@@ -1,17 +1,52 @@
+import { env } from "cloudflare:workers"
 import { type } from "arktype"
 import { faucetBody } from "~~/helpers/validation"
 
 const validateBody = type({
-	address: "string.alphanumeric"
+	address: "string.alphanumeric",
+	cfToken: "string"
 })
+
+async function verifyTurnstile({
+	token,
+	remoteip,
+	secret
+}: { token: string; secret: string; remoteip: string }): Promise<boolean> {
+	const verifyEndpoint = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
+	const response = await fetch(verifyEndpoint, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ secret, response: token, remoteip })
+	})
+
+	const data = (await response.json()) as { success: boolean }
+	return data.success
+}
 
 export default defineEventHandler(async (event) => {
 	const body = await readValidatedBody(event, validateBody)
 	if (body instanceof type.errors) return Response.json({ message: body.message }, { status: 400 })
+	const clientIP =
+		getHeader(event, "cf-connecting-ip") ||
+		getHeader(event, "x-forwarded-for") ||
+		getHeader(event, "x-real-ip") ||
+		""
+	const isVerified = await verifyTurnstile({
+		token: body.cfToken,
+		secret: env.TURNSTILE_SECRET_KEY,
+		remoteip: clientIP
+	})
+	if (!isVerified) {
+		return Response.json(
+			{ message: "Failed to verify you are human. Please try again." },
+			{ status: 403 }
+		)
+	}
 	const request = new Request("https://faucet.com", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(body)
+		body: JSON.stringify({ address: body.address })
 	})
 	//TODO: Figure out how to user service bindings with nitro in dev mode
 	const response = import.meta.dev
