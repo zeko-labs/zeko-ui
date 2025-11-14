@@ -78,7 +78,10 @@ export default defineEventHandler(async (event) => {
 		// Other errors
 		if (faucetData.message.toLowerCase().includes("error")) {
 			console.error("Faucet service returned an error message:", faucetData.message)
-			return Response.json({ message: faucetData.message }, { status: 400 })
+			return Response.json(
+				{ message: "The Zeko Sequencer is currently unavailable. Please try again later." },
+				{ status: 503 }
+			)
 		}
 
 		return Response.json(faucetData, { status: 202 })
