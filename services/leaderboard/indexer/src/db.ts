@@ -176,24 +176,24 @@ async function batchInsertActions(options: {
 			.onConflictDoNothing({ target: actions.transactionHash })
 			.returning({ wallet: actions.wallet })
 
-	if (actionsToInsert.length > batchSize) {
+	const insertedActions: { wallet: string }[] = []
+	const totalBatches = Math.ceil(actionsToInsert.length / batchSize)
+
+	if (totalBatches > 1) {
 		logger.info(
 			`Batching ${actionsToInsert.length} actions into chunks of ${batchSize} for insertion`
 		)
-		const insertedActions: { wallet: string }[] = []
-
-		for (let i = 0; i < actionsToInsert.length; i += batchSize) {
-			const batch = actionsToInsert.slice(i, i + batchSize)
-			const batchNumber = Math.floor(i / batchSize) + 1
-			const totalBatches = Math.ceil(actionsToInsert.length / batchSize)
-
-			logger.info(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} actions)`)
-			insertedActions.push(...(await insertBatch(batch)))
-		}
-		return insertedActions
 	}
 
-	return insertBatch(actionsToInsert)
+	for (let i = 0; i < actionsToInsert.length; i += batchSize) {
+		const batch = actionsToInsert.slice(i, i + batchSize)
+		if (totalBatches > 1) {
+			const batchNumber = Math.floor(i / batchSize) + 1
+			logger.info(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} actions)`)
+		}
+		insertedActions.push(...(await insertBatch(batch)))
+	}
+	return insertedActions
 }
 
 /**
