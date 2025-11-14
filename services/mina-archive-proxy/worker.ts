@@ -6,5 +6,8 @@ const hostnames = [
 ]
 
 export default {
-	fetch: createProxyHandler({ hostnames })
+	fetch: createProxyHandler({
+		hostnames,
+		options: { cors: { origins: ["https://zeko.io", "localhost"], subdomainWildcard: true } }
+	})
 }
