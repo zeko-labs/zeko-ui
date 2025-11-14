@@ -185,6 +185,27 @@ export function createProxyHandler(params: {
 
 			const response = await Promise.race(fetches)
 
+			// Websocket HTTPS fix
+			// TODO: Remove this when upstream is fixed.
+			const contentType = response.headers.get("content-type")
+			if (contentType?.includes("text/html")) {
+				const text = await response.text()
+				const workerUrl = new URL(request.url)
+
+				const fixedText =
+					workerUrl.protocol === "https:" ? text.replace(/ws:\/\//g, "wss://") : text
+
+				const fixedResponse = new Response(fixedText, {
+					status: response.status,
+					statusText: response.statusText,
+					headers: response.headers
+				})
+
+				return cors
+					? responseWithCors({ response: fixedResponse, requestOrigin, corsConfig: cors })
+					: fixedResponse
+			}
+
 			return cors ? responseWithCors({ response, requestOrigin, corsConfig: cors }) : response
 		} catch (err) {
 			const errorResponse =
