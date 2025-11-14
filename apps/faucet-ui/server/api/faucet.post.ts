@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
 		body: JSON.stringify({ address: body.address })
 	})
 	try {
-		const faucetResult = await response.json()
+		const faucetResult = await response.clone().json()
 		const faucetData = faucetBody(faucetResult)
 		// Response doesn't have a .message field
 		if (faucetData instanceof type.errors)
@@ -88,6 +88,7 @@ export default defineEventHandler(async (event) => {
 	} catch (error) {
 		console.error("Error processing faucet response:", error)
 		console.error("Response status:", response.status)
+		console.error("Response body:", await response.text().catch(() => "<unable to read body>"))
 		return Response.json(
 			{ message: "The faucet service is currently unavailable." },
 			{ status: 502 }
