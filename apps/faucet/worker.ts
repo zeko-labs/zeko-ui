@@ -55,11 +55,14 @@ export default {
 				data
 			)
 
-			if (!response.ok && data.message.includes("502")) {
-				return Response.json(
-					{ message: "The Zeko sequencer is currently unavailable. Please try again later." },
-					{ status: 503 }
-				)
+			if (!response.ok) {
+				console.error(`Error response from Faucet container ${containerInstance.id}:`, data.message)
+				if (data.message.includes("502"))
+					return Response.json(
+						{ message: "The Zeko sequencer is currently unavailable. Please try again later." },
+						{ status: 503 }
+					)
+				return Response.json({ message: data.message }, { status: response.status })
 			}
 
 			if (data.message === "Successfully sent") {
