@@ -1,5 +1,5 @@
-import { type Networks, type WalletEmit, detectWalletChange } from "@lumina-dex/sdk"
 import type { walletMachine } from "@lumina-dex/sdk"
+import { detectWalletChange, type Networks, type WalletEmit } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
 import * as Comlink from "comlink"
 import { nanoid } from "nanoid"

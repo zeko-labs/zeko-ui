@@ -1,5 +1,5 @@
 //TODO: Move this to the SDK or xstate https://github.com/statelyai/xstate/pull/5382
-import { type Ref, effectScope, getCurrentScope, isRef, onScopeDispose, shallowRef } from "vue"
+import { effectScope, getCurrentScope, isRef, onScopeDispose, type Ref, shallowRef } from "vue"
 import type {
 	Actor,
 	ActorOptions,

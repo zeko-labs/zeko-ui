@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { Networks } from "@lumina-dex/sdk"
+
 const { network, icon = false } = defineProps<{
 	network: Networks
 	icon?: boolean

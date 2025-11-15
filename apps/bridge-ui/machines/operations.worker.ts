@@ -1,15 +1,15 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
-import { Bridge } from "@zeko/bridge-sdk"
 import type {
 	InnerActionWithState,
 	MaybeDeposit,
 	MaybeWithdrawal,
 	OuterActionWithState
 } from "@zeko/bridge-sdk"
+import { Bridge } from "@zeko/bridge-sdk"
 import * as Comlink from "comlink"
-import { PublicKey, Transaction, UInt32, UInt64, fetchTransactionStatus } from "o1js"
+import { fetchTransactionStatus, PublicKey, Transaction, UInt32, UInt64 } from "o1js"
 import { getBridgeConfig } from "./helpers"
 
 export type ActionState = {

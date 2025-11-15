@@ -1,12 +1,10 @@
 <script setup lang="ts">
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
-import { Toast, Toaster, type createToaster } from "@ark-ui/vue/toast"
+import { type createToaster, Toast, Toaster } from "@ark-ui/vue/toast"
 import {
 	CircleAlertIcon,
 	CircleCheckIcon,
 	InfoIcon,
 	TriangleAlertIcon,
-	// biome-ignore lint/correctness/noUnusedImports: <explanation>
 	X
 } from "lucide-vue-next"
 

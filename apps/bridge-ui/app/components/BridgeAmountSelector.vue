@@ -1,9 +1,6 @@
 <script setup lang="ts">
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { Field } from "@ark-ui/vue/field"
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
-import { Select, createListCollection } from "@ark-ui/vue/select"
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
+import { createListCollection, Select } from "@ark-ui/vue/select"
 import { ChevronDownIcon } from "lucide-vue-next"
 
 const { loading = false } = defineProps<{ loading?: boolean }>()

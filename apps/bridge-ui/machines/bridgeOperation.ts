@@ -4,14 +4,14 @@ import {
 	type ActionArgs,
 	type ActorRef,
 	type ActorRefFromLogic,
-	type ErrorActorEvent,
-	type EventObject,
-	type Snapshot,
 	and,
 	assign,
+	type ErrorActorEvent,
+	type EventObject,
 	enqueueActions,
 	fromCallback,
 	fromPromise,
+	type Snapshot,
 	sendTo,
 	setup
 } from "xstate"

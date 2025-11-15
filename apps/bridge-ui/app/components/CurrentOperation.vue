@@ -1,8 +1,12 @@
 <script lang="ts" setup>
 import type { ActorRefFromLogic } from "xstate"
-// biome-ignore lint/correctness/noUnusedImports: template
-import { bridgeMessages, errorToaster, statePath, steps } from "~/helpers"
-import { statusFromState } from "~/helpers"
+import {
+	bridgeMessages,
+	errorToaster,
+	statePath,
+	statusFromState,
+	steps
+} from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 

@@ -25,6 +25,11 @@
 	},
 	"linter": {
 		"rules": {
+			"suspicious": {
+				"useIterableCallbackReturn": {
+					"level": "warn"
+				}
+			},
 			"correctness": {
 				"noUnusedImports": {
 					"level": "warn",

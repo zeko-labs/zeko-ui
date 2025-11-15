@@ -7,6 +7,7 @@ export const createClientOptions = (url: string) =>
 	({
 		url,
 		requestPolicy: "network-only",
+		preferGetMethod: false,
 		exchanges: [
 			retryExchange({
 				maxDelayMs: 5000,

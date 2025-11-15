@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { ArrowBigRightDashIcon } from "lucide-vue-next"
 import type { ActorRefFromLogic } from "xstate"
 import { statusFromState } from "~/helpers"

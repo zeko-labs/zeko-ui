@@ -1,10 +1,10 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
 import { type Networks, urls, type walletMachine } from "@lumina-dex/sdk"
 import type { Mina } from "o1js"
-import { assign, enqueueActions, fromPromise, setup } from "xstate"
 import type { ActorRefFromLogic } from "xstate"
+import { assign, enqueueActions, fromPromise, setup } from "xstate"
 import { createLogger } from "./debug"
-import { type HashDb, type SavedTransaction, hashDb } from "./helpers"
+import { type HashDb, hashDb, type SavedTransaction } from "./helpers"
 import type { OperationsWorker } from "./operations.worker"
 
 const { act, logger } = createLogger("[TRANSACTION]")

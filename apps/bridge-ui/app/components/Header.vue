@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
 import { BellOffIcon, BellRingIcon, WalletIcon } from "lucide-vue-next"
+
 const bs = useBridgeStore()
 const n = useNotificationStore()
 
