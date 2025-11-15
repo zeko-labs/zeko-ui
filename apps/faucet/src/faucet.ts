@@ -66,6 +66,14 @@ export async function sendPayment({
 		receiver.body.implicitAccountCreationFee = new Bool(true)
 	})
 
-	const result = await tx.sign([privateKey]).send()
-	return result
+	try {
+		return await tx.sign([privateKey]).send()
+	} catch (error) {
+		console.warn("Error sending transaction, trying with higher fee", error)
+
+		return await tx
+			.setFee(UInt64.from(0.5 * 1e9))
+			.sign([privateKey])
+			.send()
+	}
 }
