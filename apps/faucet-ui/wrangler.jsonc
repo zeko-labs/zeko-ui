@@ -34,5 +34,15 @@
 			"pattern": "faucet.zeko.io",
 			"custom_domain": true
 		}
+	],
+	"ratelimits": [
+		{
+			"name": "RATE_LIMIT_FAUCET",
+			"namespace_id": "100",
+			"simple": {
+				"limit": 3,
+				"period": 60
+			}
+		}
 	]
 }

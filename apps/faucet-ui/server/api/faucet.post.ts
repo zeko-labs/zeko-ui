@@ -1,10 +1,7 @@
 import { type } from "arktype"
 import { faucetBody } from "~~/helpers/validation"
 
-const validateBody = type({
-	address: "string.alphanumeric",
-	cfToken: "string"
-})
+const validateBody = type({ address: "string.alphanumeric", cfToken: "string" })
 
 async function verifyTurnstile({
 	token,
@@ -31,17 +28,21 @@ async function verifyTurnstile({
 }
 
 export default defineEventHandler(async (event) => {
-	const body = await readValidatedBody(event, validateBody)
-	if (body instanceof type.errors) return Response.json({ message: body.message }, { status: 400 })
 	const ip =
 		getHeader(event, "cf-connecting-ip") ||
 		getHeader(event, "x-forwarded-for") ||
 		getHeader(event, "x-real-ip") ||
 		"unknown"
+	const { env } = event.context.cloudflare
 
+	// Validate body
+	const body = await readValidatedBody(event, validateBody)
+	if (body instanceof type.errors) return Response.json({ message: body.message }, { status: 400 })
+
+	// Verify Turnstile
 	const isVerified = await verifyTurnstile({
 		token: body.cfToken,
-		secret: event.context.cloudflare.env.TURNSTILE_SECRET_KEY,
+		secret: env.TURNSTILE_SECRET_KEY,
 		ip
 	})
 
@@ -52,7 +53,18 @@ export default defineEventHandler(async (event) => {
 			{ status: 403 }
 		)
 	}
-	const response = await event.context.cloudflare.env.FAUCET.fetch("https://faucet.com/", {
+
+	// IP rate limiting
+	const { success } = await env.RATE_LIMIT_FAUCET.limit({ key: ip })
+	if (!success) {
+		return Response.json(
+			{ message: "Too many requests from this IP address. Please try again later." },
+			{ status: 429 }
+		)
+	}
+
+	// Call Faucet Service
+	const response = await env.FAUCET.fetch("https://faucet.com/", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ address: body.address })
@@ -81,6 +93,7 @@ export default defineEventHandler(async (event) => {
 			return Response.json({ message: faucetData.message }, { status: 400 })
 		}
 
+		console.log("Faucet successful response")
 		return Response.json(faucetData, { status: 202 })
 	} catch (error) {
 		console.error("Error processing faucet response:", error)
