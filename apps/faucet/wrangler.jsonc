@@ -3,7 +3,8 @@
 	"compatibility_date": "2025-04-08",
 	"name": "faucet",
 	"main": "worker.ts",
-	"preview_urls": false,
+	"preview_urls": true,
+	"workers_dev": false,
 	"observability": {
 		"enabled": true
 	},
