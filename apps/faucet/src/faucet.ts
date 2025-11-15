@@ -16,6 +16,10 @@ import {
 	hashWithPrefix
 } from "../node_modules/o1js/dist/node/lib/provable/crypto/poseidon"
 
+const INITIAL_FEE = 0.1 * 1e9
+const FEE_INCREMENT = 0.1 * 1e9
+const MAX_FEE = 1 * 1e9
+
 export async function sendPayment(
 	{
 		address,
@@ -28,7 +32,7 @@ export async function sendPayment(
 		amount: bigint
 		publicKey: PublicKey
 	},
-	fee: UInt64 = UInt64.from(0.1 * 1e9)
+	fee: UInt64 = UInt64.from(INITIAL_FEE)
 ) {
 	const claimer = PublicKey.fromBase58(address)
 
@@ -72,9 +76,9 @@ export async function sendPayment(
 	try {
 		return await tx.sign([privateKey]).send()
 	} catch (error) {
-		if (fee.greaterThan(UInt64.from(1 * 1e9))) throw error
+		if (fee.greaterThan(UInt64.from(MAX_FEE))) throw error
 
 		console.warn("Error sending transaction, trying with higher fee", error)
-		return await sendPayment({ address, privateKey, amount, publicKey }, fee.add(0.1 * 1e9))
+		return await sendPayment({ address, privateKey, amount, publicKey }, fee.add(FEE_INCREMENT))
 	}
 }
