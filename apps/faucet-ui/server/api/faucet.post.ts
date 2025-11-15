@@ -28,16 +28,17 @@ async function verifyTurnstile({
 }
 
 export default defineEventHandler(async (event) => {
+	// Validate body
+	const body = await readValidatedBody(event, validateBody)
+	if (body instanceof type.errors) return Response.json({ message: body.message }, { status: 400 })
+
 	const ip =
 		getHeader(event, "cf-connecting-ip") ||
 		getHeader(event, "x-forwarded-for") ||
 		getHeader(event, "x-real-ip") ||
 		"unknown"
-	const { env } = event.context.cloudflare
 
-	// Validate body
-	const body = await readValidatedBody(event, validateBody)
-	if (body instanceof type.errors) return Response.json({ message: body.message }, { status: 400 })
+	const { env } = event.context.cloudflare
 
 	// Verify Turnstile
 	const isVerified = await verifyTurnstile({
