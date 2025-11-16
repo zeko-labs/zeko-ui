@@ -15,10 +15,24 @@ export default defineEventHandler(async (event) => {
 	console.log(`Faucet request: IP[${ip}], Address[${body.address}]`)
 	const { env } = event.context.cloudflare
 
+	// Verify Turnstile
+	const isVerified = await verifyTurnstile({
+		token: body.cfToken,
+		secret: env.TURNSTILE_SECRET_KEY,
+		ip
+	})
+	if (!isVerified) {
+		console.error("Turnstile verification failed for IP:", ip)
+		return Response.json(
+			{ message: "Failed to verify you are human. Please try again." },
+			{ status: 403 }
+		)
+	}
+
 	// IP rate limiting
 	const { success } = await env.RATE_LIMIT_FAUCET.limit({ key: ip })
 	if (!success) {
-		console.warn("FTL-03 IP rate limit blocked", ip)
+		console.warn("IP rate limit blocked", ip)
 		return Response.json(
 			{ message: "Too many requests from this IP address. Please try again later." },
 			{ status: 429 }
@@ -28,7 +42,7 @@ export default defineEventHandler(async (event) => {
 	// IP Ban
 	const banned = await env.FAUCET_BANNED_IPS.get(ip)
 	if (banned) {
-		console.warn("FTL-02 Blocked request from banned IP", ip)
+		console.warn("Blocked request from banned IP", ip)
 		return Response.json(
 			{ message: "Your IP address has been temporarily blocked due to abuse." },
 			{ status: 403 }
@@ -38,27 +52,13 @@ export default defineEventHandler(async (event) => {
 	// Spam
 	const { spam, spamThreshold, spamWindow } = await getSpamState({ ip, env })
 	if (spam > spamThreshold) {
-		const banTtl = Number.parseInt(env.BAN_TTL_SECONDS ?? String(60 * 60 * 24), 10)
+		const banTtl = Number.parseInt(env.BAN_TTL_SECONDS ?? String(60 * 60 * 24), 10) //24 hours
 		await env.FAUCET_BANNED_IPS.put(ip, new Date().toISOString(), { expirationTtl: banTtl })
 		console.warn(
-			`FTL-04 Auto-banned IP ${ip} for exceeding ${spamThreshold} requests in the last ${spamWindow} seconds`
+			`Auto-banned IP ${ip} for exceeding ${spamThreshold} requests in the last ${spamWindow} seconds`
 		)
 		return Response.json(
 			{ message: "Your IP address has been temporarily blocked due to abuse." },
-			{ status: 403 }
-		)
-	}
-
-	// Verify Turnstile
-	const isVerified = await verifyTurnstile({
-		token: body.cfToken,
-		secret: env.TURNSTILE_SECRET_KEY,
-		ip
-	})
-	if (!isVerified) {
-		console.error("FTL-01 Turnstile verification failed for IP:", ip)
-		return Response.json(
-			{ message: "Failed to verify you are human. Please try again." },
 			{ status: 403 }
 		)
 	}
@@ -78,7 +78,7 @@ export default defineEventHandler(async (event) => {
 
 		// Already claimed
 		if (faucetData.message.includes("claimed")) {
-			console.warn("FTL-05 Address already claimed", body.address)
+			console.warn("Address already claimed", body.address)
 			return Response.json({ message: "This address has already claimed tokens." }, { status: 403 })
 		}
 
@@ -91,14 +91,14 @@ export default defineEventHandler(async (event) => {
 
 		// Other errors
 		if (faucetData.message.toLowerCase().includes("error")) {
-			console.error("FTL-08 Faucet service returned an error message:", faucetData.message)
+			console.error("Faucet service returned an error message:", faucetData.message)
 			return Response.json({ message: faucetData.message }, { status: 400 })
 		}
 
-		console.log("FTL-06 Faucet successful response for %s (%s)", body.address, ip)
+		console.log("Faucet successful response for %s (%s)", body.address, ip)
 		return Response.json(faucetData, { status: 202 })
 	} catch (error) {
-		console.error("FTL-09 Error processing faucet response:", error)
+		console.error("Error processing faucet response:", error)
 		console.error("Response status:", response.status)
 		console.error("Response body:", await response.text().catch(() => "<unable to read body>"))
 		return Response.json(

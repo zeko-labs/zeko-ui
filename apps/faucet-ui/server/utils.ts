@@ -29,10 +29,10 @@ export async function verifyTurnstile({
 export async function getSpamState({ ip, env }: { ip: string; env: Env }) {
 	const spamKey = `spam:${ip}`
 	const spamCountStr = await env.FAUCET_IP_SPAM.get(spamKey)
-	const spamCount = spamCountStr ? Number.parseInt(spamCountStr, 10) : 0
+	const spamCount = spamCountStr ? Number.parseInt(spamCountStr, 10) || 0 : 0
 	const spam = spamCount + 1
-	const spamWindow = Number.parseInt(env.SPAM_WINDOW_SECONDS ?? "60", 10)
+	const spamWindow = Number.parseInt(env.SPAM_WINDOW_SECONDS, 10)
 	await env.FAUCET_IP_SPAM.put(spamKey, spam.toString(), { expirationTtl: spamWindow })
-	const spamThreshold = Number.parseInt(env.SPAM_THRESHOLD ?? "20", 10)
+	const spamThreshold = Number.parseInt(env.SPAM_THRESHOLD, 10)
 	return { spam, spamThreshold, spamWindow }
 }
