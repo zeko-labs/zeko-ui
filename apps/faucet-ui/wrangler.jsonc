@@ -4,6 +4,12 @@
 	"main": "./.output/server/index.mjs",
 	"compatibility_date": "2025-08-07",
 	"compatibility_flags": ["nodejs_compat"], //Optional
+	"routes": [
+		{
+			"pattern": "faucet.zeko.io",
+			"custom_domain": true
+		}
+	],
 	"preview_urls": true,
 	"workers_dev": true,
 	"version_metadata": {
@@ -19,6 +25,11 @@
 			"enabled": true
 		}
 	},
+	"vars": {
+		"SPAM_THRESHOLD": "20",
+		"SPAM_WINDOW_SECONDS": "60",
+		"BAN_TTL_SECONDS": "86400"
+	},
 	"secrets_store_secrets": [
 		{
 			"binding": "STORE_FAUCET_URL",
@@ -32,10 +43,16 @@
 			"service": "faucet"
 		}
 	],
-	"routes": [
+	"kv_namespaces": [
 		{
-			"pattern": "faucet.zeko.io",
-			"custom_domain": true
+			"binding": "FAUCET_BANNED_IPS",
+			"id": "4b154f86de1c428e8589d303ece2ff8f",
+			"remote": true
+		},
+		{
+			"binding": "FAUCET_IP_SPAM",
+			"id": "fa73ffb7eff644ab87929dbfa9479884",
+			"remote": true
 		}
 	],
 	"ratelimits": [
