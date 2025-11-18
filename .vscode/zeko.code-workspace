@@ -49,6 +49,14 @@
       "path": "../services/leaderboard/api",
     },
     {
+      "name": "⚡ Actions API",
+      "path": "../services/actions/api",
+    },
+    {
+      "name": "⚡ Actions Indexer",
+      "path": "../services/actions/indexer",
+    },
+    {
       "name": "🗜️ Proxy Handler",
       "path": "../packages/proxy-handler",
     },

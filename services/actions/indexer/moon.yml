@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=../../../.moon/cache/schemas/project.json
+
+id: actions-indexer
+layer: library
+language: typescript
+stack: backend
+
+fileGroups:
+  sources:
+    - src/**/*
+    - moon.yml
+    - package.json
+    - tsdown.config.ts
+  tests:
+    - test/**/*
+    - vitest.config.ts
+
+dependsOn:
+  - lb-api
+  - graphql
+
+tasks:
+  dev:
+    command: bun --watch src/index.ts
+    preset: server
+  build:
+    command: tsdown
+    deps: [^:build]
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - dist/index.js
+  start:
+    command: bun src/index.ts
+    preset: server
+  # test-integration:
+  #   command: vitest run
+  #   inputs:
+  #     - "@group(sources)"
+  #     - "@group(tests)"
+  lint:
+    command: biome check --formatter-enabled=false
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  lint-fix:
+    command: biome check --formatter-enabled=false --write
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"

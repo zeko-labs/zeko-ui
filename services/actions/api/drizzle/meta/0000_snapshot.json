@@ -1,0 +1,252 @@
+{
+	"id": "93530375-f249-4404-9a50-617c413f66b3",
+	"prevId": "00000000-0000-0000-0000-000000000000",
+	"version": "7",
+	"dialect": "postgresql",
+	"tables": {
+		"public.Actions": {
+			"name": "Actions",
+			"schema": "",
+			"columns": {
+				"after_state": {
+					"name": "after_state",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"kind": {
+					"name": "kind",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"before_state": {
+					"name": "before_state",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"length": {
+					"name": "length",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"block_height": {
+					"name": "block_height",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"slot_range_lower": {
+					"name": "slot_range_lower",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"slot_range_upper": {
+					"name": "slot_range_upper",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"before_state|index": {
+					"name": "before_state|index",
+					"columns": [
+						{
+							"expression": "before_state",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"after_state|index": {
+					"name": "after_state|index",
+					"columns": [
+						{
+							"expression": "after_state",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"length|index": {
+					"name": "length|index",
+					"columns": [
+						{
+							"expression": "length",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"Actions_before_state_Actions_after_state_fk": {
+					"name": "Actions_before_state_Actions_after_state_fk",
+					"tableFrom": "Actions",
+					"tableTo": "Actions",
+					"columnsFrom": ["before_state"],
+					"columnsTo": ["after_state"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"actions_before_not_after|check": {
+					"name": "actions_before_not_after|check",
+					"value": "\"Actions\".\"before_state\" IS NULL OR \"Actions\".\"before_state\" <> \"Actions\".\"after_state\""
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.commit_actions": {
+			"name": "commit_actions",
+			"schema": "",
+			"columns": {
+				"after_state": {
+					"name": "after_state",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"ledger": {
+					"name": "ledger",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"inner_action_state": {
+					"name": "inner_action_state",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"inner_action_state_length": {
+					"name": "inner_action_state_length",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"synchronized_outer_action_state": {
+					"name": "synchronized_outer_action_state",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"synchronized_outer_action_state_length": {
+					"name": "synchronized_outer_action_state_length",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"commit_actions_after_state_Actions_after_state_fk": {
+					"name": "commit_actions_after_state_Actions_after_state_fk",
+					"tableFrom": "commit_actions",
+					"tableTo": "Actions",
+					"columnsFrom": ["after_state"],
+					"columnsTo": ["after_state"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.witness_actions": {
+			"name": "witness_actions",
+			"schema": "",
+			"columns": {
+				"after_state": {
+					"name": "after_state",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"aux": {
+					"name": "aux",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {
+				"aux|index": {
+					"name": "aux|index",
+					"columns": [
+						{
+							"expression": "aux",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"witness_actions_after_state_Actions_after_state_fk": {
+					"name": "witness_actions_after_state_Actions_after_state_fk",
+					"tableFrom": "witness_actions",
+					"tableTo": "Actions",
+					"columnsFrom": ["after_state"],
+					"columnsTo": ["after_state"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		}
+	},
+	"enums": {},
+	"schemas": {},
+	"sequences": {},
+	"roles": {},
+	"policies": {},
+	"views": {},
+	"_meta": {
+		"columns": {},
+		"schemas": {},
+		"tables": {}
+	}
+}

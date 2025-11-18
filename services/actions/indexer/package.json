@@ -1,0 +1,36 @@
+{
+	"name": "@zeko/actions-indexer",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": "./dist/index.js",
+		"./module": "./dist/module.js",
+		"./*": "./*"
+	},
+	"dependencies": {
+		"@elysiajs/bearer": "catalog:elysia",
+		"@elysiajs/cors": "catalog:elysia",
+		"@elysiajs/eden": "catalog:elysia",
+		"@zeko/actions-api": "workspace:^",
+		"@lumina-dex/sdk": "catalog:",
+		"@zeko/graphql": "workspace:^",
+		"consola": "catalog:",
+		"drizzle-orm": "catalog:",
+		"elysia": "catalog:elysia",
+		"memoirist": "catalog:elysia",
+		"o1js": "catalog:",
+		"p-limit": "catalog:",
+		"postgres": "catalog:",
+		"valibot": "catalog:"
+	},
+	"devDependencies": {
+		"@types/bun": "catalog:",
+		"gql.tada": "catalog:graphql",
+		"tsdown": "catalog:",
+		"type-fest": "catalog:",
+		"vitest": "catalog:"
+	}
+}

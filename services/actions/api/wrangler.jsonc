@@ -1,0 +1,10 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"compatibility_date": "2025-10-08",
+	"name": "actions-api",
+	"preview_urls": true,
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": { "enabled": true, "traces": { "enabled": true } },
+	"dev": { "port": 9100 },
+	"routes": [{ "custom_domain": true, "pattern": "api.actions.zeko.io" }]
+}

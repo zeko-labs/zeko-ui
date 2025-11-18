@@ -1,0 +1,34 @@
+{
+	"name": "@zeko/actions-api",
+	"private": true,
+	"type": "module",
+	"main": "./dist/module.js",
+	"module": "./dist/module.js",
+	"types": "./dist/module.d.ts",
+	"exports": {
+		".": "./dist/module.js",
+		"./package.json": "./package.json"
+	},
+	"dependencies": {
+		"@pothos/core": "catalog:graphql",
+		"@urql/core": "catalog:graphql",
+		"@zeko/graphql": "workspace:^",
+		"consola": "catalog:",
+		"drizzle-orm": "catalog:",
+		"graphql": "catalog:graphql",
+		"graphql-yoga": "catalog:graphql",
+		"postgres": "catalog:",
+		"valibot": "catalog:"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "catalog:",
+		"@cloudflare/vitest-pool-workers": "catalog:",
+		"@types/bun": "catalog:",
+		"drizzle-kit": "catalog:",
+		"drizzle-seed": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"wrangler": "catalog:"
+	}
+}

@@ -7,6 +7,7 @@ projects:
   - "services/mina-archive-proxy"
   - "services/mina-proxy"
   - "services/leaderboard/*"
+  - "services/actions/*"
 
 vcs:
   manager: "git"
