@@ -74,7 +74,7 @@ tasks:
     options:
       cache: false
   services-reset:
-    script: docker compose down -v && docker compose up -d --wait && moon lb-api:db-migrate && moon lb-api:db-seed
+    script: docker compose down -v && docker compose up -d --wait && moon actions-api:db-migrate && moon actions-api:db-seed
     options:
       cache: false
   lint:

@@ -1,6 +1,6 @@
 import { createConsola } from "consola"
 
-export const logger = createConsola().withTag("LEADERBOARD_API")
+export const logger = createConsola().withTag("ACTIONS_API")
 
 export const checkDatabaseConnectionString = (P = process) => {
 	const args = P.argv.slice(2)

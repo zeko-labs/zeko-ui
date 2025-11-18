@@ -14,7 +14,7 @@ FROM base AS skeleton
 
 # Copy entire repository and scaffold
 COPY . .
-RUN moon docker scaffold lb-indexer
+RUN moon docker scaffold actions-indexer
 
 #### BUILD STAGE
 #### Builds the project.
@@ -34,7 +34,7 @@ RUN moon docker setup
 COPY --from=skeleton /app/.moon/docker/sources .
 
 # Build the project
-RUN moon lb-indexer:build
+RUN moon actions-indexer:build
 
     # Prune extraneous dependencies
 RUN moon docker prune

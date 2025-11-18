@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/pg-core"
 
 export const actions = pgTable(
-	"Actions",
+	"actions",
 	{
 		afterState: text("after_state").primaryKey(),
 		kind: text("kind", { enum: ["commit", "witness"] as const }).notNull(),

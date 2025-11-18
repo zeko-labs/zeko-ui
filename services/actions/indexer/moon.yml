@@ -16,7 +16,7 @@ fileGroups:
     - vitest.config.ts
 
 dependsOn:
-  - lb-api
+  - actions-api
   - graphql
 
 tasks:
