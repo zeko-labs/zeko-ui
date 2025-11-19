@@ -17,12 +17,10 @@
 	"include": [
 		"worker-configuration.d.ts",
 		"drizzle.config.ts",
-		"vitest.config.ts",
 		"module.ts",
 		"drizzle",
 		"graphql",
 		"scripts",
-		"src",
-		"tests"
+		"src"
 	]
 }

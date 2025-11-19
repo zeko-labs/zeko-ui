@@ -43,6 +43,8 @@ tasks:
   #     - graphql/schema.graphql
   type-cf:
     command: wrangler types
+    options:
+      cache: false
     inputs:
       - wrangler.jsonc
     outputs:
