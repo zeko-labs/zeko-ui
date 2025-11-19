@@ -32,13 +32,13 @@ async function main() {
 				// synchronizedOuterActionState: action.synchronizedOuterActionState.toString(),
 				synchronizedOuterActionStateLength: action.synchronizedOuterActionStateLength.toString(),
 				// action: action.action.action.map((x) => x.toString()),
-				// beforeActionState: action.action.beforeActionState.toString(),
-				// afterActionState: action.action.afterActionState.toString(),
+				beforeActionState: action.action.beforeActionState.toString(),
+				afterActionState: action.action.afterActionState.toString(),
 				// isPastWithdrawalDelay: action.isPastWithdrawalDelay,
-				// slotRange: {
-				// 	lower: action.slotRange.lower.toString(),
-				// 	upper: action.slotRange.upper.toString()
-				// },
+				slotRange: {
+					lower: action.slotRange.lower.toString(),
+					upper: action.slotRange.upper.toString()
+				},
 				synced: action.synced,
 				accepted: action.accepted,
 				confirmed: action.confirmed,

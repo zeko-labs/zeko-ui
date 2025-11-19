@@ -44,17 +44,33 @@ tasks:
       - "@globs(src)"
   fetchOuterActions:
     command: bun examples/fetchOuterActions.ts
+    options:
+      cache: false
   fetchInnerActions:
     command: bun examples/fetchInnerActions.ts
+    options:
+      cache: false
   submitDeposit:
     command: bun examples/submitDeposit.ts
+    options:
+      cache: false
   finalizeDeposit:
     command: bun examples/finalizeDeposit.ts
+    options:
+      cache: false
   submitWithdrawal:
     command: bun examples/submitWithdrawal.ts
+    options:
+      cache: false
   finalizeWithdrawal:
     command: bun examples/finalizeWithdrawal.ts
+    options:
+      cache: false
   canFinalizeDeposit:
     command: bun examples/canFinalizeDeposit.ts
+    options:
+      cache: false
   canFinalizeWithdrawal:
     command: bun examples/canFinalizeWithdrawal.ts
+    options:
+      cache: false
