@@ -10,13 +10,15 @@ const urls = {
 	l1: {
 		mainnet: {
 			l1Url: "https://api.minascan.io/node/mainnet/v1/graphql",
-			l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql"
+			l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql",
+			l1IndexerUrl: "todo"
 		},
 		testnet: {
 			//TODO: Change to gateway.mina.testnet.zeko.io when certificate is provisioned
 			// l1Url: "https://gateway.mina.devnet.zeko.io",
 			l1Url: "https://mina-proxy.zeko-labs.workers.dev",
-			l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io"
+			l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
+			l1IndexerUrl: "todo"
 		}
 	},
 	l2: {

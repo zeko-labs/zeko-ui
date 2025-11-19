@@ -708,6 +708,7 @@ export class Bridge {
 			const deposit = auxesMap.get(witness.aux.toBigInt())
 			if (!deposit) throw new Error("Unreachable: Did not find deposit")
 			return {
+				...witness,
 				...deposit,
 				synced: syncedOuterActionState.length
 					.greaterThanOrEqual(UInt32.from(witness.length))

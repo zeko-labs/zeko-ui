@@ -61,12 +61,13 @@ export type InnerWitness = {
 
 export type OuterAction = OuterWitness | OuterCommit
 
-export type DepositWithState = Deposit & {
-	synced: boolean
-	accepted: boolean
-	confirmed: boolean
-	finalised: boolean
-}
+export type DepositWithState = Action &
+	Deposit & {
+		synced: boolean
+		accepted: boolean
+		confirmed: boolean
+		finalised: boolean
+	}
 
 export type InnerAction = InnerWitness
 
