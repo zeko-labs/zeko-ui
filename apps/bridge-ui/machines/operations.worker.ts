@@ -85,8 +85,8 @@ async function findPendingOperations({
 				date: new Date(Number(deposit.timestamp)),
 				hash: deposit.hash
 			},
-			source: l2,
-			destination: l1
+			source: l1,
+			destination: l2
 		})),
 		withdrawals
 	}
