@@ -4,6 +4,7 @@ import {
 	check,
 	index,
 	integer,
+	jsonb,
 	pgTable,
 	text,
 	timestamp
@@ -19,9 +20,12 @@ export const actions = pgTable(
 		}),
 		length: integer("length").notNull(),
 		blockHeight: integer("block_height").notNull(),
+		timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+		txnHash: text("txn_hash").notNull(),
 		slotRangeLower: integer("slot_range_lower").notNull(),
 		slotRangeUpper: integer("slot_range_upper").notNull(),
-		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		fields: jsonb("fields").notNull()
 	},
 	(table) => [
 		index("before_state|index").on(table.beforeState),

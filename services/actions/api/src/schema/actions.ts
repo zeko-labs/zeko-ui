@@ -10,6 +10,9 @@ type BaseAction = {
 	blockHeight: number
 	slotRangeLower: number
 	slotRangeUpper: number
+	timestamp: Date
+	txnHash: string
+	fields: string[]
 	kind: "COMMIT" | "WITNESS"
 }
 

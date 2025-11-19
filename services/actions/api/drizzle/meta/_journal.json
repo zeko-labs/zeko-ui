@@ -8,6 +8,13 @@
 			"when": 1763424147569,
 			"tag": "0000_panoramic_imperial_guard",
 			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1763569479177,
+			"tag": "0001_lame_red_ghost",
+			"breakpoints": true
 		}
 	]
 }
