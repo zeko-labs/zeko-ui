@@ -1,0 +1,62 @@
+interface Action {
+  afterState: String
+  beforeState: String
+  blockHeight: Int
+  kind: ActionKind
+  length: Int
+  slotRangeLower: Int
+  slotRangeUpper: Int
+}
+
+enum ActionKind {
+  COMMIT
+  WITNESS
+}
+
+union ActionUnion = Commit | Witness
+
+input ActionsInput {
+  afterState: String
+  beforeState: String!
+}
+
+type Commit implements Action {
+  afterState: String
+  beforeState: String
+  blockHeight: Int
+  innerActionState: String
+  innerActionStateLength: Int
+  kind: ActionKind
+  ledger: String
+  length: Int
+  slotRangeLower: Int
+  slotRangeUpper: Int
+  synchronizedOuterActionState: String
+  synchronizedOuterActionStateLength: Int
+}
+
+type CommitAsePastWithdrawalDelayResult {
+  ase: [ActionUnion!]
+  commit: Commit
+}
+
+type Query {
+  actions(input: ActionsInput!): [ActionUnion!]
+  commitAsePastWithdrawalDelay(slot: Int!): CommitAsePastWithdrawalDelayResult
+  witnessesFromAuxes(input: WitnessesFromAuxesInput!): [Witness!]
+}
+
+type Witness implements Action {
+  afterState: String
+  aux: String
+  beforeState: String
+  blockHeight: Int
+  kind: ActionKind
+  length: Int
+  slotRangeLower: Int
+  slotRangeUpper: Int
+}
+
+input WitnessesFromAuxesInput {
+  auxes: [String!]!
+}

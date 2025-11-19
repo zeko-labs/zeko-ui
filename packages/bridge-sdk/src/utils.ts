@@ -1,9 +1,141 @@
 import { Field, Poseidon, PublicKey, UInt32, fetchAccount, type Mina } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
+import {
+	fetchActionsQueryIndexer,
+	fetchCommitAsePastWithdrawalDelayQuery,
+	fetchWitnessesFromAuxesQuery
+} from "../../graphql/src/bridge-indexer"
 import { fetchActionsQuery } from "../../graphql/src/mina-archive"
-import { fromList, pushHash } from "./actions"
-import type { Account, Action, Deposit, Withdrawal } from "./types"
+import { empty, fromList, pushHash } from "./actions"
+import type {
+	Account,
+	Action,
+	Deposit,
+	OuterAction,
+	OuterCommit,
+	OuterWitness,
+	Withdrawal
+} from "./types"
+
+const BaseActionSchema = v.object({
+	afterState: v.string(),
+	beforeState: v.nullable(v.string()),
+	length: v.number(),
+	blockHeight: v.number(),
+	slotRangeLower: v.number(),
+	slotRangeUpper: v.number(),
+	timestamp: v.string(),
+	txnHash: v.string(),
+	fields: v.array(v.string()),
+	kind: v.string()
+})
+
+const baseActionFromSchema = (x: v.InferOutput<typeof BaseActionSchema>) => ({
+	beforeActionState: Field.from(x.beforeState ?? empty().hash),
+	afterActionState: Field.from(x.afterState),
+	timestamp: x.timestamp,
+	hash: x.txnHash,
+	length: x.length,
+	action: x.fields.map(Field.from),
+	slotRange: {
+		lower: UInt32.from(x.slotRangeLower),
+		upper: UInt32.from(x.slotRangeUpper)
+	}
+})
+
+const CommitSchema = v.object({
+	...BaseActionSchema.entries,
+	kind: v.literal("COMMIT"),
+	ledger: v.string(),
+	innerActionState: v.string(),
+	innerActionStateLength: v.number(),
+	synchronizedOuterActionState: v.string(),
+	synchronizedOuterActionStateLength: v.number()
+})
+
+const commitFromSchema = (x: v.InferOutput<typeof CommitSchema>) => ({
+	ledger: Field.from(x.ledger),
+	innerActionState: Field.from(x.innerActionState),
+	innerActionStateLength: UInt32.from(x.innerActionStateLength),
+	synchronizedOuterActionState: Field.from(x.synchronizedOuterActionState),
+	synchronizedOuterActionStateLength: UInt32.from(x.synchronizedOuterActionStateLength)
+})
+
+const WitnessSchema = v.object({
+	...BaseActionSchema.entries,
+	kind: v.literal("WITNESS"),
+	aux: v.string()
+})
+
+const witnessFromSchema = (x: v.InferOutput<typeof WitnessSchema>) => ({
+	aux: Field.from(x.aux)
+})
+
+const ActionSchema = v.variant("kind", [CommitSchema, WitnessSchema])
+
+export async function fetchActionsFromIndexer(
+	client: Client,
+	options: { fromState: string; afterState?: string | null | undefined }
+): Promise<OuterAction[]> {
+	const { data } = await client.query(fetchActionsQueryIndexer, {
+		fromState: options.fromState,
+		afterState: options.afterState
+	})
+
+	const result = v.safeParse(v.array(ActionSchema), data?.actions)
+	if (!result.success) throw new Error("Invalid actions data")
+
+	return result.output.map((action) => ({
+		...baseActionFromSchema(action),
+		...(action.kind === "COMMIT"
+			? { ...commitFromSchema(action), type: "commit" }
+			: { ...witnessFromSchema(action), type: "witness" })
+	}))
+}
+
+export async function fetchWitnessesFromAuxes(
+	client: Client,
+	auxes: string[]
+): Promise<OuterWitness[]> {
+	const { data } = await client.query(fetchWitnessesFromAuxesQuery, { auxes })
+
+	const result = v.safeParse(v.array(WitnessSchema), data?.witnessesFromAuxes)
+	if (!result.success) throw new Error("Invalid witnesses data")
+
+	return result.output.map((witness) => ({
+		...baseActionFromSchema(witness),
+		...witnessFromSchema(witness),
+		type: "witness"
+	}))
+}
+
+export async function fetchCommitAsePastWithdrawalDelay(
+	client: Client,
+	slot: number
+): Promise<{ commit: OuterCommit; ase: OuterAction[] }> {
+	const { data } = await client.query(fetchCommitAsePastWithdrawalDelayQuery, { slot })
+
+	const result = v.safeParse(
+		v.object({ commit: CommitSchema, ase: v.array(ActionSchema) }),
+		data?.commitAsePastWithdrawalDelay
+	)
+	if (!result.success) throw new Error("Invalid commit ase past withdrawal delay data")
+
+	return {
+		commit: {
+			...baseActionFromSchema(result.output.commit),
+			...commitFromSchema(result.output.commit),
+			type: "commit"
+		},
+		ase: result.output.ase.map((action) => ({
+			...baseActionFromSchema(action),
+			...(action.kind === "COMMIT"
+				? { ...commitFromSchema(action), type: "commit" }
+				: { ...witnessFromSchema(action), type: "witness" })
+		}))
+	}
+}
 
 // The graphQL schema server will limit the block scan range to a fixed number of blocks.
 // https://github.com/o1-labs/Archive-Node-API/blob/2d726955502fbd02c70d388f589284dd838bbb45/src/server/server.ts#L13

@@ -31,6 +31,8 @@ export const actions = pgTable(
 		index("before_state|index").on(table.beforeState),
 		index("after_state|index").on(table.afterState),
 		index("length|index").on(table.length),
+		index("slot_range_lower|index").on(table.slotRangeLower),
+		index("slot_range_upper|index").on(table.slotRangeUpper),
 		check(
 			"actions_before_not_after|check",
 			sql`${table.beforeState} IS NULL OR ${table.beforeState} <> ${table.afterState}`

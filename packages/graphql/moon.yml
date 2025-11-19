@@ -50,6 +50,10 @@ tasks:
     command: cp ../../services/leaderboard/api/graphql/schema.graphql ./src/generated/leaderboard.graphql
     outputs:
       - "src/generated/leaderboard.graphql"
+  schema-get-bridge-indexer:
+    command: cp ../../services/actions/api/graphql/schema.graphql ./src/generated/bridge-indexer.graphql
+    outputs:
+      - "src/generated/bridge-indexer.graphql"
   schema-get:
     deps:
       - "schema-get-zeko"
@@ -57,3 +61,4 @@ tasks:
       - "schema-get-mina"
       - "schema-get-mina-archive"
       - "schema-get-leaderboard"
+      - "schema-get-bridge-indexer"

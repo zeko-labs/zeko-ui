@@ -15,6 +15,13 @@
 			"when": 1763569479177,
 			"tag": "0001_lame_red_ghost",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1763590753196,
+			"tag": "0002_mysterious_skreet",
+			"breakpoints": true
 		}
 	]
 }

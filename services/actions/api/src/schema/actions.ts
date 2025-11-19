@@ -1,4 +1,4 @@
-import { and, between, desc, eq, inArray } from "drizzle-orm"
+import { and, between, desc, eq, gt, inArray, lt } from "drizzle-orm"
 import { actions, commitActions, witnessActions } from "../../drizzle/schema"
 import { builder } from "../builder"
 import type { Database } from "../db"
@@ -46,9 +46,10 @@ export async function queryWitnessesFromAuxes(
 
 	return witnesses.map(({ witness_actions, actions }) => ({
 		...actions,
+		...witness_actions,
 		kind: "WITNESS",
-		aux: witness_actions.aux
-	})) as Witness[]
+		fields: actions.fields as string[]
+	}))
 }
 
 // Works only if the db is linked list and not DAG, otherwise we need recursive CTE
@@ -86,12 +87,81 @@ export async function queryActions(
 		.where(between(actions.length, beforeStateLength, afterStateLength))
 		.orderBy(actions.length)
 
-	return actionsResult.map(({ action, commit, witness }) => ({
-		...commit,
-		...witness,
-		...action,
-		kind: action.kind.toUpperCase() as "COMMIT" | "WITNESS"
-	})) as Action[]
+	return actionsResult.map(({ action, commit, witness }) => {
+		if (commit) {
+			return {
+				...action,
+				...commit,
+				fields: action.fields as string[],
+				kind: "COMMIT"
+			}
+		}
+		if (witness) {
+			return {
+				...action,
+				...witness,
+				fields: action.fields as string[],
+				kind: "WITNESS"
+			}
+		}
+		throw new Error("Invalid action")
+	})
+}
+
+export async function queryCommitAsePastWithdrawalDelay(
+	db: DatabaseInstance,
+	slot: number
+): Promise<{ commit: Commit; ase: Action[] }> {
+	const [lastCommitPastWithdrawalDelay] = await db.drizzle
+		.select({
+			action: actions,
+			commit: commitActions
+		})
+		.from(actions)
+		.innerJoin(commitActions, eq(actions.afterState, commitActions.afterState))
+		.where(and(eq(actions.kind, "commit"), lt(actions.slotRangeUpper, slot)))
+		.orderBy(desc(actions.length))
+		.limit(1)
+
+	const ase = await db.drizzle
+		.select({
+			action: actions,
+			commit: commitActions,
+			witness: witnessActions
+		})
+		.from(actions)
+		.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
+		.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
+		.where(gt(actions.length, lastCommitPastWithdrawalDelay.action.length))
+		.orderBy(actions.length)
+
+	return {
+		commit: {
+			...lastCommitPastWithdrawalDelay.commit,
+			...lastCommitPastWithdrawalDelay.action,
+			fields: lastCommitPastWithdrawalDelay.action.fields as string[],
+			kind: "COMMIT"
+		},
+		ase: ase.map(({ action, commit, witness }) => {
+			if (commit) {
+				return {
+					...action,
+					...commit,
+					fields: action.fields as string[],
+					kind: "COMMIT"
+				}
+			}
+			if (witness) {
+				return {
+					...action,
+					...witness,
+					fields: action.fields as string[],
+					kind: "WITNESS"
+				}
+			}
+			throw new Error("Invalid action")
+		})
+	}
 }
 
 /**
@@ -156,6 +226,15 @@ const ActionsInput = builder.inputType("ActionsInput", {
 	})
 })
 
+const CommitAsePastWithdrawalDelayResult = builder
+	.objectRef<{ commit: Commit; ase: Action[] }>("CommitAsePastWithdrawalDelayResult")
+	.implement({
+		fields: (t) => ({
+			commit: t.field({ type: CommitObject, resolve: (r) => r.commit }),
+			ase: t.field({ type: [ActionUnion], resolve: (r) => r.ase })
+		})
+	})
+
 builder.queryType({
 	fields: (t) => ({
 		witnessesFromAuxes: t.field({
@@ -175,6 +254,15 @@ builder.queryType({
 			resolve: async (_root, { input }, { database }) => {
 				using db = database({ cache: true })
 				const result = await queryActions(db, input)
+				return result
+			}
+		}),
+		commitAsePastWithdrawalDelay: t.field({
+			type: CommitAsePastWithdrawalDelayResult,
+			args: { slot: t.arg({ type: "Int", required: true }) },
+			resolve: async (_root, { slot }, { database }) => {
+				using db = database({ cache: true })
+				const result = await queryCommitAsePastWithdrawalDelay(db, slot)
 				return result
 			}
 		})

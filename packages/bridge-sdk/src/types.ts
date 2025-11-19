@@ -3,6 +3,7 @@ import type { Field, NetworkId, PublicKey, UInt32, UInt64 } from "o1js"
 export type Config = {
 	l1Url: string
 	l1ArchiveUrl: string
+	l1IndexerUrl: string
 	zekoUrl: string
 	zekoArchiveUrl: string
 	l1Network: NetworkId
@@ -15,7 +16,6 @@ export type Action = {
 	beforeActionState: Field
 	afterActionState: Field
 	timestamp: string
-	status: string
 	hash: string
 }
 
@@ -24,7 +24,6 @@ export type Deposit = {
 	amount: UInt64
 	timeout: UInt32
 	holderAccountL1: PublicKey
-	timedOut: boolean
 }
 
 export type Withdrawal = {
@@ -32,25 +31,26 @@ export type Withdrawal = {
 	amount: UInt64
 }
 
-export type OuterWitness = {
-	type: "witness"
-	aux: Field
-	action: Action
+export type OuterActionBase = Action & {
+	length: number
+	slotRange: {
+		lower: UInt32
+		upper: UInt32
+	}
 }
 
-export type OuterCommit = {
+export type OuterWitness = OuterActionBase & {
+	type: "witness"
+	aux: Field
+}
+
+export type OuterCommit = OuterActionBase & {
 	type: "commit"
 	ledger: Field
 	innerActionState: Field
 	innerActionStateLength: UInt32
 	synchronizedOuterActionState: Field
 	synchronizedOuterActionStateLength: UInt32
-	slotRange: {
-		lower: UInt32
-		upper: UInt32
-	}
-	isPastWithdrawalDelay: boolean
-	action: Action
 }
 
 export type InnerWitness = {
@@ -61,14 +61,11 @@ export type InnerWitness = {
 
 export type OuterAction = OuterWitness | OuterCommit
 
-export type DepositWithFinalised = Deposit & { finalised: boolean }
-
-export type MaybeDeposit = OuterWitness & { deposit: DepositWithFinalised | undefined }
-
-export type OuterActionWithState = (MaybeDeposit | OuterCommit) & {
+export type DepositWithState = Deposit & {
 	synced: boolean
 	accepted: boolean
 	confirmed: boolean
+	finalised: boolean
 }
 
 export type InnerAction = InnerWitness
