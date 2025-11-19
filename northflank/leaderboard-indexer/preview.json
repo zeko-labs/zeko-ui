@@ -1,0 +1,130 @@
+{
+  "apiVersion": "v1.2",
+  "spec": {
+    "kind": "Workflow",
+    "spec": {
+      "type": "sequential",
+      "steps": [
+        {
+          "kind": "BuildSource",
+          "spec": {
+            "defaults": {},
+            "reuseExistingBuilds": true,
+            "buildOverrides": {
+              "buildArguments": {}
+            },
+            "branch": "${refs.zeko-ui.branch}",
+            "id": "leaderboard-indexer-build",
+            "type": "service",
+            "sha": "${refs.zeko-ui.sha}"
+          },
+          "condition": "success",
+          "ref": "build-source-1"
+        },
+        {
+          "kind": "DeploymentService",
+          "spec": {
+            "deployment": {
+              "instances": 1,
+              "storage": {
+                "ephemeralStorage": {
+                  "storageSize": 1024
+                },
+                "shmSize": 64
+              },
+              "docker": {
+                "configType": "default"
+              },
+              "internal": {
+                "id": "${refs.build-source-1.nfObjectId}",
+                "buildSHA": "${refs.build-source-1.sha}",
+                "branch": "${refs.build-source-1.branch}"
+              }
+            },
+            "loadBalancing": {
+              "mode": "leastConnection"
+            },
+            "name": "${args.name}-leaderboard-preview",
+            "tags": [
+              "${args.previewId}"
+            ],
+            "billing": {
+              "deploymentPlan": "nf-compute-10"
+            },
+            "runtimeEnvironment": {
+              "DATABASE_URL": "postgresql://postgres.nozzpmxgeukotumhttnw:LlMJOjsCIOwbSh4P@aws-1-eu-central-1.pooler.supabase.com:5432/postgres",
+              "PORT": "3000",
+              "AUTH_TOKEN": "d8GA0x7gRV1h34WlQL2qz1CFZ3YDitTOhqkrSJ96Gy0",
+              "BROADCAST_URL": "https://api.leaderboard.zeko.io/broadcast"
+            },
+            "runtimeFiles": {},
+            "infrastructure": {
+              "architecture": "x86"
+            },
+            "ports": [
+              {
+                "internalPort": 3000,
+                "public": true,
+                "protocol": "HTTP",
+                "name": "p01",
+                "domains": [],
+                "security": {
+                  "sso": {},
+                  "policies": [],
+                  "credentials": [],
+                  "verificationMode": "or"
+                },
+                "disableNfDomain": false
+              }
+            ]
+          },
+          "ref": "leaderboard-preview"
+        }
+      ]
+    }
+  },
+  "gitops": {
+    "repoUrl": "https://github.com/zeko-labs/zeko-ui",
+    "vcsService": "github",
+    "accountLogin": "zeko-labs",
+    "branch": "main",
+    "filePath": "/northflank/leaderboard-indexer/preview.json"
+  },
+  "triggers": [
+    {
+      "ref": "zeko-ui",
+      "vcsService": "github",
+      "accountLogin": "zeko-labs",
+      "repoUrl": "https://github.com/zeko-labs/zeko-ui",
+      "branchRestrictions": [],
+      "prRestrictions": [
+        "*"
+      ],
+      "pathIgnoreRules": [
+        "/services/leaderboard/indexer/"
+      ],
+      "ciIgnoreFlags": [
+        "[skip ci]",
+        "[ci skip]",
+        "[no ci]",
+        "[skip nf]",
+        "[nf skip]",
+        "[northflank skip]",
+        "[skip northflank]"
+      ],
+      "ciIgnoreFlagsEnabled": true,
+      "isAllowList": true,
+      "ignoreDrafts": false,
+      "manualOnly": false
+    }
+  ],
+  "options": {
+    "concurrencyPolicy": "allow",
+    "nameFormat": "PR-${args.pullRequestId}",
+    "expiry": {
+      "previewLifetime": 1440
+    },
+    "schedule": {}
+  },
+  "$schema": "https://api.northflank.com/v1/schemas/undefined"
+}
