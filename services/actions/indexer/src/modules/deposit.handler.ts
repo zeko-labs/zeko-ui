@@ -1,0 +1,48 @@
+import type { ArchiveEvent } from "../helper"
+import { fetchActions, l1Client, logger } from "../helper"
+
+export const handler = {
+	fetch: async ({ startBlock }: { startBlock: number }) => {
+		logger.info(`[deposit.handler] Fetching from ${startBlock}`)
+		const raw = await fetchActions({
+			client: l1Client,
+			fromBlock: startBlock
+		})
+
+		const data = raw.map((item: ArchiveEvent) => {
+			const beforeState = item.beforeActionState ? item.beforeActionState.toString() : null
+			const afterState = item.afterActionState.toString()
+			const kind = item.action[0].toString() === "0" ? "commit" : "witness"
+			const length = item.action.length
+			const blockHeight = item.blockInfo?.height ?? 0
+
+			if (kind === "commit")
+				return {
+					kind: "commit" as const,
+					afterState,
+					beforeState,
+					length,
+					blockHeight,
+					ledger: item.action[1].toString(),
+					innerActionState: item.action[2].toString(),
+					innerActionStateLength: Number(item.action[3].toString()),
+					synchronizedOuterActionState: item.action[4].toString(),
+					synchronizedOuterActionStateLength: Number(item.action[5].toString()),
+					slotRangeLower: Number(item.action[6]?.toString() ?? 0),
+					slotRangeUpper: Number(item.action[7]?.toString() ?? 0)
+				}
+
+			return {
+				kind: "witness" as const,
+				afterState,
+				beforeState,
+				length,
+				blockHeight,
+				aux: item.action[1].toString()
+			}
+		})
+
+		const lastFetchedBlock = raw.length ? raw[raw.length - 1].blockInfo.height : startBlock
+		return { data, lastFetchedBlock }
+	}
+} as const

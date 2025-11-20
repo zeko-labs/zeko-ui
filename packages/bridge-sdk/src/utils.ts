@@ -1,4 +1,4 @@
-import { Field, Poseidon, PublicKey, UInt32, fetchAccount, type Mina } from "o1js"
+import { Field, fetchAccount, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
 import { fetchActionsQuery } from "../../graphql/src/mina-archive"
