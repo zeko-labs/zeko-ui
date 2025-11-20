@@ -1,4 +1,5 @@
 import { actions, commitActions, witnessActions } from "@zeko/actions-api"
+import { desc, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
@@ -61,8 +62,47 @@ export async function batchInsert<
 }
 
 export async function clearAllTables(tx: PostgresJsDatabase) {
-	// Delete dependent tables first, then parent
 	await tx.delete(witnessActions)
 	await tx.delete(commitActions)
 	await tx.delete(actions)
+}
+
+export async function getLastActionBeforeOrEqual(db: PostgresJsDatabase, height: number) {
+	const [action] = await db
+		.select()
+		.from(actions)
+		.where(sql`${actions.blockHeight} <= ${height}`)
+		.orderBy(desc(actions.blockHeight))
+		.limit(1)
+	return action
+}
+
+export async function getActionsFromBlock(db: PostgresJsDatabase, startBlock: number) {
+	const actionsList = await db
+		.select()
+		.from(actions)
+		.where(sql`${actions.blockHeight} >= ${startBlock}`)
+		.orderBy(actions.blockHeight)
+	return actionsList
+}
+
+export async function getNextActionByBeforeState(
+	db: PostgresJsDatabase,
+	beforeState: string | null
+) {
+	const [action] = await db
+		.select()
+		.from(actions)
+		.where(
+			beforeState === null
+				? sql`${actions.beforeState} IS NULL`
+				: sql`${actions.beforeState} = ${beforeState}`
+		)
+		.orderBy(actions.blockHeight)
+		.limit(1)
+	return action
+}
+
+export async function deleteActionsFromBlock(tx: PostgresJsDatabase, blockHeight: number) {
+	await tx.delete(actions).where(sql`${actions.blockHeight} >= ${blockHeight}`)
 }

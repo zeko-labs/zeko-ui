@@ -1,10 +1,18 @@
 import { actions, commitActions, witnessActions } from "@zeko/actions-api"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import type { ActionsInsert, CommitInsert, WitnessInsert } from "./db"
-import { batchInsert, clearAllTables } from "./db"
-import { logger, wait } from "./helper"
-import { handler as depositHandler } from "./modules/deposit.handler"
-import { handler as withdrawalHandler } from "./modules/withdrawal.handler"
+import {
+	batchInsert,
+	clearAllTables,
+	deleteActionsFromBlock,
+	getActionsFromBlock,
+	getLastActionBeforeOrEqual,
+	getNextActionByBeforeState
+} from "./db"
+import { env } from "./env"
+import { getNetworkTip, l1Client, logger, wait } from "./helper"
+import { handler as depositHandler } from "./modules/deposit"
+import { handler as withdrawalHandler } from "./modules/withdrawal"
 
 interface IndexerConfig {
 	intervalSeconds: number
@@ -22,21 +30,103 @@ export async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerStat
 	const baseDelay = Math.max(1, state.config.intervalSeconds)
 	while (state.isRunning) {
 		try {
-			const depositStart = state.lastFetchedBlock.deposit ?? 0
-			const withdrawalStart = state.lastFetchedBlock.withdrawal ?? 0
+			const tip = await getNetworkTip(l1Client)
+			const finality = Number(env.L1_FINALITY ?? 290)
+			const finalHeight = Math.max(0, tip - finality)
+			const lastFinal = await getLastActionBeforeOrEqual(db, finalHeight)
+			const startBlock = lastFinal?.blockHeight ?? 0
 			logger.info(
-				`runIndexingLoop: fetching deposit from ${depositStart} and withdrawal from ${withdrawalStart}`
+				`runIndexingLoop: tip=${tip}, finalHeight=${finalHeight}, startBlock=${startBlock}`
 			)
-
-			const depositResult = await depositHandler.fetch({ startBlock: depositStart })
-			const withdrawalResult = await withdrawalHandler.fetch({ startBlock: withdrawalStart })
-
-			const { actionsToInsert, commitToInsert, witnessToInsert } = buildDeposits(depositResult.data)
+			const depositResult = await depositHandler.fetch({ startBlock })
 			//TODO: handle withdrawalResult when withdrawal module is functional
 
-			if (actionsToInsert.length || commitToInsert.length || witnessToInsert.length) {
-				await insertDeposits({ db, actionsToInsert, commitToInsert, witnessToInsert })
+			// Prefetch DB chain from startBlock for performant lookups
+			const dbActions = await getActionsFromBlock(db, startBlock)
+			const dbByBefore = new Map<string | null, typeof actions.$inferSelect>()
+			for (const a of dbActions) {
+				dbByBefore.set(a.beforeState ?? null, a)
 			}
+
+			// Compare fetched events with DB chain to detect forks or missing actions
+			let lastKnownAfterState = lastFinal?.afterState ?? null
+			let forkDetected = false
+			const actionsToInsert: ActionsInsert[] = []
+			const commitToInsert: CommitInsert[] = []
+			const witnessToInsert: WitnessInsert[] = []
+
+			for (const item of depositResult.data) {
+				const computedAfter = item.afterState
+				// Prefer the in-memory map for speed; fallback to DB if we don't have it in the map
+				const dbNext =
+					dbByBefore.get(lastKnownAfterState ?? null) ??
+					(await getNextActionByBeforeState(db, lastKnownAfterState ?? null))
+				if (dbNext) {
+					if (dbNext.afterState !== computedAfter) {
+						forkDetected = true
+						break
+					}
+					// otherwise the action matches the stored chain
+					lastKnownAfterState = dbNext.afterState
+					continue
+				}
+				// DB doesn't have the action yet — collect for insertion
+				actionsToInsert.push({
+					afterState: computedAfter,
+					kind: item.kind,
+					beforeState: item.beforeState ?? null,
+					length: item.length,
+					blockHeight: item.blockHeight,
+					slotRangeLower: item.kind === "commit" ? item.slotRangeLower ?? 0 : 0,
+					slotRangeUpper: item.kind === "commit" ? item.slotRangeUpper ?? 0 : 0
+				})
+				if (item.kind === "commit") {
+					commitToInsert.push({
+						afterState: computedAfter,
+						ledger: item.ledger,
+						innerActionState: item.innerActionState,
+						innerActionStateLength: item.innerActionStateLength,
+						synchronizedOuterActionState: item.synchronizedOuterActionState,
+						synchronizedOuterActionStateLength: item.synchronizedOuterActionStateLength
+					})
+				} else {
+					witnessToInsert.push({ afterState: computedAfter, aux: item.aux })
+				}
+			}
+
+			if (forkDetected) {
+				// Rollback DB to last final action and re-insert the events
+				const rollbackStart = lastFinal?.blockHeight ?? 0
+				const {
+					actionsToInsert: allActions,
+					commitToInsert: allCommits,
+					witnessToInsert: allWitness
+				} = buildDeposits(depositResult.data)
+				await db.transaction(async (tx) => {
+					await deleteActionsFromBlock(tx, rollbackStart + 1)
+					await insertDeposits({
+						db: tx,
+						actionsToInsert: allActions,
+						commitToInsert: allCommits,
+						witnessToInsert: allWitness
+					})
+				})
+			} else {
+				// Insert new events normally
+				if (actionsToInsert.length)
+					await db.transaction(async (tx) => {
+						await insertDeposits({
+							db: tx,
+							actionsToInsert,
+							commitToInsert,
+							witnessToInsert
+						})
+					})
+			}
+			// Fetch withdrawal result and update state for completeness
+			const withdrawalResult = await withdrawalHandler.fetch({
+				startBlock: state.lastFetchedBlock.withdrawal ?? 0
+			})
 
 			state.lastRunTimestamp = Date.now()
 			state.lastFetchedBlock.deposit =

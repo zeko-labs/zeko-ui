@@ -1,6 +1,6 @@
 import { createMinaClient } from "@lumina-dex/sdk"
 import { fromList, pushHash } from "@zeko/bridge-sdk"
-import { fetchActionsQuery } from "@zeko/graphql/mina-archive"
+import { fetchActionsQuery, networkStateQuery } from "@zeko/graphql/mina-archive"
 import { createConsola } from "consola"
 import { Field } from "o1js"
 import * as v from "valibot"
@@ -135,6 +135,13 @@ export async function fetchActions({
 			return correctActions
 		}
 	)
+}
+
+export async function getNetworkTip(client: ReturnType<typeof createMinaClient>): Promise<number> {
+	const res = await client.query(networkStateQuery, {})
+	if (res.error) throw res.error
+	const height = res.data?.networkState?.maxBlockHeight?.canonicalMaxBlockHeight ?? 0
+	return height
 }
 
 export async function wait(seconds: number): Promise<void> {

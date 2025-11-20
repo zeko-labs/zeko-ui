@@ -4,12 +4,9 @@ import { fetchActions, l1Client, logger } from "../helper"
 export const handler = {
 	fetch: async ({ startBlock }: { startBlock: number }) => {
 		logger.info(`[deposit.handler] Fetching from ${startBlock}`)
-		const raw = await fetchActions({
-			client: l1Client,
-			fromBlock: startBlock
-		})
+		const actions = await fetchActions({ client: l1Client, fromBlock: startBlock })
 
-		const data = raw.map((item: ArchiveEvent) => {
+		const data = actions.map((item: ArchiveEvent) => {
 			const beforeState = item.beforeActionState ? item.beforeActionState.toString() : null
 			const afterState = item.afterActionState.toString()
 			const kind = item.action[0].toString() === "0" ? "commit" : "witness"
@@ -42,7 +39,9 @@ export const handler = {
 			}
 		})
 
-		const lastFetchedBlock = raw.length ? raw[raw.length - 1].blockInfo.height : startBlock
+		const lastFetchedBlock = actions.length
+			? actions[actions.length - 1].blockInfo.height
+			: startBlock
 		return { data, lastFetchedBlock }
 	}
 } as const

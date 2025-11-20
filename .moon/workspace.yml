@@ -9,7 +9,6 @@ projects:
   - "services/actions/*"
 
 pipeline:
-  installDependencies: false
   logRunningCommand: true
 
 vcs:

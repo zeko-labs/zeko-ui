@@ -1,83 +1,79 @@
 {
-  "apiVersion": "v1.2",
-  "spec": {
-    "kind": "Workflow",
-    "spec": {
-      "type": "sequential",
-      "steps": [
-        {
-          "kind": "Build",
-          "spec": {
-            "reuseExistingBuilds": true,
-            "buildRuleFallThroughHandling": "fail",
-            "buildOverrides": {
-              "buildArguments": {},
-              "buildFiles": {},
-              "dockerSecretMounts": {}
-            },
-            "branch": "${refs.zeko-ui.branch}",
-            "sha": "${refs.zeko-ui.sha}",
-            "id": "leaderboard-indexer-build",
-            "type": "service"
-          },
-          "condition": "success",
-          "ref": "leaderboard-indexer-build-build-1"
-        },
-        {
-          "kind": "Release",
-          "spec": {
-            "type": "build",
-            "origin": {
-              "id": "leaderboard-indexer-build",
-              "branch": "main",
-              "build": "latest"
-            },
-            "target": {
-              "id": "leaderboard-indexer-deployment",
-              "type": "service"
-            }
-          },
-          "ref": "leaderboard-indexer-deployment-release-1"
-        }
-      ]
-    }
-  },
-  "gitops": {
-    "repoUrl": "https://github.com/zeko-labs/zeko-ui",
-    "vcsService": "github",
-    "accountLogin": "zeko-labs",
-    "branch": "main",
-    "filePath": "/northflank/leaderboard-indexer/development.json"
-  },
-  "triggers": [
-    {
-      "ref": "zeko-ui",
-      "vcsService": "github",
-      "accountLogin": "zeko-labs",
-      "repoUrl": "https://github.com/zeko-labs/zeko-ui",
-      "branchRestrictions": [
-        "main"
-      ],
-      "prRestrictions": [],
-      "pathIgnoreRules": [
-        "/services/leaderboard/indexer/"
-      ],
-      "ciIgnoreFlags": [
-        "[skip ci]",
-        "[ci skip]",
-        "[no ci]",
-        "[skip nf]",
-        "[nf skip]",
-        "[northflank skip]",
-        "[skip northflank]"
-      ],
-      "ciIgnoreFlagsEnabled": true,
-      "isAllowList": true,
-      "ignoreDrafts": false
-    }
-  ],
-  "options": {
-    "concurrencyPolicy": "allow"
-  },
-  "$schema": "https://api.northflank.com/v1/schemas/release-flow"
+	"apiVersion": "v1.2",
+	"spec": {
+		"kind": "Workflow",
+		"spec": {
+			"type": "sequential",
+			"steps": [
+				{
+					"kind": "Build",
+					"spec": {
+						"reuseExistingBuilds": true,
+						"buildRuleFallThroughHandling": "fail",
+						"buildOverrides": {
+							"buildArguments": {},
+							"buildFiles": {},
+							"dockerSecretMounts": {}
+						},
+						"branch": "${refs.zeko-ui.branch}",
+						"sha": "${refs.zeko-ui.sha}",
+						"id": "leaderboard-indexer-build",
+						"type": "service"
+					},
+					"condition": "success",
+					"ref": "leaderboard-indexer-build-build-1"
+				},
+				{
+					"kind": "Release",
+					"spec": {
+						"type": "build",
+						"origin": {
+							"id": "leaderboard-indexer-build",
+							"branch": "main",
+							"build": "latest"
+						},
+						"target": {
+							"id": "leaderboard-indexer-deployment",
+							"type": "service"
+						}
+					},
+					"ref": "leaderboard-indexer-deployment-release-1"
+				}
+			]
+		}
+	},
+	"gitops": {
+		"repoUrl": "https://github.com/zeko-labs/zeko-ui",
+		"vcsService": "github",
+		"accountLogin": "zeko-labs",
+		"branch": "main",
+		"filePath": "/northflank/leaderboard-indexer/development.json"
+	},
+	"triggers": [
+		{
+			"ref": "zeko-ui",
+			"vcsService": "github",
+			"accountLogin": "zeko-labs",
+			"repoUrl": "https://github.com/zeko-labs/zeko-ui",
+			"branchRestrictions": ["main"],
+			"prRestrictions": [],
+			"pathIgnoreRules": ["/services/leaderboard/indexer/"],
+			"ciIgnoreFlags": [
+				"[skip ci]",
+				"[ci skip]",
+				"[no ci]",
+				"[skip nf]",
+				"[nf skip]",
+				"[northflank skip]",
+				"[skip northflank]"
+			],
+			"ciIgnoreFlagsEnabled": true,
+			"isAllowList": true,
+			"ignoreDrafts": false
+		}
+	],
+	"options": {
+		"concurrencyPolicy": "allow"
+	},
+	"$schema": "https://api.northflank.com/v1/schemas/release-flow"
 }
