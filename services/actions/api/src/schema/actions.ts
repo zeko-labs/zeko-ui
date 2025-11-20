@@ -1,4 +1,4 @@
-import { and, between, desc, eq, gt, inArray, lt } from "drizzle-orm"
+import { and, between, desc, eq, gt, inArray, lt, sql } from "drizzle-orm"
 import { actions, commitActions, witnessActions } from "../../drizzle/schema"
 import { builder } from "../builder"
 import type { Database } from "../db"
@@ -11,6 +11,7 @@ type BaseAction = {
 	slotRangeLower: number
 	slotRangeUpper: number
 	timestamp: Date
+	createdAt: Date
 	txnHash: string
 	fields: string[]
 	kind: "COMMIT" | "WITNESS"
@@ -57,25 +58,40 @@ export async function queryActions(
 	db: DatabaseInstance,
 	options: { beforeState: string; afterState?: string | null | undefined }
 ): Promise<Action[]> {
-	const afterStateLength = options.afterState
-		? (
-				await db.drizzle
-					.select()
-					.from(actions)
-					.where(eq(actions.afterState, options.afterState))
-					.limit(1)
-			)[0].length
-		: (await db.drizzle.select().from(actions).orderBy(desc(actions.length)).limit(1))[0].length
-
-	const beforeStateLength = (
-		await db.drizzle
-			.select()
+	const limitsCte = db.drizzle.$with("limits").as(
+		db.drizzle
+			.select({
+				beforeLength: sql<number>`
+					(
+						select ${actions.length}
+						from ${actions}
+						where ${actions.beforeState} = ${options.beforeState}
+						limit 1
+					)
+				`,
+				afterLength: sql<number>`
+					coalesce(
+						(
+							select ${actions.length}
+							from ${actions}
+							where ${actions.afterState} = ${options.afterState ?? null}
+							limit 1
+						),
+						(
+							select ${actions.length}
+							from ${actions}
+							order by ${actions.length} desc
+							limit 1
+						)
+					)
+				`
+			})
 			.from(actions)
-			.where(eq(actions.beforeState, options.beforeState))
 			.limit(1)
-	)[0].length
+	)
 
 	const actionsResult = await db.drizzle
+		.with(limitsCte)
 		.select({
 			action: actions,
 			commit: commitActions,
@@ -84,7 +100,8 @@ export async function queryActions(
 		.from(actions)
 		.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
 		.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
-		.where(between(actions.length, beforeStateLength, afterStateLength))
+		.innerJoin(limitsCte, sql`true`)
+		.where(between(actions.length, limitsCte.beforeLength, limitsCte.afterLength))
 		.orderBy(actions.length)
 
 	return actionsResult.map(({ action, commit, witness }) => {
@@ -111,56 +128,75 @@ export async function queryActions(
 export async function queryCommitAsePastWithdrawalDelay(
 	db: DatabaseInstance,
 	slot: number
-): Promise<{ commit: Commit; ase: Action[] }> {
-	const [lastCommitPastWithdrawalDelay] = await db.drizzle
-		.select({
-			action: actions,
-			commit: commitActions
-		})
-		.from(actions)
-		.innerJoin(commitActions, eq(actions.afterState, commitActions.afterState))
-		.where(and(eq(actions.kind, "commit"), lt(actions.slotRangeUpper, slot)))
-		.orderBy(desc(actions.length))
-		.limit(1)
+): Promise<{ commit: Commit | null; ase: Action[] }> {
+	const lastCommitCte = db.drizzle.$with("last_commit").as(
+		db.drizzle
+			.select({
+				lastAction: actions,
+				lastCommit: commitActions,
+				lastLength: actions.length
+			})
+			.from(actions)
+			.innerJoin(commitActions, eq(actions.afterState, commitActions.afterState))
+			.where(and(eq(actions.kind, "commit"), lt(actions.slotRangeUpper, slot)))
+			.orderBy(desc(actions.length))
+			.limit(1)
+	)
 
-	const ase = await db.drizzle
+	const result = await db.drizzle
+		.with(lastCommitCte)
 		.select({
 			action: actions,
 			commit: commitActions,
-			witness: witnessActions
+			witness: witnessActions,
+			lastCommitAction: lastCommitCte.lastAction,
+			lastCommit: lastCommitCte.lastCommit
 		})
-		.from(actions)
+		.from(lastCommitCte)
+		.leftJoin(actions, gt(actions.length, lastCommitCte.lastLength))
 		.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
 		.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
-		.where(gt(actions.length, lastCommitPastWithdrawalDelay.action.length))
 		.orderBy(actions.length)
 
+	const lastCommit =
+		result.length > 0
+			? {
+					action: result[0].lastCommitAction,
+					commit: result[0].lastCommit
+				}
+			: null
+
 	return {
-		commit: {
-			...lastCommitPastWithdrawalDelay.commit,
-			...lastCommitPastWithdrawalDelay.action,
-			fields: lastCommitPastWithdrawalDelay.action.fields as string[],
-			kind: "COMMIT"
-		},
-		ase: ase.map(({ action, commit, witness }) => {
-			if (commit) {
-				return {
-					...action,
-					...commit,
-					fields: action.fields as string[],
+		commit: lastCommit
+			? {
+					...lastCommit.commit,
+					...lastCommit.action,
+					fields: lastCommit.action.fields as string[],
 					kind: "COMMIT"
 				}
-			}
-			if (witness) {
-				return {
-					...action,
-					...witness,
-					fields: action.fields as string[],
-					kind: "WITNESS"
+			: null,
+		ase: result
+			.map(({ action, commit, witness }) => {
+				if (!action) return null
+				if (commit) {
+					return {
+						...action,
+						...commit,
+						fields: action.fields as string[],
+						kind: "COMMIT"
+					}
 				}
-			}
-			throw new Error("Invalid action")
-		})
+				if (witness) {
+					return {
+						...action,
+						...witness,
+						fields: action.fields as string[],
+						kind: "WITNESS"
+					}
+				}
+				throw new Error("Invalid action")
+			})
+			.filter((action): action is Action => action !== null)
 	}
 }
 
@@ -227,10 +263,10 @@ const ActionsInput = builder.inputType("ActionsInput", {
 })
 
 const CommitAsePastWithdrawalDelayResult = builder
-	.objectRef<{ commit: Commit; ase: Action[] }>("CommitAsePastWithdrawalDelayResult")
+	.objectRef<{ commit: Commit | null; ase: Action[] }>("CommitAsePastWithdrawalDelayResult")
 	.implement({
 		fields: (t) => ({
-			commit: t.field({ type: CommitObject, resolve: (r) => r.commit }),
+			commit: t.field({ type: CommitObject, resolve: (r) => r.commit, nullable: true }),
 			ase: t.field({ type: [ActionUnion], resolve: (r) => r.ase })
 		})
 	})
