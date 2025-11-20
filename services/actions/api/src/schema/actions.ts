@@ -48,8 +48,7 @@ export async function queryWitnessesFromAuxes(
 	return witnesses.map(({ witness_actions, actions }) => ({
 		...actions,
 		...witness_actions,
-		kind: "WITNESS",
-		fields: actions.fields as string[]
+		kind: "WITNESS"
 	}))
 }
 
@@ -109,7 +108,6 @@ export async function queryActions(
 			return {
 				...action,
 				...commit,
-				fields: action.fields as string[],
 				kind: "COMMIT"
 			}
 		}
@@ -117,7 +115,6 @@ export async function queryActions(
 			return {
 				...action,
 				...witness,
-				fields: action.fields as string[],
 				kind: "WITNESS"
 			}
 		}
@@ -171,7 +168,6 @@ export async function queryCommitAsePastWithdrawalDelay(
 			? {
 					...lastCommit.commit,
 					...lastCommit.action,
-					fields: lastCommit.action.fields as string[],
 					kind: "COMMIT"
 				}
 			: null,
@@ -182,7 +178,6 @@ export async function queryCommitAsePastWithdrawalDelay(
 					return {
 						...action,
 						...commit,
-						fields: action.fields as string[],
 						kind: "COMMIT"
 					}
 				}
@@ -190,7 +185,6 @@ export async function queryCommitAsePastWithdrawalDelay(
 					return {
 						...action,
 						...witness,
-						fields: action.fields as string[],
 						kind: "WITNESS"
 					}
 				}

@@ -25,11 +25,10 @@ export const actions = pgTable(
 		slotRangeLower: integer("slot_range_lower").notNull(),
 		slotRangeUpper: integer("slot_range_upper").notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-		fields: jsonb("fields").notNull()
+		fields: jsonb("fields").$type<string[]>().notNull()
 	},
 	(table) => [
 		index("before_state|index").on(table.beforeState),
-		index("after_state|index").on(table.afterState),
 		index("length|index").on(table.length),
 		index("slot_range_lower|index").on(table.slotRangeLower),
 		index("slot_range_upper|index").on(table.slotRangeUpper),
