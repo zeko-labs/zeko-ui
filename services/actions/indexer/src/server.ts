@@ -5,7 +5,7 @@ import { createDatabase } from "./db"
 import { env } from "./env"
 import { Indexer } from "./indexer"
 
-const db = createDatabase()
+const db = createDatabase(env.DATABASE_URL)
 const indexer = new Indexer(db)
 
 const authToken = env.AUTH_TOKEN

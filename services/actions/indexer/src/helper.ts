@@ -4,12 +4,12 @@ import { fetchActionsQuery } from "@zeko/graphql/mina-archive"
 import { createConsola } from "consola"
 import { Field } from "o1js"
 import * as v from "valibot"
+import { env } from "./env"
 
 export const logger = createConsola().withTag("ACTIONS_INDEXER")
 
-const L1_ARCHIVE_URL = "https://api.minascan.io/archive/devnet/v1/graphql"
-export const l1Client = createMinaClient(L1_ARCHIVE_URL)
 export const OUTER_PK = "B62qmqHbTA6X54y5M2nSxpuPae5EUE2TBQXacAEqqgn667NRVFKDSeA"
+export const l1Client = createMinaClient(env.L1_ARCHIVE_URL)
 
 export interface ArchiveActionData {
 	data: (string | null)[]
@@ -87,7 +87,10 @@ export async function fetchActions({
 			})
 		)
 		const result = v.safeParse(schema, dataWithDefault)
-		if (!result.success) throw new Error("Invalid actions data")
+		if (!result.success) {
+			logger.error("Invalid actions data:", result.issues)
+			throw new Error("Invalid actions data")
+		}
 
 		if (result.output.length === 0) {
 			if (fromBlock === undefined) return []

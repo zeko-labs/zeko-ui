@@ -2,21 +2,18 @@ import { actions, commitActions, witnessActions } from "@zeko/actions-api"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
+import { env } from "./env"
 
 export function createDatabase(connectionString?: string): PostgresJsDatabase {
 	const str =
-		connectionString ??
-		process.env.DATABASE_URL ??
-		"postgresql://postgres:postgres@localhost:5432/actions"
+		connectionString ?? env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/actions"
 	const client = postgres(str, { max: 5 })
 	return drizzle(client)
 }
 
 export function createTestDatabase(connectionString?: string) {
 	const str =
-		connectionString ??
-		process.env.DATABASE_URL ??
-		"postgresql://postgres:postgres@localhost:5432/actions"
+		connectionString ?? env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/actions"
 	const url = new URL(str)
 	const isLocalhost = url.hostname === "localhost" || url.hostname === "127.0.0.1"
 	if (!isLocalhost) {
@@ -41,42 +38,25 @@ export type ActionsInsert = typeof actions.$inferInsert
 export type CommitInsert = typeof commitActions.$inferInsert
 export type WitnessInsert = typeof witnessActions.$inferInsert
 
-export async function batchInsertActions(
-	tx: PostgresJsDatabase,
-	values: ActionsInsert[],
+export async function batchInsert<
+	T extends typeof actions | typeof commitActions | typeof witnessActions
+>({
+	db,
+	table,
+	values,
 	chunkSize = 16000
-) {
+}: {
+	db: PostgresJsDatabase
+	table: T
+	values: T["$inferInsert"][]
+	chunkSize?: number
+}): Promise<void> {
 	for (let i = 0; i < values.length; i += chunkSize) {
 		const chunk = values.slice(i, i + chunkSize)
-		await tx.insert(actions).values(chunk).onConflictDoNothing({ target: actions.afterState })
-	}
-}
-
-export async function batchInsertCommitActions(
-	tx: PostgresJsDatabase,
-	values: CommitInsert[],
-	chunkSize = 16000
-) {
-	for (let i = 0; i < values.length; i += chunkSize) {
-		const chunk = values.slice(i, i + chunkSize)
-		await tx
-			.insert(commitActions)
-			.values(chunk)
-			.onConflictDoNothing({ target: commitActions.afterState })
-	}
-}
-
-export async function batchInsertWitnessActions(
-	tx: PostgresJsDatabase,
-	values: WitnessInsert[],
-	chunkSize = 16000
-) {
-	for (let i = 0; i < values.length; i += chunkSize) {
-		const chunk = values.slice(i, i + chunkSize)
-		await tx
-			.insert(witnessActions)
-			.values(chunk)
-			.onConflictDoNothing({ target: witnessActions.afterState })
+		await db
+			.insert(table)
+			.values(chunk as any)
+			.onConflictDoNothing({ target: table.afterState })
 	}
 }
 
