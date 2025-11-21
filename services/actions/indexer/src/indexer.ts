@@ -1,4 +1,5 @@
 import { actions, commitActions, witnessActions } from "@zeko/actions-api"
+import { sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import type { ActionsInsert, CommitInsert, WitnessInsert } from "./db"
 import {
@@ -112,16 +113,19 @@ export async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerStat
 					})
 				})
 			} else {
-				// Insert new events normally
-				if (actionsToInsert.length)
+				// Insert new events normally (ensure parent action rows are inserted before their children)
+				if (actionsToInsert.length) {
+					const existingAfterStates = new Set(dbActions.map((a) => a.afterState))
+					const orderedActions = orderActionsWithParents(actionsToInsert, existingAfterStates)
 					await db.transaction(async (tx) => {
 						await insertDeposits({
 							db: tx,
-							actionsToInsert,
+							actionsToInsert: orderedActions,
 							commitToInsert,
 							witnessToInsert
 						})
 					})
+				}
 			}
 			// Fetch withdrawal result and update state for completeness
 			const withdrawalResult = await withdrawalHandler.fetch({
@@ -138,9 +142,16 @@ export async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerStat
 				`runIndexingLoop: finished run (deposit=${state.lastFetchedBlock.deposit ?? 0}, withdrawal=${state.lastFetchedBlock.withdrawal ?? 0})`
 			)
 		} catch (err: unknown) {
-			state.consecutiveErrors = (state.consecutiveErrors ?? 0) + 1
-			const retryDelay = Math.min(45, baseDelay * state.consecutiveErrors)
-			logger.error(`runIndexingLoop error: ${err instanceof Error ? err.message : String(err)}`)
+			const retryDelay = Math.min(45, baseDelay * (state.consecutiveErrors ?? 0) + 1)
+			const missingParents: string[] | undefined = (err as unknown as { missingParents?: string[] })
+				?.missingParents
+			logger.error("runIndexingLoop error:", err)
+			logger.warn(
+				"[runIndexingLoop] ordering failed; missing parents:",
+				missingParents
+					? `${missingParents.length} (sample: ${missingParents.slice(0, 5).join(", ")})`
+					: String(err)
+			)
 			logger.info(`Linear backoff: retrying in ${retryDelay}s`)
 			await wait(retryDelay)
 			continue
@@ -228,7 +239,13 @@ export class Indexer {
 
 			await this.#db.transaction(async (tx) => {
 				await clearAllTables(tx)
-				await insertDeposits({ db: tx, actionsToInsert, commitToInsert, witnessToInsert })
+				const orderedActions = orderActionsWithParents(actionsToInsert, new Set())
+				await insertDeposits({
+					db: tx,
+					actionsToInsert: orderedActions,
+					commitToInsert,
+					witnessToInsert
+				})
 			})
 
 			this.#state.lastFetchedBlock.deposit = depositResult.lastFetchedBlock ?? null
@@ -283,15 +300,55 @@ async function insertDeposits({
 	db,
 	actionsToInsert,
 	commitToInsert,
-	witnessToInsert
+	witnessToInsert,
+	deffered = true
 }: {
 	db: PostgresJsDatabase
 	actionsToInsert: ActionsInsert[]
 	commitToInsert: CommitInsert[]
 	witnessToInsert: WitnessInsert[]
+	deffered?: boolean
 }) {
+	if (deffered) {
+		await db.execute(sql`SET CONSTRAINTS ALL DEFERRED;`)
+	}
 	if (actionsToInsert.length) await batchInsert({ db, table: actions, values: actionsToInsert })
 	if (commitToInsert.length) await batchInsert({ db, table: commitActions, values: commitToInsert })
 	if (witnessToInsert.length)
 		await batchInsert({ db, table: witnessActions, values: witnessToInsert })
+}
+
+function orderActionsWithParents(actions: ActionsInsert[], existingAfterStates: Set<string>) {
+	const pending = new Map(actions.map((a) => [a.afterState, a]))
+	const ordered: ActionsInsert[] = []
+	const inserted = new Set(existingAfterStates)
+
+	let progress = true
+	while (pending.size && progress) {
+		progress = false
+		for (const [afterState, act] of Array.from(pending.entries())) {
+			const before = act.beforeState ?? null
+			if (before === null || (typeof before === "string" && inserted.has(before))) {
+				ordered.push(act)
+				inserted.add(afterState)
+				pending.delete(afterState)
+				progress = true
+			}
+		}
+	}
+
+	if (pending.size) {
+		const missing = new Set<string>()
+		for (const [, act] of pending) {
+			if (act.beforeState) missing.add(act.beforeState)
+		}
+		const missingArr = Array.from(missing)
+		const err = new Error(
+			`Missing parent after_state(s) for insert: ${missingArr.slice(0, 10).join(", ")}` +
+				(missingArr.length > 10 ? ` (+${missingArr.length - 10} more)` : "")
+		) as Error & { missingParents?: string[] }
+		err.missingParents = missingArr
+		throw err
+	}
+	return ordered
 }

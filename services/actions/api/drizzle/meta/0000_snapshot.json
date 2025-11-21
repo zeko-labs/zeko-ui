@@ -1,11 +1,11 @@
 {
-	"id": "93530375-f249-4404-9a50-617c413f66b3",
+	"id": "afd6d03d-57b6-4f09-9b0c-055f0ab3b70a",
 	"prevId": "00000000-0000-0000-0000-000000000000",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
-		"public.Actions": {
-			"name": "Actions",
+		"public.actions": {
+			"name": "actions",
 			"schema": "",
 			"columns": {
 				"after_state": {
@@ -106,10 +106,10 @@
 				}
 			},
 			"foreignKeys": {
-				"Actions_before_state_Actions_after_state_fk": {
-					"name": "Actions_before_state_Actions_after_state_fk",
-					"tableFrom": "Actions",
-					"tableTo": "Actions",
+				"actions_before_state_actions_after_state_fk": {
+					"name": "actions_before_state_actions_after_state_fk",
+					"tableFrom": "actions",
+					"tableTo": "actions",
 					"columnsFrom": ["before_state"],
 					"columnsTo": ["after_state"],
 					"onDelete": "restrict",
@@ -122,7 +122,7 @@
 			"checkConstraints": {
 				"actions_before_not_after|check": {
 					"name": "actions_before_not_after|check",
-					"value": "\"Actions\".\"before_state\" IS NULL OR \"Actions\".\"before_state\" <> \"Actions\".\"after_state\""
+					"value": "\"actions\".\"before_state\" IS NULL OR \"actions\".\"before_state\" <> \"actions\".\"after_state\""
 				}
 			},
 			"isRLSEnabled": false
@@ -170,10 +170,10 @@
 			},
 			"indexes": {},
 			"foreignKeys": {
-				"commit_actions_after_state_Actions_after_state_fk": {
-					"name": "commit_actions_after_state_Actions_after_state_fk",
+				"commit_actions_after_state_actions_after_state_fk": {
+					"name": "commit_actions_after_state_actions_after_state_fk",
 					"tableFrom": "commit_actions",
-					"tableTo": "Actions",
+					"tableTo": "actions",
 					"columnsFrom": ["after_state"],
 					"columnsTo": ["after_state"],
 					"onDelete": "cascade",
@@ -221,10 +221,10 @@
 				}
 			},
 			"foreignKeys": {
-				"witness_actions_after_state_Actions_after_state_fk": {
-					"name": "witness_actions_after_state_Actions_after_state_fk",
+				"witness_actions_after_state_actions_after_state_fk": {
+					"name": "witness_actions_after_state_actions_after_state_fk",
 					"tableFrom": "witness_actions",
-					"tableTo": "Actions",
+					"tableTo": "actions",
 					"columnsFrom": ["after_state"],
 					"columnsTo": ["after_state"],
 					"onDelete": "cascade",

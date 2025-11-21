@@ -39,6 +39,14 @@ export const handler = {
 			}
 		})
 
+		// Debug: log a small sample of beforeStates and afterStates to help diagnose missing parents
+		if (data.length) {
+			const sample = data.slice(0, 5)
+			logger.info(
+				`[deposit.handler] fetched ${data.length} actions; sample beforeStates: ${sample.map((d) => d.beforeState ?? "NULL").join(", ")}`
+			)
+		}
+
 		const lastFetchedBlock = actions.length
 			? actions[actions.length - 1].blockInfo.height
 			: startBlock

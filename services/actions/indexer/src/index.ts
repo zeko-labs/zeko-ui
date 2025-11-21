@@ -8,6 +8,4 @@ console.log("Available routes:")
 console.log("POST /start  - Start the indexing loop (accepts intervalSeconds)")
 console.log("POST /stop   - Stop the indexing loop")
 console.log("GET  /status - Get current loop status")
-console.log(
-	"POST /rebuild - Rebuild actions table from archive (fromBlock is deprecated and ignored)"
-)
+console.log("POST /rebuild - Rebuild actions table from archive")

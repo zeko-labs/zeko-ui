@@ -4,17 +4,18 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 import { env } from "./env"
+import { logger } from "./helper"
 
 export function createDatabase(connectionString?: string): PostgresJsDatabase {
 	const str =
-		connectionString ?? env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/actions"
+		connectionString ?? env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5434/actions"
 	const client = postgres(str, { max: 5 })
 	return drizzle(client)
 }
 
 export function createTestDatabase(connectionString?: string) {
 	const str =
-		connectionString ?? env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/actions"
+		connectionString ?? env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5434/actions"
 	const url = new URL(str)
 	const isLocalhost = url.hostname === "localhost" || url.hostname === "127.0.0.1"
 	if (!isLocalhost) {
@@ -45,7 +46,7 @@ export async function batchInsert<
 	db,
 	table,
 	values,
-	chunkSize = 16000
+	chunkSize = 8000
 }: {
 	db: PostgresJsDatabase
 	table: T
@@ -68,21 +69,25 @@ export async function clearAllTables(tx: PostgresJsDatabase) {
 }
 
 export async function getLastActionBeforeOrEqual(db: PostgresJsDatabase, height: number) {
+	logger.debug(`[getLastActionBeforeOrEqual] querying height <= ${height}`)
 	const [action] = await db
 		.select()
 		.from(actions)
 		.where(sql`${actions.blockHeight} <= ${height}`)
 		.orderBy(desc(actions.blockHeight))
 		.limit(1)
+	logger.debug(`[getLastActionBeforeOrEqual] got action: ${action?.afterState ?? "<none>"}`)
 	return action
 }
 
 export async function getActionsFromBlock(db: PostgresJsDatabase, startBlock: number) {
+	logger.debug(`[getActionsFromBlock] querying block >= ${startBlock}`)
 	const actionsList = await db
 		.select()
 		.from(actions)
 		.where(sql`${actions.blockHeight} >= ${startBlock}`)
 		.orderBy(actions.blockHeight)
+	logger.debug(`[getActionsFromBlock] got ${actionsList.length} rows`)
 	return actionsList
 }
 
@@ -90,6 +95,7 @@ export async function getNextActionByBeforeState(
 	db: PostgresJsDatabase,
 	beforeState: string | null
 ) {
+	logger.debug(`[getNextActionByBeforeState] querying beforeState=${beforeState ?? "NULL"}`)
 	const [action] = await db
 		.select()
 		.from(actions)
@@ -100,9 +106,11 @@ export async function getNextActionByBeforeState(
 		)
 		.orderBy(actions.blockHeight)
 		.limit(1)
+	logger.debug(`[getNextActionByBeforeState] got action: ${action?.afterState ?? "<none>"}`)
 	return action
 }
 
 export async function deleteActionsFromBlock(tx: PostgresJsDatabase, blockHeight: number) {
+	logger.debug(`[deleteActionsFromBlock] deleting from block >= ${blockHeight}`)
 	await tx.delete(actions).where(sql`${actions.blockHeight} >= ${blockHeight}`)
 }

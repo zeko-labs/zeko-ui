@@ -8,8 +8,10 @@ import { env } from "./env"
 
 export const logger = createConsola().withTag("ACTIONS_INDEXER")
 
-export const OUTER_PK = "B62qmqHbTA6X54y5M2nSxpuPae5EUE2TBQXacAEqqgn667NRVFKDSeA"
+export const OUTER_PK = "B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2"
 export const l1Client = createMinaClient(env.L1_ARCHIVE_URL)
+
+const firstBlockWithActions = 430_000
 
 export interface ArchiveActionData {
 	data: (string | null)[]
@@ -41,24 +43,63 @@ export async function fetchActions({
 	client: ReturnType<typeof createMinaClient>
 	fromBlock?: number
 }): Promise<ArchiveEvent[]> {
-	const fetchActionsRecursive = async (
-		fromBlock?: number,
-		emptyResults: number = 0
-	): Promise<ArchiveAction[]> => {
-		if (fromBlock !== undefined && fromBlock < 0) return []
-		if (emptyResults > 10) return []
+	logger.info(`[fetchActions] starting fetch; fromBlock=${fromBlock ?? "latest"}`)
+	logger.debug(
+		`[fetchActions] using OUTER_PK=${OUTER_PK} archiveUrl=${env.L1_ARCHIVE_URL ?? "unset"}`
+	)
+	// Ensure we fetch in batches from 'from' to tip
+	const start = Math.max(fromBlock ?? 0, firstBlockWithActions)
+	const maxHeight = await getNetworkTip(client)
+	logger.info(`[fetchActions] network tip: ${maxHeight}, start: ${start}`)
+	if (start > maxHeight) {
+		logger.info(`[fetchActions] start (${start}) > network tip (${maxHeight}), returning empty`)
+		return []
+	}
 
+	const blocks: ArchiveAction[] = []
+	let from = start
+	while (from <= maxHeight) {
+		const to = Math.min(from + BLOCK_RANGE_SIZE - 1, maxHeight)
+		logger.debug(`[fetchActions] querying archive for range ${from}-${to}`)
 		const res = await client.query(fetchActionsQuery, {
 			pk: OUTER_PK,
-			from: fromBlock ?? null,
-			to: null
+			from: from,
+			to: to
 		})
 		const { data, error } = res
-		if (error) throw error
-		function notNull<T>(v: T | null | undefined): v is T {
-			return v != null
+		if (error) {
+			logger.error(`[fetchActions] query error: ${String(error)}`)
+			throw error
 		}
-		const rawActions = (data?.actions ?? []).filter(notNull)
+		const rawActions = (data?.actions ?? []).filter((a) => a != null)
+		logger.info(
+			`[fetchActions] archive returned ${rawActions.length} raw actions for range ${from}-${to}`
+		)
+		if (rawActions.length > 0) {
+			const heights = rawActions.map((a) => Number(a.blockInfo?.height ?? 0))
+			const minH = Math.min(...heights)
+			const maxH = Math.max(...heights)
+			if (minH < from)
+				logger.warn(
+					`[fetchActions] archive returned block below requested from: min=${minH} < from=${from}`
+				)
+			if (maxH > to)
+				logger.warn(
+					`[fetchActions] archive returned block above requested to: max=${maxH} > to=${to}`
+				)
+			const firstAction = rawActions[0]
+			const lastAction = rawActions[rawActions.length - 1]
+			const firstHash = firstAction?.actionData?.[0]?.transactionInfo?.hash ?? "<no-hash>"
+			const lastHash =
+				lastAction?.actionData?.[lastAction.actionData?.length - 1]?.transactionInfo?.hash ??
+				"<no-hash>"
+			logger.debug(`[fetchActions] range ${from}-${to} firstHash=${firstHash} lastHash=${lastHash}`)
+		}
+		if (rawActions.length === 0) {
+			logger.debug(
+				`[fetchActions] range ${from}-${to} returned 0 actions; continuing to next range`
+			)
+		}
 		const dataWithDefault: ArchiveAction[] = rawActions.map((a) => ({
 			blockInfo: {
 				timestamp: String(a.blockInfo?.timestamp ?? "0"),
@@ -68,12 +109,13 @@ export async function fetchActions({
 				actionStateOne: a.actionState?.actionStateOne ?? "",
 				actionStateTwo: a.actionState?.actionStateTwo ?? ""
 			},
-			actionData: (a.actionData ?? []).filter(notNull).map((ad) => ({
-				data: ad.data ?? [],
-				transactionInfo: ad.transactionInfo ?? { status: "status", hash: "hash" }
-			}))
+			actionData: (a.actionData ?? [])
+				.filter((ad) => ad != null)
+				.map((ad) => ({
+					data: ad.data ?? [],
+					transactionInfo: ad.transactionInfo ?? { status: "status", hash: "hash" }
+				}))
 		}))
-
 		const schema = v.array(
 			v.object({
 				blockInfo: v.object({ timestamp: v.string(), height: v.number() }),
@@ -91,17 +133,18 @@ export async function fetchActions({
 			logger.error("Invalid actions data:", result.issues)
 			throw new Error("Invalid actions data")
 		}
-
-		if (result.output.length === 0) {
-			if (fromBlock === undefined) return []
-			return await fetchActionsRecursive((fromBlock ?? 0) - BLOCK_RANGE_SIZE, emptyResults + 1)
-		}
-
-		const prev = await fetchActionsRecursive(result.output[0].blockInfo.height - BLOCK_RANGE_SIZE)
-		return [...prev, ...result.output]
+		blocks.push(...result.output)
+		from = to + 1
 	}
 
-	const output = await fetchActionsRecursive(fromBlock ?? undefined)
+	const output = blocks
+	logger.info(
+		`[fetchActions] total blocks collected: ${output.length}, start=${start}, tip=${maxHeight}`
+	)
+	logger.info(
+		`[fetchActions] total action blocks fetched: ${output.length}. fromBlock requested: ${fromBlock ?? "latest"}`
+	)
+	if (output.length === 0) logger.warn(`[fetchActions] No actions found for fromBlock=${fromBlock}`)
 	return output.flatMap(
 		({ actionState: { actionStateTwo: actionStateBefore }, actionData, blockInfo }) => {
 			const actions = actionData.map(({ data, transactionInfo: { hash, status } }) => ({
@@ -141,6 +184,7 @@ export async function getNetworkTip(client: ReturnType<typeof createMinaClient>)
 	const res = await client.query(networkStateQuery, {})
 	if (res.error) throw res.error
 	const height = res.data?.networkState?.maxBlockHeight?.canonicalMaxBlockHeight ?? 0
+	logger.info(`[getNetworkTip] canonicalMaxBlockHeight=${height}`)
 	return height
 }
 
