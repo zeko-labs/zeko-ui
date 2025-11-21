@@ -15,6 +15,34 @@
 			"when": 1763690578508,
 			"tag": "0001_deferred",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1763735275847,
+			"tag": "0002_even_mad_thinker",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "7",
+			"when": 1763744550313,
+			"tag": "0003_regular_sauron",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "7",
+			"when": 1763744787486,
+			"tag": "0004_cloudy_talon",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "7",
+			"when": 1763745820195,
+			"tag": "0005_futuristic_virginia_dare",
+			"breakpoints": true
 		}
 	]
 }

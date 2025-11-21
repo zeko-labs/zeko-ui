@@ -1,5 +1,5 @@
 import { actions, commitActions, witnessActions } from "@zeko/actions-api"
-import { desc, sql } from "drizzle-orm"
+import { desc, isNull, not, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
@@ -68,15 +68,17 @@ export async function clearAllTables(tx: PostgresJsDatabase) {
 	await tx.delete(actions)
 }
 
-export async function getLastActionBeforeOrEqual(db: PostgresJsDatabase, height: number) {
-	logger.debug(`[getLastActionBeforeOrEqual] querying height <= ${height}`)
-	const [action] = await db
+export async function getLastFinalAction(db: PostgresJsDatabase) {
+	logger.debug("[getLastFinalAction] querying")
+	const result = await db
 		.select()
 		.from(actions)
-		.where(sql`${actions.blockHeight} <= ${height}`)
-		.orderBy(desc(actions.blockHeight))
+		.where(not(isNull(actions.markedAsCanonicalAt)))
+		.orderBy(desc(actions.index))
 		.limit(1)
-	logger.debug(`[getLastActionBeforeOrEqual] got action: ${action?.afterState ?? "<none>"}`)
+
+	const action = result.at(0) ?? null
+	logger.debug(`[getLastFinalAction] got action: ${action?.afterState ?? "<none>"}`)
 	return action
 }
 
@@ -110,7 +112,7 @@ export async function getNextActionByBeforeState(
 	return action
 }
 
-export async function deleteActionsFromBlock(tx: PostgresJsDatabase, blockHeight: number) {
-	logger.debug(`[deleteActionsFromBlock] deleting from block >= ${blockHeight}`)
-	await tx.delete(actions).where(sql`${actions.blockHeight} >= ${blockHeight}`)
+export async function deleteActionsFromIndex(tx: PostgresJsDatabase, index: number) {
+	logger.debug(`[deleteActionsFromBlock] deleting from index >= ${index}`)
+	await tx.delete(actions).where(sql`${actions.index} >= ${index}`)
 }

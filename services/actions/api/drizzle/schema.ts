@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm"
 import {
 	type AnyPgColumn,
+	bigint,
 	check,
 	index,
 	integer,
@@ -17,16 +18,18 @@ export const actions = pgTable(
 		beforeState: text("before_state").references((): AnyPgColumn => actions.afterState, {
 			onDelete: "restrict"
 		}),
-		length: integer("length").notNull(),
+		index: integer("index").notNull().unique(),
 		blockHeight: integer("block_height").notNull(),
-		slotRangeLower: integer("slot_range_lower").notNull(),
-		slotRangeUpper: integer("slot_range_upper").notNull(),
-		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+		slotRangeLower: bigint("slot_range_lower", { mode: "bigint" }).notNull(),
+		slotRangeUpper: bigint("slot_range_upper", { mode: "bigint" }).notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		markedAsCanonicalAt: timestamp("marked_as_canonical_at", { withTimezone: true })
 	},
 	(table) => [
 		index("before_state|index").on(table.beforeState),
 		index("after_state|index").on(table.afterState),
-		index("length|index").on(table.length),
+		index("index|index").on(table.index),
+		index("marked_as_canonical_at|index").on(table.markedAsCanonicalAt),
 		check(
 			"actions_before_not_after|check",
 			sql`${table.beforeState} IS NULL OR ${table.beforeState} <> ${table.afterState}`

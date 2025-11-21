@@ -5,15 +5,13 @@ import type { ActionsInsert, CommitInsert, WitnessInsert } from "./db"
 import {
 	batchInsert,
 	clearAllTables,
-	deleteActionsFromBlock,
+	deleteActionsFromIndex,
 	getActionsFromBlock,
-	getLastActionBeforeOrEqual,
-	getNextActionByBeforeState
+	getLastFinalAction
 } from "./db"
-import { env } from "./env"
 import { getNetworkTip, l1Client, logger, wait } from "./helper"
-import { handler as depositHandler } from "./modules/deposit"
-import { handler as withdrawalHandler } from "./modules/withdrawal"
+import { handler as innerHandler } from "./modules/inner"
+import { handler as outerHandler } from "./modules/outer"
 
 interface IndexerConfig {
 	intervalSeconds: number
@@ -22,7 +20,7 @@ interface IndexerConfig {
 interface IndexerState {
 	isRunning: boolean
 	lastRunTimestamp: number | null
-	lastFetchedBlock: { deposit: number | null; withdrawal: number | null }
+	lastFetchedBlock: { outer: number | null; inner: number | null }
 	config: IndexerConfig
 	consecutiveErrors: number
 }
@@ -32,95 +30,62 @@ export async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerStat
 	while (state.isRunning) {
 		try {
 			const tip = await getNetworkTip(l1Client)
-			const finality = Number(env.L1_FINALITY ?? 290)
-			const finalHeight = Math.max(0, tip - finality)
-			const lastFinal = await getLastActionBeforeOrEqual(db, finalHeight)
-			const startBlock = lastFinal?.blockHeight ?? 0
-			logger.info(
-				`runIndexingLoop: tip=${tip}, finalHeight=${finalHeight}, startBlock=${startBlock}`
-			)
-			const depositResult = await depositHandler.fetch({ startBlock })
+			const lastFinal = await getLastFinalAction(db)
+			const startBlock = lastFinal?.blockHeight ? lastFinal.blockHeight + 1 : 0
+			logger.info(`runIndexingLoop: tip=${tip}, startBlock=${startBlock}`)
+			const outerResult = await outerHandler.fetch({ startBlock })
 			//TODO: handle withdrawalResult when withdrawal module is functional
 
 			// Prefetch DB chain from startBlock for performant lookups
 			const dbActions = await getActionsFromBlock(db, startBlock)
-			const dbByBefore = new Map<string | null, typeof actions.$inferSelect>()
-			for (const a of dbActions) {
-				dbByBefore.set(a.beforeState ?? null, a)
-			}
 
 			// Compare fetched events with DB chain to detect forks or missing actions
-			let lastKnownAfterState = lastFinal?.afterState ?? null
-			let forkDetected = false
-			const actionsToInsert: ActionsInsert[] = []
-			const commitToInsert: CommitInsert[] = []
-			const witnessToInsert: WitnessInsert[] = []
+			let currentIndex = lastFinal?.index ?? -1
+			let forkAtIndex = null
+			let insertFromIndex = null
 
-			for (const item of depositResult.data) {
-				const computedAfter = item.afterState
-				// Prefer the in-memory map for speed; fallback to DB if we don't have it in the map
-				const dbNext =
-					dbByBefore.get(lastKnownAfterState ?? null) ??
-					(await getNextActionByBeforeState(db, lastKnownAfterState ?? null))
-				if (dbNext) {
-					if (dbNext.afterState !== computedAfter) {
-						forkDetected = true
-						break
-					}
-					// otherwise the action matches the stored chain
-					lastKnownAfterState = dbNext.afterState
-					continue
+			for (let i = 0; i < outerResult.data.length; i++) {
+				const item = outerResult.data[i]
+				const dbItem = i > dbActions.length ? undefined : dbActions[i]
+				currentIndex++
+
+				if (
+					dbItem &&
+					(dbItem.beforeState !== item.beforeState || dbItem.afterState !== item.afterState) &&
+					!forkAtIndex
+				) {
+					forkAtIndex = currentIndex
 				}
-				// DB doesn't have the action yet — collect for insertion
-				actionsToInsert.push({
-					afterState: computedAfter,
-					kind: item.kind,
-					beforeState: item.beforeState ?? null,
-					length: item.length,
-					blockHeight: item.blockHeight,
-					slotRangeLower: item.kind === "commit" ? item.slotRangeLower ?? 0 : 0,
-					slotRangeUpper: item.kind === "commit" ? item.slotRangeUpper ?? 0 : 0
-				})
-				if (item.kind === "commit") {
-					commitToInsert.push({
-						afterState: computedAfter,
-						ledger: item.ledger,
-						innerActionState: item.innerActionState,
-						innerActionStateLength: item.innerActionStateLength,
-						synchronizedOuterActionState: item.synchronizedOuterActionState,
-						synchronizedOuterActionStateLength: item.synchronizedOuterActionStateLength
-					})
-				} else {
-					witnessToInsert.push({ afterState: computedAfter, aux: item.aux })
+
+				if (forkAtIndex || !dbItem) {
+					insertFromIndex = i
+					break
 				}
 			}
 
-			if (forkDetected) {
-				// Rollback DB to last final action and re-insert the events
-				const rollbackStart = lastFinal?.blockHeight ?? 0
-				const {
-					actionsToInsert: allActions,
-					commitToInsert: allCommits,
-					witnessToInsert: allWitness
-				} = buildDeposits(depositResult.data)
+			const { actionsToInsert, commitToInsert, witnessToInsert } = buildOuter(
+				outerResult.data.slice(insertFromIndex ?? Number.MAX_VALUE),
+				currentIndex
+			)
+
+			if (forkAtIndex) {
+				// Rollback DB to the detected fork
 				await db.transaction(async (tx) => {
-					await deleteActionsFromBlock(tx, rollbackStart + 1)
-					await insertDeposits({
+					await deleteActionsFromIndex(tx, forkAtIndex)
+					await insertOuter({
 						db: tx,
-						actionsToInsert: allActions,
-						commitToInsert: allCommits,
-						witnessToInsert: allWitness
+						actionsToInsert,
+						commitToInsert,
+						witnessToInsert
 					})
 				})
 			} else {
 				// Insert new events normally (ensure parent action rows are inserted before their children)
 				if (actionsToInsert.length) {
-					const existingAfterStates = new Set(dbActions.map((a) => a.afterState))
-					const orderedActions = orderActionsWithParents(actionsToInsert, existingAfterStates)
 					await db.transaction(async (tx) => {
-						await insertDeposits({
+						await insertOuter({
 							db: tx,
-							actionsToInsert: orderedActions,
+							actionsToInsert,
 							commitToInsert,
 							witnessToInsert
 						})
@@ -128,18 +93,17 @@ export async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerStat
 				}
 			}
 			// Fetch withdrawal result and update state for completeness
-			const withdrawalResult = await withdrawalHandler.fetch({
-				startBlock: state.lastFetchedBlock.withdrawal ?? 0
+			const withdrawalResult = await innerHandler.fetch({
+				startBlock: state.lastFetchedBlock.inner ?? 0
 			})
 
 			state.lastRunTimestamp = Date.now()
-			state.lastFetchedBlock.deposit =
-				depositResult.lastFetchedBlock ?? state.lastFetchedBlock.deposit
-			state.lastFetchedBlock.withdrawal =
-				withdrawalResult.lastFetchedBlock ?? state.lastFetchedBlock.withdrawal
+			state.lastFetchedBlock.outer = outerResult.lastFetchedBlock ?? state.lastFetchedBlock.outer
+			state.lastFetchedBlock.inner =
+				withdrawalResult.lastFetchedBlock ?? state.lastFetchedBlock.inner
 			state.consecutiveErrors = 0
 			logger.info(
-				`runIndexingLoop: finished run (deposit=${state.lastFetchedBlock.deposit ?? 0}, withdrawal=${state.lastFetchedBlock.withdrawal ?? 0})`
+				`runIndexingLoop: finished run (outer=${state.lastFetchedBlock.outer ?? 0}, inner=${state.lastFetchedBlock.inner ?? 0})`
 			)
 		} catch (err: unknown) {
 			const retryDelay = Math.min(45, baseDelay * (state.consecutiveErrors ?? 0) + 1)
@@ -170,7 +134,7 @@ export class Indexer {
 		this.#state = {
 			isRunning: false,
 			lastRunTimestamp: null,
-			lastFetchedBlock: { deposit: null, withdrawal: null },
+			lastFetchedBlock: { outer: null, inner: null },
 			consecutiveErrors: 0,
 			config: { intervalSeconds: 15 }
 		}
@@ -180,8 +144,8 @@ export class Indexer {
 	start(input?: { intervalSeconds?: number }) {
 		if (this.#state.isRunning) return { success: false, message: "Indexer already running" }
 		if (input?.intervalSeconds) this.#state.config.intervalSeconds = input.intervalSeconds
-		this.#state.lastFetchedBlock.deposit = 0
-		this.#state.lastFetchedBlock.withdrawal = 0
+		this.#state.lastFetchedBlock.outer = 0
+		this.#state.lastFetchedBlock.inner = 0
 
 		this.#state.isRunning = true
 		this.#state.consecutiveErrors = 0
@@ -223,10 +187,10 @@ export class Indexer {
 			// Clear existing tables and re-fetch all actions from scratch
 			// rebuild in a single transaction (clear and insert) so rollback works on error
 			const startBlock = 0
-			const depositResult = await depositHandler.fetch({ startBlock })
-			const withdrawalResult = await withdrawalHandler.fetch({ startBlock })
+			const depositResult = await outerHandler.fetch({ startBlock })
+			const withdrawalResult = await innerHandler.fetch({ startBlock })
 
-			const { actionsToInsert, commitToInsert, witnessToInsert } = buildDeposits(depositResult.data)
+			const { actionsToInsert, commitToInsert, witnessToInsert } = buildOuter(depositResult.data, 0)
 			//TODO: handle withdrawalResult when withdrawal module is functional
 
 			if (
@@ -240,7 +204,7 @@ export class Indexer {
 			await this.#db.transaction(async (tx) => {
 				await clearAllTables(tx)
 				const orderedActions = orderActionsWithParents(actionsToInsert, new Set())
-				await insertDeposits({
+				await insertOuter({
 					db: tx,
 					actionsToInsert: orderedActions,
 					commitToInsert,
@@ -248,8 +212,8 @@ export class Indexer {
 				})
 			})
 
-			this.#state.lastFetchedBlock.deposit = depositResult.lastFetchedBlock ?? null
-			this.#state.lastFetchedBlock.withdrawal = withdrawalResult.lastFetchedBlock ?? null
+			this.#state.lastFetchedBlock.outer = depositResult.lastFetchedBlock ?? null
+			this.#state.lastFetchedBlock.inner = withdrawalResult.lastFetchedBlock ?? null
 			if (wasRunning) {
 				this.start(previousConfig)
 			}
@@ -262,9 +226,9 @@ export class Indexer {
 	}
 }
 
-type DepositItem = Awaited<ReturnType<typeof depositHandler.fetch>>["data"][number]
+type OuterItem = Awaited<ReturnType<typeof outerHandler.fetch>>["data"][number]
 
-function buildDeposits(items: DepositItem[]) {
+function buildOuter(items: OuterItem[], currIndex: number) {
 	const actionsToInsert: ActionsInsert[] = []
 	const commitToInsert: CommitInsert[] = []
 	const witnessToInsert: WitnessInsert[] = []
@@ -273,11 +237,12 @@ function buildDeposits(items: DepositItem[]) {
 		actionsToInsert.push({
 			afterState: item.afterState,
 			kind: item.kind,
-			beforeState: item.beforeState ?? null,
-			length: item.length,
+			beforeState: item.beforeState,
+			index: currIndex,
 			blockHeight: item.blockHeight,
-			slotRangeLower: item.kind === "commit" ? item.slotRangeLower ?? 0 : 0,
-			slotRangeUpper: item.kind === "commit" ? item.slotRangeUpper ?? 0 : 0
+			slotRangeLower: item.slotRangeLower,
+			slotRangeUpper: item.slotRangeUpper,
+			markedAsCanonicalAt: item.markedAsCanonicalAt
 		})
 		if (item.kind === "commit") {
 			commitToInsert.push({
@@ -291,12 +256,13 @@ function buildDeposits(items: DepositItem[]) {
 		} else {
 			witnessToInsert.push({ afterState: item.afterState, aux: item.aux })
 		}
+		currIndex++
 	}
 
 	return { actionsToInsert, commitToInsert, witnessToInsert }
 }
 
-async function insertDeposits({
+async function insertOuter({
 	db,
 	actionsToInsert,
 	commitToInsert,
@@ -309,6 +275,9 @@ async function insertDeposits({
 	witnessToInsert: WitnessInsert[]
 	deffered?: boolean
 }) {
+	logger.debug(
+		`[insertOuter] inserting ${actionsToInsert.length} actions, ${commitToInsert.length} commits, ${witnessToInsert.length} witnesses`
+	)
 	if (deffered) {
 		await db.execute(sql`SET CONSTRAINTS ALL DEFERRED;`)
 	}

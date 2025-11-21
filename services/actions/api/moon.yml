@@ -26,6 +26,8 @@ tasks:
   build:
     command: tsdown
     deps: [^:build]
+    options:
+      cache: false
     inputs:
       - "@group(sources)"
     outputs:
@@ -74,7 +76,7 @@ tasks:
     options:
       cache: false
   services-reset:
-    script: docker compose down -v && docker compose up -d --wait && moon actions-api:db-migrate && moon actions-api:db-seed
+    script: docker compose down -v && docker compose up -d --wait && pnpm exec moon actions-api:db-migrate && pnpm exec moon actions-api:db-seed
     options:
       cache: false
   lint:

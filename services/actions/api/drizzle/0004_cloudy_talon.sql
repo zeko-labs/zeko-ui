@@ -1,0 +1,1 @@
+ALTER TABLE "actions" ADD CONSTRAINT "actions_length_unique" UNIQUE("length");

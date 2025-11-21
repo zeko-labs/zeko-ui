@@ -1,0 +1,2 @@
+ALTER TABLE "actions" ADD COLUMN "marked_as_canonical_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "marked_as_canonical_at|index" ON "actions" USING btree ("marked_as_canonical_at");

@@ -1,41 +1,49 @@
+import { emptyActionsList } from "packages/bridge-sdk/src"
+import { env } from "../env"
 import type { ArchiveEvent } from "../helper"
 import { fetchActions, l1Client, logger } from "../helper"
 
 export const handler = {
 	fetch: async ({ startBlock }: { startBlock: number }) => {
-		logger.info(`[deposit.handler] Fetching from ${startBlock}`)
+		logger.info(`[outer.handler] Fetching from ${startBlock}`)
+
 		const actions = await fetchActions({ client: l1Client, fromBlock: startBlock })
 
 		const data = actions.map((item: ArchiveEvent) => {
-			const beforeState = item.beforeActionState ? item.beforeActionState.toString() : null
+			const beforeState = item.beforeActionState.equals(emptyActionsList).toBoolean()
+				? null
+				: item.beforeActionState.toString()
 			const afterState = item.afterActionState.toString()
-			const kind = item.action[0].toString() === "0" ? "commit" : "witness"
-			const length = item.action.length
-			const blockHeight = item.blockInfo?.height ?? 0
+			const kind = item.action[0].equals(0).toBoolean() ? "commit" : "witness"
+			const blockHeight = item.blockInfo.height
+			const markedAsCanonicalAt =
+				item.blockInfo.distanceFromMaxBlockHeight >= env.L1_FINALITY ? new Date() : null
 
 			if (kind === "commit")
 				return {
 					kind: "commit" as const,
 					afterState,
 					beforeState,
-					length,
 					blockHeight,
 					ledger: item.action[1].toString(),
 					innerActionState: item.action[2].toString(),
 					innerActionStateLength: Number(item.action[3].toString()),
 					synchronizedOuterActionState: item.action[4].toString(),
 					synchronizedOuterActionStateLength: Number(item.action[5].toString()),
-					slotRangeLower: Number(item.action[6]?.toString() ?? 0),
-					slotRangeUpper: Number(item.action[7]?.toString() ?? 0)
+					slotRangeLower: Number(item.action[6].toString()),
+					slotRangeUpper: Number(item.action[7].toString()),
+					markedAsCanonicalAt
 				}
 
 			return {
 				kind: "witness" as const,
 				afterState,
 				beforeState,
-				length,
 				blockHeight,
-				aux: item.action[1].toString()
+				aux: item.action[1].toString(),
+				slotRangeLower: Number(item.action[3].toString()),
+				slotRangeUpper: Number(item.action[4].toString()),
+				markedAsCanonicalAt
 			}
 		})
 

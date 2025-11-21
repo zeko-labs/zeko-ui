@@ -27,3 +27,7 @@ export function pushAction(actions: Types.Events, action: Field[]): Types.Events
 export function fromList(events: Field[][]): Types.Events {
 	return [...events].reverse().reduce(pushAction, empty())
 }
+
+export const emptyActionsList: Field = Field.from(
+	"25079927036070901246064867767436987657692091363973573142121686150614948079097"
+)

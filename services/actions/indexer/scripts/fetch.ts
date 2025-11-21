@@ -1,11 +1,11 @@
 import { getNetworkTip, l1Client, logger } from "../src/helper"
-import { handler as depositHandler } from "../src/modules/deposit"
+import { handler as outerHandler } from "../src/modules/outer"
 
-type EventType = "deposit"
+type EventType = "outer"
 
 const eventConfigs = {
-	deposit: {
-		handler: depositHandler,
+	outer: {
+		handler: outerHandler,
 		emoji: "💰",
 		identifierField: "afterState"
 	}
@@ -18,7 +18,7 @@ function getEventType(): EventType {
 	if (!eventType || !Object.keys(eventConfigs).includes(eventType)) {
 		logger.error("❌ Invalid or missing event type")
 		logger.info("Usage: bun scripts/fetch.ts <event-type>")
-		logger.info("Available event types: deposit")
+		logger.info("Available event types: outer")
 		process.exit(1)
 	}
 
@@ -32,7 +32,7 @@ function getUniqueIdentifiers<U extends string, T extends { [key in U]: string }
 	return new Set(data.map((event) => event[identifierField]))
 }
 
-type DepositEvent = Awaited<ReturnType<typeof depositHandler.fetch>>["data"][number]
+type OuterEvent = Awaited<ReturnType<typeof outerHandler.fetch>>["data"][number]
 
 async function main() {
 	const eventType = getEventType()
@@ -54,13 +54,13 @@ async function main() {
 			return
 		}
 
-		// NOTE: deposit handler doesn't include a timestamp on the returned items; print blockHeight instead
+		// NOTE: outer handler doesn't include a timestamp on the returned items; print blockHeight instead
 		logger.box(`${eventType.charAt(0).toUpperCase() + eventType.slice(1)} Events:`)
 		console.log(JSON.stringify(result.data, null, 2))
 
 		// Print summary statistics
 		logger.box("Summary Statistics:")
-		const uniqueIdentifiers = getUniqueIdentifiers<"afterState", DepositEvent[]>(
+		const uniqueIdentifiers = getUniqueIdentifiers<"afterState", OuterEvent[]>(
 			result.data,
 			identifierField as "afterState"
 		)
