@@ -1,3 +1,4 @@
+name: actions-api
 services:
   postgres:
     image: supabase/postgres:17.6.1.020

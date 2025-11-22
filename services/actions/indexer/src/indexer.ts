@@ -240,8 +240,8 @@ function buildOuter(items: OuterItem[], currIndex: number) {
 			beforeState: item.beforeState,
 			index: currIndex,
 			blockHeight: item.blockHeight,
-			slotRangeLower: item.slotRangeLower,
-			slotRangeUpper: item.slotRangeUpper,
+			slotRangeLower: BigInt(item.slotRangeLower),
+			slotRangeUpper: BigInt(item.slotRangeUpper),
 			markedAsCanonicalAt: item.markedAsCanonicalAt
 		})
 		if (item.kind === "commit") {

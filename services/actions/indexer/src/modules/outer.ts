@@ -3,6 +3,10 @@ import { env } from "../env"
 import type { ArchiveEvent } from "../helper"
 import { fetchActions, l1Client, logger } from "../helper"
 
+/**
+ * Handler for fetching outer actions (deposits) from the L1 archieve.
+ */
+
 export const handler = {
 	fetch: async ({ startBlock }: { startBlock: number }) => {
 		logger.info(`[outer.handler] Fetching from ${startBlock}`)
