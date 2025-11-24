@@ -6,7 +6,7 @@ import {
 	fetchCommitAsePastWithdrawalDelayQuery,
 	fetchWitnessesFromAuxesQuery
 } from "../../graphql/src/bridge-indexer"
-import { fetchActionsQuery } from "../../graphql/src/mina-archive"
+import { fetchActionsQuery, networkStateQuery } from "../../graphql/src/mina-archive"
 import { empty, fromList, pushHash } from "./actions"
 import type {
 	Account,
@@ -153,21 +153,30 @@ export async function fetchCommitAsePastWithdrawalDelay(
 // https://github.com/o1-labs/Archive-Node-API/blob/2d726955502fbd02c70d388f589284dd838bbb45/src/server/server.ts#L13
 const BLOCK_RANGE_SIZE = 10_000
 
+export const BRIDGE_DEPLOY_BLOCK = 430_000
+
+export async function getNetworkTip(client: Client): Promise<number> {
+	const res = await client.query(networkStateQuery, {})
+	if (res.error) throw res.error
+	const height = res.data?.networkState?.maxBlockHeight?.pendingMaxBlockHeight ?? 0
+	return height
+}
+
 export async function fetchActions(
 	client: Client,
 	pk: PublicKey,
-	actionStates?: Mina.ActionStates
-): Promise<Action[]> {
-	const fetchActionsRecursive = async (fromBlock?: number, emptyResults: number = 0) => {
-		if (fromBlock !== undefined && fromBlock < 0) return []
 
-		if (emptyResults > 10) return []
+	stopAtBlock = 0
+): Promise<Action[]> {
+	const networkTip = await getNetworkTip(client)
+
+	const fetchActionsRecursive = async (toBlock: number) => {
+		if (toBlock < stopAtBlock) return []
 
 		const { data } = await client.query(fetchActionsQuery, {
 			pk: pk.toBase58(),
-			fromActionState: actionStates?.fromActionState?.toString() ?? null,
-			endActionState: actionStates?.endActionState?.toString() ?? null,
-			from: fromBlock ?? null
+			from: toBlock - BLOCK_RANGE_SIZE,
+			to: toBlock
 		})
 		const dataWithDefault = data?.actions.map((a) => ({
 			...a,
@@ -200,21 +209,13 @@ export async function fetchActions(
 		const result = v.safeParse(schema, dataWithDefault)
 		if (!result.success) throw new Error("Invalid actions data")
 
-		if (result.output.length === 0 && fromBlock === undefined) {
-			console.log("WARNING: No actions found in first batch")
-			return []
-		}
-
 		const prevOutput: v.InferOutput<typeof schema> = await fetchActionsRecursive(
-			result.output.length === 0
-				? (fromBlock ?? 0) - BLOCK_RANGE_SIZE
-				: result.output[0].blockInfo.height - BLOCK_RANGE_SIZE,
-			result.output.length === 0 ? emptyResults + 1 : 0
+			toBlock - BLOCK_RANGE_SIZE
 		)
 		return [...prevOutput, ...result.output]
 	}
 
-	const output = await fetchActionsRecursive()
+	const output = await fetchActionsRecursive(networkTip)
 
 	return output.flatMap(
 		(

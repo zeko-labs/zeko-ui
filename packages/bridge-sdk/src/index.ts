@@ -26,6 +26,7 @@ import type {
 	Withdrawal
 } from "./types"
 import {
+	BRIDGE_DEPLOY_BLOCK,
 	depositAux,
 	fetchActions,
 	fetchActionsFromIndexer,
@@ -162,7 +163,7 @@ export class Bridge {
 	}
 
 	private async fetchUserDeposits(pk: PublicKey): Promise<Deposit[]> {
-		const userOuterActions = await fetchActions(this.l1ArchiveClient, pk)
+		const userOuterActions = await fetchActions(this.l1ArchiveClient, pk, BRIDGE_DEPLOY_BLOCK)
 
 		return filterNulls(
 			userOuterActions.map(({ action }) => {
@@ -230,8 +231,8 @@ export class Bridge {
 		)
 	}
 
-	private async fetchInnerActions(actionStates?: Mina.ActionStates): Promise<InnerAction[]> {
-		const actions = await fetchActions(this.l2ArchiveClient, this.innerPk, actionStates)
+	private async fetchInnerActions(): Promise<InnerAction[]> {
+		const actions = await fetchActions(this.l2ArchiveClient, this.innerPk)
 
 		return actions.map(
 			({ index, beforeActionState, afterActionState, action, hash, timestamp }) => {
