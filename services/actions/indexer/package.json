@@ -14,8 +14,9 @@
 		"@elysiajs/bearer": "catalog:elysia",
 		"@elysiajs/cors": "catalog:elysia",
 		"@elysiajs/eden": "catalog:elysia",
-		"@zeko/actions-api": "workspace:^",
 		"@lumina-dex/sdk": "catalog:",
+		"@zeko/actions-api": "workspace:^",
+		"@zeko/bridge-sdk": "workspace:^",
 		"@zeko/graphql": "workspace:^",
 		"consola": "catalog:",
 		"drizzle-orm": "catalog:",
@@ -24,6 +25,7 @@
 		"o1js": "catalog:",
 		"p-limit": "catalog:",
 		"postgres": "catalog:",
+		"urql": "^4.2.2",
 		"valibot": "catalog:"
 	},
 	"devDependencies": {
