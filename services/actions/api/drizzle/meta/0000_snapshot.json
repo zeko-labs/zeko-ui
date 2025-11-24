@@ -1,5 +1,5 @@
 {
-	"id": "afd6d03d-57b6-4f09-9b0c-055f0ab3b70a",
+	"id": "a8170e26-bd23-4950-9cef-45d4b3975499",
 	"prevId": "00000000-0000-0000-0000-000000000000",
 	"version": "7",
 	"dialect": "postgresql",
@@ -26,8 +26,8 @@
 					"primaryKey": false,
 					"notNull": false
 				},
-				"length": {
-					"name": "length",
+				"index": {
+					"name": "index",
 					"type": "integer",
 					"primaryKey": false,
 					"notNull": true
@@ -40,13 +40,13 @@
 				},
 				"slot_range_lower": {
 					"name": "slot_range_lower",
-					"type": "integer",
+					"type": "bigint",
 					"primaryKey": false,
 					"notNull": true
 				},
 				"slot_range_upper": {
 					"name": "slot_range_upper",
-					"type": "integer",
+					"type": "bigint",
 					"primaryKey": false,
 					"notNull": true
 				},
@@ -56,6 +56,12 @@
 					"primaryKey": false,
 					"notNull": true,
 					"default": "now()"
+				},
+				"marked_as_canonical_at": {
+					"name": "marked_as_canonical_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
 				}
 			},
 			"indexes": {
@@ -89,11 +95,26 @@
 					"method": "btree",
 					"with": {}
 				},
-				"length|index": {
-					"name": "length|index",
+				"index|index": {
+					"name": "index|index",
 					"columns": [
 						{
-							"expression": "length",
+							"expression": "index",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"marked_as_canonical_at|index": {
+					"name": "marked_as_canonical_at|index",
+					"columns": [
+						{
+							"expression": "marked_as_canonical_at",
 							"isExpression": false,
 							"asc": true,
 							"nulls": "last"
@@ -117,7 +138,13 @@
 				}
 			},
 			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
+			"uniqueConstraints": {
+				"actions_index_unique": {
+					"name": "actions_index_unique",
+					"nullsNotDistinct": false,
+					"columns": ["index"]
+				}
+			},
 			"policies": {},
 			"checkConstraints": {
 				"actions_before_not_after|check": {

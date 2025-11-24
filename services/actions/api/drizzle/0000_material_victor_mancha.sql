@@ -2,11 +2,13 @@ CREATE TABLE "actions" (
 	"after_state" text PRIMARY KEY NOT NULL,
 	"kind" text NOT NULL,
 	"before_state" text,
-	"length" integer NOT NULL,
+	"index" integer NOT NULL,
 	"block_height" integer NOT NULL,
-	"slot_range_lower" integer NOT NULL,
-	"slot_range_upper" integer NOT NULL,
+	"slot_range_lower" bigint NOT NULL,
+	"slot_range_upper" bigint NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"marked_as_canonical_at" timestamp with time zone,
+	CONSTRAINT "actions_index_unique" UNIQUE("index"),
 	CONSTRAINT "actions_before_not_after|check" CHECK ("actions"."before_state" IS NULL OR "actions"."before_state" <> "actions"."after_state")
 );
 --> statement-breakpoint
@@ -29,5 +31,6 @@ ALTER TABLE "commit_actions" ADD CONSTRAINT "commit_actions_after_state_actions_
 ALTER TABLE "witness_actions" ADD CONSTRAINT "witness_actions_after_state_actions_after_state_fk" FOREIGN KEY ("after_state") REFERENCES "public"."actions"("after_state") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "before_state|index" ON "actions" USING btree ("before_state");--> statement-breakpoint
 CREATE INDEX "after_state|index" ON "actions" USING btree ("after_state");--> statement-breakpoint
-CREATE INDEX "length|index" ON "actions" USING btree ("length");--> statement-breakpoint
+CREATE INDEX "index|index" ON "actions" USING btree ("index");--> statement-breakpoint
+CREATE INDEX "marked_as_canonical_at|index" ON "actions" USING btree ("marked_as_canonical_at");--> statement-breakpoint
 CREATE INDEX "aux|index" ON "witness_actions" USING btree ("aux");
