@@ -38,6 +38,7 @@ import {
 	withdrawalAux
 } from "./utils"
 
+export * from "./actions"
 export * from "./types"
 
 export class Bridge {
@@ -95,11 +96,11 @@ export class Bridge {
 			l2ArchiveClient,
 			UInt64.from(l1AccountCreationFee),
 			UInt64.from(l2AccountCreationFee),
-			PublicKey.fromBase58(circuitsConfig.zekoL1),
-			PublicKey.fromBase58(circuitsConfig.zekoL2),
-			circuitsConfig.holderAccountsL1.map((holder) => PublicKey.fromBase58(holder)),
-			PublicKey.fromBase58(circuitsConfig.holderAccountL2),
-			PublicKey.fromBase58(circuitsConfig.helperTokenOwnerL1),
+			PublicKey.fromBase58(circuitsConfig.zekoL1), // outerPk
+			PublicKey.fromBase58(circuitsConfig.zekoL2), // innerPk
+			circuitsConfig.holderAccountsL1.map((holder) => PublicKey.fromBase58(holder)), // outerHolders
+			PublicKey.fromBase58(circuitsConfig.holderAccountL2), // innerHolder
+			PublicKey.fromBase58(circuitsConfig.helperTokenOwnerL1), // outerTokenOwner
 			PublicKey.fromBase58(sequencerPk),
 			UInt32.from(circuitsConfig.withdrawalDelay)
 		)

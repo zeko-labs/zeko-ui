@@ -1,11 +1,11 @@
 {
-	"id": "93530375-f249-4404-9a50-617c413f66b3",
+	"id": "a8170e26-bd23-4950-9cef-45d4b3975499",
 	"prevId": "00000000-0000-0000-0000-000000000000",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
-		"public.Actions": {
-			"name": "Actions",
+		"public.actions": {
+			"name": "actions",
 			"schema": "",
 			"columns": {
 				"after_state": {
@@ -26,8 +26,8 @@
 					"primaryKey": false,
 					"notNull": false
 				},
-				"length": {
-					"name": "length",
+				"index": {
+					"name": "index",
 					"type": "integer",
 					"primaryKey": false,
 					"notNull": true
@@ -40,13 +40,13 @@
 				},
 				"slot_range_lower": {
 					"name": "slot_range_lower",
-					"type": "integer",
+					"type": "bigint",
 					"primaryKey": false,
 					"notNull": true
 				},
 				"slot_range_upper": {
 					"name": "slot_range_upper",
-					"type": "integer",
+					"type": "bigint",
 					"primaryKey": false,
 					"notNull": true
 				},
@@ -56,6 +56,12 @@
 					"primaryKey": false,
 					"notNull": true,
 					"default": "now()"
+				},
+				"marked_as_canonical_at": {
+					"name": "marked_as_canonical_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
 				}
 			},
 			"indexes": {
@@ -89,11 +95,26 @@
 					"method": "btree",
 					"with": {}
 				},
-				"length|index": {
-					"name": "length|index",
+				"index|index": {
+					"name": "index|index",
 					"columns": [
 						{
-							"expression": "length",
+							"expression": "index",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"marked_as_canonical_at|index": {
+					"name": "marked_as_canonical_at|index",
+					"columns": [
+						{
+							"expression": "marked_as_canonical_at",
 							"isExpression": false,
 							"asc": true,
 							"nulls": "last"
@@ -106,10 +127,10 @@
 				}
 			},
 			"foreignKeys": {
-				"Actions_before_state_Actions_after_state_fk": {
-					"name": "Actions_before_state_Actions_after_state_fk",
-					"tableFrom": "Actions",
-					"tableTo": "Actions",
+				"actions_before_state_actions_after_state_fk": {
+					"name": "actions_before_state_actions_after_state_fk",
+					"tableFrom": "actions",
+					"tableTo": "actions",
 					"columnsFrom": ["before_state"],
 					"columnsTo": ["after_state"],
 					"onDelete": "restrict",
@@ -117,12 +138,18 @@
 				}
 			},
 			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
+			"uniqueConstraints": {
+				"actions_index_unique": {
+					"name": "actions_index_unique",
+					"nullsNotDistinct": false,
+					"columns": ["index"]
+				}
+			},
 			"policies": {},
 			"checkConstraints": {
 				"actions_before_not_after|check": {
 					"name": "actions_before_not_after|check",
-					"value": "\"Actions\".\"before_state\" IS NULL OR \"Actions\".\"before_state\" <> \"Actions\".\"after_state\""
+					"value": "\"actions\".\"before_state\" IS NULL OR \"actions\".\"before_state\" <> \"actions\".\"after_state\""
 				}
 			},
 			"isRLSEnabled": false
@@ -170,10 +197,10 @@
 			},
 			"indexes": {},
 			"foreignKeys": {
-				"commit_actions_after_state_Actions_after_state_fk": {
-					"name": "commit_actions_after_state_Actions_after_state_fk",
+				"commit_actions_after_state_actions_after_state_fk": {
+					"name": "commit_actions_after_state_actions_after_state_fk",
 					"tableFrom": "commit_actions",
-					"tableTo": "Actions",
+					"tableTo": "actions",
 					"columnsFrom": ["after_state"],
 					"columnsTo": ["after_state"],
 					"onDelete": "cascade",
@@ -221,10 +248,10 @@
 				}
 			},
 			"foreignKeys": {
-				"witness_actions_after_state_Actions_after_state_fk": {
-					"name": "witness_actions_after_state_Actions_after_state_fk",
+				"witness_actions_after_state_actions_after_state_fk": {
+					"name": "witness_actions_after_state_actions_after_state_fk",
 					"tableFrom": "witness_actions",
-					"tableTo": "Actions",
+					"tableTo": "actions",
 					"columnsFrom": ["after_state"],
 					"columnsTo": ["after_state"],
 					"onDelete": "cascade",

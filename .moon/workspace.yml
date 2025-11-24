@@ -4,10 +4,12 @@ projects:
   - "."
   - "apps/*"
   - "packages/*"
-  - "services/mina-archive-proxy"
-  - "services/mina-proxy"
+  - "services/*/moon.yml"
   - "services/leaderboard/*"
   - "services/actions/*"
+
+pipeline:
+  logRunningCommand: true
 
 vcs:
   manager: "git"
