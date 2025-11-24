@@ -2,9 +2,22 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"compatibility_date": "2025-10-08",
 	"name": "actions-api",
+	"main": "src/index.ts",
 	"preview_urls": true,
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true, "traces": { "enabled": true } },
 	"dev": { "port": 9100 },
-	"routes": [{ "custom_domain": true, "pattern": "api.actions.zeko.io" }]
+	"routes": [{ "custom_domain": true, "pattern": "api.actions.zeko.io" }],
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE_NO_CACHE",
+			"id": "33ea9e81023146799e5658aae00731fc",
+			"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
+		},
+		{
+			"binding": "HYPERDRIVE",
+			"id": "abf1ac369edf418ba9243099f96ead76",
+			"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
+		}
+	]
 }

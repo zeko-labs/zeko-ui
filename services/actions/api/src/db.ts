@@ -17,14 +17,12 @@ export const rc = new WeakMap<
 >()
 
 const initializeDrizzle = ({ cache, env }: { cache: boolean; env: Env }) => {
-	//TODO: Configure this properly
-	// const connectionString =
-	// 	env.ENVIRONMENT === "local"
-	// 		? env.DATABASE_URL
-	// 		: cache
-	// 			? `${env.HYPERDRIVE.connectionString}`
-	// 			: `${env.HYPERDRIVE_NO_CACHE.connectionString}`
-	const connectionString = "todo"
+	const connectionString =
+		env.ENVIRONMENT === "local"
+			? env.DATABASE_URL
+			: cache
+				? `${env.HYPERDRIVE.connectionString}`
+				: `${env.HYPERDRIVE_NO_CACHE.connectionString}`
 	const client = postgres(connectionString, {
 		// prepare: false,
 		// idle_timeout: 20,
