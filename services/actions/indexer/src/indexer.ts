@@ -242,6 +242,9 @@ function buildOuter(items: OuterItem[], currIndex: number) {
 			blockHeight: item.blockHeight,
 			slotRangeLower: BigInt(item.slotRangeLower),
 			slotRangeUpper: BigInt(item.slotRangeUpper),
+			timestamp: new Date(+item.timestamp),
+			txnHash: item.hash,
+			fields: item.fields.map((x) => x.toString()),
 			markedAsCanonicalAt: item.markedAsCanonicalAt
 		})
 		if (item.kind === "commit") {

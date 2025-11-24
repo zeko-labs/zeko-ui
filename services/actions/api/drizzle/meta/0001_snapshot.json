@@ -1,0 +1,297 @@
+{
+	"id": "90f846e8-f4dc-4fc9-80d9-2a8c9d8e395d",
+	"prevId": "a8170e26-bd23-4950-9cef-45d4b3975499",
+	"version": "7",
+	"dialect": "postgresql",
+	"tables": {
+		"public.actions": {
+			"name": "actions",
+			"schema": "",
+			"columns": {
+				"after_state": {
+					"name": "after_state",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"kind": {
+					"name": "kind",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"before_state": {
+					"name": "before_state",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"index": {
+					"name": "index",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"block_height": {
+					"name": "block_height",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"timestamp": {
+					"name": "timestamp",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"txn_hash": {
+					"name": "txn_hash",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"fields": {
+					"name": "fields",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"slot_range_lower": {
+					"name": "slot_range_lower",
+					"type": "bigint",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"slot_range_upper": {
+					"name": "slot_range_upper",
+					"type": "bigint",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"marked_as_canonical_at": {
+					"name": "marked_as_canonical_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				}
+			},
+			"indexes": {
+				"before_state|index": {
+					"name": "before_state|index",
+					"columns": [
+						{
+							"expression": "before_state",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"after_state|index": {
+					"name": "after_state|index",
+					"columns": [
+						{
+							"expression": "after_state",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"index|index": {
+					"name": "index|index",
+					"columns": [
+						{
+							"expression": "index",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"marked_as_canonical_at|index": {
+					"name": "marked_as_canonical_at|index",
+					"columns": [
+						{
+							"expression": "marked_as_canonical_at",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"actions_before_state_actions_after_state_fk": {
+					"name": "actions_before_state_actions_after_state_fk",
+					"tableFrom": "actions",
+					"tableTo": "actions",
+					"columnsFrom": ["before_state"],
+					"columnsTo": ["after_state"],
+					"onDelete": "restrict",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"actions_index_unique": {
+					"name": "actions_index_unique",
+					"nullsNotDistinct": false,
+					"columns": ["index"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"actions_before_not_after|check": {
+					"name": "actions_before_not_after|check",
+					"value": "\"actions\".\"before_state\" IS NULL OR \"actions\".\"before_state\" <> \"actions\".\"after_state\""
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.commit_actions": {
+			"name": "commit_actions",
+			"schema": "",
+			"columns": {
+				"after_state": {
+					"name": "after_state",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"ledger": {
+					"name": "ledger",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"inner_action_state": {
+					"name": "inner_action_state",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"inner_action_state_length": {
+					"name": "inner_action_state_length",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"synchronized_outer_action_state": {
+					"name": "synchronized_outer_action_state",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"synchronized_outer_action_state_length": {
+					"name": "synchronized_outer_action_state_length",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"commit_actions_after_state_actions_after_state_fk": {
+					"name": "commit_actions_after_state_actions_after_state_fk",
+					"tableFrom": "commit_actions",
+					"tableTo": "actions",
+					"columnsFrom": ["after_state"],
+					"columnsTo": ["after_state"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.witness_actions": {
+			"name": "witness_actions",
+			"schema": "",
+			"columns": {
+				"after_state": {
+					"name": "after_state",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"aux": {
+					"name": "aux",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {
+				"aux|index": {
+					"name": "aux|index",
+					"columns": [
+						{
+							"expression": "aux",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"witness_actions_after_state_actions_after_state_fk": {
+					"name": "witness_actions_after_state_actions_after_state_fk",
+					"tableFrom": "witness_actions",
+					"tableTo": "actions",
+					"columnsFrom": ["after_state"],
+					"columnsTo": ["after_state"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		}
+	},
+	"enums": {},
+	"schemas": {},
+	"sequences": {},
+	"roles": {},
+	"policies": {},
+	"views": {},
+	"_meta": {
+		"columns": {},
+		"schemas": {},
+		"tables": {}
+	}
+}

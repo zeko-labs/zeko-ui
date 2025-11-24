@@ -46,10 +46,19 @@ async function findPendingOperations({
 }: { account: string } & L1L2): Promise<PendingOperations> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = PublicKey.fromBase58(account)
-	const [deposits, innerActions] = (await Promise.all([
+	const [{ deposits, ...indices }, innerActions] = (await Promise.all([
 		bridge.fetchDepositsWithStates(recipient),
 		bridge.fetchInnerActionsWithStates(recipient)
-	])) satisfies [DepositWithState[], InnerActionWithState[]]
+	])) satisfies [
+		{
+			deposits: DepositWithState[]
+			syncedIndex: number
+			acceptedIndex: number
+			confirmedIndex: number
+			finalisedIndex: number
+		},
+		InnerActionWithState[]
+	]
 
 	const toAmount = (n: bigint) => Number(Number(n / BigInt(10e8)).toFixed(2)).toString()
 
@@ -82,7 +91,7 @@ async function findPendingOperations({
 			amount: toAmount(deposit.amount.toBigInt()),
 			finalised: deposit.finalised,
 			transaction: {
-				date: new Date(Number(deposit.timestamp)),
+				date: new Date(deposit.timestamp),
 				hash: deposit.hash
 			},
 			source: l1,

@@ -6,15 +6,16 @@ import type { Database } from "../db"
 type BaseAction = {
 	beforeState: string | null
 	afterState: string
-	length: number
+	index: number
 	blockHeight: number
-	slotRangeLower: number
-	slotRangeUpper: number
-	timestamp: Date
+	slotRangeLower: string
+	slotRangeUpper: string
+	timestamp: string
 	createdAt: Date
 	txnHash: string
 	fields: string[]
 	kind: "COMMIT" | "WITNESS"
+	markedAsCanonicalAt: Date | null
 }
 
 type Witness = BaseAction & {
@@ -48,7 +49,10 @@ export async function queryWitnessesFromAuxes(
 	return witnesses.map(({ witness_actions, actions }) => ({
 		...actions,
 		...witness_actions,
-		kind: "WITNESS"
+		kind: "WITNESS",
+		slotRangeLower: actions.slotRangeLower.toString(),
+		slotRangeUpper: actions.slotRangeUpper.toString(),
+		timestamp: actions.timestamp.toISOString()
 	}))
 }
 
@@ -57,33 +61,47 @@ export async function queryActions(
 	db: DatabaseInstance,
 	options: { beforeState: string; afterState?: string | null | undefined }
 ): Promise<Action[]> {
+	// If it's the first action, we need to query for the null beforeState
+	const beforeIndexCTE =
+		options.beforeState ===
+		"2965377540200775924504968637505084669999360240500907972788072774778139588064"
+			? sql<number>`
+			(
+				select ${actions.index}
+				from ${actions}
+				where ${actions.beforeState} is null
+				limit 1
+			)
+		`.as("before_index")
+			: sql<number>`
+			(
+				select ${actions.index}
+				from ${actions}
+				where ${actions.beforeState} = ${options.beforeState}
+				limit 1
+			)
+		`.as("before_index")
+
 	const limitsCte = db.drizzle.$with("limits").as(
 		db.drizzle
 			.select({
-				beforeLength: sql<number>`
-					(
-						select ${actions.length}
-						from ${actions}
-						where ${actions.beforeState} = ${options.beforeState}
-						limit 1
-					)
-				`,
-				afterLength: sql<number>`
+				beforeIndex: beforeIndexCTE,
+				afterIndex: sql<number>`
 					coalesce(
 						(
-							select ${actions.length}
+							select ${actions.index}
 							from ${actions}
 							where ${actions.afterState} = ${options.afterState ?? null}
 							limit 1
 						),
 						(
-							select ${actions.length}
+							select ${actions.index}
 							from ${actions}
-							order by ${actions.length} desc
+							order by ${actions.index} desc
 							limit 1
 						)
 					)
-				`
+				`.as("after_index")
 			})
 			.from(actions)
 			.limit(1)
@@ -100,22 +118,28 @@ export async function queryActions(
 		.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
 		.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
 		.innerJoin(limitsCte, sql`true`)
-		.where(between(actions.length, limitsCte.beforeLength, limitsCte.afterLength))
-		.orderBy(actions.length)
+		.where(between(actions.index, limitsCte.beforeIndex, limitsCte.afterIndex))
+		.orderBy(actions.index)
 
 	return actionsResult.map(({ action, commit, witness }) => {
 		if (commit) {
 			return {
 				...action,
 				...commit,
-				kind: "COMMIT"
+				kind: "COMMIT",
+				slotRangeLower: action.slotRangeLower.toString(),
+				slotRangeUpper: action.slotRangeUpper.toString(),
+				timestamp: action.timestamp.toISOString()
 			}
 		}
 		if (witness) {
 			return {
 				...action,
 				...witness,
-				kind: "WITNESS"
+				kind: "WITNESS",
+				slotRangeLower: action.slotRangeLower.toString(),
+				slotRangeUpper: action.slotRangeUpper.toString(),
+				timestamp: action.timestamp.toISOString()
 			}
 		}
 		throw new Error("Invalid action")
@@ -126,72 +150,76 @@ export async function queryCommitAsePastWithdrawalDelay(
 	db: DatabaseInstance,
 	slot: number
 ): Promise<{ commit: Commit | null; ase: Action[] }> {
-	const lastCommitCte = db.drizzle.$with("last_commit").as(
-		db.drizzle
-			.select({
-				lastAction: actions,
-				lastCommit: commitActions,
-				lastLength: actions.length
-			})
+	return await db.drizzle.transaction(async (txn) => {
+		const lastCommitOpt = await txn
+			.select({ action: actions, commit: commitActions })
 			.from(actions)
 			.innerJoin(commitActions, eq(actions.afterState, commitActions.afterState))
-			.where(and(eq(actions.kind, "commit"), lt(actions.slotRangeUpper, slot)))
-			.orderBy(desc(actions.length))
+			.where(and(eq(actions.kind, "commit"), lt(actions.slotRangeUpper, BigInt(slot))))
+			.orderBy(desc(actions.index))
 			.limit(1)
-	)
 
-	const result = await db.drizzle
-		.with(lastCommitCte)
-		.select({
-			action: actions,
-			commit: commitActions,
-			witness: witnessActions,
-			lastCommitAction: lastCommitCte.lastAction,
-			lastCommit: lastCommitCte.lastCommit
-		})
-		.from(lastCommitCte)
-		.leftJoin(actions, gt(actions.length, lastCommitCte.lastLength))
-		.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
-		.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
-		.orderBy(actions.length)
-
-	const lastCommit =
-		result.length > 0
-			? {
-					action: result[0].lastCommitAction,
-					commit: result[0].lastCommit
-				}
-			: null
-
-	return {
-		commit: lastCommit
-			? {
-					...lastCommit.commit,
-					...lastCommit.action,
-					kind: "COMMIT"
-				}
-			: null,
-		ase: result
-			.map(({ action, commit, witness }) => {
-				if (!action) return null
-				if (commit) {
-					return {
-						...action,
-						...commit,
-						kind: "COMMIT"
+		const lastCommit =
+			lastCommitOpt.length > 0
+				? {
+						action: lastCommitOpt[0].action,
+						commit: lastCommitOpt[0].commit
 					}
-				}
-				if (witness) {
-					return {
-						...action,
-						...witness,
-						kind: "WITNESS"
+				: null
+
+		const result = lastCommit
+			? await txn
+					.select({
+						action: actions,
+						commit: commitActions,
+						witness: witnessActions
+					})
+					.from(actions)
+					.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
+					.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
+					.where(gt(actions.index, lastCommit.action.index))
+					.orderBy(actions.index)
+			: []
+
+		return {
+			commit: lastCommit
+				? {
+						...lastCommit.commit,
+						...lastCommit.action,
+						kind: "COMMIT",
+						slotRangeLower: lastCommit.action.slotRangeLower.toString(),
+						slotRangeUpper: lastCommit.action.slotRangeUpper.toString(),
+						timestamp: lastCommit.action.timestamp.toISOString()
 					}
-				}
-				throw new Error("Invalid action")
-			})
-			.filter((action): action is Action => action !== null)
-	}
+				: null,
+			ase: result
+				.map(({ action, commit, witness }) => {
+					if (!action) return null
+					if (commit) {
+						return {
+							...action,
+							...commit,
+							kind: "COMMIT",
+							slotRangeLower: action.slotRangeLower.toString(),
+							slotRangeUpper: action.slotRangeUpper.toString(),
+							timestamp: action.timestamp.toISOString()
+						}
+					}
+					if (witness) {
+						return {
+							...action,
+							...witness,
+							kind: "WITNESS",
+							slotRangeLower: action.slotRangeLower.toString(),
+							slotRangeUpper: action.slotRangeUpper.toString(),
+							timestamp: action.timestamp.toISOString()
+						}
+					}
+					throw new Error("Invalid action")
+				})
+				.filter((action): action is Action => action !== null)
+		}
+	})
 }
 
 /**
@@ -205,10 +233,13 @@ const ActionInterface = builder.interfaceRef<BaseAction>("Action").implement({
 	fields: (t) => ({
 		afterState: t.exposeString("afterState"),
 		beforeState: t.exposeString("beforeState", { nullable: true }),
-		length: t.exposeInt("length"),
+		index: t.exposeInt("index"),
 		blockHeight: t.exposeInt("blockHeight"),
-		slotRangeLower: t.exposeInt("slotRangeLower"),
-		slotRangeUpper: t.exposeInt("slotRangeUpper"),
+		slotRangeLower: t.exposeString("slotRangeLower"),
+		slotRangeUpper: t.exposeString("slotRangeUpper"),
+		timestamp: t.exposeString("timestamp"),
+		txnHash: t.exposeString("txnHash"),
+		fields: t.exposeStringList("fields"),
 		kind: t.field({ type: ActionKind, resolve: (r) => r.kind })
 	})
 })

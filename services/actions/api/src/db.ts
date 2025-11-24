@@ -24,7 +24,7 @@ const initializeDrizzle = ({ cache, env }: { cache: boolean; env: Env }) => {
 	// 		: cache
 	// 			? `${env.HYPERDRIVE.connectionString}`
 	// 			: `${env.HYPERDRIVE_NO_CACHE.connectionString}`
-	const connectionString = "todo"
+	const connectionString = "postgresql://postgres:postgres@localhost:5434/actions"
 	const client = postgres(connectionString, {
 		// prepare: false,
 		// idle_timeout: 20,

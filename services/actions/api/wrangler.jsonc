@@ -2,6 +2,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"compatibility_date": "2025-10-08",
 	"name": "actions-api",
+	"main": "src/index.ts",
 	"preview_urls": true,
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true, "traces": { "enabled": true } },

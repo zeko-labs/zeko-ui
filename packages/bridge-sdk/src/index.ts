@@ -233,16 +233,18 @@ export class Bridge {
 	private async fetchInnerActions(actionStates?: Mina.ActionStates): Promise<InnerAction[]> {
 		const actions = await fetchActions(this.l2ArchiveClient, this.innerPk, actionStates)
 
-		return actions.map(({ beforeActionState, afterActionState, action, hash, timestamp }) => {
-			if (action[0].equals(0).toBoolean()) {
-				return {
-					type: "witness",
-					aux: action[1],
-					action: { beforeActionState, afterActionState, action, hash, timestamp }
+		return actions.map(
+			({ index, beforeActionState, afterActionState, action, hash, timestamp }) => {
+				if (action[0].equals(0).toBoolean()) {
+					return {
+						type: "witness",
+						aux: action[1],
+						action: { index, beforeActionState, afterActionState, action, hash, timestamp }
+					}
 				}
+				throw new Error("Invalid inner action type")
 			}
-			throw new Error("Invalid inner action type")
-		})
+		)
 	}
 
 	private async pollQuery(key: string, pollPeriod = 5_000) {
@@ -338,13 +340,20 @@ export class Bridge {
 			aux: depositAux(deposit)
 		}))
 
+		if (deposits.length === 0) return null
+
 		const depositWitnesses = await fetchWitnessesFromAuxes(
 			this.l1IndexerClient,
 			deposits.map(({ aux }) => aux.toString())
 		)
 
-		const earliestBeforeState = depositWitnesses.sort((a, b) => a.length - b.length)[0]
-			.beforeActionState
+		if (depositWitnesses.length === 0) return null
+
+		const earliestBeforeState = depositWitnesses
+			.sort((a, b) => a.index - b.index)
+			.at(0)?.beforeActionState
+
+		if (earliestBeforeState === undefined) return null
 
 		const outerActions = await fetchActionsFromIndexer(this.l1IndexerClient, {
 			fromState: earliestBeforeState.toString()
@@ -360,7 +369,7 @@ export class Bridge {
 
 			if (!matchingDeposit) return false
 
-			if (prevNextDeposit.greaterThan(UInt32.from(action.length - 1)).toBoolean()) return false
+			if (prevNextDeposit.greaterThan(UInt32.from(action.index)).toBoolean()) return false
 
 			return true
 		})
@@ -374,7 +383,7 @@ export class Bridge {
 
 			if (
 				action.synchronizedOuterActionStateLength
-					.lessThanOrEqual(UInt32.from(myDeposit.length - 1))
+					.lessThanOrEqual(UInt32.from(myDeposit.index))
 					.toBoolean()
 			)
 				return false
@@ -413,7 +422,7 @@ export class Bridge {
 						.slice(myDepositIndex, nextCommitIndex + 1)
 						.map(({ action }) => ({ actions: action.map((a) => a.toString()) })),
 					init: {
-						depositIndex: (myDeposit.length - 1).toString(),
+						depositIndex: myDeposit.index.toString(),
 						orignalActionState: myDeposit.beforeActionState.toString(),
 						params: {
 							amount: depositParams.deposit.amount.toString(),
@@ -673,7 +682,13 @@ export class Bridge {
 		return !!(await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner))
 	}
 
-	public async fetchDepositsWithStates(pk: PublicKey): Promise<DepositWithState[]> {
+	public async fetchDepositsWithStates(pk: PublicKey): Promise<{
+		deposits: DepositWithState[]
+		syncedIndex: number
+		acceptedIndex: number
+		confirmedIndex: number
+		finalisedIndex: number
+	}> {
 		const deposits = await this.fetchUserDeposits(pk)
 
 		const auxes = deposits.map(depositAux)
@@ -686,7 +701,7 @@ export class Bridge {
 
 		const depositWitnesses = await fetchWitnessesFromAuxes(
 			this.l1IndexerClient,
-			auxes.map(Field.toString)
+			auxes.map((x) => x.toString())
 		)
 
 		const helperAccount = await this.fetchAccount(
@@ -702,25 +717,33 @@ export class Bridge {
 
 		const { commit: lastCommit } = await fetchCommitAsePastWithdrawalDelay(
 			this.l1IndexerClient,
-			+this.withdrawalDelay.add(currentSlot)
+			+currentSlot.sub(this.withdrawalDelay)
 		)
 
-		return depositWitnesses.map((witness) => {
-			const deposit = auxesMap.get(witness.aux.toBigInt())
-			if (!deposit) throw new Error("Unreachable: Did not find deposit")
-			return {
-				...witness,
-				...deposit,
-				synced: syncedOuterActionState.length
-					.greaterThanOrEqual(UInt32.from(witness.length))
-					.toBoolean(),
-				accepted: lastCommit.length >= witness.length,
-				confirmed: lastCommit.synchronizedOuterActionStateLength
-					.greaterThanOrEqual(UInt32.from(witness.length))
-					.toBoolean(),
-				finalised: nextDeposit.greaterThanOrEqual(UInt32.from(witness.length)).toBoolean()
-			}
-		})
+		console.log(lastCommit)
+
+		return {
+			deposits: depositWitnesses.map((witness) => {
+				const deposit = auxesMap.get(witness.aux.toBigInt())
+				if (!deposit) throw new Error("Unreachable: Did not find deposit")
+				return {
+					...witness,
+					...deposit,
+					synced: syncedOuterActionState.length
+						.greaterThanOrEqual(UInt32.from(witness.index + 1))
+						.toBoolean(),
+					accepted: lastCommit.index >= witness.index,
+					confirmed: lastCommit.synchronizedOuterActionStateLength
+						.greaterThanOrEqual(UInt32.from(witness.index + 1))
+						.toBoolean(),
+					finalised: nextDeposit.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean()
+				}
+			}),
+			syncedIndex: +syncedOuterActionState.length.sub(1).toString(),
+			acceptedIndex: lastCommit.index,
+			confirmedIndex: +lastCommit.synchronizedOuterActionStateLength.sub(1).toString(),
+			finalisedIndex: +nextDeposit.sub(1).toString()
+		}
 	}
 	public async fetchInnerActionsWithStates(_pk: PublicKey): Promise<InnerActionWithState[]> {
 		return []

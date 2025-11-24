@@ -46,7 +46,7 @@ export async function batchInsert<
 	db,
 	table,
 	values,
-	chunkSize = 8000
+	chunkSize = 100
 }: {
 	db: PostgresJsDatabase
 	table: T

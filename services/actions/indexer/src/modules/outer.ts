@@ -26,6 +26,9 @@ export const handler = {
 			if (kind === "commit")
 				return {
 					kind: "commit" as const,
+					fields: item.action,
+					timestamp: item.timestamp,
+					hash: item.hash,
 					afterState,
 					beforeState,
 					blockHeight,
@@ -41,6 +44,9 @@ export const handler = {
 
 			return {
 				kind: "witness" as const,
+				fields: item.action,
+				timestamp: item.timestamp,
+				hash: item.hash,
 				afterState,
 				beforeState,
 				blockHeight,

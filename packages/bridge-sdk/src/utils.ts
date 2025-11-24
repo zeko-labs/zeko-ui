@@ -1,4 +1,4 @@
-import { Field, fetchAccount, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
+import { Field, Poseidon, PublicKey, UInt32, fetchAccount, type Mina } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
 import {
@@ -21,10 +21,10 @@ import type {
 const BaseActionSchema = v.object({
 	afterState: v.string(),
 	beforeState: v.nullable(v.string()),
-	length: v.number(),
+	index: v.number(),
 	blockHeight: v.number(),
-	slotRangeLower: v.number(),
-	slotRangeUpper: v.number(),
+	slotRangeLower: v.string(),
+	slotRangeUpper: v.string(),
 	timestamp: v.string(),
 	txnHash: v.string(),
 	fields: v.array(v.string()),
@@ -36,7 +36,7 @@ const baseActionFromSchema = (x: v.InferOutput<typeof BaseActionSchema>) => ({
 	afterActionState: Field.from(x.afterState),
 	timestamp: x.timestamp,
 	hash: x.txnHash,
-	length: x.length,
+	index: x.index,
 	action: x.fields.map(Field.from),
 	slotRange: {
 		lower: UInt32.from(x.slotRangeLower),
@@ -78,13 +78,17 @@ export async function fetchActionsFromIndexer(
 	client: Client,
 	options: { fromState: string; afterState?: string | null | undefined }
 ): Promise<OuterAction[]> {
-	const { data } = await client.query(fetchActionsQueryIndexer, {
-		fromState: options.fromState,
+	const { data, error } = await client.query(fetchActionsQueryIndexer, {
+		beforeState: options.fromState,
 		afterState: options.afterState
 	})
 
 	const result = v.safeParse(v.array(ActionSchema), data?.actions)
-	if (!result.success) throw new Error("Invalid actions data")
+	if (!result.success) {
+		console.error(error)
+		console.error(result.issues)
+		throw new Error("Invalid actions data")
+	}
 
 	return result.output.map((action) => ({
 		...baseActionFromSchema(action),
@@ -98,10 +102,14 @@ export async function fetchWitnessesFromAuxes(
 	client: Client,
 	auxes: string[]
 ): Promise<OuterWitness[]> {
-	const { data } = await client.query(fetchWitnessesFromAuxesQuery, { auxes })
+	const { data, error } = await client.query(fetchWitnessesFromAuxesQuery, { auxes })
 
 	const result = v.safeParse(v.array(WitnessSchema), data?.witnessesFromAuxes)
-	if (!result.success) throw new Error("Invalid witnesses data")
+	if (!result.success) {
+		console.error(error)
+		console.error(result.issues)
+		throw new Error("Invalid witnesses data")
+	}
 
 	return result.output.map((witness) => ({
 		...baseActionFromSchema(witness),
@@ -114,13 +122,17 @@ export async function fetchCommitAsePastWithdrawalDelay(
 	client: Client,
 	slot: number
 ): Promise<{ commit: OuterCommit; ase: OuterAction[] }> {
-	const { data } = await client.query(fetchCommitAsePastWithdrawalDelayQuery, { slot })
+	const { data, error } = await client.query(fetchCommitAsePastWithdrawalDelayQuery, { slot })
 
 	const result = v.safeParse(
 		v.object({ commit: CommitSchema, ase: v.array(ActionSchema) }),
 		data?.commitAsePastWithdrawalDelay
 	)
-	if (!result.success) throw new Error("Invalid commit ase past withdrawal delay data")
+	if (!result.success) {
+		console.error(error)
+		console.error(result.issues)
+		throw new Error("Invalid commit ase past withdrawal delay data")
+	}
 
 	return {
 		commit: {
@@ -179,7 +191,7 @@ export async function fetchActions(
 				actionData: v.array(
 					v.object({
 						data: v.array(v.string()),
-						transactionInfo: v.object({ status: v.string(), hash: v.string() })
+						transactionInfo: v.object({ hash: v.string() })
 					})
 				)
 			})
@@ -205,28 +217,27 @@ export async function fetchActions(
 	const output = await fetchActionsRecursive()
 
 	return output.flatMap(
-		({
-			actionState: { actionStateTwo: actionStateBefore },
-			actionData,
-			blockInfo: { timestamp }
-		}) => {
-			const actions = actionData.map(({ data, transactionInfo: { hash, status } }) => ({
+		(
+			{ actionState: { actionStateTwo: actionStateBefore }, actionData, blockInfo: { timestamp } },
+			index
+		) => {
+			const actions = actionData.map(({ data, transactionInfo: { hash } }) => ({
 				data: data.map(Field.from),
-				hash,
-				status
+				hash
 			}))
 			let actionState = Field.from(actionStateBefore)
 
 			const correctActions = []
-			for (const action of actions) {
+			for (let i = 0; i < actions.length; i++) {
+				const action = actions[i]
 				const afterActionState = pushHash(actionState, fromList([action.data]).hash)
 				correctActions.push({
+					index: index + i,
 					action: action.data,
 					beforeActionState: actionState,
 					afterActionState,
 					timestamp,
-					hash: action.hash,
-					status: action.status
+					hash: action.hash
 				})
 				actionState = afterActionState
 			}

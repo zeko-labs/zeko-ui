@@ -15,6 +15,7 @@ export type Action = {
 	action: Field[]
 	beforeActionState: Field
 	afterActionState: Field
+	index: number
 	timestamp: string
 	hash: string
 }
@@ -32,7 +33,7 @@ export type Withdrawal = {
 }
 
 export type OuterActionBase = Action & {
-	length: number
+	index: number
 	slotRange: {
 		lower: UInt32
 		upper: UInt32
@@ -68,6 +69,13 @@ export type DepositWithState = Action &
 		confirmed: boolean
 		finalised: boolean
 	}
+
+export enum DepositStateProgress {
+	SYNCED = 0,
+	ACCEPTED = 1,
+	CONFIRMED = 2,
+	FINALISED = 3
+}
 
 export type InnerAction = InnerWitness
 

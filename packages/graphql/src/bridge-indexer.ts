@@ -2,10 +2,10 @@ import { bridgeIndexer as graphql } from "."
 
 export const fetchWitnessesFromAuxesQuery = graphql(`
   query FetchWitnessesFromAuxes($auxes: [String!]!) {
-    witnessesFromAuxes(auxes: $auxes) {
+    witnessesFromAuxes(input: { auxes: $auxes }) {
       beforeState
       afterState
-      length
+      index
       blockHeight
       slotRangeLower
       slotRangeUpper
@@ -13,26 +13,28 @@ export const fetchWitnessesFromAuxesQuery = graphql(`
       txnHash
       fields
       aux
+      kind
     }
   }
 `)
 
 export const fetchActionsQueryIndexer = graphql(`
-  query FetchActions($fromState: String!, $afterState: String) {
+  query FetchActions($beforeState: String!, $afterState: String) {
     actions(
-      fromState: $fromState
-      afterState: $afterState
+      input: { beforeState: $beforeState, afterState: $afterState }
     ) {
-      beforeState
-      afterState
-      length
-      blockHeight
-      slotRangeLower
-      slotRangeUpper
-      timestamp
-      txnHash
-      fields
-      kind
+      ... on Action {
+        beforeState
+        afterState
+        index
+        blockHeight
+        slotRangeLower
+        slotRangeUpper
+        timestamp
+        txnHash
+        fields
+        kind
+      }
       ... on Commit {
         ledger
         innerActionState
@@ -53,7 +55,7 @@ export const fetchCommitAsePastWithdrawalDelayQuery = graphql(`
       commit {
         beforeState
         afterState
-        length
+        index
         blockHeight
         slotRangeLower
         slotRangeUpper
@@ -68,16 +70,18 @@ export const fetchCommitAsePastWithdrawalDelayQuery = graphql(`
         synchronizedOuterActionStateLength
       }
       ase {
-        beforeState
-        afterState
-        length
-        blockHeight
-        slotRangeLower
-        slotRangeUpper
-        timestamp
-        txnHash
-        fields
-        kind
+        ... on Action {
+          beforeState
+          afterState
+          index
+          blockHeight
+          slotRangeLower
+          slotRangeUpper
+          timestamp
+          txnHash
+          fields
+          kind
+        }
         ... on Witness {
           aux
         }
