@@ -68,13 +68,13 @@ catalogs:
       version: 3.4.2
     drizzle-kit:
       specifier: beta
-      version: 1.0.0-beta.1-6617f6a
+      version: 1.0.0-beta.1-4e7eaa6
     drizzle-orm:
       specifier: beta
-      version: 1.0.0-beta.1-6617f6a
+      version: 1.0.0-beta.1-4e7eaa6
     drizzle-seed:
       specifier: beta
-      version: 0.3.1-6617f6a
+      version: 0.3.1-4e7eaa6
     lucide-vue-next:
       specifier: ^0.453.0
       version: 0.453.0
@@ -638,7 +638,7 @@ importers:
         version: 3.4.2
       drizzle-orm:
         specifier: 'catalog:'
-        version: 1.0.0-beta.1-6617f6a(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
+        version: 1.0.0-beta.1-4e7eaa6(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
       graphql:
         specifier: catalog:graphql
         version: 16.12.0
@@ -663,10 +663,10 @@ importers:
         version: 1.3.0(@types/react@19.1.9)
       drizzle-kit:
         specifier: 'catalog:'
-        version: 1.0.0-beta.1-6617f6a
+        version: 1.0.0-beta.1-4e7eaa6
       drizzle-seed:
         specifier: 'catalog:'
-        version: 0.3.1-6617f6a(drizzle-orm@1.0.0-beta.1-6617f6a(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7))
+        version: 0.3.1-4e7eaa6(drizzle-orm@1.0.0-beta.1-4e7eaa6(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7))
       tsdown:
         specifier: 'catalog:'
         version: 0.13.4(typescript@5.9.3)(vue-tsc@3.0.6(typescript@5.9.3))
@@ -691,9 +691,6 @@ importers:
       '@elysiajs/eden':
         specifier: catalog:elysia
         version: 1.4.4(elysia@1.4.12(@sinclair/typebox@0.34.41)(exact-mirror@0.2.2(@sinclair/typebox@0.34.41))(file-type@21.0.0)(openapi-types@12.1.3)(typescript@5.9.3))
-      '@lumina-dex/sdk':
-        specifier: 'catalog:'
-        version: 0.23.0(@gql.tada/vue-support@1.0.1(typescript@5.9.3))(@types/react@19.1.9)(graphql@16.12.0)(o1js@2.8.0)(react@18.3.1)(solid-js@1.9.10)(typescript@5.9.3)
       '@zeko/actions-api':
         specifier: workspace:^
         version: link:../api
@@ -708,7 +705,7 @@ importers:
         version: 3.4.2
       drizzle-orm:
         specifier: 'catalog:'
-        version: 1.0.0-beta.1-6617f6a(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
+        version: 1.0.0-beta.1-4e7eaa6(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
       elysia:
         specifier: catalog:elysia
         version: 1.4.12(@sinclair/typebox@0.34.41)(exact-mirror@0.2.2(@sinclair/typebox@0.34.41))(file-type@21.0.0)(openapi-types@12.1.3)(typescript@5.9.3)
@@ -763,7 +760,7 @@ importers:
         version: 3.4.2
       drizzle-orm:
         specifier: 'catalog:'
-        version: 1.0.0-beta.1-6617f6a(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
+        version: 1.0.0-beta.1-4e7eaa6(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
       graphql:
         specifier: catalog:graphql
         version: 16.12.0
@@ -788,10 +785,10 @@ importers:
         version: 1.3.0(@types/react@19.1.9)
       drizzle-kit:
         specifier: 'catalog:'
-        version: 1.0.0-beta.1-6617f6a
+        version: 1.0.0-beta.1-4e7eaa6
       drizzle-seed:
         specifier: 'catalog:'
-        version: 0.3.1-6617f6a(drizzle-orm@1.0.0-beta.1-6617f6a(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7))
+        version: 0.3.1-4e7eaa6(drizzle-orm@1.0.0-beta.1-4e7eaa6(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7))
       tsdown:
         specifier: 'catalog:'
         version: 0.13.4(typescript@5.9.3)(vue-tsc@3.0.6(typescript@5.9.3))
@@ -830,7 +827,7 @@ importers:
         version: 3.4.2
       drizzle-orm:
         specifier: 'catalog:'
-        version: 1.0.0-beta.1-6617f6a(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
+        version: 1.0.0-beta.1-4e7eaa6(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
       elysia:
         specifier: catalog:elysia
         version: 1.4.12(@sinclair/typebox@0.34.41)(exact-mirror@0.2.2(@sinclair/typebox@0.34.41))(file-type@21.0.0)(openapi-types@12.1.3)(typescript@5.9.3)
@@ -5863,12 +5860,12 @@ packages:
     resolution: {integrity: sha512-vCQC+IMHVZbISA5pxEj+yshQbozmQoVFA4lzcLlqJ8rzIAH8U+1DKvesN/2Uv3Bqz6rMW6W4WY7pYJQljmiZ8w==}
     hasBin: true
 
-  drizzle-kit@1.0.0-beta.1-6617f6a:
-    resolution: {integrity: sha512-akByOfnR+HA7JceWIpCvtxLUFA8TeRWelIsFG2yCT13WWHJn8PBt2VcHhUVQ4/qyn7K/7Os/d5wiav0OzLTk8Q==}
+  drizzle-kit@1.0.0-beta.1-4e7eaa6:
+    resolution: {integrity: sha512-R4xXvrXeHH/QQgMBrf8vVRkkFM25tj+Ri+RGe/kXTbjFo9XluUY8lQU2gqaRGuKlyuKGGDtcrG1VLgIqfT0/qA==}
     hasBin: true
 
-  drizzle-orm@1.0.0-beta.1-6617f6a:
-    resolution: {integrity: sha512-jrjtTrDNHdUpGFmPHy2Gt8gP0zsbh9RsqgXt1z+6cTczdISEGWivm0DcOAGX2E42qgqnEbxOPA/3awntRTZT7g==}
+  drizzle-orm@1.0.0-beta.1-4e7eaa6:
+    resolution: {integrity: sha512-+66Qs0VBPHCcSVTzlbbZoo0sqzq73hcENgEiK8cuK29qjwbsh15ECZv9EdI6dfvwFi9mN6MoYlIv4+h3yflvNA==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -5965,8 +5962,8 @@ packages:
       sqlite3:
         optional: true
 
-  drizzle-seed@0.3.1-6617f6a:
-    resolution: {integrity: sha512-3qJQYKaPfT7U40gzExZBBkpzv2c7LDLqRPO/uGakVaJ4exkyd0Mp2vi1EQ8SOVirkn8FnKbUKUXX9QSDd7TIWg==}
+  drizzle-seed@0.3.1-4e7eaa6:
+    resolution: {integrity: sha512-23wqmGyymeMzerR8Ct5JsSWwveKJ/PQ1gU0ih2KVS8QewJ+1WCujM2p8jIuaT9x7kFBSjBH8bYKKNX4+rqNJUw==}
     peerDependencies:
       drizzle-orm: '>=1.0.0-beta.1'
     peerDependenciesMeta:
@@ -15685,7 +15682,7 @@ snapshots:
       '@dprint/win32-arm64': 0.47.6
       '@dprint/win32-x64': 0.47.6
 
-  drizzle-kit@1.0.0-beta.1-6617f6a:
+  drizzle-kit@1.0.0-beta.1-4e7eaa6:
     dependencies:
       '@drizzle-team/brocli': 0.10.2
       '@esbuild-kit/esm-loader': 2.6.5
@@ -15694,18 +15691,18 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@1.0.0-beta.1-6617f6a(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7):
+  drizzle-orm@1.0.0-beta.1-4e7eaa6(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7):
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/pg': 8.15.4
       bun-types: 1.3.0(@types/react@19.1.9)
       postgres: 3.4.7
 
-  drizzle-seed@0.3.1-6617f6a(drizzle-orm@1.0.0-beta.1-6617f6a(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)):
+  drizzle-seed@0.3.1-4e7eaa6(drizzle-orm@1.0.0-beta.1-4e7eaa6(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)):
     dependencies:
       pure-rand: 6.1.0
     optionalDependencies:
-      drizzle-orm: 1.0.0-beta.1-6617f6a(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
+      drizzle-orm: 1.0.0-beta.1-4e7eaa6(@opentelemetry/api@1.9.0)(@types/pg@8.15.4)(bun-types@1.3.0(@types/react@19.1.9))(postgres@3.4.7)
 
   dset@3.1.4: {}
 

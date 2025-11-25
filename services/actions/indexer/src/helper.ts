@@ -1,5 +1,4 @@
-import { createMinaClient } from "@lumina-dex/sdk"
-import { fromList, pushHash } from "@zeko/bridge-sdk"
+import { createGraphqlClient, fromList, pushHash } from "@zeko/bridge-sdk"
 import { fetchActionsQuery, networkStateQuery } from "@zeko/graphql/mina-archive"
 import { createConsola } from "consola"
 import { Field } from "o1js"
@@ -11,7 +10,7 @@ export const logger = createConsola({
 }).withTag("ACTIONS_INDEXER")
 
 export const OUTER_PK = "B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2"
-export const l1Client = createMinaClient(env.L1_ARCHIVE_URL)
+export const l1Client = createGraphqlClient(env.L1_ARCHIVE_URL)
 
 const firstBlockWithActions = 430_000
 
@@ -42,7 +41,7 @@ export async function fetchActions({
 	client,
 	fromBlock
 }: {
-	client: ReturnType<typeof createMinaClient>
+	client: ReturnType<typeof createGraphqlClient>
 	fromBlock?: number
 }): Promise<ArchiveEvent[]> {
 	logger.info(`[fetchActions] starting fetch; fromBlock=${fromBlock ?? "latest"}`)
@@ -209,7 +208,9 @@ export async function fetchActions({
 	return result
 }
 
-export async function getNetworkTip(client: ReturnType<typeof createMinaClient>): Promise<number> {
+export async function getNetworkTip(
+	client: ReturnType<typeof createGraphqlClient>
+): Promise<number> {
 	const res = await client.query(networkStateQuery, {})
 	if (res.error) throw res.error
 	const height = res.data?.networkState?.maxBlockHeight?.pendingMaxBlockHeight ?? 0

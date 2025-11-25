@@ -39,6 +39,7 @@ import {
 } from "./utils"
 
 export * from "./actions"
+export * from "./graphql/index"
 export * from "./types"
 
 export class Bridge {
