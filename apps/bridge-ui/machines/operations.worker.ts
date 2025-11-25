@@ -1,12 +1,7 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
-import type {
-	InnerActionWithState,
-	MaybeDeposit,
-	MaybeWithdrawal,
-	OuterActionWithState
-} from "@zeko/bridge-sdk"
+import type { DepositWithState, InnerActionWithState, MaybeWithdrawal } from "@zeko/bridge-sdk"
 import { Bridge } from "@zeko/bridge-sdk"
 import * as Comlink from "comlink"
 import { fetchTransactionStatus, PublicKey, Transaction, UInt32, UInt64 } from "o1js"
@@ -20,7 +15,6 @@ export type ActionState = {
 	finalised: boolean
 	transaction: {
 		date: Date
-		status: string
 		hash: string
 	}
 	source: Networks
@@ -52,34 +46,21 @@ async function findPendingOperations({
 }: { account: string } & L1L2): Promise<PendingOperations> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = PublicKey.fromBase58(account)
-	const [outerActions, innerActions] = (await Promise.all([
-		bridge.fetchOuterActionsWithStates(recipient),
+	const [{ deposits, ...indices }, innerActions] = (await Promise.all([
+		bridge.fetchDepositsWithStates(recipient),
 		bridge.fetchInnerActionsWithStates(recipient)
-	])) satisfies [OuterActionWithState[], InnerActionWithState[]]
+	])) satisfies [
+		{
+			deposits: DepositWithState[]
+			syncedIndex: number
+			acceptedIndex: number
+			confirmedIndex: number
+			finalisedIndex: number
+		},
+		InnerActionWithState[]
+	]
 
 	const toAmount = (n: bigint) => Number(Number(n / BigInt(10e8)).toFixed(2)).toString()
-
-	const deposits = outerActions
-		.map((action, index) => {
-			const maybe = action as MaybeDeposit
-			if (maybe.type === "witness" && maybe.deposit) {
-				return {
-					index,
-					id: maybe.action.afterActionState.toString(),
-					recipient: maybe.deposit.recipient.toBase58(),
-					amount: toAmount(maybe.deposit.amount.toBigInt()),
-					finalised: maybe.deposit.finalised,
-					transaction: {
-						date: new Date(Number(maybe.action.timestamp)),
-						status: maybe.action.status,
-						hash: maybe.action.hash
-					},
-					source: l1,
-					destination: l2
-				} as const
-			}
-		})
-		.filter(Boolean) satisfies ActionState[]
 
 	const withdrawals = innerActions
 		.map((action, index) => {
@@ -93,7 +74,6 @@ async function findPendingOperations({
 					finalised: maybe.withdrawal.finalised,
 					transaction: {
 						date: new Date(Number(maybe.action.timestamp)),
-						status: maybe.action.status,
 						hash: maybe.action.hash
 					},
 					source: l2,
@@ -103,7 +83,22 @@ async function findPendingOperations({
 		})
 		.filter(Boolean) satisfies ActionState[]
 
-	return { deposits, withdrawals }
+	return {
+		deposits: deposits.map((deposit, index) => ({
+			index,
+			id: deposit.afterActionState.toString(),
+			recipient: deposit.recipient.toBase58(),
+			amount: toAmount(deposit.amount.toBigInt()),
+			finalised: deposit.finalised,
+			transaction: {
+				date: new Date(deposit.timestamp),
+				hash: deposit.hash
+			},
+			source: l1,
+			destination: l2
+		})),
+		withdrawals
+	}
 }
 
 async function submitDeposit({

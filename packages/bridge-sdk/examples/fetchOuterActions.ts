@@ -14,72 +14,35 @@ async function main() {
 	const bridge = await Bridge.init({
 		l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
 		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
+		actionsApi: "http://localhost:9100/graphql",
 		zekoUrl: "https://testnet.zeko.io/graphql",
 		zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql",
 		l1Network: "testnet",
 		l2Network: "testnet"
 	})
 
-	const actions = await bridge.fetchOuterActionsWithStates(recipient)
-	const formattedActions = actions.map((action, index) => {
-		if (action.type === "commit") {
-			return {
-				index,
-				type: action.type,
-				// ledger: action.ledger.toString(),
-				// innerActionState: action.innerActionState.toString(),
-				// innerActionStateLength: action.innerActionStateLength.toString(),
-				// synchronizedOuterActionState: action.synchronizedOuterActionState.toString(),
-				synchronizedOuterActionStateLength: action.synchronizedOuterActionStateLength.toString(),
-				// action: action.action.action.map((x) => x.toString()),
-				// beforeActionState: action.action.beforeActionState.toString(),
-				// afterActionState: action.action.afterActionState.toString(),
-				// isPastWithdrawalDelay: action.isPastWithdrawalDelay,
-				// slotRange: {
-				// 	lower: action.slotRange.lower.toString(),
-				// 	upper: action.slotRange.upper.toString()
-				// },
-				synced: action.synced,
-				accepted: action.accepted,
-				confirmed: action.confirmed,
-				transaction: {
-					hash: action.action.hash,
-					status: action.action.status,
-					timestamp: action.action.timestamp
-				}
-			}
-		}
-		if (action.type === "witness") {
-			return {
-				index,
-				type: action.type,
-				action: action.action.action.map((x) => x.toString()),
-				beforeActionState: action.action.beforeActionState.toString(),
-				afterActionState: action.action.afterActionState.toString(),
-				deposit: action.deposit
-					? {
-							recipient: action.deposit.recipient.toBase58(),
-							amount: action.deposit.amount.toString(),
-							timeout: action.deposit.timeout.toString(),
-							holderAccountL1: action.deposit.holderAccountL1.toBase58(),
-							timedOut: action.deposit.timedOut,
-							finalised: action.deposit.finalised
-						}
-					: undefined,
-				transaction: {
-					hash: action.action.hash,
-					status: action.action.status,
-					timestamp: action.action.timestamp
-				},
-				synced: action.synced,
-				accepted: action.accepted,
-				confirmed: action.confirmed
-			}
-		}
-		throw new Error("should not be reachable")
-	})
+	const { deposits, ...indices } = await bridge.fetchDepositsWithStates(recipient)
+	const formattedActions = deposits.map((deposit) => ({
+		index: deposit.index,
+		action: deposit.action.map((x) => x.toString()),
+		beforeActionState: deposit.beforeActionState.toString(),
+		afterActionState: deposit.afterActionState.toString(),
+		timestamp: deposit.timestamp,
+		hash: deposit.hash,
+		recipient: deposit.recipient.toBase58(),
+		amount: deposit.amount.toString(),
+		timeout: deposit.timeout.toString(),
+		holderAccountL1: deposit.holderAccountL1.toBase58(),
+		synced: deposit.synced,
+		accepted: deposit.accepted,
+		confirmed: deposit.confirmed,
+		finalised: deposit.finalised
+	}))
 
 	console.log(formattedActions)
+	console.log("formattedActions length", formattedActions.length)
+	console.log("indices", indices)
+
 	writeLog({ log: formattedActions, name: "outer-actions" })
 }
 

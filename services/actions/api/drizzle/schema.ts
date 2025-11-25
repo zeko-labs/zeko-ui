@@ -5,6 +5,7 @@ import {
 	check,
 	index,
 	integer,
+	jsonb,
 	pgTable,
 	text,
 	timestamp
@@ -20,6 +21,9 @@ export const actions = pgTable(
 		}),
 		index: integer("index").notNull().unique(),
 		blockHeight: integer("block_height").notNull(),
+		timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+		txnHash: text("txn_hash").notNull(),
+		fields: jsonb("fields").$type<string[]>().notNull(),
 		slotRangeLower: bigint("slot_range_lower", { mode: "bigint" }).notNull(),
 		slotRangeUpper: bigint("slot_range_upper", { mode: "bigint" }).notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

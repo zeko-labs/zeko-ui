@@ -23,7 +23,6 @@ export const fetchActionsQuery = graphql(`
       actionData {
         data
         transactionInfo {
-          status
           hash
         }
       }

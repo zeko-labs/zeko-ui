@@ -1,5 +1,6 @@
 import { actions, commitActions, witnessActions } from "@zeko/actions-api"
-import { desc, isNull, not, sql } from "drizzle-orm"
+import { desc, InferInsertModel, isNull, not, sql } from "drizzle-orm"
+import { AnyPgTable } from "drizzle-orm/pg-core"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
@@ -40,25 +41,20 @@ export type ActionsInsert = typeof actions.$inferInsert
 export type CommitInsert = typeof commitActions.$inferInsert
 export type WitnessInsert = typeof witnessActions.$inferInsert
 
-export async function batchInsert<
-	T extends typeof actions | typeof commitActions | typeof witnessActions
->({
+export async function batchInsert<TTable extends AnyPgTable>({
 	db,
 	table,
 	values,
-	chunkSize = 8000
+	chunkSize = 100
 }: {
 	db: PostgresJsDatabase
-	table: T
-	values: T["$inferInsert"][]
+	table: TTable
+	values: InferInsertModel<TTable>[]
 	chunkSize?: number
 }): Promise<void> {
 	for (let i = 0; i < values.length; i += chunkSize) {
 		const chunk = values.slice(i, i + chunkSize)
-		await db
-			.insert(table)
-			.values(chunk as any)
-			.onConflictDoNothing({ target: table.afterState })
+		await db.insert(table).values(chunk).onConflictDoNothing()
 	}
 }
 

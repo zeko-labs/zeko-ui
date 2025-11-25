@@ -16,7 +16,7 @@ const firstBlockWithActions = 430_000
 
 export interface ArchiveActionData {
 	data: string[]
-	transactionInfo: { status: string; hash: string }
+	transactionInfo: { hash: string }
 }
 
 export interface ArchiveAction {
@@ -31,7 +31,6 @@ export interface ArchiveEvent {
 	afterActionState: Field
 	timestamp: string
 	hash: string
-	status: string
 	blockInfo: { timestamp: string; height: number; distanceFromMaxBlockHeight: number }
 }
 
@@ -116,7 +115,7 @@ export async function fetchActions({
 				.filter((ad) => ad != null)
 				.map((ad) => ({
 					data: ad.data.filter((d) => d != null),
-					transactionInfo: ad.transactionInfo ?? { status: "status", hash: "hash" }
+					transactionInfo: ad.transactionInfo ?? { hash: "hash" }
 				}))
 		}))
 		const schema = v.array(
@@ -130,7 +129,7 @@ export async function fetchActions({
 				actionData: v.array(
 					v.object({
 						data: v.array(v.string()),
-						transactionInfo: v.object({ status: v.string(), hash: v.string() })
+						transactionInfo: v.object({ hash: v.string() })
 					})
 				)
 			})
@@ -160,10 +159,9 @@ export async function fetchActions({
 			actionData,
 			blockInfo: { timestamp, height, distanceFromMaxBlockHeight }
 		}) => {
-			const actions = actionData.map(({ data, transactionInfo: { hash, status } }) => ({
+			const actions = actionData.map(({ data, transactionInfo: { hash } }) => ({
 				data: data.map(Field.from),
-				hash,
-				status
+				hash
 			}))
 			let actionState = Field.from(actionStateBefore)
 
@@ -176,7 +174,6 @@ export async function fetchActions({
 					afterActionState,
 					timestamp,
 					hash: action.hash,
-					status: action.status,
 					blockInfo: { timestamp, height, distanceFromMaxBlockHeight }
 				})
 				actionState = afterActionState

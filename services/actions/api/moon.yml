@@ -32,19 +32,16 @@ tasks:
       - "@group(sources)"
     outputs:
       - dist/**
-  # test-integration:
-  #   command: vitest run
-  #   inputs:
-  #     - "@group(sources)"
-  #     - "@group(tests)"
-  # schema:
-  #   command: bun run graphql/printSchema.ts
-  #   inputs:
-  #     - "@group(sources)"
-  #   outputs:
-  #     - graphql/schema.graphql
+  schema:
+    command: bun run graphql/printSchema.ts
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - graphql/schema.graphql
   type-cf:
     command: wrangler types
+    options:
+      cache: false
     inputs:
       - wrangler.jsonc
     outputs:

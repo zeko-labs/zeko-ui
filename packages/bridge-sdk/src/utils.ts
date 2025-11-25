@@ -1,29 +1,182 @@
-import { Field, fetchAccount, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
+import { Field, Poseidon, PublicKey, UInt32, fetchAccount, type Mina } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
-import { fetchActionsQuery } from "../../graphql/src/mina-archive"
-import { fromList, pushHash } from "./actions"
-import type { Account, Action, Deposit, Withdrawal } from "./types"
+import {
+	fetchActionsQueryIndexer,
+	fetchCommitAsePastWithdrawalDelayQuery,
+	fetchWitnessesFromAuxesQuery
+} from "../../graphql/src/bridge-indexer"
+import { fetchActionsQuery, networkStateQuery } from "../../graphql/src/mina-archive"
+import { empty, fromList, pushHash } from "./actions"
+import type {
+	Account,
+	Action,
+	Deposit,
+	OuterAction,
+	OuterCommit,
+	OuterWitness,
+	Withdrawal
+} from "./types"
+
+const BaseActionSchema = v.object({
+	afterState: v.string(),
+	beforeState: v.nullable(v.string()),
+	index: v.number(),
+	blockHeight: v.number(),
+	slotRangeLower: v.string(),
+	slotRangeUpper: v.string(),
+	timestamp: v.string(),
+	txnHash: v.string(),
+	fields: v.array(v.string()),
+	kind: v.string()
+})
+
+const baseActionFromSchema = (x: v.InferOutput<typeof BaseActionSchema>) => ({
+	beforeActionState: Field.from(x.beforeState ?? empty().hash),
+	afterActionState: Field.from(x.afterState),
+	timestamp: x.timestamp,
+	hash: x.txnHash,
+	index: x.index,
+	action: x.fields.map(Field.from),
+	slotRange: {
+		lower: UInt32.from(x.slotRangeLower),
+		upper: UInt32.from(x.slotRangeUpper)
+	}
+})
+
+const CommitSchema = v.object({
+	...BaseActionSchema.entries,
+	kind: v.literal("COMMIT"),
+	ledger: v.string(),
+	innerActionState: v.string(),
+	innerActionStateLength: v.number(),
+	synchronizedOuterActionState: v.string(),
+	synchronizedOuterActionStateLength: v.number()
+})
+
+const commitFromSchema = (x: v.InferOutput<typeof CommitSchema>) => ({
+	ledger: Field.from(x.ledger),
+	innerActionState: Field.from(x.innerActionState),
+	innerActionStateLength: UInt32.from(x.innerActionStateLength),
+	synchronizedOuterActionState: Field.from(x.synchronizedOuterActionState),
+	synchronizedOuterActionStateLength: UInt32.from(x.synchronizedOuterActionStateLength)
+})
+
+const WitnessSchema = v.object({
+	...BaseActionSchema.entries,
+	kind: v.literal("WITNESS"),
+	aux: v.string()
+})
+
+const witnessFromSchema = (x: v.InferOutput<typeof WitnessSchema>) => ({
+	aux: Field.from(x.aux)
+})
+
+const ActionSchema = v.variant("kind", [CommitSchema, WitnessSchema])
+
+export async function fetchActionsFromIndexer(
+	client: Client,
+	options: { fromState: string; afterState?: string | null | undefined }
+): Promise<OuterAction[]> {
+	const { data, error } = await client.query(fetchActionsQueryIndexer, {
+		beforeState: options.fromState,
+		afterState: options.afterState
+	})
+
+	const result = v.safeParse(v.array(ActionSchema), data?.actions)
+	if (!result.success) {
+		console.error(error)
+		console.error(result.issues)
+		throw new Error("Invalid actions data")
+	}
+
+	return result.output.map((action) => ({
+		...baseActionFromSchema(action),
+		...(action.kind === "COMMIT"
+			? { ...commitFromSchema(action), type: "commit" }
+			: { ...witnessFromSchema(action), type: "witness" })
+	}))
+}
+
+export async function fetchWitnessesFromAuxes(
+	client: Client,
+	auxes: string[]
+): Promise<OuterWitness[]> {
+	const { data, error } = await client.query(fetchWitnessesFromAuxesQuery, { auxes })
+
+	const result = v.safeParse(v.array(WitnessSchema), data?.witnessesFromAuxes)
+	if (!result.success) {
+		console.error(error)
+		console.error(result.issues)
+		throw new Error("Invalid witnesses data")
+	}
+
+	return result.output.map((witness) => ({
+		...baseActionFromSchema(witness),
+		...witnessFromSchema(witness),
+		type: "witness"
+	}))
+}
+
+export async function fetchCommitAsePastWithdrawalDelay(
+	client: Client,
+	slot: number
+): Promise<{ commit: OuterCommit; ase: OuterAction[] }> {
+	const { data, error } = await client.query(fetchCommitAsePastWithdrawalDelayQuery, { slot })
+
+	const result = v.safeParse(
+		v.object({ commit: CommitSchema, ase: v.array(ActionSchema) }),
+		data?.commitAsePastWithdrawalDelay
+	)
+	if (!result.success) {
+		console.error(error)
+		console.error(result.issues)
+		throw new Error("Invalid commit ase past withdrawal delay data")
+	}
+
+	return {
+		commit: {
+			...baseActionFromSchema(result.output.commit),
+			...commitFromSchema(result.output.commit),
+			type: "commit"
+		},
+		ase: result.output.ase.map((action) => ({
+			...baseActionFromSchema(action),
+			...(action.kind === "COMMIT"
+				? { ...commitFromSchema(action), type: "commit" }
+				: { ...witnessFromSchema(action), type: "witness" })
+		}))
+	}
+}
 
 // The graphQL schema server will limit the block scan range to a fixed number of blocks.
 // https://github.com/o1-labs/Archive-Node-API/blob/2d726955502fbd02c70d388f589284dd838bbb45/src/server/server.ts#L13
 const BLOCK_RANGE_SIZE = 10_000
 
+export const BRIDGE_DEPLOY_BLOCK = 430_000
+
+export async function getNetworkTip(client: Client): Promise<number> {
+	const res = await client.query(networkStateQuery, {})
+	if (res.error) throw res.error
+	const height = res.data?.networkState?.maxBlockHeight?.pendingMaxBlockHeight ?? 0
+	return height
+}
+
 export async function fetchActions(
 	client: Client,
 	pk: PublicKey,
-	actionStates?: Mina.ActionStates
-): Promise<Action[]> {
-	const fetchActionsRecursive = async (fromBlock?: number, emptyResults: number = 0) => {
-		if (fromBlock !== undefined && fromBlock < 0) return []
 
-		if (emptyResults > 10) return []
+	stopAtBlock = 0
+): Promise<Action[]> {
+	const networkTip = await getNetworkTip(client)
+
+	const fetchActionsRecursive = async (toBlock: number) => {
+		if (toBlock < stopAtBlock) return []
 
 		const { data } = await client.query(fetchActionsQuery, {
 			pk: pk.toBase58(),
-			fromActionState: actionStates?.fromActionState?.toString() ?? null,
-			endActionState: actionStates?.endActionState?.toString() ?? null,
-			from: fromBlock ?? null
+			from: toBlock - BLOCK_RANGE_SIZE,
+			to: toBlock
 		})
 		const dataWithDefault = data?.actions.map((a) => ({
 			...a,
@@ -47,7 +200,7 @@ export async function fetchActions(
 				actionData: v.array(
 					v.object({
 						data: v.array(v.string()),
-						transactionInfo: v.object({ status: v.string(), hash: v.string() })
+						transactionInfo: v.object({ hash: v.string() })
 					})
 				)
 			})
@@ -56,45 +209,36 @@ export async function fetchActions(
 		const result = v.safeParse(schema, dataWithDefault)
 		if (!result.success) throw new Error("Invalid actions data")
 
-		if (result.output.length === 0 && fromBlock === undefined) {
-			console.log("WARNING: No actions found in first batch")
-			return []
-		}
-
 		const prevOutput: v.InferOutput<typeof schema> = await fetchActionsRecursive(
-			result.output.length === 0
-				? (fromBlock ?? 0) - BLOCK_RANGE_SIZE
-				: result.output[0].blockInfo.height - BLOCK_RANGE_SIZE,
-			result.output.length === 0 ? emptyResults + 1 : 0
+			toBlock - BLOCK_RANGE_SIZE
 		)
 		return [...prevOutput, ...result.output]
 	}
 
-	const output = await fetchActionsRecursive()
+	const output = await fetchActionsRecursive(networkTip)
 
 	return output.flatMap(
-		({
-			actionState: { actionStateTwo: actionStateBefore },
-			actionData,
-			blockInfo: { timestamp }
-		}) => {
-			const actions = actionData.map(({ data, transactionInfo: { hash, status } }) => ({
+		(
+			{ actionState: { actionStateTwo: actionStateBefore }, actionData, blockInfo: { timestamp } },
+			index
+		) => {
+			const actions = actionData.map(({ data, transactionInfo: { hash } }) => ({
 				data: data.map(Field.from),
-				hash,
-				status
+				hash
 			}))
 			let actionState = Field.from(actionStateBefore)
 
 			const correctActions = []
-			for (const action of actions) {
+			for (let i = 0; i < actions.length; i++) {
+				const action = actions[i]
 				const afterActionState = pushHash(actionState, fromList([action.data]).hash)
 				correctActions.push({
+					index: index + i,
 					action: action.data,
 					beforeActionState: actionState,
 					afterActionState,
 					timestamp,
-					hash: action.hash,
-					status: action.status
+					hash: action.hash
 				})
 				actionState = afterActionState
 			}

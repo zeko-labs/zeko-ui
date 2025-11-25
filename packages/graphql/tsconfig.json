@@ -56,6 +56,12 @@
 						"schema": "./src/generated/leaderboard.graphql",
 						"tadaOutputLocation": "./src/generated/leaderboard-env.d.ts",
 						"tadaTurboLocation": "./src/generated/leaderboard-cache.d.ts"
+					},
+					{
+						"name": "bridge-indexer",
+						"schema": "./src/generated/bridge-indexer.graphql",
+						"tadaOutputLocation": "./src/generated/bridge-indexer-env.d.ts",
+						"tadaTurboLocation": "./src/generated/bridge-indexer-cache.d.ts"
 					}
 				]
 			}

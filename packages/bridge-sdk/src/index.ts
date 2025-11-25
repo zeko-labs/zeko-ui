@@ -17,20 +17,21 @@ import { createGraphqlClient } from "./graphql"
 import type {
 	Config,
 	Deposit,
+	DepositWithState,
 	InnerAction,
 	InnerActionWithState,
 	InnerWitness,
-	MaybeDeposit,
-	MaybeWithdrawal,
-	OuterAction,
-	OuterActionWithState,
 	OuterCommit,
 	OuterWitness,
 	Withdrawal
 } from "./types"
 import {
+	BRIDGE_DEPLOY_BLOCK,
 	depositAux,
 	fetchActions,
+	fetchActionsFromIndexer,
+	fetchCommitAsePastWithdrawalDelay,
+	fetchWitnessesFromAuxes,
 	filterNulls,
 	getNextDepositIndex,
 	getNextWithdrawalIndex,
@@ -50,6 +51,7 @@ export class Bridge {
 		private readonly l1ArchiveClient: Client,
 		private readonly l2Client: Client,
 		private readonly l2ArchiveClient: Client,
+		private readonly actionsApiClient: Client,
 
 		public readonly l1AccountCreationFee: UInt64,
 		public readonly l2AccountCreationFee: UInt64,
@@ -66,6 +68,7 @@ export class Bridge {
 	static async init(config: Config): Promise<Bridge> {
 		const l1Client = createGraphqlClient(config.l1Url)
 		const l1ArchiveClient = createGraphqlClient(config.l1ArchiveUrl)
+		const actionsApiClient = createGraphqlClient(config.actionsApi)
 		const l2Client = createGraphqlClient(config.zekoUrl)
 		const l2ArchiveClient = createGraphqlClient(config.zekoArchiveUrl)
 
@@ -95,6 +98,7 @@ export class Bridge {
 			l1ArchiveClient,
 			l2Client,
 			l2ArchiveClient,
+			actionsApiClient,
 			UInt64.from(l1AccountCreationFee),
 			UInt64.from(l2AccountCreationFee),
 			PublicKey.fromBase58(circuitsConfig.zekoL1), // outerPk
@@ -160,8 +164,7 @@ export class Bridge {
 	}
 
 	private async fetchUserDeposits(pk: PublicKey): Promise<Deposit[]> {
-		const userOuterActions = await fetchActions(this.l1ArchiveClient, pk)
-		const currentSlot = await this.fetchCurrentSlot()
+		const userOuterActions = await fetchActions(this.l1ArchiveClient, pk, BRIDGE_DEPLOY_BLOCK)
 
 		return filterNulls(
 			userOuterActions.map(({ action }) => {
@@ -203,46 +206,9 @@ export class Bridge {
 					recipient,
 					amount,
 					timeout,
-					holderAccountL1,
-					timedOut: timeout.lessThan(currentSlot).toBoolean()
+					holderAccountL1
 				}
 			})
-		)
-	}
-
-	private async fetchOuterActions(actionStates?: Mina.ActionStates): Promise<OuterAction[]> {
-		const actions = await fetchActions(this.l1ArchiveClient, this.outerPk, actionStates)
-		const currentSlot = await this.fetchCurrentSlot()
-
-		return actions.map(
-			({ beforeActionState, afterActionState, action, hash, status, timestamp }) => {
-				if (action[0].equals(0).toBoolean()) {
-					return {
-						type: "commit",
-						ledger: action[1],
-						innerActionState: action[2],
-						innerActionStateLength: UInt32.fromFields([action[3]]),
-						synchronizedOuterActionState: action[4],
-						synchronizedOuterActionStateLength: UInt32.fromFields([action[5]]),
-						slotRange: {
-							lower: UInt32.fromFields([action[6]]),
-							upper: UInt32.fromFields([action[7]])
-						},
-						isPastWithdrawalDelay: currentSlot
-							.greaterThan(UInt32.fromFields([action[7]]).add(this.withdrawalDelay))
-							.toBoolean(),
-						action: { beforeActionState, afterActionState, action, hash, status, timestamp }
-					}
-				}
-				if (action[0].equals(1).toBoolean()) {
-					return {
-						type: "witness",
-						aux: action[1],
-						action: { beforeActionState, afterActionState, action, hash, status, timestamp }
-					}
-				}
-				throw new Error("Invalid outer action type")
-			}
 		)
 	}
 
@@ -266,16 +232,16 @@ export class Bridge {
 		)
 	}
 
-	private async fetchInnerActions(actionStates?: Mina.ActionStates): Promise<InnerAction[]> {
-		const actions = await fetchActions(this.l2ArchiveClient, this.innerPk, actionStates)
+	private async fetchInnerActions(): Promise<InnerAction[]> {
+		const actions = await fetchActions(this.l2ArchiveClient, this.innerPk)
 
 		return actions.map(
-			({ beforeActionState, afterActionState, action, hash, status, timestamp }) => {
+			({ index, beforeActionState, afterActionState, action, hash, timestamp }) => {
 				if (action[0].equals(0).toBoolean()) {
 					return {
 						type: "witness",
 						aux: action[1],
-						action: { beforeActionState, afterActionState, action, hash, status, timestamp }
+						action: { index, beforeActionState, afterActionState, action, hash, timestamp }
 					}
 				}
 				throw new Error("Invalid inner action type")
@@ -371,26 +337,41 @@ export class Bridge {
 
 		const prevNextDeposit = helperAccount ? getNextDepositIndex(helperAccount) : UInt32.zero
 
-		const outerActions = await this.fetchOuterActions()
-
 		const deposits = (await this.fetchUserDeposits(pk)).map((deposit) => ({
 			deposit,
 			aux: depositAux(deposit)
 		}))
 
-		const findMatchingDeposit = (action: OuterWitness) =>
-			deposits.find(
-				({ aux, deposit: { timedOut } }) => aux.equals(action.aux).toBoolean() && !timedOut
-			)
+		if (deposits.length === 0) return null
 
-		const myDepositIndex = outerActions.findIndex((action, index) => {
+		const depositWitnesses = await fetchWitnessesFromAuxes(
+			this.actionsApiClient,
+			deposits.map(({ aux }) => aux.toString())
+		)
+
+		if (depositWitnesses.length === 0) return null
+
+		const earliestBeforeState = depositWitnesses
+			.sort((a, b) => a.index - b.index)
+			.at(0)?.beforeActionState
+
+		if (earliestBeforeState === undefined) return null
+
+		const outerActions = await fetchActionsFromIndexer(this.actionsApiClient, {
+			fromState: earliestBeforeState.toString()
+		})
+
+		const findMatchingDeposit = (action: OuterWitness) =>
+			deposits.find(({ aux }) => aux.equals(action.aux).toBoolean())
+
+		const myDepositIndex = outerActions.findIndex((action) => {
 			if (action.type === "commit") return false
 
 			const matchingDeposit = findMatchingDeposit(action)
 
 			if (!matchingDeposit) return false
 
-			if (prevNextDeposit.greaterThan(UInt32.from(index)).toBoolean()) return false
+			if (prevNextDeposit.greaterThan(UInt32.from(action.index)).toBoolean()) return false
 
 			return true
 		})
@@ -404,7 +385,7 @@ export class Bridge {
 
 			if (
 				action.synchronizedOuterActionStateLength
-					.lessThanOrEqual(UInt32.from(myDepositIndex))
+					.lessThanOrEqual(UInt32.from(myDeposit.index))
 					.toBoolean()
 			)
 				return false
@@ -421,8 +402,8 @@ export class Bridge {
 
 		const syncedOuterActionState = await this.fetchSyncedOuterActionState()
 
-		const syncedOuterActionStateIndex = outerActions.findIndex(({ action }) =>
-			action.afterActionState.equals(syncedOuterActionState.state).toBoolean()
+		const syncedOuterActionStateIndex = outerActions.findIndex(({ afterActionState }) =>
+			afterActionState.equals(syncedOuterActionState.state).toBoolean()
 		)
 
 		if (syncedOuterActionStateIndex === -1 || syncedOuterActionStateIndex < nextCommitIndex)
@@ -430,7 +411,7 @@ export class Bridge {
 
 		const aseElems = outerActions
 			.slice(nextCommitIndex + 1, syncedOuterActionStateIndex + 1)
-			.map(({ action }) => fromList([action.action]).hash)
+			.map(({ action }) => fromList([action]).hash)
 
 		return {
 			aseTarget: syncedOuterActionState,
@@ -441,10 +422,10 @@ export class Bridge {
 				checkAccepted: {
 					elems: outerActions
 						.slice(myDepositIndex, nextCommitIndex + 1)
-						.map(({ action }) => ({ actions: action.action.map((a) => a.toString()) })),
+						.map(({ action }) => ({ actions: action.map((a) => a.toString()) })),
 					init: {
-						depositIndex: myDepositIndex.toString(),
-						orignalActionState: myDeposit.action.beforeActionState.toString(),
+						depositIndex: myDeposit.index.toString(),
+						orignalActionState: myDeposit.beforeActionState.toString(),
 						params: {
 							amount: depositParams.deposit.amount.toString(),
 							recipient: depositParams.deposit.recipient.toBase58(),
@@ -457,7 +438,7 @@ export class Bridge {
 				ase: {
 					stmt: {
 						length: syncedOuterActionState.length.sub(aseElems.length).toString(),
-						actionState: nextCommit.action.afterActionState.toString()
+						actionState: nextCommit.afterActionState.toString()
 					},
 					fields: aseElems.map((elem) => elem.toString())
 				}
@@ -606,25 +587,14 @@ export class Bridge {
 		const withdrawalParams = findMatchingWithdrawal(myWithdrawal)
 		if (!withdrawalParams) throw new Error("Unreachable: Did not find withdrawal parameters")
 
-		const outerActions = await this.fetchOuterActions()
+		const currentSlot = await this.fetchCurrentSlot()
 
-		const reversedOuterActions = outerActions.slice().reverse()
-		const reversedLastCommitIndex = reversedOuterActions.findIndex((action) => {
-			if (action.type !== "commit") return false
+		const { commit: lastCommit, ase } = await fetchCommitAsePastWithdrawalDelay(
+			this.actionsApiClient,
+			+this.withdrawalDelay.add(currentSlot)
+		)
 
-			if (!action.isPastWithdrawalDelay) return false
-
-			return true
-		})
-
-		if (reversedLastCommitIndex === -1) return null
-
-		const lastCommitIndex = outerActions.length - reversedLastCommitIndex - 1
-		const lastCommit = outerActions[lastCommitIndex] as OuterCommit
-
-		const lastCommitAse = outerActions
-			.slice(lastCommitIndex + 1, outerActions.length)
-			.map(({ action }) => fromList([action.action]).hash)
+		const lastCommitAse = ase.map(({ action }) => fromList([action]).hash)
 
 		const syncedInnerActionStateIndex = innerActions.findIndex(({ action }) =>
 			action.afterActionState.equals(lastCommit.innerActionState).toBoolean()
@@ -659,12 +629,12 @@ export class Bridge {
 				},
 				commitAse: {
 					fields: lastCommitAse.map((elem) => elem.toString()),
-					stmt: { actionState: lastCommit.action.afterActionState.toString() }
+					stmt: { actionState: lastCommit.afterActionState.toString() }
 				},
 				commit: {
-					actions: lastCommit.action.action.map((a) => a.toString())
+					actions: lastCommit.action.map((a) => a.toString())
 				},
-				beforeCommit: { actionState: lastCommit.action.beforeActionState.toString() },
+				beforeCommit: { actionState: lastCommit.beforeActionState.toString() },
 				publicKey: outerHolder.toBase58()
 			}
 		}
@@ -714,14 +684,27 @@ export class Bridge {
 		return !!(await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner))
 	}
 
-	public async fetchOuterActionsWithStates(pk: PublicKey): Promise<OuterActionWithState[]> {
+	public async fetchDepositsWithStates(pk: PublicKey): Promise<{
+		deposits: DepositWithState[]
+		syncedIndex: number
+		acceptedIndex: number
+		confirmedIndex: number
+		finalisedIndex: number
+	}> {
 		const deposits = await this.fetchUserDeposits(pk)
 
+		const auxes = deposits.map(depositAux)
+
 		const auxesMap = new Map<bigint, Deposit>()
+
 		for (const deposit of deposits) {
-			const aux = depositAux(deposit)
-			auxesMap.set(aux.toBigInt(), deposit)
+			auxesMap.set(depositAux(deposit).toBigInt(), deposit)
 		}
+
+		const depositWitnesses = await fetchWitnessesFromAuxes(
+			this.actionsApiClient,
+			auxes.map((x) => x.toString())
+		)
 
 		const helperAccount = await this.fetchAccount(
 			this.l2Client,
@@ -730,192 +713,139 @@ export class Bridge {
 		)
 		const nextDeposit = helperAccount ? getNextDepositIndex(helperAccount) : UInt32.zero
 
-		const outerActions: (MaybeDeposit | OuterCommit)[] = (await this.fetchOuterActions()).map(
-			(action, index) => {
-				if (action.type === "commit") return action
-				if (action.type === "witness") {
-					const deposit = auxesMap.get(action.aux.toBigInt())
-					return {
-						...action,
-						deposit: deposit
-							? { ...deposit, finalised: nextDeposit.greaterThan(UInt32.from(index)).toBoolean() }
-							: undefined
-					}
-				}
-				throw new Error("unreachable")
-			}
-		)
-
 		const syncedOuterActionState = await this.fetchSyncedOuterActionState()
 
-		const outerActionsMaybeSynced: ((MaybeDeposit | OuterCommit) & {
-			synced: boolean
-		})[] = outerActions.map((action, index) => {
-			if (syncedOuterActionState.length.greaterThanOrEqual(UInt32.from(index)).toBoolean())
-				return { ...action, synced: true }
-			return { ...action, synced: false }
-		})
+		const currentSlot = await this.fetchCurrentSlot()
 
-		const reversedOuterActions = outerActionsMaybeSynced.slice().reverse()
-
-		const reversedLastCommitIndex = reversedOuterActions.findIndex(
-			(action) => action.type === "commit"
+		const { commit: lastCommit } = await fetchCommitAsePastWithdrawalDelay(
+			this.actionsApiClient,
+			+currentSlot.sub(this.withdrawalDelay)
 		)
-		const lastCommitIndex =
-			reversedLastCommitIndex === -1
-				? -1
-				: outerActionsMaybeSynced.length - reversedLastCommitIndex - 1
 
-		if (lastCommitIndex === -1)
-			return outerActionsMaybeSynced.map((action) => ({
-				...action,
-				accepted: false,
-				confirmed: false
-			}))
-
-		const lastCommittedIndex = (
-			outerActions[lastCommitIndex] as OuterCommit
-		).synchronizedOuterActionStateLength.sub(1)
-
-		const outerActionsMaybeAccepted: ((MaybeDeposit | OuterCommit) & {
-			synced: boolean
-			accepted: boolean
-		})[] = outerActionsMaybeSynced.map((action, index) => {
-			if (lastCommittedIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
-				return { ...action, accepted: true }
-			return { ...action, accepted: false }
-		})
-
-		const reversedLastSyncedCommit = reversedOuterActions.findIndex(
-			(action) => action.type === "commit" && action.synced
-		)
-		const lastSyncedCommitIndex =
-			reversedLastSyncedCommit === -1
-				? -1
-				: outerActionsMaybeSynced.length - reversedLastSyncedCommit - 1
-
-		if (lastSyncedCommitIndex === -1)
-			return outerActionsMaybeAccepted.map((action) => ({
-				...action,
-				confirmed: false
-			}))
-
-		const lastSyncedIndex = (
-			outerActions[lastSyncedCommitIndex] as OuterCommit
-		).synchronizedOuterActionStateLength.sub(1)
-
-		const outerActionsMaybeConfirmed: ((MaybeDeposit | OuterCommit) & {
-			synced: boolean
-			accepted: boolean
-			confirmed: boolean
-		})[] = outerActionsMaybeAccepted.map((action, index) => {
-			if (lastSyncedIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
-				return { ...action, confirmed: true }
-			return { ...action, confirmed: false }
-		})
-
-		return outerActionsMaybeConfirmed
-	}
-	public async fetchInnerActionsWithStates(pk: PublicKey): Promise<InnerActionWithState[]> {
-		const withdrawals = await this.fetchUserWithdrawals(pk)
-		const auxesMap = new Map<bigint, Withdrawal>()
-		for (const withdrawal of withdrawals) {
-			const aux = withdrawalAux(withdrawal)
-			auxesMap.set(aux.toBigInt(), withdrawal)
-		}
-
-		const helperAccount = await this.fetchAccount(
-			this.l1Client,
-			pk,
-			TokenId.derive(this.outerTokenOwner)
-		)
-		const nextWithdrawal = helperAccount ? getNextWithdrawalIndex(helperAccount) : UInt32.zero
-
-		const innerActions: MaybeWithdrawal[] = (await this.fetchInnerActions()).map(
-			(action, index) => {
-				const withdrawal = auxesMap.get(action.aux.toBigInt())
+		return {
+			deposits: depositWitnesses.map((witness) => {
+				const deposit = auxesMap.get(witness.aux.toBigInt())
+				if (!deposit) throw new Error("Unreachable: Did not find deposit")
 				return {
-					...action,
-					withdrawal: withdrawal
-						? {
-								...withdrawal,
-								finalised: nextWithdrawal.greaterThan(UInt32.from(index)).toBoolean()
-							}
-						: undefined
+					...witness,
+					...deposit,
+					synced: syncedOuterActionState.length
+						.greaterThanOrEqual(UInt32.from(witness.index + 1))
+						.toBoolean(),
+					accepted: lastCommit.index >= witness.index,
+					confirmed: lastCommit.synchronizedOuterActionStateLength
+						.greaterThanOrEqual(UInt32.from(witness.index + 1))
+						.toBoolean(),
+					finalised: nextDeposit.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean()
 				}
-			}
-		)
-
-		const outerActions = await this.fetchOuterActions()
-		const reversedOuterActions = outerActions.slice().reverse()
-
-		const reversedLastCommitIndex = reversedOuterActions.findIndex(
-			(action) => action.type === "commit"
-		)
-		const lastCommitIndex =
-			reversedLastCommitIndex === -1 ? -1 : outerActions.length - reversedLastCommitIndex - 1
-
-		if (lastCommitIndex === -1)
-			return innerActions.map((action) => ({
-				...action,
-				committed: false,
-				isPastWithdrawalDelay: false
-			}))
-
-		const lastCommit = outerActions[lastCommitIndex] as OuterCommit
-
-		if (lastCommit.innerActionStateLength.equals(UInt32.zero).toBoolean()) {
-			return innerActions.map((action) => ({
-				...action,
-				committed: false,
-				isPastWithdrawalDelay: false
-			}))
+			}),
+			syncedIndex: +syncedOuterActionState.length.sub(1).toString(),
+			acceptedIndex: lastCommit.index,
+			confirmedIndex: +lastCommit.synchronizedOuterActionStateLength.sub(1).toString(),
+			finalisedIndex: +nextDeposit.sub(1).toString()
 		}
+	}
+	public async fetchInnerActionsWithStates(_pk: PublicKey): Promise<InnerActionWithState[]> {
+		return []
+		// const withdrawals = await this.fetchUserWithdrawals(pk)
+		// const auxesMap = new Map<bigint, Withdrawal>()
+		// for (const withdrawal of withdrawals) {
+		// 	const aux = withdrawalAux(withdrawal)
+		// 	auxesMap.set(aux.toBigInt(), withdrawal)
+		// }
 
-		const lastCommittedInnerIndex = lastCommit.innerActionStateLength.sub(1)
+		// const helperAccount = await this.fetchAccount(
+		// 	this.l1Client,
+		// 	pk,
+		// 	TokenId.derive(this.outerTokenOwner)
+		// )
+		// const nextWithdrawal = helperAccount ? getNextWithdrawalIndex(helperAccount) : UInt32.zero
 
-		const innerActionsMaybeCommitted: (MaybeWithdrawal & {
-			committed: boolean
-		})[] = innerActions.map((action, index) => {
-			if (lastCommittedInnerIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
-				return { ...action, committed: true }
-			return { ...action, committed: false }
-		})
+		// const innerActions: MaybeWithdrawal[] = (await this.fetchInnerActions()).map(
+		// 	(action, index) => {
+		// 		const withdrawal = auxesMap.get(action.aux.toBigInt())
+		// 		return {
+		// 			...action,
+		// 			withdrawal: withdrawal
+		// 				? {
+		// 						...withdrawal,
+		// 						finalised: nextWithdrawal.greaterThan(UInt32.from(index)).toBoolean()
+		// 					}
+		// 				: undefined
+		// 		}
+		// 	}
+		// )
 
-		const reversedLastPastDelayCommit = reversedOuterActions.findIndex(
-			(action) => action.type === "commit" && action.isPastWithdrawalDelay
-		)
-		const lastPastDelayCommitIndex =
-			reversedLastPastDelayCommit === -1
-				? -1
-				: outerActions.length - reversedLastPastDelayCommit - 1
+		// const outerActions = await this.fetchOuterActions()
+		// const reversedOuterActions = outerActions.slice().reverse()
 
-		if (lastPastDelayCommitIndex === -1)
-			return innerActionsMaybeCommitted.map((action) => ({
-				...action,
-				isPastWithdrawalDelay: false
-			}))
+		// const reversedLastCommitIndex = reversedOuterActions.findIndex(
+		// 	(action) => action.type === "commit"
+		// )
+		// const lastCommitIndex =
+		// 	reversedLastCommitIndex === -1 ? -1 : outerActions.length - reversedLastCommitIndex - 1
 
-		const lastPastDelayCommit = outerActions[lastPastDelayCommitIndex] as OuterCommit
+		// if (lastCommitIndex === -1)
+		// 	return innerActions.map((action) => ({
+		// 		...action,
+		// 		committed: false,
+		// 		isPastWithdrawalDelay: false
+		// 	}))
 
-		if (lastPastDelayCommit.innerActionStateLength.equals(UInt32.zero).toBoolean()) {
-			return innerActionsMaybeCommitted.map((action) => ({
-				...action,
-				isPastWithdrawalDelay: false
-			}))
-		}
+		// const lastCommit = outerActions[lastCommitIndex] as OuterCommit
 
-		const lastPastDelayIndex = lastPastDelayCommit.innerActionStateLength.sub(1)
+		// if (lastCommit.innerActionStateLength.equals(UInt32.zero).toBoolean()) {
+		// 	return innerActions.map((action) => ({
+		// 		...action,
+		// 		committed: false,
+		// 		isPastWithdrawalDelay: false
+		// 	}))
+		// }
 
-		const innerActionsMaybePastDelay: (MaybeWithdrawal & {
-			committed: boolean
-			isPastWithdrawalDelay: boolean
-		})[] = innerActionsMaybeCommitted.map((action, index) => {
-			if (lastPastDelayIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
-				return { ...action, isPastWithdrawalDelay: true }
-			return { ...action, isPastWithdrawalDelay: false }
-		})
+		// const lastCommittedInnerIndex = lastCommit.innerActionStateLength.sub(1)
 
-		return innerActionsMaybePastDelay
+		// const innerActionsMaybeCommitted: (MaybeWithdrawal & {
+		// 	committed: boolean
+		// })[] = innerActions.map((action, index) => {
+		// 	if (lastCommittedInnerIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
+		// 		return { ...action, committed: true }
+		// 	return { ...action, committed: false }
+		// })
+
+		// const reversedLastPastDelayCommit = reversedOuterActions.findIndex(
+		// 	(action) => action.type === "commit" && action.isPastWithdrawalDelay
+		// )
+		// const lastPastDelayCommitIndex =
+		// 	reversedLastPastDelayCommit === -1
+		// 		? -1
+		// 		: outerActions.length - reversedLastPastDelayCommit - 1
+
+		// if (lastPastDelayCommitIndex === -1)
+		// 	return innerActionsMaybeCommitted.map((action) => ({
+		// 		...action,
+		// 		isPastWithdrawalDelay: false
+		// 	}))
+
+		// const lastPastDelayCommit = outerActions[lastPastDelayCommitIndex] as OuterCommit
+
+		// if (lastPastDelayCommit.innerActionStateLength.equals(UInt32.zero).toBoolean()) {
+		// 	return innerActionsMaybeCommitted.map((action) => ({
+		// 		...action,
+		// 		isPastWithdrawalDelay: false
+		// 	}))
+		// }
+
+		// const lastPastDelayIndex = lastPastDelayCommit.innerActionStateLength.sub(1)
+
+		// const innerActionsMaybePastDelay: (MaybeWithdrawal & {
+		// 	committed: boolean
+		// 	isPastWithdrawalDelay: boolean
+		// })[] = innerActionsMaybeCommitted.map((action, index) => {
+		// 	if (lastPastDelayIndex.greaterThanOrEqual(UInt32.from(index)).toBoolean())
+		// 		return { ...action, isPastWithdrawalDelay: true }
+		// 	return { ...action, isPastWithdrawalDelay: false }
+		// })
+
+		// return innerActionsMaybePastDelay
 	}
 }

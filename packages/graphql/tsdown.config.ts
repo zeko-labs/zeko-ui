@@ -7,7 +7,8 @@ export default defineConfig({
 		"./src/mina-archive.ts",
 		"./src/zeko.ts",
 		"./src/zeko-archive.ts",
-		"./src/leaderboard.ts"
+		"./src/leaderboard.ts",
+		"./src/bridge-indexer.ts"
 	],
 	platform: "neutral",
 	dts: true,
