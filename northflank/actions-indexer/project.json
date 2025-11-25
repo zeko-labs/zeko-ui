@@ -392,6 +392,12 @@
       ]
     }
   },
+  "arguments": {
+    "PORT": "3000",
+    "DATABASE_URL": "",
+    "AUTH_TOKEN": "",
+    "L1_ARCHIVE_URL": ""
+  },
   "options": {
     "autorun": false,
     "concurrencyPolicy": "allow"
