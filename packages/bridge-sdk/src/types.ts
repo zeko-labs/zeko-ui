@@ -70,12 +70,12 @@ export type DepositWithState = Action &
 		finalised: boolean
 	}
 
-export enum DepositStateProgress {
-	SYNCED = 0,
-	ACCEPTED = 1,
-	CONFIRMED = 2,
-	FINALISED = 3
-}
+export const DepositStateProgress = {
+	SYNCED: 0,
+	ACCEPTED: 1,
+	CONFIRMED: 2,
+	FINALISED: 3
+} as const
 
 export type InnerAction = InnerWitness
 
