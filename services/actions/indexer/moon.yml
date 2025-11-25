@@ -18,6 +18,7 @@ fileGroups:
 dependsOn:
   - actions-api
   - graphql
+  - bridge-sdk
 
 tasks:
   dev:

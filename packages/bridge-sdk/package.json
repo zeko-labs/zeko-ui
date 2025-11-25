@@ -2,7 +2,6 @@
 	"name": "@zeko/bridge-sdk",
 	"version": "1.0.0",
 	"description": "Zeko bridge SDK",
-	"main": "./dist/index.js",
 	"private": true,
 	"type": "module",
 	"keywords": ["typescript", "library"],
@@ -13,6 +12,13 @@
 	"repository": {
 		"type": "git",
 		"url": ""
+	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": "./dist/index.js",
+		"./*": "./*"
 	},
 	"devDependencies": {
 		"@types/node": "^20.8.10",
@@ -26,17 +32,5 @@
 		"o1js": "catalog:",
 		"urql": "^4.2.2",
 		"valibot": "catalog:"
-	},
-	"module": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"exports": {
-		".": "./src/index.ts",
-		"./package.json": "./package.json"
-	},
-	"publishConfig": {
-		"exports": {
-			".": "./dist/index.js",
-			"./package.json": "./package.json"
-		}
 	}
 }
