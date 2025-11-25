@@ -41,10 +41,10 @@ RUN moon docker prune
 
 #### START STAGE
 #### Runs the project.
-FROM base AS start
+FROM oven/bun AS start
 WORKDIR /app
 
 COPY --from=build /app .
 EXPOSE 3000
 ENV NODE_ENV=production
-CMD ["node", "./services/actions/indexer/dist/index.js"]
+CMD ["bun", "./services/actions/indexer/dist/index.js"]
