@@ -88,7 +88,8 @@
                     "docker": {
                       "configType": "default"
                     },
-                    "type": "deployment"
+                    "type": "deployment",
+                    "releaseFlowControlled": true
                   },
                   "loadBalancing": {
                     "mode": "leastConnection"
@@ -119,10 +120,10 @@
                     }
                   ],
                   "runtimeEnvironment": {
-                    "DATABASE_URL": "${DATABASE_URL}",
-                    "AUTH_TOKEN": "${AUTH_TOKEN}",
-                    "PORT": "${PORT}",
-                    "L1_ARCHIVE_URL": "${L1_ARCHIVE_URL}"
+                    "DATABASE_URL": "${args.DATABASE_URL}",
+                    "AUTH_TOKEN": "${args.AUTH_TOKEN}",
+                    "PORT": "${args.PORT}",
+                    "L1_ARCHIVE_URL": "${args.L1_ARCHIVE_URL}"
                   },
                   "runtimeFiles": {}
                 },
@@ -314,10 +315,10 @@
                                   "deploymentPlan": "nf-compute-10"
                                 },
                                 "runtimeEnvironment": {
-                                  "DATABASE_URL": "${DATABASE_URL}",
-                                  "AUTH_TOKEN": "${AUTH_TOKEN}",
-                                  "PORT": "${PORT}",
-                                  "L1_ARCHIVE_URL": "${L1_ARCHIVE_URL}"
+                                  "DATABASE_URL": "${args.DATABASE_URL}",
+                                  "AUTH_TOKEN": "${args.AUTH_TOKEN}",
+                                  "PORT": "${args.PORT}",
+                                  "L1_ARCHIVE_URL": "${args.L1_ARCHIVE_URL}"
                                 },
                                 "runtimeFiles": {},
                                 "infrastructure": {
@@ -391,8 +392,6 @@
       ]
     }
   },
-  "name": "actions-indexer",
-  "description": "",
   "options": {
     "autorun": false,
     "concurrencyPolicy": "allow"
