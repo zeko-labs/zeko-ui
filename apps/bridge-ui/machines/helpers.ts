@@ -18,7 +18,7 @@ const urls = {
 			// l1Url: "https://gateway.mina.devnet.zeko.io",
 			l1Url: "https://mina-proxy.zeko-labs.workers.dev",
 			l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
-			l1IndexerUrl: "todo"
+			l1IndexerUrl: "http://api.actions.zeko.io/"
 		}
 	},
 	l2: {
