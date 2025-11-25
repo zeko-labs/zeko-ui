@@ -1,4 +1,4 @@
-import { emptyActionsList } from "packages/bridge-sdk/src"
+import { emptyActionsList } from "@zeko/bridge-sdk"
 import { env } from "../env"
 import type { ArchiveEvent } from "../helper"
 import { fetchActions, l1Client, logger } from "../helper"
