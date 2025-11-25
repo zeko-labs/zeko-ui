@@ -56,7 +56,6 @@ export async function queryWitnessesFromAuxes(
 	}))
 }
 
-//TODO: Will this be the same on mainnet ?
 const GENESIS_BEFORE_STATE =
 	"2965377540200775924504968637505084669999360240500907972788072774778139588064"
 // Works only if the db is linked list and not DAG, otherwise we need recursive CTE
