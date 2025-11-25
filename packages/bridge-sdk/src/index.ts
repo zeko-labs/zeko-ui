@@ -721,8 +721,6 @@ export class Bridge {
 			+currentSlot.sub(this.withdrawalDelay)
 		)
 
-		console.log(lastCommit)
-
 		return {
 			deposits: depositWitnesses.map((witness) => {
 				const deposit = auxesMap.get(witness.aux.toBigInt())

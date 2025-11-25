@@ -1,4 +1,4 @@
-import { and, between, desc, eq, gt, inArray, lt, sql } from "drizzle-orm"
+import { and, between, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm"
 import { actions, commitActions, witnessActions } from "../../drizzle/schema"
 import { builder } from "../builder"
 import type { Database } from "../db"
@@ -56,52 +56,41 @@ export async function queryWitnessesFromAuxes(
 	}))
 }
 
+//TODO: Will this be the same on mainnet ?
+const GENESIS_BEFORE_STATE =
+	"2965377540200775924504968637505084669999360240500907972788072774778139588064"
 // Works only if the db is linked list and not DAG, otherwise we need recursive CTE
 export async function queryActions(
 	db: DatabaseInstance,
 	options: { beforeState: string; afterState?: string | null | undefined }
 ): Promise<Action[]> {
-	// If it's the first action, we need to query for the null beforeState
-	const beforeIndexCTE =
-		options.beforeState ===
-		"2965377540200775924504968637505084669999360240500907972788072774778139588064"
-			? sql<number>`
-			(
-				select ${actions.index}
-				from ${actions}
-				where ${actions.beforeState} is null
-				limit 1
-			)
-		`.as("before_index")
-			: sql<number>`
-			(
-				select ${actions.index}
-				from ${actions}
-				where ${actions.beforeState} = ${options.beforeState}
-				limit 1
-			)
-		`.as("before_index")
+	const beforeIndexQb = db.drizzle
+		.select({ index: actions.index })
+		.from(actions)
+		.where(
+			options.beforeState === GENESIS_BEFORE_STATE
+				? isNull(actions.beforeState)
+				: eq(actions.beforeState, options.beforeState)
+		)
+		.limit(1)
+
+	const targetEndIndexQb = db.drizzle
+		.select({ index: actions.index })
+		.from(actions)
+		.where(eq(actions.afterState, options.afterState ?? ""))
+		.limit(1)
+
+	const maxIndexQb = db.drizzle
+		.select({ index: actions.index })
+		.from(actions)
+		.orderBy(desc(actions.index))
+		.limit(1)
 
 	const limitsCte = db.drizzle.$with("limits").as(
 		db.drizzle
 			.select({
-				beforeIndex: beforeIndexCTE,
-				afterIndex: sql<number>`
-					coalesce(
-						(
-							select ${actions.index}
-							from ${actions}
-							where ${actions.afterState} = ${options.afterState ?? null}
-							limit 1
-						),
-						(
-							select ${actions.index}
-							from ${actions}
-							order by ${actions.index} desc
-							limit 1
-						)
-					)
-				`.as("after_index")
+				beforeIndex: sql<number>`(${beforeIndexQb})`.as("before_index"),
+				afterIndex: sql<number>`coalesce((${targetEndIndexQb}), (${maxIndexQb}))`.as("after_index")
 			})
 			.from(actions)
 			.limit(1)
@@ -109,15 +98,11 @@ export async function queryActions(
 
 	const actionsResult = await db.drizzle
 		.with(limitsCte)
-		.select({
-			action: actions,
-			commit: commitActions,
-			witness: witnessActions
-		})
+		.select({ action: actions, commit: commitActions, witness: witnessActions })
 		.from(actions)
+		.crossJoin(limitsCte)
 		.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
 		.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
-		.innerJoin(limitsCte, sql`true`)
 		.where(between(actions.index, limitsCte.beforeIndex, limitsCte.afterIndex))
 		.orderBy(actions.index)
 
@@ -150,76 +135,72 @@ export async function queryCommitAsePastWithdrawalDelay(
 	db: DatabaseInstance,
 	slot: number
 ): Promise<{ commit: Commit | null; ase: Action[] }> {
-	return await db.drizzle.transaction(async (txn) => {
-		const lastCommitOpt = await txn
-			.select({ action: actions, commit: commitActions })
+	// CTE: Find the index of the last commit before the given slot
+	const lastCommitCte = db.drizzle.$with("last_commit_anchor").as(
+		db.drizzle
+			.select({ anchorIndex: actions.index })
 			.from(actions)
 			.innerJoin(commitActions, eq(actions.afterState, commitActions.afterState))
 			.where(and(eq(actions.kind, "commit"), lt(actions.slotRangeUpper, BigInt(slot))))
 			.orderBy(desc(actions.index))
 			.limit(1)
+	)
 
-		const lastCommit =
-			lastCommitOpt.length > 0
-				? {
-						action: lastCommitOpt[0].action,
-						commit: lastCommitOpt[0].commit
-					}
-				: null
+	// Fetch the last commit and all subsequent actions in one atomic query
+	const rows = await db.drizzle
+		.with(lastCommitCte)
+		.select({ action: actions, commit: commitActions, witness: witnessActions })
+		.from(actions)
+		.crossJoin(lastCommitCte)
+		.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
+		.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
+		.where(gte(actions.index, lastCommitCte.anchorIndex))
+		.orderBy(actions.index)
 
-		const result = lastCommit
-			? await txn
-					.select({
-						action: actions,
-						commit: commitActions,
-						witness: witnessActions
-					})
-					.from(actions)
-					.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
-					.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
-					.where(gt(actions.index, lastCommit.action.index))
-					.orderBy(actions.index)
-			: []
+	if (rows.length === 0) return { commit: null, ase: [] }
 
-		return {
-			commit: lastCommit
-				? {
-						...lastCommit.commit,
-						...lastCommit.action,
-						kind: "COMMIT",
-						slotRangeLower: lastCommit.action.slotRangeLower.toString(),
-						slotRangeUpper: lastCommit.action.slotRangeUpper.toString(),
-						timestamp: lastCommit.action.timestamp.toISOString()
-					}
-				: null,
-			ase: result
-				.map(({ action, commit, witness }) => {
-					if (!action) return null
-					if (commit) {
-						return {
-							...action,
-							...commit,
-							kind: "COMMIT",
-							slotRangeLower: action.slotRangeLower.toString(),
-							slotRangeUpper: action.slotRangeUpper.toString(),
-							timestamp: action.timestamp.toISOString()
-						}
-					}
-					if (witness) {
-						return {
-							...action,
-							...witness,
-							kind: "WITNESS",
-							slotRangeLower: action.slotRangeLower.toString(),
-							slotRangeUpper: action.slotRangeUpper.toString(),
-							timestamp: action.timestamp.toISOString()
-						}
-					}
-					throw new Error("Invalid action")
-				})
-				.filter((action): action is Action => action !== null)
+	const [lastCommit, ...aseRows] = rows
+
+	if (!lastCommit.commit) {
+		console.error(
+			`Data Integrity Error: Anchor action ${lastCommit.action.index} is missing commit data`
+		)
+		return { commit: null, ase: [] }
+	}
+
+	const commit: Commit = {
+		...lastCommit.action,
+		...lastCommit.commit,
+		kind: "COMMIT",
+		slotRangeLower: lastCommit.action.slotRangeLower.toString(),
+		slotRangeUpper: lastCommit.action.slotRangeUpper.toString(),
+		timestamp: lastCommit.action.timestamp.toISOString()
+	}
+
+	const ase: Action[] = aseRows.map(({ action, commit, witness }) => {
+		if (commit) {
+			return {
+				...action,
+				...commit,
+				kind: "COMMIT",
+				slotRangeLower: action.slotRangeLower.toString(),
+				slotRangeUpper: action.slotRangeUpper.toString(),
+				timestamp: action.timestamp.toISOString()
+			}
 		}
+		if (witness) {
+			return {
+				...action,
+				...witness,
+				kind: "WITNESS",
+				slotRangeLower: action.slotRangeLower.toString(),
+				slotRangeUpper: action.slotRangeUpper.toString(),
+				timestamp: action.timestamp.toISOString()
+			}
+		}
+		throw new Error(`Invalid action structure at index ${action.index}`)
 	})
+	return { commit, ase }
 }
 
 /**
