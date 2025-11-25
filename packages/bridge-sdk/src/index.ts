@@ -739,10 +739,15 @@ export class Bridge {
 					finalised: nextDeposit.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean()
 				}
 			}),
-			syncedIndex: +syncedOuterActionState.length.sub(1).toString(),
+			syncedIndex: 0,
 			acceptedIndex: lastCommit.index,
-			confirmedIndex: +lastCommit.synchronizedOuterActionStateLength.sub(1).toString(),
-			finalisedIndex: +nextDeposit.sub(1).toString()
+			confirmedIndex: 0,
+			finalisedIndex: 0
+			//TODO: Find out why this is not working (Error: rangeCheck32: expected field to fit in 32 bits, got 28948022309329048855892746252171976963363056481941560715954676764349967630336)
+			// syncedIndex: +syncedOuterActionState.length.sub(1).toString(),
+			// acceptedIndex: lastCommit.index,
+			// confirmedIndex: +lastCommit.synchronizedOuterActionStateLength.sub(1).toString(),
+			// finalisedIndex: +nextDeposit.sub(1).toString()
 		}
 	}
 	public async fetchInnerActionsWithStates(_pk: PublicKey): Promise<InnerActionWithState[]> {
