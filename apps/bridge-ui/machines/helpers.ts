@@ -10,15 +10,13 @@ const urls = {
 	l1: {
 		mainnet: {
 			l1Url: "https://api.minascan.io/node/mainnet/v1/graphql",
-			l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql",
-			l1IndexerUrl: "todo"
+			l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql"
 		},
 		testnet: {
 			//TODO: Change to gateway.mina.testnet.zeko.io when certificate is provisioned
 			// l1Url: "https://gateway.mina.devnet.zeko.io",
 			l1Url: "https://mina-proxy.zeko-labs.workers.dev",
-			l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
-			l1IndexerUrl: "http://api.actions.zeko.io/"
+			l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io"
 		}
 	},
 	l2: {
@@ -33,16 +31,22 @@ const urls = {
 		testnet: {
 			zekoUrl: "https://testnet.zeko.io/graphql",
 			zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql"
-		}
+		},
+		actionsApi: "http://api.actions.zeko.io/"
 	}
 } as const
 
-export const getBridgeConfig = ({ l1, l2 }: { l1: Networks; l2: Networks }) => {
+export const getBridgeConfig = ({
+	l1,
+	l2,
+	actionsApi
+}: { l1: Networks; l2: Networks; actionsApi: string }) => {
 	const l1Urls = l1.includes("mainnet") ? urls.l1.mainnet : urls.l1.testnet
 	const l2Urls = l2.includes("mainnet") ? urls.l2.mainnet : urls.l2.testnet
 	return {
 		...l1Urls,
 		...l2Urls,
+		actionsApi: actionsApi,
 		l1Network: l1.includes("mainnet") ? "mainnet" : "testnet",
 		l2Network: l2.includes("mainnet") ? "mainnet" : "testnet",
 		pollTimeout: POLL_TIMEOUT

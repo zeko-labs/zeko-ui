@@ -3,11 +3,11 @@ import type { Field, NetworkId, PublicKey, UInt32, UInt64 } from "o1js"
 export type Config = {
 	l1Url: string
 	l1ArchiveUrl: string
-	l1IndexerUrl: string
 	zekoUrl: string
 	zekoArchiveUrl: string
 	l1Network: NetworkId
 	l2Network: NetworkId
+	actionsApi: string
 	pollTimeout?: number
 }
 

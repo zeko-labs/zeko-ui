@@ -50,7 +50,7 @@ export class Bridge {
 		private readonly l1ArchiveClient: Client,
 		private readonly l2Client: Client,
 		private readonly l2ArchiveClient: Client,
-		private readonly l1IndexerClient: Client,
+		private readonly actionsApiClient: Client,
 
 		public readonly l1AccountCreationFee: UInt64,
 		public readonly l2AccountCreationFee: UInt64,
@@ -67,7 +67,7 @@ export class Bridge {
 	static async init(config: Config): Promise<Bridge> {
 		const l1Client = createGraphqlClient(config.l1Url)
 		const l1ArchiveClient = createGraphqlClient(config.l1ArchiveUrl)
-		const l1IndexerClient = createGraphqlClient(config.l1IndexerUrl)
+		const actionsApiClient = createGraphqlClient(config.actionsApi)
 		const l2Client = createGraphqlClient(config.zekoUrl)
 		const l2ArchiveClient = createGraphqlClient(config.zekoArchiveUrl)
 
@@ -97,7 +97,7 @@ export class Bridge {
 			l1ArchiveClient,
 			l2Client,
 			l2ArchiveClient,
-			l1IndexerClient,
+			actionsApiClient,
 			UInt64.from(l1AccountCreationFee),
 			UInt64.from(l2AccountCreationFee),
 			PublicKey.fromBase58(circuitsConfig.zekoL1), // outerPk
@@ -344,7 +344,7 @@ export class Bridge {
 		if (deposits.length === 0) return null
 
 		const depositWitnesses = await fetchWitnessesFromAuxes(
-			this.l1IndexerClient,
+			this.actionsApiClient,
 			deposits.map(({ aux }) => aux.toString())
 		)
 
@@ -356,7 +356,7 @@ export class Bridge {
 
 		if (earliestBeforeState === undefined) return null
 
-		const outerActions = await fetchActionsFromIndexer(this.l1IndexerClient, {
+		const outerActions = await fetchActionsFromIndexer(this.actionsApiClient, {
 			fromState: earliestBeforeState.toString()
 		})
 
@@ -589,7 +589,7 @@ export class Bridge {
 		const currentSlot = await this.fetchCurrentSlot()
 
 		const { commit: lastCommit, ase } = await fetchCommitAsePastWithdrawalDelay(
-			this.l1IndexerClient,
+			this.actionsApiClient,
 			+this.withdrawalDelay.add(currentSlot)
 		)
 
@@ -701,7 +701,7 @@ export class Bridge {
 		}
 
 		const depositWitnesses = await fetchWitnessesFromAuxes(
-			this.l1IndexerClient,
+			this.actionsApiClient,
 			auxes.map((x) => x.toString())
 		)
 
@@ -717,7 +717,7 @@ export class Bridge {
 		const currentSlot = await this.fetchCurrentSlot()
 
 		const { commit: lastCommit } = await fetchCommitAsePastWithdrawalDelay(
-			this.l1IndexerClient,
+			this.actionsApiClient,
 			+currentSlot.sub(this.withdrawalDelay)
 		)
 
