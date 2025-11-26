@@ -1,4 +1,5 @@
 import type { Client } from "@urql/core"
+import { networkStateQuery } from "@zeko/graphql/mina-archive"
 import { FetchZekoArchiveEvents } from "@zeko/graphql/zeko-archive"
 import { createConsola } from "consola"
 
@@ -54,17 +55,9 @@ export async function fetchEventsRaw({
 }
 
 export async function getMaxBlockHeightL2(client: Client) {
-	const query = await fetchEventsRaw({
-		address: "B62qnMgvs8iS6wVe56ajqcqtagAov2TGtvD3cWfEB7rAwfCU6x7HdgB",
-		from: 1,
-		to: 10,
-		client
-	})
-	if (query.length === 0) throw new Error("No events found to determine max block height")
-
-	const firstEvent = query[0]
-	if (!firstEvent?.blockInfo) throw new Error("Query returned events without blockInfo")
-
-	const { height, distanceFromMaxBlockHeight } = firstEvent.blockInfo
-	return height + distanceFromMaxBlockHeight
+	const state = await client.query(networkStateQuery, {})
+	if (state.error) throw new Error(`Network state query error: ${state.error.message}`)
+	if (!state.data?.networkState?.maxBlockHeight?.canonicalMaxBlockHeight)
+		throw new Error("No max block height in network state response")
+	return state.data.networkState.maxBlockHeight.canonicalMaxBlockHeight
 }

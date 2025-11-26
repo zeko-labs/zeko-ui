@@ -1,9 +1,4 @@
-import {
-	type BroadcastPayload,
-	type Client,
-	fetchEventsRaw,
-	getMaxBlockHeightL2
-} from "@leaderboard/api"
+import { type BroadcastPayload, type Client, fetchEventsRaw } from "@leaderboard/api"
 import { createMinaClient } from "@lumina-dex/sdk"
 import { networkStateQuery } from "@zeko/graphql/mina-archive"
 import type { FetchZekoArchiveEvents } from "@zeko/graphql/zeko-archive"
@@ -75,14 +70,10 @@ const l1Client = createMinaClient("https://api.minascan.io/archive/devnet/v1/gra
 /**
  * Get the current maximum block height of the chain.
  *
- * TODO: Replace entirely with networkState query when available on L2.
  */
 export async function getMaxBlockHeight(layer: Layer): Promise<number> {
-	if (layer === "L2") {
-		const blocks = await getMaxBlockHeightL2(l2Client as Client)
-		return blocks
-	}
-	const state = await l1Client.query(networkStateQuery, {})
+	const client = layer === "L1" ? l1Client : l2Client
+	const state = await client.query(networkStateQuery, {})
 	if (state.error) throw new Error(`Network state query error: ${state.error.message}`)
 	if (!state.data?.networkState?.maxBlockHeight?.canonicalMaxBlockHeight)
 		throw new Error("No max block height in network state response")
@@ -108,7 +99,7 @@ async function fetchEventsRecursive(options: FetchEventsRecursiveOptions): Promi
 	const { address, from, accumulated, moduleName, maxBlockHeight, lastEventBlockHeight, layer } =
 		options
 
-	const to = from + MAX_BLOCKS_PER_FETCH - 1
+	const to = from + MAX_BLOCKS_PER_FETCH
 	const logPrefix = `[${moduleName}]`
 
 	if (from >= maxBlockHeight) {
@@ -147,7 +138,7 @@ async function fetchEventsRecursive(options: FetchEventsRecursiveOptions): Promi
 
 	return fetchEventsRecursive({
 		address,
-		from: to + 1,
+		from: to,
 		accumulated: allEvents,
 		moduleName,
 		maxBlockHeight,
