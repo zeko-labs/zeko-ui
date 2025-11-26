@@ -123,7 +123,7 @@ export default defineConfig({
 						link: "/operators/guides-tutorials",
 						collapsed: true,
 						items: [
-							{ text: "Running L2 stack", link: "/operators/guides/bootstrap-l2.md" }
+							{ text: "Running Zeko L2", link: "/operators/guides/bootstrap-l2.md" }
 						]
 					},
 					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" },

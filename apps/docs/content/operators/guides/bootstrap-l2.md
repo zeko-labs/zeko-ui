@@ -1,8 +1,8 @@
-# Bootstrap Zeko Rollup L2 with Docker Compose
+# Bootstrap Zeko Rollup L2
 
 In this guide we will create a `betternet` - an L2 Zeko Rollup for Mina Devnet.
 
-The minimum stack consist of:
+At a minimum, you need to run the following components:
 - `Sequencer`
 - `DA Layer`
 - `Prover`
