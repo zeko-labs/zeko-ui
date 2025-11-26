@@ -123,8 +123,7 @@ export default defineConfig({
 						link: "/operators/guides-tutorials",
 						collapsed: true,
 						items: [
-							{ text: "DA Layer", link: "/operators/guides/da-layer" },
-							{ text: "Sequencer", link: "/operators/guides/sequencer" }
+							{ text: "Running L2 stack", link: "/operators/guides/bootstrap-l2.md" }
 						]
 					},
 					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" },
