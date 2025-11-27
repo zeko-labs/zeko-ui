@@ -1,29 +1,4 @@
-interface Action {
-  afterState: String
-  beforeState: String
-  blockHeight: Int
-  fields: [String!]
-  index: Int
-  kind: ActionKind
-  slotRangeLower: String
-  slotRangeUpper: String
-  timestamp: String
-  txnHash: String
-}
-
-enum ActionKind {
-  COMMIT
-  WITNESS
-}
-
-union ActionUnion = Commit | Witness
-
-input ActionsInput {
-  afterState: String
-  beforeState: String!
-}
-
-type Commit implements Action {
+type Commit implements OuterAction {
   afterState: String
   beforeState: String
   blockHeight: Int
@@ -31,7 +6,7 @@ type Commit implements Action {
   index: Int
   innerActionState: String
   innerActionStateLength: Int
-  kind: ActionKind
+  kind: OuterActionKind
   ledger: String
   slotRangeLower: String
   slotRangeUpper: String
@@ -41,31 +16,78 @@ type Commit implements Action {
   txnHash: String
 }
 
-type CommitAsePastWithdrawalDelayResult {
-  ase: [ActionUnion!]
+type CommitAsePastSlotResult {
+  ase: [OuterActionUnion!]
   commit: Commit
 }
 
-type Query {
-  actions(input: ActionsInput!): [ActionUnion!]
-  commitAsePastWithdrawalDelay(slot: Int!): CommitAsePastWithdrawalDelayResult
-  witnessesFromAuxes(input: WitnessesFromAuxesInput!): [Witness!]
-}
-
-type Witness implements Action {
+type InnerAction {
   afterState: String
   aux: String
   beforeState: String
   blockHeight: Int
   fields: [String!]
   index: Int
-  kind: ActionKind
+  timestamp: String
+  txnHash: String
+}
+
+input InnerActionsInput {
+  afterState: String
+  beforeState: String!
+}
+
+input InnerWitnessesFromAuxesInput {
+  auxes: [String!]!
+}
+
+interface OuterAction {
+  afterState: String
+  beforeState: String
+  blockHeight: Int
+  fields: [String!]
+  index: Int
+  kind: OuterActionKind
   slotRangeLower: String
   slotRangeUpper: String
   timestamp: String
   txnHash: String
 }
 
-input WitnessesFromAuxesInput {
+enum OuterActionKind {
+  COMMIT
+  WITNESS
+}
+
+union OuterActionUnion = Commit | Witness
+
+input OuterActionsInput {
+  afterState: String
+  beforeState: String!
+}
+
+input OuterWitnessesFromAuxesInput {
   auxes: [String!]!
+}
+
+type Query {
+  commitAsePastSlot(slot: Int!): CommitAsePastSlotResult
+  innerActions(input: InnerActionsInput!): [InnerAction!]
+  innerWitnessesFromAuxes(input: InnerWitnessesFromAuxesInput!): [InnerAction!]
+  outerActions(input: OuterActionsInput!): [OuterActionUnion!]
+  outerWitnessesFromAuxes(input: OuterWitnessesFromAuxesInput!): [Witness!]
+}
+
+type Witness implements OuterAction {
+  afterState: String
+  aux: String
+  beforeState: String
+  blockHeight: Int
+  fields: [String!]
+  index: Int
+  kind: OuterActionKind
+  slotRangeLower: String
+  slotRangeUpper: String
+  timestamp: String
+  txnHash: String
 }

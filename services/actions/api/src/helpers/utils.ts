@@ -25,3 +25,6 @@ export const checkDatabaseConnectionString = (P = process) => {
 	}
 	return connectionString
 }
+
+export const GENESIS_BEFORE_STATE =
+	"2965377540200775924504968637505084669999360240500907972788072774778139588064"

@@ -2,8 +2,9 @@ import { and, between, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-o
 import { commitActions, outerActions, witnessActions } from "../../drizzle/schema"
 import { builder } from "../builder"
 import type { Database } from "../db"
+import { GENESIS_BEFORE_STATE } from "../helpers/utils"
 
-type BaseAction = {
+type OuterBaseAction = {
 	beforeState: string | null
 	afterState: string
 	index: number
@@ -18,12 +19,12 @@ type BaseAction = {
 	markedAsCanonicalAt: Date | null
 }
 
-type Witness = BaseAction & {
+type Witness = OuterBaseAction & {
 	kind: "WITNESS"
 	aux: string
 }
 
-type Commit = BaseAction & {
+type Commit = OuterBaseAction & {
 	kind: "COMMIT"
 	ledger: string
 	innerActionState: string
@@ -32,11 +33,11 @@ type Commit = BaseAction & {
 	synchronizedOuterActionStateLength: number
 }
 
-type Action = Witness | Commit
+type OuterAction = Witness | Commit
 
 type DatabaseInstance = ReturnType<Database>
 
-export async function queryWitnessesFromAuxes(
+export async function queryOuterWitnessesFromAuxes(
 	db: DatabaseInstance,
 	auxes: string[]
 ): Promise<Witness[]> {
@@ -56,13 +57,11 @@ export async function queryWitnessesFromAuxes(
 	}))
 }
 
-const GENESIS_BEFORE_STATE =
-	"2965377540200775924504968637505084669999360240500907972788072774778139588064"
 // Works only if the db is linked list and not DAG, otherwise we need recursive CTE
-export async function queryActions(
+export async function queryOuterActions(
 	db: DatabaseInstance,
 	options: { beforeState: string; afterState?: string | null | undefined }
-): Promise<Action[]> {
+): Promise<OuterAction[]> {
 	const beforeIndexQb = db.drizzle
 		.select({ index: outerActions.index })
 		.from(outerActions)
@@ -130,10 +129,10 @@ export async function queryActions(
 	})
 }
 
-export async function queryCommitAsePastWithdrawalDelay(
+export async function queryCommitAsePastSlot(
 	db: DatabaseInstance,
 	slot: number
-): Promise<{ commit: Commit | null; ase: Action[] }> {
+): Promise<{ commit: Commit | null; ase: OuterAction[] }> {
 	// CTE: Find the index of the last commit before the given slot
 	const lastCommitCte = db.drizzle.$with("last_commit_anchor").as(
 		db.drizzle
@@ -176,7 +175,7 @@ export async function queryCommitAsePastWithdrawalDelay(
 		timestamp: lastCommit.action.timestamp.toISOString()
 	}
 
-	const ase: Action[] = aseRows.map(({ action, commit, witness }) => {
+	const ase: OuterAction[] = aseRows.map(({ action, commit, witness }) => {
 		if (commit) {
 			return {
 				...action,
@@ -205,11 +204,11 @@ export async function queryCommitAsePastWithdrawalDelay(
 /**
  * GraphQL Schema
  */
-const ActionKind = builder.enumType("ActionKind", {
+const OuterActionKind = builder.enumType("OuterActionKind", {
 	values: ["COMMIT", "WITNESS"] as const
 })
 
-const ActionInterface = builder.interfaceRef<BaseAction>("Action").implement({
+const OuterActionInterface = builder.interfaceRef<OuterBaseAction>("OuterAction").implement({
 	fields: (t) => ({
 		afterState: t.exposeString("afterState"),
 		beforeState: t.exposeString("beforeState", { nullable: true }),
@@ -220,19 +219,19 @@ const ActionInterface = builder.interfaceRef<BaseAction>("Action").implement({
 		timestamp: t.exposeString("timestamp"),
 		txnHash: t.exposeString("txnHash"),
 		fields: t.exposeStringList("fields"),
-		kind: t.field({ type: ActionKind, resolve: (r) => r.kind })
+		kind: t.field({ type: OuterActionKind, resolve: (r) => r.kind })
 	})
 })
 
 const WitnessObject = builder.objectRef<Witness>("Witness").implement({
-	interfaces: [ActionInterface],
+	interfaces: [OuterActionInterface],
 	fields: (t) => ({
 		aux: t.exposeString("aux")
 	})
 })
 
 const CommitObject = builder.objectRef<Commit>("Commit").implement({
-	interfaces: [ActionInterface],
+	interfaces: [OuterActionInterface],
 	fields: (t) => ({
 		ledger: t.exposeString("ledger"),
 		innerActionState: t.exposeString("innerActionState"),
@@ -242,7 +241,7 @@ const CommitObject = builder.objectRef<Commit>("Commit").implement({
 	})
 })
 
-const ActionUnion = builder.unionType("ActionUnion", {
+const OuterActionUnion = builder.unionType("OuterActionUnion", {
 	types: [CommitObject, WitnessObject],
 	resolveType: (value) => {
 		switch (value.kind) {
@@ -254,56 +253,56 @@ const ActionUnion = builder.unionType("ActionUnion", {
 	}
 })
 
-const WitnessesFromAuxesInput = builder.inputType("WitnessesFromAuxesInput", {
+const OuterWitnessesFromAuxesInput = builder.inputType("OuterWitnessesFromAuxesInput", {
 	fields: (t) => ({
 		auxes: t.stringList({ required: true })
 	})
 })
 
-const ActionsInput = builder.inputType("ActionsInput", {
+const OuterActionsInput = builder.inputType("OuterActionsInput", {
 	fields: (t) => ({
 		beforeState: t.string({ required: true }),
 		afterState: t.string({ required: false })
 	})
 })
 
-const CommitAsePastWithdrawalDelayResult = builder
-	.objectRef<{ commit: Commit | null; ase: Action[] }>("CommitAsePastWithdrawalDelayResult")
+const CommitAsePastSlotResult = builder
+	.objectRef<{ commit: Commit | null; ase: OuterAction[] }>("CommitAsePastSlotResult")
 	.implement({
 		fields: (t) => ({
 			commit: t.field({ type: CommitObject, resolve: (r) => r.commit, nullable: true }),
-			ase: t.field({ type: [ActionUnion], resolve: (r) => r.ase })
+			ase: t.field({ type: [OuterActionUnion], resolve: (r) => r.ase })
 		})
 	})
 
 builder.queryType({
 	fields: (t) => ({
-		witnessesFromAuxes: t.field({
+		outerWitnessesFromAuxes: t.field({
 			type: [WitnessObject],
-			args: { input: t.arg({ type: WitnessesFromAuxesInput, required: true }) },
+			args: { input: t.arg({ type: OuterWitnessesFromAuxesInput, required: true }) },
 			resolve: async (_root, { input }, { database }) => {
 				using db = database({ cache: true })
 
-				const result = await queryWitnessesFromAuxes(db, input.auxes)
+				const result = await queryOuterWitnessesFromAuxes(db, input.auxes)
 
 				return result
 			}
 		}),
-		actions: t.field({
-			type: [ActionUnion],
-			args: { input: t.arg({ type: ActionsInput, required: true }) },
+		outerActions: t.field({
+			type: [OuterActionUnion],
+			args: { input: t.arg({ type: OuterActionsInput, required: true }) },
 			resolve: async (_root, { input }, { database }) => {
 				using db = database({ cache: true })
-				const result = await queryActions(db, input)
+				const result = await queryOuterActions(db, input)
 				return result
 			}
 		}),
-		commitAsePastWithdrawalDelay: t.field({
-			type: CommitAsePastWithdrawalDelayResult,
+		commitAsePastSlot: t.field({
+			type: CommitAsePastSlotResult,
 			args: { slot: t.arg({ type: "Int", required: true }) },
 			resolve: async (_root, { slot }, { database }) => {
 				using db = database({ cache: true })
-				const result = await queryCommitAsePastWithdrawalDelay(db, slot)
+				const result = await queryCommitAsePastSlot(db, slot)
 				return result
 			}
 		})

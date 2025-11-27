@@ -1,4 +1,5 @@
-export * from "./schema/actions"
+export * from "./schema/inner"
+export * from "./schema/outer"
 
 import { builder } from "./builder"
 
