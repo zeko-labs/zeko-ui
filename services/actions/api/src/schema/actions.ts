@@ -1,5 +1,5 @@
 import { and, between, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm"
-import { actions, commitActions, witnessActions } from "../../drizzle/schema"
+import { commitActions, outerActions, witnessActions } from "../../drizzle/schema"
 import { builder } from "../builder"
 import type { Database } from "../db"
 
@@ -43,16 +43,16 @@ export async function queryWitnessesFromAuxes(
 	const witnesses = await db.drizzle
 		.select()
 		.from(witnessActions)
-		.innerJoin(actions, eq(witnessActions.afterState, actions.afterState))
-		.where(and(eq(actions.kind, "witness"), inArray(witnessActions.aux, auxes)))
+		.innerJoin(outerActions, eq(witnessActions.afterState, outerActions.afterState))
+		.where(and(eq(outerActions.kind, "witness"), inArray(witnessActions.aux, auxes)))
 
-	return witnesses.map(({ witness_actions, actions }) => ({
-		...actions,
+	return witnesses.map(({ witness_actions, outer_actions }) => ({
+		...outer_actions,
 		...witness_actions,
 		kind: "WITNESS",
-		slotRangeLower: actions.slotRangeLower.toString(),
-		slotRangeUpper: actions.slotRangeUpper.toString(),
-		timestamp: actions.timestamp.toISOString()
+		slotRangeLower: outer_actions.slotRangeLower.toString(),
+		slotRangeUpper: outer_actions.slotRangeUpper.toString(),
+		timestamp: outer_actions.timestamp.toISOString()
 	}))
 }
 
@@ -64,25 +64,25 @@ export async function queryActions(
 	options: { beforeState: string; afterState?: string | null | undefined }
 ): Promise<Action[]> {
 	const beforeIndexQb = db.drizzle
-		.select({ index: actions.index })
-		.from(actions)
+		.select({ index: outerActions.index })
+		.from(outerActions)
 		.where(
 			options.beforeState === GENESIS_BEFORE_STATE
-				? isNull(actions.beforeState)
-				: eq(actions.beforeState, options.beforeState)
+				? isNull(outerActions.beforeState)
+				: eq(outerActions.beforeState, options.beforeState)
 		)
 		.limit(1)
 
 	const targetEndIndexQb = db.drizzle
-		.select({ index: actions.index })
-		.from(actions)
-		.where(eq(actions.afterState, options.afterState ?? ""))
+		.select({ index: outerActions.index })
+		.from(outerActions)
+		.where(eq(outerActions.afterState, options.afterState ?? ""))
 		.limit(1)
 
 	const maxIndexQb = db.drizzle
-		.select({ index: actions.index })
-		.from(actions)
-		.orderBy(desc(actions.index))
+		.select({ index: outerActions.index })
+		.from(outerActions)
+		.orderBy(desc(outerActions.index))
 		.limit(1)
 
 	const limitsCte = db.drizzle.$with("limits").as(
@@ -91,19 +91,19 @@ export async function queryActions(
 				beforeIndex: sql<number>`(${beforeIndexQb})`.as("before_index"),
 				afterIndex: sql<number>`coalesce((${targetEndIndexQb}), (${maxIndexQb}))`.as("after_index")
 			})
-			.from(actions)
+			.from(outerActions)
 			.limit(1)
 	)
 
 	const actionsResult = await db.drizzle
 		.with(limitsCte)
-		.select({ action: actions, commit: commitActions, witness: witnessActions })
-		.from(actions)
+		.select({ action: outerActions, commit: commitActions, witness: witnessActions })
+		.from(outerActions)
 		.crossJoin(limitsCte)
-		.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
-		.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
-		.where(between(actions.index, limitsCte.beforeIndex, limitsCte.afterIndex))
-		.orderBy(actions.index)
+		.leftJoin(commitActions, eq(commitActions.afterState, outerActions.afterState))
+		.leftJoin(witnessActions, eq(witnessActions.afterState, outerActions.afterState))
+		.where(between(outerActions.index, limitsCte.beforeIndex, limitsCte.afterIndex))
+		.orderBy(outerActions.index)
 
 	return actionsResult.map(({ action, commit, witness }) => {
 		if (commit) {
@@ -137,24 +137,24 @@ export async function queryCommitAsePastWithdrawalDelay(
 	// CTE: Find the index of the last commit before the given slot
 	const lastCommitCte = db.drizzle.$with("last_commit_anchor").as(
 		db.drizzle
-			.select({ anchorIndex: actions.index })
-			.from(actions)
-			.innerJoin(commitActions, eq(actions.afterState, commitActions.afterState))
-			.where(and(eq(actions.kind, "commit"), lt(actions.slotRangeUpper, BigInt(slot))))
-			.orderBy(desc(actions.index))
+			.select({ anchorIndex: outerActions.index })
+			.from(outerActions)
+			.innerJoin(commitActions, eq(outerActions.afterState, commitActions.afterState))
+			.where(and(eq(outerActions.kind, "commit"), lt(outerActions.slotRangeUpper, BigInt(slot))))
+			.orderBy(desc(outerActions.index))
 			.limit(1)
 	)
 
 	// Fetch the last commit and all subsequent actions in one atomic query
 	const rows = await db.drizzle
 		.with(lastCommitCte)
-		.select({ action: actions, commit: commitActions, witness: witnessActions })
-		.from(actions)
+		.select({ action: outerActions, commit: commitActions, witness: witnessActions })
+		.from(outerActions)
 		.crossJoin(lastCommitCte)
-		.leftJoin(commitActions, eq(commitActions.afterState, actions.afterState))
-		.leftJoin(witnessActions, eq(witnessActions.afterState, actions.afterState))
-		.where(gte(actions.index, lastCommitCte.anchorIndex))
-		.orderBy(actions.index)
+		.leftJoin(commitActions, eq(commitActions.afterState, outerActions.afterState))
+		.leftJoin(witnessActions, eq(witnessActions.afterState, outerActions.afterState))
+		.where(gte(outerActions.index, lastCommitCte.anchorIndex))
+		.orderBy(outerActions.index)
 
 	if (rows.length === 0) return { commit: null, ase: [] }
 

@@ -15,6 +15,20 @@
 			"when": 1763994698884,
 			"tag": "0001_zippy_lady_bullseye",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1764254280710,
+			"tag": "0002_tiresome_firebird",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "7",
+			"when": 1764254527434,
+			"tag": "0003_messy_reavers",
+			"breakpoints": true
 		}
 	]
 }

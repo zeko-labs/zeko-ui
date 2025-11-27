@@ -9,10 +9,8 @@ export const logger = createConsola({
 	level: env.ENVIRONMENT?.toLowerCase() === "local" ? 4 : 3
 }).withTag("ACTIONS_INDEXER")
 
-export const OUTER_PK = "B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2"
 export const l1Client = createGraphqlClient(env.L1_ARCHIVE_URL)
-
-const firstBlockWithActions = 430_000
+export const l2Client = createGraphqlClient(env.L2_ARCHIVE_URL)
 
 export interface ArchiveActionData {
 	data: string[]
@@ -38,17 +36,17 @@ const BLOCK_RANGE_SIZE = 10_000
 
 export async function fetchActions({
 	client,
-	fromBlock
+	fromBlock,
+	pk
 }: {
 	client: ReturnType<typeof createGraphqlClient>
 	fromBlock?: number
+	pk: string
 }): Promise<ArchiveEvent[]> {
 	logger.info(`[fetchActions] starting fetch; fromBlock=${fromBlock ?? "latest"}`)
-	logger.debug(
-		`[fetchActions] using OUTER_PK=${OUTER_PK} archiveUrl=${env.L1_ARCHIVE_URL ?? "unset"}`
-	)
+	logger.debug(`[fetchActions] using ${pk}`)
 	// Ensure we fetch in batches from 'from' to tip
-	const start = Math.max(fromBlock ?? 0, firstBlockWithActions)
+	const start = fromBlock ?? 1
 	const maxHeight = await getNetworkTip(client)
 	logger.info(`[fetchActions] network tip: ${maxHeight}, start: ${start}`)
 	if (start > maxHeight) {
@@ -63,7 +61,7 @@ export async function fetchActions({
 		const to = Math.min(from + BLOCK_RANGE_SIZE, maxHeight + 1)
 		logger.debug(`[fetchActions] querying archive for range ${from}-${to}`)
 		const res = await client.query(fetchActionsQuery, {
-			pk: OUTER_PK,
+			pk,
 			from: from,
 			to: to
 		})

@@ -11,12 +11,12 @@ import {
 	timestamp
 } from "drizzle-orm/pg-core"
 
-export const actions = pgTable(
-	"actions",
+export const outerActions = pgTable(
+	"outer_actions",
 	{
 		afterState: text("after_state").primaryKey(),
 		kind: text("kind", { enum: ["commit", "witness"] as const }).notNull(),
-		beforeState: text("before_state").references((): AnyPgColumn => actions.afterState, {
+		beforeState: text("before_state").references((): AnyPgColumn => outerActions.afterState, {
 			onDelete: "restrict"
 		}),
 		index: integer("index").notNull().unique(),
@@ -30,12 +30,12 @@ export const actions = pgTable(
 		markedAsCanonicalAt: timestamp("marked_as_canonical_at", { withTimezone: true })
 	},
 	(table) => [
-		index("before_state|index").on(table.beforeState),
-		index("after_state|index").on(table.afterState),
-		index("index|index").on(table.index),
-		index("marked_as_canonical_at|index").on(table.markedAsCanonicalAt),
+		index("before_state|outer_actions_index").on(table.beforeState),
+		index("after_state|outer_actions_index").on(table.afterState),
+		index("index|outer_actions_index").on(table.index),
+		index("marked_as_canonical_at|outer_actions_index").on(table.markedAsCanonicalAt),
 		check(
-			"actions_before_not_after|check",
+			"actions_before_not_after|outer_actions_check",
 			sql`${table.beforeState} IS NULL OR ${table.beforeState} <> ${table.afterState}`
 		)
 	]
@@ -44,7 +44,7 @@ export const actions = pgTable(
 export const commitActions = pgTable("commit_actions", {
 	afterState: text("after_state")
 		.primaryKey()
-		.references(() => actions.afterState, { onDelete: "cascade" }),
+		.references(() => outerActions.afterState, { onDelete: "cascade" }),
 	ledger: text("ledger").notNull(),
 	innerActionState: text("inner_action_state").notNull(),
 	innerActionStateLength: integer("inner_action_state_length").notNull(),
@@ -57,8 +57,37 @@ export const witnessActions = pgTable(
 	{
 		afterState: text("after_state")
 			.primaryKey()
-			.references(() => actions.afterState, { onDelete: "cascade" }),
+			.references(() => outerActions.afterState, { onDelete: "cascade" }),
 		aux: text("aux").notNull()
 	},
-	(table) => [index("aux|index").on(table.aux)]
+	(table) => [index("aux|witness_actions_index").on(table.aux)]
+)
+
+export const innerActions = pgTable(
+	"inner_actions",
+	{
+		afterState: text("after_state").primaryKey(),
+		beforeState: text("before_state").references((): AnyPgColumn => innerActions.afterState, {
+			onDelete: "restrict"
+		}),
+		index: integer("index").notNull().unique(),
+		blockHeight: integer("block_height").notNull(),
+		timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+		txnHash: text("txn_hash").notNull(),
+		fields: jsonb("fields").$type<string[]>().notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		markedAsCanonicalAt: timestamp("marked_as_canonical_at", { withTimezone: true }),
+		aux: text("aux").notNull()
+	},
+	(table) => [
+		index("before_state|inner_actions_index").on(table.beforeState),
+		index("after_state|inner_actions_index").on(table.afterState),
+		index("index|inner_actions_index").on(table.index),
+		index("marked_as_canonical_at|inner_actions_index").on(table.markedAsCanonicalAt),
+		index("aux|inner_actions_index").on(table.aux),
+		check(
+			"actions_before_not_after|inner_actions_check",
+			sql`${table.beforeState} IS NULL OR ${table.beforeState} <> ${table.afterState}`
+		)
+	]
 )
