@@ -3,6 +3,7 @@
 In this guide we will create a `betternet` - an L2 Zeko Rollup for Mina Devnet.
 
 At a minimum, you need to run the following components:
+
 - `Sequencer`
 - `DA Layer`
 - `Prover`
@@ -14,15 +15,18 @@ TL;DR skip to the [Bootstrap process](#bootstrap-process)
 ## Prerequisites
 
 ### System Requirements
+
 - Linux or macOS (Windows WSL2 works too)
 - At least **4 CPU cores**, **24GB RAM**
 
 ### Installed Software
+
 - `Docker`
 
 ## Overview
 
 In this guide we are going to:
+
 - Create a `sequencer` wallet and make sure it has funds.
 - Create a `deployment`/`circuits` config
 - Deploy a created configuration
@@ -32,12 +36,14 @@ In this guide we are going to:
 ### Wallets
 
 Deploying a rollup the following wallets are mentioned:
+
 - `sequencer` - A wallet to commit to zkApp. _**Has to be even**_
 - `da-layer` - Each `da-layer` node is started with its wallet.
 - `fee-payer` - A wallet that pays fees on commits. (We will use `sequencer`)
 - `pause` - A wallet authorised to pause rollup. _**Has to be even**_ (We will use `sequencer`).
 
 ### Project Structure
+
 Layout of the project directory:
 
 ```
@@ -53,19 +59,20 @@ project-root/
 
 ### Important Files
 
-| File | Purpose |
-|------|---------|
-| `keys/sequencer-sk` | L1 private key used by sequencer to post proofs and pay fees |
-| `keys/sequencer-pk` | L1 Public key used in deploy step |
-| `keys/da-node-sk` | Private key of the DA node |
-| `keys/da-node-pk` | Public key of the DA node (exposed to sequencer) |
-| `data/{postgresql,da-layer,sequencer}/` | Persistent storage for services |
+| File                                    | Purpose                                                      |
+| --------------------------------------- | ------------------------------------------------------------ |
+| `keys/sequencer-sk`                     | L1 private key used by sequencer to post proofs and pay fees |
+| `keys/sequencer-pk`                     | L1 Public key used in deploy step                            |
+| `keys/da-node-sk`                       | Private key of the DA node                                   |
+| `keys/da-node-pk`                       | Public key of the DA node (exposed to sequencer)             |
+| `data/{postgresql,da-layer,sequencer}/` | Persistent storage for services                              |
 
 > **Note:** Keys must NOT have newlines or extra spaces.
 
 ---
 
 ### Service Overview
+
 - `postgresql` - Used by sequencer.
 - `rabbitmq` - Messaging layer used between sequencer and prover.
 - `da-layer` - Data Availability layer for the `betternet`.
@@ -73,12 +80,13 @@ project-root/
 - `sequencer` - Runs the rollup logic, batches transactions, interacts with DA layer, and posts proofs to L1.
 
 ### Ports Exposed
-| Service | Port | Description |
-|---------|------|-------------|
-| sequencer | `1923` | Public API |
-| da-layer | `1924` | DA API |
-| postgres | `5432` | Local DB dev access |
-| rabbitmq | `5672` | Internal service bus |
+
+| Service   | Port   | Description          |
+| --------- | ------ | -------------------- |
+| sequencer | `1923` | Public API           |
+| da-layer  | `1924` | DA API               |
+| postgres  | `5432` | Local DB dev access  |
+| rabbitmq  | `5672` | Internal service bus |
 
 ---
 
@@ -99,7 +107,6 @@ project-root/
 
   CREATE USER sequencer;
   ALTER DATABASE sequencer OWNER TO sequencer;
-
   ```
 - Create `circuits`/`decploy` config and `sequencer`/`da-layer` keys
   1. Start and exec into `init-config` container:
@@ -109,54 +116,57 @@ project-root/
   ```
   > **Note:** This image is used to run Zeko sequencer/prover. Additionally it contains `zeko-cli`/`zeko-deploy` binaries.
   2. Create `deployment`/`circuits` config
-    ```bash
-    zeko-cli generate-circuits-config > generated-config
-    csplit generated-config '/deploy config:/' '{*}'
-    mv xx00 betternet-circuits.json
-    mv xx01 betternet-deploy.json
-    ```
-    > **Note:** Currently `generate-circuits-config` produces a text file with both configuration and deploy. Therefore you need to manually remove `deploy config:`/`circuits config:` from created `betternet-circuits.json`/`betternet-deploy.json` files to make these `json` files valid. Since docker images do not contain any editor, in another shell navigate to your data folder and edit these files.
+  ```bash
+  zeko-cli generate-circuits-config > generated-config
+  csplit generated-config '/deploy config:/' '{*}'
+  mv xx00 betternet-circuits.json
+  mv xx01 betternet-deploy.json
+  ```
+  > **Note:** Currently `generate-circuits-config` produces a text file with both configuration and deploy. Therefore you need to manually remove `deploy config:`/`circuits config:` from created `betternet-circuits.json`/`betternet-deploy.json` files to make these `json` files valid. Since docker images do not contain any editor, in another shell navigate to your data folder and edit these files.
   3. Create `sequencer`/`da-layer` keypairs
-    > **Note:** Or place your own keys inside ./keys):
-      - `./keys/sequencer-pk`
-      - `./keys/sequencer-sk`
-      - `./keys/da-layer-pk`
-      - `./keys/da-layer-sk`
+  > **Note:** Or place your own keys inside ./keys):
+  >
+  > - `./keys/sequencer-pk`
+  > - `./keys/sequencer-sk`
+  > - `./keys/da-layer-pk`
+  > - `./keys/da-layer-sk`
 
-    ```bash
-    # create `sequencer` keypair
-    zeko-cli generate-even-key | while read label1 label2 value; do
-    if [ "$label1" = "Private" ]; then
-      echo "$value" > sequencer-sk
-    elif [ "$label1" = "Public" ]; then
-      echo "$value" > sequencer-pk
-    fi
-    done
-    # create `da-layer` keypair
-    zeko-cli generate-even-key | while read label1 label2 value; do
-    if [ "$label1" = "Private" ]; then
-      echo "$value" > da-layer-sk
-    elif [ "$label1" = "Public" ]; then
-      echo "$value" > da-layer-pk
-    fi
-    done
+  ```bash
+  # create `sequencer` keypair
+  zeko-cli generate-even-key | while read label1 label2 value; do
+  if [ "$label1" = "Private" ]; then
+    echo "$value" > sequencer-sk
+  elif [ "$label1" = "Public" ]; then
+    echo "$value" > sequencer-pk
+  fi
+  done
+  # create `da-layer` keypair
+  zeko-cli generate-even-key | while read label1 label2 value; do
+  if [ "$label1" = "Private" ]; then
+    echo "$value" > da-layer-sk
+  elif [ "$label1" = "Public" ]; then
+    echo "$value" > da-layer-pk
+  fi
+  done
 
-    mv {sequencer,da-layer}-{sk,pk} /keys
-    ```
-    > **Note:** After the `mv` operation, the `init-config` container should exit.
+  mv {sequencer,da-layer}-{sk,pk} /keys
+  ```
+  > **Note:** After the `mv` operation, the `init-config` container should exit.
 
 ### Fund `sequencer` wallet
+
 1. Using [Auro Wallet](https://www.aurowallet.com/) or other preferred method import sequencer key created in the previous step
 2. Go to [Mina Devnet faucet](https://faucet.minaprotocol.com/) and use faucet to add funds to the `sequencer` wallet
 3. After a few minutes you should be able to see the funds in your _**Auro Wallet**_
 
 ### Deploy `betternet` configuration
+
 - Start and exec into `init-deploy` container:
   ```bash
   docker compose up init-deploy -d
   docker compose exec -it init-deploy bash
   ```
-  >**Note:** It should also start `da-layer` container.
+  > **Note:** It should also start `da-layer` container.
 - From inside `init-deploy` container run deploy
   ```bash
   export MINA_PRIVATE_KEY=$(cat /keys/sequencer-sk)
@@ -184,7 +194,7 @@ project-root/
   (* Post the whole genesis diff with all the accounts *)
   (* Deploy contract *)
   ```
-  >**Note:** If successful,`init-deploy` container should exit with `(0)`
+  > **Note:** If successful,`init-deploy` container should exit with `(0)`
 
 ### Wait for zkapp transaction to succeed
 
@@ -199,21 +209,25 @@ docker compose up -d
 ## Troubleshooting
 
 Check logs
+
 ```bash
 docker compose logs -f
 ```
 
 ## Stopping the Stack
+
 ```
 docker compose down
 ```
 
 To remove persistent data:
+
 ```
 rm -rf data/
 docker volume rm rabbitmq
 ```
 
 ## Next Steps
+
 - Bridge Mina L1 tokens to L2 (TODO)
 - Deploy your own L2 contracts(TODO)

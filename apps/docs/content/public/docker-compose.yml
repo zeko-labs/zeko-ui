@@ -118,7 +118,7 @@ services:
       - ./keys:/keys:ro
     ports:
       - "1923:1923"
-    entrypoint: #["bash", "-c", "while true; do sleep 1000; done"]
+    entrypoint:
       - bash
       - -c
     command: |
