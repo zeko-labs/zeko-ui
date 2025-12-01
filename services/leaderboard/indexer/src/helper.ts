@@ -106,7 +106,7 @@ async function fetchEventsRecursive(options: FetchEventsRecursiveOptions): Promi
 		logger.info(`${logPrefix} Reached max block height ${maxBlockHeight}`)
 		return {
 			events: accumulated,
-			lastFetchedBlock: lastEventBlockHeight ?? from - 1
+			lastFetchedBlock: Math.min(from - 1, maxBlockHeight)
 		}
 	}
 
@@ -206,20 +206,13 @@ export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<F
 		lastEventBlockHeight: null,
 		layer
 	})
-
-	// Filter out events before the actual start block (from the blockPad window)
-	const filteredEvents = result.events.filter((event) => {
-		const blockHeight = event?.blockInfo?.height
-		return blockHeight === undefined || blockHeight >= initialStartBlock
-	})
+	const { events } = result
 
 	const lastFetchedBlock = Math.min(result.lastFetchedBlock, effectiveMaxBlock)
 
-	logger.success(
-		`${logPrefix} Completed: ${filteredEvents.length} events (${result.events.length} fetched, ${result.events.length - filteredEvents.length} filtered), last block ${lastFetchedBlock}`
-	)
+	logger.success(`${logPrefix} Completed: ${events.length} events, last block ${lastFetchedBlock}`)
 
-	return { events: filteredEvents, lastFetchedBlock }
+	return { events, lastFetchedBlock }
 }
 
 export async function wait(seconds: number): Promise<void> {
