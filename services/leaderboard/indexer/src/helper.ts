@@ -19,27 +19,6 @@ export interface ActionsConfig {
 	swap: ActionConfig
 	withdrawal: ActionConfig
 }
-/**
- * Archive Events Fetching Logic
- *
- * FUTURE REFACTORING PLAN:
- * When the networkState query becomes available in the archive API, refactor as follows:
- *
- * 1. Replace getMaxBlockHeight() with a direct networkState query:
- *    - Query: networkState { maxBlockHeight { canonicalMaxBlockHeight } }
- *    - Remove dependency on querying events to determine chain height
- *    - This will be faster and more reliable
- *
- * 2. Simplify fetchArchiveEvents():
- *    - Call networkState query once at the start
- *    - Remove discovery query logic
- *    - Directly use canonicalMaxBlockHeight for recursion bounds
- *
- * 3. Benefits:
- *    - Single query to get chain state instead of querying events
- *    - More efficient especially for initial fetches
- *    - Clearer separation of concerns (chain state vs event fetching)
- */
 
 export const addresses = {
 	L1: {
