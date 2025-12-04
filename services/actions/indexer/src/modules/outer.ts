@@ -5,11 +5,11 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { outerActions } from "services/actions/api/drizzle/schema"
 import {
 	batchInsert,
-	type CommitInsert,
 	clearAllTables,
 	deleteOuterActionsFromIndex,
 	getLastFinalOuterAction,
 	getOuterActionsFromBlock,
+	type CommitInsert,
 	type OuterActionsInsert,
 	type WitnessInsert
 } from "../db"
@@ -22,7 +22,7 @@ import { fetchActions, getNetworkTip, handleFork, l1Client, logger } from "../he
  */
 
 async function fetch({ startBlock }: { startBlock: number }) {
-	logger.info(`[outer.handler] Fetching from ${startBlock}`)
+	logger.info(`[outer.fetch] Fetching from ${startBlock}`)
 
 	const actions = await fetchActions({
 		client: l1Client,
@@ -78,7 +78,7 @@ async function fetch({ startBlock }: { startBlock: number }) {
 	if (data.length) {
 		const sample = data.slice(0, 5)
 		logger.info(
-			`[outer.handler] fetched ${data.length} actions; sample beforeStates: ${sample.map((d) => d.beforeState ?? "NULL").join(", ")}`
+			`[outer.fetch] fetched ${data.length} actions; sample beforeStates: ${sample.map((d) => d.beforeState ?? "NULL").join(", ")}`
 		)
 	}
 
@@ -142,7 +142,7 @@ async function insertOuter(
 	}
 ) {
 	logger.debug(
-		`[insertOuter] inserting ${actionsToInsert.length} actions, ${commitToInsert.length} commits, ${witnessToInsert.length} witnesses`
+		`[outer.insert] inserting ${actionsToInsert.length} actions, ${commitToInsert.length} commits, ${witnessToInsert.length} witnesses`
 	)
 	if (deffered) {
 		await db.execute(sql`SET CONSTRAINTS ALL DEFERRED;`)
@@ -158,7 +158,7 @@ export async function handler(db: PostgresJsDatabase) {
 	const tip = await getNetworkTip(l1Client)
 	const lastFinal = await getLastFinalOuterAction(db)
 	const startBlock = lastFinal?.blockHeight ? lastFinal.blockHeight + 1 : 1
-	logger.info(`runIndexingLoop: tip=${tip}, startBlock=${startBlock}`)
+	logger.info(`[outer.handler] runIndexingLoop: tip=${tip}, startBlock=${startBlock}`)
 
 	const outerResult = await handleFork(db, {
 		startBlock,
@@ -174,6 +174,8 @@ export async function handler(db: PostgresJsDatabase) {
 }
 
 export async function rebuild(db: PostgresJsDatabase) {
+	logger.info(`[outer.rebuild] rebuilding from block 0`)
+
 	const startBlock = 0
 	const fetchResult = await fetch({ startBlock })
 

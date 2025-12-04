@@ -19,10 +19,15 @@ export const createClientOptions = (url: string): ClientOptions => ({
 	]
 })
 
-export const createGraphqlClient = (url: string): Client => {
+export type GqlClient = {
+	(): Client
+	label: string
+}
+
+export const createGraphqlClient = (url: string, label: string): GqlClient => {
 	const cached = clientCache.get(url)
-	if (cached) return cached
+	if (cached) return Object.assign(() => cached, { label })
 	const client = new Client(createClientOptions(url))
 	clientCache.set(url, client)
-	return client
+	return Object.assign(() => client, { label })
 }

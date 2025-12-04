@@ -19,8 +19,7 @@ export async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerStat
 	const baseDelay = Math.max(1, state.config.intervalSeconds)
 	while (state.isRunning) {
 		try {
-			const outerResult = await outerHandler(db)
-			const innerResult = await innerHandler(db)
+			const [outerResult, innerResult] = await Promise.all([outerHandler(db), innerHandler(db)])
 
 			state.lastRunTimestamp = Date.now()
 			state.lastFetchedBlock.outer = outerResult.lastFetchedBlock ?? state.lastFetchedBlock.outer
@@ -108,8 +107,10 @@ export class Indexer {
 			this.stop()
 		}
 		try {
-			const outerResult = await outerRebuild(this.#db)
-			const innerResult = await innerRebuild(this.#db)
+			const [outerResult, innerResult] = await Promise.all([
+				outerRebuild(this.#db),
+				innerRebuild(this.#db)
+			])
 
 			this.#state.lastFetchedBlock.outer = outerResult.lastFetchedBlock ?? null
 			this.#state.lastFetchedBlock.inner = innerResult.lastFetchedBlock ?? null

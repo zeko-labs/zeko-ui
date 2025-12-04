@@ -19,7 +19,7 @@ import { fetchActions, getNetworkTip, handleFork, l2Client, logger } from "../he
  */
 
 async function fetch({ startBlock }: { startBlock: number }) {
-	logger.info(`[inner.handler] Fetching from ${startBlock}`)
+	logger.info(`[inner.fetch] Fetching from ${startBlock}`)
 
 	const actions = await fetchActions({
 		client: l2Client,
@@ -55,7 +55,7 @@ async function fetch({ startBlock }: { startBlock: number }) {
 	if (data.length) {
 		const sample = data.slice(0, 5)
 		logger.info(
-			`[inner.handler] fetched ${data.length} actions; sample beforeStates: ${sample.map((d) => d.beforeState ?? "NULL").join(", ")}`
+			`[inner.fetch] fetched ${data.length} actions; sample beforeStates: ${sample.map((d) => d.beforeState ?? "NULL").join(", ")}`
 		)
 	}
 
@@ -98,7 +98,7 @@ async function insertInner(
 		deffered?: boolean
 	}
 ) {
-	logger.debug(`[insertInner] inserting ${actionsToInsert.length} actions`)
+	logger.debug(`[inner.insert] inserting ${actionsToInsert.length} actions`)
 	if (deffered) {
 		await db.execute(sql`SET CONSTRAINTS ALL DEFERRED;`)
 	}
@@ -110,7 +110,7 @@ export async function handler(db: PostgresJsDatabase) {
 	const tip = await getNetworkTip(l2Client)
 	const lastFinal = await getLastFinalInnerAction(db)
 	const startBlock = lastFinal?.blockHeight ? lastFinal.blockHeight + 1 : 1
-	logger.info(`runIndexingLoop: tip=${tip}, startBlock=${startBlock}`)
+	logger.info(`[inner.handler] runIndexingLoop: tip=${tip}, startBlock=${startBlock}`)
 
 	const innerResult = await handleFork(db, {
 		startBlock,
@@ -126,6 +126,8 @@ export async function handler(db: PostgresJsDatabase) {
 }
 
 export async function rebuild(db: PostgresJsDatabase) {
+	logger.info(`[inner.rebuild] rebuilding from block 0`)
+
 	const startBlock = 0
 	const fetchResult = await fetch({ startBlock })
 
