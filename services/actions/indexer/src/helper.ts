@@ -259,7 +259,7 @@ export async function handleFork<
 
 		if (dbItem && dbItem.afterState !== item.afterState && !forkAtIndex) {
 			logger.info(
-				`[outer.handler] fork at index ${currentIndex}: ${dbItem.afterState} -> ${item.afterState}`
+				`[handleFork] fork at index ${currentIndex}: ${dbItem.afterState} -> ${item.afterState}`
 			)
 			forkAtIndex = currentIndex
 		}
