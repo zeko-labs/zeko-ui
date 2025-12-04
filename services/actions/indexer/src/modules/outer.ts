@@ -1,17 +1,17 @@
 import { commitActions, witnessActions } from "@zeko/actions-api"
 import { emptyActionsList } from "@zeko/bridge-sdk"
 import { sql } from "drizzle-orm"
-import { PostgresJsDatabase } from "drizzle-orm/postgres-js"
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { outerActions } from "services/actions/api/drizzle/schema"
 import {
 	batchInsert,
+	type CommitInsert,
 	clearAllTables,
-	CommitInsert,
 	deleteOuterActionsFromIndex,
 	getLastFinalOuterAction,
 	getOuterActionsFromBlock,
-	OuterActionsInsert,
-	WitnessInsert
+	type OuterActionsInsert,
+	type WitnessInsert
 } from "../db"
 import { env } from "../env"
 import type { ArchiveEvent } from "../helper"

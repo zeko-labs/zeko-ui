@@ -1,13 +1,13 @@
-import { innerActions, outerActions } from "@zeko/actions-api"
+import type { innerActions, outerActions } from "@zeko/actions-api"
 import { createGraphqlClient, fromList, pushHash } from "@zeko/bridge-sdk"
 import { fetchActionsQuery, networkStateQuery } from "@zeko/graphql/mina-archive"
 import { createConsola } from "consola"
-import { PostgresJsDatabase } from "drizzle-orm/postgres-js"
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { Field } from "o1js"
 import * as v from "valibot"
 import { env } from "./env"
-import { InnerItem } from "./modules/inner"
-import { OuterItem } from "./modules/outer"
+import type { InnerItem } from "./modules/inner"
+import type { OuterItem } from "./modules/outer"
 
 export const logger = createConsola({
 	level: env.ENVIRONMENT?.toLowerCase() === "local" ? 4 : 3

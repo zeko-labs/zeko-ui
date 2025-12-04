@@ -1,14 +1,14 @@
 import { innerActions } from "@zeko/actions-api"
 import { emptyActionsList } from "@zeko/bridge-sdk"
 import { sql } from "drizzle-orm"
-import { PostgresJsDatabase } from "drizzle-orm/postgres-js"
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import {
 	batchInsert,
 	clearAllTables,
 	deleteInnerActionsFromIndex,
 	getInnerActionsFromBlock,
 	getLastFinalInnerAction,
-	InnerActionsInsert
+	type InnerActionsInsert
 } from "../db"
 import { env } from "../env"
 import type { ArchiveEvent } from "../helper"
@@ -33,7 +33,7 @@ async function fetch({ startBlock }: { startBlock: number }) {
 			: item.beforeActionState.toString()
 		const afterState = item.afterActionState.toString()
 		const blockHeight = item.blockInfo.height
-		const now = +new Date()
+		const now = +Date.now()
 		const blockTimestamp = +new Date(+item.blockInfo.timestamp)
 		const diffMs = now - blockTimestamp
 		const markedAsCanonicalAt =

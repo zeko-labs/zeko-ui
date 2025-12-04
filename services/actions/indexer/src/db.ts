@@ -1,6 +1,6 @@
 import { commitActions, innerActions, outerActions, witnessActions } from "@zeko/actions-api"
-import { desc, InferInsertModel, isNull, not, sql } from "drizzle-orm"
-import { AnyPgTable } from "drizzle-orm/pg-core"
+import { desc, type InferInsertModel, isNull, not, sql } from "drizzle-orm"
+import type { AnyPgTable } from "drizzle-orm/pg-core"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
