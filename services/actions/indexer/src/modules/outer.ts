@@ -15,7 +15,7 @@ import {
 } from "../db"
 import { env } from "../env"
 import type { ArchiveEvent } from "../helper"
-import { fetchActions, getNetworkTip, l1Client, logger } from "../helper"
+import { fetchActions, getNetworkTip, handleFork, l1Client, logger } from "../helper"
 
 /**
  * Handler for fetching outer actions (deposits) from the L1 archive.
@@ -88,7 +88,7 @@ async function fetch({ startBlock }: { startBlock: number }) {
 	return { data, lastFetchedBlock }
 }
 
-type OuterItem = Awaited<ReturnType<typeof fetch>>["data"][number]
+export type OuterItem = Awaited<ReturnType<typeof fetch>>["data"][number]
 
 function buildOuter(items: OuterItem[], currIndex: number) {
 	const actionsToInsert: OuterActionsInsert[] = []
@@ -127,19 +127,20 @@ function buildOuter(items: OuterItem[], currIndex: number) {
 	return { actionsToInsert, commitToInsert, witnessToInsert }
 }
 
-async function insertOuter({
-	db,
-	actionsToInsert,
-	commitToInsert,
-	witnessToInsert,
-	deffered = true
-}: {
-	db: PostgresJsDatabase
-	actionsToInsert: OuterActionsInsert[]
-	commitToInsert: CommitInsert[]
-	witnessToInsert: WitnessInsert[]
-	deffered?: boolean
-}) {
+async function insertOuter(
+	db: PostgresJsDatabase,
+	{
+		actionsToInsert,
+		commitToInsert,
+		witnessToInsert,
+		deffered = true
+	}: {
+		actionsToInsert: OuterActionsInsert[]
+		commitToInsert: CommitInsert[]
+		witnessToInsert: WitnessInsert[]
+		deffered?: boolean
+	}
+) {
 	logger.debug(
 		`[insertOuter] inserting ${actionsToInsert.length} actions, ${commitToInsert.length} commits, ${witnessToInsert.length} witnesses`
 	)
@@ -158,63 +159,16 @@ export async function handler(db: PostgresJsDatabase) {
 	const lastFinal = await getLastFinalOuterAction(db)
 	const startBlock = lastFinal?.blockHeight ? lastFinal.blockHeight + 1 : 1
 	logger.info(`runIndexingLoop: tip=${tip}, startBlock=${startBlock}`)
-	const outerResult = await fetch({ startBlock })
 
-	// Prefetch DB chain from startBlock for performant lookups
-	const dbActions = await getOuterActionsFromBlock(db, startBlock)
-
-	// Compare fetched events with DB chain to detect forks or missing actions
-	let currentIndex = lastFinal?.index ?? -1
-	let forkAtIndex = null
-	let insertFromIndex = null
-
-	for (let i = 0; i < outerResult.data.length; i++) {
-		const item = outerResult.data[i]
-		const dbItem = i > dbActions.length ? undefined : dbActions[i]
-		currentIndex++
-
-		if (dbItem && dbItem.afterState !== item.afterState && !forkAtIndex) {
-			logger.info(
-				`[outer.handler] fork at index ${currentIndex}: ${dbItem.afterState} -> ${item.afterState}`
-			)
-			forkAtIndex = currentIndex
-		}
-
-		if (forkAtIndex || !dbItem) {
-			insertFromIndex = i
-			break
-		}
-	}
-
-	const { actionsToInsert, commitToInsert, witnessToInsert } = buildOuter(
-		outerResult.data.slice(insertFromIndex ?? Number.MAX_VALUE),
-		currentIndex
-	)
-
-	if (forkAtIndex) {
-		// Rollback DB to the detected fork
-		await db.transaction(async (tx) => {
-			await deleteOuterActionsFromIndex(tx, forkAtIndex)
-			await insertOuter({
-				db: tx,
-				actionsToInsert,
-				commitToInsert,
-				witnessToInsert
-			})
-		})
-	} else {
-		// Insert new events normally (ensure parent action rows are inserted before their children)
-		if (actionsToInsert.length) {
-			await db.transaction(async (tx) => {
-				await insertOuter({
-					db: tx,
-					actionsToInsert,
-					commitToInsert,
-					witnessToInsert
-				})
-			})
-		}
-	}
+	const outerResult = await handleFork(db, {
+		startBlock,
+		lastFinalIndex: lastFinal?.index ?? -1,
+		fetchActions: async (startBlock: number) => (await fetch({ startBlock })).data,
+		getDbActions: getOuterActionsFromBlock,
+		build: buildOuter,
+		deleteFromIndex: deleteOuterActionsFromIndex,
+		insert: insertOuter
+	})
 
 	return outerResult
 }
@@ -223,20 +177,19 @@ export async function rebuild(db: PostgresJsDatabase) {
 	const startBlock = 0
 	const fetchResult = await fetch({ startBlock })
 
-	const { actionsToInsert, commitToInsert, witnessToInsert } = buildOuter(fetchResult.data, 0)
+	const dataToInsert = buildOuter(fetchResult.data, 0)
 
-	if (actionsToInsert.length === 0 && commitToInsert.length === 0 && witnessToInsert.length === 0) {
+	if (
+		dataToInsert.actionsToInsert.length === 0 &&
+		dataToInsert.commitToInsert.length === 0 &&
+		dataToInsert.witnessToInsert.length === 0
+	) {
 		throw new Error("No actions to insert during rebuild")
 	}
 
 	await db.transaction(async (tx) => {
 		await clearAllTables(tx)
-		await insertOuter({
-			db: tx,
-			actionsToInsert,
-			commitToInsert,
-			witnessToInsert
-		})
+		await insertOuter(tx, dataToInsert)
 	})
 
 	return fetchResult

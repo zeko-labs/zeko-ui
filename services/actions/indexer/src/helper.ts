@@ -1,9 +1,13 @@
+import { innerActions, outerActions } from "@zeko/actions-api"
 import { createGraphqlClient, fromList, pushHash } from "@zeko/bridge-sdk"
 import { fetchActionsQuery, networkStateQuery } from "@zeko/graphql/mina-archive"
 import { createConsola } from "consola"
+import { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { Field } from "o1js"
 import * as v from "valibot"
 import { env } from "./env"
+import { InnerItem } from "./modules/inner"
+import { OuterItem } from "./modules/outer"
 
 export const logger = createConsola({
 	level: env.ENVIRONMENT?.toLowerCase() === "local" ? 4 : 3
@@ -215,4 +219,71 @@ export async function getNetworkTip(
 
 export async function wait(seconds: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, seconds * 1000))
+}
+
+export async function handleFork<
+	FetchedAction extends OuterItem | InnerItem,
+	DbAction extends typeof outerActions.$inferSelect | typeof innerActions.$inferSelect,
+	DataToInsert
+>(
+	db: PostgresJsDatabase,
+	{
+		startBlock,
+		fetchActions,
+		getDbActions,
+		build,
+		deleteFromIndex,
+		insert,
+		lastFinalIndex
+	}: {
+		startBlock: number
+		fetchActions: (startBlock: number) => Promise<FetchedAction[]>
+		getDbActions: (db: PostgresJsDatabase, startBlock: number) => Promise<DbAction[]>
+		lastFinalIndex: number
+		build: (items: FetchedAction[], currIndex: number) => DataToInsert
+		deleteFromIndex: (db: PostgresJsDatabase, index: number) => Promise<void>
+		insert: (db: PostgresJsDatabase, data: DataToInsert) => Promise<void>
+	}
+) {
+	const fetchedActions = await fetchActions(startBlock)
+	const dbActions = await getDbActions(db, startBlock)
+
+	let currentIndex = lastFinalIndex
+	let forkAtIndex = null
+	let insertFromIndex = null
+
+	for (let i = 0; i < fetchedActions.length; i++) {
+		const item = fetchedActions[i]
+		const dbItem = i > dbActions.length ? undefined : dbActions[i]
+		currentIndex++
+
+		if (dbItem && dbItem.afterState !== item.afterState && !forkAtIndex) {
+			logger.info(
+				`[outer.handler] fork at index ${currentIndex}: ${dbItem.afterState} -> ${item.afterState}`
+			)
+			forkAtIndex = currentIndex
+		}
+
+		if (forkAtIndex || !dbItem) {
+			insertFromIndex = i
+			break
+		}
+	}
+
+	const data = build(fetchedActions.slice(insertFromIndex ?? Number.MAX_VALUE), currentIndex)
+
+	if (forkAtIndex) {
+		// Rollback DB to the detected fork
+		await db.transaction(async (tx) => {
+			await deleteFromIndex(tx, forkAtIndex)
+			await insert(tx, data)
+		})
+	} else {
+		// Insert new events normally (ensure parent action rows are inserted before their children)
+		await db.transaction(async (tx) => {
+			await insert(tx, data)
+		})
+	}
+
+	return fetchActions
 }

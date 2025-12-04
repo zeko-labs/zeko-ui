@@ -12,7 +12,7 @@ import {
 } from "../db"
 import { env } from "../env"
 import type { ArchiveEvent } from "../helper"
-import { fetchActions, getNetworkTip, l2Client, logger } from "../helper"
+import { fetchActions, getNetworkTip, handleFork, l2Client, logger } from "../helper"
 
 /**
  * Handler for fetching inner actions (withdrawals) from the L2 archive.
@@ -65,7 +65,7 @@ async function fetch({ startBlock }: { startBlock: number }) {
 	return { data, lastFetchedBlock }
 }
 
-type InnerItem = Awaited<ReturnType<typeof fetch>>["data"][number]
+export type InnerItem = Awaited<ReturnType<typeof fetch>>["data"][number]
 
 function buildInner(items: InnerItem[], currIndex: number) {
 	const actionsToInsert: InnerActionsInsert[] = []
@@ -88,15 +88,16 @@ function buildInner(items: InnerItem[], currIndex: number) {
 	return { actionsToInsert }
 }
 
-async function insertInner({
-	db,
-	actionsToInsert,
-	deffered = true
-}: {
-	db: PostgresJsDatabase
-	actionsToInsert: InnerActionsInsert[]
-	deffered?: boolean
-}) {
+async function insertInner(
+	db: PostgresJsDatabase,
+	{
+		actionsToInsert,
+		deffered = true
+	}: {
+		actionsToInsert: InnerActionsInsert[]
+		deffered?: boolean
+	}
+) {
 	logger.debug(`[insertInner] inserting ${actionsToInsert.length} actions`)
 	if (deffered) {
 		await db.execute(sql`SET CONSTRAINTS ALL DEFERRED;`)
@@ -110,59 +111,16 @@ export async function handler(db: PostgresJsDatabase) {
 	const lastFinal = await getLastFinalInnerAction(db)
 	const startBlock = lastFinal?.blockHeight ? lastFinal.blockHeight + 1 : 1
 	logger.info(`runIndexingLoop: tip=${tip}, startBlock=${startBlock}`)
-	const innerResult = await fetch({ startBlock })
 
-	// Prefetch DB chain from startBlock for performant lookups
-	const dbActions = await getInnerActionsFromBlock(db, startBlock)
-
-	// Compare fetched events with DB chain to detect forks or missing actions
-	let currentIndex = lastFinal?.index ?? -1
-	let forkAtIndex = null
-	let insertFromIndex = null
-
-	for (let i = 0; i < innerResult.data.length; i++) {
-		const item = innerResult.data[i]
-		const dbItem = i > dbActions.length ? undefined : dbActions[i]
-		currentIndex++
-
-		if (dbItem && dbItem.afterState !== item.afterState && !forkAtIndex) {
-			logger.info(
-				`[inner.handler] fork at index ${currentIndex}: ${dbItem.afterState} -> ${item.afterState}`
-			)
-			forkAtIndex = currentIndex
-		}
-
-		if (forkAtIndex || !dbItem) {
-			insertFromIndex = i
-			break
-		}
-	}
-
-	const { actionsToInsert } = buildInner(
-		innerResult.data.slice(insertFromIndex ?? Number.MAX_VALUE),
-		currentIndex
-	)
-
-	if (forkAtIndex) {
-		// Rollback DB to the detected fork
-		await db.transaction(async (tx) => {
-			await deleteInnerActionsFromIndex(tx, forkAtIndex)
-			await insertInner({
-				db: tx,
-				actionsToInsert
-			})
-		})
-	} else {
-		// Insert new events normally (ensure parent action rows are inserted before their children)
-		if (actionsToInsert.length) {
-			await db.transaction(async (tx) => {
-				await insertInner({
-					db: tx,
-					actionsToInsert
-				})
-			})
-		}
-	}
+	const innerResult = await handleFork(db, {
+		startBlock,
+		lastFinalIndex: lastFinal?.index ?? -1,
+		fetchActions: async (startBlock: number) => (await fetch({ startBlock })).data,
+		getDbActions: getInnerActionsFromBlock,
+		build: buildInner,
+		deleteFromIndex: deleteInnerActionsFromIndex,
+		insert: insertInner
+	})
 
 	return innerResult
 }
@@ -171,18 +129,15 @@ export async function rebuild(db: PostgresJsDatabase) {
 	const startBlock = 0
 	const fetchResult = await fetch({ startBlock })
 
-	const { actionsToInsert } = buildInner(fetchResult.data, 0)
+	const dataToInsert = buildInner(fetchResult.data, 0)
 
-	if (actionsToInsert.length === 0) {
+	if (dataToInsert.actionsToInsert.length === 0) {
 		throw new Error("No actions to insert during rebuild")
 	}
 
 	await db.transaction(async (tx) => {
 		await clearAllTables(tx)
-		await insertInner({
-			db: tx,
-			actionsToInsert
-		})
+		await insertInner(tx, dataToInsert)
 	})
 
 	return fetchResult
