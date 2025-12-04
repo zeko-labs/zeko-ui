@@ -37,7 +37,7 @@ async function fetch({ startBlock }: { startBlock: number }) {
 		const blockTimestamp = +new Date(+item.blockInfo.timestamp)
 		const diffMs = now - blockTimestamp
 		const markedAsCanonicalAt =
-			diffMs / (1000 * 60 * 60) >= env.L2_FINALITY_TIMEH ? new Date() : null
+			diffMs / (1000 * 60 * 60) >= env.L2_FINALITY_TIME_H ? new Date() : null
 
 		return {
 			fields: item.action,
@@ -115,7 +115,7 @@ export async function handler(db: PostgresJsDatabase) {
 	const innerResult = await handleFork(db, {
 		startBlock,
 		lastFinalIndex: lastFinal?.index ?? -1,
-		fetchActions: async (startBlock: number) => (await fetch({ startBlock })).data,
+		fetchActions: async (startBlock: number) => fetch({ startBlock }),
 		getDbActions: getInnerActionsFromBlock,
 		build: buildInner,
 		deleteFromIndex: deleteInnerActionsFromIndex,

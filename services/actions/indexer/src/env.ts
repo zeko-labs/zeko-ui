@@ -7,7 +7,7 @@ const Schema = v.object({
 	L1_ARCHIVE_URL: v.string(),
 	L1_FINALITY: v.pipe(v.fallback(v.string(), "290"), v.transform(Number)),
 	L2_ARCHIVE_URL: v.string(),
-	L2_FINALITY_TIMEH: v.pipe(v.fallback(v.string(), "72"), v.transform(Number)),
+	L2_FINALITY_TIME_H: v.pipe(v.fallback(v.string(), "72"), v.transform(Number)),
 	OUTER_PK: v.string(),
 	INNER_PK: v.string(),
 	ENVIRONMENT: v.optional(v.string())

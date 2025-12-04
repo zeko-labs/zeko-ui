@@ -124,9 +124,7 @@ builder.queryType({
 			args: { input: t.arg({ type: InnerWitnessesFromAuxesInput, required: true }) },
 			resolve: async (_root, { input }, { database }) => {
 				using db = database({ cache: true })
-
 				const result = await queryInnerWitnessesFromAuxes(db, input.auxes)
-
 				return result
 			}
 		}),

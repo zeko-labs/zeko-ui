@@ -5,11 +5,11 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { outerActions } from "services/actions/api/drizzle/schema"
 import {
 	batchInsert,
-	type CommitInsert,
 	clearAllTables,
 	deleteOuterActionsFromIndex,
 	getLastFinalOuterAction,
 	getOuterActionsFromBlock,
+	type CommitInsert,
 	type OuterActionsInsert,
 	type WitnessInsert
 } from "../db"
@@ -163,7 +163,7 @@ export async function handler(db: PostgresJsDatabase) {
 	const outerResult = await handleFork(db, {
 		startBlock,
 		lastFinalIndex: lastFinal?.index ?? -1,
-		fetchActions: async (startBlock: number) => (await fetch({ startBlock })).data,
+		fetchActions: async (startBlock: number) => fetch({ startBlock }),
 		getDbActions: getOuterActionsFromBlock,
 		build: buildOuter,
 		deleteFromIndex: deleteOuterActionsFromIndex,

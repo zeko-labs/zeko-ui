@@ -282,9 +282,7 @@ builder.queryType({
 			args: { input: t.arg({ type: OuterWitnessesFromAuxesInput, required: true }) },
 			resolve: async (_root, { input }, { database }) => {
 				using db = database({ cache: true })
-
 				const result = await queryOuterWitnessesFromAuxes(db, input.auxes)
-
 				return result
 			}
 		}),

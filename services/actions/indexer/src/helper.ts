@@ -237,7 +237,9 @@ export async function handleFork<
 		lastFinalIndex
 	}: {
 		startBlock: number
-		fetchActions: (startBlock: number) => Promise<FetchedAction[]>
+		fetchActions: (
+			startBlock: number
+		) => Promise<{ data: FetchedAction[]; lastFetchedBlock: number }>
 		getDbActions: (db: PostgresJsDatabase, startBlock: number) => Promise<DbAction[]>
 		lastFinalIndex: number
 		build: (items: FetchedAction[], currIndex: number) => DataToInsert
@@ -252,8 +254,8 @@ export async function handleFork<
 	let forkAtIndex = null
 	let insertFromIndex = null
 
-	for (let i = 0; i < fetchedActions.length; i++) {
-		const item = fetchedActions[i]
+	for (let i = 0; i < fetchedActions.data.length; i++) {
+		const item = fetchedActions.data[i]
 		const dbItem = i > dbActions.length ? undefined : dbActions[i]
 		currentIndex++
 
@@ -270,7 +272,7 @@ export async function handleFork<
 		}
 	}
 
-	const data = build(fetchedActions.slice(insertFromIndex ?? Number.MAX_VALUE), currentIndex)
+	const data = build(fetchedActions.data.slice(insertFromIndex ?? Number.MAX_VALUE), currentIndex)
 
 	if (forkAtIndex) {
 		// Rollback DB to the detected fork
@@ -285,5 +287,5 @@ export async function handleFork<
 		})
 	}
 
-	return fetchActions
+	return fetchedActions
 }
