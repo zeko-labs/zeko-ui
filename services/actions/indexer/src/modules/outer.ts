@@ -5,11 +5,11 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { outerActions } from "services/actions/api/drizzle/schema"
 import {
 	batchInsert,
+	type CommitInsert,
 	clearAllTables,
 	deleteOuterActionsFromIndex,
 	getLastFinalOuterAction,
 	getOuterActionsFromBlock,
-	type CommitInsert,
 	type OuterActionsInsert,
 	type WitnessInsert
 } from "../db"
