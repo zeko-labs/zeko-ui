@@ -1,10 +1,12 @@
-import { Field, fetchAccount, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
+import { Field, Poseidon, PublicKey, UInt32, fetchAccount, type Mina } from "o1js"
 import type { Client } from "urql"
 import * as v from "valibot"
 import {
-	fetchActionsQueryIndexer,
-	fetchCommitAsePastWithdrawalDelayQuery,
-	fetchWitnessesFromAuxesQuery
+	fetchCommitAsePastSlotQuery,
+	fetchInnerActionsQueryIndexer,
+	fetchInnerWitnessesFromAuxesQuery,
+	fetchOuterActionsQueryIndexer,
+	fetchOuterWitnessesFromAuxesQuery
 } from "../../graphql/src/bridge-indexer"
 import { fetchActionsQuery, networkStateQuery } from "../../graphql/src/mina-archive"
 import { empty, fromList, pushHash } from "./actions"
@@ -12,13 +14,36 @@ import type {
 	Account,
 	Action,
 	Deposit,
+	InnerAction,
+	InnerWitness,
 	OuterAction,
 	OuterCommit,
 	OuterWitness,
 	Withdrawal
 } from "./types"
 
-const BaseActionSchema = v.object({
+const InnerActionSchema = v.object({
+	afterState: v.string(),
+	beforeState: v.nullable(v.string()),
+	index: v.number(),
+	blockHeight: v.number(),
+	timestamp: v.string(),
+	txnHash: v.string(),
+	fields: v.array(v.string()),
+	aux: v.string()
+})
+
+const innerActionFromSchema = (x: v.InferOutput<typeof InnerActionSchema>) => ({
+	beforeActionState: Field.from(x.beforeState ?? empty().hash),
+	afterActionState: Field.from(x.afterState),
+	timestamp: x.timestamp,
+	hash: x.txnHash,
+	index: x.index,
+	action: x.fields.map(Field.from),
+	aux: Field.from(x.aux)
+})
+
+const BaseOuterActionSchema = v.object({
 	afterState: v.string(),
 	beforeState: v.nullable(v.string()),
 	index: v.number(),
@@ -31,7 +56,7 @@ const BaseActionSchema = v.object({
 	kind: v.string()
 })
 
-const baseActionFromSchema = (x: v.InferOutput<typeof BaseActionSchema>) => ({
+const baseActionFromSchema = (x: v.InferOutput<typeof BaseOuterActionSchema>) => ({
 	beforeActionState: Field.from(x.beforeState ?? empty().hash),
 	afterActionState: Field.from(x.afterState),
 	timestamp: x.timestamp,
@@ -45,7 +70,7 @@ const baseActionFromSchema = (x: v.InferOutput<typeof BaseActionSchema>) => ({
 })
 
 const CommitSchema = v.object({
-	...BaseActionSchema.entries,
+	...BaseOuterActionSchema.entries,
 	kind: v.literal("COMMIT"),
 	ledger: v.string(),
 	innerActionState: v.string(),
@@ -63,7 +88,7 @@ const commitFromSchema = (x: v.InferOutput<typeof CommitSchema>) => ({
 })
 
 const WitnessSchema = v.object({
-	...BaseActionSchema.entries,
+	...BaseOuterActionSchema.entries,
 	kind: v.literal("WITNESS"),
 	aux: v.string()
 })
@@ -72,18 +97,18 @@ const witnessFromSchema = (x: v.InferOutput<typeof WitnessSchema>) => ({
 	aux: Field.from(x.aux)
 })
 
-const ActionSchema = v.variant("kind", [CommitSchema, WitnessSchema])
+const OuterActionSchema = v.variant("kind", [CommitSchema, WitnessSchema])
 
-export async function fetchActionsFromIndexer(
+export async function fetchOuterActionsFromIndexer(
 	client: Client,
 	options: { fromState: string; afterState?: string | null | undefined }
 ): Promise<OuterAction[]> {
-	const { data, error } = await client.query(fetchActionsQueryIndexer, {
+	const { data, error } = await client.query(fetchOuterActionsQueryIndexer, {
 		beforeState: options.fromState,
 		afterState: options.afterState
 	})
 
-	const result = v.safeParse(v.array(ActionSchema), data?.actions)
+	const result = v.safeParse(v.array(OuterActionSchema), data?.outerActions)
 	if (!result.success) {
 		console.error(error)
 		console.error(result.issues)
@@ -98,13 +123,32 @@ export async function fetchActionsFromIndexer(
 	}))
 }
 
-export async function fetchWitnessesFromAuxes(
+export async function fetchInnerActionsFromIndexer(
+	client: Client,
+	options: { fromState: string; afterState?: string | null | undefined }
+): Promise<InnerAction[]> {
+	const { data, error } = await client.query(fetchInnerActionsQueryIndexer, {
+		beforeState: options.fromState,
+		afterState: options.afterState
+	})
+
+	const result = v.safeParse(v.array(InnerActionSchema), data?.innerActions)
+	if (!result.success) {
+		console.error(error)
+		console.error(result.issues)
+		throw new Error("Invalid actions data")
+	}
+
+	return result.output.map(innerActionFromSchema)
+}
+
+export async function fetchOuterWitnessesFromAuxes(
 	client: Client,
 	auxes: string[]
 ): Promise<OuterWitness[]> {
-	const { data, error } = await client.query(fetchWitnessesFromAuxesQuery, { auxes })
+	const { data, error } = await client.query(fetchOuterWitnessesFromAuxesQuery, { auxes })
 
-	const result = v.safeParse(v.array(WitnessSchema), data?.witnessesFromAuxes)
+	const result = v.safeParse(v.array(WitnessSchema), data?.outerWitnessesFromAuxes)
 	if (!result.success) {
 		console.error(error)
 		console.error(result.issues)
@@ -118,15 +162,31 @@ export async function fetchWitnessesFromAuxes(
 	}))
 }
 
-export async function fetchCommitAsePastWithdrawalDelay(
+export async function fetchInnerWitnessesFromAuxes(
+	client: Client,
+	auxes: string[]
+): Promise<InnerWitness[]> {
+	const { data, error } = await client.query(fetchInnerWitnessesFromAuxesQuery, { auxes })
+
+	const result = v.safeParse(v.array(InnerActionSchema), data?.innerWitnessesFromAuxes)
+	if (!result.success) {
+		console.error(error)
+		console.error(result.issues)
+		throw new Error("Invalid witnesses data")
+	}
+
+	return result.output.map(innerActionFromSchema)
+}
+
+export async function fetchCommitAsePastSlot(
 	client: Client,
 	slot: number
 ): Promise<{ commit: OuterCommit; ase: OuterAction[] }> {
-	const { data, error } = await client.query(fetchCommitAsePastWithdrawalDelayQuery, { slot })
+	const { data, error } = await client.query(fetchCommitAsePastSlotQuery, { slot })
 
 	const result = v.safeParse(
-		v.object({ commit: CommitSchema, ase: v.array(ActionSchema) }),
-		data?.commitAsePastWithdrawalDelay
+		v.object({ commit: CommitSchema, ase: v.array(OuterActionSchema) }),
+		data?.commitAsePastSlot
 	)
 	if (!result.success) {
 		console.error(error)
@@ -165,7 +225,6 @@ export async function getNetworkTip(client: Client): Promise<number> {
 export async function fetchActions(
 	client: Client,
 	pk: PublicKey,
-
 	stopAtBlock = 0
 ): Promise<Action[]> {
 	const networkTip = await getNetworkTip(client)
@@ -291,4 +350,8 @@ export async function refreshCache(feePayer: Mina.FeePayerSpec) {
 			publicKey: feePayer.sender
 		})
 	}
+}
+
+export function safeDecrement(a: UInt32): UInt32 {
+	return a.greaterThanOrEqual(UInt32.from(1)).toBoolean() ? a.sub(UInt32.from(1)) : a
 }

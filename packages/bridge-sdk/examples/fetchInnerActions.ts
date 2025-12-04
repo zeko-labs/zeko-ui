@@ -1,6 +1,7 @@
 import { env } from "node:process"
 import { PrivateKey } from "o1js"
 import { Bridge } from "../src/index"
+import { writeLog } from "./write-log"
 
 if (!env.MINA_PRIVATE_KEY) {
 	throw new Error("MINA_PRIVATE_KEY is not set")
@@ -20,36 +21,25 @@ async function main() {
 		l2Network: "testnet"
 	})
 
-	const actions = await bridge.fetchInnerActionsWithStates(recipient)
-	console.log(
-		actions.map(
-			({
-				action: { action, beforeActionState, afterActionState, hash, timestamp },
-				type,
-				withdrawal,
-				committed,
-				isPastWithdrawalDelay
-			}) => ({
-				type,
-				action: action.map((x) => x.toString()),
-				beforeActionState: beforeActionState.toString(),
-				afterActionState: afterActionState.toString(),
-				withdrawal: withdrawal
-					? {
-							recipient: withdrawal.recipient.toBase58(),
-							amount: withdrawal.amount.toString(),
-							finalised: withdrawal.finalised
-						}
-					: undefined,
-				transaction: {
-					hash,
-					timestamp
-				},
-				committed,
-				isPastWithdrawalDelay
-			})
-		)
-	)
+	const { withdrawals, ...indices } = await bridge.fetchWithdrawalsWithStates(recipient)
+	const formattedActions = withdrawals.map((withdrawal) => ({
+		index: withdrawal.index,
+		action: withdrawal.action.map((x) => x.toString()),
+		beforeActionState: withdrawal.beforeActionState.toString(),
+		afterActionState: withdrawal.afterActionState.toString(),
+		timestamp: withdrawal.timestamp,
+		hash: withdrawal.hash,
+		recipient: withdrawal.recipient.toBase58(),
+		amount: withdrawal.amount.toString(),
+		committed: withdrawal.committed,
+		finalised: withdrawal.finalised
+	}))
+
+	console.log(formattedActions)
+	console.log("formattedActions length", formattedActions.length)
+	console.log("indices", indices)
+
+	writeLog({ log: formattedActions, name: "inner-actions" })
 }
 
 main().catch(console.error)

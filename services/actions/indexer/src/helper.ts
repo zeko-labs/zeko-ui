@@ -190,13 +190,27 @@ export async function fetchActions({
 	logger.info(`[fetchActions] hashing took ${Date.now() - startHashing}ms`)
 	logger.info(`[fetchActions] fetched actions length: ${result.length}`)
 
+	let once = false
+
 	for (let i = 0; i < result.length; i++) {
 		const prev = i >= 0 ? result[i - 1] : undefined
 		const curr = result[i]
 		if (prev && !prev.afterActionState.equals(curr.beforeActionState).toBoolean()) {
-			throw new Error(
-				`[fetchActions] invalid actions sequence: index=${i} prev.afterActionState=${prev?.afterActionState.toString()} !== curr.beforeActionState=${curr.beforeActionState.toString()}`
-			)
+			if (!once) {
+				once = true
+			} else {
+				console.log(
+					result.slice(i - 5, i + 5).map((x) => ({
+						timestamp: x.timestamp,
+						blockHeight: x.blockInfo.height,
+						beforeActionState: x.beforeActionState.toString(),
+						afterActionState: x.afterActionState.toString()
+					}))
+				)
+				throw new Error(
+					`[fetchActions] invalid actions sequence: index=${i} prev.afterActionState=${prev?.afterActionState.toString()} !== curr.beforeActionState=${curr.beforeActionState.toString()}`
+				)
+			}
 		}
 	}
 

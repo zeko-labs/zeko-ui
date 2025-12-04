@@ -1,8 +1,8 @@
 import { bridgeIndexer as graphql } from "."
 
-export const fetchWitnessesFromAuxesQuery = graphql(`
-  query FetchWitnessesFromAuxes($auxes: [String!]!) {
-    witnessesFromAuxes(input: { auxes: $auxes }) {
+export const fetchOuterWitnessesFromAuxesQuery = graphql(`
+  query FetchOuterWitnessesFromAuxes($auxes: [String!]!) {
+    outerWitnessesFromAuxes(input: { auxes: $auxes }) {
       beforeState
       afterState
       index
@@ -18,12 +18,27 @@ export const fetchWitnessesFromAuxesQuery = graphql(`
   }
 `)
 
-export const fetchActionsQueryIndexer = graphql(`
-  query FetchActions($beforeState: String!, $afterState: String) {
-    actions(
+export const fetchInnerWitnessesFromAuxesQuery = graphql(`
+  query FetchInnerWitnessesFromAuxes($auxes: [String!]!) {
+    innerWitnessesFromAuxes(input: { auxes: $auxes }) {
+      beforeState
+      afterState
+      index
+      blockHeight
+      timestamp
+      txnHash
+      fields
+      aux
+    }
+  }
+`)
+
+export const fetchOuterActionsQueryIndexer = graphql(`
+  query FetchOuterActions($beforeState: String!, $afterState: String) {
+    outerActions(
       input: { beforeState: $beforeState, afterState: $afterState }
     ) {
-      ... on Action {
+      ... on OuterAction {
         beforeState
         afterState
         index
@@ -49,9 +64,26 @@ export const fetchActionsQueryIndexer = graphql(`
   }
 `)
 
-export const fetchCommitAsePastWithdrawalDelayQuery = graphql(`
-  query FetchCommitAsePastWithdrawalDelay($slot: Int!) {
-    commitAsePastWithdrawalDelay(slot: $slot) {
+export const fetchInnerActionsQueryIndexer = graphql(`
+  query FetchInnerActions($beforeState: String!, $afterState: String) {
+    innerActions(
+      input: { beforeState: $beforeState, afterState: $afterState }
+    ) {
+      beforeState
+      afterState
+      index
+      blockHeight
+      timestamp
+      txnHash
+      fields
+      aux
+    }
+  }
+`)
+
+export const fetchCommitAsePastSlotQuery = graphql(`
+  query FetchCommitAsePastSlot($slot: Int!) {
+    commitAsePastSlot(slot: $slot) {
       commit {
         beforeState
         afterState
@@ -70,7 +102,7 @@ export const fetchCommitAsePastWithdrawalDelayQuery = graphql(`
         synchronizedOuterActionStateLength
       }
       ase {
-        ... on Action {
+        ... on OuterAction {
           beforeState
           afterState
           index

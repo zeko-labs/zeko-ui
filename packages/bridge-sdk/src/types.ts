@@ -54,10 +54,9 @@ export type OuterCommit = OuterActionBase & {
 	synchronizedOuterActionStateLength: UInt32
 }
 
-export type InnerWitness = {
-	type: "witness"
+export type InnerWitness = Action & {
+	index: number
 	aux: Field
-	action: Action
 }
 
 export type OuterAction = OuterWitness | OuterCommit
@@ -76,6 +75,12 @@ export const DepositStateProgress = {
 	CONFIRMED: 2,
 	FINALISED: 3
 } as const
+
+export type WithdrawalWithState = Action &
+	Withdrawal & {
+		committed: boolean
+		finalised: boolean
+	}
 
 export type InnerAction = InnerWitness
 
