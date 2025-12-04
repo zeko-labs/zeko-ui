@@ -10,10 +10,9 @@ import {
 	submitWithdrawalMutation
 } from "@zeko/graphql/zeko"
 import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
-import type { Client } from "urql"
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
-import { createGraphqlClient } from "./graphql"
+import { createGraphqlClient, GqlClient } from "./graphql"
 import type {
 	Config,
 	Deposit,
@@ -49,11 +48,11 @@ export class Bridge {
 	constructor(
 		private readonly config: Config,
 
-		private readonly l1Client: Client,
-		private readonly l1ArchiveClient: Client,
-		private readonly l2Client: Client,
-		private readonly l2ArchiveClient: Client,
-		private readonly actionsApiClient: Client,
+		private readonly l1Client: GqlClient,
+		private readonly l1ArchiveClient: GqlClient,
+		private readonly l2Client: GqlClient,
+		private readonly l2ArchiveClient: GqlClient,
+		private readonly actionsApiClient: GqlClient,
 
 		public readonly l1AccountCreationFee: UInt64,
 		public readonly l2AccountCreationFee: UInt64,
@@ -68,18 +67,18 @@ export class Bridge {
 	) {}
 
 	static async init(config: Config): Promise<Bridge> {
-		const l1Client = createGraphqlClient(config.l1Url)
-		const l1ArchiveClient = createGraphqlClient(config.l1ArchiveUrl)
-		const actionsApiClient = createGraphqlClient(config.actionsApi)
-		const l2Client = createGraphqlClient(config.zekoUrl)
-		const l2ArchiveClient = createGraphqlClient(config.zekoArchiveUrl)
+		const l1Client = createGraphqlClient(config.l1Url, "l1")
+		const l1ArchiveClient = createGraphqlClient(config.l1ArchiveUrl, "l1-archive")
+		const actionsApiClient = createGraphqlClient(config.actionsApi, "actions-api")
+		const l2Client = createGraphqlClient(config.zekoUrl, "l2")
+		const l2ArchiveClient = createGraphqlClient(config.zekoArchiveUrl, "l2-archive")
 
 		const [fetchConfigResult, genesisConstantL2Result, genesisConstantL1Result, sequencerPkResult] =
 			await Promise.all([
-				l2Client.query(fetchConfigQuery, {}),
-				l2Client.query(genesisConstantsQueryL2, {}),
-				l1Client.query(genesisConstantsQueryL1, {}),
-				l2Client.query(sequencerPkQuery, {})
+				l2Client().query(fetchConfigQuery, {}),
+				l2Client().query(genesisConstantsQueryL2, {}),
+				l1Client().query(genesisConstantsQueryL1, {}),
+				l2Client().query(sequencerPkQuery, {})
 			])
 
 		const circuitsConfig = fetchConfigResult.data?.circuitsConfig
@@ -134,7 +133,7 @@ export class Bridge {
 	}
 
 	public async fetchCurrentSlot(): Promise<UInt32> {
-		const { data } = await this.l1Client.query(runtimeConfigQuery, {})
+		const { data } = await this.l1Client().query(runtimeConfigQuery, {})
 
 		const result = v.safeParse(
 			v.object({
@@ -153,11 +152,11 @@ export class Bridge {
 	}
 
 	private async fetchAccount(
-		client: Client,
+		client: GqlClient,
 		pk: PublicKey,
 		tokenId?: Field
 	): Promise<{ zkappState: string[] | null } | null> {
-		const { data } = await client.query(accountQuery, {
+		const { data } = await client().query(accountQuery, {
 			pk: pk.toBase58(),
 			tokenId: tokenId ? TokenId.toBase58(tokenId) : null
 		})
@@ -246,7 +245,7 @@ export class Bridge {
 			await new Promise((resolve) => setTimeout(resolve, pollPeriod))
 			attempts++
 
-			const resultResponse = await this.l2Client.query(provedForestQuery, { key })
+			const resultResponse = await this.l2Client().query(provedForestQuery, { key })
 			if (resultResponse.error) throw resultResponse.error
 			provedForest = resultResponse.data?.provedForest ?? null
 		}
@@ -284,7 +283,7 @@ export class Bridge {
 			])
 		})
 
-		const { data } = await this.l2Client.mutation(submitDepositMutation, {
+		const { data } = await this.l2Client().mutation(submitDepositMutation, {
 			depositParams: {
 				recipient: recipient.toBase58(),
 				amount: amount.toString(),
@@ -445,7 +444,7 @@ export class Bridge {
 
 			const { witness, depositParams, helperAccount, aseTarget } = witnesses
 
-			const { data } = await this.l2Client.mutation(finalizeDepositMutation, {
+			const { data } = await this.l2Client().mutation(finalizeDepositMutation, {
 				input: witness
 			})
 
@@ -521,7 +520,7 @@ export class Bridge {
 			])
 		})
 
-		const { data } = await this.l2Client.mutation(submitWithdrawalMutation, {
+		const { data } = await this.l2Client().mutation(submitWithdrawalMutation, {
 			input: {
 				recipient: recipient.toBase58(),
 				amount: amount.toString(),
@@ -648,7 +647,7 @@ export class Bridge {
 
 		const { witness, withdrawalParams, helperAccount } = witnesses
 
-		const { data } = await this.l2Client.mutation(finalizeWithdrawalMutation, {
+		const { data } = await this.l2Client().mutation(finalizeWithdrawalMutation, {
 			input: witness
 		})
 		if (!data?.request?.key) throw new Error("No key returned from mutation")

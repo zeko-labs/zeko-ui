@@ -1,5 +1,4 @@
 import { Field, Poseidon, PublicKey, UInt32, fetchAccount, type Mina } from "o1js"
-import type { Client } from "urql"
 import * as v from "valibot"
 import {
 	fetchCommitAsePastSlotQuery,
@@ -10,6 +9,7 @@ import {
 } from "../../graphql/src/bridge-indexer"
 import { fetchActionsQuery, networkStateQuery } from "../../graphql/src/mina-archive"
 import { empty, fromList, pushHash } from "./actions"
+import { GqlClient } from "./graphql"
 import type {
 	Account,
 	Action,
@@ -100,10 +100,10 @@ const witnessFromSchema = (x: v.InferOutput<typeof WitnessSchema>) => ({
 const OuterActionSchema = v.variant("kind", [CommitSchema, WitnessSchema])
 
 export async function fetchOuterActionsFromIndexer(
-	client: Client,
+	client: GqlClient,
 	options: { fromState: string; afterState?: string | null | undefined }
 ): Promise<OuterAction[]> {
-	const { data, error } = await client.query(fetchOuterActionsQueryIndexer, {
+	const { data, error } = await client().query(fetchOuterActionsQueryIndexer, {
 		beforeState: options.fromState,
 		afterState: options.afterState
 	})
@@ -124,10 +124,10 @@ export async function fetchOuterActionsFromIndexer(
 }
 
 export async function fetchInnerActionsFromIndexer(
-	client: Client,
+	client: GqlClient,
 	options: { fromState: string; afterState?: string | null | undefined }
 ): Promise<InnerAction[]> {
-	const { data, error } = await client.query(fetchInnerActionsQueryIndexer, {
+	const { data, error } = await client().query(fetchInnerActionsQueryIndexer, {
 		beforeState: options.fromState,
 		afterState: options.afterState
 	})
@@ -143,10 +143,10 @@ export async function fetchInnerActionsFromIndexer(
 }
 
 export async function fetchOuterWitnessesFromAuxes(
-	client: Client,
+	client: GqlClient,
 	auxes: string[]
 ): Promise<OuterWitness[]> {
-	const { data, error } = await client.query(fetchOuterWitnessesFromAuxesQuery, { auxes })
+	const { data, error } = await client().query(fetchOuterWitnessesFromAuxesQuery, { auxes })
 
 	const result = v.safeParse(v.array(WitnessSchema), data?.outerWitnessesFromAuxes)
 	if (!result.success) {
@@ -163,10 +163,10 @@ export async function fetchOuterWitnessesFromAuxes(
 }
 
 export async function fetchInnerWitnessesFromAuxes(
-	client: Client,
+	client: GqlClient,
 	auxes: string[]
 ): Promise<InnerWitness[]> {
-	const { data, error } = await client.query(fetchInnerWitnessesFromAuxesQuery, { auxes })
+	const { data, error } = await client().query(fetchInnerWitnessesFromAuxesQuery, { auxes })
 
 	const result = v.safeParse(v.array(InnerActionSchema), data?.innerWitnessesFromAuxes)
 	if (!result.success) {
@@ -179,10 +179,10 @@ export async function fetchInnerWitnessesFromAuxes(
 }
 
 export async function fetchCommitAsePastSlot(
-	client: Client,
+	client: GqlClient,
 	slot: number
 ): Promise<{ commit: OuterCommit; ase: OuterAction[] }> {
-	const { data, error } = await client.query(fetchCommitAsePastSlotQuery, { slot })
+	const { data, error } = await client().query(fetchCommitAsePastSlotQuery, { slot })
 
 	const result = v.safeParse(
 		v.object({ commit: CommitSchema, ase: v.array(OuterActionSchema) }),
@@ -215,15 +215,15 @@ const BLOCK_RANGE_SIZE = 10_000
 
 export const BRIDGE_DEPLOY_BLOCK = 430_000
 
-export async function getNetworkTip(client: Client): Promise<number> {
-	const res = await client.query(networkStateQuery, {})
+export async function getNetworkTip(client: GqlClient): Promise<number> {
+	const res = await client().query(networkStateQuery, {})
 	if (res.error) throw res.error
 	const height = res.data?.networkState?.maxBlockHeight?.pendingMaxBlockHeight ?? 0
 	return height
 }
 
 export async function fetchActions(
-	client: Client,
+	client: GqlClient,
 	pk: PublicKey,
 	stopAtBlock = 0
 ): Promise<Action[]> {
@@ -232,7 +232,7 @@ export async function fetchActions(
 	const fetchActionsRecursive = async (toBlock: number) => {
 		if (toBlock < stopAtBlock) return []
 
-		const { data } = await client.query(fetchActionsQuery, {
+		const { data } = await client().query(fetchActionsQuery, {
 			pk: pk.toBase58(),
 			from: toBlock - BLOCK_RANGE_SIZE,
 			to: toBlock
