@@ -9,7 +9,7 @@ import {
 } from "../../graphql/src/bridge-indexer"
 import { fetchActionsQuery, networkStateQuery } from "../../graphql/src/mina-archive"
 import { empty, fromList, pushHash } from "./actions"
-import { GqlClient } from "./graphql"
+import { type GqlClient } from "./graphql"
 import type {
 	Account,
 	Action,

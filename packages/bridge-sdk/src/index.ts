@@ -12,7 +12,7 @@ import {
 import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
-import { createGraphqlClient, GqlClient } from "./graphql"
+import { createGraphqlClient, type GqlClient } from "./graphql"
 import type {
 	Config,
 	Deposit,
