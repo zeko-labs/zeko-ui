@@ -4,6 +4,7 @@ import { handler as faucetHandler } from "../src/points/faucet"
 import { handler as liquidityHandler } from "../src/points/liquidity"
 import { handler as swapHandler } from "../src/points/swap"
 import { handler as withdrawalHandler } from "../src/points/withdrawal"
+import { writeLog } from "./writeLog"
 
 type EventType = "swap" | "deposit" | "faucet" | "liquidity" | "withdrawal"
 
@@ -89,6 +90,15 @@ async function main() {
 
 		logger.box(`${eventType.charAt(0).toUpperCase() + eventType.slice(1)} Events:`)
 		console.log(JSON.stringify(formattedData, null, 2))
+
+		const addresses = formattedData.map((a) => {
+			if ("sender" in a) return a.sender
+			if ("recipient" in a) return a.recipient
+			if ("claimer" in a) return a.claimer
+			return null
+		})
+
+		writeLog({ log: { data: formattedData, addresses }, name: eventType }) // Raw data
 
 		// Print summary statistics
 		logger.box("Summary Statistics:")

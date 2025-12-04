@@ -1,9 +1,6 @@
 import { createProxyHandler } from "@zeko/proxy-handler"
 
-const hostnames = [
-	"https://api.minascan.io/node/devnet/v1/graphql",
-	"https://mina.devnet.zeko.io/graphql"
-]
+const hostnames = ["https://api.minascan.io/node/devnet/v1/graphql"]
 
 export default {
 	fetch: createProxyHandler({

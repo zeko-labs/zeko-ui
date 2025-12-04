@@ -19,27 +19,6 @@ export interface ActionsConfig {
 	swap: ActionConfig
 	withdrawal: ActionConfig
 }
-/**
- * Archive Events Fetching Logic
- *
- * FUTURE REFACTORING PLAN:
- * When the networkState query becomes available in the archive API, refactor as follows:
- *
- * 1. Replace getMaxBlockHeight() with a direct networkState query:
- *    - Query: networkState { maxBlockHeight { canonicalMaxBlockHeight } }
- *    - Remove dependency on querying events to determine chain height
- *    - This will be faster and more reliable
- *
- * 2. Simplify fetchArchiveEvents():
- *    - Call networkState query once at the start
- *    - Remove discovery query logic
- *    - Directly use canonicalMaxBlockHeight for recursion bounds
- *
- * 3. Benefits:
- *    - Single query to get chain state instead of querying events
- *    - More efficient especially for initial fetches
- *    - Clearer separation of concerns (chain state vs event fetching)
- */
 
 export const addresses = {
 	L1: {
@@ -106,7 +85,7 @@ async function fetchEventsRecursive(options: FetchEventsRecursiveOptions): Promi
 		logger.info(`${logPrefix} Reached max block height ${maxBlockHeight}`)
 		return {
 			events: accumulated,
-			lastFetchedBlock: lastEventBlockHeight ?? from - 1
+			lastFetchedBlock: Math.min(from - 1, maxBlockHeight)
 		}
 	}
 
@@ -206,20 +185,13 @@ export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<F
 		lastEventBlockHeight: null,
 		layer
 	})
-
-	// Filter out events before the actual start block (from the blockPad window)
-	const filteredEvents = result.events.filter((event) => {
-		const blockHeight = event?.blockInfo?.height
-		return blockHeight === undefined || blockHeight >= initialStartBlock
-	})
+	const { events } = result
 
 	const lastFetchedBlock = Math.min(result.lastFetchedBlock, effectiveMaxBlock)
 
-	logger.success(
-		`${logPrefix} Completed: ${filteredEvents.length} events (${result.events.length} fetched, ${result.events.length - filteredEvents.length} filtered), last block ${lastFetchedBlock}`
-	)
+	logger.success(`${logPrefix} Completed: ${events.length} events, last block ${lastFetchedBlock}`)
 
-	return { events: filteredEvents, lastFetchedBlock }
+	return { events, lastFetchedBlock }
 }
 
 export async function wait(seconds: number): Promise<void> {
