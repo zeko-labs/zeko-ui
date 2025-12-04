@@ -67,33 +67,37 @@ async function findPendingOperations({
 
 	const toAmount = (n: bigint) => Number(Number(n / BigInt(10e8)).toFixed(2)).toString()
 
+	const transferToString = ({
+		transfer,
+		index,
+		source,
+		destination
+	}: {
+		transfer: DepositWithState | WithdrawalWithState
+		index: number
+		source: Networks
+		destination: Networks
+	}) => ({
+		index,
+		id: transfer.afterActionState.toString(),
+		recipient: transfer.recipient.toBase58(),
+		amount: toAmount(transfer.amount.toBigInt()),
+		finalised: transfer.finalised,
+		transaction: {
+			date: new Date(transfer.timestamp),
+			hash: transfer.hash
+		},
+		source,
+		destination
+	})
+
 	return {
-		deposits: deposits.map((deposit, index) => ({
-			index,
-			id: deposit.afterActionState.toString(),
-			recipient: deposit.recipient.toBase58(),
-			amount: toAmount(deposit.amount.toBigInt()),
-			finalised: deposit.finalised,
-			transaction: {
-				date: new Date(deposit.timestamp),
-				hash: deposit.hash
-			},
-			source: l1,
-			destination: l2
-		})),
-		withdrawals: withdrawals.map((withdrawal, index) => ({
-			index,
-			id: withdrawal.afterActionState.toString(),
-			recipient: withdrawal.recipient.toBase58(),
-			amount: toAmount(withdrawal.amount.toBigInt()),
-			finalised: withdrawal.finalised,
-			transaction: {
-				date: new Date(withdrawal.timestamp),
-				hash: withdrawal.hash
-			},
-			source: l2,
-			destination: l1
-		}))
+		deposits: deposits.map((deposit, index) =>
+			transferToString({ transfer: deposit, index, source: l1, destination: l2 })
+		),
+		withdrawals: withdrawals.map((withdrawal, index) =>
+			transferToString({ transfer: withdrawal, index, source: l2, destination: l1 })
+		)
 	}
 }
 
