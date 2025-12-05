@@ -69,6 +69,10 @@
       "path": "../services/mina-proxy",
     },
     {
+      "name": "🚦 Sequencer Proxy",
+      "path": "../services/proxies/sequencer",
+    },
+    {
       "path": "..",
       "name": "#root"
     },

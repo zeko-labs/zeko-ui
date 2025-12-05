@@ -883,6 +883,12 @@ importers:
         specifier: 'catalog:'
         version: 4.42.2
 
+  services/proxies/sequencer:
+    devDependencies:
+      wrangler:
+        specifier: 'catalog:'
+        version: 4.42.2
+
 packages:
 
   '@0no-co/graphql.web@1.2.0':
