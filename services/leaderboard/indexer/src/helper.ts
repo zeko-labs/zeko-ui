@@ -167,6 +167,13 @@ export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<F
 		return { events: [], lastFetchedBlock: startBlock }
 	}
 
+	if (hasEndBlockLimit && endBlock < maxBlockHeight) {
+		logger.info(
+			`${logPrefix} End block limit ${endBlock} is less than chain max height ${maxBlockHeight}`
+		)
+		return { events: [], lastFetchedBlock: startBlock }
+	}
+
 	const effectiveMaxBlock = hasEndBlockLimit ? Math.min(endBlock, maxBlockHeight) : maxBlockHeight
 	const fetchToBlock = effectiveMaxBlock + blockPad
 
