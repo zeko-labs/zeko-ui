@@ -150,16 +150,9 @@ export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<F
 		return { events: [], lastFetchedBlock: startBlock }
 	}
 
-	const isInitialFetch = initialStartBlock === 1
-	const from = isInitialFetch ? 1 : Math.max(1, initialStartBlock - blockPad)
-
-	logger.start(
-		`${logPrefix} FetchArchiveEvents from ${from} (initial: ${initialStartBlock})${hasEndBlockLimit ? ` to ${endBlock}` : ""}`
-	)
-
 	const maxBlockHeight = await getMaxBlockHeight(layer)
 
-	//If startBlock is past maxBlockHeight, return empty results
+	//If startBlock is past maxBlockHeight, return empty results (ie startBlock=100, maxBlockHeight=90)
 	if (initialStartBlock > maxBlockHeight) {
 		logger.info(
 			`${logPrefix} Starting block ${initialStartBlock} exceeds chain max height ${maxBlockHeight}, skipping fetch`
@@ -167,20 +160,21 @@ export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<F
 		return { events: [], lastFetchedBlock: startBlock }
 	}
 
-	if (hasEndBlockLimit && endBlock < maxBlockHeight) {
+	// If initialStartBlock limit is less than endBlock, return empty results (ie startBlock = 500, endBlock=400)
+	if (hasEndBlockLimit && initialStartBlock >= endBlock) {
 		logger.info(
 			`${logPrefix} End block limit ${endBlock} is less than chain max height ${maxBlockHeight}`
 		)
 		return { events: [], lastFetchedBlock: startBlock }
 	}
 
+	const isInitialFetch = initialStartBlock === 1
+	const from = isInitialFetch ? 1 : Math.max(1, initialStartBlock - blockPad)
 	const effectiveMaxBlock = hasEndBlockLimit ? Math.min(endBlock, maxBlockHeight) : maxBlockHeight
 	const fetchToBlock = effectiveMaxBlock + blockPad
 
-	logger.info(
-		isInitialFetch
-			? `${logPrefix} Initial fetch - chain max height: ${maxBlockHeight}${hasEndBlockLimit ? `, end block limit: ${endBlock}` : ""}`
-			: `${logPrefix} Continuing from block ${from} (refetch window: ${blockPad}) - chain max height: ${maxBlockHeight}${hasEndBlockLimit ? `, end block limit: ${endBlock}` : ""}`
+	logger.start(
+		`${logPrefix} FetchArchiveEvents : ${{ initialStartBlock, from, endBlock, maxBlockHeight, hasEndBlockLimit, effectiveMaxBlock, fetchToBlock, blockPad }}`
 	)
 
 	const result = await fetchEventsRecursive({
