@@ -161,7 +161,7 @@ export const fetchArchiveEvents = async (options: FetchEventsOptions): Promise<F
 	}
 
 	// If initialStartBlock limit is less than endBlock, return empty results (ie startBlock = 500, endBlock=400)
-	if (hasEndBlockLimit && initialStartBlock >= endBlock) {
+	if (hasEndBlockLimit && initialStartBlock > endBlock) {
 		logger.info(
 			`${logPrefix} End block limit ${endBlock} is less than chain max height ${maxBlockHeight}`
 		)
