@@ -28,16 +28,17 @@ TL;DR skip to the [Bootstrap process](#bootstrap-process)
 In this guide we are going to:
 
 - Create a `sequencer` wallet and make sure it has funds.
+- Create a `faucet` wallet.
 - Create a `deployment`/`circuits` config
 - Deploy a created configuration
 - Start a `betternet` L2 stack
-- Bridge funds from L1 to a wallet in L2 (ToDo)
 
 ### Wallets
 
 Deploying a rollup the following wallets are mentioned:
 
 - `sequencer` - A wallet to commit to zkApp. _**Has to be even**_
+- `faucet` - A wallet that holds the funds. _**Cannot reuse sequencer's wallet**_
 - `da-layer` - Each `da-layer` node is started with its wallet.
 - `fee-payer` - A wallet that pays fees on commits. (We will use `sequencer`)
 - `pause` - A wallet authorised to pause rollup. _**Has to be even**_ (We will use `sequencer`).
@@ -63,6 +64,8 @@ project-root/
 | --------------------------------------- | ------------------------------------------------------------ |
 | `keys/sequencer-sk`                     | L1 private key used by sequencer to post proofs and pay fees |
 | `keys/sequencer-pk`                     | L1 Public key used in deploy step                            |
+| `keys/faucet-sk`                        | Faucet secret key used to distribute tokens inside L2        |
+| `keys/faucet-pk`                        | Faucet public key                                            |
 | `keys/da-node-sk`                       | Private key of the DA node                                   |
 | `keys/da-node-pk`                       | Public key of the DA node (exposed to sequencer)             |
 | `data/{postgresql,da-layer,sequencer}/` | Persistent storage for services                              |
@@ -128,6 +131,8 @@ project-root/
   >
   > - `./keys/sequencer-pk`
   > - `./keys/sequencer-sk`
+  > - `./keys/faucet-pk`
+  > - `./keys/faucet-sk`
   > - `./keys/da-layer-pk`
   > - `./keys/da-layer-sk`
 
@@ -140,6 +145,14 @@ project-root/
     echo "$value" > sequencer-pk
   fi
   done
+  # create `faucet` keypair
+  zeko-cli generate-even-key | while read label1 label2 value; do
+  if [ "$label1" = "Private" ]; then
+    echo "$value" > faucet-sk
+  elif [ "$label1" = "Public" ]; then
+    echo "$value" > faucet-pk
+  fi
+  done
   # create `da-layer` keypair
   zeko-cli generate-even-key | while read label1 label2 value; do
   if [ "$label1" = "Private" ]; then
@@ -149,7 +162,8 @@ project-root/
   fi
   done
 
-  mv {sequencer,da-layer}-{sk,pk} /keys
+  mv {sequencer,faucet,da-layer}-{sk,pk} /keys
+  touch /keys/.created
   ```
   > **Note:** After the `mv` operation, the `init-config` container should exit.
 
@@ -171,15 +185,18 @@ project-root/
   ```bash
   export MINA_PRIVATE_KEY=$(cat /keys/sequencer-sk)
   export ZEKO_DEPLOY_CONFIG=/data/betternet-deploy.json
-  SEQUENCER_PK=$(cat /keys/sequencer-pk)
+  export ZEKO_CIRCUITS_CONFIG=/data/betternet-circuits.json
+  export SEQUENCER_PK=$(cat /keys/sequencer-pk)
+  export FAUCET_PK=$(cat /keys/faucet-pk)
   zeko-deploy --account-creation-fee 1 \
     --da-keys $(cat /keys/da-layer-pk) \
     --da-quorum 1 \
     --l1-uri https://gateway.mina.devnet.zeko.io \
     --pause-key $SEQUENCER_PK \
     --sequencer-key $SEQUENCER_PK \
+    --faucet-account $FAUCET_PK \
     --da-node da-layer:1924 && \
-    touch /data/.deployed
+    touch /tmp/.deployed
   ```
   You should see the output:
   ```
@@ -206,6 +223,20 @@ See example zkApp transaction status [here](https://minascan.io/devnet/account/B
 docker compose up -d
 ```
 
+### If all the steps were performed correctly you have the following:
+
+- Sequencer exposing graphql endpoint under `http://localhost:1923/graphql`
+- DA layer
+- Prover accepting work from the sequencer.
+- `rabbitmq` service used by sequencer/prover.
+- `postgresql` service used by sequencer.
+
+### Next steps
+
+- Add your newly deployed `betternet` network to Aura wallet.
+- Import faucet key into your Auro wallet.
+- Create wallets and start sending transactions to your `sequencer`.
+
 ## Troubleshooting
 
 Check logs
@@ -230,4 +261,3 @@ docker volume rm rabbitmq
 ## Next Steps
 
 - Bridge Mina L1 tokens to L2 (TODO)
-- Deploy your own L2 contracts(TODO)

@@ -12,7 +12,7 @@ services:
       - -c
     restart: "no"
     command: >
-      "while [ ! -f /keys/da-layer-sk ] || [ ! -f /keys/da-layer-pk ];
+      "while [ ! -f /keys/.created ];
         do sleep 2;
       done; exit 0"
   init-deploy:
@@ -89,7 +89,7 @@ services:
       RABBITMQ_USER: "guest"
       RABBITMQ_PASSWORD: "guest"
     volumes:
-      - ./betternet-circuits.json:/circuits-config.json:ro
+      - ./data/betternet-circuits.json:/circuits-config.json:ro
     entrypoint: bash -c
     command: |
       "exec zeko-prover \\
@@ -114,7 +114,7 @@ services:
       RABBITMQ_PASSWORD: "guest"
     volumes:
       - ./data/sequencer:/data
-      - ./betternet-circuits.json:/circuits-config.json:ro
+      - ./data/betternet-circuits.json:/circuits-config.json:ro
       - ./keys:/keys:ro
     ports:
       - "1923:1923"
