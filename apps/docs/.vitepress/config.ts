@@ -122,7 +122,7 @@ export default defineConfig({
 						text: "Guides & Tutorials",
 						link: "/operators/guides-tutorials",
 						collapsed: true,
-						items: [{ text: "Running Zeko L2", link: "/operators/guides/bootstrap-l2.md" }]
+						items: [{ text: "Launch a Rollup", link: "/operators/guides/launch-rollup.md" }]
 					},
 					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" },
 					{ text: "Troubleshooting", link: "/operators/troubleshooting" }

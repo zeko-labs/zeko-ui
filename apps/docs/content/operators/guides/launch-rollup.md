@@ -1,4 +1,4 @@
-# Bootstrap Zeko Rollup L2
+# Launch a Rollup
 
 In this guide we will create a `betternet` - an L2 Zeko Rollup for Mina Devnet.
 

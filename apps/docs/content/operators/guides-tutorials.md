@@ -1,3 +1,3 @@
 # Guides & Tutorials
 
-- [Running Zeko L2](./guides/bootstrap-l2.md)
+- [Launch a Rollup](./guides/launch-rollup.md)
