@@ -15,14 +15,17 @@ import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
 import { createGraphqlClient, type GqlClient } from "./graphql"
 import type {
+	Account,
 	Config,
 	Deposit,
 	DepositWithState,
+	ExtractInput,
 	InnerWitness,
 	OuterCommit,
 	OuterWitness,
 	Withdrawal,
-	WithdrawalWithState
+	WithdrawalWithState,
+	WitnessFetchResult
 } from "./types"
 import {
 	BRIDGE_DEPLOY_BLOCK,
@@ -315,7 +318,20 @@ export class Bridge {
 		}
 	}
 
-	private async fetchDepositFinalizationWitnesses(pk: PublicKey) {
+	private async fetchDepositFinalizationWitnesses(pk: PublicKey): Promise<
+		WitnessFetchResult<{
+			aseTarget: {
+				state: Field
+				length: UInt32
+			}
+			depositParams: {
+				deposit: Deposit
+				aux: Field
+			}
+			helperAccount: Account | null
+			witness: ExtractInput<typeof finalizeDepositMutation>
+		}>
+	> {
 		const helperAccountL1 = await this.fetchAccount(
 			this.l1Client,
 			pk,
@@ -334,7 +350,7 @@ export class Bridge {
 
 		const prevNextDeposit = helperAccountL2 ? getNextDepositIndex(helperAccountL2) : UInt32.zero
 
-		const minDepositIndex = prevNextDeposit.greaterThan(prevNextCancelledDeposit)
+		const minDepositIndex = prevNextDeposit.greaterThan(prevNextCancelledDeposit).toBoolean()
 			? prevNextDeposit
 			: prevNextCancelledDeposit
 
@@ -344,8 +360,7 @@ export class Bridge {
 		}))
 
 		if (deposits.length === 0) {
-			console.log("No deposits found")
-			return null
+			return { ok: false, msg: "No deposits found" }
 		}
 
 		const depositWitnesses = await fetchOuterWitnessesFromAuxes(
@@ -354,8 +369,7 @@ export class Bridge {
 		)
 
 		if (depositWitnesses.length === 0) {
-			console.log("No deposit witnesses found")
-			return null
+			return { ok: false, msg: "No deposit witnesses found" }
 		}
 
 		const earliestBeforeState = depositWitnesses
@@ -363,8 +377,7 @@ export class Bridge {
 			.at(0)?.beforeActionState
 
 		if (earliestBeforeState === undefined) {
-			console.log("No earliest before state found")
-			return null
+			return { ok: false, msg: "No earliest before state found" }
 		}
 
 		const outerActions = await fetchOuterActionsFromIndexer(this.actionsApiClient, {
@@ -387,8 +400,7 @@ export class Bridge {
 		})
 
 		if (myDepositIndex === -1) {
-			console.log("No my deposit index found")
-			return null
+			return { ok: false, msg: "No my deposit index found" }
 		}
 
 		const myDeposit = outerActions[myDepositIndex] as OuterWitness
@@ -403,8 +415,7 @@ export class Bridge {
 		)
 
 		if (isRejected || !isAccepted) {
-			console.log("Not rejected or accepted")
-			return null
+			return { ok: false, msg: "Not rejected or accepted" }
 		}
 
 		const nextCommitIndex = outerActions.findIndex((action) => {
@@ -421,8 +432,7 @@ export class Bridge {
 		})
 
 		if (nextCommitIndex === -1) {
-			console.log("No next commit index found")
-			return null
+			return { ok: false, msg: "No next commit index found" }
 		}
 
 		const nextCommit = outerActions[nextCommitIndex] as OuterCommit
@@ -434,8 +444,7 @@ export class Bridge {
 		)
 
 		if (syncedOuterActionStateIndex === -1 || syncedOuterActionStateIndex < nextCommitIndex) {
-			console.log("No synced outer action state index found")
-			return null
+			return { ok: false, msg: "No synced outer action state index found" }
 		}
 
 		const aseElems = outerActions
@@ -443,33 +452,36 @@ export class Bridge {
 			.map(({ action }) => fromList([action]).hash)
 
 		return {
-			aseTarget: syncedOuterActionState,
-			depositParams,
-			helperAccount: helperAccountL2,
-			witness: {
-				prevNextDeposit: prevNextDeposit.toString(),
-				checkAccepted: {
-					elems: outerActions
-						.slice(myDepositIndex, nextCommitIndex + 1)
-						.map(({ action }) => ({ actions: action.map((a) => a.toString()) })),
-					init: {
-						depositIndex: myDeposit.index.toString(),
-						orignalActionState: myDeposit.beforeActionState.toString(),
-						params: {
-							amount: depositParams.deposit.amount.toString(),
-							recipient: depositParams.deposit.recipient.toBase58(),
-							holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
-							timeout: +depositParams.deposit.timeout,
-							children: "[]"
+			ok: true,
+			value: {
+				aseTarget: syncedOuterActionState,
+				depositParams,
+				helperAccount: helperAccountL2,
+				witness: {
+					prevNextDeposit: prevNextDeposit.toString(),
+					checkAccepted: {
+						elems: outerActions
+							.slice(myDepositIndex, nextCommitIndex + 1)
+							.map(({ action }) => ({ actions: action.map((a) => a.toString()) })),
+						init: {
+							depositIndex: myDeposit.index.toString(),
+							orignalActionState: myDeposit.beforeActionState.toString(),
+							params: {
+								amount: depositParams.deposit.amount.toString(),
+								recipient: depositParams.deposit.recipient.toBase58(),
+								holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
+								timeout: +depositParams.deposit.timeout,
+								children: "[]"
+							}
 						}
-					}
-				},
-				ase: {
-					stmt: {
-						length: syncedOuterActionState.length.sub(aseElems.length).toString(),
-						actionState: nextCommit.afterActionState.toString()
 					},
-					fields: aseElems.map((elem) => elem.toString())
+					ase: {
+						stmt: {
+							length: syncedOuterActionState.length.sub(aseElems.length).toString(),
+							actionState: nextCommit.afterActionState.toString()
+						},
+						fields: aseElems.map((elem) => elem.toString())
+					}
 				}
 			}
 		}
@@ -485,9 +497,9 @@ export class Bridge {
 
 			const witnesses = await this.fetchDepositFinalizationWitnesses(pk)
 
-			if (!witnesses) throw new Error("Did not find any deposit to finalize")
+			if (!witnesses.ok) throw new Error("Did not find any deposit to finalize")
 
-			const { witness, depositParams, helperAccount, aseTarget } = witnesses
+			const { witness, depositParams, helperAccount, aseTarget } = witnesses.value
 
 			const { data } = await this.l2Client().mutation(finalizeDepositMutation, {
 				input: witness
@@ -539,10 +551,22 @@ export class Bridge {
 	}
 
 	public async canFinalizeDeposit(pk: PublicKey): Promise<boolean> {
-		return !!(await this.fetchDepositFinalizationWitnesses(pk))
+		return (await this.fetchDepositFinalizationWitnesses(pk)).ok
 	}
 
-	private async fetchDepositCancellationWitnesses(pk: PublicKey, outerHolder: PublicKey) {
+	private async fetchDepositCancellationWitnesses(
+		pk: PublicKey,
+		outerHolder: PublicKey
+	): Promise<
+		WitnessFetchResult<{
+			depositParams: {
+				deposit: Deposit
+				aux: Field
+			}
+			helperAccount: Account | null
+			witness: ExtractInput<typeof cancelDepositMutation>
+		}>
+	> {
 		const helperAccountL1 = await this.fetchAccount(
 			this.l1Client,
 			pk,
@@ -561,7 +585,7 @@ export class Bridge {
 
 		const prevNextDeposit = helperAccountL2 ? getNextDepositIndex(helperAccountL2) : UInt32.zero
 
-		const minDepositIndex = prevNextDeposit.greaterThan(prevNextCancelledDeposit)
+		const minDepositIndex = prevNextDeposit.greaterThan(prevNextCancelledDeposit).toBoolean()
 			? prevNextDeposit
 			: prevNextCancelledDeposit
 
@@ -571,8 +595,7 @@ export class Bridge {
 		}))
 
 		if (deposits.length === 0) {
-			console.log("No deposits found")
-			return null
+			return { ok: false, msg: "No deposits found" }
 		}
 
 		const depositWitnesses = await fetchOuterWitnessesFromAuxes(
@@ -581,8 +604,7 @@ export class Bridge {
 		)
 
 		if (depositWitnesses.length === 0) {
-			console.log("No deposit witnesses found")
-			return null
+			return { ok: false, msg: "No deposit witnesses found" }
 		}
 
 		const earliestBeforeState = depositWitnesses
@@ -590,8 +612,7 @@ export class Bridge {
 			.at(0)?.beforeActionState
 
 		if (earliestBeforeState === undefined) {
-			console.log("No earliest before state found")
-			return null
+			return { ok: false, msg: "No earliest before state found" }
 		}
 
 		const outerActions = await fetchOuterActionsFromIndexer(this.actionsApiClient, {
@@ -614,8 +635,7 @@ export class Bridge {
 		})
 
 		if (myDepositIndex === -1) {
-			console.log("No my deposit index found")
-			return null
+			return { ok: false, msg: "No my deposit index found" }
 		}
 
 		const myDeposit = outerActions[myDepositIndex] as OuterWitness
@@ -630,8 +650,7 @@ export class Bridge {
 		)
 
 		if (!isRejected || isAccepted) {
-			console.log("Not rejected or accepted")
-			return null
+			return { ok: false, msg: "Not rejected or accepted" }
 		}
 
 		const currentSlot = await this.fetchCurrentSlot()
@@ -644,52 +663,54 @@ export class Bridge {
 		const lastCommitAse = ase.map(({ action }) => fromList([action]).hash)
 
 		const syncAse = outerActions
-			// Maybe off-1 error here
 			.slice(Number(lastCommit.synchronizedOuterActionStateLength.toBigint()), outerActions.length)
 			.map(({ action }) => fromList([action]).hash)
 
 		return {
-			depositParams,
-			helperAccount: helperAccountL1,
-			witness: {
-				publicKey: outerHolder.toBase58(),
-				commitAse: {
-					fields: lastCommitAse.map((elem) => elem.toString()),
-					stmt: { actionState: lastCommit.afterActionState.toString() }
-				},
-				commit: {
-					actions: lastCommit.action.map((a) => a.toString())
-				},
-				beforeCommit: { actionState: lastCommit.beforeActionState.toString() },
-				prevNextCancelledDeposit: prevNextCancelledDeposit.toString(),
-				checkAccepted: {
-					elems: outerActions
-						.slice(myDepositIndex, lastCommit.index + 1)
-						.map(({ action }) => ({ actions: action.map((a) => a.toString()) })),
-					init: {
-						depositIndex: myDepositIndex.toString(),
-						orignalActionState: myDeposit.beforeActionState.toString(),
-						params: {
-							amount: depositParams.deposit.amount.toString(),
-							recipient: depositParams.deposit.recipient.toBase58(),
-							holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
-							timeout: +depositParams.deposit.timeout,
-							children: "[]"
+			ok: true,
+			value: {
+				depositParams,
+				helperAccount: helperAccountL1,
+				witness: {
+					publicKey: outerHolder.toBase58(),
+					commitAse: {
+						fields: lastCommitAse.map((elem) => elem.toString()),
+						stmt: { actionState: lastCommit.afterActionState.toString() }
+					},
+					commit: {
+						actions: lastCommit.action.map((a) => a.toString())
+					},
+					beforeCommit: { actionState: lastCommit.beforeActionState.toString() },
+					prevNextCancelledDeposit: prevNextCancelledDeposit.toString(),
+					checkAccepted: {
+						elems: outerActions
+							.slice(myDepositIndex, lastCommit.index + 1)
+							.map(({ action }) => ({ actions: action.map((a) => a.toString()) })),
+						init: {
+							depositIndex: myDepositIndex.toString(),
+							orignalActionState: myDeposit.beforeActionState.toString(),
+							params: {
+								amount: depositParams.deposit.amount.toString(),
+								recipient: depositParams.deposit.recipient.toBase58(),
+								holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
+								timeout: +depositParams.deposit.timeout,
+								children: "[]"
+							}
 						}
-					}
-				},
-				checkAcceptedAse: {
-					fields: lastCommitAse.map((elem) => elem.toString()),
-					stmt: {
-						actionState: lastCommit.afterActionState.toString(),
-						length: (lastCommit.index + 1).toString()
-					}
-				},
-				syncAse: {
-					fields: syncAse.map((elem) => elem.toString()),
-					stmt: {
-						actionState: lastCommit.synchronizedOuterActionState.toString(),
-						length: lastCommit.synchronizedOuterActionStateLength.toString()
+					},
+					checkAcceptedAse: {
+						fields: lastCommitAse.map((elem) => elem.toString()),
+						stmt: {
+							actionState: lastCommit.afterActionState.toString(),
+							length: (lastCommit.index + 1).toString()
+						}
+					},
+					syncAse: {
+						fields: syncAse.map((elem) => elem.toString()),
+						stmt: {
+							actionState: lastCommit.synchronizedOuterActionState.toString(),
+							length: lastCommit.synchronizedOuterActionStateLength.toString()
+						}
 					}
 				}
 			}
@@ -704,9 +725,9 @@ export class Bridge {
 		const outerHolder = _outerHolder ?? this.outerHolders[0]
 		const witnesses = await this.fetchDepositCancellationWitnesses(pk, outerHolder)
 
-		if (!witnesses) throw new Error("Did not find deposit to cancel")
+		if (!witnesses.ok) throw new Error("Did not find deposit to cancel")
 
-		const { witness, depositParams, helperAccount } = witnesses
+		const { witness, depositParams, helperAccount } = witnesses.value
 
 		const { data } = await this.l2Client().mutation(cancelDepositMutation, {
 			input: witness
@@ -736,8 +757,8 @@ export class Bridge {
 		return txn
 	}
 
-	public async canCancelDeposit(pk: PublicKey, outerHolder: PublicKey): Promise<boolean> {
-		return !!(await this.fetchDepositCancellationWitnesses(pk, outerHolder))
+	public async canCancelDeposit(pk: PublicKey): Promise<boolean> {
+		return (await this.fetchDepositCancellationWitnesses(pk, this.outerTokenOwner)).ok
 	}
 
 	public async submitWithdrawal(
@@ -779,7 +800,19 @@ export class Bridge {
 		return txn
 	}
 
-	private async fetchWithdrawalFinalizationWitnesses(pk: PublicKey, outerHolder: PublicKey) {
+	private async fetchWithdrawalFinalizationWitnesses(
+		pk: PublicKey,
+		outerHolder: PublicKey
+	): Promise<
+		WitnessFetchResult<{
+			withdrawalParams: {
+				withdrawal: Withdrawal
+				aux: Field
+			}
+			helperAccount: Account | null
+			witness: ExtractInput<typeof finalizeWithdrawalMutation>
+		}>
+	> {
 		const helperAccount = await this.fetchAccount(
 			this.l1Client,
 			pk,
@@ -794,8 +827,7 @@ export class Bridge {
 		}))
 
 		if (withdrawals.length === 0) {
-			console.log("No withdrawals found")
-			return null
+			return { ok: false, msg: "No withdrawals found" }
 		}
 
 		const withdrawalWitnesses = await fetchInnerWitnessesFromAuxes(
@@ -804,8 +836,7 @@ export class Bridge {
 		)
 
 		if (withdrawalWitnesses.length === 0) {
-			console.log("No withdrawal witnesses found")
-			return null
+			return { ok: false, msg: "No withdrawal witnesses found" }
 		}
 
 		const earliestBeforeState = withdrawalWitnesses
@@ -813,8 +844,7 @@ export class Bridge {
 			.at(0)?.beforeActionState
 
 		if (earliestBeforeState === undefined) {
-			console.log("No earliest before state found")
-			return null
+			return { ok: false, msg: "No earliest before state found" }
 		}
 
 		const currentSlot = await this.fetchCurrentSlot()
@@ -845,8 +875,7 @@ export class Bridge {
 		})
 
 		if (myWithdrawalIndex === -1) {
-			console.log("No my withdrawal index found")
-			return null
+			return { ok: false, msg: "No my withdrawal index found" }
 		}
 
 		const myWithdrawal = innerActions[myWithdrawalIndex]
@@ -858,34 +887,37 @@ export class Bridge {
 			.map(({ action }) => fromList([action]).hash)
 
 		return {
-			withdrawalParams,
-			helperAccount,
-			witness: {
-				withdrawalParams: {
-					amount: withdrawalParams.withdrawal.amount.toString(),
-					recipient: withdrawalParams.withdrawal.recipient.toBase58(),
-					children: "[]"
-				},
-				prevNextWithdrawal: prevNextWithdrawal.toString(),
-				withdrawalAse: {
-					fields: withdrawalAse.map((elem) => elem.toString()),
-					stmt: {
-						length: lastCommit.innerActionStateLength.sub(withdrawalAse.length).toString(),
-						actionState: myWithdrawal.afterActionState.toString()
-					}
-				},
-				beforeWithdrawal: {
-					actionState: myWithdrawal.beforeActionState.toString()
-				},
-				commitAse: {
-					fields: lastCommitAse.map((elem) => elem.toString()),
-					stmt: { actionState: lastCommit.afterActionState.toString() }
-				},
-				commit: {
-					actions: lastCommit.action.map((a) => a.toString())
-				},
-				beforeCommit: { actionState: lastCommit.beforeActionState.toString() },
-				publicKey: outerHolder.toBase58()
+			ok: true,
+			value: {
+				withdrawalParams,
+				helperAccount,
+				witness: {
+					withdrawalParams: {
+						amount: withdrawalParams.withdrawal.amount.toString(),
+						recipient: withdrawalParams.withdrawal.recipient.toBase58(),
+						children: "[]"
+					},
+					prevNextWithdrawal: prevNextWithdrawal.toString(),
+					withdrawalAse: {
+						fields: withdrawalAse.map((elem) => elem.toString()),
+						stmt: {
+							length: lastCommit.innerActionStateLength.sub(withdrawalAse.length).toString(),
+							actionState: myWithdrawal.afterActionState.toString()
+						}
+					},
+					beforeWithdrawal: {
+						actionState: myWithdrawal.beforeActionState.toString()
+					},
+					commitAse: {
+						fields: lastCommitAse.map((elem) => elem.toString()),
+						stmt: { actionState: lastCommit.afterActionState.toString() }
+					},
+					commit: {
+						actions: lastCommit.action.map((a) => a.toString())
+					},
+					beforeCommit: { actionState: lastCommit.beforeActionState.toString() },
+					publicKey: outerHolder.toBase58()
+				}
 			}
 		}
 	}
@@ -898,9 +930,9 @@ export class Bridge {
 		const outerHolder = _outerHolder ?? this.outerHolders[0]
 		const witnesses = await this.fetchWithdrawalFinalizationWitnesses(pk, outerHolder)
 
-		if (!witnesses) throw new Error("Did not find any withdrawal to finalize")
+		if (!witnesses.ok) throw new Error("Did not find any withdrawal to finalize")
 
-		const { witness, withdrawalParams, helperAccount } = witnesses
+		const { witness, withdrawalParams, helperAccount } = witnesses.value
 
 		const { data } = await this.l2Client().mutation(finalizeWithdrawalMutation, {
 			input: witness
@@ -931,7 +963,7 @@ export class Bridge {
 	}
 
 	public async canFinalizeWithdrawal(pk: PublicKey): Promise<boolean> {
-		return !!(await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner))
+		return (await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner)).ok
 	}
 
 	public async fetchDepositsWithStates(pk: PublicKey): Promise<{
@@ -940,6 +972,7 @@ export class Bridge {
 		acceptedIndex: number
 		confirmedIndex: number
 		finalisedIndex: number
+		cancelledIndex: number
 	}> {
 		const deposits = await this.fetchUserDeposits(pk)
 
@@ -956,12 +989,21 @@ export class Bridge {
 			auxes.map((x) => x.toString())
 		)
 
-		const helperAccount = await this.fetchAccount(
+		const helperAccountL1 = await this.fetchAccount(
+			this.l1Client,
+			pk,
+			TokenId.derive(this.outerTokenOwner)
+		)
+		const nextCancelledDeposit = helperAccountL1
+			? getNextCancelledDepositIndex(helperAccountL1)
+			: UInt32.zero
+
+		const helperAccountL2 = await this.fetchAccount(
 			this.l2Client,
 			pk,
 			TokenId.derive(this.innerHolder)
 		)
-		const nextDeposit = helperAccount ? getNextDepositIndex(helperAccount) : UInt32.zero
+		const nextDeposit = helperAccountL2 ? getNextDepositIndex(helperAccountL2) : UInt32.zero
 
 		const syncedOuterActionState = await this.fetchSyncedOuterActionState()
 
@@ -992,7 +1034,8 @@ export class Bridge {
 			syncedIndex: +safeDecrement(syncedOuterActionState.length).toString(),
 			acceptedIndex: lastCommit.index,
 			confirmedIndex: +safeDecrement(lastCommit.synchronizedOuterActionStateLength).toString(),
-			finalisedIndex: +safeDecrement(nextDeposit).toString()
+			finalisedIndex: +safeDecrement(nextDeposit).toString(),
+			cancelledIndex: +safeDecrement(nextCancelledDeposit).toString()
 		}
 	}
 
