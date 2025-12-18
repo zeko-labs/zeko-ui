@@ -97,7 +97,155 @@ project-root/
 
 ### Getting/Creating configuration files
 
-- Download the [docker-compose.yaml](/docker-compose.yml)
+- Copy `docker-compose.yaml` to your project folder.
+  ::: details Click to expand
+  ```yaml
+  services:
+    init-config:
+      image: docker.io/zekolabs/zeko:latest
+      container_name: init-config
+      user: "1000"
+      working_dir: /data
+      volumes:
+        - ./data:/data
+        - ./keys:/keys
+      entrypoint:
+        - sh
+        - -c
+      restart: "no"
+      command: >
+        "while [ ! -f /keys/.created ];
+          do sleep 2;
+        done; exit 0"
+    init-deploy:
+      image: docker.io/zekolabs/zeko:latest
+      container_name: init-deploy
+      depends_on:
+        - init-config
+        - da-layer
+      working_dir: /data
+      volumes:
+        - ./data:/data
+        - ./keys:/keys
+      entrypoint:
+        - bash
+        - -c
+      restart: "no"
+      command: >
+        "while [ ! -f /tmp/.deployed ]; do
+          sleep 2;
+        done; exit 0"
+    postgres:
+      image: postgres:16
+      container_name: postgres
+      environment:
+        POSTGRES_DB: sequencer
+        POSTGRES_USER: sequencer
+        POSTGRES_PASSWORD: sequencer
+      volumes:
+        - ./data/postgresql:/var/lib/postgresql/data
+        - ./initdb:/docker-entrypoint-initdb.d
+      user: "1000"
+      ports:
+        - "5432:5432"
+      restart: unless-stopped
+    rabbitmq:
+      image: rabbitmq:latest
+      container_name: rabbitmq
+      volumes:
+        - rabbitmq_data:/var/lib/rabbitmq
+      ports:
+        - "5672:5672"
+      restart: unless-stopped
+    da-layer:
+      depends_on:
+        - init-config
+      image: docker.io/zekolabs/zeko-da:latest
+      container_name: da-layer
+      user: "1000"
+      ports:
+        - "1924:1924"
+      environment:
+        ZEKO_SIGNATURE_KIND: "testnet"
+      entrypoint: bash -c
+      command: |
+        "export MINA_PRIVATE_KEY=$(cat /keys/da-layer-sk) && \\
+        exec zeko-da \\
+        run-node \\
+        --port 1924 \\
+        --db-dir /db \\
+        --network-id testnet"
+      volumes:
+        - ./data/da-layer:/db
+        - ./keys:/keys:ro
+      restart: always
+    prover:
+      image: docker.io/zekolabs/zeko:latest
+      container_name: prover
+      depends_on:
+        - rabbitmq
+        - init-config
+      environment:
+        ZEKO_SIGNATURE_KIND: "testnet"
+        ZEKO_CIRCUITS_CONFIG: "/circuits-config.json"
+        RABBITMQ_USER: "guest"
+        RABBITMQ_PASSWORD: "guest"
+      volumes:
+        - ./data/betternet-circuits.json:/circuits-config.json:ro
+      entrypoint: bash -c
+      command: |
+        "exec zeko-prover \\
+        run-server \\
+        --mq-host rabbitmq:5672"
+      restart: on-failure
+    sequencer:
+      image: docker.io/zekolabs/zeko:latest
+      container_name: sequencer
+      depends_on:
+        - init-deploy
+        - rabbitmq
+        - prover
+        - postgres
+        - da-layer
+      environment:
+        ZEKO_PROGRESS_STYLE: "percent"
+        ZEKO_SIGNATURE_KIND: "testnet"
+        ZEKO_CIRCUITS_CONFIG: "/circuits-config.json"
+        POSTGRES_URI: "postgres://sequencer:sequencer@postgres:5432/sequencer"
+        RABBITMQ_USER: "guest"
+        RABBITMQ_PASSWORD: "guest"
+      volumes:
+        - ./data/sequencer:/data
+        - ./data/betternet-circuits.json:/circuits-config.json:ro
+        - ./keys:/keys:ro
+      ports:
+        - "1923:1923"
+      entrypoint:
+        - bash
+        - -c
+      command: |
+        "export MINA_PRIVATE_KEY=$(cat /keys/sequencer-sk) && \\
+        export DA_LAYER_KEY=$(cat /keys/da-layer-pk) && \\
+        exec zeko-run \\
+        -p 1923 \\
+        --l1-uri https://gateway.mina.devnet.zeko.io \\
+        --archive-uri https://gateway.mina.archive.devnet.zeko.io \\
+        --max-pool-size 10 \\
+        --commitment-period 300 \\
+        --da-node da-layer:1924 \\
+        --da-quorum 1 \\
+        --da-key $$DA_LAYER_KEY \\
+        --mq-host rabbitmq:5672 \\
+        --db-dir /data/db \\
+        --checkpoints-dir /data/checkpoints \\
+        --postgres-uri postgresql://sequencer:sequencer@postgres:5432/sequencer \\
+        --fee-modifier 0.1"
+      restart: on-failure
+
+  volumes:
+    rabbitmq_data:
+      name: rabbitmq
+  ```
 - Create the folder structure
   ```bash
   mkdir -p {initdb,keys,data/{sequencer,da-layer,postgresql}}
