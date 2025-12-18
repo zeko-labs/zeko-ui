@@ -107,16 +107,21 @@ watch(machine.value.context.errors, (newErrors) => {
         </div>
         <div class="Explanation">
           <Switch>
-            <Match
-              :when='
-                machine.matches("SUBMIT_WITHDRAWAL") ||
-                machine.matches({ SUBMIT_DEPOSIT: "transaction" })
-              '>
+            <Match :when='machine.matches("SUBMIT_WITHDRAWAL")'>
+              <BridgeMessage
+                :transactions="machine.context.transactions"
+                transactionKey="submitWithdrawal"
+              />
+            </Match>
+            <Match :when='machine.matches({ SUBMIT_DEPOSIT: "transaction" })'>
               {{ bridgeMessages.submit }}
             </Match>
             <Match
               :when='machine.matches({ SUBMIT_DEPOSIT: "send_and_confirm" })'>
-              {{ bridgeMessages.submitDeposit.sendAndConfirm }}
+              <BridgeMessage
+                :transactions="machine.context.transactions"
+                transactionKey="submitDeposit"
+              />
             </Match>
             <Match
               :when='
@@ -140,12 +145,18 @@ watch(machine.value.context.errors, (newErrors) => {
             </Match>
             <Match
               :when='machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })'>
-              {{ bridgeMessages.finalizeDeposit.sendAndConfirm }}
+              <BridgeMessage
+                :transactions="machine.context.transactions"
+                transactionKey="finalizeDeposit"
+              />
             </Match>
 
             <Match
               :when='machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" })'>
-              {{ bridgeMessages.finalizeWithdrawal.sendAndConfirm }}
+              <BridgeMessage
+                :transactions="machine.context.transactions"
+                transactionKey="finalizeWithdrawal"
+              />
             </Match>
 
             <Match :when='machine.matches("WAITING_FOR_NETWORK")'>

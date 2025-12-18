@@ -225,7 +225,6 @@ export const bridgeMachine = setup({
 				target: ".FIND_OPERATIONS",
 				guard: ({ context }) => context.accountReady && context.walletReady,
 				actions: enqueueActions(({ enqueue, context }) => {
-					// biome-ignore lint/complexity/noForEach: <explanation>
 					context.operations.forEach(({ operation }) => {
 						operation.send({ type: "Destroy" })
 					})
