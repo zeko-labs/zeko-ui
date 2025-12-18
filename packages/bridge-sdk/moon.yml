@@ -58,6 +58,10 @@ tasks:
     command: bun examples/finalizeDeposit.ts
     options:
       cache: false
+  cancelDeposit:
+    command: bun examples/cancelDeposit.ts
+    options:
+      cache: false
   submitWithdrawal:
     command: bun examples/submitWithdrawal.ts
     options:
