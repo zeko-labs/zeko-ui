@@ -47,12 +47,11 @@ const addToContext = ({
 	context: BridgeOperationContext
 	key: keyof BridgeOperationContext["transactions"]
 	transaction?: string
-	result?: Result | Error
+	result?: Result
 }) =>
 	produce(context, (draft) => {
 		if (transaction) draft.transactions[key] = { transaction, result: null }
 		if (result && draft.transactions[key]) {
-			if (result instanceof Error) throw result
 			draft.transactions[key].result = result
 		}
 	})
