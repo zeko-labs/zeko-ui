@@ -239,7 +239,6 @@ export const transactionMachine = setup({
 					},
 					{
 						target: "DONE",
-						guard: ({ context }) => context.retryCount >= MAX_RETRIES,
 						actions: assign(({ event }) => ({
 							result: String(event.error).includes("Fee is too low")
 								? new Error("Bridge encountered a fee error. Please try your transaction again.")
