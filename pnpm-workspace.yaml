@@ -12,7 +12,7 @@ catalog:
   '@hebilicious/cssforge': npm:@jsr/hebilicious__cssforge@0.2.1
   '@hebilicious/nuxt-switch-match': ^0.1.1
   '@hebilicious/vue-switch-match': ^0.1.1
-  '@lumina-dex/sdk': ^0.23.0
+  '@lumina-dex/sdk': ^1.0.0
   '@number-flow/vue': ^0.4.8
   '@nuxt/fonts': ^0.10.2
   '@tanstack/vue-table': ^8.21.3
