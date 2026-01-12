@@ -3,6 +3,17 @@ schema {
   mutation: mutation
 }
 
+input FinalizeCancelledDepositInput {
+  prevNextCancelledDeposit: UInt32!
+  checkAcceptedAse: AseWithLengthInput!
+  checkAccepted: CheckAcceptedMinaInput!
+  syncAse: AseWithLengthInput!
+  commitAse: AseWithoutLengthInput!
+  beforeCommit: AseWithoutLengthStmtInput!
+  commit: CheckAcceptedMinaElemInput!
+  publicKey: PublicKey!
+}
+
 input AseWithoutLengthInput {
   fields: [String!]!
   stmt: AseWithoutLengthStmtInput!
@@ -681,6 +692,9 @@ type mutation {
 
   """Finalize a withdrawal"""
   finalizeWithdrawal(input: FinalizeWithdrawalInput!): ProofKeyPayload!
+
+  """Cancel a deposit"""
+  cancelDeposit(input: FinalizeCancelledDepositInput!): ProofKeyPayload!
 }
 
 input EventFilterOptionsInput {

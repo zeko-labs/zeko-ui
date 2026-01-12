@@ -1,3 +1,4 @@
+import { TadaDocumentNode } from "gql.tada"
 import type { Field, NetworkId, PublicKey, UInt32, UInt64 } from "o1js"
 
 export type Config = {
@@ -96,3 +97,7 @@ export type InnerActionWithState = MaybeWithdrawal & {
 export type Account = {
 	zkappState?: string[] | null
 }
+
+export type WitnessFetchResult<T> = { ok: true; value: T } | { ok: false; msg: string }
+
+export type ExtractInput<T> = T extends TadaDocumentNode<any, { input: infer I }, any> ? I : never

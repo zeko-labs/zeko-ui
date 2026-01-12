@@ -9,6 +9,8 @@ import type { OperationsWorker } from "./operations.worker"
 
 const { act, logger } = createLogger("[TRANSACTION]")
 
+const MAX_RETRIES = 5
+
 type Wallet = ActorRefFromLogic<typeof walletMachine>
 
 export type Result = ReturnType<HashDb["createResult"]>
@@ -27,6 +29,8 @@ export type TransactionMachineContext = {
 	result: Result | Error
 	db: HashDb
 	network: Networks
+	retryCount: number
+	feeMultiplier: number
 }
 
 type TransactionMachineInput = {
@@ -36,13 +40,14 @@ type TransactionMachineInput = {
 	worker: OperationsWorker
 }
 
-type TransactionMachineOutput = { result: Result | Error }
+type TransactionMachineOutput = { result: Result }
 
 type SendSignedTxInput = {
 	zeko: boolean
 	signedTransaction: ZkappCommand
 	db: HashDb
 	worker: OperationsWorker
+	feeMultiplier: number
 }
 
 type WaitForTxInput = SentTransaction & { network: Networks; worker: OperationsWorker }
@@ -79,7 +84,7 @@ export const transactionMachine = setup({
 					})
 					if (result instanceof Error) throw result
 					if ("signedData" in result) {
-						// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+						// biome-ignore lint/suspicious/noExplicitAny: Parsing without validating
 						const zkappCommand = (JSON.parse(result.signedData) as any).zkappCommand as ZkappCommand
 						// If the feePayer is not the user, we need to set the authorization to a dummy value
 						if (zkappCommand.feePayer.body.publicKey !== user) {
@@ -95,7 +100,16 @@ export const transactionMachine = setup({
 		),
 		sendSignedTransaction: fromPromise<SentTransaction, SendSignedTxInput>(({ input }) => {
 			return act("sendSignedTransaction", async () => {
-				const { signedTransaction: zkappCommand, db, zeko, worker } = input
+				const { signedTransaction, db, zeko, worker, feeMultiplier } = input
+				const zkappCommand = structuredClone(signedTransaction)
+
+				if (feeMultiplier > 1) {
+					const currentFee = BigInt(zkappCommand.feePayer.body.fee)
+					const newFee = currentFee * BigInt(feeMultiplier)
+					zkappCommand.feePayer.body.fee = newFee.toString()
+					logger.info(`Adjusted fee by ${feeMultiplier}x: ${currentFee} -> ${newFee}`)
+				}
+
 				const { hash, zkAppId } = await worker.sendZkAppCommand(zkappCommand)
 				logger.success("Transaction sent", hash)
 				await db.saveSigned({ hash, zkAppId, confirmed: zeko, zkappCommand })
@@ -138,10 +152,15 @@ export const transactionMachine = setup({
 			sentTransaction: null,
 			result: new Error("Transaction failed"),
 			db: hashDb({ network, account, transaction }),
-			network
+			network,
+			retryCount: 0,
+			feeMultiplier: 1
 		}
 	},
-	output: ({ context: { result } }) => ({ result }),
+	output: ({ context: { result } }) => {
+		if (result instanceof Error) throw result
+		return { result }
+	},
 	states: {
 		RESUMING: {
 			description: "Attempt to resume an unconfirmed transaction.",
@@ -179,9 +198,15 @@ export const transactionMachine = setup({
 			description: "Send a signed transaction with o1js, and save it to idb.",
 			invoke: {
 				src: "sendSignedTransaction",
-				input: ({ context: { signedTransaction, db, network, worker } }) => {
+				input: ({ context: { signedTransaction, db, network, worker, feeMultiplier } }) => {
 					if (!signedTransaction) throw new Error("No signed transaction to send")
-					return { signedTransaction, db, worker, zeko: network.includes("zeko") }
+					return {
+						signedTransaction,
+						db,
+						worker,
+						zeko: network.includes("zeko"),
+						feeMultiplier
+					}
 				},
 				onDone: [
 					{
@@ -197,6 +222,29 @@ export const transactionMachine = setup({
 						actions: assign(({ context, event }) => ({
 							sentTransaction: event.output,
 							result: context.db.createResult({ hash: event.output.hash })
+						}))
+					}
+				],
+				onError: [
+					{
+						target: "SENDING",
+						guard: ({ context, event }) => {
+							const isFeeError = String(event.error).includes("Fee is too low")
+							return isFeeError && context.retryCount < MAX_RETRIES
+						},
+						actions: assign(({ context }) => ({
+							retryCount: context.retryCount + 1,
+							feeMultiplier: context.feeMultiplier * 2
+						}))
+					},
+					{
+						target: "DONE",
+						actions: assign(({ event }) => ({
+							result: String(event.error).includes("Fee is too low")
+								? new Error("Bridge encountered a fee error. Please try your transaction again.")
+								: event.error instanceof Error
+									? event.error
+									: new Error(String(event.error))
 						}))
 					}
 				]

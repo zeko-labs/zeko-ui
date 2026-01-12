@@ -335,6 +335,11 @@ export function getNextWithdrawalIndex(helperAccount: Account): UInt32 {
 	return UInt32.from(nextWithdrawalIndex ?? 0)
 }
 
+export function getNextCancelledDepositIndex(helperAccount: Account): UInt32 {
+	const nextCancelledDepositIndex = helperAccount.zkappState?.at(0)
+	return UInt32.from(nextCancelledDepositIndex ?? 0)
+}
+
 export function filterNulls<T>(arr: (T | null)[]): T[] {
 	return arr.filter(Boolean).map((x) => {
 		if (x === null) throw new Error("Unreachable")
@@ -354,4 +359,36 @@ export async function refreshCache(feePayer: Mina.FeePayerSpec) {
 
 export function safeDecrement(a: UInt32): UInt32 {
 	return a.greaterThanOrEqual(UInt32.from(1)).toBoolean() ? a.sub(UInt32.from(1)) : a
+}
+
+export function checkAccepted(
+	outerActions: OuterAction[],
+	depositIndex: UInt32,
+	depositParams: Deposit
+) {
+	let isRejected = false
+	let isAccepted = false
+
+	for (const action of outerActions) {
+		if (isRejected || isAccepted) break
+
+		const slotRange = action.slotRange
+
+		isRejected =
+			isRejected || (!isAccepted && slotRange.lower.greaterThan(depositParams.timeout).toBoolean())
+
+		const depositIndexBeforeCommit =
+			action.type === "commit"
+				? action.synchronizedOuterActionStateLength.greaterThan(depositIndex).toBoolean()
+				: false
+
+		isAccepted =
+			isAccepted ||
+			(!isRejected &&
+				slotRange.upper.lessThanOrEqual(depositParams.timeout).toBoolean() &&
+				depositIndexBeforeCommit &&
+				action.type === "commit")
+	}
+
+	return { isRejected, isAccepted }
 }
