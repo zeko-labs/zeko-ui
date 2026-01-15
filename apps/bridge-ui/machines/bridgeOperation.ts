@@ -181,8 +181,9 @@ export const bridgeOperationMachine = setup({
 						worker(bridge).canFinalizeDeposit({ l1, l2, user }),
 						worker(bridge).canCancelDeposit({ l1, l2, user })
 					])
+					logger.info({ canFinalize, canCancel })
 					if (canFinalize) sendBack({ type: "CanFinalize" })
-					if (canCancel) sendBack({ type: "CanCancel" })
+					else if (canCancel) sendBack({ type: "CanCancel" })
 				}
 				checkDepositStatus()
 				const interval = setInterval(checkDepositStatus, POLL_INTERVAL)

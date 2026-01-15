@@ -1,7 +1,9 @@
 <script lang="ts" setup>
+import { Settings } from "lucide-vue-next"
 import { useSelector } from "~~/machines/vue-xstate"
 
 const bs = useBridgeStore()
+const isSettingsOpen = ref(false)
 
 const allOperations = useSelector(bs.bridge.actorRef, (state) =>
 	Object.groupBy(
@@ -42,6 +44,17 @@ const queuedOperations = computed(
 <template>
   <div class="Bridge">
     <div class="MainOperation">
+      <button
+        type="button"
+        class="SettingsButton"
+        title="Bridge Settings"
+        @click="(isSettingsOpen = true)">
+        <Settings />
+      </button>
+      <BridgeSettings
+        :isOpen="isSettingsOpen"
+        @close="(isSettingsOpen = false)"
+      />
       <Inputs v-if="!currentOperation" />
       <CurrentOperation v-else :operation="currentOperation" />
     </div>
@@ -72,9 +85,31 @@ const queuedOperations = computed(
   grid-template-columns: auto;
   margin: auto;
   max-width: 50rem;
+  position: relative;
   @media (max-width: 1024px) {
     grid-template-columns: auto;
     gap: 2rem;
+  }
+
+  .SettingsButton {
+    position: absolute;
+    top: -2.5rem;
+    right: 0rem;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    color: var(--palette-gray-600);
+    transition: all 0.2s;
+
+    &:hover {
+      background: var(--palette-gray-200);
+      color: var(--palette-gray-800);
+    }
   }
 }
 

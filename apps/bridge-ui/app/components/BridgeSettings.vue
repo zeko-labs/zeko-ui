@@ -31,6 +31,17 @@ const selectTimeout = (hours: BridgeTimeoutHours) => {
             You can cancel your transaction after the Bridge Timeout.
           </p>
           <div class="TimeoutOptions">
+            <DevOnly>
+              <label class="TimeoutOption">
+                <input
+                  type="radio"
+                  name="timeout"
+                  value="dev"
+                  :checked="bridgeSettings.timeoutHours.value === 0"
+                  @change="selectTimeout(0)">
+                <span>180s (dev)</span>
+              </label>
+            </DevOnly>
             <label
               v-for="hours of timeoutOptions"
               :key="hours"
@@ -125,8 +136,8 @@ const selectTimeout = (hours: BridgeTimeoutHours) => {
         transition: all 0.2s;
 
         &:checked {
-          border-color: var(--palette-cosmicGold-50);
-          background: var(--palette-cosmicGold-50);
+          border-color: var(--palette-cosmicGold-100);
+          background: var(--palette-cosmicGold-100);
           box-shadow: inset 0 0 0 3px var(--palette-gray-50);
         }
       }

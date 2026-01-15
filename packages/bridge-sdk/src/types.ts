@@ -1,4 +1,4 @@
-import { TadaDocumentNode } from "gql.tada"
+import type { TadaDocumentNode } from "gql.tada"
 import type { Field, NetworkId, PublicKey, UInt32, UInt64 } from "o1js"
 
 export type Config = {

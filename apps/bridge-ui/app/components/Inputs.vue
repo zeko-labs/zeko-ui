@@ -3,7 +3,6 @@ const bs = useBridgeStore()
 const bridgeSettings = useBridgeSettings()
 
 const amountToBridge = ref<number | undefined>(undefined)
-const isSettingsOpen = ref(false)
 
 const startBridge = () => {
 	const amount = (amountToBridge.value ?? 0).toString()
@@ -25,17 +24,6 @@ const disabledButton = computed(
 </script>
 <template>
   <div :class="{ Inputs: true, isLoading: loading }">
-    <button
-      type="button"
-      class="SettingsButton"
-      title="Bridge Settings"
-      @click="(isSettingsOpen = true)">
-      <SvgSettingsCog />
-    </button>
-    <BridgeSettings
-      :isOpen="isSettingsOpen"
-      @close="(isSettingsOpen = false)"
-    />
     <div class="InputBox">
       <h4>Sending</h4>
       <BridgeAmountSelector v-model="amountToBridge" :loading />
@@ -97,26 +85,6 @@ const disabledButton = computed(
       border-radius: var(--border-radius);
       transition: all 0.5s;
       animation: spinning-border 3s infinite linear;
-    }
-  }
-
-  .SettingsButton {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    display: grid;
-    place-items: center;
-    padding: 0.5rem;
-    background: transparent;
-    border: none;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    color: var(--palette-gray-600);
-    transition: all 0.2s;
-
-    &:hover {
-      background: var(--palette-gray-200);
-      color: var(--palette-gray-800);
     }
   }
 }
