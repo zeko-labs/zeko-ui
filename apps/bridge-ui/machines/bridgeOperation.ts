@@ -81,6 +81,7 @@ export type ReturnTo =
 	| "FINALIZE_DEPOSIT"
 	| "FINALIZE_WITHDRAWAL"
 	| "TO_FINALIZE"
+	| "CANCEL_DEPOSIT"
 
 type Direction = "deposit" | "withdrawal"
 
@@ -94,7 +95,9 @@ type BridgeOperationEvents =
 	| { type: "Pause" }
 	| { type: "ReturnTo" }
 	| { type: "CanFinalize" }
+	| { type: "CanCancel" }
 	| { type: "Finalize" }
+	| { type: "Cancel" }
 	| { type: "Destroy" }
 
 export interface BridgeOperationContext {
@@ -108,17 +111,20 @@ export interface BridgeOperationContext {
 	l1: Networks
 	l2: Networks
 	amount: string
+	timeoutSlots?: number
 	paused: boolean
 	transaction?: ActionState["transaction"]
 	errors: Error[]
 	transactions: {
 		submitDeposit: WalletTransaction
 		finalizeDeposit: WalletTransaction
+		cancelDeposit: WalletTransaction
 		submitWithdrawal: WalletTransaction
 		finalizeWithdrawal: WalletTransaction
 	}
 	returnTo: ReturnTo
 	changeNetworkTo: Networks
+	canCancel: boolean
 }
 const currentNetwork = (context: BridgeOperationContext) =>
 	context.wallet.getSnapshot().context.currentNetwork
@@ -145,6 +151,7 @@ export const bridgeOperationMachine = setup({
 			source: Networks
 			destination: Networks
 			amount: string
+			timeoutSlots?: number
 			transaction?: ActionState["transaction"]
 		},
 		events: {} as BridgeOperationEvents,
@@ -153,31 +160,39 @@ export const bridgeOperationMachine = setup({
 	},
 	actors: {
 		transactionMachine,
-		submitDeposit: fromPromise<string, BridgeWorker & { amount: string }>(({ input }) => {
-			return act("submitDeposit", async () => {
-				const { bridge, l1, l2, amount, user } = input
-				const tx = await worker(bridge).submitDeposit({ l1, l2, user, amount })
-				return tx
-			})
-		}),
-		pendingDeposit: fromCallback<EventObject, BridgeWorker>(({ sendBack, input }) => {
-			const label = "pendingDeposit"
-			const stop = measure(label)
-			logger.start(label)
-			const { bridge, l1, l2, user } = input
-			const checkDepositStatus = async () => {
-				logger.info("Checking deposit status ...")
-				const can = await worker(bridge).canFinalizeDeposit({ l1, l2, user })
-				if (can) sendBack({ type: "CanFinalize" })
+		submitDeposit: fromPromise<string, BridgeWorker & { amount: string; timeoutSlots?: number }>(
+			({ input }) => {
+				return act("submitDeposit", async () => {
+					const { bridge, l1, l2, amount, user, timeoutSlots } = input
+					const tx = await worker(bridge).submitDeposit({ l1, l2, user, amount, timeoutSlots })
+					return tx
+				})
 			}
-			checkDepositStatus()
-			const interval = setInterval(checkDepositStatus, POLL_INTERVAL)
-			return () => {
-				clearInterval(interval)
-				logger.success(label)
-				stop()
+		),
+		pendingDeposit: fromCallback<EventObject, BridgeWorker & { depositTimestamp?: Date }>(
+			({ sendBack, input }) => {
+				const label = "pendingDeposit"
+				const stop = measure(label)
+				logger.start(label)
+				const { bridge, l1, l2, user } = input
+				const checkDepositStatus = async () => {
+					logger.info("Checking deposit status ...")
+					const [canFinalize, canCancel] = await Promise.all([
+						worker(bridge).canFinalizeDeposit({ l1, l2, user }),
+						worker(bridge).canCancelDeposit({ l1, l2, user })
+					])
+					if (canFinalize) sendBack({ type: "CanFinalize" })
+					if (canCancel) sendBack({ type: "CanCancel" })
+				}
+				checkDepositStatus()
+				const interval = setInterval(checkDepositStatus, POLL_INTERVAL)
+				return () => {
+					clearInterval(interval)
+					logger.success(label)
+					stop()
+				}
 			}
-		}),
+		),
 		finalizeDeposit: fromPromise<string, BridgeWorker>(({ input }) => {
 			return act("finalizeDeposit", async () => {
 				const { bridge, l1, l2, user } = input
@@ -216,6 +231,13 @@ export const bridgeOperationMachine = setup({
 				const tx = await worker(bridge).finalizeWithdrawal({ l1, l2, user })
 				return tx
 			})
+		}),
+		cancelDeposit: fromPromise<string, BridgeWorker>(({ input }) => {
+			return act("cancelDeposit", async () => {
+				const { bridge, l1, l2, user } = input
+				const tx = await worker(bridge).cancelDeposit({ l1, l2, user })
+				return tx
+			})
 		})
 	},
 	guards: {
@@ -227,6 +249,7 @@ export const bridgeOperationMachine = setup({
 		toFinalizeDeposit: ({ context: { returnTo } }) => returnTo === "FINALIZE_DEPOSIT",
 		toFinalizeWithdrawal: ({ context: { returnTo } }) => returnTo === "FINALIZE_WITHDRAWAL",
 		toFinalize: ({ context: { returnTo } }) => returnTo === "TO_FINALIZE",
+		toCancelDeposit: ({ context: { returnTo } }) => returnTo === "CANCEL_DEPOSIT",
 		anotherOperationIsActive: ({ context }) => {
 			const ao = context.bridge.getSnapshot().context.activeOperation
 			return ao !== null && context.id !== ao
@@ -239,7 +262,7 @@ export const bridgeOperationMachine = setup({
 	id: "bridgeOperation",
 	initial: "IDLE",
 	context: ({
-		input: { direction, source, destination, amount, bridge, wallet, transaction },
+		input: { direction, source, destination, amount, timeoutSlots, bridge, wallet, transaction },
 		self: { id }
 	}) => ({
 		id,
@@ -251,6 +274,7 @@ export const bridgeOperationMachine = setup({
 		source,
 		destination,
 		amount,
+		timeoutSlots,
 		returnTo: false,
 		paused: false,
 		transaction,
@@ -258,9 +282,11 @@ export const bridgeOperationMachine = setup({
 		transactions: {
 			submitDeposit: null,
 			finalizeDeposit: null,
+			cancelDeposit: null,
 			submitWithdrawal: null,
 			finalizeWithdrawal: null
 		},
+		canCancel: false,
 		l1: source.includes("mina") ? source : destination,
 		l2: source.includes("zeko") ? source : destination
 	}),
@@ -375,6 +401,11 @@ export const bridgeOperationMachine = setup({
 						target: "TO_FINALIZE",
 						guard: "toFinalize",
 						actions: assign({ returnTo: false })
+					},
+					{
+						target: "CANCEL_DEPOSIT",
+						guard: "toCancelDeposit",
+						actions: assign({ returnTo: false })
 					}
 				]
 			}
@@ -393,7 +424,11 @@ export const bridgeOperationMachine = setup({
 					meta: { step: 0 },
 					invoke: {
 						src: "submitDeposit",
-						input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount }),
+						input: ({ context }) => ({
+							...bridgeParameters(context),
+							amount: context.amount,
+							timeoutSlots: context.timeoutSlots
+						}),
 						onDone: {
 							target: "send_and_confirm",
 							actions: assign(({ context, event }) =>
@@ -462,7 +497,29 @@ export const bridgeOperationMachine = setup({
 				input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount })
 			},
 			on: {
-				CanFinalize: { target: "TO_FINALIZE" }
+				CanFinalize: { target: "TO_FINALIZE" },
+				CanCancel: { target: "CAN_CANCEL", actions: assign({ canCancel: true }) }
+			}
+		},
+		CAN_CANCEL: {
+			tags: ["cta"],
+			meta: { step: 1 },
+			description:
+				"The deposit can be cancelled because the timeout has passed and it was not finalized.",
+			on: {
+				Cancel: [
+					{
+						target: "CANCEL_DEPOSIT",
+						guard: "currentNetworkIsSource"
+					},
+					{
+						target: "WAITING_FOR_NETWORK",
+						actions: assign({
+							returnTo: "CANCEL_DEPOSIT",
+							changeNetworkTo: ({ context }) => context.source
+						})
+					}
+				]
 			}
 		},
 		FINALIZE_DEPOSIT: {
@@ -518,6 +575,68 @@ export const bridgeOperationMachine = setup({
 				done: { type: "final" }
 			},
 			onDone: { target: "BRIDGE_OPERATION_COMPLETED" }
+		},
+		CANCEL_DEPOSIT: {
+			initial: "transaction",
+			states: {
+				transaction: {
+					tags: ["loading"],
+					meta: { step: 1 },
+					invoke: {
+						src: "cancelDeposit",
+						input: ({ context }) => ({ ...bridgeParameters(context) }),
+						onDone: {
+							target: "send_and_confirm",
+							actions: assign(({ context, event }) =>
+								addToContext({ context, key: "cancelDeposit", transaction: event.output })
+							)
+						},
+						onError: [
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ context }) => context.errors.length >= 3,
+								actions: assign(addError(new Error("Failed to cancel deposit")))
+							},
+							{
+								target: "#bridgeOperation.CANCEL_DEPOSIT",
+								actions: assign(addError(new Error("Failed to cancel deposit")))
+							}
+						]
+					}
+				},
+				send_and_confirm: {
+					tags: ["loading"],
+					meta: { step: 1 },
+					invoke: {
+						src: "transactionMachine",
+						input: ({ context }) => ({ ...sendAndConfirm(context, "cancelDeposit") }),
+						onDone: {
+							target: "done",
+							actions: assign(({ context, event }) =>
+								addToContext({ context, key: "cancelDeposit", result: event.output.result })
+							)
+						},
+						onError: {
+							target: "#bridgeOperation.FAILED",
+							actions: assign(({ context, event }) => ({
+								errors: [...context.errors, event.error as Error]
+							}))
+						}
+					}
+				},
+				done: {
+					type: "final",
+					entry: sendTo(
+						({ context }) => context.wallet,
+						({ context }) => fetchMina({ network: context.source })
+					)
+				}
+			},
+			onDone: { target: "DEPOSIT_CANCELLED" }
+		},
+		DEPOSIT_CANCELLED: {
+			meta: { step: 1 },
+			after: { exitTimeout: "BRIDGE_OPERATION_DONE" }
 		},
 		SUBMIT_WITHDRAWAL: {
 			initial: "transaction",

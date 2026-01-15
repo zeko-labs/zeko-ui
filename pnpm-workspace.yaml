@@ -6,7 +6,7 @@ packages:
 catalog:
   '@ark-ui/vue': ^5.27.1
   '@aurowallet/mina-provider': ^1.0.6
-  '@biomejs/biome': ^2.3.3
+  '@biomejs/biome': ^2.3.11
   '@cloudflare/vitest-pool-workers': ^0.10.5
   '@csstools/postcss-global-data': ^3.1.0
   '@hebilicious/cssforge': npm:@jsr/hebilicious__cssforge@0.2.1
@@ -44,7 +44,7 @@ catalog:
   vue: ^3.5.21
   vue-router: ^4.5.1
   wrangler: 4.42.2
-  xstate: 5.20.1
+  xstate: 5.22.0
 
 catalogs:
   elysia:

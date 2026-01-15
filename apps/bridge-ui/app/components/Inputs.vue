@@ -1,11 +1,17 @@
 <script lang="ts" setup>
 const bs = useBridgeStore()
+const bridgeSettings = useBridgeSettings()
 
 const amountToBridge = ref<number | undefined>(undefined)
+const isSettingsOpen = ref(false)
 
 const startBridge = () => {
 	const amount = (amountToBridge.value ?? 0).toString()
-	bs.bridge.send({ type: "StartOperation", amount })
+	bs.bridge.send({
+		type: "StartOperation",
+		amount,
+		timeoutSlots: bridgeSettings.timeoutSlots.value
+	})
 	amountToBridge.value = undefined
 }
 const loading = computed(() => !bs.bridge.snapshot.matches("READY"))
@@ -19,6 +25,17 @@ const disabledButton = computed(
 </script>
 <template>
   <div :class="{ Inputs: true, isLoading: loading }">
+    <button
+      type="button"
+      class="SettingsButton"
+      title="Bridge Settings"
+      @click="(isSettingsOpen = true)">
+      <SvgSettingsCog />
+    </button>
+    <BridgeSettings
+      :isOpen="isSettingsOpen"
+      @close="(isSettingsOpen = false)"
+    />
     <div class="InputBox">
       <h4>Sending</h4>
       <BridgeAmountSelector v-model="amountToBridge" :loading />
@@ -82,8 +99,29 @@ const disabledButton = computed(
       animation: spinning-border 3s infinite linear;
     }
   }
+
+  .SettingsButton {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: grid;
+    place-items: center;
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    color: var(--palette-gray-600);
+    transition: all 0.2s;
+
+    &:hover {
+      background: var(--palette-gray-200);
+      color: var(--palette-gray-800);
+    }
+  }
 }
 
+/* biome-ignore lint/correctness/noUnknownPseudoClass: reason */
 :deep(.InputBox) {
   display: grid;
   grid-template-columns: 20ch 1fr;

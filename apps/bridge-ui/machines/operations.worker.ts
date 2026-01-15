@@ -105,15 +105,18 @@ async function submitDeposit({
 	l1,
 	l2,
 	user,
-	amount
-}: L1L2 & { user: string; amount: string }): Promise<string> {
+	amount,
+	timeoutSlots
+}: L1L2 & { user: string; amount: string; timeoutSlots?: number }): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = PublicKey.fromBase58(user)
 	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
+	const currentSlot = await bridge.fetchCurrentSlot()
+	const timeout = timeoutSlots ? currentSlot.add(UInt32.from(timeoutSlots)) : UInt32.MAXINT()
 	const submitDeposit = {
 		recipient,
 		amount: UInt64.from(Number(amount) * 10e8),
-		timeout: UInt32.MAXINT()
+		timeout
 	}
 	const transaction = await bridge.submitDeposit(feePayer, submitDeposit)
 	return transaction.toJSON()
@@ -146,6 +149,20 @@ async function canFinalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }):
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = PublicKey.fromBase58(user)
 	return bridge.canFinalizeWithdrawal(recipient)
+}
+
+async function canCancelDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	return bridge.canCancelDeposit(recipient)
+}
+
+async function cancelDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
+	const bridge = await initBridge({ l1, l2 })
+	const recipient = PublicKey.fromBase58(user)
+	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
+	const transaction = await bridge.cancelDeposit(recipient, feePayer)
+	return transaction.toJSON()
 }
 
 async function finalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
@@ -182,6 +199,8 @@ export const operations = {
 	submitDeposit,
 	canFinalizeDeposit,
 	finalizeDeposit,
+	canCancelDeposit,
+	cancelDeposit,
 	submitWithdrawal,
 	canFinalizeWithdrawal,
 	finalizeWithdrawal,

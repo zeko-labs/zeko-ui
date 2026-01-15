@@ -23,7 +23,8 @@ const step = computed(() => {
 			INIT_BRIDGE_OPERATION: 0,
 			FINALIZE_DEPOSIT: 2,
 			FINALIZE_WITHDRAWAL: 2,
-			TO_FINALIZE: 2
+			TO_FINALIZE: 2,
+			CANCEL_DEPOSIT: 1
 		}[machine.value.context.returnTo]
 	}
 	const meta = machine.value.getMeta()
@@ -34,6 +35,7 @@ const status = computed(() =>
 	statusFromState(machine.value.value, machine.value.context.direction)
 )
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
+const canCancel = computed(() => machine.value.matches("CAN_CANCEL"))
 const isLoading = computed(() => machine.value.hasTag("loading"))
 const hasCTA = computed(() => machine.value.hasTag("cta"))
 
@@ -100,6 +102,10 @@ watch(machine.value.context.errors, (newErrors) => {
               })
             '>Change Network</Button>
           <Button
+            v-else-if="canCancel"
+            variant="cta3"
+            @click='operation.send({ type: "Cancel" })'>Cancel</Button>
+          <Button
             v-else
             variant="main"
             :disabled="!toFinalize"
@@ -135,6 +141,17 @@ watch(machine.value.context.errors, (newErrors) => {
             </Match>
             <Match :when='machine.matches("TO_FINALIZE")'>
               {{ bridgeMessages.toFinalize }}
+            </Match>
+            <Match :when='machine.matches("CAN_CANCEL")'>
+              <div class="warning">
+                {{ bridgeMessages.canCancel }}
+              </div>
+            </Match>
+            <Match :when='machine.matches("CANCEL_DEPOSIT")'>
+              {{ bridgeMessages.cancellingDeposit }}
+            </Match>
+            <Match :when='machine.matches("DEPOSIT_CANCELLED")'>
+              {{ bridgeMessages.depositCancelled }}
             </Match>
             <Match
               :when='
@@ -269,5 +286,10 @@ watch(machine.value.context.errors, (newErrors) => {
   &, a {
     color: var(--palette-persianRed-600);
   }
+}
+
+.warning {
+  color: var(--palette-persianRed-600);
+  font-weight: var(--typography-weight-lexend-semibold);
 }
 </style>

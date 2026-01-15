@@ -50,9 +50,11 @@ export const statusFromState = (
 	if (typeof state === "string") {
 		if (state.includes("DONE") || state === "BRIDGE_OPERATION_COMPLETED")
 			return isDeposit ? deposit("complete")(3) : withdrawal("complete")(3)
+		if (state === "DEPOSIT_CANCELLED") return { text: "Cancelled", kind: "complete" }
 		if (state === "PENDING_DEPOSIT") return pendingDeposit(1)
 		if (state === "PENDING_WITHDRAWAL") return pendingWithdrawal(1)
 		if (state === "TO_FINALIZE") return isDeposit ? pendingDeposit(2) : pendingWithdrawal(2)
+		if (state === "CAN_CANCEL") return { text: "Failed", kind: "error" }
 		if (state === "PAUSED") return { text: "Paused", kind: "pending" }
 		if (state === "IDLE") return { text: "Idle", kind: "pending" }
 		if (state === "FAILED") return { text: "Failed", kind: "error" }
@@ -63,6 +65,7 @@ export const statusFromState = (
 		if ("SUBMIT_WITHDRAWAL" in state) return pendingWithdrawal(0)
 		if ("FINALIZE_DEPOSIT" in state) return pendingDeposit(2)
 		if ("FINALIZE_WITHDRAWAL" in state) return pendingWithdrawal(2)
+		if ("CANCEL_DEPOSIT" in state) return { text: "Cancelling", kind: "pending" }
 	}
 	return isDeposit ? pendingDeposit(1) : pendingWithdrawal(1)
 }
@@ -88,5 +91,12 @@ export const bridgeMessages = {
 	finalizeDeposit:
 		"Your Bridge Transaction is Claimed. The status is still Pending until it's finalized on Zeko. This typically takes a few seconds. Completed Transactions appear below.",
 	finalizeWithdrawal:
-		"Your Bridge Transaction is Claimed. The status is still Pending until it's finalized on Mina. This can take up to 1 hour, to ensure Mina L1 finality. Completed Transactions appear below."
+		"Your Bridge Transaction is Claimed. The status is still Pending until it's finalized on Mina. This can take up to 1 hour, to ensure Mina L1 finality. Completed Transactions appear below.",
+	canCancel:
+		"Your Send transaction took longer than the Bridge Timeout setting, please Cancel to reclaim your funds on Mina L1, and try Bridging again.",
+	cancelDeposit: "Waiting for the cancellation transaction to be confirmed.",
+	cancellingDeposit:
+		"Zeko Bridge is generating a cancellation transaction to sign with your wallet.",
+	depositCancelled:
+		"Your deposit has been cancelled. Your funds have been returned to your wallet on Mina L1."
 } as const

@@ -31,6 +31,7 @@ type Command = "start" | "resumeDeposit" | "resumeWithdrawal" | "complete"
 type StartOperationSettings = {
 	amount: string
 	command: Command
+	timeoutSlots?: number
 	state?: {
 		id?: string
 		status: OperationStatus
@@ -48,7 +49,7 @@ type PendingOperationsInput = {
 }
 
 export type BridgeEvents =
-	| { type: "StartOperation"; amount: string }
+	| { type: "StartOperation"; amount: string; timeoutSlots?: number }
 	| { type: "CompleteOperation"; id: string }
 	| { type: "PauseOperation"; id: string }
 	| { type: "TerminateOperation"; id: string }
@@ -115,7 +116,7 @@ export const bridgeMachine = setup({
 	actions: {
 		startOperation: assign(({ context, self, spawn }, settings: StartOperationSettings) => {
 			logger.info("Starting an operation with settings", settings)
-			const { amount, command, state } = settings
+			const { amount, command, state, timeoutSlots } = settings
 			const { wallet } = context
 			const source = state?.source ?? (context.sourceNetwork as Networks)
 			const destination = state?.destination ?? (context.destinationNetwork as Networks)
@@ -140,6 +141,7 @@ export const bridgeMachine = setup({
 					destination,
 					direction,
 					amount,
+					timeoutSlots,
 					transaction: state?.transaction
 				}
 			})
@@ -313,7 +315,11 @@ export const bridgeMachine = setup({
 			guard: and(["validSource", "validDestination"]),
 			actions: {
 				type: "startOperation",
-				params: ({ event }) => ({ amount: event.amount, command: "start" })
+				params: ({ event }) => ({
+					amount: event.amount,
+					timeoutSlots: event.timeoutSlots,
+					command: "start"
+				})
 			}
 		},
 		PauseOperation: {
