@@ -758,7 +758,9 @@ export class Bridge {
 	}
 
 	public async canCancelDeposit(pk: PublicKey): Promise<boolean> {
-		return (await this.fetchDepositCancellationWitnesses(pk, this.outerTokenOwner)).ok
+		const result = await this.fetchDepositCancellationWitnesses(pk, this.outerTokenOwner)
+		console.debug("canCancelDeposit result:", result)
+		return result.ok
 	}
 
 	public async submitWithdrawal(

@@ -118,6 +118,7 @@ async function submitDeposit({
 		amount: UInt64.from(Number(amount) * 10e8),
 		timeout
 	}
+	console.log("Submit Deposit:", { timeoutSlots, submitDeposit })
 	const transaction = await bridge.submitDeposit(feePayer, submitDeposit)
 	return transaction.toJSON()
 }

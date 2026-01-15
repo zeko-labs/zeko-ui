@@ -176,12 +176,11 @@ export const bridgeOperationMachine = setup({
 				logger.start(label)
 				const { bridge, l1, l2, user } = input
 				const checkDepositStatus = async () => {
-					logger.info("Checking deposit status ...")
 					const [canFinalize, canCancel] = await Promise.all([
 						worker(bridge).canFinalizeDeposit({ l1, l2, user }),
 						worker(bridge).canCancelDeposit({ l1, l2, user })
 					])
-					logger.info({ canFinalize, canCancel })
+					logger.info(`Deposit status: ${JSON.stringify({ canFinalize, canCancel })}`)
 					if (canFinalize) sendBack({ type: "CanFinalize" })
 					else if (canCancel) sendBack({ type: "CanCancel" })
 				}
