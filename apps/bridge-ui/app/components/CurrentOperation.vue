@@ -1,12 +1,6 @@
 <script lang="ts" setup>
 import type { ActorRefFromLogic } from "xstate"
-import {
-	bridgeMessages,
-	errorToaster,
-	statePath,
-	statusFromState,
-	steps
-} from "~/helpers"
+import { errorToaster, statePath, statusFromState, steps } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
@@ -36,6 +30,11 @@ const status = computed(() =>
 )
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
 const canCancel = computed(() => machine.value.matches("CAN_CANCEL"))
+const cancelling = computed(
+	() =>
+		machine.value.matches("CANCEL_DEPOSIT") ||
+		machine.value.matches("DEPOSIT_CANCELLED")
+)
 const isLoading = computed(() => machine.value.hasTag("loading"))
 const hasCTA = computed(() => machine.value.hasTag("cta"))
 
@@ -102,8 +101,9 @@ watch(machine.value.context.errors, (newErrors) => {
               })
             '>Change Network</Button>
           <Button
-            v-else-if="canCancel"
-            variant="cta3"
+            v-else-if="canCancel || cancelling"
+            variant="cancel"
+            :disabled="cancelling"
             @click='operation.send({ type: "Cancel" })'>Cancel</Button>
           <Button
             v-else
@@ -113,69 +113,124 @@ watch(machine.value.context.errors, (newErrors) => {
         </div>
         <div class="Explanation">
           <Switch>
-            <Match :when='machine.matches("SUBMIT_WITHDRAWAL")'>
+            <!-- Initializing: loading wallet history and status -->
+            <Match :when='machine.matches("INIT_BRIDGE_OPERATION")'>
+              <BridgeMessage messageKey="initBridgeOperation" />
+            </Match>
+
+            <!-- Submit withdrawal: generating transaction -->
+            <Match
+              :when='machine.matches({ SUBMIT_WITHDRAWAL: "transaction" })'>
+              <BridgeMessage messageKey="submit" />
+            </Match>
+
+            <!-- Submit withdrawal: waiting for confirmation -->
+            <Match
+              :when='machine.matches({ SUBMIT_WITHDRAWAL: "send_and_confirm" })'>
               <BridgeMessage
+                messageKey="submitDeposit"
                 :transactions="machine.context.transactions"
                 transactionKey="submitWithdrawal"
               />
             </Match>
+
+            <!-- Submit deposit: generating transaction -->
             <Match :when='machine.matches({ SUBMIT_DEPOSIT: "transaction" })'>
-              {{ bridgeMessages.submit }}
+              <BridgeMessage messageKey="submit" />
             </Match>
+
+            <!-- Submit deposit: waiting for confirmation -->
             <Match
               :when='machine.matches({ SUBMIT_DEPOSIT: "send_and_confirm" })'>
               <BridgeMessage
+                messageKey="submitDeposit"
                 :transactions="machine.context.transactions"
                 transactionKey="submitDeposit"
               />
             </Match>
-            <Match
-              :when='
-                machine.matches("PENDING_DEPOSIT") ||
-                machine.matches("PENDING_WITHDRAWAL")
-              '>
-              {{ bridgeMessages.pending }}
+
+            <!-- Pending deposit: awaiting on-chain finality -->
+            <Match :when='machine.matches("PENDING_DEPOSIT")'>
+              <BridgeMessage
+                messageKey="pending"
+                :transactions="machine.context.transactions"
+                transactionKey="submitDeposit"
+              />
             </Match>
-            <Match :when='machine.matches("INIT_BRIDGE_OPERATION")'>
-              {{ bridgeMessages.initBridgeOperation }}
+
+            <!-- Pending withdrawal: awaiting on-chain finality -->
+            <Match :when='machine.matches("PENDING_WITHDRAWAL")'>
+              <BridgeMessage
+                messageKey="pending"
+                :transactions="machine.context.transactions"
+                transactionKey="submitWithdrawal"
+              />
             </Match>
+
+            <!-- Ready to finalize: user can claim -->
             <Match :when='machine.matches("TO_FINALIZE")'>
-              {{ bridgeMessages.toFinalize }}
+              <BridgeMessage messageKey="toFinalize" />
             </Match>
+
+            <!-- Can cancel: deposit timed out -->
             <Match :when='machine.matches("CAN_CANCEL")'>
               <div class="warning">
-                {{ bridgeMessages.canCancel }}
+                <BridgeMessage messageKey="canCancel" />
               </div>
             </Match>
-            <Match :when='machine.matches("CANCEL_DEPOSIT")'>
-              {{ bridgeMessages.cancellingDeposit }}
+
+            <!-- Cancel deposit: generating cancellation transaction -->
+            <Match :when='machine.matches({ CANCEL_DEPOSIT: "transaction" })'>
+              <BridgeMessage messageKey="cancellingDeposit" />
             </Match>
-            <Match :when='machine.matches("DEPOSIT_CANCELLED")'>
-              {{ bridgeMessages.depositCancelled }}
-            </Match>
+
+            <!-- Cancel deposit: waiting for cancellation confirmation -->
             <Match
-              :when='
-                machine.matches({ FINALIZE_DEPOSIT: "transaction" }) ||
-                machine.matches({ FINALIZE_WITHDRAWAL: "transaction" })
-              '>
-              {{ bridgeMessages.finalizeTransaction }}
+              :when='machine.matches({ CANCEL_DEPOSIT: "send_and_confirm" })'>
+              <BridgeMessage
+                messageKey="cancelDeposit"
+                :transactions="machine.context.transactions"
+                transactionKey="cancelDeposit"
+              />
             </Match>
+
+            <!-- Deposit cancelled: funds returned -->
+            <Match :when='machine.matches("DEPOSIT_CANCELLED")'>
+              <BridgeMessage messageKey="depositCancelled" />
+            </Match>
+
+            <!-- Finalize deposit: generating proof -->
+            <Match :when='machine.matches({ FINALIZE_DEPOSIT: "transaction" })'>
+              <BridgeMessage messageKey="finalizeTransaction" />
+            </Match>
+
+            <!-- Finalize deposit: waiting for confirmation -->
             <Match
               :when='machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })'>
               <BridgeMessage
+                messageKey="finalizeDeposit"
                 :transactions="machine.context.transactions"
                 transactionKey="finalizeDeposit"
               />
             </Match>
 
+            <!-- Finalize withdrawal: generating proof -->
+            <Match
+              :when='machine.matches({ FINALIZE_WITHDRAWAL: "transaction" })'>
+              <BridgeMessage messageKey="finalizeTransaction" />
+            </Match>
+
+            <!-- Finalize withdrawal: waiting for confirmation -->
             <Match
               :when='machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" })'>
               <BridgeMessage
+                messageKey="finalizeWithdrawal"
                 :transactions="machine.context.transactions"
                 transactionKey="finalizeWithdrawal"
               />
             </Match>
 
+            <!-- Waiting for network: user must switch wallet network -->
             <Match :when='machine.matches("WAITING_FOR_NETWORK")'>
               <div class="Flex">
                 <span>Switch your wallet to&nbsp;</span>
@@ -183,6 +238,8 @@ watch(machine.value.context.errors, (newErrors) => {
                 <span>.</span>
               </div>
             </Match>
+
+            <!-- Failed: something went wrong -->
             <Match :when='machine.matches("FAILED")'>
               <div class="error">
                 <p>
@@ -272,6 +329,9 @@ watch(machine.value.context.errors, (newErrors) => {
       p {
         margin: 0;
       }
+      b {
+        font-weight: var(--typography-weight-lexend-semibold);
+      }
     }
   }
 }
@@ -286,10 +346,5 @@ watch(machine.value.context.errors, (newErrors) => {
   &, a {
     color: var(--palette-persianRed-600);
   }
-}
-
-.warning {
-  color: var(--palette-persianRed-600);
-  font-weight: var(--typography-weight-lexend-semibold);
 }
 </style>

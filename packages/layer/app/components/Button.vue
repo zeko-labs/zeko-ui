@@ -2,7 +2,15 @@
 import { computed, useSlots } from "vue"
 
 interface Props {
-	variant?: "auro" | "black" | "cta1" | "cta2" | "cta3" | "main" | "default"
+	variant?:
+		| "auro"
+		| "black"
+		| "cta1"
+		| "cta2"
+		| "cta3"
+		| "main"
+		| "cancel"
+		| "default"
 }
 
 defineOptions({ inheritAttrs: false })
@@ -25,6 +33,7 @@ const className = computed(
 				cta2: "ZekoButtonCTA2",
 				cta3: "ZekoButtonCTA3",
 				main: "ZekoButtonMain",
+				cancel: "ZekoButtonCancel",
 				default: "ZekoButtonDefault"
 			}) as const
 		)[variant]
@@ -184,6 +193,30 @@ const className = computed(
   &:not(:disabled):active {
     background: oklch(0.513 0.2408 278.15);
     box-shadow: inset 0 0 0 3px oklch(0.4451 0.2184 277.23);
+  }
+}
+
+/* ==================== Cancel Variant ==================== */
+.ZekoButtonCancel {
+  --bg: var(--palette-error-background);
+  border-radius: var(--button-cta-radius);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--palette-error-border);
+  color: var(--palette-persianRed-600);
+
+  &:disabled {
+    background: var(--theme-light-background-secondary);
+    box-shadow: inset 0 0 0 1px var(--theme-light-border-secondary);
+    color: var(--theme-light-content-tertiary);
+  }
+
+  &:not(:disabled):hover {
+    background: oklch(from var(--bg) l c h / 0.85);
+  }
+
+  &:not(:disabled):active {
+    background: oklch(from var(--bg) l c h / 0.95);
+    box-shadow: inset 0 0 0 3px var(--bg);
   }
 }
 

@@ -93,7 +93,7 @@ export const bridgeMessages = {
 	finalizeWithdrawal:
 		"Your Bridge Transaction is Claimed. The status is still Pending until it's finalized on Mina. This can take up to 1 hour, to ensure Mina L1 finality. Completed Transactions appear below.",
 	canCancel:
-		"Your Send transaction took longer than the Bridge Timeout setting, please Cancel to reclaim your funds on Mina L1, and try Bridging again.",
+		"Your Send transaction took longer than the Bridge Timeout setting, <b>please Cancel to reclaim your funds</b> on Mina L1, and try Bridging again.",
 	cancelDeposit: "Waiting for the cancellation transaction to be confirmed.",
 	cancellingDeposit:
 		"Zeko Bridge is generating a cancellation transaction to sign with your wallet.",

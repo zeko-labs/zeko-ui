@@ -648,6 +648,8 @@ export class Bridge {
 			UInt32.from(myDeposit.index),
 			depositParams.deposit
 		)
+		// const currentSlot = await this.fetchCurrentSlot()
+		// console.debug("Info", { currentSlot, params: depositParams.deposit })
 
 		if (!isRejected || isAccepted) {
 			return { ok: false, msg: "Not rejected or accepted" }
