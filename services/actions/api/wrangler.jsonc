@@ -5,7 +5,20 @@
 	"main": "src/index.ts",
 	"preview_urls": true,
 	"compatibility_flags": ["nodejs_compat"],
-	"observability": { "enabled": true, "traces": { "enabled": true } },
+	"observability": {
+		"traces": {
+			"enabled": true,
+			"destinations": ["zeko-traces"],
+			"head_sampling_rate": 1,
+			"persist": true
+		},
+		"logs": {
+			"enabled": true,
+			"destinations": ["zeko-logs"],
+			"head_sampling_rate": 1,
+			"persist": true
+		}
+	},
 	"dev": { "port": 9100 },
 	"routes": [{ "custom_domain": true, "pattern": "api.actions.zeko.io" }],
 	"hyperdrive": [
