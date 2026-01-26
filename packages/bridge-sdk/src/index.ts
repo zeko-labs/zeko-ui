@@ -662,9 +662,19 @@ export class Bridge {
 
 		const lastCommitAse = ase.map(({ action }) => fromList([action]).hash)
 
+		const synchronizedOuterActionStateIndex = outerActions.findIndex(({ index }) =>
+			lastCommit.synchronizedOuterActionStateLength.equals(UInt32.from(index + 1)).toBoolean()
+		)
+
+		if (synchronizedOuterActionStateIndex === -1) {
+			return { ok: false, msg: "No synchronized outer action state index found" }
+		}
+
 		const syncAse = outerActions
-			.slice(Number(lastCommit.synchronizedOuterActionStateLength.toBigint()), outerActions.length)
+			.slice(synchronizedOuterActionStateIndex + 1)
 			.map(({ action }) => fromList([action]).hash)
+
+		const lastCommitIndex = outerActions.findIndex(({ index }) => lastCommit.index === index)
 
 		return {
 			ok: true,
@@ -684,10 +694,10 @@ export class Bridge {
 					prevNextCancelledDeposit: prevNextCancelledDeposit.toString(),
 					checkAccepted: {
 						elems: outerActions
-							.slice(myDepositIndex, lastCommit.index + 1)
+							.slice(myDepositIndex, lastCommitIndex + 1)
 							.map(({ action }) => ({ actions: action.map((a) => a.toString()) })),
 						init: {
-							depositIndex: myDepositIndex.toString(),
+							depositIndex: myDeposit.index.toString(),
 							orignalActionState: myDeposit.beforeActionState.toString(),
 							params: {
 								amount: depositParams.deposit.amount.toString(),
