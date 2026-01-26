@@ -141,4 +141,4 @@ export const hashDb = ({
 }
 
 export const createExplorerUrl = ({ network, hash }: { network: Networks; hash: string }) =>
-	`${baseUrl[network]}/account/${hash}/zk-txs` as const
+	`${baseUrl[network]}/tx/${hash}` as const
