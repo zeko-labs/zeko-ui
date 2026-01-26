@@ -676,6 +676,10 @@ export class Bridge {
 
 		const lastCommitIndex = outerActions.findIndex(({ index }) => lastCommit.index === index)
 
+		if (lastCommitIndex === -1) {
+			return { ok: false, msg: "No last commit index found" }
+		}
+
 		return {
 			ok: true,
 			value: {
