@@ -3,6 +3,7 @@
     <Header />
     <LeaderboardTable />
     <Instructions />
+    <ContestEndedPopup />
   </div>
 </template>
 
