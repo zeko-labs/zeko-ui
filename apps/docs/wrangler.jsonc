@@ -9,5 +9,19 @@
 		"directory": ".vitepress/dist",
 		"binding": "ASSETS",
 		"not_found_handling": "single-page-application"
+	},
+	"observability": {
+		"traces": {
+			"enabled": true,
+			"destinations": ["zeko-traces"],
+			"head_sampling_rate": 1,
+			"persist": true
+		},
+		"logs": {
+			"enabled": true,
+			"destinations": ["zeko-logs"],
+			"head_sampling_rate": 1,
+			"persist": true
+		}
 	}
 }
