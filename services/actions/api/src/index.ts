@@ -22,12 +22,20 @@ const yoga = createYoga<{ cloudflare: CloudflareContext }>({
 	}
 })
 
+const releaseDb = ({ request, context }: { request: Request; context: ExecutionContext }) => {
+	const C = rc.get(request)
+	if (C?.db) context.waitUntil(C.db[1].end())
+	if (C?.noCacheDb) context.waitUntil(C.noCacheDb[1].end())
+	rc.delete(request)
+}
+
 export default {
 	async fetch(request, env, context) {
 		const url = new URL(request.url)
+		const cloudflare = { request, env, context }
+		rc.set(request, { cloudflare })
 
 		if (url.pathname === "/health") {
-			const cloudflare = { request, env, context }
 			const dbHealth = await checkDatabaseHealth(cloudflare)
 
 			const response = {
@@ -43,19 +51,11 @@ export default {
 					...(dbHealth.error && { error: dbHealth.error })
 				}
 			}
-
-			return Response.json(response, {
-				status: dbHealth.healthy ? 200 : 503
-			})
+			releaseDb({ request, context })
+			return Response.json(response, { status: dbHealth.healthy ? 200 : 503 })
 		}
-
-		const cloudflare = { request, env, context }
-		rc.set(request, { cloudflare })
 		const response = await yoga(request, { cloudflare })
-		const C = rc.get(request)
-		if (C?.db) context.waitUntil(C.db[1].end())
-		if (C?.noCacheDb) context.waitUntil(C.noCacheDb[1].end())
-		rc.delete(request)
+		releaseDb({ request, context })
 		return response
 	}
 } satisfies ExportedHandler<Env>
