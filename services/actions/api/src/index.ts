@@ -5,6 +5,7 @@ import { schema } from "./graphql"
 
 const yoga = createYoga<{ cloudflare: CloudflareContext }>({
 	schema,
+	healthCheckEndpoint: "live",
 	cors: (request) => ({
 		origin: request.headers.get("Origin") ?? "localhost:4000",
 		credentials: true,
