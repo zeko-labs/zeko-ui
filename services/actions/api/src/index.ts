@@ -1,6 +1,6 @@
 import { createYoga } from "graphql-yoga"
 import type { Context } from "./builder"
-import { checkDatabaseHealth, type CloudflareContext, rc, useDatabase } from "./db"
+import { type CloudflareContext, checkDatabaseHealth, rc, useDatabase } from "./db"
 import { schema } from "./graphql"
 
 const yoga = createYoga<{ cloudflare: CloudflareContext }>({
