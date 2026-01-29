@@ -126,3 +126,22 @@ export async function deleteInnerActionsFromIndex(tx: PostgresJsDatabase, index:
 	logger.debug(`[deleteInnerActionsFromIndex] deleting from index >= ${index}`)
 	await tx.delete(innerActions).where(sql`${innerActions.index} >= ${index}`)
 }
+
+export async function checkDatabaseHealth(
+	db: PostgresJsDatabase
+): Promise<{ healthy: boolean; latency: number; error?: string }> {
+	const start = performance.now()
+	try {
+		await db.execute(sql`SELECT 1`)
+		return {
+			healthy: true,
+			latency: performance.now() - start
+		}
+	} catch (error) {
+		return {
+			healthy: false,
+			latency: performance.now() - start,
+			error: error instanceof Error ? error.message : String(error)
+		}
+	}
+}

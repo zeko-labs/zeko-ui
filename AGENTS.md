@@ -10,6 +10,16 @@ This monorepo hosts Zeko UI apps and libraries.
 
 This is a monorepo using pnpm as the package manager, and moon as the task runner. The projects are defined in `.moon/workspace.yaml` and `pnpm-workspace.yaml`.
 
+### Codebase Overview
+
+The Zeko UI monorepo contains 18 projects across 3 categories: frontend applications (bridge, faucet, leaderboard, docs), shared packages (bridge-sdk, graphql, design system, Nuxt layer), and backend services (leaderboard/actions APIs and indexers, Mina proxies).
+
+**Stack**: Nuxt 3 + Vue 3, XState, o1js (Mina blockchain), Cloudflare Workers + Durable Objects, PostgreSQL + Drizzle ORM, GraphQL (gql.tada)
+
+**Structure**: Apps consume shared packages; services run on Cloudflare/Northflank; Moon orchestrates all tasks.
+
+For detailed architecture, module guides, and data flows, see [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
+
 ## Common tasks and commands
 
 To install everything, run `pnpm i` from the root.

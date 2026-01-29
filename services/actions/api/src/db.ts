@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 
@@ -64,3 +65,23 @@ export const useDatabase =
 	}
 
 export type Database = ReturnType<typeof useDatabase>
+
+export async function checkDatabaseHealth(
+	cloudflare: CloudflareContext
+): Promise<{ healthy: boolean; latency: number; error?: string }> {
+	const start = performance.now()
+	try {
+		using db = useDatabase(cloudflare)({ cache: false })
+		await db.drizzle.execute(sql`SELECT 1`)
+		return {
+			healthy: true,
+			latency: performance.now() - start
+		}
+	} catch (error) {
+		return {
+			healthy: false,
+			latency: performance.now() - start,
+			error: error instanceof Error ? error.message : String(error)
+		}
+	}
+}

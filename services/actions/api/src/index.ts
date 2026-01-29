@@ -1,6 +1,6 @@
 import { createYoga } from "graphql-yoga"
 import type { Context } from "./builder"
-import { type CloudflareContext, rc, useDatabase } from "./db"
+import { checkDatabaseHealth, type CloudflareContext, rc, useDatabase } from "./db"
 import { schema } from "./graphql"
 
 const yoga = createYoga<{ cloudflare: CloudflareContext }>({
@@ -24,6 +24,31 @@ const yoga = createYoga<{ cloudflare: CloudflareContext }>({
 
 export default {
 	async fetch(request, env, context) {
+		const url = new URL(request.url)
+
+		if (url.pathname === "/health") {
+			const cloudflare = { request, env, context }
+			const dbHealth = await checkDatabaseHealth(cloudflare)
+
+			const response = {
+				status: dbHealth.healthy ? "healthy" : "unhealthy",
+				timestamp: new Date().toISOString(),
+				service: {
+					name: "actions-api",
+					environment: env.ENVIRONMENT || "unknown"
+				},
+				database: {
+					status: dbHealth.healthy ? "up" : "down",
+					latency_ms: Math.round(dbHealth.latency),
+					...(dbHealth.error && { error: dbHealth.error })
+				}
+			}
+
+			return Response.json(response, {
+				status: dbHealth.healthy ? 200 : 503
+			})
+		}
+
 		const cloudflare = { request, env, context }
 		rc.set(request, { cloudflare })
 		const response = await yoga(request, { cloudflare })

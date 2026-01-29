@@ -1,7 +1,7 @@
 import { bearer } from "@elysiajs/bearer"
 import { cors } from "@elysiajs/cors"
 import { Elysia, t } from "elysia"
-import { createDatabase } from "./db"
+import { checkDatabaseHealth, createDatabase } from "./db"
 import { env } from "./env"
 import { Indexer } from "./indexer"
 
@@ -19,6 +19,35 @@ export const server = new Elysia()
 			allowedHeaders: ["Authorization", "Content-Type"]
 		})
 	)
+	.get("/health", async ({ set }) => {
+		const dbHealth = await checkDatabaseHealth(db)
+		const indexerStatus = indexer.getStatus()
+
+		const overallHealthy =
+			dbHealth.healthy && indexerStatus.isRunning && indexerStatus.consecutiveErrors < 5
+
+		const response = {
+			status: overallHealthy ? "healthy" : dbHealth.healthy ? "degraded" : "unhealthy",
+			timestamp: new Date().toISOString(),
+			service: {
+				name: "actions-indexer",
+				environment: env.ENVIRONMENT || "unknown"
+			},
+			database: {
+				status: dbHealth.healthy ? "up" : "down",
+				latency_ms: Math.round(dbHealth.latency),
+				...(dbHealth.error && { error: dbHealth.error })
+			},
+			indexer: {
+				status: indexerStatus.isRunning ? "running" : "stopped",
+				lastFetchedBlock: indexerStatus.lastFetchedBlock,
+				consecutiveErrors: indexerStatus.consecutiveErrors
+			}
+		}
+
+		set.status = overallHealthy ? 200 : 503
+		return response
+	})
 	.guard({
 		beforeHandle: ({ bearer, status }) => {
 			if (bearer !== authToken) return status(401, { success: false, message: "Unauthorized" })
