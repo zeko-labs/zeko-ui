@@ -65,6 +65,9 @@
   --palette-error-background: oklch(89.1% 0.042 21.6);
   --palette-error-border: oklch(81.6% 0.073 24);
   --palette-error-content: oklch(48.2% 0.153 28.2);
+  --palette-cancelled-background: oklch(94.5% 0.012 280);
+  --palette-cancelled-border: oklch(86% 0.03 280);
+  --palette-cancelled-content: oklch(52% 0.06 280);
   /*  Gradients  */
   --gradients-goldGradient-1: linear-gradient(
     251deg,

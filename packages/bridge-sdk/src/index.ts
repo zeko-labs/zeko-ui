@@ -1039,6 +1039,7 @@ export class Bridge {
 				return {
 					...witness,
 					...deposit,
+					cancelled: nextCancelledDeposit.greaterThan(UInt32.from(witness.index)).toBoolean(),
 					synced: syncedOuterActionState.length
 						.greaterThanOrEqual(UInt32.from(witness.index + 1))
 						.toBoolean(),

@@ -66,14 +66,23 @@ onMounted(async () => {
       Please check <a href="https://docs.zeko.io">Zeko Docs</a> for more
       information.
     </p>
-    <Switch>
-      <Match :when="unsupportedBrowser">
+    <SwitchMatch
+      :signal="
+        [
+        	unsupportedBrowser,
+        	noWalletExtension,
+        	notConnected,
+        	wrongNetwork,
+        	error
+        ]
+      ">
+      <Case :when="unsupportedBrowser">
         <p>
           The Rollup Bridge is not supported on Safari. Please use a different
           browser, such as Chrome or Firefox.
         </p>
-      </Match>
-      <Match :when="noWalletExtension">
+      </Case>
+      <Case :when="noWalletExtension">
         <p>
           Download and install the Auro Wallet extension to use the Rollup
           Bridge.
@@ -83,28 +92,28 @@ onMounted(async () => {
             Download AuroWallet
           </Button>
         </a>
-      </Match>
-      <Match :when="notConnected">
+      </Case>
+      <Case :when="notConnected">
         <p>Please connect your wallet to start bridging.</p>
         <Button
           variant="main"
           @click='bs.wallet.send({ type: "Connect" })'>
           Connect Wallet
         </Button>
-      </Match>
-      <Match :when="wrongNetwork">
+      </Case>
+      <Case :when="wrongNetwork">
         <Button
           variant="main"
           @click='bs.bridge.send({ type: "SwitchToTesnet" })'>
           Switch To Testnet
         </Button>
-      </Match>
-      <Match :when="error">
+      </Case>
+      <Case :when="error">
         <p class="error">
           An error has occurred with the bridge. Please try again later.
         </p>
-      </Match>
-    </Switch>
+      </Case>
+    </SwitchMatch>
   </div>
 </template>
 <style lang="postcss" scoped>

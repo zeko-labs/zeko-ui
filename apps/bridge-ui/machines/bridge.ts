@@ -27,7 +27,7 @@ type Operations = Map<
 type Wallet = ActorRefFromLogic<typeof walletMachine>
 type OperationWorker = Comlink.Remote<OperationsWorker>
 
-type Command = "start" | "resumeDeposit" | "resumeWithdrawal" | "complete"
+type Command = "start" | "resumeDeposit" | "resumeWithdrawal" | "complete" | "completeCancelled"
 type StartOperationSettings = {
 	amount: string
 	command: Command
@@ -125,6 +125,7 @@ export const bridgeMachine = setup({
 				{
 					start: regularDirection,
 					complete: regularDirection,
+					completeCancelled: regularDirection,
 					resumeDeposit: "deposit",
 					resumeWithdrawal: "withdrawal"
 				} as const
@@ -150,6 +151,8 @@ export const bridgeMachine = setup({
 				operation.send({ type: "Resume", paused: state?.status === "paused" })
 			}
 			if (command === "complete") operation.send({ type: "CompleteBridgeOperation" })
+			if (command === "completeCancelled")
+				operation.send({ type: "CompleteBridgeOperationCancelled" })
 			const operations = context.operations.set(id, {
 				status: state?.status ?? "started",
 				operation
@@ -157,7 +160,9 @@ export const bridgeMachine = setup({
 			return {
 				operations: new Map(operations),
 				activeOperation:
-					command === "complete" || state?.status === "paused" ? context.activeOperation : id
+					command === "complete" || command === "completeCancelled" || state?.status === "paused"
+						? context.activeOperation
+						: id
 			}
 		}),
 		pauseOperation: assign(({ context }, params: { id: string }) => {
@@ -385,7 +390,7 @@ export const bridgeMachine = setup({
 						}
 						const handlePending = () => {
 							const [deposit, ...deposits] = event.output.deposits.filter(
-								(a) => a.finalised === false
+								(a) => a.finalised === false && a.cancelled === false
 							)
 							const [withdrawal, ...withdrawals] = event.output.withdrawals.filter(
 								(a) => a.finalised === false
@@ -425,8 +430,17 @@ export const bridgeMachine = setup({
 								start({ status: "completed", actionState, command: "complete" })
 						}
 
+						const handleCancelled = () => {
+							const deposits = event.output.deposits.filter(
+								(a) => a.cancelled === true && a.finalised === false
+							)
+							for (const actionState of deposits)
+								start({ status: "completed", actionState, command: "completeCancelled" })
+						}
+
 						handlePending()
 						handleComplete()
+						handleCancelled()
 					})
 				},
 				onError: { target: "ERROR" }

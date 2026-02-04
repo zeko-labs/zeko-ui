@@ -66,6 +66,7 @@ watch(machine.value.context.errors, (newErrors) => {
             {{
               {
               	complete: "Completed",
+              	cancelled: "Cancelled",
               	pending: "Pending",
               	error: "Failed"
               }[status.kind]
@@ -112,135 +113,116 @@ watch(machine.value.context.errors, (newErrors) => {
             @click='operation.send({ type: "Finalize" })'>Claim</Button>
         </div>
         <div class="Explanation">
-          <Switch>
-            <!-- Initializing: loading wallet history and status -->
-            <Match :when='machine.matches("INIT_BRIDGE_OPERATION")'>
+          <SwitchMatch :signal="machine">
+            <Case :when='machine.matches("INIT_BRIDGE_OPERATION")'>
               <BridgeMessage messageKey="initBridgeOperation" />
-            </Match>
+            </Case>
 
-            <!-- Submit withdrawal: generating transaction -->
-            <Match
-              :when='machine.matches({ SUBMIT_WITHDRAWAL: "transaction" })'>
+            <Case :when='machine.matches({ SUBMIT_WITHDRAWAL: "transaction" })'>
               <BridgeMessage messageKey="submit" />
-            </Match>
+            </Case>
 
-            <!-- Submit withdrawal: waiting for confirmation -->
-            <Match
+            <Case
               :when='machine.matches({ SUBMIT_WITHDRAWAL: "send_and_confirm" })'>
               <BridgeMessage
                 messageKey="submitDeposit"
                 :transactions="machine.context.transactions"
                 transactionKey="submitWithdrawal"
               />
-            </Match>
+            </Case>
 
-            <!-- Submit deposit: generating transaction -->
-            <Match :when='machine.matches({ SUBMIT_DEPOSIT: "transaction" })'>
+            <Case :when='machine.matches({ SUBMIT_DEPOSIT: "transaction" })'>
               <BridgeMessage messageKey="submit" />
-            </Match>
+            </Case>
 
-            <!-- Submit deposit: waiting for confirmation -->
-            <Match
+            <Case
               :when='machine.matches({ SUBMIT_DEPOSIT: "send_and_confirm" })'>
               <BridgeMessage
                 messageKey="submitDeposit"
                 :transactions="machine.context.transactions"
                 transactionKey="submitDeposit"
               />
-            </Match>
+            </Case>
 
-            <!-- Pending deposit: awaiting on-chain finality -->
-            <Match :when='machine.matches("PENDING_DEPOSIT")'>
+            <Case :when='machine.matches("PENDING_DEPOSIT")'>
               <BridgeMessage
                 messageKey="pending"
                 :transactions="machine.context.transactions"
                 transactionKey="submitDeposit"
               />
-            </Match>
+            </Case>
 
-            <!-- Pending withdrawal: awaiting on-chain finality -->
-            <Match :when='machine.matches("PENDING_WITHDRAWAL")'>
+            <Case :when='machine.matches("PENDING_WITHDRAWAL")'>
               <BridgeMessage
                 messageKey="pending"
                 :transactions="machine.context.transactions"
                 transactionKey="submitWithdrawal"
               />
-            </Match>
+            </Case>
 
-            <!-- Ready to finalize: user can claim -->
-            <Match :when='machine.matches("TO_FINALIZE")'>
+            <Case :when='machine.matches("TO_FINALIZE")'>
               <BridgeMessage messageKey="toFinalize" />
-            </Match>
+            </Case>
 
-            <!-- Can cancel: deposit timed out -->
-            <Match :when='machine.matches("CAN_CANCEL")'>
+            <Case :when='machine.matches("CAN_CANCEL")'>
               <div class="warning">
                 <BridgeMessage messageKey="canCancel" />
               </div>
-            </Match>
+            </Case>
 
-            <!-- Cancel deposit: generating cancellation transaction -->
-            <Match :when='machine.matches({ CANCEL_DEPOSIT: "transaction" })'>
+            <Case :when='machine.matches({ CANCEL_DEPOSIT: "transaction" })'>
               <BridgeMessage messageKey="cancellingDeposit" />
-            </Match>
+            </Case>
 
-            <!-- Cancel deposit: waiting for cancellation confirmation -->
-            <Match
+            <Case
               :when='machine.matches({ CANCEL_DEPOSIT: "send_and_confirm" })'>
               <BridgeMessage
                 messageKey="cancelDeposit"
                 :transactions="machine.context.transactions"
                 transactionKey="cancelDeposit"
               />
-            </Match>
+            </Case>
 
-            <!-- Deposit cancelled: funds returned -->
-            <Match :when='machine.matches("DEPOSIT_CANCELLED")'>
+            <Case :when='machine.matches("DEPOSIT_CANCELLED")'>
               <BridgeMessage messageKey="depositCancelled" />
-            </Match>
+            </Case>
 
-            <!-- Finalize deposit: generating proof -->
-            <Match :when='machine.matches({ FINALIZE_DEPOSIT: "transaction" })'>
+            <Case :when='machine.matches({ FINALIZE_DEPOSIT: "transaction" })'>
               <BridgeMessage messageKey="finalizeTransaction" />
-            </Match>
+            </Case>
 
-            <!-- Finalize deposit: waiting for confirmation -->
-            <Match
+            <Case
               :when='machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })'>
               <BridgeMessage
                 messageKey="finalizeDeposit"
                 :transactions="machine.context.transactions"
                 transactionKey="finalizeDeposit"
               />
-            </Match>
+            </Case>
 
-            <!-- Finalize withdrawal: generating proof -->
-            <Match
+            <Case
               :when='machine.matches({ FINALIZE_WITHDRAWAL: "transaction" })'>
               <BridgeMessage messageKey="finalizeTransaction" />
-            </Match>
+            </Case>
 
-            <!-- Finalize withdrawal: waiting for confirmation -->
-            <Match
+            <Case
               :when='machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" })'>
               <BridgeMessage
                 messageKey="finalizeWithdrawal"
                 :transactions="machine.context.transactions"
                 transactionKey="finalizeWithdrawal"
               />
-            </Match>
+            </Case>
 
-            <!-- Waiting for network: user must switch wallet network -->
-            <Match :when='machine.matches("WAITING_FOR_NETWORK")'>
+            <Case :when='machine.matches("WAITING_FOR_NETWORK")'>
               <div class="Flex">
                 <span>Switch your wallet to&nbsp;</span>
                 <NetworkBadge :network="machine.context.changeNetworkTo" />
                 <span>.</span>
               </div>
-            </Match>
+            </Case>
 
-            <!-- Failed: something went wrong -->
-            <Match :when='machine.matches("FAILED")'>
+            <Case :when='machine.matches("FAILED")'>
               <div class="error">
                 <p>
                   Something went wrong.
@@ -251,8 +233,8 @@ watch(machine.value.context.errors, (newErrors) => {
                     target="_blank">Contact us on Discord</a>.
                 </p>
               </div>
-            </Match>
-          </Switch>
+            </Case>
+          </SwitchMatch>
         </div>
       </div>
     </div>

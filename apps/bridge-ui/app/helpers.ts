@@ -45,12 +45,13 @@ export const statePath = (state: MachineStates) => {
 export const statusFromState = (
 	state: MachineStates,
 	direction: Direction
-): { text: string; kind: "pending" | "complete" | "error" } => {
+): { text: string; kind: "pending" | "complete" | "cancelled" | "error" } => {
 	const isDeposit = direction === "deposit"
 	if (typeof state === "string") {
+		if (state === "BRIDGE_OPERATION_CANCELLED_DONE" || state === "DEPOSIT_CANCELLED")
+			return { text: "Cancelled", kind: "cancelled" }
 		if (state.includes("DONE") || state === "BRIDGE_OPERATION_COMPLETED")
 			return isDeposit ? deposit("complete")(3) : withdrawal("complete")(3)
-		if (state === "DEPOSIT_CANCELLED") return { text: "Cancelled", kind: "complete" }
 		if (state === "PENDING_DEPOSIT") return pendingDeposit(1)
 		if (state === "PENDING_WITHDRAWAL") return pendingWithdrawal(1)
 		if (state === "TO_FINALIZE") return isDeposit ? pendingDeposit(2) : pendingWithdrawal(2)

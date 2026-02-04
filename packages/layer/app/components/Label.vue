@@ -1,7 +1,9 @@
 <script lang="ts" setup>
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
-import { CircleXIcon } from "lucide-vue-next"
-const { is } = defineProps<{ is: "pending" | "complete" | "error" }>()
+import { BanIcon, CircleXIcon } from "lucide-vue-next"
+
+const { is } = defineProps<{
+	is: "pending" | "complete" | "cancelled" | "error"
+}>()
 </script>
 <template>
   <div class="Label" :class="is">
@@ -13,6 +15,10 @@ const { is } = defineProps<{ is: "pending" | "complete" | "error" }>()
       <Match :when='is === "complete"'>
         <SvgCompletedCircle />
         <slot>Completed</slot>
+      </Match>
+      <Match :when='is === "cancelled"'>
+        <BanIcon />
+        <slot>Cancelled</slot>
       </Match>
       <Match :when='is === "error"'>
         <CircleXIcon />
@@ -44,6 +50,12 @@ const { is } = defineProps<{ is: "pending" | "complete" | "error" }>()
   border: 1px solid var(--palette-pending-border);
   background: var(--palette-pending-background);
   color: var(--palette-pending-content);
+}
+
+.cancelled {
+  border: 1px solid var(--palette-cancelled-border);
+  background: var(--palette-cancelled-background);
+  color: var(--palette-cancelled-content);
 }
 
 .error {

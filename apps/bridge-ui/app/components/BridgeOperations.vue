@@ -147,6 +147,7 @@ const visiblePages = computed(() => {
                 {{
                   {
                   	complete: "Completed",
+                  	cancelled: "Cancelled",
                   	pending: "Pending",
                   	error: "Failed"
                   }[row.original.statusKind]

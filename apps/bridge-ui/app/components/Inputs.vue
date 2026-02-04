@@ -43,16 +43,16 @@ const disabledButton = computed(
         Send
       </Button>
       <aside>
-        <Switch>
-          <Match :when="loading">
+        <SwitchMatch :signal="loading">
+          <Case :when="loading">
             Please wait… The Zeko Bridge is loading your wallet's latest
             transaction history and status.
-          </Match>
-          <Fallback>
+          </Case>
+          <Case :when="!loading">
             Bridging requires signing two transactions: 1) Send from the origin
             chain, then 2) Claim to the destination chain.
-          </Fallback>
-        </Switch>
+          </Case>
+        </SwitchMatch>
       </aside>
     </div>
   </div>
