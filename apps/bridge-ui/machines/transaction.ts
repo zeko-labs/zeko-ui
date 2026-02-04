@@ -4,10 +4,11 @@ import type { Mina } from "o1js"
 import type { ActorRefFromLogic } from "xstate"
 import { assign, enqueueActions, fromPromise, setup } from "xstate"
 import { createLogger } from "./debug"
+import { sendMetric } from "./metrics"
 import { type HashDb, hashDb, type SavedTransaction } from "./helpers"
 import type { OperationsWorker } from "./operations.worker"
 
-const { act, logger } = createLogger("[TRANSACTION]")
+const { act, logger } = createLogger("[TRANSACTION]", { metrics: true })
 
 const MAX_RETRIES = 5
 
@@ -232,10 +233,16 @@ export const transactionMachine = setup({
 							const isFeeError = String(event.error).includes("Fee is too low")
 							return isFeeError && context.retryCount < MAX_RETRIES
 						},
-						actions: assign(({ context }) => ({
-							retryCount: context.retryCount + 1,
-							feeMultiplier: context.feeMultiplier * 2
-						}))
+						actions: assign(({ context }) => {
+							const retryCount = context.retryCount + 1
+							const feeMultiplier = context.feeMultiplier * 2
+							sendMetric({
+								category: "transaction",
+								action: "feeRetry",
+								label: `retry:${retryCount},multiplier:${feeMultiplier}`
+							})
+							return { retryCount, feeMultiplier }
+						})
 					},
 					{
 						target: "DONE",

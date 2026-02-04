@@ -36,6 +36,7 @@
 			"custom_domain": true
 		}
 	],
+	"analytics_engine_datasets": [{ "binding": "BRIDGE_METRICS", "dataset": "bridge_metrics" }],
 	"vars": {
 		"SENTRY_PROJECT_IDS": ["4510000244326480"]
 	}

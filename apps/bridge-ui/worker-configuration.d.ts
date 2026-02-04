@@ -5,6 +5,7 @@ declare namespace Cloudflare {
 	interface Env {
 		SENTRY_PROJECT_IDS: ["zeko-bridge"]
 		SENTRY_HOST: string
+		BRIDGE_METRICS: AnalyticsEngineDataset
 		CF_VERSION_METADATA: WorkerVersionMetadata
 		ASSETS: Fetcher
 	}

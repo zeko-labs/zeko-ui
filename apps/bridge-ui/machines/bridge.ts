@@ -6,6 +6,7 @@ import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
 import { createLogger } from "./debug"
+import { sendMetric } from "./metrics"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
 import workerUrl from "./operations.worker?worker&url"
 
@@ -14,7 +15,7 @@ if (import.meta.client) {
 	Sentry.addIntegration(Sentry.webWorkerIntegration({ worker }))
 }
 
-const { act, logger } = createLogger("[BRIDGE]")
+const { act, logger } = createLogger("[BRIDGE]", { metrics: true })
 
 type OperationStatus = "started" | "paused" | "completed"
 type Operations = Map<
@@ -282,6 +283,12 @@ export const bridgeMachine = setup({
 						}
 					}
 					// Assign data
+					sendMetric({
+						category: "bridge",
+						action: "networkChanged",
+						source: sourceNetwork,
+						destination: destinationNetwork
+					})
 					enqueue.assign({ sourceNetwork, destinationNetwork })
 				})
 			}
@@ -304,10 +311,18 @@ export const bridgeMachine = setup({
 		},
 		InvertDirection: {
 			target: ".READY",
-			actions: assign(({ context: { sourceNetwork, destinationNetwork } }) => ({
-				sourceNetwork: destinationNetwork,
-				destinationNetwork: sourceNetwork
-			}))
+			actions: assign(({ context: { sourceNetwork, destinationNetwork } }) => {
+				sendMetric({
+					category: "bridge",
+					action: "directionInverted",
+					source: destinationNetwork,
+					destination: sourceNetwork
+				})
+				return {
+					sourceNetwork: destinationNetwork,
+					destinationNetwork: sourceNetwork
+				}
+			})
 		},
 		StartOperation: {
 			description:
@@ -366,7 +381,14 @@ export const bridgeMachine = setup({
 				}),
 				onDone: {
 					target: "READY",
-					actions: enqueueActions(({ event, enqueue }) => {
+					actions: enqueueActions(({ event, enqueue, context }) => {
+						sendMetric({
+							category: "bridge",
+							action: "findPendingOperations",
+							label: `deposits:${event.output.deposits.length},withdrawals:${event.output.withdrawals.length}`,
+							source: context.sourceNetwork,
+							destination: context.destinationNetwork
+						})
 						interface StartArgs {
 							status: OperationStatus
 							actionState: ActionState

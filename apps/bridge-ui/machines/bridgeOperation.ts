@@ -18,10 +18,11 @@ import {
 import { finalizeNotification } from "../app/service-worker/notificationList"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
+import { sendMetric } from "./metrics"
 import type { ActionState } from "./operations.worker"
 import { type Result, transactionMachine } from "./transaction"
 
-const { act, logger, measure } = createLogger("[BRIDGE OPERATION]")
+const { act, logger, measure } = createLogger("[BRIDGE OPERATION]", { metrics: true })
 
 const bridgeParameters = ({ bridge, user, l1, l2 }: BridgeOperationContext) => {
 	return { bridge, user, l1, l2 }
@@ -315,11 +316,59 @@ export const bridgeOperationMachine = setup({
 	states: {
 		IDLE: {
 			on: {
-				Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) },
-				Pause: { target: "PAUSED", actions: assign({ paused: true }) },
+				Resume: {
+					target: "RESUMING",
+					actions: [
+						assign({ paused: ({ event }) => event.paused }),
+						({ context }) => {
+							sendMetric(
+								{
+									category: "bridge_operation",
+									action: "resumed",
+									source: context.source,
+									destination: context.destination
+								},
+								context.user
+							)
+						}
+					]
+				},
+				Pause: {
+					target: "PAUSED",
+					actions: [
+						assign({ paused: true }),
+						({ context }) => {
+							sendMetric(
+								{
+									category: "bridge_operation",
+									action: "paused",
+									source: context.source,
+									destination: context.destination
+								},
+								context.user
+							)
+						}
+					]
+				},
 				CompleteBridgeOperation: { target: "BRIDGE_OPERATION_DONE_NOOP" },
 				StartBridgeOperation: [
-					{ target: "INIT_BRIDGE_OPERATION", guard: "currentNetworkIsSource" },
+					{
+						target: "INIT_BRIDGE_OPERATION",
+						guard: "currentNetworkIsSource",
+						actions: ({ context }) => {
+							sendMetric(
+								{
+									category: "bridge_operation",
+									action: "started",
+									amount: Number(context.amount),
+									source: context.source,
+									destination: context.destination,
+									label: context.direction
+								},
+								context.user
+							)
+						}
+					},
 					{
 						target: "WAITING_FOR_NETWORK",
 						guard: "currentNetworkIsDestination",
@@ -506,6 +555,17 @@ export const bridgeOperationMachine = setup({
 			meta: { step: 1 },
 			description:
 				"The deposit can be cancelled because the timeout has passed and it was not finalized.",
+			entry: ({ context }) => {
+				sendMetric(
+					{
+						category: "bridge_operation",
+						action: "canCancel",
+						source: context.source,
+						destination: context.destination
+					},
+					context.user
+				)
+			},
 			on: {
 				Cancel: [
 					{
@@ -779,6 +839,18 @@ export const bridgeOperationMachine = setup({
 		},
 		BRIDGE_OPERATION_COMPLETED: {
 			meta: { step: 4 },
+			entry: ({ context }) => {
+				sendMetric(
+					{
+						category: "bridge_operation",
+						action: "completed",
+						source: context.source,
+						destination: context.destination,
+						label: context.direction
+					},
+					context.user
+				)
+			},
 			after: { exitTimeout: "BRIDGE_OPERATION_DONE" }
 		},
 		BRIDGE_OPERATION_DONE: {
@@ -793,6 +865,22 @@ export const bridgeOperationMachine = setup({
 			meta: { step: 4 },
 			type: "final"
 		},
-		FAILED: { type: "final" }
+		FAILED: {
+			type: "final",
+			entry: ({ context }) => {
+				const lastError = context.errors.at(-1)
+				sendMetric(
+					{
+						category: "bridge_operation",
+						action: "failed",
+						source: context.source,
+						destination: context.destination,
+						success: false,
+						label: lastError?.message ?? "unknown error"
+					},
+					context.user
+				)
+			}
+		}
 	}
 })
