@@ -9,6 +9,11 @@ const emit = defineEmits<{ close: [] }>()
 const bridgeSettings = useBridgeSettings()
 const timeoutOptions: BridgeTimeoutHours[] = [6, 12, 24, 36]
 
+const showDevTimeout = computed(() => {
+	if (import.meta.server) return false
+	return !window.location.hostname.endsWith("zeko.io")
+})
+
 const selectTimeout = (hours: BridgeTimeoutHours) => {
 	bridgeSettings.setTimeoutHours(hours)
 }
@@ -31,17 +36,15 @@ const selectTimeout = (hours: BridgeTimeoutHours) => {
             You can cancel your transaction after the Bridge Timeout.
           </p>
           <div class="TimeoutOptions">
-            <DevOnly>
-              <label class="TimeoutOption">
-                <input
-                  type="radio"
-                  name="timeout"
-                  value="dev"
-                  :checked="bridgeSettings.timeoutHours.value === 0"
-                  @change="selectTimeout(0)">
-                <span>180s (dev)</span>
-              </label>
-            </DevOnly>
+            <label v-if="showDevTimeout" class="TimeoutOption">
+              <input
+                type="radio"
+                name="timeout"
+                value="dev"
+                :checked="bridgeSettings.timeoutHours.value === 0"
+                @change="selectTimeout(0)">
+              <span>180s (dev)</span>
+            </label>
             <label
               v-for="hours of timeoutOptions"
               :key="hours"
