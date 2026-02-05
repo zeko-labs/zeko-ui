@@ -7,6 +7,17 @@ const ALLOWED_ORIGINS = [
 	...(process.dev ? ["http://localhost:3090"] : [])
 ]
 
+/**
+ * POST /metrics - Bridge analytics ingestion endpoint.
+ *
+ * Accepts metric events from the bridge UI and writes to Cloudflare Analytics Engine.
+ * Validates origin, schema, and stores data in BRIDGE_METRICS dataset.
+ *
+ * Storage format (Analytics Engine):
+ * - index[0]: category (for filtering)
+ * - blobs: [category, action, label, source, destination, userAgent, walletAddress, language, screenResolution]
+ * - doubles: [durationMs, amount, success(1/0/-1), timestamp, cpuCores]
+ */
 export default defineEventHandler(async (event) => {
 	try {
 		const env = event.context.cloudflare.env as unknown as Env

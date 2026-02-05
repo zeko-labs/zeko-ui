@@ -16,6 +16,10 @@ export const clearWalletAddress = () => {
 	cachedWalletAddress = undefined
 }
 
+/**
+ * Collects device context (userAgent, cpuCores, language, screenResolution).
+ * Caches the result after first call for performance.
+ */
 const getUserContext = (walletAddress?: string): Partial<MetricEvent> => {
 	if (!cachedUserContext) {
 		cachedUserContext = {
@@ -29,6 +33,11 @@ const getUserContext = (walletAddress?: string): Partial<MetricEvent> => {
 	return { ...cachedUserContext, walletAddress: cachedWalletAddress }
 }
 
+/**
+ * Sends a metric event to the /metrics endpoint.
+ * Automatically attaches user context and timestamp.
+ * Failures are silently ignored (fire-and-forget).
+ */
 export const sendMetric = (event: MetricEvent, walletAddress?: string) => {
 	const payload: MetricEvent = {
 		...getUserContext(walletAddress),

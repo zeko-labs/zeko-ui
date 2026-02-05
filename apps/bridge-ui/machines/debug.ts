@@ -59,7 +59,16 @@ const prefixToCategory = (prefix: string): MetricEvent["category"] =>
 type CreateLoggerOptions = { metrics?: boolean }
 
 /**
- * Helper function to measure and log the time taken to execute an action.
+ * Creates a prefixed logger with optional metric tracking.
+ *
+ * @param prefix - Logger prefix (e.g., "[BRIDGE]", "[TRANSACTION]")
+ * @param options.metrics - Enable automatic metric tracking via sendMetric()
+ *
+ * When metrics are enabled, the act() function automatically sends:
+ * - durationMs: Action execution time
+ * - success: true/false
+ * - label: Error message on failure
+ * - category: Derived from prefix (e.g., "[BRIDGE OPERATION]" → "bridge_operation")
  */
 export const createLogger = (prefix: string, options?: CreateLoggerOptions) => {
 	const logger = prefixedLogger(prefix)

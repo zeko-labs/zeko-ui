@@ -1,5 +1,17 @@
 import * as v from "valibot"
 
+/**
+ * Metric event schema for bridge analytics.
+ *
+ * Categories:
+ * - bridge: Network changes, direction flips, pending operations
+ * - bridge_operation: Deposit/withdrawal lifecycle (started, paused, completed, failed)
+ * - transaction: Transaction execution metrics, fee retries
+ *
+ * Storage: Cloudflare Analytics Engine (BRIDGE_METRICS dataset)
+ * - Blobs (strings): category, action, label, source, destination, userAgent, walletAddress, language, screenResolution
+ * - Doubles: durationMs, amount, success(1/0/-1), timestamp, cpuCores
+ */
 export const MetricEventSchema = v.object({
 	category: v.picklist(["bridge", "bridge_operation", "transaction"]),
 	action: v.pipe(v.string(), v.maxLength(100)),
