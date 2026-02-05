@@ -59,7 +59,8 @@ const bs = useBridgeStore()
 </template>
 <style lang="postcss" scoped>
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2);
   }
   50% {

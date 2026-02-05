@@ -19,7 +19,7 @@
   background: linear-gradient(
     90deg,
     rgba(217, 217, 217, 0.72) 0%,
-    rgba(217, 217, 217, 0.00) 100%
+    rgba(217, 217, 217, 0) 100%
   );
   overflow: hidden;
 

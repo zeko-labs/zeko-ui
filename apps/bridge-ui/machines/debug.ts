@@ -1,5 +1,6 @@
 import { type ConsolaInstance, createConsola } from "consola"
 import { sendMetric } from "./metrics"
+import type { MetricEvent } from "./metrics.schema"
 
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 const safeProcess = (globalThis as any).process || { env: {} }
@@ -47,8 +48,13 @@ const createMeasure = (l: ConsolaInstance) => (label: string) => {
 	}
 }
 
-const prefixToCategory = (prefix: string): string =>
-	prefix.replace(/^\[/, "").replace(/\]$/, "").trim().toLowerCase().replace(/\s+/g, "_")
+const prefixToCategory = (prefix: string): MetricEvent["category"] =>
+	prefix
+		.replace(/^\[/, "")
+		.replace(/\]$/, "")
+		.trim()
+		.toLowerCase()
+		.replace(/\s+/g, "_") as MetricEvent["category"]
 
 type CreateLoggerOptions = { metrics?: boolean }
 
@@ -61,7 +67,11 @@ export const createLogger = (prefix: string, options?: CreateLoggerOptions) => {
 	const metricsEnabled = options?.metrics === true
 	const category = prefixToCategory(prefix)
 
-	const act = async <T>(label: string, body: ({ stop }: { stop: () => void }) => Promise<T>) => {
+	const act = async <T>(
+		label: string,
+		body: ({ stop }: { stop: () => void }) => Promise<T>,
+		walletAddress?: string
+	) => {
 		const start = performance.now()
 		const stop = measure(label)
 		logger.start(label)
@@ -70,12 +80,15 @@ export const createLogger = (prefix: string, options?: CreateLoggerOptions) => {
 			logger.success(label)
 			stop()
 			if (metricsEnabled) {
-				sendMetric({
-					category,
-					action: label,
-					durationMs: performance.now() - start,
-					success: true
-				})
+				sendMetric(
+					{
+						category,
+						action: label,
+						durationMs: performance.now() - start,
+						success: true
+					},
+					walletAddress
+				)
 			}
 			return result
 		} catch (e) {
@@ -83,16 +96,19 @@ export const createLogger = (prefix: string, options?: CreateLoggerOptions) => {
 			stop()
 			if (metricsEnabled) {
 				const errorLabel = e instanceof Error ? e.message : String(e)
-				sendMetric({
-					category,
-					action: label,
-					durationMs: performance.now() - start,
-					success: false,
-					label: errorLabel
-				})
+				sendMetric(
+					{
+						category,
+						action: label,
+						durationMs: performance.now() - start,
+						success: false,
+						label: errorLabel
+					},
+					walletAddress
+				)
 			}
 			throw e
 		}
 	}
-	return { act, logger, measure, ...(metricsEnabled ? { sendMetric } : {}) }
+	return { act, logger, measure }
 }

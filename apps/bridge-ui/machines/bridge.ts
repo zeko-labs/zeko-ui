@@ -6,7 +6,7 @@ import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
 import { createLogger } from "./debug"
-import { sendMetric } from "./metrics"
+import { clearWalletAddress, sendMetric } from "./metrics"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
 import workerUrl from "./operations.worker?worker&url"
 
@@ -228,6 +228,7 @@ export const bridgeMachine = setup({
 				target: ".FIND_OPERATIONS",
 				guard: ({ context }) => context.accountReady && context.walletReady,
 				actions: enqueueActions(({ enqueue, context }) => {
+					clearWalletAddress()
 					context.operations.forEach(({ operation }) => {
 						operation.send({ type: "Destroy" })
 					})
@@ -283,12 +284,15 @@ export const bridgeMachine = setup({
 						}
 					}
 					// Assign data
-					sendMetric({
-						category: "bridge",
-						action: "networkChanged",
-						source: sourceNetwork,
-						destination: destinationNetwork
-					})
+					sendMetric(
+						{
+							category: "bridge",
+							action: "networkChanged",
+							source: sourceNetwork,
+							destination: destinationNetwork
+						},
+						context.wallet.getSnapshot().context.account
+					)
 					enqueue.assign({ sourceNetwork, destinationNetwork })
 				})
 			}
@@ -311,13 +315,16 @@ export const bridgeMachine = setup({
 		},
 		InvertDirection: {
 			target: ".READY",
-			actions: assign(({ context: { sourceNetwork, destinationNetwork } }) => {
-				sendMetric({
-					category: "bridge",
-					action: "directionInverted",
-					source: destinationNetwork,
-					destination: sourceNetwork
-				})
+			actions: assign(({ context: { sourceNetwork, destinationNetwork, wallet } }) => {
+				sendMetric(
+					{
+						category: "bridge",
+						action: "directionInverted",
+						source: destinationNetwork,
+						destination: sourceNetwork
+					},
+					wallet.getSnapshot().context.account
+				)
 				return {
 					sourceNetwork: destinationNetwork,
 					destinationNetwork: sourceNetwork
@@ -382,13 +389,16 @@ export const bridgeMachine = setup({
 				onDone: {
 					target: "READY",
 					actions: enqueueActions(({ event, enqueue, context }) => {
-						sendMetric({
-							category: "bridge",
-							action: "findPendingOperations",
-							label: `deposits:${event.output.deposits.length},withdrawals:${event.output.withdrawals.length}`,
-							source: context.sourceNetwork,
-							destination: context.destinationNetwork
-						})
+						sendMetric(
+							{
+								category: "bridge",
+								action: "findPendingOperations",
+								label: `deposits:${event.output.deposits.length},withdrawals:${event.output.withdrawals.length}`,
+								source: context.sourceNetwork,
+								destination: context.destinationNetwork
+							},
+							context.wallet.getSnapshot().context.account
+						)
 						interface StartArgs {
 							status: OperationStatus
 							actionState: ActionState

@@ -25,9 +25,9 @@ const scan = computed(() =>
   <span>
     <span v-html="message" />
     <span v-if="url">
-      View transaction status on <a
-        :href="url"
-        target="_blank"
-        rel="noopener noreferrer">{{ scan }}</a>.</span>
+      View transaction status on
+      <a :href="url" target="_blank" rel="noopener noreferrer">{{
+        scan
+      }}</a>.</span>
   </span>
 </template>

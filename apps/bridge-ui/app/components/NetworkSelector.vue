@@ -110,7 +110,8 @@ watch(
 </template>
 
 <style lang="postcss" scoped>
-span, button {
+span,
+button {
   font-family: Lexend;
   font-weight: 400;
 }
@@ -208,12 +209,14 @@ select[aria-hidden="true"] {
     box-shadow: 0 0 0 1px var(--palette-basic-white);
   }
 
-  &:hover, [data-highlighted] {
+  &:hover,
+  [data-highlighted] {
     color: var(--palette-basic-white);
   }
 
   &[aria-selected="true"] {
-    &:hover, [data-highlighted] {
+    &:hover,
+    [data-highlighted] {
       color: var(--palette-gray-950);
     }
     background-color: var(--palette-basic-white);

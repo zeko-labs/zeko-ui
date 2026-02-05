@@ -79,16 +79,12 @@ onMounted(async () => {
           Bridge.
         </p>
         <a href="https://www.aurowallet.com" target="_blank">
-          <Button variant="auro">
-            Download AuroWallet
-          </Button>
+          <Button variant="auro">Download AuroWallet</Button>
         </a>
       </Match>
       <Match :when="notConnected">
         <p>Please connect your wallet to start bridging.</p>
-        <Button
-          variant="main"
-          @click='bs.wallet.send({ type: "Connect" })'>
+        <Button variant="main" @click='bs.wallet.send({ type: "Connect" })'>
           Connect Wallet
         </Button>
       </Match>

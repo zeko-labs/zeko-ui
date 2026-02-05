@@ -3,8 +3,9 @@
     <header>
       <h1>Zeko Privacy &amp; Policy</h1>
       <p>
-        <time datetime="2025-10-03">Last Updated and Effective Date: October 3,
-          2025</time>
+        <time datetime="2025-10-03">
+          Last Updated and Effective Date: October 3, 2025
+        </time>
       </p>
     </header>
 

@@ -77,7 +77,10 @@
     "typescript.tsdk": "node_modules/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true,
     "oxc.enable": false,
-    "biome.enabled": true
+    "biome.enabled": true,
+    "chat.tools.terminal.autoApprove": {
+      "moon": true
+    }
   },
   "extensions": {
     "recommendations": [

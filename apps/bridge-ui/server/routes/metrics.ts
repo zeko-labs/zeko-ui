@@ -1,7 +1,10 @@
+import * as v from "valibot"
+import { MetricEventSchema } from "../../machines/metrics.schema"
+
 const ALLOWED_ORIGINS = [
 	"https://bridge.zeko.io",
 	"https://alpha.bridge.zeko.io",
-	"http://localhost:3090"
+	...(process.dev ? ["http://localhost:3090"] : [])
 ]
 
 export default defineEventHandler(async (event) => {
@@ -13,46 +16,34 @@ export default defineEventHandler(async (event) => {
 			return Response.json({ message: "Forbidden" }, { status: 403 })
 		}
 
-		const body = await readBody<{
-			category?: string
-			action?: string
-			label?: string
-			durationMs?: number
-			amount?: number
-			source?: string
-			destination?: string
-			success?: boolean
-			walletAddress?: string
-			userAgent?: string
-			cpuCores?: number
-			language?: string
-			screenResolution?: string
-			timestamp?: number
-		}>(event)
+		const body = await readBody(event)
+		const result = v.safeParse(MetricEventSchema, body)
 
-		if (!body?.category || !body?.action) {
-			return Response.json({ message: "Missing category or action" }, { status: 400 })
+		if (!result.success) {
+			return Response.json({ message: "Invalid payload" }, { status: 400 })
 		}
 
+		const data = result.output
+
 		env.BRIDGE_METRICS.writeDataPoint({
-			indexes: [body.category],
+			indexes: [data.category],
 			blobs: [
-				body.category,
-				body.action,
-				body.label ?? "",
-				body.source ?? "",
-				body.destination ?? "",
-				body.userAgent ?? "",
-				body.walletAddress ?? "",
-				body.language ?? "",
-				body.screenResolution ?? ""
+				data.category,
+				data.action,
+				data.label ?? "",
+				data.source ?? "",
+				data.destination ?? "",
+				data.userAgent ?? "",
+				data.walletAddress ?? "",
+				data.language ?? "",
+				data.screenResolution ?? ""
 			],
 			doubles: [
-				body.durationMs ?? 0,
-				body.amount ?? 0,
-				body.success === true ? 1 : body.success === false ? 0 : -1,
-				body.timestamp ?? Date.now(),
-				body.cpuCores ?? 0
+				data.durationMs ?? 0,
+				data.amount ?? 0,
+				data.success === true ? 1 : data.success === false ? 0 : -1,
+				data.timestamp ?? Date.now(),
+				data.cpuCores ?? 0
 			]
 		})
 

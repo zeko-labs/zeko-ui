@@ -4,8 +4,8 @@ import type { Mina } from "o1js"
 import type { ActorRefFromLogic } from "xstate"
 import { assign, enqueueActions, fromPromise, setup } from "xstate"
 import { createLogger } from "./debug"
-import { sendMetric } from "./metrics"
 import { type HashDb, hashDb, type SavedTransaction } from "./helpers"
+import { sendMetric } from "./metrics"
 import type { OperationsWorker } from "./operations.worker"
 
 const { act, logger } = createLogger("[TRANSACTION]", { metrics: true })
@@ -236,11 +236,14 @@ export const transactionMachine = setup({
 						actions: assign(({ context }) => {
 							const retryCount = context.retryCount + 1
 							const feeMultiplier = context.feeMultiplier * 2
-							sendMetric({
-								category: "transaction",
-								action: "feeRetry",
-								label: `retry:${retryCount},multiplier:${feeMultiplier}`
-							})
+							sendMetric(
+								{
+									category: "transaction",
+									action: "feeRetry",
+									label: `retry:${retryCount},multiplier:${feeMultiplier}`
+								},
+								context.user
+							)
 							return { retryCount, feeMultiplier }
 						})
 					},

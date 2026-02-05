@@ -76,7 +76,8 @@ const collection = createListCollection({
   overflow: hidden;
 }
 
-span, input {
+span,
+input {
   font-family: Lexend;
   font-weight: 400;
 }
@@ -163,12 +164,14 @@ span, input {
     box-shadow: 0 0 0 1px var(--palette-gray-200);
   }
 
-  &:hover, [data-highlighted] {
+  &:hover,
+  [data-highlighted] {
     color: white;
   }
 
   &[aria-selected="true"] {
-    &:hover, [data-highlighted] {
+    &:hover,
+    [data-highlighted] {
       color: var(--palette-gray-900);
     }
     background-color: rgba(250, 250, 250, 0.8);

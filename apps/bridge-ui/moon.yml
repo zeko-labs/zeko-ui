@@ -30,6 +30,10 @@ tasks:
   format-fix:
     inputs:
       - "@group(sources)"
+  lint-fix:
+    command: biome check --formatter-enabled=false --unsafe --write
+    inputs:
+      - "@globs(sources)"
   dev:
     command: nuxt dev
     preset: "server"
@@ -79,6 +83,10 @@ tasks:
       - .nuxt/
       - .output/
       - .wrangler/
+  typecheck:
+    command: nuxt typecheck
+    inputs:
+      - "@group(sources)"
   test:
     command: vitest run
     inputs:

@@ -30,18 +30,14 @@ const refetchBalance = () => {
         <NetworkBadge :network="bs.currentNetwork" />
       </div>
       <div class="Mina" @click="refetchBalance">
-        <span>
-          {{ currentMina }}
-        </span>
+        <span> {{ currentMina }} </span>
         <SvgMinaLogo width="24" height="24" />
         <span>MINA</span>
       </div>
     </div>
     <div class="Address Badge" :title="bs.address">
       <WalletIcon />
-      <span>
-        {{ bs.displayAddress }}
-      </span>
+      <span> {{ bs.displayAddress }} </span>
     </div>
     <div
       class="Notifications Badge"
@@ -124,13 +120,13 @@ header {
   }
   color: var(--palette-gray-950);
   /* &.granted {
-    color: var(--palette-cosmicGold-medium);
-  }
-  &.denied {
-    color: var(--palette-persianRed-400);
-  }
-  &.default {
-    color: var(--palette-persianRed-400);
-  } */
+       color: var(--palette-cosmicGold-medium);
+     }
+     &.denied {
+       color: var(--palette-persianRed-400);
+     }
+     &.default {
+       color: var(--palette-persianRed-400);
+     } */
 }
 </style>

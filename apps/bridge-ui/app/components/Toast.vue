@@ -148,7 +148,8 @@ const iconMap = {
   background: var(--palette-persianRed-100);
   color: var(--palette-persianRed-600);
   border: 1px solid var(--palette-persianRed-300);
-  [data-part="description"], [data-part="close-trigger"] {
+  [data-part="description"],
+  [data-part="close-trigger"] {
     color: var(--palette-gray-700);
   }
 }

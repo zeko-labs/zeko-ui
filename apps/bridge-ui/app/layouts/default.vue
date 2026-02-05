@@ -1,17 +1,11 @@
 <template>
   <div class="page-background">
     <video class="desktop background-video" autoplay loop muted playsinline>
-      <source
-        src="~/assets/videos/looped_desktop.webm"
-        type="video/webm"
-      />
+      <source src="~/assets/videos/looped_desktop.webm" type="video/webm">
       Your browser does not support the video tag.
     </video>
     <video class="mobile background-video" autoplay loop muted playsinline>
-      <source
-        src="~/assets/videos/looped_mobile.webm"
-        type="video/webm"
-      />
+      <source src="~/assets/videos/looped_mobile.webm" type="video/webm">
       Your browser does not support the video tag.
     </video>
     <div class="Layout">

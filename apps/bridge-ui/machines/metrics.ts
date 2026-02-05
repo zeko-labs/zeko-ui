@@ -1,19 +1,6 @@
-export type MetricEvent = {
-	category: string
-	action: string
-	label?: string
-	durationMs?: number
-	amount?: number
-	source?: string
-	destination?: string
-	success?: boolean
-	walletAddress?: string
-	userAgent?: string
-	cpuCores?: number
-	language?: string
-	screenResolution?: string
-	timestamp?: number
-}
+import type { MetricEvent } from "./metrics.schema"
+
+export type { MetricEvent }
 
 type UserContext = {
 	userAgent: string
@@ -24,6 +11,10 @@ type UserContext = {
 
 let cachedUserContext: UserContext | null = null
 let cachedWalletAddress: string | undefined
+
+export const clearWalletAddress = () => {
+	cachedWalletAddress = undefined
+}
 
 const getUserContext = (walletAddress?: string): Partial<MetricEvent> => {
 	if (!cachedUserContext) {
