@@ -34,11 +34,12 @@ const { is } = defineProps<{
   border-radius: 0.5rem;
   font-size: var(--typography_fluid-lexend-s);
   font-weight: var(--typography-weight-lexend-semibold);
-  span {
-    width: 9ch;
-    display: flex;
-    justify-content: center;
-  }
+}
+
+.Table > span {
+  width: 9ch;
+  display: flex;
+  justify-content: center;
 }
 
 .complete {

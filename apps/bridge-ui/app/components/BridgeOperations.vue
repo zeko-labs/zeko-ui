@@ -143,7 +143,10 @@ const visiblePages = computed(() => {
             class="data-row">
             <!-- Status -->
             <td>
-              <Label :title="row.original.status" :is="row.original.statusKind">
+              <Label
+                class="Table"
+                :title="row.original.status"
+                :is="row.original.statusKind">
                 {{
                   {
                   	complete: "Completed",
