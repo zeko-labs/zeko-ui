@@ -7,7 +7,6 @@
 	},
 	"dependencies": {
 		"@ark-ui/vue": "catalog:",
-		"@hebilicious/nuxt-switch-match": "catalog:",
 		"@nuxt/fonts": "catalog:",
 		"@unhead/vue": "catalog:",
 		"@unocss/reset": "catalog:",
@@ -23,7 +22,6 @@
 	},
 	"devDependencies": {
 		"@aurowallet/mina-provider": "catalog:",
-		"@hebilicious/vue-switch-match": "catalog:",
 		"@total-typescript/ts-reset": "catalog:",
 		"@types/node": "^22.14.0",
 		"nitro-cloudflare-dev": "catalog:",

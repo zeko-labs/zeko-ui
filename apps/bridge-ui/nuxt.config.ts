@@ -31,7 +31,6 @@ export default defineNuxtConfig({
 	modules: [
 		"@nuxt/fonts",
 		"@pinia/nuxt",
-		"@hebilicious/nuxt-switch-match",
 		"nitro-cloudflare-dev",
 		"@vite-pwa/nuxt",
 		"@sentry/nuxt/module"

@@ -24,12 +24,6 @@ catalogs:
     '@hebilicious/cssforge':
       specifier: npm:@jsr/hebilicious__cssforge@0.2.1
       version: 0.2.1
-    '@hebilicious/nuxt-switch-match':
-      specifier: ^0.1.1
-      version: 0.1.1
-    '@hebilicious/vue-switch-match':
-      specifier: ^0.1.1
-      version: 0.1.1
     '@lumina-dex/sdk':
       specifier: ^1.0.1
       version: 1.0.1
@@ -203,9 +197,6 @@ importers:
       '@ark-ui/vue':
         specifier: 'catalog:'
         version: 5.27.1(vue@3.5.22(typescript@5.9.3))
-      '@hebilicious/nuxt-switch-match':
-        specifier: 'catalog:'
-        version: 0.1.1(magicast@0.3.5)(typescript@5.9.3)
       '@lottiefiles/dotlottie-vue':
         specifier: ^0.9.2
         version: 0.9.2(vue@3.5.22(typescript@5.9.3))
@@ -294,9 +285,6 @@ importers:
       '@aurowallet/mina-provider':
         specifier: 'catalog:'
         version: 1.0.6
-      '@hebilicious/vue-switch-match':
-        specifier: 'catalog:'
-        version: 0.1.1(typescript@5.9.3)
       '@sentry/cli':
         specifier: ^2.53.0
         version: 2.53.0
@@ -581,9 +569,6 @@ importers:
       '@ark-ui/vue':
         specifier: 'catalog:'
         version: 5.27.1(vue@3.5.22(typescript@5.9.3))
-      '@hebilicious/nuxt-switch-match':
-        specifier: 'catalog:'
-        version: 0.1.1(magicast@0.3.5)(typescript@5.9.3)
       '@nuxt/fonts':
         specifier: 'catalog:'
         version: 0.10.2(@netlify/blobs@9.1.2)(db0@0.3.2)(idb-keyval@6.2.2)(ioredis@5.7.0)(magicast@0.3.5)(rollup@4.52.5)(vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))
@@ -2788,12 +2773,6 @@ packages:
   '@graphql-yoga/typed-event-target@3.0.2':
     resolution: {integrity: sha512-ZpJxMqB+Qfe3rp6uszCQoag4nSw42icURnBRfFYSOmTgEeOe4rD0vYlbA8spvCu2TlCesNTlEN9BLWtQqLxabA==}
     engines: {node: '>=18.0.0'}
-
-  '@hebilicious/nuxt-switch-match@0.1.1':
-    resolution: {integrity: sha512-bYAjfQRvVe7DTZUc+07BpumLDmVt48jtlSsnTEx8ceOFT7gLO3yIGs+hwqYrjHQSkEqXj5HVHfcInKXMCeWNJw==}
-
-  '@hebilicious/vue-switch-match@0.1.1':
-    resolution: {integrity: sha512-e9h1Nb1BNvP6/uTy6bXs5I6pJ99u+xBofyv9ciJE/jaMzFJ4AR/ypOlU7ArOnxlgAAdENltq7/oaZZhFMgWtWw==}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -6480,7 +6459,7 @@ packages:
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   glob@9.3.5:
     resolution: {integrity: sha512-e1LleDykUz2Iu+MTYdkSsuWX8lvAjAcs0Xef0lNIu0S2wOAzuTxCJtcd9S3cijlwYF18EsU3rzb8jPVobxDh9Q==}
@@ -11795,21 +11774,6 @@ snapshots:
     dependencies:
       '@repeaterjs/repeater': 3.0.6
       tslib: 2.8.1
-
-  '@hebilicious/nuxt-switch-match@0.1.1(magicast@0.3.5)(typescript@5.9.3)':
-    dependencies:
-      '@hebilicious/vue-switch-match': 0.1.1(typescript@5.9.3)
-      '@nuxt/kit': 3.19.3(magicast@0.3.5)
-      defu: 6.1.4
-    transitivePeerDependencies:
-      - magicast
-      - typescript
-
-  '@hebilicious/vue-switch-match@0.1.1(typescript@5.9.3)':
-    dependencies:
-      vue: 3.5.22(typescript@5.9.3)
-    transitivePeerDependencies:
-      - typescript
 
   '@humanfs/core@0.19.1':
     optional: true

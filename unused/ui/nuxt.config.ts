@@ -54,7 +54,7 @@ export default defineNuxtConfig({
 		}
 	},
 	devtools: { enabled: true },
-	modules: ["@nuxt/fonts", "@hebilicious/nuxt-switch-match", "nitro-cloudflare-dev"],
+	modules: ["@nuxt/fonts", "nitro-cloudflare-dev"],
 	fonts: {
 		provider: "google"
 	}

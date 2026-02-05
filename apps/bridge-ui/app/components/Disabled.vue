@@ -66,54 +66,42 @@ onMounted(async () => {
       Please check <a href="https://docs.zeko.io">Zeko Docs</a> for more
       information.
     </p>
-    <SwitchMatch
-      :signal="
-        [
-        	unsupportedBrowser,
-        	noWalletExtension,
-        	notConnected,
-        	wrongNetwork,
-        	error
-        ]
-      ">
-      <Case :when="unsupportedBrowser">
-        <p>
-          The Rollup Bridge is not supported on Safari. Please use a different
-          browser, such as Chrome or Firefox.
-        </p>
-      </Case>
-      <Case :when="noWalletExtension">
-        <p>
-          Download and install the Auro Wallet extension to use the Rollup
-          Bridge.
-        </p>
-        <a href="https://www.aurowallet.com" target="_blank">
-          <Button variant="auro">
-            Download AuroWallet
-          </Button>
-        </a>
-      </Case>
-      <Case :when="notConnected">
-        <p>Please connect your wallet to start bridging.</p>
-        <Button
-          variant="main"
-          @click='bs.wallet.send({ type: "Connect" })'>
-          Connect Wallet
+    <template v-if="unsupportedBrowser">
+      <p>
+        The Rollup Bridge is not supported on Safari. Please use a different
+        browser, such as Chrome or Firefox.
+      </p>
+    </template>
+    <template v-else-if="noWalletExtension">
+      <p>
+        Download and install the Auro Wallet extension to use the Rollup Bridge.
+      </p>
+      <a href="https://www.aurowallet.com" target="_blank">
+        <Button variant="auro">
+          Download AuroWallet
         </Button>
-      </Case>
-      <Case :when="wrongNetwork">
-        <Button
-          variant="main"
-          @click='bs.bridge.send({ type: "SwitchToTesnet" })'>
-          Switch To Testnet
-        </Button>
-      </Case>
-      <Case :when="error">
-        <p class="error">
-          An error has occurred with the bridge. Please try again later.
-        </p>
-      </Case>
-    </SwitchMatch>
+      </a>
+    </template>
+    <template v-else-if="notConnected">
+      <p>Please connect your wallet to start bridging.</p>
+      <Button
+        variant="main"
+        @click='bs.wallet.send({ type: "Connect" })'>
+        Connect Wallet
+      </Button>
+    </template>
+    <template v-else-if="wrongNetwork">
+      <Button
+        variant="main"
+        @click='bs.bridge.send({ type: "SwitchToTesnet" })'>
+        Switch To Testnet
+      </Button>
+    </template>
+    <template v-else-if="error">
+      <p class="error">
+        An error has occurred with the bridge. Please try again later.
+      </p>
+    </template>
   </div>
 </template>
 <style lang="postcss" scoped>

@@ -7,7 +7,6 @@
 	},
 	"dependencies": {
 		"@ark-ui/vue": "catalog:",
-		"@hebilicious/nuxt-switch-match": "catalog:",
 		"@lottiefiles/dotlottie-vue": "^0.9.2",
 		"@lumina-dex/sdk": "catalog:",
 		"@nuxt/fonts": "catalog:",
@@ -39,7 +38,6 @@
 	},
 	"devDependencies": {
 		"@aurowallet/mina-provider": "catalog:",
-		"@hebilicious/vue-switch-match": "catalog:",
 		"@sentry/cli": "^2.53.0",
 		"@sentry/vite-plugin": "^4.3.0",
 		"@total-typescript/ts-reset": "catalog:",
