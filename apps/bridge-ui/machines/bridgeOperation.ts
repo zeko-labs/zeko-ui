@@ -179,14 +179,19 @@ export const bridgeOperationMachine = setup({
 				const controller = new AbortController()
 				const checkDepositStatus = async (signal: AbortSignal): Promise<void> => {
 					if (signal.aborted) return
-					const [canFinalize, canCancel] = await Promise.all([
-						worker(bridge).canFinalizeDeposit({ l1, l2, user }),
-						worker(bridge).canCancelDeposit({ l1, l2, user })
-					])
-					logger.info(`Deposit status: ${JSON.stringify({ canFinalize, canCancel })}`)
-					if (canFinalize) sendBack({ type: "CanFinalize" })
-					else if (canCancel) sendBack({ type: "CanCancel" })
-					else if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)
+					try {
+						const [canFinalize, canCancel] = await Promise.all([
+							worker(bridge).canFinalizeDeposit({ l1, l2, user }),
+							worker(bridge).canCancelDeposit({ l1, l2, user })
+						])
+						logger.info(`Deposit status: ${JSON.stringify({ canFinalize, canCancel })}`)
+						if (canFinalize) sendBack({ type: "CanFinalize" })
+						else if (canCancel) sendBack({ type: "CanCancel" })
+						else if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)
+					} catch (error) {
+						logger.error(error instanceof Error ? error : new Error(String(error)))
+						if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)
+					}
 				}
 				checkDepositStatus(controller.signal)
 				return () => {
@@ -218,10 +223,15 @@ export const bridgeOperationMachine = setup({
 			const controller = new AbortController()
 			const checkWithdrawalStatus = async (signal: AbortSignal): Promise<void> => {
 				if (signal.aborted) return
-				logger.info("Checking withdrawal status...")
-				const can = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
-				if (can) sendBack({ type: "CanFinalize" })
-				else if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
+				try {
+					logger.info("Checking withdrawal status...")
+					const can = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
+					if (can) sendBack({ type: "CanFinalize" })
+					else if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
+				} catch (error) {
+					logger.error(error instanceof Error ? error : new Error(String(error)))
+					if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
+				}
 			}
 			checkWithdrawalStatus(controller.signal)
 			return () => {
