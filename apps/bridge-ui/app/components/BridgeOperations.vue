@@ -261,8 +261,12 @@ tbody tr:hover {
 }
 
 .AmountBox {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(4ch, max-content) min-content auto;
   gap: 1ch;
+  span:first-child {
+    justify-self: end;
+  }
 }
 
 .PaginationBar {

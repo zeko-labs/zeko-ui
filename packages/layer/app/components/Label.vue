@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import { BanIcon, CircleXIcon } from "lucide-vue-next"
-
 const { is } = defineProps<{
 	is: "pending" | "complete" | "cancelled" | "error"
 }>()
@@ -9,19 +7,19 @@ const { is } = defineProps<{
   <div class="Label" :class="is">
     <template v-if='is === "pending"'>
       <SvgPendingClock />
-      <slot>Pending</slot>
+      <span>Pending</span>
     </template>
     <template v-else-if='is === "complete"'>
       <SvgCompletedCircle />
-      <slot>Completed</slot>
+      <span>Completed</span>
     </template>
     <template v-else-if='is === "cancelled"'>
-      <BanIcon />
-      <slot>Cancelled</slot>
+      <SvgCancelledCircle />
+      <span>Cancelled</span>
     </template>
     <template v-else-if='is === "error"'>
-      <CircleXIcon />
-      <slot>Error</slot>
+      <SvgErrorCircle />
+      <span>Error</span>
     </template>
   </div>
 </template>
@@ -36,6 +34,11 @@ const { is } = defineProps<{
   border-radius: 0.5rem;
   font-size: var(--typography_fluid-lexend-s);
   font-weight: var(--typography-weight-lexend-semibold);
+  span {
+    width: 9ch;
+    display: flex;
+    justify-content: center;
+  }
 }
 
 .complete {
