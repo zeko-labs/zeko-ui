@@ -7,24 +7,22 @@ const { is } = defineProps<{
 </script>
 <template>
   <div class="Label" :class="is">
-    <Switch>
-      <Match :when='is === "pending"'>
-        <SvgPendingClock />
-        <slot>Pending</slot>
-      </Match>
-      <Match :when='is === "complete"'>
-        <SvgCompletedCircle />
-        <slot>Completed</slot>
-      </Match>
-      <Match :when='is === "cancelled"'>
-        <BanIcon />
-        <slot>Cancelled</slot>
-      </Match>
-      <Match :when='is === "error"'>
-        <CircleXIcon />
-        <slot>Error</slot>
-      </Match>
-    </Switch>
+    <template v-if='is === "pending"'>
+      <SvgPendingClock />
+      <slot>Pending</slot>
+    </template>
+    <template v-else-if='is === "complete"'>
+      <SvgCompletedCircle />
+      <slot>Completed</slot>
+    </template>
+    <template v-else-if='is === "cancelled"'>
+      <BanIcon />
+      <slot>Cancelled</slot>
+    </template>
+    <template v-else-if='is === "error"'>
+      <CircleXIcon />
+      <slot>Error</slot>
+    </template>
   </div>
 </template>
 <style lang="postcss" scoped>

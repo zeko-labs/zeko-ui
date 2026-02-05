@@ -24,20 +24,18 @@ const description = computed(() =>
         <div class="Description">
           {{ description }}
         </div>
-        <Switch>
-          <Match :when='state === "Builders"'>
-            <NuxtLink
-              to="https://docs.zeko.io"
-              target="_blank">
-              <Button variant="cta1">Start Building</Button>
-            </NuxtLink>
-          </Match>
-          <Match :when='state === "Users"'>
-            <NuxtLink to="/faucet">
-              <Button variant="cta1">Get Wallet</Button>
-            </NuxtLink>
-          </Match>
-        </Switch>
+        <template v-if='state === "Builders"'>
+          <NuxtLink
+            to="https://docs.zeko.io"
+            target="_blank">
+            <Button variant="cta1">Start Building</Button>
+          </NuxtLink>
+        </template>
+        <template v-else-if='state === "Users"'>
+          <NuxtLink to="/faucet">
+            <Button variant="cta1">Get Wallet</Button>
+          </NuxtLink>
+        </template>
       </div>
       <div class="Footer">
         <div class="Date">

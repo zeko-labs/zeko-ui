@@ -27,17 +27,15 @@ const alwaysFalse = () => false
 
     <div class="test-case">
       <h2>Test Case 1: Basic Functionality</h2>
-      <Switch>
-        <Match :when="condition1">
-          <div class="match-result">Condition 1 is true</div>
-        </Match>
-        <Match :when="condition2">
-          <div class="match-result">Condition 2 is true</div>
-        </Match>
-        <Fallback>
-          <div class="fallback-result">Fallback: No conditions met</div>
-        </Fallback>
-      </Switch>
+      <template v-if="condition1">
+        <div class="match-result">Condition 1 is true</div>
+      </template>
+      <template v-else-if="condition2">
+        <div class="match-result">Condition 2 is true</div>
+      </template>
+      <template v-else>
+        <div class="fallback-result">Fallback: No conditions met</div>
+      </template>
       <div class="controls">
         <button @click="toggleCondition1">Toggle Condition 1</button>
         <button @click="toggleCondition2">Toggle Condition 2</button>
@@ -46,16 +44,14 @@ const alwaysFalse = () => false
 
     <div class="test-case">
       <h2>Test Case 2: Function Condition</h2>
-      <Switch>
-        <Match :when="complexCondition">
-          <div class="match-result">Complex condition is true</div>
-        </Match>
-        <Fallback>
-          <div class="fallback-result">
-            Fallback: Complex condition is false
-          </div>
-        </Fallback>
-      </Switch>
+      <template v-if="complexCondition()">
+        <div class="match-result">Complex condition is true</div>
+      </template>
+      <template v-else>
+        <div class="fallback-result">
+          Fallback: Complex condition is false
+        </div>
+      </template>
       <div class="controls">
         <button @click="toggleComplexCondition">
           Toggle Complex Condition
@@ -65,31 +61,25 @@ const alwaysFalse = () => false
 
     <div class="test-case">
       <h2>Test Case 3: Multiple Matches</h2>
-      <Switch>
-        <Match :when="alwaysTrue">
-          <div class="match-result">This should always show (1)</div>
-        </Match>
-        <Match :when="alwaysTrue">
-          <div class="match-result">
-            This should also show if multiple matches are returned (2)
-          </div>
-        </Match>
-        <Fallback>
-          <div class="fallback-result">This fallback should never show</div>
-        </Fallback>
-      </Switch>
+      <template v-if="alwaysTrue()">
+        <div class="match-result">This should always show (1)</div>
+        <div class="match-result">
+          This should also show if multiple matches are returned (2)
+        </div>
+      </template>
+      <template v-else>
+        <div class="fallback-result">This fallback should never show</div>
+      </template>
     </div>
 
     <div class="test-case">
       <h2>Test Case 4: No Matches</h2>
-      <Switch>
-        <Match :when="alwaysFalse">
-          <div class="match-result">This should never show</div>
-        </Match>
-        <Fallback>
-          <div class="fallback-result">This fallback should show</div>
-        </Fallback>
-      </Switch>
+      <template v-if="alwaysFalse()">
+        <div class="match-result">This should never show</div>
+      </template>
+      <template v-else>
+        <div class="fallback-result">This fallback should show</div>
+      </template>
     </div>
   </div>
 </template>
