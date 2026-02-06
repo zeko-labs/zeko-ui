@@ -1,0 +1,30 @@
+name: Actions Indexer Migrations
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "services/actions/api/drizzle/**"
+      - "services/actions/api/drizzle.config.ts"
+      - "services/actions/api/scripts/migrate.ts"
+      - "services/actions/api/src/helpers/utils.ts"
+
+jobs:
+  migrate-production:
+    name: Migrate Production
+    runs-on: ubuntu-latest
+    concurrency:
+      group: actions-migrate-production
+      cancel-in-progress: false
+    env:
+      DATABASE_URL: ${{ secrets.ACTIONS_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: moonrepo/setup-toolchain@v0
+
+      - name: Install dependencies
+        run: pnpm install --filter "@zeko/actions-api..."
+
+      - name: Run migrations
+        run: moon actions-api:db-migrate -- --force

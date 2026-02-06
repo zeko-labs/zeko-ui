@@ -7,8 +7,7 @@ export default {
 		hostnames,
 		options: {
 			cors: {
-				origins: ["https://zeko.io", "https://zeko-labs.workers.dev", "localhost"],
-				subdomainWildcard: true
+				origins: ["*"]
 			}
 		}
 	})
