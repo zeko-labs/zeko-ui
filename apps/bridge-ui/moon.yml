@@ -85,6 +85,7 @@ tasks:
       - .wrangler/
   typecheck:
     command: nuxt typecheck
+    deps: [^:build]
     inputs:
       - "@group(sources)"
   test:
