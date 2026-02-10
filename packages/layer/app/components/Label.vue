@@ -1,24 +1,26 @@
 <script lang="ts" setup>
-// biome-ignore lint/correctness/noUnusedImports: <explanation>
-import { CircleXIcon } from "lucide-vue-next"
-const { is } = defineProps<{ is: "pending" | "complete" | "error" }>()
+const { is } = defineProps<{
+	is: "pending" | "complete" | "cancelled" | "error"
+}>()
 </script>
 <template>
   <div class="Label" :class="is">
-    <Switch>
-      <Match :when='is === "pending"'>
-        <SvgPendingClock />
-        <slot>Pending</slot>
-      </Match>
-      <Match :when='is === "complete"'>
-        <SvgCompletedCircle />
-        <slot>Completed</slot>
-      </Match>
-      <Match :when='is === "error"'>
-        <CircleXIcon />
-        <slot>Error</slot>
-      </Match>
-    </Switch>
+    <template v-if='is === "pending"'>
+      <SvgPendingClock />
+      <span>Pending</span>
+    </template>
+    <template v-else-if='is === "complete"'>
+      <SvgCompletedCircle />
+      <span>Completed</span>
+    </template>
+    <template v-else-if='is === "cancelled"'>
+      <SvgCancelledCircle />
+      <span>Cancelled</span>
+    </template>
+    <template v-else-if='is === "error"'>
+      <SvgErrorCircle />
+      <span>Error</span>
+    </template>
   </div>
 </template>
 <style lang="postcss" scoped>
@@ -34,6 +36,12 @@ const { is } = defineProps<{ is: "pending" | "complete" | "error" }>()
   font-weight: var(--typography-weight-lexend-semibold);
 }
 
+.Table > span {
+  width: 9ch;
+  display: flex;
+  justify-content: center;
+}
+
 .complete {
   border: 1px solid var(--palette-complete-border);
   background: var(--palette-complete-background);
@@ -44,6 +52,12 @@ const { is } = defineProps<{ is: "pending" | "complete" | "error" }>()
   border: 1px solid var(--palette-pending-border);
   background: var(--palette-pending-background);
   color: var(--palette-pending-content);
+}
+
+.cancelled {
+  border: 1px solid var(--palette-cancelled-border);
+  background: var(--palette-cancelled-background);
+  color: var(--palette-cancelled-content);
 }
 
 .error {

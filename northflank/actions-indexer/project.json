@@ -1,413 +1,399 @@
 {
-  "apiVersion": "v1.2",
-  "spec": {
-    "kind": "Workflow",
-    "spec": {
-      "type": "sequential",
-      "steps": [
-        {
-          "ref": "project",
-          "kind": "Project",
-          "spec": {
-            "name": "actions-indexer",
-            "color": "#DBFE87",
-            "networking": {
-              "tailscale": {
-                "authKeyTags": [],
-                "enabled": false
-              },
-              "allowedIngressProjects": [],
-              "hostAliases": {
-                "enabled": false
-              }
-            },
-            "region": "europe-west-netherlands",
-            "description": ""
-          }
-        },
-        {
-          "kind": "Workflow",
-          "spec": {
-            "context": {
-              "projectId": "${refs.project.id}"
-            },
-            "type": "sequential",
-            "steps": [
-              {
-                "kind": "BuildService",
-                "spec": {
-                  "buildSettings": {
-                    "storage": {
-                      "ephemeralStorage": {
-                        "storageSize": 16384
-                      }
-                    },
-                    "dockerfile": {
-                      "buildEngine": "buildkit",
-                      "dockerFilePath": "/services/actions/indexer/Dockerfile",
-                      "dockerWorkDir": "/"
-                    }
-                  },
-                  "name": "actions-indexer-build",
-                  "infrastructure": {
-                    "architecture": "x86"
-                  },
-                  "billing": {
-                    "buildPlan": "nf-compute-400-16"
-                  },
-                  "buildSource": "git",
-                  "disabledCI": true,
-                  "vcsData": {
-                    "projectUrl": "https://github.com/zeko-labs/zeko-ui",
-                    "projectType": "github",
-                    "accountLogin": "zeko-labs"
-                  },
-                  "buildConfiguration": {
-                    "pathIgnoreRules": [
-                      "/services/actions/indexer/"
-                    ],
-                    "isAllowList": true
-                  },
-                  "buildArguments": {},
-                  "buildFiles": {},
-                  "dockerSecretMounts": {}
-                },
-                "ref": "actions-indexer-build"
-              },
-              {
-                "kind": "DeploymentService",
-                "spec": {
-                  "deployment": {
-                    "instances": 1,
-                    "storage": {
-                      "ephemeralStorage": {
-                        "storageSize": 1024
-                      },
-                      "shmSize": 64
-                    },
-                    "docker": {
-                      "configType": "default"
-                    },
-                    "type": "deployment",
-                    "releaseFlowControlled": true
-                  },
-                  "loadBalancing": {
-                    "mode": "leastConnection"
-                  },
-                  "name": "actions-indexer-deployment",
-                  "infrastructure": {
-                    "architecture": "x86"
-                  },
-                  "billing": {
-                    "deploymentPlan": "nf-compute-100-1"
-                  },
-                  "ports": [
-                    {
-                      "internalPort": 3000,
-                      "public": true,
-                      "protocol": "HTTP",
-                      "name": "p01",
-                      "domains": [
-                        "indexer.actions.zeko.io"
-                      ],
-                      "security": {
-                        "sso": {},
-                        "policies": [],
-                        "credentials": [],
-                        "verificationMode": "or"
-                      },
-                      "disableNfDomain": false
-                    }
-                  ],
-                  "runtimeEnvironment": {
-                    "DATABASE_URL": "${args.DATABASE_URL}",
-                    "AUTH_TOKEN": "${args.AUTH_TOKEN}",
-                    "PORT": "${args.PORT}",
-                    "L1_ARCHIVE_URL": "${args.L1_ARCHIVE_URL}"
-                  },
-                  "runtimeFiles": {}
-                },
-                "ref": "actions-indexer-deployment"
-              },
-              {
-                "kind": "Pipeline",
-                "spec": {
-                  "stages": [
-                    {
-                      "name": "Development",
-                      "nfObjects": [
-                        {
-                          "id": "${refs.actions-indexer-deployment.id}",
-                          "type": "service"
-                        }
-                      ],
-                      "releaseFlow": {
-                        "kind": "ReleaseFlow",
-                        "spec": {
-                          "apiVersion": "v1.2",
-                          "spec": {
-                            "kind": "Workflow",
-                            "spec": {
-                              "type": "sequential",
-                              "steps": [
-                                {
-                                  "kind": "Build",
-                                  "spec": {
-                                    "reuseExistingBuilds": true,
-                                    "buildRuleFallThroughHandling": "fail",
-                                    "buildOverrides": {
-                                      "buildArguments": {},
-                                      "buildFiles": {},
-                                      "dockerSecretMounts": {}
-                                    },
-                                    "branch": "${refs.zeko-ui.branch}",
-                                    "sha": "${refs.zeko-ui.sha}",
-                                    "id": "${template.refs.actions-indexer-build.id}",
-                                    "type": "service"
-                                  },
-                                  "condition": "success",
-                                  "ref": "actions-indexer-pipeline-build-1"
-                                },
-                                {
-                                  "kind": "Release",
-                                  "spec": {
-                                    "type": "build",
-                                    "origin": {
-                                      "id": "${refs.actions-indexer-pipeline-build-1.nfObjectId}",
-                                      "branch": "${refs.actions-indexer-pipeline-build-1.branch}",
-                                      "build": "${refs.actions-indexer-pipeline-build-1.id}"
-                                    },
-                                    "target": {
-                                      "id": "${template.refs.actions-indexer-deployment.id}",
-                                      "type": "service"
-                                    }
-                                  },
-                                  "ref": "leaderboard-indexer-deployment-release-1"
-                                }
-                              ]
-                            }
-                          },
-                          "triggers": [
-                            {
-                              "ref": "zeko-ui",
-                              "vcsService": "github",
-                              "accountLogin": "zeko-labs",
-                              "repoUrl": "https://github.com/zeko-labs/zeko-ui",
-                              "branchRestrictions": [
-                                "main"
-                              ],
-                              "prRestrictions": [],
-                              "pathIgnoreRules": [
-                                "/services/actions/indexer/"
-                              ],
-                              "ciIgnoreFlags": [
-                                "[skip ci]",
-                                "[ci skip]",
-                                "[no ci]",
-                                "[skip nf]",
-                                "[nf skip]",
-                                "[northflank skip]",
-                                "[skip northflank]"
-                              ],
-                              "ciIgnoreFlagsEnabled": true,
-                              "isAllowList": true,
-                              "ignoreDrafts": false
-                            }
-                          ],
-                          "options": {
-                            "concurrencyPolicy": "allow"
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "name": "Staging",
-                      "nfObjects": [],
-                      "releaseFlow": {
-                        "kind": "ReleaseFlow",
-                        "spec": {
-                          "apiVersion": "v1.2",
-                          "spec": {
-                            "kind": "Workflow",
-                            "spec": {
-                              "type": "sequential",
-                              "steps": []
-                            }
-                          },
-                          "triggers": []
-                        }
-                      }
-                    },
-                    {
-                      "name": "Production",
-                      "nfObjects": [],
-                      "releaseFlow": {
-                        "kind": "ReleaseFlow",
-                        "spec": {
-                          "apiVersion": "v1.2",
-                          "spec": {
-                            "kind": "Workflow",
-                            "spec": {
-                              "type": "sequential",
-                              "steps": []
-                            }
-                          },
-                          "triggers": []
-                        }
-                      }
-                    }
-                  ],
-                  "name": "actions-indexer-pipeline",
-                  "description": "",
-                  "preview": {
-                    "kind": "PreviewEnv",
-                    "spec": {
-                      "apiVersion": "v1.2",
-                      "spec": {
-                        "kind": "Workflow",
-                        "spec": {
-                          "type": "sequential",
-                          "steps": [
-                            {
-                              "kind": "BuildSource",
-                              "spec": {
-                                "defaults": {},
-                                "reuseExistingBuilds": true,
-                                "buildOverrides": {
-                                  "buildArguments": {}
-                                },
-                                "branch": "${refs.zeko-ui.branch}",
-                                "id": "${template.refs.actions-indexer-build.id}",
-                                "type": "service",
-                                "sha": "${refs.zeko-ui.sha}"
-                              },
-                              "condition": "success",
-                              "ref": "build-source-1"
-                            },
-                            {
-                              "kind": "DeploymentService",
-                              "spec": {
-                                "deployment": {
-                                  "instances": 1,
-                                  "storage": {
-                                    "ephemeralStorage": {
-                                      "storageSize": 1024
-                                    },
-                                    "shmSize": 64
-                                  },
-                                  "docker": {
-                                    "configType": "default"
-                                  },
-                                  "internal": {
-                                    "id": "${refs.build-source-1.nfObjectId}",
-                                    "branch": "${refs.build-source-1.branch}",
-                                    "buildSHA": "latest"
-                                  }
-                                },
-                                "loadBalancing": {
-                                  "mode": "leastConnection"
-                                },
-                                "name": "${args.name}-actions-preview",
-                                "tags": [
-                                  "${args.previewId}"
-                                ],
-                                "billing": {
-                                  "deploymentPlan": "nf-compute-100-1"
-                                },
-                                "runtimeEnvironment": {
-                                  "DATABASE_URL": "${args.DATABASE_URL}",
-                                  "AUTH_TOKEN": "${args.AUTH_TOKEN}",
-                                  "PORT": "${args.PORT}",
-                                  "L1_ARCHIVE_URL": "${args.L1_ARCHIVE_URL}"
-                                },
-                                "runtimeFiles": {},
-                                "infrastructure": {
-                                  "architecture": "x86"
-                                },
-                                "ports": [
-                                  {
-                                    "internalPort": 3000,
-                                    "public": true,
-                                    "protocol": "HTTP",
-                                    "name": "p01",
-                                    "domains": [],
-                                    "security": {
-                                      "sso": {},
-                                      "policies": [],
-                                      "credentials": [],
-                                      "verificationMode": "or"
-                                    },
-                                    "disableNfDomain": false
-                                  }
-                                ]
-                              },
-                              "ref": "actions-preview"
-                            }
-                          ]
-                        }
-                      },
-                      "triggers": [
-                        {
-                          "ref": "zeko-ui",
-                          "vcsService": "github",
-                          "accountLogin": "zeko-labs",
-                          "repoUrl": "https://github.com/zeko-labs/zeko-ui",
-                          "branchRestrictions": [],
-                          "prRestrictions": [
-                            "*"
-                          ],
-                          "pathIgnoreRules": [
-                            "/services/actions/indexer/"
-                          ],
-                          "ciIgnoreFlags": [
-                            "[skip ci]",
-                            "[ci skip]",
-                            "[no ci]",
-                            "[skip nf]",
-                            "[nf skip]",
-                            "[northflank skip]",
-                            "[skip northflank]"
-                          ],
-                          "ciIgnoreFlagsEnabled": true,
-                          "isAllowList": true,
-                          "ignoreDrafts": false
-                        }
-                      ],
-                      "options": {
-                        "concurrencyPolicy": "allow",
-                        "nameFormat": "PR-${args.pullRequestId}",
-                        "expiry": {
-                          "previewLifetime": 1440
-                        },
-                        "schedule": {}
-                      }
-                    }
-                  }
-                },
-                "ref": "actions-indexer-pipeline"
-              }
-            ]
-          }
-        }
-      ]
-    }
-  },
-  "arguments": {
-    "PORT": "3000",
-    "DATABASE_URL": "",
-    "AUTH_TOKEN": "",
-    "L1_ARCHIVE_URL": ""
-  },
-  "options": {
-    "autorun": false,
-    "concurrencyPolicy": "allow"
-  },
-  "gitops": {
-    "repoUrl": "https://github.com/zeko-labs/zeko-ui",
-    "vcsService": "github",
-    "accountLogin": "zeko-labs",
-    "branch": "main",
-    "filePath": "/northflank/actions-indexer/project.json"
-  },
-  "$schema": "https://api.northflank.com/v1/schemas/template"
+	"apiVersion": "v1.2",
+	"spec": {
+		"kind": "Workflow",
+		"spec": {
+			"type": "sequential",
+			"steps": [
+				{
+					"ref": "project",
+					"kind": "Project",
+					"spec": {
+						"name": "actions-indexer",
+						"color": "#DBFE87",
+						"networking": {
+							"tailscale": {
+								"authKeyTags": [],
+								"enabled": false
+							},
+							"allowedIngressProjects": [],
+							"hostAliases": {
+								"enabled": false
+							}
+						},
+						"region": "europe-west-netherlands",
+						"description": ""
+					}
+				},
+				{
+					"kind": "Workflow",
+					"spec": {
+						"context": {
+							"projectId": "${refs.project.id}"
+						},
+						"type": "sequential",
+						"steps": [
+							{
+								"kind": "BuildService",
+								"spec": {
+									"buildSettings": {
+										"storage": {
+											"ephemeralStorage": {
+												"storageSize": 16384
+											}
+										},
+										"dockerfile": {
+											"buildEngine": "buildkit",
+											"dockerFilePath": "/services/actions/indexer/Dockerfile",
+											"dockerWorkDir": "/"
+										}
+									},
+									"name": "actions-indexer-build",
+									"infrastructure": {
+										"architecture": "x86"
+									},
+									"billing": {
+										"buildPlan": "nf-compute-400-16"
+									},
+									"buildSource": "git",
+									"disabledCI": true,
+									"vcsData": {
+										"projectUrl": "https://github.com/zeko-labs/zeko-ui",
+										"projectType": "github",
+										"accountLogin": "zeko-labs"
+									},
+									"buildConfiguration": {
+										"pathIgnoreRules": ["/services/actions/indexer/"],
+										"isAllowList": true
+									},
+									"buildArguments": {},
+									"buildFiles": {},
+									"dockerSecretMounts": {}
+								},
+								"ref": "actions-indexer-build"
+							},
+							{
+								"kind": "DeploymentService",
+								"spec": {
+									"deployment": {
+										"instances": 1,
+										"storage": {
+											"ephemeralStorage": {
+												"storageSize": 1024
+											},
+											"shmSize": 64
+										},
+										"docker": {
+											"configType": "default"
+										},
+										"type": "deployment",
+										"releaseFlowControlled": true
+									},
+									"loadBalancing": {
+										"mode": "leastConnection"
+									},
+									"name": "actions-indexer-deployment",
+									"infrastructure": {
+										"architecture": "x86"
+									},
+									"billing": {
+										"deploymentPlan": "nf-compute-100-1"
+									},
+									"ports": [
+										{
+											"internalPort": 3000,
+											"public": true,
+											"protocol": "HTTP",
+											"name": "p01",
+											"domains": ["indexer.actions.zeko.io"],
+											"security": {
+												"sso": {},
+												"policies": [],
+												"credentials": [],
+												"verificationMode": "or"
+											},
+											"disableNfDomain": false
+										}
+									],
+									"runtimeEnvironment": {
+										"DATABASE_URL": "${args.DATABASE_URL}",
+										"AUTH_TOKEN": "${args.AUTH_TOKEN}",
+										"PORT": "${args.PORT}",
+										"L1_ARCHIVE_URL": "${args.L1_ARCHIVE_URL}"
+									},
+									"runtimeFiles": {}
+								},
+								"ref": "actions-indexer-deployment"
+							},
+							{
+								"kind": "Pipeline",
+								"spec": {
+									"stages": [
+										{
+											"name": "Development",
+											"nfObjects": [
+												{
+													"id": "${refs.actions-indexer-deployment.id}",
+													"type": "service"
+												}
+											],
+											"releaseFlow": {
+												"kind": "ReleaseFlow",
+												"spec": {
+													"apiVersion": "v1.2",
+													"spec": {
+														"kind": "Workflow",
+														"spec": {
+															"type": "sequential",
+															"steps": [
+																{
+																	"kind": "Build",
+																	"spec": {
+																		"reuseExistingBuilds": true,
+																		"buildRuleFallThroughHandling": "fail",
+																		"buildOverrides": {
+																			"buildArguments": {},
+																			"buildFiles": {},
+																			"dockerSecretMounts": {}
+																		},
+																		"branch": "${refs.zeko-ui.branch}",
+																		"sha": "${refs.zeko-ui.sha}",
+																		"id": "${template.refs.actions-indexer-build.id}",
+																		"type": "service"
+																	},
+																	"condition": "success",
+																	"ref": "actions-indexer-pipeline-build-1"
+																},
+																{
+																	"kind": "Release",
+																	"spec": {
+																		"type": "build",
+																		"origin": {
+																			"id": "${refs.actions-indexer-pipeline-build-1.nfObjectId}",
+																			"branch": "${refs.actions-indexer-pipeline-build-1.branch}",
+																			"build": "${refs.actions-indexer-pipeline-build-1.id}"
+																		},
+																		"target": {
+																			"id": "${template.refs.actions-indexer-deployment.id}",
+																			"type": "service"
+																		}
+																	},
+																	"ref": "leaderboard-indexer-deployment-release-1"
+																}
+															]
+														}
+													},
+													"triggers": [
+														{
+															"ref": "zeko-ui",
+															"vcsService": "github",
+															"accountLogin": "zeko-labs",
+															"repoUrl": "https://github.com/zeko-labs/zeko-ui",
+															"branchRestrictions": ["main"],
+															"prRestrictions": [],
+															"pathIgnoreRules": ["/services/actions/indexer/"],
+															"ciIgnoreFlags": [
+																"[skip ci]",
+																"[ci skip]",
+																"[no ci]",
+																"[skip nf]",
+																"[nf skip]",
+																"[northflank skip]",
+																"[skip northflank]"
+															],
+															"ciIgnoreFlagsEnabled": true,
+															"isAllowList": true,
+															"ignoreDrafts": false
+														}
+													],
+													"options": {
+														"concurrencyPolicy": "allow"
+													}
+												}
+											}
+										},
+										{
+											"name": "Staging",
+											"nfObjects": [],
+											"releaseFlow": {
+												"kind": "ReleaseFlow",
+												"spec": {
+													"apiVersion": "v1.2",
+													"spec": {
+														"kind": "Workflow",
+														"spec": {
+															"type": "sequential",
+															"steps": []
+														}
+													},
+													"triggers": []
+												}
+											}
+										},
+										{
+											"name": "Production",
+											"nfObjects": [],
+											"releaseFlow": {
+												"kind": "ReleaseFlow",
+												"spec": {
+													"apiVersion": "v1.2",
+													"spec": {
+														"kind": "Workflow",
+														"spec": {
+															"type": "sequential",
+															"steps": []
+														}
+													},
+													"triggers": []
+												}
+											}
+										}
+									],
+									"name": "actions-indexer-pipeline",
+									"description": "",
+									"preview": {
+										"kind": "PreviewEnv",
+										"spec": {
+											"apiVersion": "v1.2",
+											"spec": {
+												"kind": "Workflow",
+												"spec": {
+													"type": "sequential",
+													"steps": [
+														{
+															"kind": "BuildSource",
+															"spec": {
+																"defaults": {},
+																"reuseExistingBuilds": true,
+																"buildOverrides": {
+																	"buildArguments": {}
+																},
+																"branch": "${refs.zeko-ui.branch}",
+																"id": "${template.refs.actions-indexer-build.id}",
+																"type": "service",
+																"sha": "${refs.zeko-ui.sha}"
+															},
+															"condition": "success",
+															"ref": "build-source-1"
+														},
+														{
+															"kind": "DeploymentService",
+															"spec": {
+																"deployment": {
+																	"instances": 1,
+																	"storage": {
+																		"ephemeralStorage": {
+																			"storageSize": 1024
+																		},
+																		"shmSize": 64
+																	},
+																	"docker": {
+																		"configType": "default"
+																	},
+																	"internal": {
+																		"id": "${refs.build-source-1.nfObjectId}",
+																		"branch": "${refs.build-source-1.branch}",
+																		"buildSHA": "latest"
+																	}
+																},
+																"loadBalancing": {
+																	"mode": "leastConnection"
+																},
+																"name": "${args.name}-actions-preview",
+																"tags": ["${args.previewId}"],
+																"billing": {
+																	"deploymentPlan": "nf-compute-100-1"
+																},
+																"runtimeEnvironment": {
+																	"DATABASE_URL": "${args.DATABASE_URL}",
+																	"AUTH_TOKEN": "${args.AUTH_TOKEN}",
+																	"PORT": "${args.PORT}",
+																	"L1_ARCHIVE_URL": "${args.L1_ARCHIVE_URL}"
+																},
+																"runtimeFiles": {},
+																"infrastructure": {
+																	"architecture": "x86"
+																},
+																"ports": [
+																	{
+																		"internalPort": 3000,
+																		"public": true,
+																		"protocol": "HTTP",
+																		"name": "p01",
+																		"domains": [],
+																		"security": {
+																			"sso": {},
+																			"policies": [],
+																			"credentials": [],
+																			"verificationMode": "or"
+																		},
+																		"disableNfDomain": false
+																	}
+																]
+															},
+															"ref": "actions-preview"
+														}
+													]
+												}
+											},
+											"triggers": [
+												{
+													"ref": "zeko-ui",
+													"vcsService": "github",
+													"accountLogin": "zeko-labs",
+													"repoUrl": "https://github.com/zeko-labs/zeko-ui",
+													"branchRestrictions": [],
+													"prRestrictions": ["*"],
+													"pathIgnoreRules": ["/services/actions/indexer/"],
+													"ciIgnoreFlags": [
+														"[skip ci]",
+														"[ci skip]",
+														"[no ci]",
+														"[skip nf]",
+														"[nf skip]",
+														"[northflank skip]",
+														"[skip northflank]"
+													],
+													"ciIgnoreFlagsEnabled": true,
+													"isAllowList": true,
+													"ignoreDrafts": false
+												}
+											],
+											"options": {
+												"concurrencyPolicy": "allow",
+												"nameFormat": "PR-${args.pullRequestId}",
+												"expiry": {
+													"previewLifetime": 1440
+												},
+												"schedule": {}
+											}
+										}
+									}
+								},
+								"ref": "actions-indexer-pipeline"
+							}
+						]
+					}
+				}
+			]
+		}
+	},
+	"arguments": {
+		"PORT": "3000",
+		"DATABASE_URL": "",
+		"AUTH_TOKEN": "",
+		"L1_ARCHIVE_URL": ""
+	},
+	"options": {
+		"autorun": false,
+		"concurrencyPolicy": "allow"
+	},
+	"gitops": {
+		"repoUrl": "https://github.com/zeko-labs/zeko-ui",
+		"vcsService": "github",
+		"accountLogin": "zeko-labs",
+		"branch": "main",
+		"filePath": "/northflank/actions-indexer/project.json"
+	},
+	"$schema": "https://api.northflank.com/v1/schemas/template"
 }

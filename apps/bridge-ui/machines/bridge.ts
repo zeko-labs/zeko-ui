@@ -6,7 +6,7 @@ import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
 import { createLogger } from "./debug"
-import { clearWalletAddress, sendMetric } from "./metrics"
+import { clearWalletAddress } from "./metrics"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
 import workerUrl from "./operations.worker?worker&url"
 
@@ -28,7 +28,7 @@ type Operations = Map<
 type Wallet = ActorRefFromLogic<typeof walletMachine>
 type OperationWorker = Comlink.Remote<OperationsWorker>
 
-type Command = "start" | "resumeDeposit" | "resumeWithdrawal" | "complete"
+type Command = "start" | "resumeDeposit" | "resumeWithdrawal" | "complete" | "completeCancelled"
 type StartOperationSettings = {
 	amount: string
 	command: Command
@@ -126,6 +126,7 @@ export const bridgeMachine = setup({
 				{
 					start: regularDirection,
 					complete: regularDirection,
+					completeCancelled: regularDirection,
 					resumeDeposit: "deposit",
 					resumeWithdrawal: "withdrawal"
 				} as const
@@ -151,6 +152,8 @@ export const bridgeMachine = setup({
 				operation.send({ type: "Resume", paused: state?.status === "paused" })
 			}
 			if (command === "complete") operation.send({ type: "CompleteBridgeOperation" })
+			if (command === "completeCancelled")
+				operation.send({ type: "CompleteBridgeOperationCancelled" })
 			const operations = context.operations.set(id, {
 				status: state?.status ?? "started",
 				operation
@@ -158,7 +161,9 @@ export const bridgeMachine = setup({
 			return {
 				operations: new Map(operations),
 				activeOperation:
-					command === "complete" || state?.status === "paused" ? context.activeOperation : id
+					command === "complete" || command === "completeCancelled" || state?.status === "paused"
+						? context.activeOperation
+						: id
 			}
 		}),
 		pauseOperation: assign(({ context }, params: { id: string }) => {
@@ -283,16 +288,6 @@ export const bridgeMachine = setup({
 							})
 						}
 					}
-					// Assign data
-					sendMetric(
-						{
-							category: "bridge",
-							action: "networkChanged",
-							source: sourceNetwork,
-							destination: destinationNetwork
-						},
-						context.wallet.getSnapshot().context.account
-					)
 					enqueue.assign({ sourceNetwork, destinationNetwork })
 				})
 			}
@@ -315,21 +310,10 @@ export const bridgeMachine = setup({
 		},
 		InvertDirection: {
 			target: ".READY",
-			actions: assign(({ context: { sourceNetwork, destinationNetwork, wallet } }) => {
-				sendMetric(
-					{
-						category: "bridge",
-						action: "directionInverted",
-						source: destinationNetwork,
-						destination: sourceNetwork
-					},
-					wallet.getSnapshot().context.account
-				)
-				return {
-					sourceNetwork: destinationNetwork,
-					destinationNetwork: sourceNetwork
-				}
-			})
+			actions: assign(({ context: { sourceNetwork, destinationNetwork } }) => ({
+				sourceNetwork: destinationNetwork,
+				destinationNetwork: sourceNetwork
+			}))
 		},
 		StartOperation: {
 			description:
@@ -388,17 +372,7 @@ export const bridgeMachine = setup({
 				}),
 				onDone: {
 					target: "READY",
-					actions: enqueueActions(({ event, enqueue, context }) => {
-						sendMetric(
-							{
-								category: "bridge",
-								action: "findPendingOperations",
-								label: `deposits:${event.output.deposits.length},withdrawals:${event.output.withdrawals.length}`,
-								source: context.sourceNetwork,
-								destination: context.destinationNetwork
-							},
-							context.wallet.getSnapshot().context.account
-						)
+					actions: enqueueActions(({ event, enqueue }) => {
 						interface StartArgs {
 							status: OperationStatus
 							actionState: ActionState
@@ -417,7 +391,7 @@ export const bridgeMachine = setup({
 						}
 						const handlePending = () => {
 							const [deposit, ...deposits] = event.output.deposits.filter(
-								(a) => a.finalised === false
+								(a) => a.finalised === false && a.cancelled === false
 							)
 							const [withdrawal, ...withdrawals] = event.output.withdrawals.filter(
 								(a) => a.finalised === false
@@ -457,8 +431,17 @@ export const bridgeMachine = setup({
 								start({ status: "completed", actionState, command: "complete" })
 						}
 
+						const handleCancelled = () => {
+							const deposits = event.output.deposits.filter(
+								(a) => a.cancelled === true && a.finalised === false
+							)
+							for (const actionState of deposits)
+								start({ status: "completed", actionState, command: "completeCancelled" })
+						}
+
 						handlePending()
 						handleComplete()
+						handleCancelled()
 					})
 				},
 				onError: { target: "ERROR" }

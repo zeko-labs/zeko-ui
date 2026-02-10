@@ -92,6 +92,7 @@ type BridgeOperationEvents =
 	| { type: "SetCurrentNetwork"; network: Networks }
 	| { type: "StartBridgeOperation" }
 	| { type: "CompleteBridgeOperation" }
+	| { type: "CompleteBridgeOperationCancelled" }
 	| { type: "Resume"; paused: boolean }
 	| { type: "Pause" }
 	| { type: "ReturnTo" }
@@ -176,19 +177,26 @@ export const bridgeOperationMachine = setup({
 				const stop = measure(label)
 				logger.start(label)
 				const { bridge, l1, l2, user } = input
-				const checkDepositStatus = async () => {
-					const [canFinalize, canCancel] = await Promise.all([
-						worker(bridge).canFinalizeDeposit({ l1, l2, user }),
-						worker(bridge).canCancelDeposit({ l1, l2, user })
-					])
-					logger.info(`Deposit status: ${JSON.stringify({ canFinalize, canCancel })}`)
-					if (canFinalize) sendBack({ type: "CanFinalize" })
-					else if (canCancel) sendBack({ type: "CanCancel" })
+				const controller = new AbortController()
+				const checkDepositStatus = async (signal: AbortSignal): Promise<void> => {
+					if (signal.aborted) return
+					try {
+						const [canFinalize, canCancel] = await Promise.all([
+							worker(bridge).canFinalizeDeposit({ l1, l2, user }),
+							worker(bridge).canCancelDeposit({ l1, l2, user })
+						])
+						logger.info(`Deposit status: ${JSON.stringify({ canFinalize, canCancel })}`)
+						if (canFinalize) sendBack({ type: "CanFinalize" })
+						else if (canCancel) sendBack({ type: "CanCancel" })
+						else if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)
+					} catch (error) {
+						logger.error(error instanceof Error ? error : new Error(String(error)))
+						if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)
+					}
 				}
-				checkDepositStatus()
-				const interval = setInterval(checkDepositStatus, POLL_INTERVAL)
+				checkDepositStatus(controller.signal)
 				return () => {
-					clearInterval(interval)
+					controller.abort()
 					logger.success(label)
 					stop()
 				}
@@ -213,15 +221,22 @@ export const bridgeOperationMachine = setup({
 			const stop = measure(label)
 			logger.start(label)
 			const { bridge, user, l1, l2 } = input
-			const checkWithdrawalStatus = async () => {
-				logger.info("Checking withdrawal status...")
-				const can = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
-				if (can) sendBack({ type: "CanFinalize" })
+			const controller = new AbortController()
+			const checkWithdrawalStatus = async (signal: AbortSignal): Promise<void> => {
+				if (signal.aborted) return
+				try {
+					logger.info("Checking withdrawal status...")
+					const can = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
+					if (can) sendBack({ type: "CanFinalize" })
+					else if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
+				} catch (error) {
+					logger.error(error instanceof Error ? error : new Error(String(error)))
+					if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
+				}
 			}
-			checkWithdrawalStatus()
-			const interval = setInterval(checkWithdrawalStatus, POLL_INTERVAL)
+			checkWithdrawalStatus(controller.signal)
 			return () => {
-				clearInterval(interval)
+				controller.abort()
 				logger.success(label)
 				stop()
 			}
@@ -351,6 +366,7 @@ export const bridgeOperationMachine = setup({
 					]
 				},
 				CompleteBridgeOperation: { target: "BRIDGE_OPERATION_DONE_NOOP" },
+				CompleteBridgeOperationCancelled: { target: "BRIDGE_OPERATION_CANCELLED_DONE" },
 				StartBridgeOperation: [
 					{
 						target: "INIT_BRIDGE_OPERATION",
@@ -855,6 +871,14 @@ export const bridgeOperationMachine = setup({
 		},
 		BRIDGE_OPERATION_DONE: {
 			meta: { step: 4 },
+			type: "final",
+			entry: sendTo(
+				({ context }) => context.bridge,
+				({ self }) => ({ type: "CompleteOperation", id: self.id })
+			)
+		},
+		BRIDGE_OPERATION_CANCELLED_DONE: {
+			meta: { step: 1 },
 			type: "final",
 			entry: sendTo(
 				({ context }) => context.bridge,

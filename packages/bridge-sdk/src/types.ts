@@ -64,6 +64,7 @@ export type OuterAction = OuterWitness | OuterCommit
 
 export type DepositWithState = Action &
 	Deposit & {
+		cancelled: boolean
 		synced: boolean
 		accepted: boolean
 		confirmed: boolean

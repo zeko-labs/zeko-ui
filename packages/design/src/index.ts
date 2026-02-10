@@ -140,6 +140,11 @@ export const config = defineConfig({
 					background: "oklch(89.1% 0.042 21.6)",
 					border: "oklch(81.6% 0.073 24)",
 					content: "oklch(48.2% 0.153 28.2)"
+				},
+				cancelled: {
+					background: "oklch(94.5% 0.012 280)",
+					border: "oklch(86% 0.03 280)",
+					content: "oklch(52% 0.06 280)"
 				}
 			}
 		},

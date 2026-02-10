@@ -12,6 +12,7 @@ export type ActionState = {
 	id: string
 	recipient: string
 	amount: string
+	cancelled: boolean
 	finalised: boolean
 	transaction: {
 		date: Date
@@ -57,6 +58,7 @@ async function findPendingOperations({
 				acceptedIndex: number
 				confirmedIndex: number
 				finalisedIndex: number
+				cancelledIndex: number
 			},
 			{
 				withdrawals: WithdrawalWithState[]
@@ -70,11 +72,13 @@ async function findPendingOperations({
 	const transferToString = ({
 		transfer,
 		index,
+		cancelled,
 		source,
 		destination
 	}: {
 		transfer: DepositWithState | WithdrawalWithState
 		index: number
+		cancelled: boolean
 		source: Networks
 		destination: Networks
 	}) => ({
@@ -82,6 +86,7 @@ async function findPendingOperations({
 		id: transfer.afterActionState.toString(),
 		recipient: transfer.recipient.toBase58(),
 		amount: toAmount(transfer.amount.toBigInt()),
+		cancelled,
 		finalised: transfer.finalised,
 		transaction: {
 			date: new Date(transfer.timestamp),
@@ -93,10 +98,22 @@ async function findPendingOperations({
 
 	return {
 		deposits: deposits.map((deposit, index) =>
-			transferToString({ transfer: deposit, index, source: l1, destination: l2 })
+			transferToString({
+				transfer: deposit,
+				index,
+				cancelled: deposit.cancelled,
+				source: l1,
+				destination: l2
+			})
 		),
 		withdrawals: withdrawals.map((withdrawal, index) =>
-			transferToString({ transfer: withdrawal, index, source: l2, destination: l1 })
+			transferToString({
+				transfer: withdrawal,
+				index,
+				cancelled: false,
+				source: l2,
+				destination: l1
+			})
 		)
 	}
 }

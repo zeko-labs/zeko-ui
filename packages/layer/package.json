@@ -8,7 +8,6 @@
 	},
 	"dependencies": {
 		"@ark-ui/vue": "catalog:",
-		"@hebilicious/nuxt-switch-match": "catalog:",
 		"@nuxt/fonts": "catalog:",
 		"lucide-vue-next": "catalog:",
 		"nuxt": "catalog:",

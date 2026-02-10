@@ -335,6 +335,23 @@
 					"value": "oklch(48.2% 0.153 28.2)",
 					"variable": "--palette-error-content: oklch(48.2% 0.153 28.2);"
 				}
+			},
+			"cancelled": {
+				"background": {
+					"key": "--palette-cancelled-background",
+					"value": "oklch(94.5% 0.012 280)",
+					"variable": "--palette-cancelled-background: oklch(94.5% 0.012 280);"
+				},
+				"border": {
+					"key": "--palette-cancelled-border",
+					"value": "oklch(86% 0.03 280)",
+					"variable": "--palette-cancelled-border: oklch(86% 0.03 280);"
+				},
+				"content": {
+					"key": "--palette-cancelled-content",
+					"value": "oklch(52% 0.06 280)",
+					"variable": "--palette-cancelled-content: oklch(52% 0.06 280);"
+				}
 			}
 		}
 	},

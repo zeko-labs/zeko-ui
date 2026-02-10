@@ -66,6 +66,7 @@ watch(machine.value.context.errors, (newErrors) => {
             {{
               {
               	complete: "Completed",
+              	cancelled: "Cancelled",
               	pending: "Pending",
               	error: "Failed"
               }[status.kind]
@@ -118,146 +119,129 @@ watch(machine.value.context.errors, (newErrors) => {
           </Button>
         </div>
         <div class="Explanation">
-          <Switch>
-            <!-- Initializing: loading wallet history and status -->
-            <Match :when='machine.matches("INIT_BRIDGE_OPERATION")'>
-              <BridgeMessage messageKey="initBridgeOperation" />
-            </Match>
+          <template v-if='machine.matches("INIT_BRIDGE_OPERATION")'>
+            <BridgeMessage messageKey="initBridgeOperation" />
+          </template>
 
-            <!-- Submit withdrawal: generating transaction -->
-            <Match
-              :when='machine.matches({ SUBMIT_WITHDRAWAL: "transaction" })'>
-              <BridgeMessage messageKey="submit" />
-            </Match>
+          <template
+            v-else-if='machine.matches({ SUBMIT_WITHDRAWAL: "transaction" })'>
+            <BridgeMessage messageKey="submit" />
+          </template>
 
-            <!-- Submit withdrawal: waiting for confirmation -->
-            <Match
-              :when='machine.matches({ SUBMIT_WITHDRAWAL: "send_and_confirm" })'>
-              <BridgeMessage
-                messageKey="submitDeposit"
-                :transactions="machine.context.transactions"
-                transactionKey="submitWithdrawal"
-              />
-            </Match>
+          <template
+            v-else-if='machine.matches({ SUBMIT_WITHDRAWAL: "send_and_confirm" })'>
+            <BridgeMessage
+              messageKey="submitDeposit"
+              :transactions="machine.context.transactions"
+              transactionKey="submitWithdrawal"
+            />
+          </template>
 
-            <!-- Submit deposit: generating transaction -->
-            <Match :when='machine.matches({ SUBMIT_DEPOSIT: "transaction" })'>
-              <BridgeMessage messageKey="submit" />
-            </Match>
+          <template
+            v-else-if='machine.matches({ SUBMIT_DEPOSIT: "transaction" })'>
+            <BridgeMessage messageKey="submit" />
+          </template>
 
-            <!-- Submit deposit: waiting for confirmation -->
-            <Match
-              :when='machine.matches({ SUBMIT_DEPOSIT: "send_and_confirm" })'>
-              <BridgeMessage
-                messageKey="submitDeposit"
-                :transactions="machine.context.transactions"
-                transactionKey="submitDeposit"
-              />
-            </Match>
+          <template
+            v-else-if='machine.matches({ SUBMIT_DEPOSIT: "send_and_confirm" })'>
+            <BridgeMessage
+              messageKey="submitDeposit"
+              :transactions="machine.context.transactions"
+              transactionKey="submitDeposit"
+            />
+          </template>
 
-            <!-- Pending deposit: awaiting on-chain finality -->
-            <Match :when='machine.matches("PENDING_DEPOSIT")'>
-              <BridgeMessage
-                messageKey="pending"
-                :transactions="machine.context.transactions"
-                transactionKey="submitDeposit"
-              />
-            </Match>
+          <template v-else-if='machine.matches("PENDING_DEPOSIT")'>
+            <BridgeMessage
+              messageKey="pending"
+              :transactions="machine.context.transactions"
+              transactionKey="submitDeposit"
+            />
+          </template>
 
-            <!-- Pending withdrawal: awaiting on-chain finality -->
-            <Match :when='machine.matches("PENDING_WITHDRAWAL")'>
-              <BridgeMessage
-                messageKey="pending"
-                :transactions="machine.context.transactions"
-                transactionKey="submitWithdrawal"
-              />
-            </Match>
+          <template v-else-if='machine.matches("PENDING_WITHDRAWAL")'>
+            <BridgeMessage
+              messageKey="pending"
+              :transactions="machine.context.transactions"
+              transactionKey="submitWithdrawal"
+            />
+          </template>
 
-            <!-- Ready to finalize: user can claim -->
-            <Match :when='machine.matches("TO_FINALIZE")'>
-              <BridgeMessage messageKey="toFinalize" />
-            </Match>
+          <template v-else-if='machine.matches("TO_FINALIZE")'>
+            <BridgeMessage messageKey="toFinalize" />
+          </template>
 
-            <!-- Can cancel: deposit timed out -->
-            <Match :when='machine.matches("CAN_CANCEL")'>
-              <div class="warning">
-                <BridgeMessage messageKey="canCancel" />
-              </div>
-            </Match>
+          <template v-else-if='machine.matches("CAN_CANCEL")'>
+            <div class="warning">
+              <BridgeMessage messageKey="canCancel" />
+            </div>
+          </template>
 
-            <!-- Cancel deposit: generating cancellation transaction -->
-            <Match :when='machine.matches({ CANCEL_DEPOSIT: "transaction" })'>
-              <BridgeMessage messageKey="cancellingDeposit" />
-            </Match>
+          <template
+            v-else-if='machine.matches({ CANCEL_DEPOSIT: "transaction" })'>
+            <BridgeMessage messageKey="cancellingDeposit" />
+          </template>
 
-            <!-- Cancel deposit: waiting for cancellation confirmation -->
-            <Match
-              :when='machine.matches({ CANCEL_DEPOSIT: "send_and_confirm" })'>
-              <BridgeMessage
-                messageKey="cancelDeposit"
-                :transactions="machine.context.transactions"
-                transactionKey="cancelDeposit"
-              />
-            </Match>
+          <template
+            v-else-if='machine.matches({ CANCEL_DEPOSIT: "send_and_confirm" })'>
+            <BridgeMessage
+              messageKey="cancelDeposit"
+              :transactions="machine.context.transactions"
+              transactionKey="cancelDeposit"
+            />
+          </template>
 
-            <!-- Deposit cancelled: funds returned -->
-            <Match :when='machine.matches("DEPOSIT_CANCELLED")'>
-              <BridgeMessage messageKey="depositCancelled" />
-            </Match>
+          <template v-else-if='machine.matches("DEPOSIT_CANCELLED")'>
+            <BridgeMessage messageKey="depositCancelled" />
+          </template>
 
-            <!-- Finalize deposit: generating proof -->
-            <Match :when='machine.matches({ FINALIZE_DEPOSIT: "transaction" })'>
-              <BridgeMessage messageKey="finalizeTransaction" />
-            </Match>
+          <template
+            v-else-if='machine.matches({ FINALIZE_DEPOSIT: "transaction" })'>
+            <BridgeMessage messageKey="finalizeTransaction" />
+          </template>
 
-            <!-- Finalize deposit: waiting for confirmation -->
-            <Match
-              :when='machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })'>
-              <BridgeMessage
-                messageKey="finalizeDeposit"
-                :transactions="machine.context.transactions"
-                transactionKey="finalizeDeposit"
-              />
-            </Match>
+          <template
+            v-else-if='machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })'>
+            <BridgeMessage
+              messageKey="finalizeDeposit"
+              :transactions="machine.context.transactions"
+              transactionKey="finalizeDeposit"
+            />
+          </template>
 
-            <!-- Finalize withdrawal: generating proof -->
-            <Match
-              :when='machine.matches({ FINALIZE_WITHDRAWAL: "transaction" })'>
-              <BridgeMessage messageKey="finalizeTransaction" />
-            </Match>
+          <template
+            v-else-if='machine.matches({ FINALIZE_WITHDRAWAL: "transaction" })'>
+            <BridgeMessage messageKey="finalizeTransaction" />
+          </template>
 
-            <!-- Finalize withdrawal: waiting for confirmation -->
-            <Match
-              :when='machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" })'>
-              <BridgeMessage
-                messageKey="finalizeWithdrawal"
-                :transactions="machine.context.transactions"
-                transactionKey="finalizeWithdrawal"
-              />
-            </Match>
+          <template
+            v-else-if='machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" })'>
+            <BridgeMessage
+              messageKey="finalizeWithdrawal"
+              :transactions="machine.context.transactions"
+              transactionKey="finalizeWithdrawal"
+            />
+          </template>
 
-            <!-- Waiting for network: user must switch wallet network -->
-            <Match :when='machine.matches("WAITING_FOR_NETWORK")'>
-              <div class="Flex">
-                <span>Switch your wallet to&nbsp;</span>
-                <NetworkBadge :network="machine.context.changeNetworkTo" />
-                <span>.</span>
-              </div>
-            </Match>
+          <template v-else-if='machine.matches("WAITING_FOR_NETWORK")'>
+            <div class="Flex">
+              <span>Switch your wallet to&nbsp;</span>
+              <NetworkBadge :network="machine.context.changeNetworkTo" />
+              <span>.</span>
+            </div>
+          </template>
 
-            <!-- Failed: something went wrong -->
-            <Match :when='machine.matches("FAILED")'>
-              <div class="error">
-                <p>Something went wrong.</p>
-                <p>
-                  Don't worry, your funds are safe.
-                  <a
-                    href="https://discord.gg/vSDxqAchUY"
-                    target="_blank">Contact us on Discord</a>.
-                </p>
-              </div>
-            </Match>
-          </Switch>
+          <template v-else-if='machine.matches("FAILED")'>
+            <div class="error">
+              <p>Something went wrong.</p>
+              <p>
+                Don't worry, your funds are safe.
+                <a
+                  href="https://discord.gg/vSDxqAchUY"
+                  target="_blank">Contact us on Discord</a>.
+              </p>
+            </div>
+          </template>
         </div>
       </div>
     </div>

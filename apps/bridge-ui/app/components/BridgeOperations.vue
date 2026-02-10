@@ -143,10 +143,14 @@ const visiblePages = computed(() => {
             class="data-row">
             <!-- Status -->
             <td>
-              <Label :title="row.original.status" :is="row.original.statusKind">
+              <Label
+                class="Table"
+                :title="row.original.status"
+                :is="row.original.statusKind">
                 {{
                   {
                   	complete: "Completed",
+                  	cancelled: "Cancelled",
                   	pending: "Pending",
                   	error: "Failed"
                   }[row.original.statusKind]
@@ -266,8 +270,12 @@ tbody tr:hover {
 }
 
 .AmountBox {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(4ch, max-content) min-content auto;
   gap: 1ch;
+  span:first-child {
+    justify-self: end;
+  }
 }
 
 .PaginationBar {
