@@ -21,12 +21,12 @@ export const clearWalletAddress = () => {
  * Caches the result after first call for performance.
  */
 const getUserContext = (walletAddress?: string): Partial<MetricEvent> => {
-	if (!cachedUserContext) {
+	if (!cachedUserContext && typeof navigator !== "undefined") {
 		cachedUserContext = {
 			userAgent: navigator.userAgent,
 			cpuCores: navigator.hardwareConcurrency ?? 0,
 			language: navigator.language,
-			screenResolution: `${screen.width}x${screen.height}`
+			screenResolution: typeof screen !== "undefined" ? `${screen.width}x${screen.height}` : ""
 		}
 	}
 	if (walletAddress !== undefined) cachedWalletAddress = walletAddress

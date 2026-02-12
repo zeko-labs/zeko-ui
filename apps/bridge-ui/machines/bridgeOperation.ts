@@ -372,11 +372,12 @@ export const bridgeOperationMachine = setup({
 						target: "INIT_BRIDGE_OPERATION",
 						guard: "currentNetworkIsSource",
 						actions: ({ context }) => {
+							const amount = Number(context.amount)
 							sendMetric(
 								{
 									category: "bridge_operation",
 									action: "started",
-									amount: Number(context.amount),
+									amount: Number.isNaN(amount) ? 0 : amount,
 									source: context.source,
 									destination: context.destination,
 									label: context.direction

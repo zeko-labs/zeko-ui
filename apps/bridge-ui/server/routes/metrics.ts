@@ -23,7 +23,8 @@ export default defineEventHandler(async (event) => {
 		const env = event.context.cloudflare.env as unknown as Env
 		const origin = getHeader(event, "origin") ?? ""
 
-		if (!ALLOWED_ORIGINS.includes(origin)) {
+		// Allow same-origin requests (no origin header) or explicit origins
+		if (origin && !ALLOWED_ORIGINS.includes(origin)) {
 			return Response.json({ message: "Forbidden" }, { status: 403 })
 		}
 
