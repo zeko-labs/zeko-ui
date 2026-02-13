@@ -31,7 +31,7 @@ tasks:
     inputs:
       - "@group(sources)"
   lint-fix:
-    command: biome check --formatter-enabled=false --unsafe --write
+    command: biome check --formatter-enabled=false --unsafe --write --diagnostic-level=error
     inputs:
       - "@globs(sources)"
   dev:

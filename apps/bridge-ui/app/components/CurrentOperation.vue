@@ -236,9 +236,8 @@ watch(machine.value.context.errors, (newErrors) => {
               <p>Something went wrong.</p>
               <p>
                 Don't worry, your funds are safe.
-                <a
-                  href="https://discord.gg/vSDxqAchUY"
-                  target="_blank">Contact us on Discord</a>.
+                <a href="https://discord.gg/vSDxqAchUY" target="_blank">Contact
+                  us on Discord</a>.
               </p>
             </div>
           </template>

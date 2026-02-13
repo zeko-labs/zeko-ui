@@ -120,13 +120,13 @@ header {
   }
   color: var(--palette-gray-950);
   /* &.granted {
-       color: var(--palette-cosmicGold-medium);
-     }
-     &.denied {
-       color: var(--palette-persianRed-400);
-     }
-     &.default {
-       color: var(--palette-persianRed-400);
-     } */
+        color: var(--palette-cosmicGold-medium);
+      }
+      &.denied {
+        color: var(--palette-persianRed-400);
+      }
+      &.default {
+        color: var(--palette-persianRed-400);
+      } */
 }
 </style>
