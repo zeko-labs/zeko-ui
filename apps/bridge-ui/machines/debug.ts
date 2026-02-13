@@ -79,7 +79,7 @@ export const createLogger = (prefix: string, options?: CreateLoggerOptions) => {
 	const act = async <T>(
 		label: string,
 		body: ({ stop }: { stop: () => void }) => Promise<T>,
-		walletAddress?: string
+		walletAddress: string | undefined
 	) => {
 		const start = performance.now()
 		const stop = measure(label)

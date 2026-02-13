@@ -164,11 +164,15 @@ export const bridgeOperationMachine = setup({
 		transactionMachine,
 		submitDeposit: fromPromise<string, BridgeWorker & { amount: string; timeoutSlots?: number }>(
 			({ input }) => {
-				return act("submitDeposit", async () => {
-					const { bridge, l1, l2, amount, user, timeoutSlots } = input
-					const tx = await worker(bridge).submitDeposit({ l1, l2, user, amount, timeoutSlots })
-					return tx
-				})
+				return act(
+					"submitDeposit",
+					async () => {
+						const { bridge, l1, l2, amount, user, timeoutSlots } = input
+						const tx = await worker(bridge).submitDeposit({ l1, l2, user, amount, timeoutSlots })
+						return tx
+					},
+					input.user
+				)
 			}
 		),
 		pendingDeposit: fromCallback<EventObject, BridgeWorker & { depositTimestamp?: Date }>(
@@ -203,18 +207,26 @@ export const bridgeOperationMachine = setup({
 			}
 		),
 		finalizeDeposit: fromPromise<string, BridgeWorker>(({ input }) => {
-			return act("finalizeDeposit", async () => {
-				const { bridge, l1, l2, user } = input
-				const tx = await worker(bridge).finalizeDeposit({ l1, l2, user })
-				return tx
-			})
+			return act(
+				"finalizeDeposit",
+				async () => {
+					const { bridge, l1, l2, user } = input
+					const tx = await worker(bridge).finalizeDeposit({ l1, l2, user })
+					return tx
+				},
+				input.user
+			)
 		}),
 		submitWithdrawal: fromPromise<string, BridgeWorker & { amount: string }>(({ input }) => {
-			return act("submitWithdrawal", async () => {
-				const { bridge, l1, l2, amount, user } = input
-				const tx = await worker(bridge).submitWithdrawal({ l1, l2, user, amount })
-				return tx
-			})
+			return act(
+				"submitWithdrawal",
+				async () => {
+					const { bridge, l1, l2, amount, user } = input
+					const tx = await worker(bridge).submitWithdrawal({ l1, l2, user, amount })
+					return tx
+				},
+				input.user
+			)
 		}),
 		pendingWithdrawal: fromCallback<EventObject, BridgeWorker>(({ sendBack, input }) => {
 			const label = "pendingWithdrawal"
@@ -242,18 +254,26 @@ export const bridgeOperationMachine = setup({
 			}
 		}),
 		finalizeWithdrawal: fromPromise<string, BridgeWorker>(({ input }) => {
-			return act("finalizeWithdrawal", async () => {
-				const { bridge, l1, l2, user } = input
-				const tx = await worker(bridge).finalizeWithdrawal({ l1, l2, user })
-				return tx
-			})
+			return act(
+				"finalizeWithdrawal",
+				async () => {
+					const { bridge, l1, l2, user } = input
+					const tx = await worker(bridge).finalizeWithdrawal({ l1, l2, user })
+					return tx
+				},
+				input.user
+			)
 		}),
 		cancelDeposit: fromPromise<string, BridgeWorker>(({ input }) => {
-			return act("cancelDeposit", async () => {
-				const { bridge, l1, l2, user } = input
-				const tx = await worker(bridge).cancelDeposit({ l1, l2, user })
-				return tx
-			})
+			return act(
+				"cancelDeposit",
+				async () => {
+					const { bridge, l1, l2, user } = input
+					const tx = await worker(bridge).cancelDeposit({ l1, l2, user })
+					return tx
+				},
+				input.user
+			)
 		})
 	},
 	guards: {

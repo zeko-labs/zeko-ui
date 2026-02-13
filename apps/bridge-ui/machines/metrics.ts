@@ -10,17 +10,12 @@ type UserContext = {
 }
 
 let cachedUserContext: UserContext | null = null
-let cachedWalletAddress: string | undefined
-
-export const clearWalletAddress = () => {
-	cachedWalletAddress = undefined
-}
 
 /**
  * Collects device context (userAgent, cpuCores, language, screenResolution).
  * Caches the result after first call for performance.
  */
-const getUserContext = (walletAddress?: string): Partial<MetricEvent> => {
+const getUserContext = (walletAddress: string | undefined): Partial<MetricEvent> => {
 	if (!cachedUserContext && typeof navigator !== "undefined") {
 		cachedUserContext = {
 			userAgent: navigator.userAgent,
@@ -29,8 +24,7 @@ const getUserContext = (walletAddress?: string): Partial<MetricEvent> => {
 			screenResolution: typeof screen !== "undefined" ? `${screen.width}x${screen.height}` : ""
 		}
 	}
-	if (walletAddress !== undefined) cachedWalletAddress = walletAddress
-	return { ...cachedUserContext, walletAddress: cachedWalletAddress }
+	return { ...cachedUserContext, walletAddress }
 }
 
 /**
@@ -38,7 +32,7 @@ const getUserContext = (walletAddress?: string): Partial<MetricEvent> => {
  * Automatically attaches user context and timestamp.
  * Failures are silently ignored (fire-and-forget).
  */
-export const sendMetric = (event: MetricEvent, walletAddress?: string) => {
+export const sendMetric = (event: MetricEvent, walletAddress: string | undefined) => {
 	const payload: MetricEvent = {
 		...getUserContext(walletAddress),
 		...event,

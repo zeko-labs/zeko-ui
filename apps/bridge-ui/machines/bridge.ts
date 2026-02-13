@@ -6,7 +6,6 @@ import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
 import { createLogger } from "./debug"
-import { clearWalletAddress } from "./metrics"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
 import workerUrl from "./operations.worker?worker&url"
 
@@ -99,19 +98,23 @@ export const bridgeMachine = setup({
 		bridgeOperationMachine,
 		detectWalletChange,
 		findPendingOperations: fromPromise<PendingOperations, PendingOperationsInput>(({ input }) => {
-			return act("findPendingOperation", async () => {
-				const { wallet, worker, sourceNetwork, destinationNetwork } = input
-				const account = wallet.getSnapshot().context.account
-				if (account.length === 0) throw new Error("No account found in the wallet")
-				const l1 = sourceNetwork.includes("mina") ? sourceNetwork : destinationNetwork
-				const l2 = sourceNetwork.includes("zeko") ? sourceNetwork : destinationNetwork
+			const { wallet, worker, sourceNetwork, destinationNetwork } = input
+			const account = wallet.getSnapshot().context.account
+			return act(
+				"findPendingOperation",
+				async () => {
+					if (account.length === 0) throw new Error("No account found in the wallet")
+					const l1 = sourceNetwork.includes("mina") ? sourceNetwork : destinationNetwork
+					const l2 = sourceNetwork.includes("zeko") ? sourceNetwork : destinationNetwork
 
-				const result = await worker.findPendingOperations({ account, l1, l2 })
-				console.log(
-					`Found ${result.deposits.length} deposits and ${result.withdrawals.length} withdrawals`
-				)
-				return result
-			})
+					const result = await worker.findPendingOperations({ account, l1, l2 })
+					console.log(
+						`Found ${result.deposits.length} deposits and ${result.withdrawals.length} withdrawals`
+					)
+					return result
+				},
+				account
+			)
 		})
 	},
 	actions: {
@@ -233,7 +236,6 @@ export const bridgeMachine = setup({
 				target: ".FIND_OPERATIONS",
 				guard: ({ context }) => context.accountReady && context.walletReady,
 				actions: enqueueActions(({ enqueue, context }) => {
-					clearWalletAddress()
 					context.operations.forEach(({ operation }) => {
 						operation.send({ type: "Destroy" })
 					})

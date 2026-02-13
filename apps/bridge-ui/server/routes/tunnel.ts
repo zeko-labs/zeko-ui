@@ -20,11 +20,11 @@ export default defineEventHandler(async (event) => {
 		const header = JSON.parse(piece) as { dsn: string }
 		const dsn = new URL(header.dsn)
 		const project_id = dsn.pathname.replace("/", "")
-		const project_ids = Array.from(env.SENTRY_PROJECT_IDS)
+		const configured_project_id = env.SENTRY_PROJECT_ID
 		if (dsn.hostname !== env.SENTRY_HOST) {
 			throw new Error(`Invalid sentry hostname: ${dsn.hostname}`)
 		}
-		if (!project_id || !project_ids.includes(project_id)) {
+		if (!project_id || project_id !== configured_project_id) {
 			throw new Error(`Invalid sentry project id: ${project_id}`)
 		}
 		const upstream_sentry_url = `https://${env.SENTRY_HOST}/api/${project_id}/envelope/`

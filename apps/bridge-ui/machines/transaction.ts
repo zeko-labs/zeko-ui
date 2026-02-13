@@ -49,9 +49,14 @@ type SendSignedTxInput = {
 	db: HashDb
 	worker: OperationsWorker
 	feeMultiplier: number
+	user: string
 }
 
-type WaitForTxInput = SentTransaction & { network: Networks; worker: OperationsWorker }
+type WaitForTxInput = SentTransaction & {
+	network: Networks
+	worker: OperationsWorker
+	user: string
+}
 
 export const transactionMachine = setup({
 	types: {
@@ -60,80 +65,98 @@ export const transactionMachine = setup({
 		output: {} as TransactionMachineOutput
 	},
 	actors: {
-		findUnconfirmedTransaction: fromPromise<SavedTransaction | undefined, { db: HashDb }>(
-			({ input }) => {
-				return act("findUnconfirmedTransaction", async () => {
+		findUnconfirmedTransaction: fromPromise<
+			SavedTransaction | undefined,
+			{ db: HashDb; user: string }
+		>(({ input }) => {
+			return act(
+				"findUnconfirmedTransaction",
+				async () => {
 					const { db } = input
 					const transaction = await db.findUnconfirmed()
 					return transaction
-				})
-			}
-		),
+				},
+				input.user
+			)
+		}),
 		signTransaction: fromPromise<ZkappCommand, { transaction: string; user: string }>(
 			({ input }) => {
-				return act("signTransaction", async () => {
-					const { transaction, user } = input
-					const originalTransaction = JSON.parse(transaction) as ZkappCommand
-					logger.info({ originalTransaction })
-					// If the fee is 0, set it to 1 to avoid auro wallet error
-					if (originalTransaction.feePayer.body.fee === "0") {
-						originalTransaction.feePayer.body.fee = "1"
-					}
-					const result = await window.mina.sendTransaction({
-						onlySign: true,
-						transaction: JSON.stringify(originalTransaction)
-					})
-					if (result instanceof Error) throw result
-					if ("signedData" in result) {
-						// biome-ignore lint/suspicious/noExplicitAny: Parsing without validating
-						const zkappCommand = (JSON.parse(result.signedData) as any).zkappCommand as ZkappCommand
-						// If the feePayer is not the user, we need to set the authorization to a dummy value
-						if (zkappCommand.feePayer.body.publicKey !== user) {
-							zkappCommand.feePayer.authorization =
-								"7mWxjLYgbJUkZNcGouvhVj5tJ8yu9hoexb9ntvPK8t5LHqzmrL6QJjjKtf5SgmxB4QWkDw7qoMMbbNGtHVpsbJHPyTy2EzRQ"
+				return act(
+					"signTransaction",
+					async () => {
+						const { transaction, user } = input
+						const originalTransaction = JSON.parse(transaction) as ZkappCommand
+						logger.info({ originalTransaction })
+						// If the fee is 0, set it to 1 to avoid auro wallet error
+						if (originalTransaction.feePayer.body.fee === "0") {
+							originalTransaction.feePayer.body.fee = "1"
 						}
-						logger.success({ zkappCommand })
-						return zkappCommand
-					}
-					throw new Error("Couldn't find signedData")
-				})
+						const result = await window.mina.sendTransaction({
+							onlySign: true,
+							transaction: JSON.stringify(originalTransaction)
+						})
+						if (result instanceof Error) throw result
+						if ("signedData" in result) {
+							// biome-ignore lint/suspicious/noExplicitAny: Parsing without validating
+							const zkappCommand = (JSON.parse(result.signedData) as any)
+								.zkappCommand as ZkappCommand
+							// If the feePayer is not the user, we need to set the authorization to a dummy value
+							if (zkappCommand.feePayer.body.publicKey !== user) {
+								zkappCommand.feePayer.authorization =
+									"7mWxjLYgbJUkZNcGouvhVj5tJ8yu9hoexb9ntvPK8t5LHqzmrL6QJjjKtf5SgmxB4QWkDw7qoMMbbNGtHVpsbJHPyTy2EzRQ"
+							}
+							logger.success({ zkappCommand })
+							return zkappCommand
+						}
+						throw new Error("Couldn't find signedData")
+					},
+					input.user
+				)
 			}
 		),
 		sendSignedTransaction: fromPromise<SentTransaction, SendSignedTxInput>(({ input }) => {
-			return act("sendSignedTransaction", async () => {
-				const { signedTransaction, db, zeko, worker, feeMultiplier } = input
-				const zkappCommand = structuredClone(signedTransaction)
+			return act(
+				"sendSignedTransaction",
+				async () => {
+					const { signedTransaction, db, zeko, worker, feeMultiplier } = input
+					const zkappCommand = structuredClone(signedTransaction)
 
-				if (feeMultiplier > 1) {
-					const currentFee = BigInt(zkappCommand.feePayer.body.fee)
-					const newFee = currentFee * BigInt(feeMultiplier)
-					zkappCommand.feePayer.body.fee = newFee.toString()
-					logger.info(`Adjusted fee by ${feeMultiplier}x: ${currentFee} -> ${newFee}`)
-				}
+					if (feeMultiplier > 1) {
+						const currentFee = BigInt(zkappCommand.feePayer.body.fee)
+						const newFee = currentFee * BigInt(feeMultiplier)
+						zkappCommand.feePayer.body.fee = newFee.toString()
+						logger.info(`Adjusted fee by ${feeMultiplier}x: ${currentFee} -> ${newFee}`)
+					}
 
-				const { hash, zkAppId } = await worker.sendZkAppCommand(zkappCommand)
-				logger.success("Transaction sent", hash)
-				await db.saveSigned({ hash, zkAppId, confirmed: zeko, zkappCommand })
-				return { hash, zkAppId }
-			})
+					const { hash, zkAppId } = await worker.sendZkAppCommand(zkappCommand)
+					logger.success("Transaction sent", hash)
+					await db.saveSigned({ hash, zkAppId, confirmed: zeko, zkappCommand })
+					return { hash, zkAppId }
+				},
+				input.user
+			)
 		}),
 		waitForTransaction: fromPromise<string, WaitForTxInput>(({ input }) => {
-			return act("waitForTransaction", async () => {
-				const { zkAppId, hash, worker, network } = input
-				const transactionStatus = async (delay = 2000) => {
-					const url = urls[network]
-					const result = await worker.transactionStatus({ zkAppId, url })
-					if (result === "PENDING") {
-						await new Promise((r) => setTimeout(r, delay))
-						return transactionStatus(delay)
+			return act(
+				"waitForTransaction",
+				async () => {
+					const { zkAppId, hash, worker, network } = input
+					const transactionStatus = async (delay = 2000) => {
+						const url = urls[network]
+						const result = await worker.transactionStatus({ zkAppId, url })
+						if (result === "PENDING") {
+							await new Promise((r) => setTimeout(r, delay))
+							return transactionStatus(delay)
+						}
+						if (result === "INCLUDED") return true
+						throw new Error("Transactions status is unknown.")
 					}
-					if (result === "INCLUDED") return true
-					throw new Error("Transactions status is unknown.")
-				}
-				await transactionStatus()
-				logger.success("Transaction included:", hash)
-				return hash
-			})
+					await transactionStatus()
+					logger.success("Transaction included:", hash)
+					return hash
+				},
+				input.user
+			)
 		})
 	}
 }).createMachine({
@@ -167,7 +190,7 @@ export const transactionMachine = setup({
 			description: "Attempt to resume an unconfirmed transaction.",
 			invoke: {
 				src: "findUnconfirmedTransaction",
-				input: ({ context: { db, id } }) => ({ db, id }),
+				input: ({ context: { db, user } }) => ({ db, user }),
 				onDone: [
 					{
 						target: "SIGNING",
@@ -199,14 +222,15 @@ export const transactionMachine = setup({
 			description: "Send a signed transaction with o1js, and save it to idb.",
 			invoke: {
 				src: "sendSignedTransaction",
-				input: ({ context: { signedTransaction, db, network, worker, feeMultiplier } }) => {
+				input: ({ context: { signedTransaction, db, network, worker, feeMultiplier, user } }) => {
 					if (!signedTransaction) throw new Error("No signed transaction to send")
 					return {
 						signedTransaction,
 						db,
 						worker,
 						zeko: network.includes("zeko"),
-						feeMultiplier
+						feeMultiplier,
+						user
 					}
 				},
 				onDone: [
@@ -264,8 +288,8 @@ export const transactionMachine = setup({
 			description: "Wait for a transaction to be confirmed on L1.",
 			invoke: {
 				src: "waitForTransaction",
-				input: ({ context: { sentTransaction, worker, network } }) => {
-					if (sentTransaction) return { ...sentTransaction, worker, network }
+				input: ({ context: { sentTransaction, worker, network, user } }) => {
+					if (sentTransaction) return { ...sentTransaction, worker, network, user }
 					throw new Error("No sent transaction was found.")
 				},
 				onDone: {
