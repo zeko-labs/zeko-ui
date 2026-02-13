@@ -353,37 +353,11 @@ export const bridgeOperationMachine = setup({
 			on: {
 				Resume: {
 					target: "RESUMING",
-					actions: [
-						assign({ paused: ({ event }) => event.paused }),
-						({ context }) => {
-							sendMetric(
-								{
-									category: "bridge_operation",
-									action: "resumed",
-									source: context.source,
-									destination: context.destination
-								},
-								context.user
-							)
-						}
-					]
+					actions: assign({ paused: ({ event }) => event.paused })
 				},
 				Pause: {
 					target: "PAUSED",
-					actions: [
-						assign({ paused: true }),
-						({ context }) => {
-							sendMetric(
-								{
-									category: "bridge_operation",
-									action: "paused",
-									source: context.source,
-									destination: context.destination
-								},
-								context.user
-							)
-						}
-					]
+					actions: assign({ paused: true })
 				},
 				CompleteBridgeOperation: { target: "BRIDGE_OPERATION_DONE_NOOP" },
 				CompleteBridgeOperationCancelled: { target: "BRIDGE_OPERATION_CANCELLED_DONE" },

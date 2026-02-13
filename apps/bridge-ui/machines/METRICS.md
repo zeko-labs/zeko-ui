@@ -32,9 +32,10 @@ await act("operationName", async ({ stop }) => {
 
 Used for specific events not wrapped by `act()`:
 
-| Location         | Action     | Purpose                           |
-| ---------------- | ---------- | --------------------------------- |
-| `transaction.ts` | `feeRetry` | Tracks fee-too-low retry attempts |
+| Location             | Action     | Purpose                                  |
+| -------------------- | ---------- | ---------------------------------------- |
+| `bridgeOperation.ts` | `started`  | Tracks when user starts bridge operation |
+| `transaction.ts`     | `feeRetry` | Tracks fee-too-low retry attempts        |
 
 ## Categories
 
