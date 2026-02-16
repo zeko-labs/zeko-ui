@@ -2,11 +2,22 @@ import { describe, expect, it } from "vitest"
 import { cancellationSteps, progressFromState } from "../../app/helpers"
 
 describe("progressFromState", () => {
-	it("uses cancellation steps when cancellation flow is active", () => {
+	it("uses cancellation steps and maps CAN_CANCEL to confirming", () => {
 		const progress = progressFromState({ state: "CAN_CANCEL", step: 1 })
 		expect(progress).toEqual({
 			steps: cancellationSteps,
-			step: 0
+			step: 1
+		})
+	})
+
+	it("maps active cancellation transaction to cancelling", () => {
+		const progress = progressFromState({
+			state: { CANCEL_DEPOSIT: "transaction" },
+			step: 1
+		})
+		expect(progress).toEqual({
+			steps: cancellationSteps,
+			step: 2
 		})
 	})
 
