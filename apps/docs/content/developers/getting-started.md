@@ -6,6 +6,10 @@ You already know [What is Zeko](../introduction/what-is-zeko.md) and [Why you sh
 
 **Zeko provides a fully Mina-equivalent application layer** for building and deploying zkApps, meaning you can use the same tools and libraries and your development environment setup for building zkApps on Zeko will largely follow the standard setup for Mina zkApp development.
 
+## Setting Up Your Development Environment
+
+For detailed instructions on setting up your development environment for building on Zeko and Mina, please refer to the comprehensive [Mina Development Environment Setup Guide](https://docs.minaprotocol.com/zkapps/tutorials/zkapp-ui-with-react#prerequisites).
+
 ## Step 1 – Intro and Education
 
 > For developers new to Zeko, ZK, and Mina

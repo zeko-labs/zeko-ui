@@ -24,7 +24,7 @@ Key points about Zeko transaction fees:
 - Fees cover various aspects of the ZK Rollup operation, including data availability storage, batch creation, proof aggregation, and posting the batch to Layer 1.
 
 :::warning
-Creating a new account on Mina and on Zeko also involves paying an account creation fee of 1 MINA (or 1 tMINA on testnets).
+Creating a new account on Mina and on Zeko also involves paying an account creation fee of 0.1 MINA (or 0.1 tMINA on testnets).
 :::
 
 Zeko aims to make the fee structure competitive within the wider rollup space.
