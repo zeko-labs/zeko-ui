@@ -707,7 +707,7 @@ export const bridgeOperationMachine = setup({
 		},
 		DEPOSIT_CANCELLED: {
 			meta: { step: 1 },
-			after: { exitTimeout: "BRIDGE_OPERATION_DONE" }
+			after: { exitTimeout: "BRIDGE_OPERATION_CANCELLED_DONE" }
 		},
 		SUBMIT_WITHDRAWAL: {
 			initial: "transaction",

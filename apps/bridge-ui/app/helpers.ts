@@ -17,6 +17,7 @@ export const withdrawalSteps = [
 ] as const
 
 export const steps = ["Send", "Confirming", "Claim", "Finalizing"] as const
+export const cancellationSteps = ["Send", "Cancelling", "Cancelled"] as const
 
 type Direction = "deposit" | "withdrawal"
 
@@ -69,6 +70,36 @@ export const statusFromState = (
 		if ("CANCEL_DEPOSIT" in state) return { text: "Cancelling", kind: "pending" }
 	}
 	return isDeposit ? pendingDeposit(1) : pendingWithdrawal(1)
+}
+
+export const isCancellationFlow = (state: MachineStates, returnTo?: string | false): boolean => {
+	if (typeof state === "string") {
+		return (
+			state === "CAN_CANCEL" ||
+			state === "DEPOSIT_CANCELLED" ||
+			state === "BRIDGE_OPERATION_CANCELLED_DONE" ||
+			(state === "WAITING_FOR_NETWORK" && returnTo === "CANCEL_DEPOSIT")
+		)
+	}
+	return "CANCEL_DEPOSIT" in state
+}
+
+export const progressFromState = ({
+	state,
+	returnTo,
+	step
+}: {
+	state: MachineStates
+	returnTo?: string | false
+	step: number
+}) => {
+	if (!isCancellationFlow(state, returnTo)) return { steps, step }
+	if (typeof state === "string") {
+		if (state === "DEPOSIT_CANCELLED" || state === "BRIDGE_OPERATION_CANCELLED_DONE") {
+			return { steps: cancellationSteps, step: cancellationSteps.length }
+		}
+	}
+	return { steps: cancellationSteps, step: Math.min(step, cancellationSteps.length - 1) }
 }
 
 export const errorToaster = createToaster({

@@ -1,6 +1,11 @@
 <script lang="ts" setup>
 import type { ActorRefFromLogic } from "xstate"
-import { errorToaster, statePath, statusFromState, steps } from "~/helpers"
+import {
+	errorToaster,
+	progressFromState,
+	statePath,
+	statusFromState
+} from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
@@ -24,6 +29,13 @@ const step = computed(() => {
 	const meta = machine.value.getMeta()
 	return meta[statePath(machine.value.value)]?.step ?? 0
 })
+const progress = computed(() =>
+	progressFromState({
+		state: machine.value.value,
+		returnTo: machine.value.context.returnTo,
+		step: step.value
+	})
+)
 
 const status = computed(() =>
 	statusFromState(machine.value.value, machine.value.context.direction)
@@ -56,7 +68,7 @@ watch(machine.value.context.errors, (newErrors) => {
 <template>
   <div :class="{ CurrentOperationWrapper: true, isLoading, hasCTA }">
     <div class="ProgressBar">
-      <ProgressBar :steps :step />
+      <ProgressBar :steps="progress.steps" :step="progress.step" />
     </div>
     <div class="Operation">
       <div class="Table">
