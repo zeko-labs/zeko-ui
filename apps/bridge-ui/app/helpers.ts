@@ -17,12 +17,12 @@ export const withdrawalSteps = [
 ] as const
 
 export const steps = ["Send", "Confirming", "Claim", "Finalizing"] as const
-export const cancellationSteps = ["Send", "Confirming", "Cancelling", "Cancelled"] as const
+export const cancellationSteps = ["Send", "Confirming", "Cancel", "Cancelling"] as const
 export const cancellationFlowStage = {
 	Send: 0,
 	Confirming: 1,
-	Cancelling: 2,
-	Cancelled: cancellationSteps.length
+	Cancel: 2,
+	Cancelling: cancellationSteps.length
 } as const
 
 type Direction = "deposit" | "withdrawal"
@@ -111,26 +111,26 @@ export const progressFromState = ({
 			return {
 				flow: "cancellation",
 				steps: cancellationSteps,
-				step: cancellationFlowStage.Confirming
+				step: cancellationFlowStage.Cancel
 			}
 		}
 		if (state === "WAITING_FOR_NETWORK" && returnTo === "CANCEL_DEPOSIT")
-			// The machine pauses on network mismatch, but the user-facing stage is still "Cancelling".
+			// The machine pauses on network mismatch, but the user-facing stage is still "Cancel".
 			return {
 				flow: "cancellation",
 				steps: cancellationSteps,
-				step: cancellationFlowStage.Cancelling
+				step: cancellationFlowStage.Cancel
 			}
 		if (state === "DEPOSIT_CANCELLED" || state === "BRIDGE_OPERATION_CANCELLED_DONE") {
 			// ProgressBar marks final label complete only when step === steps.length.
 			return {
 				flow: "cancellation",
 				steps: cancellationSteps,
-				step: cancellationFlowStage.Cancelled
+				step: cancellationFlowStage.Cancelling
 			}
 		}
 	}
-	return { flow: "cancellation", steps: cancellationSteps, step: cancellationFlowStage.Cancelling }
+	return { flow: "cancellation", steps: cancellationSteps, step: 3 }
 }
 
 export const errorToaster = createToaster({

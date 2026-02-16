@@ -7,6 +7,10 @@ import {
 } from "../../app/helpers"
 
 describe("progressFromState", () => {
+	it("uses the expected cancellation step labels", () => {
+		expect(cancellationSteps).toEqual(["Send", "Confirming", "Cancel", "Cancelling"])
+	})
+
 	it("maps states to the expected UI progress stage", () => {
 		const cases = [
 			{
@@ -14,7 +18,7 @@ describe("progressFromState", () => {
 				expected: {
 					flow: "cancellation" as const,
 					steps: cancellationSteps,
-					step: cancellationFlowStage.Confirming
+					step: cancellationFlowStage.Cancel
 				}
 			},
 			{
@@ -22,7 +26,7 @@ describe("progressFromState", () => {
 				expected: {
 					flow: "cancellation" as const,
 					steps: cancellationSteps,
-					step: cancellationFlowStage.Cancelling
+					step: 3
 				}
 			},
 			{
@@ -34,7 +38,7 @@ describe("progressFromState", () => {
 				expected: {
 					flow: "cancellation" as const,
 					steps: cancellationSteps,
-					step: cancellationFlowStage.Cancelling
+					step: cancellationFlowStage.Cancel
 				}
 			},
 			{
@@ -42,7 +46,7 @@ describe("progressFromState", () => {
 				expected: {
 					flow: "cancellation" as const,
 					steps: cancellationSteps,
-					step: cancellationFlowStage.Cancelled
+					step: cancellationFlowStage.Cancelling
 				}
 			},
 			{
