@@ -16,16 +16,18 @@ The Zeko Bridge SDK enables seamless interaction with the Zeko Bridge for cross-
 ```typescript
 import { BridgeSDK } from '@zeko/bridge-sdk'
 
-// Initialize the SDK
-const bridge = new BridgeSDK({
-  network: 'testnet'
-})
+async function bridgeTokens() {
+  // Initialize the SDK
+  const bridge = new BridgeSDK({
+    network: 'testnet'
+  })
 
-// Bridge tokens from L1 to L2
-await bridge.deposit({
-  amount: '100',
-  recipient: 'B62...'
-})
+  // Bridge tokens from L1 to L2
+  await bridge.deposit({
+    amount: '100',
+    recipient: 'B62...' // Replace with actual Mina public key
+  })
+}
 ```
 
 ### Lumina SDK
@@ -45,6 +47,7 @@ Zeko provides GraphQL endpoints for querying blockchain data:
 **Example Query**:
 ```graphql
 query GetAccount {
+  # Replace B62... with an actual Mina public key address
   account(publicKey: "B62...") {
     balance {
       total
