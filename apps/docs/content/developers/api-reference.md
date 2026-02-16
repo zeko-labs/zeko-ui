@@ -16,6 +16,7 @@ The Zeko Bridge SDK enables seamless interaction with the Zeko Bridge for cross-
 ```typescript
 import { BridgeSDK } from '@zeko/bridge-sdk'
 
+// Example function demonstrating SDK usage
 async function bridgeTokens() {
   // Initialize the SDK
   const bridge = new BridgeSDK({
@@ -28,6 +29,9 @@ async function bridgeTokens() {
     recipient: 'B62...' // Replace with actual Mina public key
   })
 }
+
+// Call the function in your application
+bridgeTokens().catch(console.error)
 ```
 
 ### Lumina SDK
