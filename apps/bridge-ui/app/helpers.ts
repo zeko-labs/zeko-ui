@@ -18,10 +18,22 @@ export const withdrawalSteps = [
 
 export const steps = ["Send", "Confirming", "Claim", "Finalizing"] as const
 export const cancellationSteps = ["Send", "Confirming", "Cancelling", "Cancelled"] as const
+export const cancellationFlowStage = {
+	Send: 0,
+	Confirming: 1,
+	Cancelling: 2,
+	Cancelled: cancellationSteps.length
+} as const
 
 type Direction = "deposit" | "withdrawal"
+type ProgressFlow = "default" | "cancellation"
 
 type MachineStates = ReturnType<(typeof bridgeOperationMachine)["getInitialSnapshot"]>["value"]
+type UiProgress = {
+	flow: ProgressFlow
+	steps: readonly string[]
+	step: number
+}
 
 const deposit = (kind: "pending" | "complete") => (step: number) => ({
 	text: depositSteps[step] as (typeof depositSteps)[number],
@@ -92,17 +104,33 @@ export const progressFromState = ({
 	state: MachineStates
 	returnTo?: string | false
 	step: number
-}) => {
-	if (!isCancellationFlow(state, returnTo)) return { steps, step }
+}): UiProgress => {
+	if (!isCancellationFlow(state, returnTo)) return { flow: "default", steps, step }
 	if (typeof state === "string") {
-		if (state === "CAN_CANCEL") return { steps: cancellationSteps, step: 1 }
+		if (state === "CAN_CANCEL") {
+			return {
+				flow: "cancellation",
+				steps: cancellationSteps,
+				step: cancellationFlowStage.Confirming
+			}
+		}
 		if (state === "WAITING_FOR_NETWORK" && returnTo === "CANCEL_DEPOSIT")
-			return { steps: cancellationSteps, step: 2 }
+			// The machine pauses on network mismatch, but the user-facing stage is still "Cancelling".
+			return {
+				flow: "cancellation",
+				steps: cancellationSteps,
+				step: cancellationFlowStage.Cancelling
+			}
 		if (state === "DEPOSIT_CANCELLED" || state === "BRIDGE_OPERATION_CANCELLED_DONE") {
-			return { steps: cancellationSteps, step: cancellationSteps.length }
+			// ProgressBar marks final label complete only when step === steps.length.
+			return {
+				flow: "cancellation",
+				steps: cancellationSteps,
+				step: cancellationFlowStage.Cancelled
+			}
 		}
 	}
-	return { steps: cancellationSteps, step: 2 }
+	return { flow: "cancellation", steps: cancellationSteps, step: cancellationFlowStage.Cancelling }
 }
 
 export const errorToaster = createToaster({

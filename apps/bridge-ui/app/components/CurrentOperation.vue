@@ -14,7 +14,7 @@ const { operation } = defineProps<{
 }>()
 const machine = useSelector(operation, (state) => state)
 
-const step = computed(() => {
+const machineStep = computed(() => {
 	// Special case for `WAITING_FOR_NETWORK` state
 	if (machine.value.matches("WAITING_FOR_NETWORK")) {
 		if (!machine.value.context.returnTo) return 0
@@ -29,11 +29,11 @@ const step = computed(() => {
 	const meta = machine.value.getMeta()
 	return meta[statePath(machine.value.value)]?.step ?? 0
 })
-const progress = computed(() =>
+const uiProgress = computed(() =>
 	progressFromState({
 		state: machine.value.value,
 		returnTo: machine.value.context.returnTo,
-		step: step.value
+		step: machineStep.value
 	})
 )
 
@@ -68,7 +68,7 @@ watch(machine.value.context.errors, (newErrors) => {
 <template>
   <div :class="{ CurrentOperationWrapper: true, isLoading, hasCTA }">
     <div class="ProgressBar">
-      <ProgressBar :steps="progress.steps" :step="progress.step" />
+      <ProgressBar :steps="uiProgress.steps" :step="uiProgress.step" />
     </div>
     <div class="Operation">
       <div class="Table">
