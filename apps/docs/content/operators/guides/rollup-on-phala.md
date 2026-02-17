@@ -22,14 +22,14 @@ We are going to:
 
 On your accounts dashboard click `Deploy`.
 
-- Paste docker-compose.yaml contents from the [Rollup guide](https://docs.zeko.io/operators/guides/launch-rollup.html)
+- Paste docker-compose.yaml contents from the [Launch a Rollup](./launch-rollup.md) guide
 - Select 32G instance
-- Add your public ssh key to be able later to connect to your CVM.
+- Add your public ssh key to be able later to connect to your CVM
 - Deploy!
 
 ![Deploy a CVM](./create-phala-instance.png)
 
-> **Note:** To deploy a rollup we need at least 24G of RAM, therefore we have to select 32G instance(this can be redeployed on a 16G later).
+> **Note:** To deploy a rollup we need at least 24G of RAM, therefore we have to select 32G instance (this can be redeployed on a 16G later).
 
 ### SSH to your CVM
 
@@ -39,12 +39,12 @@ On your accounts dashboard click `Deploy`.
 phala login
 ```
 
-- get a list of CVMs
-- ssh to a wanted CVM
-- you should be able to exec into `init-config` container
+- Get a list of CVMs
+- SSH to a wanted CVM
+- You should be able to exec into `init-config` container
 
-![Deploy a CVM](./phala-ssh.png)
+![SSH into Phala CVM](./phala-ssh.png)
 
 ### Bootstrap a rollup
 
-With a working docker setup now you can follow our [Rollup guide](https://docs.zeko.io/operators/guides/launch-rollup.html)
+With a working docker setup now you can follow our [Launch a Rollup](./launch-rollup.md) guide.

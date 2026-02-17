@@ -1,4 +1,4 @@
 # Guides & Tutorials
 
 - [Launch a Rollup](./guides/launch-rollup.md)
-- [Phala Cloud](./guides/rollup-on-phala.md)
+- [Rollup on Phala](./guides/rollup-on-phala.md)

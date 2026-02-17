@@ -124,7 +124,7 @@ export default defineConfig({
 						collapsed: true,
 						items: [
 							{ text: "Launch a Rollup", link: "/operators/guides/launch-rollup.md" },
-							{ text: "Phala cloud", link: "/operators/guides/rollup-on-phala.md" }
+							{ text: "Rollup on Phala", link: "/operators/guides/rollup-on-phala.md" }
 						]
 					},
 					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" },

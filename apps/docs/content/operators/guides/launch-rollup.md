@@ -282,7 +282,7 @@ project-root/
   ```bash
   docker compose up -d
   ```
-- Create `circuits`/`decploy` config and `sequencer`/`da-layer` keys
+- Create `circuits`/`deploy` config and `sequencer`/`da-layer` keys
   1. Enter `init-config` container:
   ```bash
   docker compose exec -it init-config bash
@@ -301,8 +301,6 @@ project-root/
   > - `/data/keys/faucet-sk`
   > - `/data/keys/da-layer-pk`
   > - `/data/keys/da-layer-sk`
-
-  > **Note:** Copy created keys somewhere because after the `mv` operation, the `init-config` container will exit.
 
   ```bash
   # create `sequencer` keypair
