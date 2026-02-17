@@ -291,7 +291,7 @@ project-root/
   2. Create `deployment`/`circuits` config
   ```bash
   zeko-cli generate-circuits-config \
-    --circuits-config-output /data/circuits/betternet-circuits.json \
+    --circuits-config-output /data/circuits/betternet-config.json \
     --deploy-config-output /data/circuits/betternet-deploy.json
   ```
   3. Create `sequencer`/`da-layer` keypairs
@@ -349,7 +349,7 @@ project-root/
   ```bash
   export MINA_PRIVATE_KEY=$(cat /data/keys/sequencer-sk)
   export ZEKO_DEPLOY_CONFIG=/data/circuits/betternet-deploy.json
-  export ZEKO_CIRCUITS_CONFIG=/data/circuits/betternet-circuits.json
+  export ZEKO_CIRCUITS_CONFIG=/data/circuits/betternet-config.json
   export SEQUENCER_PK=$(cat /data/keys/sequencer-pk)
   export FAUCET_PK=$(cat /data/keys/faucet-pk)
   zeko-deploy --account-creation-fee 1 \
