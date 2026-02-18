@@ -50,7 +50,7 @@ const openLink = (wallet: string) => {
           <thead>
             <tr>
               <th
-                v-for="h of lb.table.getHeaderGroups()[0]?.headers"
+                v-for="h in lb.table.getHeaderGroups()[0]?.headers"
                 :key="h.id"
                 :class="h.column.columnDef.header">
                 {{ h.column.columnDef.header }}
@@ -64,7 +64,7 @@ const openLink = (wallet: string) => {
               </td>
             </tr>
             <tr
-              v-for="row of lb.table.getRowModel().rows"
+              v-for="row in lb.table.getRowModel().rows"
               :key="row.id"
               @click='openLink(row.getValue("wallet"))'>
               <td class="Rank">{{ row.getValue("rank") }}</td>

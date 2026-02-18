@@ -93,7 +93,7 @@ watch(
             <Select.Content>
               <Select.ItemGroup>
                 <Select.ItemGroupLabel>Networks</Select.ItemGroupLabel>
-                <Select.Item v-for="item of collection.items" :key="item" :item>
+                <Select.Item v-for="item in collection.items" :key="item" :item>
                   <Select.ItemText>
                     <NetworkBadge :icon="true" :network="item" />
                   </Select.ItemText>

@@ -49,7 +49,7 @@ const openMenu = () => {
       <nav class="DesktopNav">
         <div class="NavItems">
           <NavigationItem
-            v-for="section of navigation"
+            v-for="section in navigation"
             :key="section.name"
             :navigation="section"
           />
@@ -79,12 +79,12 @@ const openMenu = () => {
 
               <nav class="MobileNav">
                 <div
-                  v-for="section of navigation"
+                  v-for="section in navigation"
                   :key="section.name"
                   class="NavSection">
                   <h3 class="SectionTitle">{{ section.name }}</h3>
                   <ul class="NavList">
-                    <li v-for="item of section.children" :key="item.name">
+                    <li v-for="item in section.children" :key="item.name">
                       <NuxtLink
                         :to="item.url"
                         :target='item.url.startsWith("http") ? "_blank" : undefined'

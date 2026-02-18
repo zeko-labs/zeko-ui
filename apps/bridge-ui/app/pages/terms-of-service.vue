@@ -236,20 +236,20 @@
       <h2>14. Dispute Resolution; Arbitration; Class-Action Waiver</h2>
       <ul>
         <li>
-          <strong>[Binding Arbitration].</strong>
+          <strong>&#91;Binding Arbitration&#93;.</strong>
           Except where prohibited by law, any dispute arising out of or relating
           to these Terms or the Services will be resolved by binding arbitration
           on an individual basis, rather than in court, before [Arbitration
           Provider, e.g., JAMS/AAA], under [Applicable Rules].
         </li>
         <li>
-          <strong>[Class-Action Waiver].</strong>
+          <strong>&#91;Class-Action Waiver&#93;.</strong>
           You and [Zeko] agree that each may bring claims against the other only
           in an individual capacity and not as a plaintiff or class member in
           any purported class or representative proceeding.
         </li>
         <li>
-          <strong>[Opt-Out].</strong>
+          <strong>&#91;Opt-Out&#93;.</strong>
           You may opt out of arbitration by sending a written notice to [Contact
           Address] within [30] days after you first accept these Terms. (Counsel
           should confirm forum, rules, seat, and carve-outs.)

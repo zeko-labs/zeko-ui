@@ -127,7 +127,7 @@ const pointsBreakdown = [
 
             <div class="PointsDialogTableBody">
               <div
-                v-for="item of pointsBreakdown"
+                v-for="item in pointsBreakdown"
                 :key="item.sprint"
                 class="PointsDialogTableRow">
                 <div class="PointsDialogSprintCell">

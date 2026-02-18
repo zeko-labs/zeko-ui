@@ -62,13 +62,16 @@
 				"enabled": true,
 				"rules": {
 					"a11y": {
-						"useGenericFontNames": "warn"
+						"useGenericFontNames": "warn",
+						"noSvgWithoutTitle": "warn",
+						"useButtonType": "warn"
 					},
 					"correctness": {
 						"noUnusedVariables": {
 							"level": "info",
 							"fix": "none"
 						},
+						"noUnsafeOptionalChaining": "warn",
 						"noUnknownMediaFeatureName": "info",
 						"noUnknownFunction": "info",
 						"noUnknownPseudoClass": "info",
@@ -76,6 +79,9 @@
 							"level": "info",
 							"fix": "none"
 						}
+					},
+					"suspicious": {
+						"noAssignInExpressions": "warn"
 					}
 				}
 			}
