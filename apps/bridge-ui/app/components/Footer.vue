@@ -5,9 +5,7 @@
         <NuxtLink to="/privacy-policy">Privacy Policy</NuxtLink>
         <NuxtLink to="/terms-of-service">Terms of Service</NuxtLink>
       </div>
-      <div class="Socials">
-        <FooterSocial />
-      </div>
+      <div class="Socials"><FooterSocial /></div>
     </div>
   </footer>
 </template>

@@ -168,9 +168,7 @@ const submitDisabled = computed(
               </p>
               <div class="error" v-if="error">
                 <TriangleAlert />
-                <span>
-                  {{ errorMessage }}
-                </span>
+                <span> {{ errorMessage }} </span>
               </div>
             </div>
           </div>
@@ -278,7 +276,8 @@ a {
   .Download {
     display: grid;
     gap: 1rem;
-    button, a {
+    button,
+    a {
       width: fit-content;
     }
   }
@@ -307,7 +306,8 @@ a {
   p {
     margin: 0;
   }
-  span, input {
+  span,
+  input {
     font-family: Lexend;
     font-weight: 400;
   }

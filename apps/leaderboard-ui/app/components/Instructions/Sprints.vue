@@ -45,9 +45,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                 type="button"
                 :aria-expanded="sprints === 1"
                 @click="toggleSprint(1)">
-                <div class="SprintIcon">
-                  <SvgFaucet />
-                </div>
+                <div class="SprintIcon"><SvgFaucet /></div>
 
                 <div class="SprintInfo">
                   <div class="SprintMeta">
@@ -168,9 +166,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                 type="button"
                 :aria-expanded="sprints === 2"
                 @click="toggleSprint(2)">
-                <div class="SprintIcon bridge">
-                  <SvgBridgeIn />
-                </div>
+                <div class="SprintIcon bridge"><SvgBridgeIn /></div>
 
                 <div class="SprintInfo">
                   <div class="SprintMeta">
@@ -305,9 +301,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                 type="button"
                 :aria-expanded="sprints === 3"
                 @click="toggleSprint(3)">
-                <div class="SprintIcon swap">
-                  <SvgSwap />
-                </div>
+                <div class="SprintIcon swap"><SvgSwap /></div>
 
                 <div class="SprintInfo">
                   <div class="SprintMeta">
@@ -425,9 +419,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                 type="button"
                 :aria-expanded="sprints === 4"
                 @click="toggleSprint(4)">
-                <div class="SprintIcon liquidity">
-                  <SvgLiquidity />
-                </div>
+                <div class="SprintIcon liquidity"><SvgLiquidity /></div>
 
                 <div class="SprintInfo">
                   <div class="SprintMeta">
@@ -551,9 +543,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                 type="button"
                 :aria-expanded="sprints === 5"
                 @click="toggleSprint(5)">
-                <div class="SprintIcon bridge">
-                  <SvgBridgeOut />
-                </div>
+                <div class="SprintIcon bridge"><SvgBridgeOut /></div>
 
                 <div class="SprintInfo">
                   <div class="SprintMeta">

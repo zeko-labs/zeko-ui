@@ -1,7 +1,5 @@
 <template>
-  <div class="Loading">
-    <LoadingBar />
-  </div>
+  <div class="Loading"><LoadingBar /></div>
 </template>
 <style lang="postcss" scoped>
 .Loading {

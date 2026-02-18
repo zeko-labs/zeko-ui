@@ -21,9 +21,7 @@ const openLink = (wallet: string) => {
         <div class="Controls">
           <Field.Root>
             <div class="SearchWrapper">
-              <div class="SearchIcon">
-                <SvgMGlass />
-              </div>
+              <div class="SearchIcon"><SvgMGlass /></div>
               <Field.Input
                 type="text"
                 v-model="lb.search"

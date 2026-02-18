@@ -131,9 +131,7 @@ const visiblePages = computed(() => {
             v-for="placeholder of placeholderRows"
             :key="placeholder.id"
             class="placeholder-row">
-            <td v-for="col of columns.length" :key="col">
-              <LoadingBar />
-            </td>
+            <td v-for="col of columns.length" :key="col"><LoadingBar /></td>
           </tr>
           <!-- Real data rows -->
           <tr
@@ -158,13 +156,9 @@ const visiblePages = computed(() => {
               </Label>
             </td>
             <!-- From -->
-            <td>
-              <NetworkBadge :network="row.original.source" />
-            </td>
+            <td><NetworkBadge :network="row.original.source" /></td>
             <!-- To -->
-            <td>
-              <NetworkBadge :network="row.original.destination" />
-            </td>
+            <td><NetworkBadge :network="row.original.destination" /></td>
             <!-- Amount -->
             <td>
               <div class="AmountBox">

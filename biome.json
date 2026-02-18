@@ -59,6 +59,7 @@
 		{
 			"includes": ["**/*.vue"],
 			"linter": {
+				"enabled": true,
 				"rules": {
 					"a11y": {
 						"useGenericFontNames": "warn"
@@ -81,7 +82,7 @@
 		}
 	],
 	"html": {
-		"experimentalFullSupportEnabled": false,
+		"experimentalFullSupportEnabled": true,
 		"linter": {
 			"enabled": true
 		},
