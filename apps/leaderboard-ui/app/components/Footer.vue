@@ -5,9 +5,7 @@
         <NuxtLink to="/rules">Rules and Disclaimer</NuxtLink>
       </div>
       <hr>
-      <div class="Socials">
-        <FooterSocial />
-      </div>
+      <div class="Socials"><FooterSocial /></div>
     </div>
   </footer>
 </template>

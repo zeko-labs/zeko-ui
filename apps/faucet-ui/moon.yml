@@ -23,6 +23,14 @@ tasks:
   format-fix:
     inputs:
       - "@group(sources)"
+  lint:
+    command: biome lint --diagnostic-level=error
+    inputs:
+      - "@globs(sources)"
+  lint-fix:
+    command: biome lint --fix --unsafe --diagnostic-level=error
+    inputs:
+      - "@globs(sources)"
   dev:
     command: nuxt dev
   build:

@@ -64,10 +64,11 @@
       </p>
 
       <p>
-        <strong>Note:</strong> Our Services may link to the Mina Protocol
-        ecosystem (e.g., documentation, explorers, community forums) and to
-        third-party tools (e.g., GitHub, Discord, analytics). Those sites or
-        services are governed by their own policies - not this one.
+        <strong>Note:</strong>
+        Our Services may link to the Mina Protocol ecosystem (e.g.,
+        documentation, explorers, community forums) and to third-party tools
+        (e.g., GitHub, Discord, analytics). Those sites or services are governed
+        by their own policies - not this one.
       </p>
     </section>
 
@@ -89,31 +90,34 @@
         <h3>A. Information You Provide Directly</h3>
         <ul>
           <li>
-            <strong>Support &amp; Correspondence.</strong> When you contact us
-            (e.g., email, forms), we may collect your name, email, company,
-            role, and the content of your message.
+            <strong>Support &amp; Correspondence.</strong>
+            When you contact us (e.g., email, forms), we may collect your name,
+            email, company, role, and the content of your message.
           </li>
           <li>
-            <strong>Submissions via Products.</strong> If you submit content
-            (e.g., project details, documentation), we process what you submit.
+            <strong>Submissions via Products.</strong>
+            If you submit content (e.g., project details, documentation), we
+            process what you submit.
           </li>
           <li>
-            <strong>Surveys, Research, or Feedback.</strong> If you participate,
-            we collect the information you choose to provide.
+            <strong>Surveys, Research, or Feedback.</strong>
+            If you participate, we collect the information you choose to
+            provide.
           </li>
           <li>
-            <strong>Events.</strong> If you register for or attend Zeko-hosted
-            events or interact with us at third-party events, we may collect
-            registration and attendance details.
+            <strong>Events.</strong>
+            If you register for or attend Zeko-hosted events or interact with us
+            at third-party events, we may collect registration and attendance
+            details.
           </li>
           <li>
-            <strong>Newsletters/Marketing.</strong> If you subscribe, we collect
-            your contact details and preferences.
+            <strong>Newsletters/Marketing.</strong>
+            If you subscribe, we collect your contact details and preferences.
           </li>
           <li>
-            <strong>Promotions.</strong> For sweepstakes, contests, or similar
-            promotions, we process entry and eligibility information as required
-            by applicable rules.
+            <strong>Promotions.</strong>
+            For sweepstakes, contests, or similar promotions, we process entry
+            and eligibility information as required by applicable rules.
           </li>
         </ul>
       </section>
@@ -122,20 +126,21 @@
         <h3>B. Information from Your Use of the Services</h3>
         <ul>
           <li>
-            <strong>Log &amp; Device Data.</strong> When you use the Services,
-            we may automatically collect log data (e.g., IP address, browser
-            type, device identifiers, pages viewed, timestamps, and
-            referring/exit pages).
+            <strong>Log &amp; Device Data.</strong>
+            When you use the Services, we may automatically collect log data
+            (e.g., IP address, browser type, device identifiers, pages viewed,
+            timestamps, and referring/exit pages).
           </li>
           <li>
-            <strong>Cookies &amp; Similar Technologies.</strong> We use cookies,
-            local storage, and similar technologies to operate and improve the
-            Services, remember preferences, understand usage, and measure
-            performance. See Cookies and Tracking Technologies.
+            <strong>Cookies &amp; Similar Technologies.</strong>
+            We use cookies, local storage, and similar technologies to operate
+            and improve the Services, remember preferences, understand usage,
+            and measure performance. See Cookies and Tracking Technologies.
           </li>
           <li>
-            <strong>Analytics.</strong> We use analytics services that collect
-            information about your interactions with the Services.
+            <strong>Analytics.</strong>
+            We use analytics services that collect information about your
+            interactions with the Services.
           </li>
         </ul>
       </section>
@@ -187,29 +192,31 @@
       <p>We use personal information to:</p>
       <ul>
         <li>
-          <strong>Provide &amp; Operate the Services,</strong> including
-          enabling features, processing your submissions, and supporting
-          on-chain interactions visible on Mina/Zeko.
+          <strong>Provide &amp; Operate the Services,</strong>
+          including enabling features, processing your submissions, and
+          supporting on-chain interactions visible on Mina/Zeko.
         </li>
         <li>
           <strong>Maintain, Secure &amp; Improve the Services</strong>
           (debugging, analytics, research, and feature development).
         </li>
         <li>
-          <strong>Communicate with you</strong> (support responses, service
-          messages, updates, and - if you opt-in - marketing).
+          <strong>Communicate with you</strong>
+          (support responses, service messages, updates, and - if you opt-in -
+          marketing).
         </li>
         <li>
-          <strong>Personalize your experience</strong> (e.g., remembering
-          settings and measuring engagement).
+          <strong>Personalize your experience</strong>
+          (e.g., remembering settings and measuring engagement).
         </li>
         <li>
-          <strong>Comply with Law</strong> and enforce our terms, protect users,
-          Zeko, and our ecosystem from fraud, abuse, or threats.
+          <strong>Comply with Law</strong>
+          and enforce our terms, protect users, Zeko, and our ecosystem from
+          fraud, abuse, or threats.
         </li>
         <li>
-          <strong>Conduct Business Operations,</strong> including planning,
-          audits, and legal or regulatory processes.
+          <strong>Conduct Business Operations,</strong>
+          including planning, audits, and legal or regulatory processes.
         </li>
       </ul>
       <p>
@@ -226,32 +233,33 @@
       </p>
       <ul>
         <li>
-          <strong>Service Providers.</strong> With vendors and contractors that
-          perform services for us (e.g., hosting, analytics, communications,
-          customer support, professional advisors). They may access personal
-          information only to perform services on our behalf and must protect
-          it.
+          <strong>Service Providers.</strong>
+          With vendors and contractors that perform services for us (e.g.,
+          hosting, analytics, communications, customer support, professional
+          advisors). They may access personal information only to perform
+          services on our behalf and must protect it.
         </li>
         <li>
-          <strong>Ecosystem &amp; Community.</strong> If you post or share
-          content publicly (e.g., forums, repositories), that content -
-          including any personal information you include - may be visible to
-          others.
+          <strong>Ecosystem &amp; Community.</strong>
+          If you post or share content publicly (e.g., forums, repositories),
+          that content - including any personal information you include - may be
+          visible to others.
         </li>
         <li>
-          <strong>Legal &amp; Safety.</strong> To comply with laws or lawful
-          requests; to enforce our terms; to protect the rights, safety, and
-          property of users, Zeko, or others; or to respond to emergencies in
-          good faith.
+          <strong>Legal &amp; Safety.</strong>
+          To comply with laws or lawful requests; to enforce our terms; to
+          protect the rights, safety, and property of users, Zeko, or others; or
+          to respond to emergencies in good faith.
         </li>
         <li>
-          <strong>Business Transfers.</strong> In connection with an actual or
-          potential merger, acquisition, financing, reorganization, bankruptcy,
-          or asset sale, subject to appropriate protections.
+          <strong>Business Transfers.</strong>
+          In connection with an actual or potential merger, acquisition,
+          financing, reorganization, bankruptcy, or asset sale, subject to
+          appropriate protections.
         </li>
         <li>
-          <strong>With Your Consent.</strong> In other cases when you instruct
-          or consent to sharing.
+          <strong>With Your Consent.</strong>
+          In other cases when you instruct or consent to sharing.
         </li>
       </ul>
     </section>
@@ -310,19 +318,20 @@
       <h2>10. Your Choices</h2>
       <ul>
         <li>
-          <strong>Communications.</strong> You can opt out of non-essential
-          marketing emails by using the unsubscribe link in the message.
+          <strong>Communications.</strong>
+          You can opt out of non-essential marketing emails by using the
+          unsubscribe link in the message.
         </li>
         <li>
-          <strong>Cookies.</strong> Manage cookies in your browser or device
-          settings.
+          <strong>Cookies.</strong>
+          Manage cookies in your browser or device settings.
         </li>
         <li>
-          <strong>Access/Deletion/Other Rights.</strong> Depending on your
-          jurisdiction, you may have rights to access, correct, delete, or
-          restrict processing of your personal information. See Notice to
-          European and Non-U.S. Residents and California "Shine the Light" (if
-          applicable), or contact us.
+          <strong>Access/Deletion/Other Rights.</strong>
+          Depending on your jurisdiction, you may have rights to access,
+          correct, delete, or restrict processing of your personal information.
+          See Notice to European and Non-U.S. Residents and California "Shine
+          the Light" (if applicable), or contact us.
         </li>
       </ul>
     </section>
@@ -349,9 +358,9 @@
       </p>
 
       <p>
-        <strong>Important Wallet Note:</strong> Never share your private keys,
-        seed phrase, or other wallet credentials with anyone. Zeko will never
-        ask for them.
+        <strong>Important Wallet Note:</strong>
+        Never share your private keys, seed phrase, or other wallet credentials
+        with anyone. Zeko will never ask for them.
       </p>
     </section>
 

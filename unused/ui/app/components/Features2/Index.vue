@@ -27,7 +27,7 @@ const content = [
     />
     <div class="Container">
       <Features2Column
-        v-for="item of content"
+        v-for="item in content"
         :key="item.title"
         v-bind="item"
       />

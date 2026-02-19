@@ -2,7 +2,7 @@
 
 In this guide we will create a `betternet` - an L2 Zeko Rollup for Mina Devnet.
 
-At a minimum, you need to run the following components:
+At a minimum, you need to run the following Zeko components:
 
 - `Sequencer`
 - `DA Layer`
@@ -25,7 +25,9 @@ TL;DR skip to the [Bootstrap process](#bootstrap-process)
 
 ## Overview
 
-In this guide we are going to:
+![Architecture](./zeko-components.png)
+
+We are going to:
 
 - Create a `sequencer` wallet and make sure it has funds.
 - Create a `faucet` wallet.
@@ -49,26 +51,27 @@ Layout of the project directory:
 
 ```
 project-root/
-├── docker-compose.yml
-├── keys/
-├── data/
-│   ├── postgresql/
-│   ├── da-layer/
-│   └── sequencer/
-└── initdb/ # PostgreSQL init scripts
+└── docker-compose.yaml
 ```
 
-### Important Files
+> **Note:** `docker-compose.yaml` is using docker volumes to store data. If you prefer to mount local directories instead - change accordingly.
 
-| File                                    | Purpose                                                      |
-| --------------------------------------- | ------------------------------------------------------------ |
-| `keys/sequencer-sk`                     | L1 private key used by sequencer to post proofs and pay fees |
-| `keys/sequencer-pk`                     | L1 Public key used in deploy step                            |
-| `keys/faucet-sk`                        | Faucet secret key used to distribute tokens inside L2        |
-| `keys/faucet-pk`                        | Faucet public key                                            |
-| `keys/da-node-sk`                       | Private key of the DA node                                   |
-| `keys/da-node-pk`                       | Public key of the DA node (exposed to sequencer)             |
-| `data/{postgresql,da-layer,sequencer}/` | Persistent storage for services                              |
+### Volumes/files
+
+| Volumes           | Files                   | Purpose                                        |
+| ----------------- | ----------------------- | ---------------------------------------------- |
+| `keys_data`       | `sequencer-sk`          | L1 private key to post proofs and pay fees     |
+| `keys_data`       | `sequencer-pk`          | L1 Public key used in deploy step              |
+| `keys_data`       | `faucet-sk`             | Secret key used to distribute tokens inside L2 |
+| `keys_data`       | `faucet-pk`             | Public key                                     |
+| `keys_data`       | `da-node-sk`            | Private key of the DA node                     |
+| `keys_data`       | `da-node-pk`            | Public key of the DA node (used by sequencer)  |
+| `initdb_data`     |                         | Schema file(s) to bootstrap postgresql         |
+| `postgresql_data` |                         | Persistent storage for postgresql              |
+| `rabbitmq_data`   |                         | Persistent storage for RabbitMQ                |
+| `circuits_data`   | `betternet-config.json` | Circuits config used by sequencer/prover       |
+| `da-layer_data`   |                         | Persistent storage for da-layer                |
+| `sequencer_data`  |                         | Persistent storage for sequencer               |
 
 > **Note:** Keys must NOT have newlines or extra spaces.
 
@@ -77,19 +80,19 @@ project-root/
 ### Service Overview
 
 - `postgresql` - Used by sequencer.
-- `rabbitmq` - Messaging layer used between sequencer and prover.
+- `rabbitmq` - Messaging layer used between the sequencer and the prover(s).
 - `da-layer` - Data Availability layer for the `betternet`.
 - `prover` - Generates zk-proofs for work submitted by the sequencer.
 - `sequencer` - Runs the rollup logic, batches transactions, interacts with DA layer, and posts proofs to L1.
 
 ### Ports Exposed
 
-| Service   | Port   | Description          |
-| --------- | ------ | -------------------- |
-| sequencer | `1923` | Public API           |
-| da-layer  | `1924` | DA API               |
-| postgres  | `5432` | Local DB dev access  |
-| rabbitmq  | `5672` | Internal service bus |
+| Service   | Port   | Description           |
+| --------- | ------ | --------------------- |
+| sequencer | `1923` | sequencer Graphql API |
+| da-layer  | `1924` | da-layer rpc API      |
+| postgres  | `5432` | Database              |
+| rabbitmq  | `5672` | Messaging queue       |
 
 ---
 
@@ -101,41 +104,59 @@ project-root/
   ::: details Click to expand
   ```yaml
   services:
+    init-db:
+      image: docker.io/zekolabs/zeko:latest
+      container_name: init-db
+      volumes:
+        - initdb_data:/data/initdb
+        - circuits_data:/data/circuits
+      entrypoint:
+        - sh
+        - -c
+      command: >
+        "curl -o /data/initdb/create_schema.sql 'https://raw.githubusercontent.com/zeko-labs/zeko/compatible/src/app/archive/create_schema.sql' &&
+         echo 'CREATE DATABASE sequencer; CREATE USER sequencer; ALTER DATABASE sequencer OWNER TO sequencer;' > /data/initdb/init.sql &&
+         echo 'Bootstrap complete' &&
+         exit 0"
     init-config:
       image: docker.io/zekolabs/zeko:latest
       container_name: init-config
-      user: "1000"
       working_dir: /data
       volumes:
-        - ./data:/data
-        - ./keys:/keys
+        - circuits_data:/data/circuits
+        - keys_data:/data/keys
       entrypoint:
         - sh
         - -c
       restart: "no"
       command: >
-        "while [ ! -f /keys/.created ];
+        "while [ ! -f /data/keys/.keys_created ];
           do sleep 2;
         done; exit 0"
     init-deploy:
       image: docker.io/zekolabs/zeko:latest
       container_name: init-deploy
       depends_on:
-        - init-config
-        - da-layer
+        init-config:
+          condition: service_completed_successfully
+        da-layer:
+          condition: service_started
       working_dir: /data
       volumes:
-        - ./data:/data
-        - ./keys:/keys
+        - circuits_data:/data/circuits
+        - keys_data:/data/keys
       entrypoint:
         - bash
         - -c
       restart: "no"
       command: >
-        "while [ ! -f /tmp/.deployed ]; do
+        "while [ ! -f /data/circuits/.deployed ]; do
           sleep 2;
         done; exit 0"
     postgres:
+      depends_on:
+        init-db:
+          condition: service_completed_successfully
       image: postgres:16
       container_name: postgres
       environment:
@@ -143,9 +164,8 @@ project-root/
         POSTGRES_USER: sequencer
         POSTGRES_PASSWORD: sequencer
       volumes:
-        - ./data/postgresql:/var/lib/postgresql/data
-        - ./initdb:/docker-entrypoint-initdb.d
-      user: "1000"
+        - postgresql_data:/var/lib/postgresql/data
+        - initdb_data:/docker-entrypoint-initdb.d
       ports:
         - "5432:5432"
       restart: unless-stopped
@@ -159,10 +179,10 @@ project-root/
       restart: unless-stopped
     da-layer:
       depends_on:
-        - init-config
+        init-config:
+          condition: service_completed_successfully
       image: docker.io/zekolabs/zeko-da:latest
       container_name: da-layer
-      user: "1000"
       ports:
         - "1924:1924"
       environment:
@@ -173,25 +193,27 @@ project-root/
         exec zeko-da \\
         run-node \\
         --port 1924 \\
-        --db-dir /db \\
+        --db-dir /data/db \\
         --network-id testnet"
       volumes:
-        - ./data/da-layer:/db
-        - ./keys:/keys:ro
+        - da-layer_data:/data
+        - keys_data:/keys:ro
       restart: always
     prover:
       image: docker.io/zekolabs/zeko:latest
       container_name: prover
       depends_on:
-        - rabbitmq
-        - init-config
+        rabbitmq:
+          condition: service_started
+        init-config:
+          condition: service_completed_successfully
       environment:
         ZEKO_SIGNATURE_KIND: "testnet"
-        ZEKO_CIRCUITS_CONFIG: "/circuits-config.json"
+        ZEKO_CIRCUITS_CONFIG: "/circuits/betternet-config.json"
         RABBITMQ_USER: "guest"
         RABBITMQ_PASSWORD: "guest"
       volumes:
-        - ./data/betternet-circuits.json:/circuits-config.json:ro
+        - circuits_data:/circuits:ro
       entrypoint: bash -c
       command: |
         "exec zeko-prover \\
@@ -202,22 +224,27 @@ project-root/
       image: docker.io/zekolabs/zeko:latest
       container_name: sequencer
       depends_on:
-        - init-deploy
-        - rabbitmq
-        - prover
-        - postgres
-        - da-layer
+        init-deploy:
+          condition: service_completed_successfully
+        rabbitmq:
+          condition: service_started
+        prover:
+          condition: service_started
+        postgres:
+          condition: service_started
+        da-layer:
+          condition: service_started
       environment:
         ZEKO_PROGRESS_STYLE: "percent"
         ZEKO_SIGNATURE_KIND: "testnet"
-        ZEKO_CIRCUITS_CONFIG: "/circuits-config.json"
+        ZEKO_CIRCUITS_CONFIG: "/circuits/betternet-config.json"
         POSTGRES_URI: "postgres://sequencer:sequencer@postgres:5432/sequencer"
         RABBITMQ_USER: "guest"
         RABBITMQ_PASSWORD: "guest"
       volumes:
-        - ./data/sequencer:/data
-        - ./data/betternet-circuits.json:/circuits-config.json:ro
-        - ./keys:/keys:ro
+        - sequencer_data:/data
+        - circuits_data:/circuits:ro
+        - keys_data:/keys:ro
       ports:
         - "1923:1923"
       entrypoint:
@@ -243,46 +270,37 @@ project-root/
       restart: on-failure
 
   volumes:
+    initdb_data:
+    postgresql_data:
     rabbitmq_data:
-      name: rabbitmq
+    circuits_data:
+    sequencer_data:
+    da-layer_data:
+    keys_data:
   ```
-- Create the folder structure
+- Start all services
   ```bash
-  mkdir -p {initdb,keys,data/{sequencer,da-layer,postgresql}}
+  docker compose up -d
   ```
-- Download [create_schema.sql](https://raw.githubusercontent.com/zeko-labs/zeko/compatible/src/app/archive/create_schema.sql) and place it inside ./initdb
-- Create `./initdb/init.sql` with content:
-  ```sql
-  -- initdb/init.sql
-  CREATE DATABASE sequencer;
-
-  CREATE USER sequencer;
-  ALTER DATABASE sequencer OWNER TO sequencer;
-  ```
-- Create `circuits`/`decploy` config and `sequencer`/`da-layer` keys
-  1. Start and exec into `init-config` container:
+- Create `circuits`/`deploy` config and `sequencer`/`da-layer` keys
+  1. Enter `init-config` container:
   ```bash
-  docker compose up init-config -d
   docker compose exec -it init-config bash
   ```
   > **Note:** This image is used to run Zeko sequencer/prover. Additionally it contains `zeko-cli`/`zeko-deploy` binaries.
   2. Create `deployment`/`circuits` config
   ```bash
-  zeko-cli generate-circuits-config > generated-config
-  csplit generated-config '/deploy config:/' '{*}'
-  mv xx00 betternet-circuits.json
-  mv xx01 betternet-deploy.json
+  zeko-cli generate-circuits-config \
+    --circuits-config-output /data/circuits/betternet-config.json \
+    --deploy-config-output /data/circuits/betternet-deploy.json
   ```
-  > **Note:** Currently `generate-circuits-config` produces a text file with both configuration and deploy. Therefore you need to manually remove `deploy config:`/`circuits config:` from created `betternet-circuits.json`/`betternet-deploy.json` files to make these `json` files valid. Since docker images do not contain any editor, in another shell navigate to your data folder and edit these files.
   3. Create `sequencer`/`da-layer` keypairs
-  > **Note:** Or place your own keys inside ./keys):
-  >
-  > - `./keys/sequencer-pk`
-  > - `./keys/sequencer-sk`
-  > - `./keys/faucet-pk`
-  > - `./keys/faucet-sk`
-  > - `./keys/da-layer-pk`
-  > - `./keys/da-layer-sk`
+  > - `/data/keys/sequencer-pk`
+  > - `/data/keys/sequencer-sk`
+  > - `/data/keys/faucet-pk`
+  > - `/data/keys/faucet-sk`
+  > - `/data/keys/da-layer-pk`
+  > - `/data/keys/da-layer-sk`
 
   ```bash
   # create `sequencer` keypair
@@ -310,10 +328,9 @@ project-root/
   fi
   done
 
-  mv {sequencer,faucet,da-layer}-{sk,pk} /keys
-  touch /keys/.created
+  mv {sequencer,faucet,da-layer}-{sk,pk} /data/keys
+  touch /data/keys/.keys_created
   ```
-  > **Note:** After the `mv` operation, the `init-config` container should exit.
 
 ### Fund `sequencer` wallet
 
@@ -323,28 +340,27 @@ project-root/
 
 ### Deploy `betternet` configuration
 
-- Start and exec into `init-deploy` container:
+- Enter `init-deploy` container:
   ```bash
-  docker compose up init-deploy -d
   docker compose exec -it init-deploy bash
   ```
   > **Note:** It should also start `da-layer` container.
 - From inside `init-deploy` container run deploy
   ```bash
-  export MINA_PRIVATE_KEY=$(cat /keys/sequencer-sk)
-  export ZEKO_DEPLOY_CONFIG=/data/betternet-deploy.json
-  export ZEKO_CIRCUITS_CONFIG=/data/betternet-circuits.json
-  export SEQUENCER_PK=$(cat /keys/sequencer-pk)
-  export FAUCET_PK=$(cat /keys/faucet-pk)
+  export MINA_PRIVATE_KEY=$(cat /data/keys/sequencer-sk)
+  export ZEKO_DEPLOY_CONFIG=/data/circuits/betternet-deploy.json
+  export ZEKO_CIRCUITS_CONFIG=/data/circuits/betternet-config.json
+  export SEQUENCER_PK=$(cat /data/keys/sequencer-pk)
+  export FAUCET_PK=$(cat /data/keys/faucet-pk)
   zeko-deploy --account-creation-fee 1 \
-    --da-keys $(cat /keys/da-layer-pk) \
+    --da-keys $(cat /data/keys/da-layer-pk) \
     --da-quorum 1 \
     --l1-uri https://gateway.mina.devnet.zeko.io \
     --pause-key $SEQUENCER_PK \
     --sequencer-key $SEQUENCER_PK \
     --faucet-account $FAUCET_PK \
     --da-node da-layer:1924 && \
-    touch /tmp/.deployed
+    touch /data/circuits/.deployed
   ```
   You should see the output:
   ```
@@ -363,13 +379,8 @@ project-root/
 
 ### Wait for zkapp transaction to succeed
 
+Check your sequencers zkApp transaction on Mina L1.
 See example zkApp transaction status [here](https://minascan.io/devnet/account/B62qrWCK3mn8iYvopsRRfuUL9f6h2B6ydqHAYBVuBsh7eQ1BvQsqKrE/zk-txs)
-
-### Start all services
-
-```bash
-docker compose up -d
-```
 
 ### If all the steps were performed correctly you have the following:
 
@@ -379,11 +390,15 @@ docker compose up -d
 - `rabbitmq` service used by sequencer/prover.
 - `postgresql` service used by sequencer.
 
-### Next steps
+### Configure Auro wallet browser extension
 
-- Add your newly deployed `betternet` network to Aura wallet.
-- Import faucet key into your Auro wallet.
-- Create wallets and start sending transactions to your `sequencer`.
+Import `sequencer`/`faucet` wallets into your Auro wallet.
+![Import wallets](./import-wallet-to-auro.png)
+
+Add/select your newly deployed `betternet` network.
+![Configure betternet network](./select-betternet-network.png)
+
+You can start sending transactions to your `sequencer`!
 
 ## Troubleshooting
 
@@ -402,10 +417,5 @@ docker compose down
 To remove persistent data:
 
 ```
-rm -rf data/
-docker volume rm rabbitmq
+docker compose down -v
 ```
-
-## Next Steps
-
-- Bridge Mina L1 tokens to L2 (TODO)

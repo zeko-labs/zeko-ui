@@ -21,14 +21,10 @@ const refetchBalance = () => {
 <template>
   <header>
     <div class="Logo">
-      <NuxtLink to="/">
-        <SvgZekoLogoRings />
-      </NuxtLink>
+      <NuxtLink to="/"> <SvgZekoLogoRings /> </NuxtLink>
     </div>
     <div class="MinaNetwork Badge">
-      <div class="Network">
-        <NetworkBadge :network="bs.currentNetwork" />
-      </div>
+      <div class="Network"><NetworkBadge :network="bs.currentNetwork" /></div>
       <div class="Mina" @click="refetchBalance">
         <span> {{ currentMina }} </span>
         <SvgMinaLogo width="24" height="24" />
@@ -44,9 +40,7 @@ const refetchBalance = () => {
       :class="n.notificationPermission"
       :title='`Notifications are ${granted ? "enabled" : "disabled"}.`'>
       <BellRingIcon v-if="granted" />
-      <button @click="n.toggle" v-else>
-        <BellOffIcon />
-      </button>
+      <button @click="n.toggle" v-else><BellOffIcon /></button>
     </div>
   </header>
 </template>
@@ -120,13 +114,13 @@ header {
   }
   color: var(--palette-gray-950);
   /* &.granted {
-        color: var(--palette-cosmicGold-medium);
-      }
-      &.denied {
-        color: var(--palette-persianRed-400);
-      }
-      &.default {
-        color: var(--palette-persianRed-400);
-      } */
+          color: var(--palette-cosmicGold-medium);
+        }
+        &.denied {
+          color: var(--palette-persianRed-400);
+        }
+        &.default {
+          color: var(--palette-persianRed-400);
+        } */
 }
 </style>

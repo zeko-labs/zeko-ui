@@ -23,7 +23,7 @@ const isExternal = (url: string) => url.startsWith("http")
         <Menu.Positioner>
           <Menu.Content>
             <Menu.Item
-              v-for="item of navigation.children"
+              v-for="item in navigation.children"
               :key="item.name"
               :value="item.name">
               <NuxtLink

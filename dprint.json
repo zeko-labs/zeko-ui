@@ -13,7 +13,7 @@
 		"closingBracketSameLine": true,
 		"vBindStyle": "short",
 		"vOnStyle": "short",
-		"vForDelimiterStyle": "of",
+		"vForDelimiterStyle": "in",
 		"vSlotStyle": "short",
 		"vBindSameNameShortHand": true
 	},

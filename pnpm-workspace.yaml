@@ -6,7 +6,7 @@ packages:
 catalog:
   '@ark-ui/vue': ^5.27.1
   '@aurowallet/mina-provider': ^1.0.6
-  '@biomejs/biome': ^2.3.11
+  '@biomejs/biome': ^2.4.2
   '@cloudflare/vitest-pool-workers': ^0.10.5
   '@csstools/postcss-global-data': ^3.1.0
   '@hebilicious/cssforge': npm:@jsr/hebilicious__cssforge@0.2.1

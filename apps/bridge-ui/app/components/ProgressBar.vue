@@ -37,7 +37,7 @@ const nodeSize = {
   </svg>
   <div class="progress-bar">
     <div class="progress-track">
-      <template v-for="(stepText, index) of steps" :key="index">
+      <template v-for="(stepText, index) in steps" :key="index">
         <div class="node-wrapper">
           <svg
             class="progress-node"

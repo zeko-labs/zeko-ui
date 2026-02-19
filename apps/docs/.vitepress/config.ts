@@ -122,7 +122,10 @@ export default defineConfig({
 						text: "Guides & Tutorials",
 						link: "/operators/guides-tutorials",
 						collapsed: true,
-						items: [{ text: "Launch a Rollup", link: "/operators/guides/launch-rollup.md" }]
+						items: [
+							{ text: "Launch a Rollup", link: "/operators/guides/launch-rollup.md" },
+							{ text: "Rollup on Phala", link: "/operators/guides/rollup-on-phala.md" }
+						]
 					},
 					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" },
 					{ text: "Troubleshooting", link: "/operators/troubleshooting" }

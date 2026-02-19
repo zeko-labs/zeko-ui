@@ -60,6 +60,20 @@ The tasks in the root `.moon/tasks.yaml` are available to all projects.
 
 - Format entire workspace: `moon format-all`
 
+## Git hooks (Lefthook)
+
+Install hooks manually after dependencies are installed:
+
+```bash
+pnpm exec lefthook install
+pnpm exec lefthook validate
+```
+
+The `pre-commit` hook runs:
+
+- `moon :lint-fix`
+- `moon run format-all-fix`
+
 ## Discover and diagnose tasks (optional)
 
 Here are some useful commands to explore the monorepo structure and tasks.

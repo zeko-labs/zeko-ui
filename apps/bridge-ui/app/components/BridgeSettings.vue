@@ -46,7 +46,7 @@ const selectTimeout = (hours: BridgeTimeoutHours) => {
               <span>180s (dev)</span>
             </label>
             <label
-              v-for="hours of timeoutOptions"
+              v-for="hours in timeoutOptions"
               :key="hours"
               class="TimeoutOption">
               <input

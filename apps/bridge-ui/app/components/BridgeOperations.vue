@@ -113,7 +113,7 @@ const visiblePages = computed(() => {
         <thead>
           <tr>
             <th
-              v-for="header of table.getHeaderGroups()[0]?.headers"
+              v-for="header in table.getHeaderGroups()[0]?.headers"
               :key="header.id">
               <FlexRender
                 :render="header.column.columnDef.header"
@@ -128,17 +128,15 @@ const visiblePages = computed(() => {
           <!-- Loading placeholder rows -->
           <tr
             v-if="loading"
-            v-for="placeholder of placeholderRows"
+            v-for="placeholder in placeholderRows"
             :key="placeholder.id"
             class="placeholder-row">
-            <td v-for="col of columns.length" :key="col">
-              <LoadingBar />
-            </td>
+            <td v-for="col in columns.length" :key="col"><LoadingBar /></td>
           </tr>
           <!-- Real data rows -->
           <tr
             v-else
-            v-for="row of table.getRowModel().rows"
+            v-for="row in table.getRowModel().rows"
             :key="row.id"
             class="data-row">
             <!-- Status -->
@@ -158,13 +156,9 @@ const visiblePages = computed(() => {
               </Label>
             </td>
             <!-- From -->
-            <td>
-              <NetworkBadge :network="row.original.source" />
-            </td>
+            <td><NetworkBadge :network="row.original.source" /></td>
             <!-- To -->
-            <td>
-              <NetworkBadge :network="row.original.destination" />
-            </td>
+            <td><NetworkBadge :network="row.original.destination" /></td>
             <!-- Amount -->
             <td>
               <div class="AmountBox">
@@ -196,7 +190,7 @@ const visiblePages = computed(() => {
         <ChevronLeftIcon />
       </button>
       <ul class="PageList" role="list">
-        <li v-for="(page, idx) of visiblePages" :key="`page-${idx}`">
+        <li v-for="(page, idx) in visiblePages" :key="`page-${idx}`">
           <button
             v-if='typeof page === "number"'
             class="PageButton"

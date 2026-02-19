@@ -63,7 +63,7 @@ const queuedOperations = computed(
       <!-- <h3>Next Transactions</h3> -->
       <div class="QueuedOperations">
         <QueuedOperation
-          v-for="(operation, index) of queuedOperations"
+          v-for="(operation, index) in queuedOperations"
           :operation
           :index
         />

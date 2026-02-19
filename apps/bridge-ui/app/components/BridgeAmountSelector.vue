@@ -47,7 +47,7 @@ const collection = createListCollection({
             <Select.Content>
               <Select.ItemGroup>
                 <Select.ItemGroupLabel>Tokens</Select.ItemGroupLabel>
-                <Select.Item v-for="item of collection.items" :key="item" :item>
+                <Select.Item v-for="item in collection.items" :key="item" :item>
                   <!-- <Select.ItemContext>OK</Select.ItemContext> -->
                   <Select.ItemText>{{ item }}</Select.ItemText>
                   <!-- <Select.ItemIndicator>✓</Select.ItemIndicator> -->

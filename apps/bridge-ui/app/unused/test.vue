@@ -11,7 +11,8 @@ const steps = ["a", "b", "c", "d"]
 <template>
   <ProgressBar :steps :step />
   <hr>
-  {{ steps.length }} steps, current step: {{ step }}
+  {{ steps.length }}
+  steps, current step: {{ step }}
   <Button @click="decrement">-</Button>
   <Button @click="increment">+</Button>
 </template>

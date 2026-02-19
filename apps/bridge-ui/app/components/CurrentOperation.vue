@@ -184,9 +184,7 @@ watch(machine.value.context.errors, (newErrors) => {
           </template>
 
           <template v-else-if='machine.matches("CAN_CANCEL")'>
-            <div class="warning">
-              <BridgeMessage messageKey="canCancel" />
-            </div>
+            <div class="warning"><BridgeMessage messageKey="canCancel" /></div>
           </template>
 
           <template

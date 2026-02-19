@@ -23,6 +23,14 @@ tasks:
   format-fix:
     inputs:
       - "@group(sources)"
+  lint:
+    command: biome lint --diagnostic-level=error
+    inputs:
+      - "@globs(sources)"
+  lint-fix:
+    command: biome lint --fix --unsafe --diagnostic-level=error
+    inputs:
+      - "@globs(sources)"
   schema-get:
     command: gql-tada generate schema 'https://api.leaderboard.zeko.io/graphql' --output './graphql/generated/leaderboard.graphql'
     outputs:

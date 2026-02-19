@@ -18,7 +18,7 @@ const twinkleStars = generateStars(30)
     <div class="GradientBg" />
     <div class="StarsContainer">
       <div
-        v-for="(star, index) of smallStars"
+        v-for="(star, index) in smallStars"
         :key="`small-${index}`"
         class="Star Small"
         :style="
@@ -30,7 +30,7 @@ const twinkleStars = generateStars(30)
         "
       />
       <div
-        v-for="(star, index) of mediumStars"
+        v-for="(star, index) in mediumStars"
         :key="`medium-${index}`"
         class="Star Medium"
         :style="
@@ -42,7 +42,7 @@ const twinkleStars = generateStars(30)
         "
       />
       <div
-        v-for="(star, index) of largeStars"
+        v-for="(star, index) in largeStars"
         :key="`large-${index}`"
         class="Star Large"
         :style="
@@ -54,7 +54,7 @@ const twinkleStars = generateStars(30)
         "
       />
       <div
-        v-for="(star, index) of twinkleStars"
+        v-for="(star, index) in twinkleStars"
         :key="`twinkle-${index}`"
         class="Star Twinkle"
         :style="

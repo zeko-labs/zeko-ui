@@ -20,9 +20,7 @@ function closePopup() {
           </button>
 
           <!-- Zeko Logo -->
-          <div class="logo-container">
-            <SvgZekoBoom class="logo" />
-          </div>
+          <div class="logo-container"><SvgZekoBoom class="logo" /></div>
 
           <!-- Title -->
           <h1 class="title">Contest has Ended.</h1>

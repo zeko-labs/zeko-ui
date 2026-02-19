@@ -80,9 +80,7 @@ const iconMap = {
               />
             </div>
             <Toast.Title>{{ toast.title }}</Toast.Title>
-            <Toast.CloseTrigger>
-              <X />
-            </Toast.CloseTrigger>
+            <Toast.CloseTrigger> <X /> </Toast.CloseTrigger>
           </div>
           <div class="Bottom">
             <Toast.Description>{{ toast.description }}</Toast.Description>
