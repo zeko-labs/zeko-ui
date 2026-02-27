@@ -15,7 +15,7 @@ A set of instructions for the Mina network. Every zkApp transaction on Mina is c
 
 ## Actions
 
-In Mina zkApps, actions act as a built-in, "append-only" off-chain storage layer. Used with the **Reducer** and a "lagging state" pattern to process concurrent state updates by multiple users. Actions are dispatched using the reducer's `dispatch` method. Communication from Layer 1 (L1) to Layer 2 (L2) in Zeko happens by posting actions to the zkApp account on L1. Account updates can be authorised by a proof to add an action. You can find more information in the [o1js ZkProgram guide](https://docs.o1labs.org/o1js/writing-constraint-systems/zk-program).
+In Mina zkApps, actions act as a built-in, "append-only" off-chain storage layer. Used with the **Reducer** and a "lagging state" pattern to process concurrent state updates by multiple users. Actions are dispatched using the reducer's `dispatch` method. Communication from Layer 1 (L1) to Layer 2 (L2) in Zeko happens by posting actions to the zkApp account on L1. Account updates can be authorised by a proof to add an action. You can find more information in the [Actions & Reducer section](https://docs.o1labs.org/o1js/zkapps/writing-a-zkapp/feature-overview/actions-and-reducer) of the o1js docs.
 
 ## Blockchain
 

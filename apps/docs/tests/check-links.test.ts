@@ -1,8 +1,9 @@
 import { readdir, readFile } from "node:fs/promises"
 import { join, relative } from "node:path"
+import { fileURLToPath } from "node:url"
 import { describe, expect, test } from "vitest"
 
-const CONTENT_DIR = new URL("../content", import.meta.url).pathname
+const CONTENT_DIR = fileURLToPath(new URL("../content", import.meta.url))
 const FETCH_TIMEOUT_MS = 15_000
 const CONCURRENCY = 10
 
@@ -11,9 +12,14 @@ interface LinkOccurrence {
 	line: number
 }
 
-function extractLinks(content: string, filePath: string): Array<{ file: string; line: number; url: string }> {
+function extractLinks(
+	content: string,
+	filePath: string
+): Array<{ file: string; line: number; url: string }> {
 	const results: Array<{ file: string; line: number; url: string }> = []
-	const withoutFencedBlocks = content.replace(/```[\s\S]*?```/g, (match) => "\n".repeat(match.split("\n").length - 1))
+	const withoutFencedBlocks = content.replace(/```[\s\S]*?```/g, (match) =>
+		"\n".repeat(match.split("\n").length - 1)
+	)
 	const lines = withoutFencedBlocks.split("\n")
 	const mdLinkRegex = /!?\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/g
 	for (let i = 0; i < lines.length; i++) {
@@ -34,7 +40,9 @@ async function walkMarkdown(dir: string): Promise<string[]> {
 		.map((e) => join(e.parentPath ?? e.path, e.name))
 }
 
-async function checkUrl(url: string): Promise<{ status: number | "timeout" | "error"; error?: string }> {
+async function checkUrl(
+	url: string
+): Promise<{ status: number | "timeout" | "error"; error?: string }> {
 	const tryFetch = async (method: "HEAD" | "GET") => {
 		const controller = new AbortController()
 		const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
@@ -70,7 +78,10 @@ function categorize(status: number | "timeout" | "error"): Category {
 	return "ok"
 }
 
-async function runWithConcurrency<T>(tasks: Array<() => Promise<T>>, concurrency: number): Promise<T[]> {
+async function runWithConcurrency<T>(
+	tasks: Array<() => Promise<T>>,
+	concurrency: number
+): Promise<T[]> {
 	const results: T[] = []
 	let index = 0
 	async function worker() {
@@ -83,34 +94,43 @@ async function runWithConcurrency<T>(tasks: Array<() => Promise<T>>, concurrency
 	return results
 }
 
-// Collect all unique URLs from markdown files before tests run
-const files = await walkMarkdown(CONTENT_DIR)
-const urlMap = new Map<string, Array<LinkOccurrence>>()
-for (const file of files) {
-	const content = await readFile(file, "utf8")
-	const links = extractLinks(content, relative(CONTENT_DIR, file))
-	for (const { file: f, line, url } of links) {
-		if (!urlMap.has(url)) urlMap.set(url, [])
-		urlMap.get(url)!.push({ file: f, line })
-	}
-}
-
-// Check all URLs up front with concurrency so tests report results immediately
-const urlEntries = [...urlMap.entries()]
-const checkResults = await runWithConcurrency(
-	urlEntries.map(([url]) => () => checkUrl(url)),
-	CONCURRENCY
-)
-const resultMap = new Map(urlEntries.map(([url], i) => [url, checkResults[i]]))
-
 describe("documentation links", () => {
-	test.each(urlEntries)("%s", (url, occurrences) => {
-		const result = resultMap.get(url)!
-		const category = categorize(result.status)
-		const locations = occurrences.map((o) => `  ${o.file}:${o.line}`).join("\n")
-		expect(
-			["ok", "bot_blocked"],
-			`[${result.status}]${result.error ? ` ${result.error}` : ""} — found in:\n${locations}`
-		).toContain(category)
+	const linkTest = process.env.CI ? test : test.skip
+
+	linkTest("checks external markdown links", async () => {
+		const files = await walkMarkdown(CONTENT_DIR)
+		const urlMap = new Map<string, Array<LinkOccurrence>>()
+		for (const file of files) {
+			const content = await readFile(file, "utf8")
+			const links = extractLinks(content, relative(CONTENT_DIR, file))
+			for (const { file: linkedFile, line, url } of links) {
+				if (!urlMap.has(url)) urlMap.set(url, [])
+				urlMap.get(url)!.push({ file: linkedFile, line })
+			}
+		}
+
+		const urlEntries = [...urlMap.entries()]
+		const checkResults = await runWithConcurrency(
+			urlEntries.map(
+				([url]) =>
+					() =>
+						checkUrl(url)
+			),
+			CONCURRENCY
+		)
+		const failures = urlEntries.flatMap(([url, occurrences], index) => {
+			const result = checkResults[index]
+			const category = categorize(result.status)
+			if (category === "ok" || category === "bot_blocked") {
+				return []
+			}
+
+			const locations = occurrences.map((o) => `  ${o.file}:${o.line}`).join("\n")
+			return [
+				`${url}\n[${result.status}]${result.error ? ` ${result.error}` : ""} — found in:\n${locations}`
+			]
+		})
+
+		expect(failures, failures.join("\n\n")).toEqual([])
 	})
 })
