@@ -9,7 +9,7 @@ At its core, a **blockchain is a special kind of database**. It functions as a *
 The decentralised structure means there is **no single central authority** controlling the flow of data or transactions; instead, a distributed network of computers works together to maintain the integrity of the network. This decentralisation makes large networks highly resistant to attacks. Consensus mechanisms are sets of rules that govern how nodes on the network agree on the state of the blockchain and the validity of transactions.
 
 > [!TIP] 💡 Consensus 💡
-> **Bitcoin** was the first cryptocurrency powered by blockchain technology and uses the **Proof of Work** consensus mechanism. In contrast, **Mina Protocol** is known for being a lightweight blockchain that uses a **Proof of Stake**-based consensus mechanism called **Ouroboros**. Find more about it in the [Mina Protocol documentation](https://docs.minaprotocol.com/mina-protocol/proof-of-stake).
+> **Bitcoin** was the first cryptocurrency powered by blockchain technology and uses the **Proof of Work** consensus mechanism. In contrast, **Mina Protocol** is known for being a lightweight blockchain that uses a **Proof of Stake**-based consensus mechanism called **Ouroboros**. Find more about it in the [o1js documentation](https://docs.o1labs.org/o1js/).
 
 ## Wallets & Keys (Public/Private)
 
@@ -18,7 +18,7 @@ The security and verifiability of transactions on a blockchain rely heavily on c
 Digital signatures are used in blockchain cryptography, and verifying these signatures is part of the process nodes use to authenticate a transaction. Wallets are typically used to manage these keys and interact with the blockchain.
 
 > [!TIP] 💡 Wallets 💡
-> In the Mina and Zeko ecosystems, wallets such as [Auro wallet](https://www.aurowallet.com/) are used to manage your public and private keys. These keys are essential for signing transactions and interacting with zkApps using public-key cryptography. Refer to the Mina documentation for more information on [Mina wallets](https://docs.minaprotocol.com/using-mina/install-a-wallet).
+> In the Mina and Zeko ecosystems, wallets such as [Auro wallet](https://www.aurowallet.com/) are used to manage your public and private keys. These keys are essential for signing transactions and interacting with zkApps using public-key cryptography. Refer to the [Auro Wallet documentation](https://docs.aurowallet.com/) for more information on Mina-compatible wallets.
 
 ## Blockchain Transactions
 

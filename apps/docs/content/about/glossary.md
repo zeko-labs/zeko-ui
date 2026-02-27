@@ -1,7 +1,7 @@
 # Glossary
 
 :::tip
-Please refer to the [Mina Protocol Glossary](https://docs.minaprotocol.com/glossary) for more additional explanations of terms related to Mina and zkApps.
+Please refer to the [o1js documentation](https://docs.o1labs.org/o1js/) for more additional explanations of terms related to Mina and zkApps.
 :::
 
 ## Account
@@ -15,7 +15,7 @@ A set of instructions for the Mina network. Every zkApp transaction on Mina is c
 
 ## Actions
 
-In Mina zkApps, actions act as a built-in, "append-only" off-chain storage layer. Used with the **Reducer** and a "lagging state" pattern to process concurrent state updates by multiple users. Actions are dispatched using the reducer's `dispatch` method. Communication from Layer 1 (L1) to Layer 2 (L2) in Zeko happens by posting actions to the zkApp account on L1. Account updates can be authorised by a proof to add an action. You can find more information in the [Actions & Reducer section](https://docs.minaprotocol.com/zkapps/writing-a-zkapp/feature-overview/actions-and-reducer) of the Mina docs.
+In Mina zkApps, actions act as a built-in, "append-only" off-chain storage layer. Used with the **Reducer** and a "lagging state" pattern to process concurrent state updates by multiple users. Actions are dispatched using the reducer's `dispatch` method. Communication from Layer 1 (L1) to Layer 2 (L2) in Zeko happens by posting actions to the zkApp account on L1. Account updates can be authorised by a proof to add an action. You can find more information in the [Actions & Reducers guide](https://docs.o1labs.org/o1js/zkapps/actions-and-reducers) of the o1js docs.
 
 ## Blockchain
 
@@ -35,7 +35,7 @@ Tokens built on Mina using the `TokenContract` class. Supported at a low level i
 
 ## Data Availability (DA) Layer
 
-A crucial component of a rollup system responsible for storing all the transaction data that occurs on the rollup. Since the proof of a transaction batch doesn't reveal how to build the ledger's state, the DA layer is needed to prove that the necessary transaction data has been shared with everyone. In Zeko, the sequencer posts the transaction batch and receipts to the DA Layer. Zeko has a modular DA layer. Zeko currently uses a DA layer consisting of a multisig service with a few trusted parties, and aims to transition towards [Celestia](https://celestia.org/what-is-da/).
+A crucial component of a rollup system responsible for storing all the transaction data that occurs on the rollup. Since the proof of a transaction batch doesn't reveal how to build the ledger's state, the DA layer is needed to prove that the necessary transaction data has been shared with everyone. In Zeko, the sequencer posts the transaction batch and receipts to the DA Layer. Zeko has a modular DA layer. Zeko currently uses a DA layer consisting of a multisig service with a few trusted parties, and aims to transition towards [Celestia](https://docs.celestia.org/learn/how-celestia-works/data-availability-layer).
 
 ## Decentralisation
 
@@ -126,7 +126,7 @@ A **Layer 2 (L2)** ecosystem built on Mina Protocol, specifically for **zkApps**
 
 ## zkApp
 
-A zkApp is a zero-knowledge smart contract on Mina Protocol. These smart contracts leverage zero-knowledge proofs to ensure correct state transitions, allowing transactions to be proven off-chain and verified without revealing private data. They are primarily about proving the correct execution of the smart contract logic. zkApps on Mina enable the creation of arbitrary programs using zero-knowledge cryptography. They allow for programmable privacy and offer constant verification time for transactions. They can be built to interact with tokens, such as swapping or depositing MINA. When interacting with a zkApp, certain actions, like changing state or adding actions, require authorisation via a proof that you've correctly executed one of the contract's methods. Each zkApp transaction is composed of one or more account updates. For more information, see the [zkApps section](https://docs.minaprotocol.com/zkapps/writing-a-zkapp) of the Mina docs.
+A zkApp is a zero-knowledge smart contract on Mina Protocol. These smart contracts leverage zero-knowledge proofs to ensure correct state transitions, allowing transactions to be proven off-chain and verified without revealing private data. They are primarily about proving the correct execution of the smart contract logic. zkApps on Mina enable the creation of arbitrary programs using zero-knowledge cryptography. They allow for programmable privacy and offer constant verification time for transactions. They can be built to interact with tokens, such as swapping or depositing MINA. When interacting with a zkApp, certain actions, like changing state or adding actions, require authorisation via a proof that you've correctly executed one of the contract's methods. Each zkApp transaction is composed of one or more account updates. For more information, see the [zkApps section](https://docs.o1labs.org/o1js/zkapps/intro) of the o1js docs.
 
 ## ZkProgram
 

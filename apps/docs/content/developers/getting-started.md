@@ -10,7 +10,11 @@ You already know [What is Zeko](../introduction/what-is-zeko.md) and [Why you sh
 
 > For developers new to Zeko, ZK, and Mina
 
-If you are new to building on Mina or with zkApps, it is highly recommended to **start with the official [Mina documentation](https://docs.minaprotocol.com/)**. Zeko is an _isomorphic zkRollup on Mina_, so we reference the deep library of Mina resources wherever relevant.
+If you are new to building on Mina or with zkApps, it is highly recommended to **start with the official [o1js documentation](https://docs.o1labs.org/o1js/)**. Zeko is an _isomorphic zkRollup on Mina_, so we reference the deep library of Mina resources wherever relevant.
+
+> [!TIP] 💡 Developer Environment Setup 💡
+>
+> Follow the [o1js Getting Started guide](https://docs.o1labs.org/o1js/getting-started/what-is-a-zk-constraint-system) to set up your development environment for building zkApps.
 
 Visit the [**Zeko GitHub repo**](https://github.com/zeko-labs/zeko/tree/compatible/src/app/zeko), the source code for the Zeko protocol, including the sequencer and data availability components.
 
@@ -20,7 +24,7 @@ Visit the [**Zeko GitHub repo**](https://github.com/zeko-labs/zeko/tree/compatib
 
 > [!TIP] 💡 o1js 💡
 >
-> Refer to [introduction to o1js](https://docs.minaprotocol.com/zkapps/o1js) and the [o1js GitHub repo](https://github.com/o1-labs/o1js).
+> Refer to [introduction to o1js](https://docs.o1labs.org/o1js/) and the [o1js GitHub repo](https://github.com/o1-labs/o1js).
 
 ### Advantages of Using Zeko
 
@@ -38,14 +42,14 @@ Zeko is different from Mina in several ways for developers and users:
 zkApps are zero-knowledge programs that are **Turing complete**, and offer enhanced privacy with client-side execution and private inputs, have off-chain computation and composability with **no gas fees**.
 
 > [!TIP] 💡 zkApps 💡
-> Refer to [zkApps Overview for new zk-Devs](https://docs.minaprotocol.com/zkapps/writing-a-zkapp) and [zkApps for Ethereum Devs](https://docs.minaprotocol.com/zkapps/advanced/zkapps-for-ethereum-developers).
+> Refer to [zkApps Overview for new zk-Devs](https://docs.o1labs.org/o1js/zkapps/intro) and [zkApps for Ethereum Devs](https://docs.o1labs.org/o1js/zkapps/intro).
 
 ## Step 2 – Demo zkApps and UIs
 
 > For Mina-native or ZK-adjacent devs
 
-- [**Write and Deploy a zkApp Today**](https://docs.minaprotocol.com/zkapps/writing-a-zkapp/introduction-to-zkapps/how-to-write-a-zkapp)
-- Make sure to **[get a wallet & faucet tMINA](https://zeko.io/faucet) on Zeko** or **[Bridge tMINA](https://zeko.io/bridge) from Mina to Zeko**, and check your activity on **[ZekoScan testnet explorer](https://zekoscan.io/testnet/home)**. _(Auro wallet browser extension v2.4.1 or mobile app v2.2.0 or later are required)_
+- [**Write and Deploy a zkApp Today**](https://docs.o1labs.org/o1js/zkapps/intro)
+- Make sure to **[get a wallet & faucet tMINA](https://zeko.io/faucet) on Zeko** or **[Bridge tMINA](https://alpha.bridge.zeko.io) from Mina to Zeko**, and check your activity on **[ZekoScan testnet explorer](https://zekoscan.io/testnet/home)**. _(Auro wallet browser extension v2.4.1 or mobile app v2.2.0 or later are required)_
 - Mina devnet [faucet](https://minascan.io/devnet/home) and [MinaScan](https://minascan.io/mainnet/home) explorer may also be helpful resources
 - **Write your smart contract using the [zkApp CLI](https://github.com/o1-labs/zkapp-cli)**
 
@@ -77,15 +81,15 @@ Find out more about advanced tools and tutorials for zkApps development.
 - [o1js MCP server](https://github.com/o1-labs/mcp-o1js/tree/main/packages/mcp-server-o1js#usage-with-claude-desktop) (search o1js docs, codebase, Mina Discord forums with Claude & Cursor)
 - [zkApps AI Chatbot](https://zkappsumstad.com/) (GPT language model, extensively trained on Mina, zkApps, and o1js)
 
-#### zkApp Developer In-Depth [Tutorials](https://docs.minaprotocol.com/zkapps/tutorials)
+#### zkApp Developer In-Depth [Tutorials](https://docs.o1labs.org/o1js/tutorials/hmac/hmac-basics)
 
-- [Deploy to a Network](https://docs.minaprotocol.com/zkapps/tutorials/deploying-to-a-network)
-- [zkApp Browser UI](https://docs.minaprotocol.com/zkapps/tutorials/zkapp-ui-with-react)
+- [Deploy to a Network](https://docs.o1labs.org/o1js/zkapps/intro)
+- [zkApp Browser UI](https://docs.o1labs.org/o1js/zkapps/intro)
 
 #### Cross-chain signing and modular zkApp deployment using TEE
 
 - [Silvana](https://login.silvana.dev/)
-- [Silvana docs](https://docs.silvana.one/category/deployment)
+- [Silvana docs](https://docs.silvana.one/)
 
 ### Community
 

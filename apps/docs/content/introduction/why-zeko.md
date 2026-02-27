@@ -12,7 +12,7 @@ Zeko’s _Cross-Chain Interoperability_ is a defining feature. Designed with cro
 
 By inheriting _Mina’s succinct, decentralized architecture_, Zeko also benefits from a **lightweight** and energy-efficient infrastructure, making it ideal for sustainable scaling.
 
-Zeko further distinguishes itself with a _Developer-Friendly Stack_. With [o1js](https://docs.minaprotocol.com/zkapps/o1js), developers can use **Typescript** to develop smart-contracts and enjoy a low learning curve, supported by prebuilt SDKs, templates, and customizable ZKPs. This streamlines development for a wide range of use cases, including AI, DeFi, NFTs, identity, and gaming.
+Zeko further distinguishes itself with a _Developer-Friendly Stack_. With [o1js](https://docs.o1labs.org/o1js/), developers can use **Typescript** to develop smart-contracts and enjoy a low learning curve, supported by prebuilt SDKs, templates, and customizable ZKPs. This streamlines development for a wide range of use cases, including AI, DeFi, NFTs, identity, and gaming.
 
 ## Core Use Cases & Applications
 

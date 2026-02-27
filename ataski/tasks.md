@@ -6,3 +6,4 @@
 - T006 | done | faucet-integration-validation | done/T006-faucet-integration-validation.md
 - T007 | done | faucet-cli-tdd-and-regression-fixes | done/T007-faucet-cli-tdd-and-regression-fixes.md
 - T008 | done | remove-legacy-faucet-claim-key | done/T008-remove-legacy-faucet-claim-key.md
+- T009 | done | fix-faucet-typecheck-failure | done/T009-fix-faucet-typecheck-failure.md

@@ -1,6 +1,6 @@
 # Using a custom Zeko network with o1js
 
-This guide will walk you through the process of using a custom Zeko network to write zkapps. If this is your first time using Mina, we recommend you start with the official [Mina documentation](https://docs.minaprotocol.com/).
+This guide will walk you through the process of using a custom Zeko network to write zkapps. If this is your first time using Mina, we recommend you start with the official [o1js documentation](https://docs.o1labs.org/o1js/).
 
 Zeko is mostly isomorpic to Mina, so you can use the same tools and libraries to develop zkapps as you would use to develop zkapps on Mina. There are only few places where you need to be specific about the network you are using. It is the same as the difference between using mainnet and testnet.
 
