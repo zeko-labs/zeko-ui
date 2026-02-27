@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: library
+
+fileGroups:
+  src:
+    - bin/**/*
+    - src/**/*
+    - tsconfig.json
+    - tsconfig.build.json
+    - tsdown.config.ts
+    - package.json
+
+tasks:
+  build:
+    command: tsdown
+    inputs:
+      - "@globs(src)"
+    outputs:
+      - dist/**
+  lint:
+    command: biome check --formatter-enabled=false
+    inputs:
+      - "@group(src)"
+  lint-fix:
+    command: biome check --formatter-enabled=false --write
+    inputs:
+      - "@group(src)"
+  typecheck:
+    command: tsc --noEmit
+    inputs:
+      - "@globs(src)"

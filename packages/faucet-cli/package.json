@@ -1,0 +1,34 @@
+{
+	"name": "@zeko-labs/faucet-cli",
+	"version": "0.1.0",
+	"description": "Public CLI for claiming Zeko testnet faucet funds and verifying GitHub authentication.",
+	"type": "module",
+	"keywords": ["zeko", "faucet", "cli", "typescript"],
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": ["bin", "dist"],
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"bin": {
+		"zeko-faucet": "./bin/zeko-faucet.js"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"dependencies": {
+		"citty": "^0.1.6",
+		"ofetch": "^1.4.1",
+		"valibot": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "^20.8.10",
+		"tsdown": "catalog:",
+		"typescript": "catalog:"
+	}
+}

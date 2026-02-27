@@ -1,0 +1,7 @@
+export { claimFaucet, type FaucetClaim, fetchGitHubUser, type GitHubUser } from "./api"
+export { runCli } from "./cli"
+export { runClaimCommand } from "./commands/claim"
+export { runWhoAmICommand } from "./commands/whoami"
+export { DEFAULT_CHAIN } from "./constants"
+export { CliError, ExitCode, type ExitCodeValue, toCliError } from "./errors"
+export { parseAddress, resolveToken } from "./validation"
