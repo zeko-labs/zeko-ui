@@ -24,11 +24,11 @@
 	"dependencies": {
 		"citty": "^0.1.6",
 		"ofetch": "^1.4.1",
-		"valibot": "catalog:"
+		"valibot": "^1.1.0"
 	},
 	"devDependencies": {
 		"@types/node": "^20.8.10",
-		"tsdown": "catalog:",
-		"typescript": "catalog:"
+		"tsdown": "^0.13.4",
+		"typescript": "^5.9.2"
 	}
 }
