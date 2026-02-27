@@ -77,14 +77,14 @@ In Zeko, ZKPs, specifically zk-SNARKs, are used for two primary purposes in tran
 
 While zk-SNARKs _can_ be used to hide parts of transaction data, the primary use in zkApps on Mina/Zeko is proving correct execution and compressing computation. Hiding data is considered a side product. These proofs must satisfy **completeness** (an honest prover can demonstrate knowledge) and **soundness** (a dishonest prover cannot convince the verifier) without revealing the sensitive information itself.
 
-Mina and Zeko benefit from the underlying **recursive proof system** ([Kimchi backed by Pickles](https://minaprotocol.com/blog/kimchi-the-latest-update-to-minas-proof-system)), which enables arbitrary infinite recursive proof construction. This recursive capability is used internally within Mina for decentralized proving and sequencing and allows for the creation of tree-based recursive programs like the one used in the rollup aggregation.
+Mina and Zeko benefit from the underlying **recursive proof system** ([Kimchi backed by Pickles](https://www.o1labs.org/blog/reintroducing-kimchi)), which enables arbitrary infinite recursive proof construction. This recursive capability is used internally within Mina for decentralized proving and sequencing and allows for the creation of tree-based recursive programs like the one used in the rollup aggregation.
 
 > [!TIP] 💡 ZK Rollups 💡
 > Zk-rollups utilize ZKPs to ensure the validity of all transactions in a bundled batch without necessarily disclosing the specifics of each transaction, which can enhance privacy.
 
 ## zkApps: Zeko's Smart Contracts
 
-On Mina and Zeko, smart contracts are referred to as **zkApps** or **zkApp accounts**. While the languages of the circuits is ocaml, the [o1js](https://docs.minaprotocol.com/zkapps/o1js) library can be used, to develop zkApps using Typescript.
+On Mina and Zeko, smart contracts are referred to as **zkApps** or **zkApp accounts**. While the languages of the circuits is ocaml, the [o1js](https://docs.o1labs.org/o1js/) library can be used, to develop zkApps using Typescript.
 
 zkApps are zero-knowledge smart contracts that leverage ZKPs to ensure the correctness of state transitions. Developers write these contracts using the `SmartContract` class in o1js.
 

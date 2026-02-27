@@ -47,4 +47,4 @@ ZKPs in zkApps are primarily used for two purposes: to hide parts of the data an
 **Zeko is a Layer 2 (L2) ecosystem specifically designed for Mina's zkApps**. It aims to provide a robust platform for building and deploying zkApps with improved throughput and quick confirmation times.
 
 > [!TIP] 💡 More about zkApps 💡
-> For more information on zkApps, refer to the [Mina documentation](https://docs.minaprotocol.com/zkapps/writing-a-zkapp).
+> For more information on zkApps, refer to the [o1js documentation](https://docs.o1labs.org/o1js/zkapps/intro).

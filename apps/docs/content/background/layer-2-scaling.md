@@ -29,4 +29,4 @@ ZK-Rollups offer several key advantages:
 - **Privacy:** ZKPs can enhance privacy by proving validity without revealing transaction details.
 
 > [!TIP] 💡 Zeko's Architecture 💡
-> Zeko leverages Mina's recursive ZK technology, specifically the [Pickles](https://medium.com/minaprotocol/meet-pickles-snark-enabling-smart-contract-on-coda-protocol-7ede3b54c250) recursive system, as the foundation for its ZK Rollup. Zeko's modular architecture further allows for the creation of custom zkRollups, providing developers with flexibility in choosing components like the data availability solution.
+> Zeko leverages Mina's recursive ZK technology, specifically the [Pickles](https://o1-labs.github.io/proof-systems/pickles/overview) recursive system, as the foundation for its ZK Rollup. Zeko's modular architecture further allows for the creation of custom zkRollups, providing developers with flexibility in choosing components like the data availability solution.
