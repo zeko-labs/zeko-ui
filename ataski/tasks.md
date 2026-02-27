@@ -2,5 +2,5 @@
 - T002 | done | faucet-worker-api-refactor | done/T002-faucet-worker-api-refactor.md
 - T003 | done | faucet-ui-turnstile-adapter | done/T003-faucet-ui-turnstile-adapter.md
 - T004 | done | faucet-cli-package | done/T004-faucet-cli-package.md
-- T005 | in-progress | faucet-cli-sync-publish-ci | in-progress/T005-faucet-cli-sync-publish-ci.md
-- T006 | todo | faucet-integration-validation | todo/T006-faucet-integration-validation.md
+- T005 | done | faucet-cli-sync-publish-ci | done/T005-faucet-cli-sync-publish-ci.md
+- T006 | done | faucet-integration-validation | done/T006-faucet-integration-validation.md
