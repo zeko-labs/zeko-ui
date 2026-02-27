@@ -29,5 +29,6 @@ logs
 .moon/docker
 
 .playwright-mcp
+ataski/worktrees/
 
 .wrangler

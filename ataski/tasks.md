@@ -1,0 +1,6 @@
+- T001 | done | web-77-docs-updates | done/T001-web-77-docs-updates.md
+- T002 | in-progress | faucet-worker-api-refactor | in-progress/T002-faucet-worker-api-refactor.md
+- T003 | todo | faucet-ui-turnstile-adapter | todo/T003-faucet-ui-turnstile-adapter.md
+- T004 | todo | faucet-cli-package | todo/T004-faucet-cli-package.md
+- T005 | todo | faucet-cli-sync-publish-ci | todo/T005-faucet-cli-sync-publish-ci.md
+- T006 | todo | faucet-integration-validation | todo/T006-faucet-integration-validation.md
