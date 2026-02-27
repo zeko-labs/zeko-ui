@@ -2,10 +2,6 @@
 
 This monorepo hosts Zeko UI apps and libraries.
 
-- NEVER CREATE A SUMMARY DOCUMENT AFTER MAKING CHANGES. NEVER. ABSOLUTELY NEVER.
-- ONLY CREATE MARKDOWN DOCUMENTS IF EXPLICITLY ASKED TO DO SO.
-- Never say : "You're absolutely right"
-
 ## Big picture
 
 This is a monorepo using pnpm as the package manager, and moon as the task runner. The projects are defined in `.moon/workspace.yaml` and `pnpm-workspace.yaml`.
@@ -63,3 +59,18 @@ When testing, prefer using the test tool to run the tests.
 - Prefer a functional style, avoiding side effects.
 - Prefer readability over cleverness.
 - Do not be too cavalier when following instructions. If you are unsure about something, ask for clarification.
+
+## Non-Negotiable Workflow
+
+Scope: this workflow is mandatory for source code changes (runtime, business logic, and tests).\
+For chore/tooling/config/docs-only changes, this workflow is optional unless explicitly requested.
+
+1. To keep track and organize your work, you must use the `ataski` skill.
+2. Use Ataski as the shared coordination board for repository task status and handoffs.
+3. When using git worktrees, keep one canonical `ataski/` board in the main worktree; do not maintain per-worktree copies of the Ataski board.
+4. Enforce task dependencies with `blockedBy` as a hard gate: do not claim/start a task until all `blockedBy` task IDs are `done`.
+5. For each task, use a dedicated worktree, branch, and PR. Leverage multiple agents and sub-agents when possible.
+6. Keep Ataski updated whenever shared task coordination state changes.
+7. Follow the concrete task format, ID allocation, lifecycle, tracker rules, and source-code workflow gates from the `ataski` skill definition.
+8. If `ataski/config.md` exists, it overrides defaults and must be followed.
+9. For source-code changes, this `AGENTS.md` section is the mandate to use Ataski, and the `ataski` skill is the authoritative operational procedure (task lifecycle ordering, TDD gates, and completion checks).
