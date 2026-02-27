@@ -26,9 +26,15 @@ Use Conventional Commits:
 
 ## Commit Workflow
 
-1. Ensure changes are staged.
-2. Pick a type from the allowed list.
-3. Write a commit message in the required format.
+1. Ensure dependencies are installed, then install and validate git hooks:
+   `pnpm exec lefthook install`
+   `pnpm exec lefthook validate`
+2. Before committing, confirm the `pre-commit` hook is present in `.git/hooks/pre-commit`. If it is missing, reinstall Lefthook before continuing.
+3. Ensure changes are staged.
+4. Pick a type from the allowed list.
+5. Write a commit message in the required format.
+6. Create the commit without bypassing hooks. Do not use `--no-verify`, and do not disable Lefthook via `LEFTHOOK=0`.
+7. If the hook rewrites files (for example formatting fixes), review the changes, re-stage them, and re-run `git commit` so the hook passes on the final staged content.
 
 ## PR Workflow
 
