@@ -1,3 +1,4 @@
+import type { H3Event } from "h3"
 import { type } from "arktype"
 
 export const validateBody = type({ address: "string.alphanumeric", cfToken: "string" })
@@ -26,13 +27,5 @@ export async function verifyTurnstile({
 	}
 }
 
-export async function getSpamState({ ip, env }: { ip: string; env: Env }) {
-	const spamKey = `spam:${ip}`
-	const spamCountStr = await env.FAUCET_IP_SPAM.get(spamKey)
-	const spamCount = spamCountStr ? Number.parseInt(spamCountStr, 10) || 0 : 0
-	const spam = spamCount + 1
-	const spamWindow = Number.parseInt(env.SPAM_WINDOW_SECONDS, 10)
-	await env.FAUCET_IP_SPAM.put(spamKey, spam.toString(), { expirationTtl: spamWindow })
-	const spamThreshold = Number.parseInt(env.SPAM_THRESHOLD, 10)
-	return { spam, spamThreshold, spamWindow }
-}
+export const getTrustedClientIp = (event: H3Event) =>
+	getHeader(event, "cf-connecting-ip")?.trim() || null

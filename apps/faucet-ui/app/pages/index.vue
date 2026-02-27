@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import { Field } from "@ark-ui/vue/field"
 import { useActor } from "@xstate/vue"
-import { type } from "arktype"
 import { ArrowBigRight, TriangleAlert } from "lucide-vue-next"
 import { assign, enqueueActions, fromPromise, setup } from "xstate"
-import { faucetBody } from "~~/helpers/validation"
+import {
+	type FaucetSuccessResponse,
+	parseFaucetResponse
+} from "~~/helpers/validation"
 
 const minaAddress = defineModel()
 
@@ -13,14 +15,18 @@ const id = useId()
 const { turnstileSiteKey } = useRuntimeConfig().public
 const turnstile = useTurnstile(turnstileSiteKey)
 
+type FaucetMachineContext = {
+	errorMessage: string
+	result: FaucetSuccessResponse | null
+}
+
 const faucetMachine = setup({
 	types: {
 		events: {} as { type: "SUBMIT" },
-		context: {} as { errorMessage: string; hash: string }
+		context: {} as FaucetMachineContext
 	},
 	actors: {
-		submit: fromPromise(async () => {
-			// Get Turnstile token before submitting
+		submit: fromPromise<FaucetSuccessResponse>(async () => {
 			let cfToken: string
 			try {
 				cfToken = await turnstile.execute()
@@ -36,11 +42,12 @@ const faucetMachine = setup({
 				},
 				body: JSON.stringify({ address: minaAddress.value, cfToken })
 			})
-			const result = await response.json()
-			const data = faucetBody(result)
-			if (data instanceof type.errors || !response.ok)
-				throw new Error(data.message)
-			turnstile.reset()
+
+			const result = await response.json().catch(() => null)
+			const data = parseFaucetResponse(result)
+			if (!data) throw new Error("The faucet returned an unexpected response.")
+			if (!data.success) throw new Error(data.message)
+
 			return data
 		})
 	}
@@ -49,23 +56,28 @@ const faucetMachine = setup({
 	initial: "IDLE",
 	context: {
 		errorMessage: "Unknown error",
-		hash: ""
+		result: null
 	},
 	states: {
 		IDLE: { on: { SUBMIT: "PENDING" } },
 		PENDING: {
 			entry: enqueueActions(({ enqueue }) => {
-				enqueue.assign({ errorMessage: "Unknown error", hash: "" })
+				enqueue.assign({ errorMessage: "Unknown error", result: null })
 			}),
 			invoke: {
 				src: "submit",
 				onDone: {
 					target: "SUCCESS",
-					actions: assign({ hash: ({ event }) => event.output.hash ?? "" })
+					actions: assign({ result: ({ event }) => event.output })
 				},
 				onError: {
 					target: "ERROR",
-					actions: assign({ errorMessage: ({ event }) => String(event.error) })
+					actions: assign({
+						errorMessage: ({ event }) =>
+							event.error instanceof Error
+								? event.error.message
+								: String(event.error)
+					})
 				}
 			}
 		},
@@ -78,10 +90,8 @@ const success = computed(() => faucet.snapshot.value.matches("SUCCESS"))
 const error = computed(() => faucet.snapshot.value.matches("ERROR"))
 const pending = computed(() => faucet.snapshot.value.matches("PENDING"))
 const errorMessage = computed(() => faucet.snapshot.value.context.errorMessage)
-const zekoScanLink = computed(
-	() =>
-		`https://zekoscan.io/testnet/tx/${faucet.snapshot.value.context.hash}/txInfo?type=zk-tx`
-)
+const successResult = computed(() => faucet.snapshot.value.context.result)
+const zekoScanLink = computed(() => successResult.value?.explorer_url ?? "")
 
 const isValidAddress = computed(() => {
 	if (!minaAddress.value || typeof minaAddress.value !== "string") return false
@@ -157,8 +167,10 @@ const submitDisabled = computed(
               <!-- <Field.ErrorText> {{ errorMessage }}</Field.ErrorText> -->
             </Field.Root>
             <div class="Result">
-              <p class="success" v-if="success">
-                tMINA succesfully requested to <span>{{ minaAddress }}</span>
+              <p class="success" v-if="success && successResult">
+                tMINA successfully requested to <span>{{
+                  successResult.address
+                }}</span>
                 <a
                   :href="zekoScanLink"
                   target="_blank"

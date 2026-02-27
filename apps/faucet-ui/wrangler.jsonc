@@ -33,44 +33,10 @@
 			"persist": true
 		}
 	},
-	"vars": {
-		"SPAM_THRESHOLD": "12",
-		"SPAM_WINDOW_SECONDS": "3600",
-		"BAN_TTL_SECONDS": "86400"
-	},
-	"secrets_store_secrets": [
-		{
-			"binding": "STORE_FAUCET_URL",
-			"store_id": "f83375a001d345db99acd892b01d7463",
-			"secret_name": "FAUCET_URL"
-		}
-	],
 	"services": [
 		{
 			"binding": "FAUCET",
 			"service": "faucet"
-		}
-	],
-	"kv_namespaces": [
-		{
-			"binding": "FAUCET_BANNED_IPS",
-			"id": "4b154f86de1c428e8589d303ece2ff8f",
-			"remote": true
-		},
-		{
-			"binding": "FAUCET_IP_SPAM",
-			"id": "fa73ffb7eff644ab87929dbfa9479884",
-			"remote": true
-		}
-	],
-	"ratelimits": [
-		{
-			"name": "RATE_LIMIT_FAUCET",
-			"namespace_id": "100",
-			"simple": {
-				"limit": 3,
-				"period": 60
-			}
 		}
 	]
 }
