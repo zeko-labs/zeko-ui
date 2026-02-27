@@ -1,19 +1,13 @@
 import { Container, getRandom } from "@cloudflare/containers"
 
 const INSTANCE_COUNT = 3
-const ALLOWED_CHAIN = "zeko-testnet"
+const DEFAULT_CHAIN = "zeko-testnet"
+const CLAIM_AMOUNT = "10"
 const GITHUB_MIN_ACCOUNT_AGE_MS = 7 * 24 * 60 * 60 * 1000
 const GITHUB_CLAIM_WINDOW_SECONDS = 24 * 60 * 60
 const DEFAULT_BAN_TTL_SECONDS = 24 * 60 * 60
 
 type AuthMethod = "turnstile" | "github"
-
-type ClaimRequestBody = {
-	address: string
-	chain: string
-	cfToken?: string
-	githubToken?: string
-}
 
 type FaucetContainerEnv = Env & {
 	ZEKO_FAUCET_SENDER_PRIVATE_KEY: string
@@ -22,10 +16,10 @@ type FaucetContainerEnv = Env & {
 type FaucetRuntimeEnv = Env & {
 	FAUCET_BANNED_IPS: KVNamespace
 	FAUCET_IP_SPAM: KVNamespace
+	FAUCET_GITHUB_CLAIMS: KVNamespace
 	SPAM_THRESHOLD: string
 	SPAM_WINDOW_SECONDS: string
 	BAN_TTL_SECONDS?: string
-	TURNSTILE_SECRET_KEY?: string
 	RATE_LIMIT_FAUCET: RateLimit
 }
 
@@ -41,19 +35,37 @@ type GitHubUser = {
 	created_at: string
 }
 
-type ErrorPayload = {
-	ok: false
-	error: {
-		code: string
-		message: string
-		details?: Record<string, unknown>
-	}
+type ErrorResponse = {
+	success: false
+	code: string
+	message: string
 }
 
-type SuccessPayload<T> = {
-	ok: true
-	data: T
+type SuccessResponse = {
+	success: true
+	hash: string
+	amount: typeof CLAIM_AMOUNT
+	address: string
+	chain: typeof DEFAULT_CHAIN
+	explorer_url: string
 }
+
+type ParsedClaimRequest = {
+	address: string
+	chain: typeof DEFAULT_CHAIN
+}
+
+type TurnstileAuthorization = {
+	authMethod: "turnstile"
+	clientIp: string
+}
+
+type GitHubAuthorization = {
+	authMethod: "github"
+	githubUser: GitHubUser
+}
+
+type AuthorizationResult = TurnstileAuthorization | GitHubAuthorization
 
 export class Faucet extends Container<FaucetContainerEnv> {
 	defaultPort = 3000
@@ -76,56 +88,25 @@ export class Faucet extends Container<FaucetContainerEnv> {
 	}
 }
 
-const jsonError = (
-	status: number,
-	code: string,
-	message: string,
-	details?: Record<string, unknown>,
-	headers?: HeadersInit
-) =>
-	new Response(JSON.stringify(buildErrorPayload(code, message, details)), {
-		status,
-		headers: {
-			"Content-Type": "application/json",
-			...headers
-		}
-	})
-
-const jsonSuccess = <T>(status: number, data: T) =>
+const jsonError = (status: number, code: string, message: string, headers?: HeadersInit) =>
 	Response.json(
 		{
-			ok: true,
-			data
-		} satisfies SuccessPayload<T>,
-		{ status }
+			success: false,
+			code,
+			message
+		} satisfies ErrorResponse,
+		{
+			status,
+			headers
+		}
 	)
 
-const buildErrorPayload = (
-	code: string,
-	message: string,
-	details?: Record<string, unknown>
-): ErrorPayload => ({
-	ok: false,
-	error: details ? { code, message, details } : { code, message }
-})
+const jsonSuccess = (status: number, payload: SuccessResponse) => Response.json(payload, { status })
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null
 
-const isNonEmptyString = (value: unknown): value is string =>
-	typeof value === "string" && value.trim().length > 0
-
 const isAlphaNumeric = (value: string) => /^[a-z0-9]+$/i.test(value)
-
-const getClientIp = (request: Request) =>
-	request.headers.get("cf-connecting-ip") ||
-	request.headers
-		.get("x-forwarded-for")
-		?.split(",")
-		.map((value) => value.trim())
-		.find(Boolean) ||
-	request.headers.get("x-real-ip") ||
-	"unknown"
 
 const getAuthMethod = (request: Request): AuthMethod | null => {
 	const rawMethod = request.headers.get("X-Auth-Method")?.trim().toLowerCase()
@@ -133,12 +114,13 @@ const getAuthMethod = (request: Request): AuthMethod | null => {
 	return null
 }
 
-const getAddressClaimKey = ({ chain, address }: Pick<ClaimRequestBody, "chain" | "address">) =>
-	`claim:${chain}:${address}`
+const getAddressClaimKey = ({ chain, address }: ParsedClaimRequest) => `claim:${chain}:${address}`
 
 const getSpamKey = (ip: string) => `spam:${ip}`
 
 const getGitHubClaimKey = (userId: number) => `github:${userId}`
+
+const getExplorerUrl = (hash: string) => `https://zekoscan.io/testnet/tx/${hash}/txInfo?type=zk-tx`
 
 const getBearerToken = (request: Request) => {
 	const authorization = request.headers.get("authorization")?.trim()
@@ -164,47 +146,14 @@ const parseClaimRequest = async (request: Request) => {
 	if (!address || !isAlphaNumeric(address))
 		return jsonError(400, "invalid_address", "Address must be a non-empty alphanumeric string.")
 
-	const chain = typeof body.chain === "string" ? body.chain.trim() : ""
-	if (!chain) return jsonError(400, "missing_chain", "Chain is required.")
-	if (chain !== ALLOWED_CHAIN)
-		return jsonError(400, "unsupported_chain", `Only ${ALLOWED_CHAIN} is currently supported.`)
-
-	const cfToken = isNonEmptyString(body.cfToken) ? body.cfToken.trim() : undefined
-	const githubToken = isNonEmptyString(body.githubToken) ? body.githubToken.trim() : undefined
+	const chain = typeof body.chain === "string" ? body.chain.trim() : DEFAULT_CHAIN
+	if (chain !== DEFAULT_CHAIN)
+		return jsonError(400, "invalid_chain", `Only ${DEFAULT_CHAIN} is currently supported.`)
 
 	return {
 		address,
-		chain,
-		cfToken,
-		githubToken
-	} satisfies ClaimRequestBody
-}
-
-const verifyTurnstile = async ({
-	token,
-	ip,
-	secret
-}: {
-	token: string
-	ip: string
-	secret: string
-}) => {
-	try {
-		const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ secret, response: token, remoteip: ip })
-		})
-
-		const result = (await response.json()) as { success?: boolean }
-		if (result.success) return true
-
-		console.error("Turnstile verification failed:", result)
-		return false
-	} catch (error) {
-		console.error("Turnstile verification errored:", error)
-		return false
-	}
+		chain: DEFAULT_CHAIN
+	} satisfies ParsedClaimRequest
 }
 
 const getSpamState = async (ip: string, env: FaucetRuntimeEnv) => {
@@ -346,15 +295,11 @@ const parseFaucetContainerResponse = async (
 
 const authorizeRequest = async ({
 	request,
-	body,
-	env,
-	ip
+	env
 }: {
 	request: Request
-	body: ClaimRequestBody
 	env: FaucetRuntimeEnv
-	ip: string
-}) => {
+}): Promise<AuthorizationResult | Response> => {
 	const authMethod = getAuthMethod(request)
 	if (!authMethod)
 		return jsonError(
@@ -364,51 +309,37 @@ const authorizeRequest = async ({
 		)
 
 	if (authMethod === "turnstile") {
-		if (!body.cfToken)
-			return jsonError(
-				400,
-				"missing_turnstile_token",
-				"A Turnstile token is required for turnstile auth."
-			)
+		const clientIp = request.headers.get("X-Client-IP")?.trim()
+		if (!clientIp)
+			return jsonError(400, "missing_client_ip", "X-Client-IP is required for turnstile requests.")
 
-		if (!env.TURNSTILE_SECRET_KEY)
-			return jsonError(500, "turnstile_not_configured", "Turnstile verification is not configured.")
+		const ipBlock = await enforceIpPolicies(clientIp, env)
+		if (ipBlock) return ipBlock
 
-		const verified = await verifyTurnstile({
-			token: body.cfToken,
-			ip,
-			secret: env.TURNSTILE_SECRET_KEY
-		})
-
-		if (!verified)
-			return jsonError(
-				403,
-				"turnstile_verification_failed",
-				"Failed to verify you are human. Please try again."
-			)
-
-		return { authMethod }
+		return {
+			authMethod,
+			clientIp
+		}
 	}
 
-	const token = getBearerToken(request) ?? body.githubToken
+	const token = getBearerToken(request)
 	if (!token)
 		return jsonError(
 			401,
 			"missing_github_token",
-			"A GitHub personal access token is required for github auth."
+			"A GitHub bearer token is required for github auth."
 		)
 
 	const githubUser = await verifyGitHubUser(token)
 	if (githubUser instanceof Response) return githubUser
 
-	const claimKey = getGitHubClaimKey(githubUser.id)
-	const lastClaim = await env.FAUCET_CLAIM.get(claimKey)
+	const githubClaimKey = getGitHubClaimKey(githubUser.id)
+	const lastClaim = await env.FAUCET_GITHUB_CLAIMS.get(githubClaimKey)
 	if (lastClaim)
 		return jsonError(
 			403,
 			"github_claim_rate_limited",
-			"This GitHub account has already claimed faucet tokens in the last 24 hours.",
-			{ claimedAt: lastClaim, login: githubUser.login }
+			"This GitHub account has already claimed faucet tokens in the last 24 hours."
 		)
 
 	return {
@@ -426,25 +357,15 @@ export default {
 			return jsonError(404, "not_found", "Route not found.")
 
 		if (request.method !== "POST")
-			return jsonError(
-				405,
-				"method_not_allowed",
-				"Only POST is allowed for this route.",
-				undefined,
-				{ Allow: "POST" }
-			)
+			return jsonError(405, "method_not_allowed", "Only POST is allowed for this route.", {
+				Allow: "POST"
+			})
 
 		try {
 			const body = await parseClaimRequest(request)
 			if (body instanceof Response) return body
 
-			const ip = getClientIp(request)
-			console.log(`Claim request received for ${body.address} on ${body.chain} from ${ip}`)
-
-			const ipBlock = await enforceIpPolicies(ip, env)
-			if (ipBlock) return ipBlock
-
-			const authorization = await authorizeRequest({ request, body, env, ip })
+			const authorization = await authorizeRequest({ request, env })
 			if (authorization instanceof Response) return authorization
 
 			const addressClaimKey = getAddressClaimKey(body)
@@ -453,9 +374,12 @@ export default {
 				return jsonError(
 					403,
 					"address_already_claimed",
-					"This address has already claimed faucet tokens.",
-					{ claimedAt: existingAddressClaim }
+					"This address has already claimed faucet tokens."
 				)
+
+			console.log(
+				`Claim request received for ${body.address} on ${body.chain} via ${authorization.authMethod}`
+			)
 
 			const containerInstance = await getRandom(env.FAUCET, INSTANCE_COUNT)
 			const containerResponse = await containerInstance.fetch("https://faucet.internal/", {
@@ -478,7 +402,7 @@ export default {
 				return jsonError(containerResponse.status, "faucet_request_failed", message)
 			}
 
-			if (faucetPayload.message !== "Successfully sent")
+			if (faucetPayload.message !== "Successfully sent" || !faucetPayload.hash)
 				return jsonError(
 					502,
 					"invalid_faucet_response",
@@ -490,7 +414,7 @@ export default {
 
 			if (authorization.authMethod === "github")
 				writes.push(
-					env.FAUCET_CLAIM.put(getGitHubClaimKey(authorization.githubUser.id), claimedAt, {
+					env.FAUCET_GITHUB_CLAIMS.put(getGitHubClaimKey(authorization.githubUser.id), claimedAt, {
 						expirationTtl: GITHUB_CLAIM_WINDOW_SECONDS
 					})
 				)
@@ -498,11 +422,12 @@ export default {
 			ctx.waitUntil(Promise.all(writes))
 
 			return jsonSuccess(202, {
-				message: faucetPayload.message,
-				chain: body.chain,
-				address: body.address,
+				success: true,
 				hash: faucetPayload.hash,
-				result: faucetPayload.data
+				amount: CLAIM_AMOUNT,
+				address: body.address,
+				chain: body.chain,
+				explorer_url: getExplorerUrl(faucetPayload.hash)
 			})
 		} catch (error) {
 			console.error("Unhandled faucet worker error:", error)

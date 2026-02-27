@@ -3,6 +3,12 @@
 	"compatibility_date": "2025-04-08",
 	"name": "faucet",
 	"main": "worker.ts",
+	"routes": [
+		{
+			"pattern": "api.faucet.zeko.io",
+			"custom_domain": true
+		}
+	],
 	"preview_urls": true,
 	"workers_dev": false,
 	"observability": {
@@ -39,6 +45,10 @@
 			"binding": "FAUCET_IP_SPAM",
 			"id": "fa73ffb7eff644ab87929dbfa9479884",
 			"remote": true
+		},
+		{
+			"binding": "FAUCET_GITHUB_CLAIMS",
+			"id": "00000000000000000000000000000000"
 		}
 	],
 	"ratelimits": [
@@ -57,7 +67,7 @@
 			"name": "faucet-container",
 			"class_name": "Faucet",
 			"image": "./Dockerfile",
-			"instance_type": "standard-1",
+			"instance_type": "standard",
 			"image_build_context": "../.."
 		}
 	],
