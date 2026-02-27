@@ -1,0 +1,29 @@
+name: Sync Faucet CLI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - packages/faucet-cli/**
+
+jobs:
+  sync:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.FAUCET_CLI_SPLIT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Split packages/faucet-cli
+        uses: danharrin/monorepo-split-github-action@v2.4.4
+        with:
+          package_directory: packages/faucet-cli
+          repository_organization: zeko-labs
+          repository_name: faucet-cli
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
