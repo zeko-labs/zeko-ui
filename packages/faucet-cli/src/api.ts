@@ -12,7 +12,7 @@ import { CliError, ExitCode } from "./errors"
 const FaucetSuccessSchema = v.object({
 	success: v.literal(true),
 	hash: v.string(),
-	amount: v.number(),
+	amount: v.string(),
 	address: v.string(),
 	chain: v.string(),
 	explorer_url: v.string()

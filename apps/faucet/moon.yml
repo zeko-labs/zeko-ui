@@ -9,6 +9,15 @@ tasks:
     command: bun src/index.ts
   dev:
     command: wrangler dev
+  typecheck:
+    script: pnpm exec tsc --noEmit -p tsconfig.json && pnpm exec tsc --noEmit -p test/tsconfig.json
+    inputs:
+      - tsconfig.json
+      - worker.ts
+      - worker-configuration.d.ts
+      - src/**/*.ts
+      - test/**/*.ts
+      - test/tsconfig.json
   type-cf:
     command: wrangler types
     inputs:

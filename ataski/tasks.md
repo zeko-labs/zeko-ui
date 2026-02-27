@@ -4,3 +4,5 @@
 - T004 | done | faucet-cli-package | done/T004-faucet-cli-package.md
 - T005 | done | faucet-cli-sync-publish-ci | done/T005-faucet-cli-sync-publish-ci.md
 - T006 | done | faucet-integration-validation | done/T006-faucet-integration-validation.md
+- T007 | done | faucet-cli-tdd-and-regression-fixes | done/T007-faucet-cli-tdd-and-regression-fixes.md
+- T008 | done | remove-legacy-faucet-claim-key | done/T008-remove-legacy-faucet-claim-key.md

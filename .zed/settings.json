@@ -1,0 +1,28 @@
+{
+	"languages": {
+		"JavaScript": {
+			"language_servers": ["!oxfmt", "!oxlint", "..."],
+			"formatter": [{ "language_server": { "name": "biome" } }]
+		},
+		"TypeScript": {
+			"language_servers": ["!oxfmt", "!oxlint", "..."],
+			"formatter": [{ "language_server": { "name": "biome" } }]
+		},
+		"TSX": {
+			"language_servers": ["!oxfmt", "!oxlint", "..."],
+			"formatter": [{ "language_server": { "name": "biome" } }]
+		},
+		"Vue.js": {
+			"language_servers": ["!oxfmt", "!oxlint", "..."],
+			"formatter": [{ "language_server": { "name": "biome" } }]
+		},
+		"JSON": {
+			"language_servers": ["!oxfmt", "..."],
+			"formatter": [{ "language_server": { "name": "biome" } }]
+		},
+		"JSONC": {
+			"language_servers": ["!oxfmt", "..."],
+			"formatter": [{ "language_server": { "name": "biome" } }]
+		}
+	}
+}

@@ -45,10 +45,6 @@
 			"binding": "FAUCET_IP_SPAM",
 			"id": "fa73ffb7eff644ab87929dbfa9479884",
 			"remote": true
-		},
-		{
-			"binding": "FAUCET_GITHUB_CLAIMS",
-			"id": "00000000000000000000000000000000"
 		}
 	],
 	"ratelimits": [

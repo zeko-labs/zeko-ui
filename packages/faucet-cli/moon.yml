@@ -10,6 +10,9 @@ fileGroups:
     - tsconfig.build.json
     - tsdown.config.ts
     - package.json
+  tests:
+    - test/**/*
+    - vitest.config.ts
 
 tasks:
   build:
@@ -22,10 +25,17 @@ tasks:
     command: biome check --formatter-enabled=false
     inputs:
       - "@group(src)"
+      - "@group(tests)"
   lint-fix:
     command: biome check --formatter-enabled=false --write
     inputs:
       - "@group(src)"
+      - "@group(tests)"
+  test:
+    command: vitest run --coverage
+    inputs:
+      - "@group(src)"
+      - "@group(tests)"
   typecheck:
     command: tsc --noEmit
     inputs:

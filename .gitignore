@@ -5,6 +5,7 @@
 .nitro
 .cache
 dist
+coverage
 .vitepress/cache
 
 # Node dependencies

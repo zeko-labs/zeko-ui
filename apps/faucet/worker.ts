@@ -16,7 +16,6 @@ type FaucetContainerEnv = Env & {
 type FaucetRuntimeEnv = Env & {
 	FAUCET_BANNED_IPS: KVNamespace
 	FAUCET_IP_SPAM: KVNamespace
-	FAUCET_GITHUB_CLAIMS: KVNamespace
 	SPAM_THRESHOLD: string
 	SPAM_WINDOW_SECONDS: string
 	BAN_TTL_SECONDS?: string
@@ -334,7 +333,7 @@ const authorizeRequest = async ({
 	if (githubUser instanceof Response) return githubUser
 
 	const githubClaimKey = getGitHubClaimKey(githubUser.id)
-	const lastClaim = await env.FAUCET_GITHUB_CLAIMS.get(githubClaimKey)
+	const lastClaim = await env.FAUCET_CLAIM.get(githubClaimKey)
 	if (lastClaim)
 		return jsonError(
 			403,
@@ -414,7 +413,7 @@ export default {
 
 			if (authorization.authMethod === "github")
 				writes.push(
-					env.FAUCET_GITHUB_CLAIMS.put(getGitHubClaimKey(authorization.githubUser.id), claimedAt, {
+					env.FAUCET_CLAIM.put(getGitHubClaimKey(authorization.githubUser.id), claimedAt, {
 						expirationTtl: GITHUB_CLAIM_WINDOW_SECONDS
 					})
 				)
