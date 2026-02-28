@@ -26,18 +26,19 @@ Use Conventional Commits:
 
 ## Commit Workflow
 
-1. Run `pnpm install` in the current checkout or worktree before touching git hooks. In a worktree, do not assume dependencies from another checkout are available here.
-2. After dependencies are installed, run:
+1. Ensure changes are staged.
+2. Pick a type from the allowed list.
+3. Write a commit message in the required format.
+4. Create the commit without bypassing hooks. Do not use `--no-verify`, and do not disable Lefthook via `LEFTHOOK=0`.
+5. Inspect the commit output. If the output shows Lefthook ran (for example, the `lefthook ... hook: pre-commit` banner appears), treat the hook gate as satisfied and continue. Do not run extra setup steps after a successful hook run.
+6. Treat any `Can't find lefthook in PATH`, `Unable to find Lefthook`, or missing Lefthook banner as a failed commit gate. If that happens, do not push. Run `pnpm install` in the current checkout or worktree, then run:
    `pnpm exec lefthook install`
    `pnpm exec lefthook validate`
-3. Before committing, confirm `.git/hooks/pre-commit` exists. If it is missing, reinstall Lefthook before continuing.
-4. Ensure changes are staged.
-5. Pick a type from the allowed list.
-6. Write a commit message in the required format.
-7. Create the commit without bypassing hooks. Do not use `--no-verify`, and do not disable Lefthook via `LEFTHOOK=0`.
-8. Treat any `Can't find lefthook in PATH` or `Unable to find Lefthook` output as a failed commit gate. If that appears, the hook did not run. Do not push. Run `pnpm install`, reinstall hooks, and re-run `git commit` so the final commit is created with a real hook execution.
-9. If the hook rewrites files (for example formatting fixes), review the changes, re-stage them, and re-run `git commit` so the hook passes on the final staged content.
-10. Never run `git push` after a commit where the hook was skipped, disabled, or failed to start. Only push after a commit whose output shows the hook actually ran.
+7. After the recovery steps, confirm `.git/hooks/pre-commit` exists. If it is still missing, stop and fix the hook installation before continuing.
+8. Re-run `git commit` so the final commit is created with a real hook execution.
+9. If the hook rewrites files (for example formatting fixes), review the resulting commit and working tree. In this repo, Lefthook-managed changes are added automatically as part of the hook flow, so do not manually re-stage those files. Only re-run `git commit` if the hook failed and no valid final commit was created.
+10. Never run `git push` after a commit where the hook was skipped, disabled, failed to start, or cannot be confirmed from the commit output. Only push after a commit whose output shows the hook actually ran.
+11. After every commit attempt, explicitly tell the user what happened in Lefthook. Always include whether the pre-commit hook ran, whether it rewrote files, and whether it reported warnings or errors that matter to the commit result.
 
 ## PR Workflow
 
