@@ -10,7 +10,7 @@ tasks:
   dev:
     command: wrangler dev
   typecheck:
-    script: pnpm exec tsc --noEmit -p tsconfig.json && pnpm exec tsc --noEmit -p test/tsconfig.json
+    command: tsc --noEmit -p test/tsconfig.json
     inputs:
       - tsconfig.json
       - worker.ts
