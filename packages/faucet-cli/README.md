@@ -1,14 +1,16 @@
-# @zeko-labs/faucet-cli
+# Faucet CLI
 
-Command-line client for the public Zeko faucet API.
+Command-line client for the Zeko testnet faucet. Claim testnet tokens and verify your GitHub authentication from the terminal.
 
 ## Installation
 
+Install globally:
+
 ```bash
-pnpm add @zeko-labs/faucet-cli
+npm install -g @zeko-labs/faucet-cli
 ```
 
-You can also run it without installing:
+Or run without installing via `npx`:
 
 ```bash
 npx @zeko-labs/faucet-cli whoami
@@ -16,14 +18,26 @@ npx @zeko-labs/faucet-cli whoami
 
 ## Authentication
 
-Both commands use a GitHub personal access token. Pass it explicitly with `--token` or export
-`GITHUB_TOKEN`. The CLI prefers `--token` when both are present.
+Every command requires a **GitHub personal access token** (classic or fine-grained).
+The CLI resolves the token in this order:
+
+1. `--token <value>` flag (highest priority)
+2. `GITHUB_TOKEN` environment variable
+
+```bash
+# Using the flag
+zeko-faucet whoami --token ghp_xxx
+
+# Using the environment variable
+export GITHUB_TOKEN=ghp_xxx
+zeko-faucet whoami
+```
 
 ## Commands
 
 ### `whoami`
 
-Verifies the GitHub token against `GET https://api.github.com/user`.
+Verify your GitHub token and display the associated account.
 
 ```bash
 zeko-faucet whoami
@@ -31,21 +45,89 @@ zeko-faucet whoami --token ghp_xxx
 zeko-faucet whoami --json
 ```
 
+**Example output:**
+
+```
+Authenticated as octocat (#1).
+Name: The Octocat
+Profile: https://github.com/octocat
+Created: 2011-01-25T18:44:36Z
+Token source: env
+```
+
 ### `claim <address>`
 
-Submits a claim to `POST https://api.faucet.zeko.io/claim` using GitHub auth and the fixed
-`zeko-testnet` chain.
+Submit a faucet claim for the given Mina address on the `zeko-testnet` chain.
 
 ```bash
-zeko-faucet claim B62example
-zeko-faucet claim B62example --token ghp_xxx
-zeko-faucet claim B62example --json
+zeko-faucet claim B62qexample
+zeko-faucet claim B62qexample --token ghp_xxx
+zeko-faucet claim B62qexample --json
 ```
+
+**Example output:**
+
+```
+Claim submitted for B62qexample.
+Chain: zeko-testnet
+Amount: 100
+Transaction: 5Jtxxx
+Explorer: https://zekoscan.io/devnet/tx/5Jtxxx
+```
+
+## Global Flags
+
+| Flag      | Description                                             |
+| --------- | ------------------------------------------------------- |
+| `--token` | GitHub personal access token (overrides `GITHUB_TOKEN`) |
+| `--json`  | Emit machine-readable JSON instead of human text        |
 
 ## Exit Codes
 
-- `0`: success
-- `1`: general error
-- `2`: authentication error
-- `3`: rate limited
-- `4`: invalid address
+| Code | Meaning              |
+| ---- | -------------------- |
+| `0`  | Success              |
+| `1`  | General error        |
+| `2`  | Authentication error |
+| `3`  | Rate limited         |
+| `4`  | Invalid address      |
+
+Scripts and CI pipelines can use exit codes to branch on specific failure types:
+
+```bash
+zeko-faucet claim B62qexample
+case $? in
+  0) echo "Claim succeeded" ;;
+  2) echo "Bad token — check GITHUB_TOKEN" ;;
+  3) echo "Rate limited — try again later" ;;
+  4) echo "Invalid Mina address" ;;
+  *) echo "Something went wrong" ;;
+esac
+```
+
+## JSON Mode
+
+Pass `--json` to any command for machine-readable output suitable for piping into `jq` or other tools.
+
+**Success:**
+
+```json
+{
+	"success": true,
+	"address": "B62qexample",
+	"chain": "zeko-testnet",
+	"amount": "100",
+	"hash": "5Jtxxx",
+	"explorer_url": "https://zekoscan.io/devnet/tx/5Jtxxx"
+}
+```
+
+**Error:**
+
+```json
+{
+	"success": false,
+	"code": "rate_limited",
+	"message": "You have already claimed tokens recently."
+}
+```

@@ -88,6 +88,11 @@ export default defineConfig({
 							{ text: "Creating a Faucet", link: "/developers/guides/create-faucet" }
 						]
 					},
+					{
+						text: "Tools",
+						collapsed: true,
+						items: [{ text: "Faucet CLI", link: "/developers/tools/faucet-cli" }]
+					},
 					{ text: "Examples & Boilerplates", link: "/developers/examples-boilerplates" },
 					{ text: "API Reference", link: "/developers/api-reference" },
 					{ text: "Contributing to Zeko Development", link: "/developers/contributing" }

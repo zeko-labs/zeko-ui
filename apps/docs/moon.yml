@@ -19,6 +19,7 @@ tasks:
     command: vitepress build
     inputs:
       - "@globs(sources)"
+      - /packages/faucet-cli/README.md
     outputs:
       - .vitepress/dist/**
   type-cf:
