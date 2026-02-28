@@ -7,3 +7,4 @@
 - T007 | done | faucet-cli-tdd-and-regression-fixes | done/T007-faucet-cli-tdd-and-regression-fixes.md
 - T008 | done | remove-legacy-faucet-claim-key | done/T008-remove-legacy-faucet-claim-key.md
 - T009 | done | fix-faucet-typecheck-failure | done/T009-fix-faucet-typecheck-failure.md
+- T010 | done | investigate-faucet-moon-typecheck | done/T010-investigate-faucet-moon-typecheck.md
