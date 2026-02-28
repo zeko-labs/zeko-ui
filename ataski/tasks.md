@@ -1,2 +1,3 @@
 - T001 | done | web-77-docs-updates | done/T001-web-77-docs-updates.md
 - T002 | done | docs-links-test-followup-fix | done/T002-docs-links-test-followup-fix.md
+- T012 | done | harden-docs-link-check-retries | done/T012-harden-docs-link-check-retries.md
