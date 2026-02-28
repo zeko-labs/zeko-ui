@@ -1,12 +1,27 @@
 import { readdir, readFile } from "node:fs/promises"
 import { join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
-import { describe, expect, test } from "vitest"
+import { afterEach, describe, expect, test, vi } from "vitest"
 
 const CONTENT_DIR = fileURLToPath(new URL("../content", import.meta.url))
 const FETCH_TIMEOUT_MS = 15_000
-const CONCURRENCY = 10
-const LINK_TEST_TIMEOUT_MS = 120_000
+const CONCURRENCY = 5
+const LINK_TEST_TIMEOUT_MS = 180_000
+const MAX_FETCH_ATTEMPTS = 3
+const RETRY_BASE_DELAY_MS = 500
+
+type CheckStatus = number | "timeout" | "error"
+
+interface CheckResult {
+	status: CheckStatus
+	error?: string
+}
+
+interface CheckUrlOptions {
+	maxAttempts?: number
+	retryBaseDelayMs?: number
+	sleep?: (ms: number) => Promise<void>
+}
 
 interface LinkOccurrence {
 	file: string
@@ -41,9 +56,28 @@ async function walkMarkdown(dir: string): Promise<string[]> {
 		.map((e) => join(e.parentPath ?? e.path, e.name))
 }
 
-async function checkUrl(
-	url: string
-): Promise<{ status: number | "timeout" | "error"; error?: string }> {
+function isBotBlocked(status: CheckStatus): boolean {
+	return status === 403 || status === 429
+}
+
+function isRetryable(status: CheckStatus): boolean {
+	if (status === "timeout" || status === "error") return true
+	return isBotBlocked(status) || status === 408 || status >= 500
+}
+
+async function sleep(ms: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isOk(status: CheckStatus): boolean {
+	return typeof status === "number" && status < 400
+}
+
+async function checkUrl(url: string, options: CheckUrlOptions = {}): Promise<CheckResult> {
+	const maxAttempts = options.maxAttempts ?? MAX_FETCH_ATTEMPTS
+	const retryBaseDelayMs = options.retryBaseDelayMs ?? RETRY_BASE_DELAY_MS
+	const wait = options.sleep ?? sleep
+
 	const tryFetch = async (method: "HEAD" | "GET") => {
 		const controller = new AbortController()
 		const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
@@ -55,7 +89,7 @@ async function checkUrl(
 				redirect: "follow"
 			})
 			clearTimeout(timer)
-			return { status: res.status as number | "timeout" | "error" }
+			return { status: res.status as CheckStatus }
 		} catch (err) {
 			clearTimeout(timer)
 			if ((err as Error).name === "AbortError") return { status: "timeout" as const }
@@ -63,18 +97,32 @@ async function checkUrl(
 		}
 	}
 
-	const head = await tryFetch("HEAD")
-	if (head.status === 405 || head.status === 404) {
-		return tryFetch("GET")
+	const runAttempt = async (): Promise<CheckResult> => {
+		const head = await tryFetch("HEAD")
+		if (!isOk(head.status)) {
+			return tryFetch("GET")
+		}
+		return head
 	}
-	return head
+
+	let result: CheckResult = { status: "error", error: "No attempts were made" }
+	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+		result = await runAttempt()
+		if (!isRetryable(result.status) || attempt === maxAttempts - 1) {
+			return result
+		}
+
+		await wait(retryBaseDelayMs * 2 ** attempt)
+	}
+
+	return result
 }
 
 type Category = "ok" | "bot_blocked" | "broken" | "unreachable"
 
-function categorize(status: number | "timeout" | "error"): Category {
+function categorize(status: CheckStatus): Category {
 	if (status === "timeout" || status === "error") return "unreachable"
-	if (status === 403 || status === 429) return "bot_blocked"
+	if (isBotBlocked(status)) return "bot_blocked"
 	if (status >= 400) return "broken"
 	return "ok"
 }
@@ -94,6 +142,65 @@ async function runWithConcurrency<T>(
 	await Promise.all(Array.from({ length: concurrency }, worker))
 	return results
 }
+
+describe("checkUrl", () => {
+	afterEach(() => {
+		vi.restoreAllMocks()
+		vi.unstubAllGlobals()
+	})
+
+	test("retries transient server failures", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce({ status: 503 } as Response)
+			.mockResolvedValueOnce({ status: 200 } as Response)
+		vi.stubGlobal("fetch", fetchMock)
+
+		const result = await checkUrl("https://example.com", {
+			sleep: async () => undefined
+		})
+
+		expect(result.status).toBe(200)
+		expect(fetchMock).toHaveBeenCalledTimes(2)
+	})
+
+	test("retries bot-blocked responses after a GET fallback", async () => {
+		const methods: string[] = []
+		const responses = [{ status: 403 }, { status: 403 }, { status: 200 }]
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			methods.push(init?.method ?? "GET")
+			return responses.shift() as Response
+		})
+		vi.stubGlobal("fetch", fetchMock)
+
+		const result = await checkUrl("https://example.com", {
+			sleep: async () => undefined
+		})
+
+		expect(result.status).toBe(200)
+		expect(methods).toEqual(["HEAD", "GET", "HEAD"])
+	})
+
+	test("falls back to GET when HEAD errors", async () => {
+		const methods: string[] = []
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			const method = init?.method ?? "GET"
+			methods.push(method)
+			if (method === "HEAD") {
+				throw new TypeError("fetch failed")
+			}
+			return { status: 200 } as Response
+		})
+		vi.stubGlobal("fetch", fetchMock)
+
+		const result = await checkUrl("https://example.com", {
+			sleep: async () => undefined
+		})
+
+		expect(result.status).toBe(200)
+		expect(methods).toEqual(["HEAD", "GET"])
+	})
+})
 
 describe("documentation links", () => {
 	const linkTest = process.env.CI ? test : test.skip
