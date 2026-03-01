@@ -198,8 +198,7 @@ describe("claimFaucet", () => {
 			method: "POST",
 			headers: {
 				Authorization: "Bearer ghp_token",
-				"Content-Type": "application/json",
-				"X-Auth-Method": "github"
+				"Content-Type": "application/json"
 			},
 			body: {
 				address: "B62abc",

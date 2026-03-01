@@ -1,6 +1,26 @@
 import { type } from "arktype"
-import { FAUCET_CHAIN, type FaucetErrorResponse, parseFaucetResponse } from "~~/helpers/validation"
+import {
+	FAUCET_CHAIN,
+	type FaucetErrorResponse,
+	type FaucetResponse,
+	parseFaucetResponse
+} from "~~/helpers/validation"
 import { getTrustedClientIp, validateBody, verifyTurnstile } from "../utils"
+
+type FaucetTurnstileRpcResult = {
+	status: number
+	payload: FaucetResponse
+}
+
+type FaucetTurnstileRpcBinding = {
+	getEntrypoint: (name: "TurnstileClaimsEntrypoint") => {
+		claimWithTurnstile: (input: {
+			address: string
+			chain: typeof FAUCET_CHAIN
+			clientIp: string
+		}) => Promise<FaucetTurnstileRpcResult>
+	}
+}
 
 const jsonError = (status: number, code: string, message: string) =>
 	Response.json(
@@ -37,32 +57,29 @@ export default defineEventHandler(async (event) => {
 		)
 	}
 
-	const response = await env.FAUCET.fetch("https://faucet.internal/claim", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"X-Auth-Method": "turnstile",
-			"X-Client-IP": clientIp
-		},
-		body: JSON.stringify({ address: body.address, chain: FAUCET_CHAIN })
-	})
-
-	const faucetResult = await response
-		.clone()
-		.json()
-		.catch(async (error) => {
-			console.error("Error processing faucet response:", error)
-			console.error("Response status:", response.status)
-			console.error("Response body:", await response.text().catch(() => "<unable to read body>"))
+	// Turnstile is verified in the UI worker, then forwarded via internal Worker RPC only.
+	const faucetResult = await (async () => {
+		try {
+			const entrypoint = (env.FAUCET as unknown as FaucetTurnstileRpcBinding).getEntrypoint(
+				"TurnstileClaimsEntrypoint"
+			)
+			return await entrypoint.claimWithTurnstile({
+				address: body.address,
+				chain: FAUCET_CHAIN,
+				clientIp
+			})
+		} catch (error) {
+			console.error("Error calling faucet RPC:", error)
 			return null
-		})
+		}
+	})()
 
-	if (faucetResult === null)
+	if (!faucetResult)
 		return jsonError(502, "invalid_faucet_response", "The faucet service is currently unavailable.")
 
-	const faucetData = parseFaucetResponse(faucetResult)
+	const faucetData = parseFaucetResponse(faucetResult.payload)
 	if (!faucetData) {
-		console.error("Unexpected faucet response payload:", faucetResult)
+		console.error("Unexpected faucet response payload:", faucetResult.payload)
 		return jsonError(
 			502,
 			"invalid_faucet_response",
@@ -73,5 +90,5 @@ export default defineEventHandler(async (event) => {
 	if (faucetData.success)
 		console.log("Faucet successful response for %s (%s)", body.address, clientIp)
 
-	return Response.json(faucetData, { status: response.status })
+	return Response.json(faucetData, { status: faucetResult.status })
 })

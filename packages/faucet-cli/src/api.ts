@@ -119,8 +119,7 @@ export const claimFaucet = async (token: string, address: string): Promise<Fauce
 			method: "POST",
 			headers: {
 				Authorization: `Bearer ${token}`,
-				"Content-Type": "application/json",
-				"X-Auth-Method": "github"
+				"Content-Type": "application/json"
 			},
 			body: {
 				address,

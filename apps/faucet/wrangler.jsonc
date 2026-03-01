@@ -72,6 +72,10 @@
 			{
 				"name": "FAUCET",
 				"class_name": "Faucet"
+			},
+			{
+				"name": "CLAIM_MUTEX",
+				"class_name": "ClaimMutex"
 			}
 		]
 	},
@@ -79,6 +83,10 @@
 		{
 			"tag": "v1",
 			"new_sqlite_classes": ["Faucet"]
+		},
+		{
+			"tag": "v2",
+			"new_sqlite_classes": ["ClaimMutex"]
 		}
 	]
 }
