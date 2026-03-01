@@ -21,10 +21,10 @@ app.post("/", async (c) => {
 		const { address } = await c.req.json<{ address: string }>()
 		if (!address) return c.json({ message: "Address cannot be null" }, 400)
 		const result = await sendPayment({ address, privateKey, amount, publicKey })
-		return c.json({ message: "Successfully sent", data: result.data, hash: result.hash }, 200)
+		return c.json({ success: true, data: result.data, hash: result.hash }, 200)
 	} catch (error) {
 		console.error(error)
-		return c.json({ message: error instanceof Error ? error.message : error }, 400)
+		return c.json({ success: false, message: error instanceof Error ? error.message : error }, 400)
 	}
 })
 

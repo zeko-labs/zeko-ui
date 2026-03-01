@@ -10,3 +10,4 @@
 - T010 | done | investigate-faucet-moon-typecheck | done/T010-investigate-faucet-moon-typecheck.md
 - T011 | done | fix-faucet-ci-typecheck-task | done/T011-fix-faucet-ci-typecheck-task.md
 - T012 | done | harden-docs-link-check-retries | done/T012-harden-docs-link-check-retries.md
+- T013 | done | faucet-claim-hardening | done/T013-faucet-claim-hardening.md
