@@ -1,7 +1,4 @@
-# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
-
 layer: application
-
 fileGroups:
   sources:
     - content/**/*
@@ -11,7 +8,6 @@ fileGroups:
   test:
     - tests/**/*
     - vitest.config.ts
-
 tasks:
   dev:
     command: vitepress dev
@@ -29,7 +25,7 @@ tasks:
       - worker-configuration.d.ts
   preview:
     command: vitepress preview
-    preset: "server"
+    preset: server
     deps:
       - build
   deploy:

@@ -1,16 +1,14 @@
-# yaml-language-server: $schema=./cache/schemas/workspace.json
+defaultProject: zeko-ui
 
 projects:
-  - "."
-  - "apps/*"
-  - "packages/*"
-  - "services/*/moon.yml"
-  - "services/leaderboard/*"
-  - "services/actions/*"
-
+  - .
+  - apps/*
+  - packages/*
+  - services/*/moon.yml
+  - services/leaderboard/*
+  - services/actions/*
 pipeline:
   logRunningCommand: true
-
 vcs:
-  client: "git"
-  defaultBranch: "main"
+  defaultBranch: main
+  client: git

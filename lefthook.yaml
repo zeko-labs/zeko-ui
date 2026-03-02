@@ -20,7 +20,7 @@
 pre-commit:
   parallel: false
   jobs:
-    - run: moon :lint-fix
+    - run: moon run :lint-fix
       stage_fixed: true
     - run: moon run format-all-fix
       stage_fixed: true

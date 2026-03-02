@@ -1,10 +1,7 @@
-# yaml-language-server: $schema=../../../.moon/cache/schemas/project.json
-
 id: lb-indexer
 layer: library
 language: typescript
 stack: backend
-
 fileGroups:
   sources:
     - src/**/*
@@ -14,18 +11,17 @@ fileGroups:
   tests:
     - test/**/*
     - vitest.config.ts
-
 dependsOn:
   - lb-api
   - graphql
-
 tasks:
   dev:
     command: bun --watch src/index.ts
     preset: server
   build:
     command: tsdown
-    deps: [^:build]
+    deps:
+      - ^:build
     inputs:
       - "@group(sources)"
     outputs:
