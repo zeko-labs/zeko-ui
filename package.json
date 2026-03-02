@@ -4,7 +4,7 @@
 	"type": "module",
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",
-		"@moonrepo/cli": "^1.41.6",
+		"@moonrepo/cli": "^2.0.3",
 		"dprint": "^0.47.6",
 		"lefthook": "^1.13.6",
 		"typescript": "^5.9.3"
