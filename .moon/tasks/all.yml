@@ -22,5 +22,3 @@ tasks:
   typecheck:
     options:
       runInCI: true
-inheritedBy:
-  language: all
