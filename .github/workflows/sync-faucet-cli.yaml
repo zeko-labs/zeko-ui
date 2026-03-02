@@ -41,15 +41,47 @@ jobs:
             }
           }
 
+          const dir = 'packages/faucet-cli';
+          const packageFiles = [path.join(dir, 'package.json')];
+          const npmDir = path.join(dir, 'npm');
+          if (fs.existsSync(npmDir)) {
+            for (const sub of fs.readdirSync(npmDir)) {
+              const pkgFile = path.join(npmDir, sub, 'package.json');
+              if (fs.existsSync(pkgFile)) packageFiles.push(pkgFile);
+            }
+          }
+
+          const localVersions = {};
+          for (const file of packageFiles) {
+            const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+            localVersions[pkg.name] = pkg.version;
+          }
+
+          const resolveWorkspaceVersion = (specifier, version) => {
+            if (!specifier.startsWith('workspace:')) return null;
+            const workspaceRange = specifier.slice('workspace:'.length);
+            if (workspaceRange === '*') return version;
+            if (workspaceRange === '^') return '^' + version;
+            if (workspaceRange === '~') return '~' + version;
+            return version;
+          };
+
           const resolveFile = (file) => {
             const raw = fs.readFileSync(file, 'utf8');
             const pkg = JSON.parse(raw);
             let changed = false;
             for (const section of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
               if (!pkg[section]) continue;
-              for (const [name, version] of Object.entries(pkg[section])) {
-                if (version === 'catalog:' && catalog[name]) {
+              for (const [name, specifier] of Object.entries(pkg[section])) {
+                if (specifier === 'catalog:' && catalog[name]) {
                   pkg[section][name] = catalog[name];
+                  changed = true;
+                  continue;
+                }
+
+                const resolvedWorkspaceVersion = resolveWorkspaceVersion(specifier, localVersions[name]);
+                if (resolvedWorkspaceVersion) {
+                  pkg[section][name] = resolvedWorkspaceVersion;
                   changed = true;
                 }
               }
@@ -61,19 +93,11 @@ jobs:
             }
           };
 
-          const dir = 'packages/faucet-cli';
-          resolveFile(path.join(dir, 'package.json'));
-          const npmDir = path.join(dir, 'npm');
-          if (fs.existsSync(npmDir)) {
-            for (const sub of fs.readdirSync(npmDir)) {
-              const pkgFile = path.join(npmDir, sub, 'package.json');
-              if (fs.existsSync(pkgFile)) resolveFile(pkgFile);
-            }
-          }
+          for (const file of packageFiles) resolveFile(file);
           "
 
       - name: Generate pnpm-workspace.yaml for standalone repo
-        run: printf 'packages:\n  - npm/*\n' > packages/faucet-cli/pnpm-workspace.yaml
+        run: printf 'packages:\n  - .\n  - npm/*\n' > packages/faucet-cli/pnpm-workspace.yaml
 
       - name: Commit sync artifacts
         run: |

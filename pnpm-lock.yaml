@@ -569,6 +569,25 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.9)(@vitest/browser@3.2.4)(esbuild@0.25.12)(jiti@2.6.1)(msw@2.11.1(@types/node@20.19.9)(typescript@5.9.3))(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
+    optionalDependencies:
+      '@zeko-labs/faucet-cli-darwin-arm64':
+        specifier: workspace:*
+        version: link:npm/darwin-arm64
+      '@zeko-labs/faucet-cli-darwin-x64':
+        specifier: workspace:*
+        version: link:npm/darwin-x64
+      '@zeko-labs/faucet-cli-linux-arm64':
+        specifier: workspace:*
+        version: link:npm/linux-arm64
+      '@zeko-labs/faucet-cli-linux-x64':
+        specifier: workspace:*
+        version: link:npm/linux-x64
+      '@zeko-labs/faucet-cli-win32-arm64':
+        specifier: workspace:*
+        version: link:npm/win32-arm64
+      '@zeko-labs/faucet-cli-win32-x64':
+        specifier: workspace:*
+        version: link:npm/win32-x64
 
   packages/faucet-cli/npm/darwin-arm64: {}
 

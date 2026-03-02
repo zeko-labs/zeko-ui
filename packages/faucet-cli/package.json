@@ -13,12 +13,12 @@
 		"zeko-faucet": "./bin/zeko-faucet.js"
 	},
 	"optionalDependencies": {
-		"@zeko-labs/faucet-cli-darwin-arm64": "0.1.0",
-		"@zeko-labs/faucet-cli-darwin-x64": "0.1.0",
-		"@zeko-labs/faucet-cli-linux-x64": "0.1.0",
-		"@zeko-labs/faucet-cli-linux-arm64": "0.1.0",
-		"@zeko-labs/faucet-cli-win32-x64": "0.1.0",
-		"@zeko-labs/faucet-cli-win32-arm64": "0.1.0"
+		"@zeko-labs/faucet-cli-darwin-arm64": "workspace:*",
+		"@zeko-labs/faucet-cli-darwin-x64": "workspace:*",
+		"@zeko-labs/faucet-cli-linux-x64": "workspace:*",
+		"@zeko-labs/faucet-cli-linux-arm64": "workspace:*",
+		"@zeko-labs/faucet-cli-win32-x64": "workspace:*",
+		"@zeko-labs/faucet-cli-win32-arm64": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^20.8.10",
