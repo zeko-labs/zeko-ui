@@ -1,0 +1,157 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  changesets:
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Handle changesets
+        id: cs
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          title: "chore(faucet-cli): version packages"
+          commit: "chore(faucet-cli): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if ready to release
+        id: check
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "$COMMIT_MSG" == "chore(faucet-cli): version packages" ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: changesets
+    if: needs.changesets.outputs.should_release == 'true'
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            runner: macos-13
+            platform: darwin-x64
+          - target: aarch64-apple-darwin
+            runner: macos-14
+            platform: darwin-arm64
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            platform: linux-x64
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+            platform: linux-arm64
+            use_cross: true
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            platform: win32-x64
+          - target: aarch64-pc-windows-msvc
+            runner: windows-latest
+            platform: win32-arm64
+
+    runs-on: ${{ matrix.runner }}
+    name: Build ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (Linux arm64)
+        if: matrix.use_cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build (native)
+        if: "!matrix.use_cross"
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Build (cross)
+        if: matrix.use_cross
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Prepare artifact (unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p artifact
+          cp target/${{ matrix.target }}/release/zeko-faucet artifact/
+
+      - name: Prepare artifact (windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir artifact
+          copy target\${{ matrix.target }}\release\zeko-faucet.exe artifact\
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.platform }}
+          path: artifact/
+          retention-days: 1
+
+  publish:
+    needs: [changesets, build]
+    runs-on: ubuntu-latest
+    name: Publish to npm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Copy binaries to platform packages
+        run: |
+          for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64 win32-arm64; do
+            src="artifacts/binary-${platform}"
+            dest="npm/${platform}/bin"
+            mkdir -p "$dest"
+            if [ -f "${src}/zeko-faucet" ]; then
+              cp "${src}/zeko-faucet" "${dest}/"
+              chmod +x "${dest}/zeko-faucet"
+            elif [ -f "${src}/zeko-faucet.exe" ]; then
+              cp "${src}/zeko-faucet.exe" "${dest}/"
+            fi
+          done
+
+      - name: Publish all packages
+        run: node scripts/publish.mjs
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

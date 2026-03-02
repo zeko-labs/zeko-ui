@@ -1,0 +1,10 @@
+{
+	"name": "@zeko-labs/faucet-cli-win32-x64",
+	"version": "0.1.0",
+	"description": "Windows x64 binary for @zeko-labs/faucet-cli",
+	"license": "MIT",
+	"publishConfig": { "access": "public" },
+	"os": ["win32"],
+	"cpu": ["x64"],
+	"files": ["bin"]
+}

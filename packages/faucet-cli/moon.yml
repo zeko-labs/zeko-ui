@@ -6,9 +6,7 @@ fileGroups:
   src:
     - bin/**/*
     - src/**/*
-    - tsconfig.json
-    - tsconfig.build.json
-    - tsdown.config.ts
+    - Cargo.toml
     - package.json
   tests:
     - test/**/*
@@ -16,27 +14,27 @@ fileGroups:
 
 tasks:
   build:
-    command: tsdown
+    command: cargo build --release
     inputs:
-      - "@globs(src)"
-    outputs:
-      - dist/**
-  lint:
-    command: biome check --formatter-enabled=false
-    inputs:
-      - "@group(src)"
-      - "@group(tests)"
-  lint-fix:
-    command: biome check --formatter-enabled=false --write
-    inputs:
-      - "@group(src)"
-      - "@group(tests)"
+      - "src/**"
+      - "Cargo.toml"
   test:
-    command: vitest run --coverage
+    command: vitest run
     inputs:
-      - "@group(src)"
       - "@group(tests)"
-  typecheck:
-    command: tsc --noEmit
+    deps:
+      - build
+  check:
+    command: cargo check
     inputs:
-      - "@globs(src)"
+      - "src/**"
+      - "Cargo.toml"
+  lint:
+    command: cargo clippy -- -D warnings
+    inputs:
+      - "src/**"
+      - "Cargo.toml"
+  publish:
+    command: node scripts/publish.mjs
+    deps:
+      - build

@@ -1,0 +1,97 @@
+import { spawn } from "node:child_process"
+import { resolve } from "node:path"
+import { describe, expect, it } from "vitest"
+
+const BIN = resolve(import.meta.dirname, "../target/release/zeko-faucet")
+
+const run = (...args: string[]) =>
+	new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolve) => {
+		const child = spawn(BIN, args, { env: { ...process.env, GITHUB_TOKEN: "" } })
+
+		const stdout: Buffer[] = []
+		const stderr: Buffer[] = []
+
+		child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk))
+		child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk))
+
+		child.on("close", (code) => {
+			resolve({
+				stdout: Buffer.concat(stdout).toString(),
+				stderr: Buffer.concat(stderr).toString(),
+				exitCode: code ?? 1
+			})
+		})
+	})
+
+const parseJson = (text: string) => JSON.parse(text.trim()) as Record<string, unknown>
+
+describe("integration: help and version", () => {
+	it("--help exits 0 and lists both subcommands", async () => {
+		const { stdout, exitCode } = await run("--help")
+		expect(exitCode).toBe(0)
+		expect(stdout).toContain("claim")
+		expect(stdout).toContain("whoami")
+	})
+
+	it("--version exits 0 and contains a version string", async () => {
+		const { stdout, exitCode } = await run("--version")
+		expect(exitCode).toBe(0)
+		expect(stdout).toMatch(/\d+\.\d+\.\d+/)
+	})
+
+	it("claim --help exits 0 and describes the claim command", async () => {
+		const { stdout, exitCode } = await run("claim", "--help")
+		expect(exitCode).toBe(0)
+		expect(stdout.toLowerCase()).toContain("claim faucet tokens")
+	})
+
+	it("whoami --help exits 0 and describes the whoami command", async () => {
+		const { stdout, exitCode } = await run("whoami", "--help")
+		expect(exitCode).toBe(0)
+		expect(stdout.toLowerCase()).toContain("verify the current github token")
+	})
+})
+
+describe("integration: error cases", () => {
+	it("claim with no address and no token exits non-zero", async () => {
+		const { exitCode } = await run("claim")
+		expect(exitCode).not.toBe(0)
+	})
+
+	it("claim with invalid token returns JSON with success: false", async () => {
+		const { stdout, exitCode } = await run("claim", "B62abc", "--token", "invalid", "--json")
+		expect(exitCode).not.toBe(0)
+		const json = parseJson(stdout)
+		expect(json.success).toBe(false)
+	})
+
+	it("whoami with invalid token returns JSON with success: false", async () => {
+		const { stdout, exitCode } = await run("whoami", "--token", "invalid", "--json")
+		expect(exitCode).not.toBe(0)
+		const json = parseJson(stdout)
+		expect(json.success).toBe(false)
+	})
+
+	it("claim with extra positional args exits 1 with invalid_arguments", async () => {
+		const { stdout, exitCode } = await run(
+			"claim",
+			"B62abc",
+			"extra",
+			"--token",
+			"ghp_xxx",
+			"--json"
+		)
+		expect(exitCode).toBe(1)
+		const json = parseJson(stdout)
+		expect(json.success).toBe(false)
+		expect(json.code).toBe("invalid_arguments")
+	})
+
+	it("whoami with unexpected positional args exits 1 with invalid_arguments", async () => {
+		const { stdout, exitCode } = await run("whoami", "unexpected", "--token", "ghp_xxx", "--json")
+		expect(exitCode).toBe(1)
+		const json = parseJson(stdout)
+		expect(json.success).toBe(false)
+		expect(json.code).toBe("invalid_arguments")
+	})
+})

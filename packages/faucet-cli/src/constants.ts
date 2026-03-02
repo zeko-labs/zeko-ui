@@ -1,7 +1,0 @@
-export const CLI_NAME = "zeko-faucet"
-export const CLI_VERSION = "0.1.0"
-export const DEFAULT_CHAIN = "zeko-testnet"
-export const FAUCET_CLAIM_URL = "https://api.faucet.zeko.io/claim"
-export const GITHUB_USER_URL = "https://api.github.com/user"
-export const GITHUB_ACCEPT = "application/vnd.github+json"
-export const GITHUB_USER_AGENT = "zeko-faucet-cli"

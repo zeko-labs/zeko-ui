@@ -11,3 +11,12 @@
 - T011 | done | fix-faucet-ci-typecheck-task | done/T011-fix-faucet-ci-typecheck-task.md
 - T012 | done | harden-docs-link-check-retries | done/T012-harden-docs-link-check-retries.md
 - T013 | done | faucet-claim-hardening | done/T013-faucet-claim-hardening.md
+- T014 | done | refactor-faucet-worker-structure | done/T014-refactor-faucet-worker-structure.md
+- T015 | done | faucet-cli-integration-tests | done/T015-faucet-cli-integration-tests.md
+- T016 | done | rust-project-scaffold | done/T016-rust-project-scaffold.md
+- T017 | done | rust-implementation | done/T017-rust-implementation.md
+- T018 | done | npm-distribution-packages | done/T018-npm-distribution-packages.md
+- T019 | done | changesets-setup | done/T019-changesets-setup.md
+- T020 | done | ci-cross-compilation | done/T020-ci-cross-compilation.md
+- T021 | done | cleanup-ts-to-rust | done/T021-cleanup-ts-to-rust.md
+- T022 | done | ci-sync-changesets-improvement | done/T022-ci-sync-changesets-improvement.md

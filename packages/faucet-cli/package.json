@@ -3,34 +3,25 @@
 	"version": "0.1.0",
 	"description": "Public CLI for claiming Zeko testnet faucet funds and verifying GitHub authentication.",
 	"type": "module",
-	"keywords": ["zeko", "faucet", "cli", "typescript"],
+	"keywords": ["zeko", "faucet", "cli", "rust"],
 	"license": "MIT",
 	"publishConfig": {
 		"access": "public"
 	},
-	"files": ["bin", "dist"],
-	"main": "./dist/index.js",
-	"module": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"files": ["bin", "npm"],
 	"bin": {
 		"zeko-faucet": "./bin/zeko-faucet.js"
 	},
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
-	},
-	"dependencies": {
-		"citty": "^0.1.6",
-		"ofetch": "^1.4.1",
-		"valibot": "^1.1.0"
+	"optionalDependencies": {
+		"@zeko-labs/faucet-cli-darwin-arm64": "0.1.0",
+		"@zeko-labs/faucet-cli-darwin-x64": "0.1.0",
+		"@zeko-labs/faucet-cli-linux-x64": "0.1.0",
+		"@zeko-labs/faucet-cli-linux-arm64": "0.1.0",
+		"@zeko-labs/faucet-cli-win32-x64": "0.1.0",
+		"@zeko-labs/faucet-cli-win32-arm64": "0.1.0"
 	},
 	"devDependencies": {
-		"@vitest/coverage-v8": "^3.2.4",
 		"@types/node": "^20.8.10",
-		"tsdown": "^0.13.4",
-		"typescript": "^5.9.2",
 		"vitest": "catalog:"
 	}
 }

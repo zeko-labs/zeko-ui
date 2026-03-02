@@ -1,0 +1,10 @@
+{
+	"name": "@zeko-labs/faucet-cli-linux-arm64",
+	"version": "0.1.0",
+	"description": "Linux arm64 binary for @zeko-labs/faucet-cli",
+	"license": "MIT",
+	"publishConfig": { "access": "public" },
+	"os": ["linux"],
+	"cpu": ["arm64"],
+	"files": ["bin"]
+}

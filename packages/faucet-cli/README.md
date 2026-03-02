@@ -2,6 +2,8 @@
 
 Command-line client for the Zeko testnet faucet. Claim testnet tokens and verify your GitHub authentication from the terminal.
 
+Written in Rust for fast startup and single-binary distribution. Distributed via npm with platform-specific packages.
+
 ## Installation
 
 Install globally:
@@ -15,6 +17,19 @@ Or run without installing via `npx`:
 ```bash
 npx @zeko-labs/faucet-cli whoami
 ```
+
+### Supported platforms
+
+| Platform      | Package                              |
+| ------------- | ------------------------------------ |
+| macOS arm64   | `@zeko-labs/faucet-cli-darwin-arm64` |
+| macOS x64     | `@zeko-labs/faucet-cli-darwin-x64`   |
+| Linux x64     | `@zeko-labs/faucet-cli-linux-x64`    |
+| Linux arm64   | `@zeko-labs/faucet-cli-linux-arm64`  |
+| Windows x64   | `@zeko-labs/faucet-cli-win32-x64`    |
+| Windows arm64 | `@zeko-labs/faucet-cli-win32-arm64`  |
+
+The correct platform package is installed automatically via `optionalDependencies`.
 
 ## Authentication
 
@@ -130,4 +145,22 @@ Pass `--json` to any command for machine-readable output suitable for piping int
 	"code": "rate_limited",
 	"message": "You have already claimed tokens recently."
 }
+```
+
+## Development
+
+Requires [Rust](https://rustup.rs/) and [pnpm](https://pnpm.io/).
+
+```bash
+# Build
+moon faucet-cli:build
+
+# Run integration tests
+moon faucet-cli:test
+
+# Lint
+moon faucet-cli:lint
+
+# Check (fast compile check)
+moon faucet-cli:check
 ```

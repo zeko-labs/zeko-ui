@@ -19,6 +19,69 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve catalog dependencies
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+
+          const ws = fs.readFileSync('pnpm-workspace.yaml', 'utf8');
+          const catalog = {};
+          let inCatalog = false;
+          for (const line of ws.split('\n')) {
+            if (line.trim() === 'catalog:') { inCatalog = true; continue; }
+            if (/^\S/.test(line) && inCatalog) { inCatalog = false; }
+            if (inCatalog) {
+              const m = line.match(/^\s+['\"]?(.+?)['\"]?:\s+(.+?)$/);
+              if (m) {
+                const name = m[1].replace(/['\"]$/g, '').trim();
+                const version = m[2].replace(/^['\"]|['\"]$/g, '').trim();
+                catalog[name] = version;
+              }
+            }
+          }
+
+          const resolveFile = (file) => {
+            const raw = fs.readFileSync(file, 'utf8');
+            const pkg = JSON.parse(raw);
+            let changed = false;
+            for (const section of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
+              if (!pkg[section]) continue;
+              for (const [name, version] of Object.entries(pkg[section])) {
+                if (version === 'catalog:' && catalog[name]) {
+                  pkg[section][name] = catalog[name];
+                  changed = true;
+                }
+              }
+            }
+            if (changed) {
+              const indent = raw.startsWith('{\n\t') ? '\t' : 2;
+              fs.writeFileSync(file, JSON.stringify(pkg, null, indent) + '\n');
+              console.log('Resolved catalog deps in', file);
+            }
+          };
+
+          const dir = 'packages/faucet-cli';
+          resolveFile(path.join(dir, 'package.json'));
+          const npmDir = path.join(dir, 'npm');
+          if (fs.existsSync(npmDir)) {
+            for (const sub of fs.readdirSync(npmDir)) {
+              const pkgFile = path.join(npmDir, sub, 'package.json');
+              if (fs.existsSync(pkgFile)) resolveFile(pkgFile);
+            }
+          }
+          "
+
+      - name: Generate pnpm-workspace.yaml for standalone repo
+        run: printf 'packages:\n  - npm/*\n' > packages/faucet-cli/pnpm-workspace.yaml
+
+      - name: Commit sync artifacts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/faucet-cli/
+          git diff --staged --quiet || git commit -m "chore: release faucet-cli source"
+
       - name: Split packages/faucet-cli
         uses: danharrin/monorepo-split-github-action@v2.4.4
         with:

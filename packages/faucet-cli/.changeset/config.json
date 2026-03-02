@@ -1,0 +1,21 @@
+{
+	"$schema": "https://unpkg.com/@changesets/config@3.1.2/schema.json",
+	"changelog": "@changesets/cli/changelog",
+	"commit": false,
+	"fixed": [
+		[
+			"@zeko-labs/faucet-cli",
+			"@zeko-labs/faucet-cli-darwin-arm64",
+			"@zeko-labs/faucet-cli-darwin-x64",
+			"@zeko-labs/faucet-cli-linux-x64",
+			"@zeko-labs/faucet-cli-linux-arm64",
+			"@zeko-labs/faucet-cli-win32-x64",
+			"@zeko-labs/faucet-cli-win32-arm64"
+		]
+	],
+	"linked": [],
+	"access": "public",
+	"baseBranch": "main",
+	"updateInternalDependencies": "patch",
+	"ignore": []
+}

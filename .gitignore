@@ -33,3 +33,7 @@ logs
 ataski/worktrees/
 
 .wrangler
+
+# Rust
+target/
+Cargo.lock
