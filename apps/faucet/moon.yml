@@ -2,8 +2,10 @@ layer: application
 tasks:
   container-dev:
     command: bun --hot src/index.ts
+    preset: server
   container-start:
     command: bun src/index.ts
+    preset: server
   dev:
     command: wrangler dev
   test:
