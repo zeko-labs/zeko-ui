@@ -12,5 +12,5 @@ pipeline:
   logRunningCommand: true
 
 vcs:
-  manager: "git"
+  client: "git"
   defaultBranch: "main"

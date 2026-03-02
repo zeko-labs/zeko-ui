@@ -23,7 +23,7 @@ jobs:
 
       - uses: moonrepo/setup-toolchain@v0
         with:
-          moon-version: 1.41.6
+          moon-version: v2
 
       - name: Install dependencies
         run: pnpm install --filter "@zeko/actions-api..."

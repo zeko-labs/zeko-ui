@@ -110,4 +110,4 @@ tasks:
       runInCI: true
   test-watch:
     command: vitest
-    preset: "watcher"
+    preset: "server"
