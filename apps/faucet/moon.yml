@@ -1,7 +1,4 @@
-# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
-
 layer: application
-
 tasks:
   container-dev:
     command: bun --hot src/index.ts

@@ -27,8 +27,6 @@ jobs:
           curl -fsSL https://d2lang.com/install.sh | sh -s --
 
       - uses: "moonrepo/setup-toolchain@v0"
-        with:
-          moon-version: 1.41.6
 
       - run: moon ci
 

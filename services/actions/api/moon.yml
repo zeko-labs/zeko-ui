@@ -1,9 +1,6 @@
-# yaml-language-server: $schema=../../../.moon/cache/schemas/project.json
-
 id: actions-api
 layer: library
 stack: backend
-
 fileGroups:
   sources:
     - src/**/*
@@ -15,17 +12,16 @@ fileGroups:
   tests:
     - tests/**/*
     - vitest.config.ts
-
 dependsOn:
   - graphql
-
 tasks:
   dev:
     command: wrangler dev
-    preset: "server"
+    preset: server
   build:
     command: tsdown
-    deps: [^:build]
+    deps:
+      - ^:build
     options:
       cache: false
     inputs:
@@ -58,7 +54,7 @@ tasks:
       cache: false
   db-studio:
     command: drizzle-kit studio
-    preset: "server"
+    preset: server
   db-seed:
     description: Seed the database with initial data.
     command: noop
@@ -88,7 +84,9 @@ tasks:
       - "@group(tests)"
   deploy:
     command: wrangler deploy
-    deps: [^:build]
+    deps:
+      - ^:build
   deploy-preview:
     command: wrangler versions upload
-    deps: [^:build]
+    deps:
+      - ^:build

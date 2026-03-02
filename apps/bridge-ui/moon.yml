@@ -1,12 +1,8 @@
-# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
-
 layer: application
-
 dependsOn:
   - design
   - layer
   - bridge-sdk
-
 fileGroups:
   sources:
     - app/**/*
@@ -22,7 +18,6 @@ fileGroups:
   test:
     - tests/**/*
     - vitest.config.ts
-
 tasks:
   format:
     inputs:
@@ -40,13 +35,14 @@ tasks:
       - "@globs(sources)"
   dev:
     command: nuxt dev
-    preset: "server"
+    preset: server
   build:
     command: nuxt build
-    deps: [^:build]
+    deps:
+      - ^:build
     args:
-      - "--logLevel"
-      - "verbose"
+      - --logLevel
+      - verbose
     env:
       SENTRY_LOG_LEVEL: debug
       NODE_OPTIONS: --max-old-space-size=8192
@@ -57,7 +53,7 @@ tasks:
       - .output/
   dev-cf:
     command: wrangler dev .output/server/index.mjs --assets .output/public/
-    preset: "server"
+    preset: server
     deps:
       - build
     inputs:
@@ -70,16 +66,16 @@ tasks:
       - worker-configuration.d.ts
   preview:
     command: nuxt preview
-    preset: "server"
+    preset: server
   prepare:
     command: nuxt prepare
     outputs:
       - .nuxt/
   analyze:
     command: nuxt analyze
-    preset: "server"
+    preset: server
   deploy-dev:
-    description: "Build and Deploy to Cloudflare Workers. Use with caution, prefer using CI/CD."
+    description: Build and Deploy to Cloudflare Workers. Use with caution, prefer using CI/CD.
     script: rimraf .output .wrangler .nuxt && nuxt build && wrangler deploy
     inputs:
       - "@group(sources)"
@@ -89,7 +85,8 @@ tasks:
       - .wrangler/
   typecheck:
     command: nuxt typecheck
-    deps: [^:build]
+    deps:
+      - ^:build
     inputs:
       - "@group(sources)"
   test:
@@ -105,9 +102,10 @@ tasks:
       runInCI: true
   test-ci:
     extends: test
-    deps: [playwright-install]
+    deps:
+      - playwright-install
     options:
       runInCI: true
   test-watch:
     command: vitest
-    preset: "watcher"
+    preset: server

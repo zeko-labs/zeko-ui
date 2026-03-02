@@ -1,7 +1,4 @@
-# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
-
 layer: library
-
 fileGroups:
   src:
     - src/**/*
@@ -11,10 +8,8 @@ fileGroups:
     - package.json
   examples:
     - examples/**/*
-
 dependsOn:
   - graphql
-
 tasks:
   format:
     inputs:
@@ -24,7 +19,8 @@ tasks:
       - "@globs(src)"
   build:
     command: tsdown
-    deps: [^:build]
+    deps:
+      - ^:build
     inputs:
       - "@globs(src)"
     outputs:
@@ -38,7 +34,8 @@ tasks:
     inputs:
       - "@globs(src)"
   typecheck:
-    deps: [^:build]
+    deps:
+      - ^:build
     command: tsc --noEmit
     inputs:
       - "@globs(src)"

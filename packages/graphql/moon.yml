@@ -1,7 +1,4 @@
-# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
-
 layer: library
-
 fileGroups:
   src:
     - src/**/*
@@ -9,7 +6,6 @@ fileGroups:
     - tsconfig.build.json
     - tsdown.config.ts
     - package.json
-
 tasks:
   build:
     command: tsdown
@@ -34,43 +30,42 @@ tasks:
     options:
       cache: false
     outputs:
-      - "src/generated/zeko.graphql"
+      - src/generated/zeko.graphql
   schema-get-zeko-archive:
     command: gql-tada generate schema 'https://archive.testnet.zeko.io/graphql' --output './src/generated/zeko-archive.graphql'
     options:
       cache: false
     outputs:
-      - "src/generated/zeko-archive.graphql"
+      - src/generated/zeko-archive.graphql
   schema-get-mina:
     command: gql-tada generate schema 'https://api.minascan.io/node/devnet/v1/graphql' --output './src/generated/mina.graphql'
     options:
       cache: false
     outputs:
-      - "src/generated/mina.graphql"
+      - src/generated/mina.graphql
   schema-get-mina-archive:
     command: gql-tada generate schema 'https://api.minascan.io/archive/devnet/v1/graphql' --output './src/generated/mina-archive.graphql'
     options:
       cache: false
     outputs:
-      - "src/generated/mina-archive.graphql"
+      - src/generated/mina-archive.graphql
   schema-get-leaderboard:
-    # command: gql-tada generate schema 'https://api.leaderboard.zeko.io/graphql' --output './src/generated/leaderboard.graphql'
     command: cp ../../services/leaderboard/api/graphql/schema.graphql ./src/generated/leaderboard.graphql
     options:
       cache: false
     outputs:
-      - "src/generated/leaderboard.graphql"
+      - src/generated/leaderboard.graphql
   schema-get-bridge-indexer:
     command: cp ../../services/actions/api/graphql/schema.graphql ./src/generated/bridge-indexer.graphql
     options:
       cache: false
     outputs:
-      - "src/generated/bridge-indexer.graphql"
+      - src/generated/bridge-indexer.graphql
   schema-get:
     deps:
-      - "schema-get-zeko"
-      - "schema-get-zeko-archive"
-      - "schema-get-mina"
-      - "schema-get-mina-archive"
-      - "schema-get-leaderboard"
-      - "schema-get-bridge-indexer"
+      - schema-get-zeko
+      - schema-get-zeko-archive
+      - schema-get-mina
+      - schema-get-mina-archive
+      - schema-get-leaderboard
+      - schema-get-bridge-indexer

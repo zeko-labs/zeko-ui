@@ -1,9 +1,6 @@
-# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
-
 language: typescript
-type: library
+layer: library
 id: proxy-handler
-
 tasks:
   build:
     command: tsdown

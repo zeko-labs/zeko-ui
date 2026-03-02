@@ -1,17 +1,17 @@
-# yaml-language-server: $schema=./cache/schemas/toolchain.json
+# yaml-language-server: $schema=./cache/schemas/toolchains.json
 
-unstable_javascript:
+javascript:
   packageManager: pnpm
   syncPackageManagerField: true
   dedupeOnLockfileChange: false
 
-unstable_node:
+node:
   version: 24.5.0
 
-unstable_pnpm:
+pnpm:
   version: 10.16.1
 
-unstable_bun:
+bun:
   version: 1.2.22
 
 proto:

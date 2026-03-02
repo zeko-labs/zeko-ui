@@ -1,5 +1,3 @@
-# yaml-language-server: $schema=./cache/schemas/tasks.json
-
 taskOptions:
   runInCI: false
 tasks:
@@ -24,3 +22,5 @@ tasks:
   typecheck:
     options:
       runInCI: true
+inheritedBy:
+  language: all

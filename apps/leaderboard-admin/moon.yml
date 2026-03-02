@@ -1,8 +1,5 @@
-# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
-
 layer: application
 id: lb-admin
-
 fileGroups:
   sources:
     - src/**
@@ -12,7 +9,6 @@ fileGroups:
     - tsconfig.json
     - tsconfig.*
     - package.json
-
 tasks:
   dev:
     command: vite

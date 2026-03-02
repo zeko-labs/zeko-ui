@@ -1,10 +1,7 @@
-# yaml-language-server: $schema=../../../.moon/cache/schemas/project.json
-
 id: actions-indexer
 layer: library
 language: typescript
 stack: backend
-
 fileGroups:
   sources:
     - src/**/*
@@ -14,19 +11,18 @@ fileGroups:
   tests:
     - test/**/*
     - vitest.config.ts
-
 dependsOn:
   - actions-api
   - graphql
   - bridge-sdk
-
 tasks:
   dev:
     command: bun --watch src/index.ts
     preset: server
   build:
     command: tsdown
-    deps: [^:build]
+    deps:
+      - ^:build
     inputs:
       - "@group(sources)"
     outputs:
@@ -34,11 +30,6 @@ tasks:
   start:
     command: bun src/index.ts
     preset: server
-  # test-integration:
-  #   command: vitest run
-  #   inputs:
-  #     - "@group(sources)"
-  #     - "@group(tests)"
   lint:
     command: biome check --formatter-enabled=false
     inputs:

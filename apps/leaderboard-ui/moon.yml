@@ -1,13 +1,9 @@
-# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
-
 layer: application
 id: lb-ui
-
 dependsOn:
   - design
   - layer
   - graphql
-
 fileGroups:
   sources:
     - app/**/*
@@ -15,7 +11,6 @@ fileGroups:
     - nuxt.config.ts
     - tsconfig.json
     - package.json
-
 tasks:
   format:
     inputs:
@@ -34,16 +29,17 @@ tasks:
   schema-get:
     command: gql-tada generate schema 'https://api.leaderboard.zeko.io/graphql' --output './graphql/generated/leaderboard.graphql'
     outputs:
-      - "graphql/generated/leaderboard.graphql"
+      - graphql/generated/leaderboard.graphql
   dev:
     command: nuxt dev
     preset: server
   build:
     command: nuxt build
-    deps: [^:build]
+    deps:
+      - ^:build
     args:
-      - "--logLevel"
-      - "verbose"
+      - --logLevel
+      - verbose
     env:
       NODE_OPTIONS: --max-old-space-size=8192
     inputs:
