@@ -18,7 +18,7 @@ OUTPUT_DIR="./.output"
 if [[ "$WORKERS_CI_BRANCH" == "main" ]]; then
   export SENTRY_ENVIRONMENT="production"
   export SENTRY_RELEASE=$(sentry-cli releases propose-version)
-else 
+else
   # We are in a deploy preview
   # Hash the branch name to create a unique but consistent environment name
   BRANCH_HASH=$(echo -n "$WORKERS_CI_BRANCH" | sha1sum | cut -d ' ' -f 1)
@@ -28,7 +28,7 @@ fi
 
 # NUXT
 echo "Building RELEASE $SENTRY_RELEASE with DSN $SENTRY_DSN_PUBLIC on environment $SENTRY_ENVIRONMENT ..."
-moon bridge-ui:build
+moon run bridge-ui:build
 echo "Build completed."
 
 # SENTRY
