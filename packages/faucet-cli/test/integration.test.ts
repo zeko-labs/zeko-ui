@@ -3,6 +3,7 @@ import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
 const BIN = resolve(import.meta.dirname, "../target/release/zeko-faucet")
+const VALID_ADDRESS = "B62qpuhMDp748xtE77iBXRRaipJYgs6yumAeTzaM7zS9dn8avLPaeFF"
 
 const run = (...args: string[]) =>
 	new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolve) => {
@@ -53,13 +54,21 @@ describe("integration: help and version", () => {
 })
 
 describe("integration: error cases", () => {
+	it("claim with an invalid address exits with invalid_address", async () => {
+		const { stdout, exitCode } = await run("claim", "abc123", "--token", "ghp_xxx", "--json")
+		expect(exitCode).toBe(4)
+		const json = parseJson(stdout)
+		expect(json.success).toBe(false)
+		expect(json.code).toBe("invalid_address")
+	})
+
 	it("claim with no address and no token exits non-zero", async () => {
 		const { exitCode } = await run("claim")
 		expect(exitCode).not.toBe(0)
 	})
 
 	it("claim with invalid token returns JSON with success: false", async () => {
-		const { stdout, exitCode } = await run("claim", "B62abc", "--token", "invalid", "--json")
+		const { stdout, exitCode } = await run("claim", VALID_ADDRESS, "--token", "invalid", "--json")
 		expect(exitCode).not.toBe(0)
 		const json = parseJson(stdout)
 		expect(json.success).toBe(false)
@@ -75,7 +84,7 @@ describe("integration: error cases", () => {
 	it("claim with extra positional args exits 1 with invalid_arguments", async () => {
 		const { stdout, exitCode } = await run(
 			"claim",
-			"B62abc",
+			VALID_ADDRESS,
 			"extra",
 			"--token",
 			"ghp_xxx",

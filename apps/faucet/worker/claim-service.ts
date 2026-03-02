@@ -38,15 +38,17 @@ export const getBearerToken = (request: Request) => {
 export const getRequestedAuthMethod = (request: Request) =>
 	request.headers.get("X-Auth-Method")?.trim().toLowerCase() ?? null
 
-const isAlphaNumeric = (value: string) => /^[a-z0-9]+$/i.test(value)
+const MINA_ADDRESS_PATTERN = /^B62[1-9A-HJ-NP-Za-km-z]{52}$/
+
+const isMinaAddress = (value: string) => MINA_ADDRESS_PATTERN.test(value)
 
 const parseClaimBody = (body: unknown): ParsedClaimRequest | ClaimResult => {
 	if (!isRecord(body))
 		return toClaimError(400, "invalid_body", "Request body must be a JSON object.")
 
 	const address = typeof body.address === "string" ? body.address.trim() : ""
-	if (!address || !isAlphaNumeric(address))
-		return toClaimError(400, "invalid_address", "Address must be a non-empty alphanumeric string.")
+	if (!address || !isMinaAddress(address))
+		return toClaimError(400, "invalid_address", "Address must be a valid Mina public key.")
 
 	const chain = typeof body.chain === "string" ? body.chain.trim() : DEFAULT_CHAIN
 	if (chain !== DEFAULT_CHAIN)

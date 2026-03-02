@@ -115,6 +115,8 @@ const createEnv = (): TestEnv => ({
 	}
 })
 
+const VALID_ADDRESS = "B62qpuhMDp748xtE77iBXRRaipJYgs6yumAeTzaM7zS9dn8avLPaeFF"
+
 const createContext = () => ({
 	waitUntil: vi.fn()
 })
@@ -122,7 +124,7 @@ const createContext = () => ({
 const createClaimRequest = ({
 	headers,
 	body = {
-		address: "B62abc",
+		address: VALID_ADDRESS,
 		chain: "zeko-testnet"
 	}
 }: {
@@ -186,6 +188,31 @@ describe("faucet worker claim safeguards", () => {
 		expect(env.CLAIM_MUTEX.get).not.toHaveBeenCalled()
 	})
 
+	it("rejects addresses that are not valid Mina public keys", async () => {
+		const env = createEnv()
+		const ctx = createContext()
+
+		const { default: worker } = await import("../worker")
+		const response = await worker.fetch(
+			createClaimRequest({
+				body: {
+					address: "abc123",
+					chain: "zeko-testnet"
+				}
+			}),
+			env as never,
+			ctx as never
+		)
+
+		expect(response.status).toBe(400)
+		await expect(response.json()).resolves.toMatchObject({
+			success: false,
+			code: "invalid_address"
+		})
+		expect(env.RATE_LIMIT_FAUCET.limit).not.toHaveBeenCalled()
+		expect(env.CLAIM_MUTEX.get).not.toHaveBeenCalled()
+	})
+
 	it("supports turnstile claims through the dedicated RPC entrypoint", async () => {
 		const env = createEnv()
 		const ctx = createContext()
@@ -205,8 +232,8 @@ describe("faucet worker claim safeguards", () => {
 		)
 
 		env.FAUCET_CLAIM.get.mockImplementation(async (key: string) => {
-			if (key === "claim:zeko-testnet:B62abc") return null
-			if (key === "B62abc") return "2026-02-26T00:00:00.000Z"
+			if (key === `claim:zeko-testnet:${VALID_ADDRESS}`) return null
+			if (key === VALID_ADDRESS) return "2026-02-26T00:00:00.000Z"
 			return null
 		})
 		getRandomMock.mockResolvedValue({
@@ -216,7 +243,7 @@ describe("faucet worker claim safeguards", () => {
 		const { TurnstileClaimsEntrypoint } = await import("../worker")
 		const entrypoint = new TurnstileClaimsEntrypoint(ctx as never, env as never)
 		const result = await entrypoint.claimWithTurnstile({
-			address: "B62abc",
+			address: VALID_ADDRESS,
 			chain: "zeko-testnet",
 			clientIp: "127.0.0.1"
 		})
@@ -228,7 +255,7 @@ describe("faucet worker claim safeguards", () => {
 		})
 		expect(env.RATE_LIMIT_FAUCET.limit).toHaveBeenCalledWith({ key: "127.0.0.1" })
 		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledTimes(1)
-		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith("claim:zeko-testnet:B62abc")
+		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith(`claim:zeko-testnet:${VALID_ADDRESS}`)
 	})
 
 	it("maps GitHub API rate limits to the public rate-limited error", async () => {
@@ -325,7 +352,7 @@ describe("faucet worker claim safeguards", () => {
 
 		const putCalls = env.FAUCET_CLAIM.put.mock.calls as KvPutCall[]
 		expect(putCalls).toHaveLength(2)
-		expect(putCalls[0]?.[0]).toBe("claim:zeko-testnet:B62abc")
+		expect(putCalls[0]?.[0]).toBe(`claim:zeko-testnet:${VALID_ADDRESS}`)
 		expect(putCalls[0]?.[1]).toEqual(expect.any(String))
 		expect(putCalls[1]).toEqual([
 			"github:42",

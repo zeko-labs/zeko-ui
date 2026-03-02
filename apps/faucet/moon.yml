@@ -9,6 +9,16 @@ tasks:
     command: bun src/index.ts
   dev:
     command: wrangler dev
+  test:
+    command: vitest run
+    inputs:
+      - tsconfig.json
+      - worker.ts
+      - worker/**/*.ts
+      - worker-configuration.d.ts
+      - test/**/*.ts
+      - test/tsconfig.json
+      - vitest.config.ts
   typecheck:
     command: tsc --noEmit -p test/tsconfig.json
     inputs:

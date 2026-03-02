@@ -20,3 +20,5 @@
 - T020 | done | ci-cross-compilation | done/T020-ci-cross-compilation.md
 - T021 | done | cleanup-ts-to-rust | done/T021-cleanup-ts-to-rust.md
 - T022 | done | ci-sync-changesets-improvement | done/T022-ci-sync-changesets-improvement.md
+- T023 | done | investigate-pr-124-review-findings | done/T023-investigate-pr-124-review-findings.md
+- T024 | done | faucet-cli-sync-workspace-deps | done/T024-faucet-cli-sync-workspace-deps.md
