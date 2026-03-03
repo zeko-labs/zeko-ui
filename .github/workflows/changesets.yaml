@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   release:
-    name: Release
+    name: Changesets
     runs-on: ubuntu-latest
     outputs:
       hasChangesets: ${{ steps.changesets.outputs.hasChangesets }}
@@ -34,16 +34,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # ──────────────────────────────────────────────────────────
+  # Downstream release jobs — one per publishable package group.
+  #
+  # Each workflow has its own version-check that compares against
+  # the npm registry and skips if already published.
+  #
+  # We don't use changesets/action `publish` because some packages
+  # (faucet-cli, bridge-cli) require cross-compilation before npm
+  # publish. Each release workflow handles its own build + publish.
+  #
+  # To add a new publishable package:
+  #   1. Create .github/workflows/release-<name>.yaml
+  #      (with workflow_call + workflow_dispatch triggers)
+  #   2. Add a job below that calls it.
+  # ──────────────────────────────────────────────────────────
+
   release-faucet-cli:
     name: Release Faucet CLI
     needs: release
     if: needs.release.outputs.hasChangesets == 'false'
     uses: ./.github/workflows/release-faucet-cli.yaml
-    secrets: inherit
-
-  sync-faucet-cli:
-    name: Sync Faucet CLI
-    needs: release-faucet-cli
-    if: always() && needs.release-faucet-cli.result == 'success'
-    uses: ./.github/workflows/sync-faucet-cli.yaml
     secrets: inherit
