@@ -6,6 +6,7 @@ on:
 
 jobs:
   version-check:
+    name: Check faucet-cli version
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
@@ -21,10 +22,8 @@ jobs:
           PUBLISHED=$(npm view @zeko-labs/faucet-cli@"$VERSION" version 2>/dev/null || echo "")
           if [ -z "$PUBLISHED" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "Version $VERSION not yet published — will release"
           else
             echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "Version $VERSION already published — skipping"
           fi
 
   build:
@@ -108,12 +107,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+      - uses: moonrepo/setup-toolchain@v0
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -135,121 +129,16 @@ jobs:
             fi
           done
 
-      - name: Resolve workspace dependencies for publish
-        run: |
-          node -e "
-          const fs = require('fs');
-          const path = require('path');
-          const dir = 'packages/faucet-cli';
-          const packageFiles = [path.join(dir, 'package.json')];
-          const npmDir = path.join(dir, 'npm');
-          if (fs.existsSync(npmDir)) {
-            for (const sub of fs.readdirSync(npmDir)) {
-              const pkgFile = path.join(npmDir, sub, 'package.json');
-              if (fs.existsSync(pkgFile)) packageFiles.push(pkgFile);
-            }
-          }
-
-          const localVersions = {};
-          for (const file of packageFiles) {
-            const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
-            localVersions[pkg.name] = pkg.version;
-          }
-
-          const ws = fs.readFileSync('pnpm-workspace.yaml', 'utf8');
-          const catalog = {};
-          let inCatalog = false;
-          for (const line of ws.split('\n')) {
-            if (line.trim() === 'catalog:') { inCatalog = true; continue; }
-            if (/^\S/.test(line) && inCatalog) { inCatalog = false; }
-            if (inCatalog) {
-              const m = line.match(/^\s+['\"]?(.+?)['\"]?:\s+(.+?)$/);
-              if (m) {
-                const name = m[1].replace(/['\"]$/g, '').trim();
-                const version = m[2].replace(/^['\"]|['\"]$/g, '').trim();
-                catalog[name] = version;
-              }
-            }
-          }
-
-          for (const file of packageFiles) {
-            const raw = fs.readFileSync(file, 'utf8');
-            const pkg = JSON.parse(raw);
-            let changed = false;
-            for (const section of ['dependencies', 'devDependencies', 'optionalDependencies']) {
-              if (!pkg[section]) continue;
-              for (const [name, specifier] of Object.entries(pkg[section])) {
-                if (specifier === 'catalog:' && catalog[name]) {
-                  pkg[section][name] = catalog[name];
-                  changed = true;
-                }
-                if (specifier.startsWith('workspace:')) {
-                  const range = specifier.slice('workspace:'.length);
-                  const ver = localVersions[name];
-                  if (ver) {
-                    pkg[section][name] = range === '^' ? '^' + ver : range === '~' ? '~' + ver : ver;
-                    changed = true;
-                  }
-                }
-              }
-            }
-            if (changed) {
-              const indent = raw.startsWith('{\n\t') ? '\t' : 2;
-              fs.writeFileSync(file, JSON.stringify(pkg, null, indent) + '\n');
-            }
-          }
-          "
-
       - name: Publish all packages
         working-directory: packages/faucet-cli
         run: node scripts/publish.mjs
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
 
   github-release:
     needs: [version-check, publish]
-    runs-on: ubuntu-latest
-    name: GitHub Release
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Create GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.ZEKO_LABS_GH_APP_ID }}
-          private-key: ${{ secrets.ZEKO_LABS_GH_APP_PRIVATE_KEY }}
-          owner: zeko-labs
-          repositories: faucet-cli
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts/
-
-      - name: Package release binaries
-        run: |
-          mkdir -p release
-          VERSION="${{ needs.version-check.outputs.version }}"
-          for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64 win32-arm64; do
-            src="artifacts/binary-${platform}"
-            if [ -f "${src}/zeko-faucet" ]; then
-              tar -czf "release/zeko-faucet-v${VERSION}-${platform}.tar.gz" -C "${src}" zeko-faucet
-            elif [ -f "${src}/zeko-faucet.exe" ]; then
-              (cd "${src}" && zip "../../release/zeko-faucet-v${VERSION}-${platform}.zip" zeko-faucet.exe)
-            fi
-          done
-
-      - name: Create release on standalone repo
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          VERSION="${{ needs.version-check.outputs.version }}"
-          gh release create "v${VERSION}" release/* \
-            --repo zeko-labs/faucet-cli \
-            --title "v${VERSION}" \
-            --notes "Published from monorepo. See [npm package](https://www.npmjs.com/package/@zeko-labs/faucet-cli/v/${VERSION})." \
-            --latest
+    uses: ./.github/workflows/github-release-faucet-cli.yaml
+    with:
+      version: ${{ needs.version-check.outputs.version }}
+    secrets: inherit

@@ -1,15 +1,21 @@
-name: Changesets
+name: Release
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
 
 jobs:
-  changesets:
+  release:
+    name: Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     outputs:
       hasChangesets: ${{ steps.changesets.outputs.hasChangesets }}
     steps:
@@ -17,26 +23,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - uses: moonrepo/setup-toolchain@v0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - run: pnpm install --no-frozen-lockfile
-
-      - name: Handle changesets
-        id: changesets
+      - id: changesets
         uses: changesets/action@v1
         with:
+          title: "release: version packages"
+          commit: "release: version packages"
           version: pnpm changeset version
-          title: "chore: version packages"
-          commit: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release-faucet-cli:
-    needs: changesets
-    if: needs.changesets.outputs.hasChangesets == 'false'
+    name: Release Faucet CLI
+    needs: release
+    if: needs.release.outputs.hasChangesets == 'false'
     uses: ./.github/workflows/release-faucet-cli.yaml
+    secrets: inherit
+
+  sync-faucet-cli:
+    name: Sync Faucet CLI
+    needs: release-faucet-cli
+    if: always() && needs.release-faucet-cli.result == 'success'
+    uses: ./.github/workflows/sync-faucet-cli.yaml
     secrets: inherit

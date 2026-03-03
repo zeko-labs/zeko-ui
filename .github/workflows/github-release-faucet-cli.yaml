@@ -1,0 +1,53 @@
+name: GitHub Release Faucet CLI
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+jobs:
+  github-release:
+    runs-on: ubuntu-latest
+    name: Create GitHub Release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ZEKO_LABS_GH_APP_ID }}
+          private-key: ${{ secrets.ZEKO_LABS_GH_APP_PRIVATE_KEY }}
+          owner: zeko-labs
+          repositories: faucet-cli
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Package release binaries
+        run: |
+          mkdir -p release
+          VERSION="${{ inputs.version }}"
+          for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64 win32-arm64; do
+            src="artifacts/binary-${platform}"
+            if [ -f "${src}/zeko-faucet" ]; then
+              tar -czf "release/zeko-faucet-v${VERSION}-${platform}.tar.gz" -C "${src}" zeko-faucet
+            elif [ -f "${src}/zeko-faucet.exe" ]; then
+              (cd "${src}" && zip "../../release/zeko-faucet-v${VERSION}-${platform}.zip" zeko-faucet.exe)
+            fi
+          done
+
+      - name: Create release on standalone repo
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          gh release create "v${VERSION}" release/* \
+            --repo zeko-labs/faucet-cli \
+            --title "v${VERSION}" \
+            --notes "Published from monorepo. See [npm package](https://www.npmjs.com/package/@zeko-labs/faucet-cli/v/${VERSION})." \
+            --latest

@@ -17,10 +17,16 @@ const platforms = readdirSync(npmDir).filter((d) => !d.startsWith("."))
 for (const platform of platforms) {
 	const dir = resolve(npmDir, platform)
 	console.log(`Publishing @zeko-labs/faucet-cli-${platform}...`)
-	execSync("npm publish --provenance --access public", { cwd: dir, stdio: "inherit" })
+	execSync("pnpm publish --provenance --access public --no-git-checks", {
+		cwd: dir,
+		stdio: "inherit"
+	})
 }
 
 console.log("Publishing @zeko-labs/faucet-cli...")
-execSync("npm publish --provenance --access public", { cwd: root, stdio: "inherit" })
+execSync("pnpm publish --provenance --access public --no-git-checks", {
+	cwd: root,
+	stdio: "inherit"
+})
 
 console.log("All packages published successfully.")

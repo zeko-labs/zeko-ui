@@ -17,24 +17,25 @@ zeko-ui (monorepo)                              zeko-labs/faucet-cli (public mir
 │   └── package.json         │                  │ No .changeset/           │
 │                            │                  └──────────────────────────┘
 │ .github/workflows/         │
-│   ├── changesets.yaml      │──── version PR + triggers release
-│   ├── release-faucet-cli.yaml ── build + npm publish + GitHub release
-│   └── sync-faucet-cli.yaml │──── force-push to mirror
+│   ├── changesets.yaml              ── orchestrator (version PR + triggers)
+│   ├── release-faucet-cli.yaml      ── build + npm publish
+│   ├── github-release-faucet-cli.yaml ── GitHub release on mirror
+│   └── sync-faucet-cli.yaml        ── force-push to mirror
 └────────────────────────────┘
 ```
 
 ## Flow
 
 ```
-1. pnpm changeset        → add changeset in monorepo
-2. Push to main           → changesets workflow creates "Version Packages" PR
-3. Merge version PR       → changesets workflow detects no pending changesets
-                          → calls release-faucet-cli.yaml
-                          → version-check skips if already published
-                          → builds 6 platform binaries
-                          → publishes 7 npm packages
-                          → creates GitHub release on zeko-labs/faucet-cli with binaries
-                          → sync workflow force-pushes source to public mirror
+1. pnpm changeset          → add changeset in monorepo
+2. Push to main             → changesets.yaml creates "Version Packages" PR
+3. Merge version PR         → changesets.yaml detects no pending changesets
+                            → calls release-faucet-cli.yaml
+                              → version-check (skip if already on npm)
+                              → build 6 platform binaries
+                              → pnpm publish all 7 packages
+                              → calls github-release-faucet-cli.yaml
+                            → sync-faucet-cli.yaml force-pushes source to mirror
 ```
 
 ## Versioning with Changesets
@@ -44,57 +45,29 @@ All 7 packages are in a `fixed` group (see `.changeset/config.json` at the monor
 The `changesets.yaml` workflow runs on every push to `main`:
 
 - **Pending changesets exist** → runs `pnpm changeset version`, opens a "Version Packages" PR.
-- **No pending changesets** (version PR was just merged) → triggers `release-faucet-cli.yaml` via `workflow_call`.
+- **No pending changesets** (version PR was just merged) → triggers `release-faucet-cli.yaml`.
 
-This means releases are always driven by changesets — never by arbitrary code pushes.
+## Workflows
 
-## Release Workflow
+### `changesets.yaml` — orchestrator
 
-**Workflow**: `.github/workflows/release-faucet-cli.yaml`
-**Trigger**: `workflow_call` from changesets, or `workflow_dispatch` for manual override
+Runs `changesets/action@v1` with `version` only. When `hasChangesets` is false, calls the release and sync workflows as downstream jobs.
 
-### 1. `version-check` — skip if already published
+### `release-faucet-cli.yaml` — build + publish
 
-Compares the `package.json` version against the npm registry. Skips the release if the version is already published (unless triggered manually via `workflow_dispatch`).
+Triggered by `workflow_call` (from changesets) or `workflow_dispatch` (manual). Checks if the current version is already on npm, builds 6 platform binaries, publishes via `pnpm publish` (resolves `workspace:` and `catalog:` protocols automatically), then calls the GitHub release workflow.
 
-### 2. `build` — cross-compilation matrix
+### `github-release-faucet-cli.yaml` — GitHub release
 
-Builds native binaries for 6 targets with `fail-fast: true`:
+Creates a GitHub release on `zeko-labs/faucet-cli` with platform-specific archives attached.
 
-| Target        | Runner           | Method  |
-| ------------- | ---------------- | ------- |
-| macOS x64     | `macos-13`       | Native  |
-| macOS arm64   | `macos-14`       | Native  |
-| Linux x64     | `ubuntu-latest`  | Native  |
-| Linux arm64   | `ubuntu-latest`  | `cross` |
-| Windows x64   | `windows-latest` | Native  |
-| Windows arm64 | `windows-latest` | Native  |
+### `sync-faucet-cli.yaml` — public mirror
 
-### 3. `publish` — atomic npm publish
-
-Downloads all 6 binary artifacts, copies them into the platform packages (`npm/*/bin/`), resolves workspace/catalog dependencies to real versions, then runs `scripts/publish.mjs` which publishes all 7 packages sequentially.
-
-### 4. `github-release` — release on public mirror
-
-Creates a GitHub release on `zeko-labs/faucet-cli` with platform-specific archives (`.tar.gz` for unix, `.zip` for windows) attached as assets.
-
-## Sync Workflow
-
-**Workflow**: `.github/workflows/sync-faucet-cli.yaml`
-**Trigger**: push to `main` touching `packages/faucet-cli/**`, or `workflow_dispatch`
-
-The sync workflow:
-
-1. **Resolves catalog dependencies** — pnpm catalog references like `"vitest": "catalog:"` are replaced with real versions.
-2. **Injects `packageManager`** field from the monorepo root.
-3. **Generates `pnpm-workspace.yaml`** for the standalone repo.
-4. **Force-pushes a single clean commit** to `zeko-labs/faucet-cli` main branch.
-
-This ensures the standalone repo always has a clean, single-commit history representing the current state.
+Triggered on push to `main` touching `packages/faucet-cli/**`, by `workflow_call`, or `workflow_dispatch`. Resolves monorepo-specific protocols for the standalone context, then force-pushes a clean orphan commit.
 
 ## Creating a Release
 
-### Step 1: Add a changeset in the monorepo
+### Step 1: Add a changeset
 
 ```bash
 pnpm changeset
@@ -106,37 +79,38 @@ Select `@zeko-labs/faucet-cli` and choose the bump type (patch/minor/major). The
 
 ```bash
 git add .changeset/
-git commit -m "chore: bump faucet-cli"
+git commit -m "release: bump faucet-cli"
 git push
 ```
 
 ### Step 3: Merge the version PR
 
-The changesets workflow creates a PR titled "chore: version packages". Review and merge it.
+The changesets workflow creates a PR titled "release: version packages". Review and merge it.
 
 ### Step 4: Automatic build and publish
 
-Once the version PR is merged, the changesets workflow detects no pending changesets, calls the release workflow, which builds all 6 platform binaries, publishes all 7 packages to npm, and creates a GitHub release on `zeko-labs/faucet-cli`.
+Once the version PR is merged, the release pipeline builds binaries, publishes to npm, and creates a GitHub release on `zeko-labs/faucet-cli`.
 
 ### Manual release
 
-Trigger `release-faucet-cli.yaml` manually via `workflow_dispatch` to force a release of the current version (bypasses changesets).
+Trigger `release-faucet-cli.yaml` manually via `workflow_dispatch` to force a release of the current version.
 
 ## Secrets
 
-| Secret                         | Where    | Purpose                                   |
-| ------------------------------ | -------- | ----------------------------------------- |
-| `GITHUB_TOKEN`                 | monorepo | Default token for changesets version PRs  |
-| `ZEKO_LABS_GH_APP_ID`          | monorepo | GitHub App ID for cross-repo operations   |
-| `ZEKO_LABS_GH_APP_PRIVATE_KEY` | monorepo | GitHub App private key                    |
-| `NPM_TOKEN`                    | monorepo | npm publish token with provenance support |
+| Secret                         | Where    | Purpose                                  |
+| ------------------------------ | -------- | ---------------------------------------- |
+| `GITHUB_TOKEN`                 | monorepo | Default token for changesets version PRs |
+| `ZEKO_LABS_GH_APP_ID`          | monorepo | GitHub App ID for cross-repo operations  |
+| `ZEKO_LABS_GH_APP_PRIVATE_KEY` | monorepo | GitHub App private key                   |
+| `NPM_TOKEN`                    | monorepo | npm publish token                        |
 
 ## Files Overview
 
-| File                                        | Purpose                                            |
-| ------------------------------------------- | -------------------------------------------------- |
-| `.changeset/config.json`                    | Fixed version group for all 7 packages             |
-| `.github/workflows/changesets.yaml`         | Version PRs + triggers release on version PR merge |
-| `.github/workflows/release-faucet-cli.yaml` | Build matrix + npm publish + GitHub release        |
-| `.github/workflows/sync-faucet-cli.yaml`    | Force-push source to public mirror                 |
-| `packages/faucet-cli/scripts/publish.mjs`   | Atomic npm publish script                          |
+| File                                               | Purpose                                      |
+| -------------------------------------------------- | -------------------------------------------- |
+| `.changeset/config.json`                           | Fixed version group for all 7 packages       |
+| `.github/workflows/changesets.yaml`                | Orchestrator: version PRs + triggers release |
+| `.github/workflows/release-faucet-cli.yaml`        | Build matrix + npm publish                   |
+| `.github/workflows/github-release-faucet-cli.yaml` | GitHub release on public mirror              |
+| `.github/workflows/sync-faucet-cli.yaml`           | Force-push source to public mirror           |
+| `packages/faucet-cli/scripts/publish.mjs`          | Atomic pnpm publish script                   |
