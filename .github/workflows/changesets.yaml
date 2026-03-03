@@ -10,17 +10,11 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    outputs:
+      hasChangesets: ${{ steps.changesets.outputs.hasChangesets }}
     steps:
-      - name: Create GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.ZEKO_LABS_GH_APP_ID }}
-          private-key: ${{ secrets.ZEKO_LABS_GH_APP_PRIVATE_KEY }}
-
       - uses: actions/checkout@v4
         with:
-          token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
@@ -32,10 +26,17 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
 
       - name: Handle changesets
+        id: changesets
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
           title: "chore: version packages"
           commit: "chore: version packages"
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-faucet-cli:
+    needs: changesets
+    if: needs.changesets.outputs.hasChangesets == 'false'
+    uses: ./.github/workflows/release-faucet-cli.yaml
+    secrets: inherit

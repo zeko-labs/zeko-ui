@@ -17,7 +17,7 @@ zeko-ui (monorepo)                              zeko-labs/faucet-cli (public mir
 │   └── package.json         │                  │ No .changeset/           │
 │                            │                  └──────────────────────────┘
 │ .github/workflows/         │
-│   ├── changesets.yaml      │──── version PR
+│   ├── changesets.yaml      │──── version PR + triggers release
 │   ├── release-faucet-cli.yaml ── build + npm publish + GitHub release
 │   └── sync-faucet-cli.yaml │──── force-push to mirror
 └────────────────────────────┘
@@ -27,8 +27,10 @@ zeko-ui (monorepo)                              zeko-labs/faucet-cli (public mir
 
 ```
 1. pnpm changeset        → add changeset in monorepo
-2. Merge PR to main      → changesets workflow creates "Version Packages" PR
-3. Merge version PR      → release workflow detects new version
+2. Push to main           → changesets workflow creates "Version Packages" PR
+3. Merge version PR       → changesets workflow detects no pending changesets
+                          → calls release-faucet-cli.yaml
+                          → version-check skips if already published
                           → builds 6 platform binaries
                           → publishes 7 npm packages
                           → creates GitHub release on zeko-labs/faucet-cli with binaries
@@ -39,16 +41,21 @@ zeko-ui (monorepo)                              zeko-labs/faucet-cli (public mir
 
 All 7 packages are in a `fixed` group (see `.changeset/config.json` at the monorepo root), so their versions always stay in sync.
 
-The `changesets.yaml` workflow runs on every push to `main`. When pending changesets exist, it runs `pnpm changeset version` and opens a PR titled "chore: version packages".
+The `changesets.yaml` workflow runs on every push to `main`:
+
+- **Pending changesets exist** → runs `pnpm changeset version`, opens a "Version Packages" PR.
+- **No pending changesets** (version PR was just merged) → triggers `release-faucet-cli.yaml` via `workflow_call`.
+
+This means releases are always driven by changesets — never by arbitrary code pushes.
 
 ## Release Workflow
 
 **Workflow**: `.github/workflows/release-faucet-cli.yaml`
-**Trigger**: push to `main` touching `packages/faucet-cli/**`, or `workflow_dispatch`
+**Trigger**: `workflow_call` from changesets, or `workflow_dispatch` for manual override
 
 ### 1. `version-check` — skip if already published
 
-Compares the `package.json` version against the npm registry. Skips the release if the version is already published (unless triggered manually).
+Compares the `package.json` version against the npm registry. Skips the release if the version is already published (unless triggered manually via `workflow_dispatch`).
 
 ### 2. `build` — cross-compilation matrix
 
@@ -109,26 +116,27 @@ The changesets workflow creates a PR titled "chore: version packages". Review an
 
 ### Step 4: Automatic build and publish
 
-Once the version PR is merged, the release workflow detects the new version, builds all 6 platform binaries, publishes all 7 packages to npm, and creates a GitHub release on `zeko-labs/faucet-cli`.
+Once the version PR is merged, the changesets workflow detects no pending changesets, calls the release workflow, which builds all 6 platform binaries, publishes all 7 packages to npm, and creates a GitHub release on `zeko-labs/faucet-cli`.
 
 ### Manual release
 
-Trigger the release workflow manually via `workflow_dispatch` to force a release of the current version.
+Trigger `release-faucet-cli.yaml` manually via `workflow_dispatch` to force a release of the current version (bypasses changesets).
 
 ## Secrets
 
 | Secret                         | Where    | Purpose                                   |
 | ------------------------------ | -------- | ----------------------------------------- |
+| `GITHUB_TOKEN`                 | monorepo | Default token for changesets version PRs  |
 | `ZEKO_LABS_GH_APP_ID`          | monorepo | GitHub App ID for cross-repo operations   |
 | `ZEKO_LABS_GH_APP_PRIVATE_KEY` | monorepo | GitHub App private key                    |
 | `NPM_TOKEN`                    | monorepo | npm publish token with provenance support |
 
 ## Files Overview
 
-| File                                        | Purpose                                     |
-| ------------------------------------------- | ------------------------------------------- |
-| `.changeset/config.json`                    | Fixed version group for all 7 packages      |
-| `.github/workflows/changesets.yaml`         | Creates version PRs from pending changesets |
-| `.github/workflows/release-faucet-cli.yaml` | Build matrix + npm publish + GitHub release |
-| `.github/workflows/sync-faucet-cli.yaml`    | Force-push source to public mirror          |
-| `packages/faucet-cli/scripts/publish.mjs`   | Atomic npm publish script                   |
+| File                                        | Purpose                                            |
+| ------------------------------------------- | -------------------------------------------------- |
+| `.changeset/config.json`                    | Fixed version group for all 7 packages             |
+| `.github/workflows/changesets.yaml`         | Version PRs + triggers release on version PR merge |
+| `.github/workflows/release-faucet-cli.yaml` | Build matrix + npm publish + GitHub release        |
+| `.github/workflows/sync-faucet-cli.yaml`    | Force-push source to public mirror                 |
+| `packages/faucet-cli/scripts/publish.mjs`   | Atomic npm publish script                          |

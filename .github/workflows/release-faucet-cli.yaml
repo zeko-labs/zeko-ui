@@ -1,10 +1,7 @@
 name: Release Faucet CLI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - packages/faucet-cli/**
+  workflow_call:
   workflow_dispatch:
 
 jobs:
