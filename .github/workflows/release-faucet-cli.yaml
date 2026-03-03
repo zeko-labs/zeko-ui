@@ -109,8 +109,6 @@ jobs:
 
       - uses: moonrepo/setup-toolchain@v0
 
-      - run: pnpm install --frozen-lockfile
-
       - name: Configure npm auth
         run: echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > ~/.npmrc
         env:
@@ -124,6 +122,7 @@ jobs:
       - name: Copy binaries to platform packages
         working-directory: packages/faucet-cli
         run: |
+          set -euo pipefail
           for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64 win32-arm64; do
             src="../../artifacts/binary-${platform}"
             dest="npm/${platform}/bin"
@@ -133,6 +132,9 @@ jobs:
               chmod +x "${dest}/zeko-faucet"
             elif [ -f "${src}/zeko-faucet.exe" ]; then
               cp "${src}/zeko-faucet.exe" "${dest}/"
+            else
+              echo "::error::Missing binary for ${platform}"
+              exit 1
             fi
           done
 
