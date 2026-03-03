@@ -3,11 +3,6 @@ name: Sync Faucet CLI
 on:
   workflow_call:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - packages/faucet-cli/**
 
 jobs:
   sync:

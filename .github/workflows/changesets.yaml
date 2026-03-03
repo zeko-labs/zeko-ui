@@ -25,6 +25,8 @@ jobs:
 
       - uses: moonrepo/setup-toolchain@v0
 
+      - run: pnpm install --frozen-lockfile
+
       - id: changesets
         uses: changesets/action@v1
         with:
