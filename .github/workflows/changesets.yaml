@@ -34,7 +34,7 @@ jobs:
         with:
           title: "release: version packages"
           commit: "release: version packages"
-          version: pnpm changeset version
+          version: bun scripts/changeset-version.ts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

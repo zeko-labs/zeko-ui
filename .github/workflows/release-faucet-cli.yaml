@@ -34,7 +34,7 @@ jobs:
       matrix:
         include:
           - target: x86_64-apple-darwin
-            runner: macos-13
+            runner: macos-15
             platform: darwin-x64
           - target: aarch64-apple-darwin
             runner: macos-14
@@ -62,31 +62,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Check for cached artifact
+        id: cache
+        uses: actions/cache@v4
         with:
-          targets: ${{ matrix.target }}
+          path: packages/faucet-cli/artifact/
+          key: faucet-cli-${{ matrix.platform }}-${{ hashFiles('packages/faucet-cli/Cargo.lock', 'packages/faucet-cli/Cargo.toml', 'packages/faucet-cli/src/**') }}
+
+      - uses: moonrepo/setup-toolchain@v0
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          auto-install: true
+
+      - name: Add Rust target
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: rustup target add ${{ matrix.target }}
 
       - name: Install cross (Linux arm64)
-        if: matrix.use_cross
+        if: matrix.use_cross && steps.cache.outputs.cache-hit != 'true'
         run: cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Build (native)
-        if: "!matrix.use_cross"
+        if: "!matrix.use_cross && steps.cache.outputs.cache-hit != 'true'"
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Build (cross)
-        if: matrix.use_cross
+        if: matrix.use_cross && steps.cache.outputs.cache-hit != 'true'
         run: cross build --release --target ${{ matrix.target }}
 
       - name: Prepare artifact (unix)
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p artifact
           cp target/${{ matrix.target }}/release/zeko-faucet artifact/
 
       - name: Prepare artifact (windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir artifact
           copy target\${{ matrix.target }}\release\zeko-faucet.exe artifact\
@@ -102,17 +113,15 @@ jobs:
     runs-on: ubuntu-latest
     name: Publish to npm
     permissions:
+      contents: read
       id-token: write
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: moonrepo/setup-toolchain@v0
-
-      - name: Configure npm auth
-        run: echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > ~/.npmrc
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        with:
+          auto-install: true
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -138,12 +147,16 @@ jobs:
             fi
           done
 
+      - name: Debug toolchain versions
+        run: |
+          echo "npm version: $(npm --version)"
+          echo "node version: $(node --version)"
+          echo "pnpm version: $(pnpm --version)"
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+true}"
+
       - name: Publish all packages
         working-directory: packages/faucet-cli
         run: node scripts/publish.mjs
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
 
   github-release:
     needs: [version-check, publish]
