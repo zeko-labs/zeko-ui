@@ -22,3 +22,4 @@
 - T022 | done | ci-sync-changesets-improvement | done/T022-ci-sync-changesets-improvement.md
 - T023 | done | investigate-pr-124-review-findings | done/T023-investigate-pr-124-review-findings.md
 - T024 | done | faucet-cli-sync-workspace-deps | done/T024-faucet-cli-sync-workspace-deps.md
+- T025 | done | monorepo-changesets-release | done/T025-monorepo-changesets-release.md

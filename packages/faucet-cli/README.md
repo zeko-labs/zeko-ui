@@ -1,5 +1,7 @@
 # Faucet CLI
 
+> **Public mirror** — This repository is automatically synced from a private monorepo. Development happens in the monorepo; this repo is a read-only source mirror. See [zeko-labs/faucet-cli](https://github.com/zeko-labs/faucet-cli) for issues and releases.
+
 Command-line client for the Zeko testnet faucet. Claim testnet tokens and verify your GitHub authentication from the terminal.
 
 Written in Rust for fast startup and single-binary distribution. Distributed via npm with platform-specific packages.
