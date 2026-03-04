@@ -58,6 +58,9 @@ jobs:
     name: Release Faucet CLI
     needs: release
     if: needs.release.outputs.hasChangesets == 'false'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/release-faucet-cli.yaml
     secrets: inherit
 
@@ -65,6 +68,9 @@ jobs:
     name: Release GraphQL
     needs: release
     if: needs.release.outputs.hasChangesets == 'false'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/release-graphql.yaml
     secrets: inherit
 
@@ -72,6 +78,9 @@ jobs:
     name: Release Bridge SDK
     needs: [release, release-graphql]
     if: needs.release.outputs.hasChangesets == 'false'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/release-bridge-sdk.yaml
     secrets: inherit
 
@@ -79,6 +88,8 @@ jobs:
     name: Sync GraphQL Mirror
     needs: [release, release-graphql]
     if: needs.release.outputs.hasChangesets == 'false'
+    permissions:
+      contents: read
     uses: ./.github/workflows/sync-graphql.yaml
     secrets: inherit
 
@@ -86,5 +97,7 @@ jobs:
     name: Sync Bridge SDK Mirror
     needs: [release, release-bridge-sdk]
     if: needs.release.outputs.hasChangesets == 'false'
+    permissions:
+      contents: read
     uses: ./.github/workflows/sync-bridge-sdk.yaml
     secrets: inherit

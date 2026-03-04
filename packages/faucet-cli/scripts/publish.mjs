@@ -1,38 +1,44 @@
 #!/usr/bin/env node
 
 /**
- * Publishes all faucet-cli packages using npm publish with OIDC provenance.
- *
- * Platform packages are published directly with npm.
- * The main package uses pnpm pack to resolve workspace:* protocols,
- * then npm publish on the resulting tarball.
+ * Publishes all faucet-cli packages via OIDC trusted publishing.
+ * Platform packages use npm publish directly.
+ * Main package uses pnpm pack (to resolve workspace:* / catalog:) then npm publish.
+ * Provenance is disabled because the source repo is private.
  */
 
 import { execSync } from "node:child_process"
 import { readdirSync } from "node:fs"
 import { resolve } from "node:path"
 
+const run = (cmd, opts) => {
+	console.log(`$ ${cmd}`)
+	return execSync(cmd, { stdio: "inherit", ...opts })
+}
+
 const root = resolve(import.meta.dirname, "..")
 const npmDir = resolve(root, "npm")
+
+// Debug: show npm/pnpm versions and auth config
+run("npm --version")
+run("pnpm --version")
+run("npm config list")
 
 const platforms = readdirSync(npmDir).filter((d) => !d.startsWith("."))
 
 for (const platform of platforms) {
 	const dir = resolve(npmDir, platform)
-	console.log(`Publishing @zeko-labs/faucet-cli-${platform}...`)
-	execSync("npm publish --provenance --access public", {
-		cwd: dir,
-		stdio: "inherit"
-	})
+	console.log(`\nPublishing @zeko-labs/faucet-cli-${platform}...`)
+	run("npm publish --access public --provenance=false --loglevel verbose", { cwd: dir })
 }
 
-console.log("Publishing @zeko-labs/faucet-cli...")
-execSync("pnpm pack --pack-destination ./", { cwd: root, stdio: "inherit" })
-const tarball = readdirSync(root).find((f) => f.endsWith(".tgz"))
-if (!tarball) throw new Error("pnpm pack did not produce a tarball")
-execSync(`npm publish ${tarball} --provenance --access public`, {
-	cwd: root,
-	stdio: "inherit"
-})
+console.log("\nPublishing @zeko-labs/faucet-cli...")
+// pnpm pack resolves workspace:* and catalog: protocols
+run("pnpm pack", { cwd: root })
+const pkg = JSON.parse(
+	execSync("node -p \"JSON.stringify(require('./package.json'))\"", { cwd: root }).toString()
+)
+const tarball = `zeko-labs-faucet-cli-${pkg.version}.tgz`
+run(`npm publish ${tarball} --access public --provenance=false --loglevel verbose`, { cwd: root })
 
-console.log("All packages published successfully.")
+console.log("\nAll packages published successfully.")

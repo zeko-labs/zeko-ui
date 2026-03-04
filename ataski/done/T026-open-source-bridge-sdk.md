@@ -5,7 +5,7 @@ status: done
 blockedBy: []
 owner: main-agent
 created_at: 2026-03-04T02:07:13Z
-updated_at: 2026-03-04T02:24:00Z
+updated_at: 2026-03-04T15:53:07Z
 ---
 
 Open-source `packages/bridge-sdk` with the same monorepo-driven release approach as `faucet-cli`, update the package README, add docs site coverage, and include the npm trusted publishing skill metadata fix in the same branch.
@@ -24,3 +24,5 @@ This task is dominated by package metadata, CI workflow wiring, release orchestr
 - `pnpm exec moon run actions-indexer:build` — passed
 - `pnpm exec moon run docs:build` — passed
 - `pnpm exec moon run docs:test` — passed (`1` test file passed, `3` tests passed, `1` skipped)
+
+Revalidated after merging the latest `origin/main` and aligning the bridge-sdk/graphql release flows with the updated faucet-cli publishing approach.

@@ -147,16 +147,49 @@ jobs:
             fi
           done
 
-      - name: Debug toolchain versions
-        run: |
-          echo "npm version: $(npm --version)"
-          echo "node version: $(node --version)"
-          echo "pnpm version: $(pnpm --version)"
-          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+true}"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Publish all packages
+      - name: Pack main package
         working-directory: packages/faucet-cli
-        run: node scripts/publish.mjs
+        run: pnpm pack
+
+      - name: Configure npm registry
+        run: |
+          echo "registry=https://registry.npmjs.org/" > "$HOME/.npmrc"
+          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> "$HOME/.npmrc"
+
+      - name: Publish platform packages
+        working-directory: packages/faucet-cli
+        env:
+          NPM_CONFIG_PROVENANCE: "false"
+        run: |
+          set -euo pipefail
+          for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64 win32-arm64; do
+            PKG="@zeko-labs/faucet-cli-${platform}"
+            VERSION=$(node -p "require('./npm/${platform}/package.json').version")
+            PUBLISHED=$(npm view "${PKG}@${VERSION}" version 2>/dev/null || echo "")
+            if [ -n "$PUBLISHED" ]; then
+              echo "${PKG}@${VERSION} already published, skipping."
+              continue
+            fi
+            echo "Publishing ${PKG}@${VERSION}..."
+            npm publish "./npm/${platform}" --access public --loglevel verbose
+          done
+
+      - name: Publish main package
+        working-directory: packages/faucet-cli
+        env:
+          NPM_CONFIG_PROVENANCE: "false"
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view "@zeko-labs/faucet-cli@${VERSION}" version 2>/dev/null || echo "")
+          if [ -n "$PUBLISHED" ]; then
+            echo "@zeko-labs/faucet-cli@${VERSION} already published, skipping."
+          else
+            npm publish "zeko-labs-faucet-cli-${VERSION}.tgz" --access public --loglevel verbose
+          fi
 
   github-release:
     needs: [version-check, publish]

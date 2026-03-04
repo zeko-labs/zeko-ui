@@ -8,5 +8,10 @@
 	},
 	"os": ["win32"],
 	"cpu": ["arm64"],
-	"files": ["bin"]
+	"files": ["bin"],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/zeko-labs/zeko-ui.git",
+		"directory": "packages/faucet-cli/npm/win32-arm64"
+	}
 }

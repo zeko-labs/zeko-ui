@@ -42,10 +42,31 @@ jobs:
         with:
           auto-install: true
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - run: moon graphql:build
+      - name: Build package
+        run: pnpm exec moon run graphql:build
+
+      - name: Pack package
+        working-directory: packages/graphql
+        run: pnpm pack
+
+      - name: Configure npm registry
+        run: |
+          echo "registry=https://registry.npmjs.org/" > "$HOME/.npmrc"
+          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> "$HOME/.npmrc"
 
       - name: Publish package
         working-directory: packages/graphql
-        run: pnpm publish --provenance --access public --no-git-checks
+        env:
+          NPM_CONFIG_PROVENANCE: "false"
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view "@zeko/graphql@${VERSION}" version 2>/dev/null || echo "")
+          if [ -n "$PUBLISHED" ]; then
+            echo "@zeko/graphql@${VERSION} already published, skipping."
+          else
+            npm publish "zeko-graphql-${VERSION}.tgz" --access public --loglevel verbose
+          fi

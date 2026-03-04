@@ -23,5 +23,10 @@
 	"devDependencies": {
 		"@types/node": "^20.8.10",
 		"vitest": "catalog:"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/zeko-labs/zeko-ui.git",
+		"directory": "packages/faucet-cli"
 	}
 }
