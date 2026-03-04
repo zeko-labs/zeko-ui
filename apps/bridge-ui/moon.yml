@@ -64,6 +64,11 @@ tasks:
       - wrangler.jsonc
     outputs:
       - worker-configuration.d.ts
+  publish-cf-build-config:
+    description: Publish the checked-in Cloudflare Workers Build config for this project.
+    script: pnpm exec moon run cloudflare-build-config:sync -- apps/bridge-ui/workers-build.jsonc
+    options:
+      cache: false
   preview:
     command: nuxt preview
     preset: server
@@ -74,6 +79,16 @@ tasks:
   analyze:
     command: nuxt analyze
     preset: server
+  deploy:
+    description: Run the CI deploy flow, including the Sentry release and Cloudflare deploy logic.
+    command: ./deploy-ci.sh
+    options:
+      cache: false
+  deploy-preview:
+    description: Run the CI deploy flow for non-production branches.
+    command: ./deploy-ci.sh
+    options:
+      cache: false
   deploy-dev:
     description: Build and Deploy to Cloudflare Workers. Use with caution, prefer using CI/CD.
     script: rimraf .output .wrangler .nuxt && nuxt build && wrangler deploy

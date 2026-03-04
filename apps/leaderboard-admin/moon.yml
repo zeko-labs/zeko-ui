@@ -25,6 +25,11 @@ tasks:
     command: vite preview
     inputs:
       - "@group(sources)"
+  publish-cf-build-config:
+    description: Publish the checked-in Cloudflare Workers Build config for this project.
+    script: pnpm exec moon run cloudflare-build-config:sync -- apps/leaderboard-admin/workers-build.jsonc
+    options:
+      cache: false
   deploy:
     command: wrangler deploy
     deps:
