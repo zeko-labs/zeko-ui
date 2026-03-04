@@ -1,122 +1,110 @@
-# npm Trusted Publishing Setup
+---
+name: npm-trusted-publishing
+description: Guide for publishing npm packages from GitHub Actions using OIDC trusted publishing. Use when setting up new publishable packages, debugging npm OIDC auth failures, or configuring trusted publisher workflows.
+---
 
-Guide for setting up new publishable npm packages in this monorepo using OIDC trusted publishing (no long-lived npm tokens).
+# npm Trusted Publishing (OIDC)
 
-## Overview
+Publish npm packages from GitHub Actions without long-lived tokens using OIDC trusted publishing.
 
-This monorepo publishes packages to npm using GitHub Actions OIDC trusted publishing. Packages are released through changesets — the orchestrator workflow (`.github/workflows/changesets.yaml`) runs on push to `main`, and downstream release workflows handle per-package build + publish.
+## References
 
-## Prerequisites
+- [npm Trusted Publishing docs](https://docs.npmjs.com/generating-provenance-statements#publishing-packages-with-provenance-via-github-actions)
+- [npm/cli#8730 — workflow_call filename mismatch](https://github.com/npm/cli/issues/8730)
+- [GitHub OIDC for npm](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-npm)
 
-- npm CLI >= 11.5.1 or Node >= 24 (proto manages this via `.prototools`)
-- The npm org (`@zeko-labs`) must exist on npmjs.com
-- A user with publish access to the org must be logged in locally (`npm login`)
+## Manual steps (human required)
 
-## Setting up a new publishable package
+1. **Initial publish**: The first publish of every package must be done manually with `npm login` + OTP. OIDC cannot claim new package names. Use `bun scripts/npm-init-publish.ts packages/<name> --otp <code>`.
+2. **Configure trusted publisher on npmjs.com**: For **each** package, go to `https://www.npmjs.com/package/<package-name>/access` → Trusted Publisher and set:
+   - Organization: `zeko-labs`
+   - Repository: `zeko-ui`
+   - Workflow filename: **the caller workflow** (e.g. `changesets.yaml`), NOT the reusable workflow (e.g. `release-faucet-cli.yaml`). See [npm/cli#8730](https://github.com/npm/cli/issues/8730).
+3. **Verify**: Trigger the workflow and check that `POST 201` appears in the npm OIDC token exchange logs.
 
-### 1. Create the release workflow
+## Critical gotchas
 
-Create `.github/workflows/release-<name>.yaml` with:
+### `workflow_call`: configure the parent workflow as trusted publisher
 
-```yaml
-on:
-  workflow_call:
-  workflow_dispatch:
-```
+When a caller workflow (`changesets.yaml`) uses `uses: ./.github/workflows/release-<name>.yaml`, the OIDC token contains the **caller** filename in its claims. npm validates this against the trusted publisher config. You must set the trusted publisher workflow to `changesets.yaml`, not `release-<name>.yaml`.
 
-The publish job must have these permissions (job-level overrides workflow-level defaults, so both are required):
+The caller job must also declare `permissions: { contents: read, id-token: write }` — without this the reusable workflow cannot mint OIDC tokens.
 
-```yaml
-permissions:
-  contents: read # needed for actions/checkout
-  id-token: write # needed for OIDC trusted publishing
-```
+### Use `npm publish`, not `pnpm publish`
 
-Use `moonrepo/setup-toolchain@v0` with `auto-install: true` for tooling. Do NOT configure `.npmrc` or use `NPM_TOKEN` — OIDC handles auth automatically.
+`pnpm publish` does not trigger npm's OIDC token exchange. Use `npm publish` directly. If the package uses `workspace:*` or `catalog:` protocols, run `pnpm pack` first (resolves protocols), then `npm publish <tarball>`.
 
-Publish with `--provenance --access public`. Use `pnpm publish` which handles `workspace:*` and `catalog:` protocol resolution automatically:
+### Step ordering: pnpm before `.npmrc`
 
-```yaml
-- name: Publish
-  run: pnpm publish --provenance --access public --no-git-checks
-```
+pnpm errors with `Failed to replace env in config: ${NODE_AUTH_TOKEN}` if `~/.npmrc` contains `${NODE_AUTH_TOKEN}` and the var is unset. Run `pnpm install` and `pnpm pack` **before** writing `.npmrc`.
 
-### 2. Register the workflow in the changesets orchestrator
+### Provenance does not work from private repos
 
-Add a job to `.github/workflows/changesets.yaml`:
+`--provenance` requires a public repo for Sigstore transparency logs. Disable with `NPM_CONFIG_PROVENANCE=false`. Provenance is independent from trusted publishing — OIDC auth works without it.
 
-```yaml
-release-<name>:
-  name: Release <Name>
-  needs: release
-  if: needs.release.outputs.hasChangesets == 'false'
-  uses: ./.github/workflows/release-<name>.yaml
-  secrets: inherit
-```
+### Multi-package publishes must be idempotent
 
-### 3. Add package to changeset config (if private)
-
-If the package has dependencies on other private workspace packages, add all involved private packages to `.changeset/config.json` `ignore` list to avoid validation errors.
-
-### 4. Initial publish (claim package names)
-
-The first publish of any package **cannot** use OIDC — it must be done manually.
-
-Use the init publish script:
+When publishing multiple packages, a partial failure leaves some published. On retry, already-published packages fail with `You cannot publish over the previously published versions`. Always check before publishing:
 
 ```bash
-bun scripts/npm-init-publish.ts packages/<name> --otp <code>
+PUBLISHED=$(npm view "${PKG}@${VERSION}" version 2>/dev/null || echo "")
+if [ -n "$PUBLISHED" ]; then echo "Skipping"; continue; fi
+npm publish ...
 ```
-
-This script:
-
-- Temporarily sets all package versions to `0.0.0`
-- Uses `pnpm publish` which resolves `workspace:*` and `catalog:` protocols automatically
-- Publishes platform sub-packages first, then the main package
-- Restores original `package.json` files in a `finally` block
-
-The `0.0.0` version ensures no conflict with the real version that changesets will publish.
-
-### 5. Configure trusted publishing on npmjs.com
-
-For **each** published package, go to:
-
-```
-https://www.npmjs.com/package/<package-name>/access
-```
-
-Under **Trusted Publisher**, configure:
-
-- **Organization**: `zeko-labs` (GitHub org, case-sensitive)
-- **Repository**: `zeko-ui` (GitHub repo name)
-- **Workflow filename**: `release-<name>.yaml` (the workflow file that runs `npm publish`)
-
-### 6. Verify
-
-Trigger the release workflow manually via `workflow_dispatch` or push a changeset to `main` to test the full pipeline.
 
 ## Architecture
 
 ```
 push to main
-  └─ changesets.yaml (orchestrator)
-       ├─ changesets/action → creates version PR or skips
-       └─ if no pending changesets → triggers downstream:
-            └─ release-<name>.yaml
-                 ├─ version-check (compare package.json vs registry)
-                 ├─ build (if needed, e.g. cross-compilation)
-                 ├─ publish (OIDC auth, --provenance)
+  └─ changesets.yaml (caller)
+       ├─ changesets/action → version PR or skip
+       └─ if no pending changesets:
+            └─ release-<name>.yaml (reusable, workflow_call)
+                 ├─ version-check
+                 ├─ build
+                 ├─ publish (OIDC, npm publish)
                  ├─ github-release (optional)
-                 └─ sync (optional, for split-repo packages)
+                 └─ sync (optional)
 ```
 
-## Key details
+## Minimal workflow template
 
-- **Permissions**: Job-level `permissions` in GitHub Actions completely override workflow-level defaults. Always include `contents: read` alongside `id-token: write`, or `actions/checkout` will fail with "repository not found".
-- **Version script**: `scripts/changeset-version.ts` runs `pnpm changeset version` then `dprint fmt` to fix JSON formatting that changesets breaks.
-- **No NPM_TOKEN**: The entire auth flow is handled by OIDC. No secrets needed for npm publish.
-- **Provenance**: The `--provenance` flag is required for trusted publishing to work. It generates and attaches a provenance attestation to the published package.
+Caller job in `changesets.yaml`:
 
-## Reference: faucet-cli
+```yaml
+release-<name>:
+  needs: release
+  if: needs.release.outputs.hasChangesets == 'false'
+  permissions:
+    contents: read
+    id-token: write
+  uses: ./.github/workflows/release-<name>.yaml
+  secrets: inherit
+```
 
-The `faucet-cli` package is the first package set up with this flow. It has 7 npm packages (1 main + 6 platform binaries) all published from `release-faucet-cli.yaml`. Use it as a reference implementation for future packages.
+Publish job in `release-<name>.yaml`:
+
+```yaml
+publish:
+  permissions:
+    contents: read
+    id-token: write
+  steps:
+    - uses: actions/checkout@v4
+    - uses: moonrepo/setup-toolchain@v0
+      with: { auto-install: true }
+    - run: pnpm install --frozen-lockfile
+    - run: pnpm pack
+      working-directory: packages/<name>
+    - run: |
+        echo "registry=https://registry.npmjs.org/" > "$HOME/.npmrc"
+        echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> "$HOME/.npmrc"
+    - run: npm publish <tarball> --access public --loglevel verbose
+      working-directory: packages/<name>
+      env:
+        NPM_CONFIG_PROVENANCE: "false"
+```
+
+## Reference implementation
+
+`faucet-cli`: 7 packages (1 main + 6 platform binaries), `release-faucet-cli.yaml`.
