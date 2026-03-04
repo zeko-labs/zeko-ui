@@ -1,11 +1,26 @@
-FROM node:latest AS base
 #### BASE STAGE
-#### Installs moon.
+#### Installs proto and the pinned toolchain from .prototools.
+
+FROM oven/bun:1.2.22 AS base
 WORKDIR /app
 
-# Install moon binary
-RUN curl -fsSL https://moonrepo.dev/install/moon.sh | bash
-ENV PATH="/root/.moon/bin:/root/.proto/bin:$PATH"
+COPY .prototools ./.prototools
+
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends bash ca-certificates curl git xz-utils \
+	&& rm -rf /var/lib/apt/lists/*
+
+# Install proto
+RUN curl -fsSL https://moonrepo.dev/install/proto.sh | bash -s -- 0.55.3 --yes
+ENV PROTO_HOME="/root/.proto"
+ENV PATH="$PROTO_HOME/bin:$PATH"
+
+# Install the build toolchain pinned by .prototools.
+# Bun is already provided by the base image at the pinned version.
+RUN proto install --yes moon
+RUN proto install --yes node
+RUN proto install --yes npm
+RUN proto install --yes pnpm
 
 #### SKELETON STAGE
 #### Scaffolds repository skeleton structures.
@@ -14,7 +29,7 @@ FROM base AS skeleton
 
 # Copy entire repository and scaffold
 COPY . .
-RUN moon docker scaffold actions-indexer
+RUN proto run moon -- docker scaffold actions-indexer
 
 #### BUILD STAGE
 #### Builds the project.
@@ -22,26 +37,23 @@ RUN moon docker scaffold actions-indexer
 FROM base AS build
 
 # Copy workspace configs
-COPY --from=skeleton /app/.moon/docker/workspace .
+COPY --from=skeleton /app/.moon/docker/configs .
 COPY --from=skeleton /app/patches ./patches
-# Install dependencies
-# ENV MOON_LOG=trace
-# ENV MOON_DEBUG_PROCESS_ENV=true
-RUN moon --version
-RUN moon docker setup
+RUN proto run moon -- docker setup
 
 # Copy project sources
 COPY --from=skeleton /app/.moon/docker/sources .
 
 # Build the project
-RUN moon actions-indexer:build
+RUN proto run moon -- run actions-indexer:build
 
-    # Prune extraneous dependencies
-RUN moon docker prune
+# Prune extraneous dependencies
+RUN proto run moon -- docker prune
 
 #### START STAGE
 #### Runs the project.
-FROM oven/bun AS start
+
+FROM oven/bun:1.2.22 AS start
 WORKDIR /app
 
 COPY --from=build /app .
