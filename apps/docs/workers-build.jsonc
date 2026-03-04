@@ -1,0 +1,23 @@
+{
+	"$schema": "../../packages/cloudflare-build-config/schema/workers-build.schema.json",
+	"scriptName": "zeko-docs",
+	"buildCommand": "curl -fsSL https://d2lang.com/install.sh | sh -s -- &&  export PATH=$HOME/.local/bin:$PATH && ./node_modules/.bin/moon run docs:build",
+	"triggers": [
+		{
+			"name": "Deploy default branch",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks docs:deploy",
+			"branchIncludes": ["main"],
+			"branchExcludes": [],
+			"pathIncludes": ["apps/docs/**", "packages/faucet-cli/README.md"],
+			"pathExcludes": []
+		},
+		{
+			"name": "Deploy non-production branches",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks docs:deploy-preview",
+			"branchIncludes": ["*"],
+			"branchExcludes": ["main"],
+			"pathIncludes": ["apps/docs/**", "packages/faucet-cli/README.md"],
+			"pathExcludes": []
+		}
+	]
+}

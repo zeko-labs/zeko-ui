@@ -1,0 +1,22 @@
+{
+	"$schema": "../../packages/cloudflare-build-config/schema/workers-build.schema.json",
+	"scriptName": "faucet",
+	"triggers": [
+		{
+			"name": "Deploy default branch",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks faucet:deploy",
+			"branchIncludes": ["main"],
+			"branchExcludes": [],
+			"pathIncludes": ["apps/faucet/**"],
+			"pathExcludes": []
+		},
+		{
+			"name": "Deploy non-production branches",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks faucet:deploy-preview",
+			"branchIncludes": ["*"],
+			"branchExcludes": ["main"],
+			"pathIncludes": ["apps/faucet/**"],
+			"pathExcludes": []
+		}
+	]
+}
