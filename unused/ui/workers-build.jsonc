@@ -1,0 +1,23 @@
+{
+	"$schema": "../../packages/cloudflare-build-config/schema/workers-build.schema.json",
+	"enabled": false,
+	"scriptName": "website",
+	"triggers": [
+		{
+			"name": "Deploy default branch",
+			"deployCommand": "pnpm exec wrangler deploy --config unused/ui/wrangler.jsonc",
+			"branchIncludes": ["main"],
+			"branchExcludes": [],
+			"pathIncludes": ["unused/ui/**"],
+			"pathExcludes": []
+		},
+		{
+			"name": "Deploy non-production branches",
+			"deployCommand": "pnpm exec wrangler versions upload --config unused/ui/wrangler.jsonc",
+			"branchIncludes": ["*"],
+			"branchExcludes": ["main"],
+			"pathIncludes": ["unused/ui/**"],
+			"pathExcludes": []
+		}
+	]
+}

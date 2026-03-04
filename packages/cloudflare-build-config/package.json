@@ -1,0 +1,9 @@
+{
+	"name": "@zeko/cloudflare-build-config",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"bin": {
+		"zeko-cloudflare-build-config": "./src/cli.mjs"
+	}
+}
