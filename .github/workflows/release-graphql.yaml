@@ -1,0 +1,51 @@
+name: Release GraphQL
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  version-check:
+    name: Check GraphQL version
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if version is already published
+        id: check
+        run: |
+          VERSION=$(node -p "require('./packages/graphql/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          PUBLISHED=$(npm view @zeko/graphql@"$VERSION" version 2>/dev/null || echo "")
+          if [ -z "$PUBLISHED" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+
+  publish:
+    needs: version-check
+    if: needs.version-check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    name: Publish to npm
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: moon graphql:build
+
+      - name: Publish package
+        working-directory: packages/graphql
+        run: pnpm publish --provenance --access public --no-git-checks

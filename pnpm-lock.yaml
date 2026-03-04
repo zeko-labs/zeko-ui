@@ -236,7 +236,7 @@ importers:
       '@xstate/vue':
         specifier: 'catalog:'
         version: 3.1.4(vue@3.5.22(typescript@5.9.3))(xstate@5.22.0)
-      '@zeko/bridge-sdk':
+      '@zeko-labs/bridge-sdk':
         specifier: workspace:^
         version: link:../../packages/bridge-sdk
       '@zeko/design':
@@ -725,12 +725,12 @@ importers:
       '@elysiajs/eden':
         specifier: catalog:elysia
         version: 1.4.4(elysia@1.4.12(@sinclair/typebox@0.34.41)(exact-mirror@0.2.2(@sinclair/typebox@0.34.41))(file-type@21.0.0)(openapi-types@12.1.3)(typescript@5.9.3))
+      '@zeko-labs/bridge-sdk':
+        specifier: workspace:^
+        version: link:../../../packages/bridge-sdk
       '@zeko/actions-api':
         specifier: workspace:^
         version: link:../api
-      '@zeko/bridge-sdk':
-        specifier: workspace:^
-        version: link:../../../packages/bridge-sdk
       '@zeko/graphql':
         specifier: workspace:^
         version: link:../../../packages/graphql

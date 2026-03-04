@@ -23,3 +23,4 @@
 - T023 | done | investigate-pr-124-review-findings | done/T023-investigate-pr-124-review-findings.md
 - T024 | done | faucet-cli-sync-workspace-deps | done/T024-faucet-cli-sync-workspace-deps.md
 - T025 | done | monorepo-changesets-release | done/T025-monorepo-changesets-release.md
+- T026 | done | open-source-bridge-sdk | done/T026-open-source-bridge-sdk.md

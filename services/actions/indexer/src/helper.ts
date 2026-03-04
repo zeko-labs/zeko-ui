@@ -1,6 +1,6 @@
 import type { innerActions, outerActions } from "@zeko/actions-api"
-import { createGraphqlClient, fromList, pushHash } from "@zeko/bridge-sdk"
 import { fetchActionsQuery, networkStateQuery } from "@zeko/graphql/mina-archive"
+import { createGraphqlClient, fromList, pushHash } from "@zeko-labs/bridge-sdk"
 import { createConsola } from "consola"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { Field } from "o1js"

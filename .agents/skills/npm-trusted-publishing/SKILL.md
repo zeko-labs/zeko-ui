@@ -1,3 +1,8 @@
+---
+name: npm-trusted-publishing
+description: Guide for setting up new publishable npm packages in this monorepo using OIDC trusted publishing with GitHub Actions and npm provenance, without long-lived npm tokens.
+---
+
 # npm Trusted Publishing Setup
 
 Guide for setting up new publishable npm packages in this monorepo using OIDC trusted publishing (no long-lived npm tokens).

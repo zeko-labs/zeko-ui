@@ -45,7 +45,7 @@ jobs:
   # the npm registry and skips if already published.
   #
   # We don't use changesets/action `publish` because some packages
-  # (faucet-cli, bridge-cli) require cross-compilation before npm
+  # (faucet-cli) require cross-compilation before npm
   # publish. Each release workflow handles its own build + publish.
   #
   # To add a new publishable package:
@@ -59,4 +59,32 @@ jobs:
     needs: release
     if: needs.release.outputs.hasChangesets == 'false'
     uses: ./.github/workflows/release-faucet-cli.yaml
+    secrets: inherit
+
+  release-graphql:
+    name: Release GraphQL
+    needs: release
+    if: needs.release.outputs.hasChangesets == 'false'
+    uses: ./.github/workflows/release-graphql.yaml
+    secrets: inherit
+
+  release-bridge-sdk:
+    name: Release Bridge SDK
+    needs: [release, release-graphql]
+    if: needs.release.outputs.hasChangesets == 'false'
+    uses: ./.github/workflows/release-bridge-sdk.yaml
+    secrets: inherit
+
+  sync-graphql:
+    name: Sync GraphQL Mirror
+    needs: [release, release-graphql]
+    if: needs.release.outputs.hasChangesets == 'false'
+    uses: ./.github/workflows/sync-graphql.yaml
+    secrets: inherit
+
+  sync-bridge-sdk:
+    name: Sync Bridge SDK Mirror
+    needs: [release, release-bridge-sdk]
+    if: needs.release.outputs.hasChangesets == 'false'
+    uses: ./.github/workflows/sync-bridge-sdk.yaml
     secrets: inherit

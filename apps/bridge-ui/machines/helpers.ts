@@ -1,6 +1,6 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks } from "@lumina-dex/sdk"
-import type { Bridge } from "@zeko/bridge-sdk"
+import type { Bridge } from "@zeko-labs/bridge-sdk"
 import { type DBSchema, openDB } from "idb"
 import { hash } from "ohash"
 

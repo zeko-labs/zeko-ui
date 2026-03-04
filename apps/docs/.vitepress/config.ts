@@ -91,7 +91,10 @@ export default defineConfig({
 					{
 						text: "Tools",
 						collapsed: true,
-						items: [{ text: "Faucet CLI", link: "/developers/tools/faucet-cli" }]
+						items: [
+							{ text: "Bridge SDK", link: "/developers/tools/bridge-sdk" },
+							{ text: "Faucet CLI", link: "/developers/tools/faucet-cli" }
+						]
 					},
 					{ text: "Examples & Boilerplates", link: "/developers/examples-boilerplates" },
 					{ text: "API Reference", link: "/developers/api-reference" },

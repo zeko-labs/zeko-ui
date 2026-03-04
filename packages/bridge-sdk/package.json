@@ -1,17 +1,19 @@
 {
-	"name": "@zeko/bridge-sdk",
+	"name": "@zeko-labs/bridge-sdk",
 	"version": "1.0.0",
-	"description": "Zeko bridge SDK",
-	"private": true,
+	"description": "Public TypeScript SDK for interacting with the Zeko bridge.",
 	"type": "module",
 	"keywords": ["typescript", "library"],
 	"author": "Martin Ondejka <martin.ondejka@zeko.io>",
 	"contributors": ["Martin Ondejka <martin.ondejka@zeko.io>", "Emmanuel Donnet <emmanuel@zeko.io>"],
 	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	},
 	"files": ["dist"],
 	"repository": {
 		"type": "git",
-		"url": ""
+		"url": "git+https://github.com/zeko-labs/bridge-sdk.git"
 	},
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",

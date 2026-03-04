@@ -11,15 +11,14 @@
 			"@zeko-labs/faucet-cli-linux-arm64",
 			"@zeko-labs/faucet-cli-win32-x64",
 			"@zeko-labs/faucet-cli-win32-arm64"
-		]
+		],
+		["@zeko/graphql", "@zeko-labs/bridge-sdk"]
 	],
 	"linked": [],
 	"access": "public",
 	"baseBranch": "main",
 	"updateInternalDependencies": "patch",
 	"ignore": [
-		"@zeko/bridge-sdk",
-		"@zeko/graphql",
 		"@zeko/design",
 		"@zeko/layer",
 		"@zeko/proxy-handler",
