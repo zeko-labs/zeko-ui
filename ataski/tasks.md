@@ -23,3 +23,10 @@
 - T023 | done | investigate-pr-124-review-findings | done/T023-investigate-pr-124-review-findings.md
 - T024 | done | faucet-cli-sync-workspace-deps | done/T024-faucet-cli-sync-workspace-deps.md
 - T025 | done | monorepo-changesets-release | done/T025-monorepo-changesets-release.md
+- T026 | done | docs-links-test-followup-fix | done/T026-docs-links-test-followup-fix.md
+- T027 | done | resolve-pr-124-main-conflicts | done/T027-resolve-pr-124-main-conflicts.md
+- T028 | done | redeploy-faucet-through-cloudflare-build | done/T028-redeploy-faucet-through-cloudflare-build.md
+- T029 | done | fix-faucet-cli-readme-and-version-regression | done/T029-fix-faucet-cli-readme-and-version-regression.md
+- T030 | done | fix-docs-cloudflare-build-watch-for-faucet-cli-readme | done/T030-fix-docs-cloudflare-build-watch-for-faucet-cli-readme.md
+- T031 | done | finalize-faucet-e2e-release-and-integration-pr | done/T031-finalize-faucet-e2e-release-and-integration-pr.md
+- T032 | done | codify-cloudflare-workers-build-config | done/T032-codify-cloudflare-workers-build-config.md
