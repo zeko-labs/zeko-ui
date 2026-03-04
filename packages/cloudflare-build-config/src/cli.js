@@ -1,9 +1,12 @@
-import { readdir, readFile } from "node:fs/promises"
-import { dirname, join, resolve } from "node:path"
-import process from "node:process"
+// @ts-check
 
-const ACCOUNT_ID = "a12d2915bc16ee8550f19399839623f7"
+import { readdir, readFile } from "node:fs/promises"
+import { join, resolve } from "node:path"
+import process from "node:process"
+import { fileURLToPath } from "node:url"
+
 const CONFIG_BASENAME = "workers-build.jsonc"
+const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url))
 const SEARCH_ROOTS = ["apps", "services", "unused"]
 const SKIP_DIRS = new Set([
 	".git",
@@ -23,6 +26,16 @@ const normalizeStringArray = (value) =>
 
 const arraysEqual = (left, right) =>
 	left.length === right.length && left.every((value, index) => value === right[index])
+
+const getRequiredEnv = (name) => {
+	const value = process.env[name]?.trim()
+
+	if (!value) {
+		throw new Error(`${name} is required.`)
+	}
+
+	return value
+}
 
 const readJsonFile = async (filePath) => {
 	const text = await readFile(filePath, "utf8")
@@ -70,9 +83,9 @@ const readWorkersBuildConfig = async (configPath) => {
 	}
 }
 
-const discoverConfigFiles = async (cwd, explicitPaths) => {
+const discoverConfigFiles = async (explicitPaths) => {
 	if (explicitPaths.length > 0) {
-		return explicitPaths.map((target) => resolve(cwd, target))
+		return explicitPaths.map((target) => resolve(WORKSPACE_ROOT, target))
 	}
 
 	const found = []
@@ -97,14 +110,14 @@ const discoverConfigFiles = async (cwd, explicitPaths) => {
 	}
 
 	for (const root of SEARCH_ROOTS) {
-		await walk(join(cwd, root))
+		await walk(join(WORKSPACE_ROOT, root))
 	}
 
 	return found.sort()
 }
 
-const createClient = (token) => {
-	const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}`
+const createClient = (token, accountId) => {
+	const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}`
 
 	const request = async (path, init = {}) => {
 		const response = await fetch(`${baseUrl}${path}`, {
@@ -234,20 +247,16 @@ const main = async () => {
 	const args = process.argv.slice(2)
 	const dryRun = args.includes("--dry-run")
 	const explicitPaths = args.filter((arg) => arg !== "--dry-run")
-	const token = process.env.CLOUDFLARE_API_TOKEN
+	const token = getRequiredEnv("CLOUDFLARE_API_TOKEN")
+	const accountId = getRequiredEnv("CLOUDFLARE_ACCOUNT_ID")
 
-	if (!token) {
-		throw new Error("CLOUDFLARE_API_TOKEN is required.")
-	}
-
-	const cwd = process.cwd()
-	const configPaths = await discoverConfigFiles(cwd, explicitPaths)
+	const configPaths = await discoverConfigFiles(explicitPaths)
 
 	if (configPaths.length === 0) {
 		throw new Error(`No ${CONFIG_BASENAME} files were found.`)
 	}
 
-	const client = createClient(token)
+	const client = createClient(token, accountId)
 	const projectConfigs = await Promise.all(
 		configPaths.map((configPath) => readWorkersBuildConfig(configPath))
 	)
