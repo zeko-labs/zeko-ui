@@ -1,8 +1,12 @@
+import { readFileSync } from "node:fs"
 import { spawn } from "node:child_process"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
 const BIN = resolve(import.meta.dirname, "../target/release/zeko-faucet")
+const PACKAGE_VERSION = JSON.parse(
+	readFileSync(resolve(import.meta.dirname, "../package.json"), "utf8")
+).version as string
 const VALID_ADDRESS = "B62qpuhMDp748xtE77iBXRRaipJYgs6yumAeTzaM7zS9dn8avLPaeFF"
 
 const run = (...args: string[]) =>
@@ -38,6 +42,12 @@ describe("integration: help and version", () => {
 		const { stdout, exitCode } = await run("--version")
 		expect(exitCode).toBe(0)
 		expect(stdout).toMatch(/\d+\.\d+\.\d+/)
+	})
+
+	it("--version matches the package version", async () => {
+		const { stdout, exitCode } = await run("--version")
+		expect(exitCode).toBe(0)
+		expect(stdout.trim()).toBe(`zeko-faucet ${PACKAGE_VERSION}`)
 	})
 
 	it("claim --help exits 0 and describes the claim command", async () => {
