@@ -141,7 +141,7 @@ async function insertOuter(
 		deffered?: boolean
 	}
 ) {
-	logger.debug(
+	logger.info(
 		`[outer.insert] inserting ${actionsToInsert.length} actions, ${commitToInsert.length} commits, ${witnessToInsert.length} witnesses`
 	)
 	if (deffered) {
@@ -158,7 +158,9 @@ export async function handler(db: PostgresJsDatabase) {
 	const tip = await getNetworkTip(l1Client)
 	const lastFinal = await getLastFinalOuterAction(db)
 	const startBlock = lastFinal?.blockHeight ? lastFinal.blockHeight + 1 : 1
-	logger.info(`[outer.handler] runIndexingLoop: tip=${tip}, startBlock=${startBlock}`)
+	logger.info(
+		`[outer.handler] runIndexingLoop: tip=${tip}, startBlock=${startBlock}, lastFinal=${lastFinal ? `index=${lastFinal.index} block=${lastFinal.blockHeight} canonical=${lastFinal.markedAsCanonicalAt}` : "<none>"}`
+	)
 
 	const outerResult = await handleFork(db, {
 		startBlock,
