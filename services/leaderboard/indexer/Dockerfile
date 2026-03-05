@@ -13,7 +13,7 @@ RUN apt-get update \
 # Install proto
 RUN curl -fsSL https://moonrepo.dev/install/proto.sh | bash -s -- 0.55.3 --yes
 ENV PROTO_HOME="/root/.proto"
-ENV PATH="$PROTO_HOME/bin:$PATH"
+ENV PATH="$PROTO_HOME/bin:$PROTO_HOME/shims:$PATH"
 
 # Install the build toolchain pinned by .prototools.
 # Bun is already provided by the base image at the pinned version.
@@ -21,6 +21,7 @@ RUN proto install --yes moon
 RUN proto install --yes node
 RUN proto install --yes npm
 RUN proto install --yes pnpm
+RUN moon --version
 
 #### SKELETON STAGE
 #### Scaffolds repository skeleton structures.
@@ -29,7 +30,7 @@ FROM base AS skeleton
 
 # Copy entire repository and scaffold
 COPY . .
-RUN proto run moon -- docker scaffold lb-indexer
+RUN moon docker scaffold lb-indexer
 
 #### BUILD STAGE
 #### Builds the project.
@@ -39,16 +40,16 @@ FROM base AS build
 # Copy workspace configs
 COPY --from=skeleton /app/.moon/docker/configs .
 COPY --from=skeleton /app/patches ./patches
-RUN proto run moon -- docker setup
+RUN moon docker setup
 
 # Copy project sources
 COPY --from=skeleton /app/.moon/docker/sources .
 
 # Build the project
-RUN proto run moon -- run lb-indexer:build
+RUN moon run lb-indexer:build
 
 # Prune extraneous dependencies
-RUN proto run moon -- docker prune
+RUN moon docker prune
 
 #### START STAGE
 #### Runs the project.

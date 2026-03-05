@@ -1,4 +1,4 @@
-import { zeko as graphql } from "."
+import { zeko as graphql } from "./clients"
 
 export const fetchConfigQuery = graphql(`
   query FetchConfig {

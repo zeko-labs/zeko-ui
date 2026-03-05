@@ -1,4 +1,4 @@
-import { zekoArchive as graphql } from "."
+import { zekoArchive as graphql } from "./clients"
 
 export const FetchZekoArchiveEvents = graphql(`
 query FetchZekoArchiveEvents($input: EventFilterOptionsInput!) {

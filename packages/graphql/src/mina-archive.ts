@@ -1,4 +1,4 @@
-import { minaArchive as graphql } from "."
+import { minaArchive as graphql } from "./clients"
 
 export const fetchActionsQuery = graphql(`
   query FetchActions($pk: String!, $fromActionState: String, $endActionState: String, $from: Int, $to: Int) {

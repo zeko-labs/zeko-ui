@@ -1,4 +1,4 @@
-import { bridgeIndexer as graphql } from "."
+import { bridgeIndexer as graphql } from "./clients"
 
 export const fetchOuterWitnessesFromAuxesQuery = graphql(`
   query FetchOuterWitnessesFromAuxes($auxes: [String!]!) {

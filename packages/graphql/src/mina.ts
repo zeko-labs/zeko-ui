@@ -1,4 +1,4 @@
-import { mina as graphql } from "."
+import { mina as graphql } from "./clients"
 
 export const genesisConstantsQueryL1 = graphql(`
   query GenesisConstants {
