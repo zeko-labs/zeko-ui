@@ -38,6 +38,26 @@ tasks:
   start:
     command: bun src/index.ts
     preset: server
+  cli:
+    command: bun src/cli.ts
+    inputs:
+      - "@group(sources)"
+  diagnose:
+    command: bun src/cli.ts diagnose
+    inputs:
+      - "@group(sources)"
+  diagnose-health:
+    command: bun src/cli.ts health
+    inputs:
+      - "@group(sources)"
+  diagnose-sync:
+    command: bun src/cli.ts sync
+    inputs:
+      - "@group(sources)"
+  diagnose-resources:
+    command: bun src/cli.ts resources
+    inputs:
+      - "@group(sources)"
   typecheck:
     deps:
       - ^:build

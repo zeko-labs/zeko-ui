@@ -28,7 +28,9 @@
 		"valibot": "catalog:"
 	},
 	"devDependencies": {
+		"@northflank/cli": "^0.10.16",
 		"@types/bun": "catalog:",
+		"citty": "^0.1.6",
 		"gql.tada": "catalog:graphql",
 		"tsdown": "catalog:",
 		"type-fest": "catalog:",

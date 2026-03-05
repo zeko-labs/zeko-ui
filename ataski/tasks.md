@@ -38,4 +38,5 @@
 - T038 | done | migrate-actions-indexer-dockerfile-to-moon-v2-proto-flow | done/T038-migrate-actions-indexer-dockerfile-to-moon-v2.md
 - T039 | done | fix-actions-indexer-typecheck-ci-ordering | done/T039-fix-actions-indexer-typecheck-ci-ordering.md
 - T040 | done | merge-main-and-fix-leaderboard-deploy-and-docker | done/T040-merge-main-and-fix-leaderboard-deploy-and-docker.md
-- T041 | in-progress | fix-actions-api-db-runtime-failures-on-witness-queries | in-progress/T041-fix-actions-api-db-runtime-failures.md
+- T041 | done | fix-actions-api-db-runtime-failures-on-witness-queries | done/T041-fix-actions-api-db-runtime-failures.md
+- T042 | done | add-indexer-diagnostics-cli-and-responsive-health | done/T042-add-indexer-diagnostics-cli-and-responsive-health.md

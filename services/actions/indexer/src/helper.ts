@@ -10,7 +10,7 @@ import type { InnerItem } from "./modules/inner"
 import type { OuterItem } from "./modules/outer"
 
 export const logger = createConsola({
-	level: env.ENVIRONMENT?.toLowerCase() === "local" ? 4 : 3
+	level: 3
 }).withTag("ACTIONS_INDEXER")
 
 export const l1Client = createGraphqlClient(env.L1_ARCHIVE_URL, "l1-archive")
@@ -37,6 +37,12 @@ export interface ArchiveEvent {
 }
 
 const BLOCK_RANGE_SIZE = 10_000
+const HASH_YIELD_EVERY_BLOCKS = 250
+const VALIDATION_YIELD_EVERY_EVENTS = 2_000
+
+async function yieldToEventLoop() {
+	await new Promise((resolve) => setTimeout(resolve, 0))
+}
 
 export async function fetchActions({
 	client,
@@ -65,7 +71,6 @@ export async function fetchActions({
 	while (from <= maxHeight) {
 		// "to" is exclusive, so we add 1 to the maxHeight
 		const to = Math.min(from + BLOCK_RANGE_SIZE, maxHeight + 1)
-		logger.debug(`[fetchActions ${client.label}] querying archive for range ${from}-${to}`)
 		const res = await client().query(fetchActionsQuery, {
 			pk,
 			from: from,
@@ -98,12 +103,12 @@ export async function fetchActions({
 			const lastHash =
 				lastAction?.actionData?.[lastAction.actionData?.length - 1]?.transactionInfo?.hash ??
 				"<no-hash>"
-			logger.debug(
+			logger.info(
 				`[fetchActions ${client.label}] range ${from}-${to} firstHash=${firstHash} lastHash=${lastHash}`
 			)
 		}
 		if (rawActions.length === 0) {
-			logger.debug(
+			logger.info(
 				`[fetchActions ${client.label}] range ${from}-${to} returned 0 actions; continuing to next range`
 			)
 		}
@@ -160,52 +165,59 @@ export async function fetchActions({
 		logger.warn(`[fetchActions ${client.label}] No actions found for fromBlock=${fromBlock}`)
 	logger.info(`[fetchActions ${client.label}] hashing started`)
 	const startHashing = Date.now()
-	const result = output.flatMap(
-		({
+	const result: ArchiveEvent[] = []
+	for (let blockIndex = 0; blockIndex < output.length; blockIndex++) {
+		const {
 			actionState: { actionStateTwo: actionStateBefore, actionStateOne: actionStateAfter },
 			actionData,
 			blockInfo: { timestamp, height, distanceFromMaxBlockHeight }
-		}) => {
-			const actions = actionData.map(({ data, transactionInfo: { hash } }) => ({
-				data: data.map(Field.from),
-				hash
-			}))
-			let actionState = Field.from(actionStateBefore)
+		} = output[blockIndex]
+		const actions = actionData.map(({ data, transactionInfo: { hash } }) => ({
+			data: data.map(Field.from),
+			hash
+		}))
+		let actionState = Field.from(actionStateBefore)
 
-			const correctActions = []
-			for (const action of actions) {
-				const afterActionState = pushHash(actionState, fromList([action.data]).hash)
-				correctActions.push({
-					action: action.data,
-					beforeActionState: actionState,
-					afterActionState,
-					timestamp,
-					hash: action.hash,
-					blockInfo: { timestamp, height, distanceFromMaxBlockHeight }
-				})
-				actionState = afterActionState
-			}
-
-			if (!correctActions.at(-1)?.afterActionState.equals(actionStateAfter).toBoolean()) {
-				throw new Error(
-					`[fetchActions ${client.label}] invalid actions sequence: last action afterActionState=${correctActions.at(-1)?.afterActionState.toString()} !== actionStateAfter=${actionStateAfter.toString()}`
-				)
-			}
-
-			return correctActions
+		const correctActions = []
+		for (const action of actions) {
+			const afterActionState = pushHash(actionState, fromList([action.data]).hash)
+			correctActions.push({
+				action: action.data,
+				beforeActionState: actionState,
+				afterActionState,
+				timestamp,
+				hash: action.hash,
+				blockInfo: { timestamp, height, distanceFromMaxBlockHeight }
+			})
+			actionState = afterActionState
 		}
-	)
+
+		if (!correctActions.at(-1)?.afterActionState.equals(actionStateAfter).toBoolean()) {
+			throw new Error(
+				`[fetchActions ${client.label}] invalid actions sequence: last action afterActionState=${correctActions.at(-1)?.afterActionState.toString()} !== actionStateAfter=${actionStateAfter.toString()}`
+			)
+		}
+
+		result.push(...correctActions)
+
+		if ((blockIndex + 1) % HASH_YIELD_EVERY_BLOCKS === 0) {
+			await yieldToEventLoop()
+		}
+	}
 
 	logger.info(`[fetchActions ${client.label}] hashing took ${Date.now() - startHashing}ms`)
 	logger.info(`[fetchActions ${client.label}] fetched actions length: ${result.length}`)
 
 	for (let i = 0; i < result.length; i++) {
-		const prev = i >= 0 ? result[i - 1] : undefined
+		const prev = i > 0 ? result[i - 1] : undefined
 		const curr = result[i]
 		if (prev && !prev.afterActionState.equals(curr.beforeActionState).toBoolean()) {
 			throw new Error(
 				`[fetchActions ${client.label}] invalid actions sequence: index=${i} prev.afterActionState=${prev?.afterActionState.toString()} !== curr.beforeActionState=${curr.beforeActionState.toString()}`
 			)
+		}
+		if (i > 0 && i % VALIDATION_YIELD_EVERY_EVENTS === 0) {
+			await yieldToEventLoop()
 		}
 	}
 

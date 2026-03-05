@@ -1,11 +1,11 @@
 ---
 id: T041
 title: "Fix actions-api DB runtime failures on witness queries"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-05T12:45:41Z
-updated_at: 2026-03-05T12:49:03Z
+updated_at: 2026-03-05T16:34:50Z
 ---
 
 ## Scope
