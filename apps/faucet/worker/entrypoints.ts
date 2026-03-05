@@ -36,6 +36,9 @@ export default {
 		const env = rawEnv as FaucetRuntimeEnv
 		const url = new URL(request.url)
 
+		if (url.pathname === "/healthcheck" || url.pathname === "/healthcheck/")
+			return new Response("OK", { status: 200 })
+
 		if (url.pathname !== "/claim" && url.pathname !== "/claim/")
 			return jsonError(404, "not_found", "Route not found.")
 

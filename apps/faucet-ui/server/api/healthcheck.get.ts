@@ -1,19 +1,9 @@
 export default defineEventHandler(async (event) => {
-	const auth = event.headers.get("Authorization")
-	const url = import.meta.dev
-		? useRuntimeConfig(event).faucetUrl
-		: await event.context.cloudflare.env.STORE_FAUCET_URL.get()
-	if (!url) return new Response("Service is misconfigured.", { status: 500 })
-	if (auth !== url) return new Response(`Unauthorized header: ${auth}`, { status: 401 })
-	const sequencer = await fetch(
-		"http://testnet.zeko.io/graphql?query=query%20%7B%0A%20%20networkID%0A%7D",
-		{
-			method: "GET",
-			headers: {
-				"Content-Type": "application/json"
-			}
-		}
-	)
-	if (!sequencer.ok) return new Response("The sequencer is not available.", { status: 502 })
+	if (import.meta.dev) return new Response("OK", { status: 200 })
+
+	const { env } = event.context.cloudflare
+	const faucet = await env.FAUCET.fetch(new Request("https://faucet/healthcheck"))
+	if (!faucet.ok) return new Response("The faucet service is not available.", { status: 502 })
+
 	return new Response("OK", { status: 200 })
 })
