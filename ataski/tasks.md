@@ -33,3 +33,9 @@
 - T033 | done | document-cloudflare-build-config-and-automation | done/T033-document-cloudflare-build-config-and-automation.md
 - T034 | done | fix-bridge-ui-deploy-task-entrypoint | done/T034-fix-bridge-ui-deploy-task-entrypoint.md
 - T035 | done | fix-indexer-logging | done/T035-fix-indexer-logging.md
+- T036 | done | fix-handlefork-fork-detection-branch-condition | done/T036-fix-handlefork-fork-detection.md
+- T037 | done | setup-actions-indexer-typecheck-lint-format-tasks | done/T037-setup-actions-indexer-typecheck-lint-format.md
+- T038 | done | migrate-actions-indexer-dockerfile-to-moon-v2-proto-flow | done/T038-migrate-actions-indexer-dockerfile-to-moon-v2.md
+- T039 | done | fix-actions-indexer-typecheck-ci-ordering | done/T039-fix-actions-indexer-typecheck-ci-ordering.md
+- T040 | done | merge-main-and-fix-leaderboard-deploy-and-docker | done/T040-merge-main-and-fix-leaderboard-deploy-and-docker.md
+- T041 | in-progress | fix-actions-api-db-runtime-failures-on-witness-queries | in-progress/T041-fix-actions-api-db-runtime-failures.md
