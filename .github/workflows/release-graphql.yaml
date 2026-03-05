@@ -64,9 +64,4 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
-          PUBLISHED=$(npm view "@zeko/graphql@${VERSION}" version 2>/dev/null || echo "")
-          if [ -n "$PUBLISHED" ]; then
-            echo "@zeko/graphql@${VERSION} already published, skipping."
-          else
-            npm publish "zeko-graphql-${VERSION}.tgz" --access public --loglevel verbose
-          fi
+          npm publish "zeko-graphql-${VERSION}.tgz" --access public --loglevel verbose

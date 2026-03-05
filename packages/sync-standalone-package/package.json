@@ -1,0 +1,19 @@
+{
+	"name": "@zeko/sync-standalone-package",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"files": ["dist"],
+	"bin": {
+		"zeko-sync-standalone-package": "./dist/cli.js"
+	},
+	"exports": {
+		".": "./dist/index.js"
+	},
+	"devDependencies": {
+		"@types/node": "^20.8.10",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

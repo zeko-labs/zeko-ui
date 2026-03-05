@@ -64,9 +64,4 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
-          PUBLISHED=$(npm view "@zeko-labs/bridge-sdk@${VERSION}" version 2>/dev/null || echo "")
-          if [ -n "$PUBLISHED" ]; then
-            echo "@zeko-labs/bridge-sdk@${VERSION} already published, skipping."
-          else
-            npm publish "zeko-labs-bridge-sdk-${VERSION}.tgz" --access public --loglevel verbose
-          fi
+          npm publish "zeko-labs-bridge-sdk-${VERSION}.tgz" --access public --loglevel verbose

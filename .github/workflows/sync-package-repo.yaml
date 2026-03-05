@@ -1,25 +1,35 @@
 name: Sync Package Repo
 
+# Reusable workflow to mirror a monorepo package into a standalone public repo.
+# Inputs define what package folder to export, how to rewrite monorepo-specific
+# dependency metadata, and which repository/branch receives the forced sync.
 on:
   workflow_call:
     inputs:
+      # Relative path to the package in this monorepo (for example packages/graphql).
       package-path:
         required: true
         type: string
+      # Target standalone repository name under the zeko-labs org.
       standalone-repo:
         required: true
         type: string
+      # Project id to write in standalone .moon/workspace.yml.
       project-id:
         required: true
         type: string
+      # Packages stanza to write in standalone pnpm-workspace.yaml.
+      # Accepts newline or comma separated values.
       workspace-packages:
         required: false
         default: "."
         type: string
+      # Extra package.json files (outside package-path) used to resolve workspace: versions.
       extra-workspace-version-sources:
         required: false
         default: ""
         type: string
+      # Branch in the standalone repository to force-update.
       branch:
         required: false
         default: "main"
@@ -62,6 +72,12 @@ jobs:
         with:
           auto-install: true
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build sync tooling package
+        run: pnpm exec moon run sync-standalone-package:build
+
       - name: Create GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -73,7 +89,7 @@ jobs:
 
       - name: Prepare package for standalone sync
         run: |
-          node scripts/sync-standalone-package.mjs \
+          node packages/sync-standalone-package/dist/cli.js \
             --package-dir "${{ inputs.package-path }}" \
             --project-id "${{ inputs.project-id }}" \
             --workspace-packages "${{ inputs.workspace-packages }}" \
@@ -92,6 +108,7 @@ jobs:
           cd "$tmp"
           git add -A
           git config user.name "github-actions[bot]"
+          # 41898282 is the immutable GitHub user id for github-actions[bot].
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: sync from monorepo (${COMMIT_SHA})"
           git push --force "$REMOTE_URL" "HEAD:${{ inputs.branch }}"

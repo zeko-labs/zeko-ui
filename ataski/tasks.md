@@ -31,3 +31,4 @@
 - T031 | done | finalize-faucet-e2e-release-and-integration-pr | done/T031-finalize-faucet-e2e-release-and-integration-pr.md
 - T032 | done | codify-cloudflare-workers-build-config | done/T032-codify-cloudflare-workers-build-config.md
 - T033 | done | open-source-bridge-sdk | done/T033-open-source-bridge-sdk.md
+- T034 | done | release-sync-hardening | done/T034-release-sync-hardening.md
