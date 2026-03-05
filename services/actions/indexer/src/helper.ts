@@ -48,7 +48,7 @@ export async function fetchActions({
 	pk: string
 }): Promise<ArchiveEvent[]> {
 	logger.info(`[fetchActions ${client.label}] starting fetch; fromBlock=${fromBlock ?? "latest"}`)
-	logger.debug(`[fetchActions ${client.label}] using ${pk}`)
+	logger.info(`[fetchActions ${client.label}] using pk=${pk.slice(0, 12)}...`)
 	// Ensure we fetch in batches from 'from' to tip
 	const start = fromBlock ?? 1
 	const maxHeight = await getNetworkTip(client)
@@ -253,7 +253,14 @@ export async function handleFork<
 	}
 ) {
 	const fetchedActions = await fetchActions(startBlock)
+	logger.info(
+		`[handleFork] fetched ${fetchedActions.data.length} actions (lastFetchedBlock=${fetchedActions.lastFetchedBlock})`
+	)
+
 	const dbActions = await getDbActions(db, startBlock)
+	logger.info(
+		`[handleFork] dbActions=${dbActions.length}, fetchedActions=${fetchedActions.data.length}, lastFinalIndex=${lastFinalIndex}`
+	)
 
 	let currentIndex = lastFinalIndex
 	let forkAtIndex = null
@@ -271,25 +278,32 @@ export async function handleFork<
 			forkAtIndex = currentIndex
 		}
 
-		if (forkAtIndex || !dbItem) {
+		if (forkAtIndex !== null || !dbItem) {
 			insertFromIndex = i
 			break
 		}
 	}
 
+	const newActionsCount = insertFromIndex != null ? fetchedActions.data.length - insertFromIndex : 0
+	logger.info(
+		`[handleFork] comparison done: insertFromIndex=${insertFromIndex ?? "null"}, forkAtIndex=${forkAtIndex ?? "null"}, newActionsToInsert=${newActionsCount}, currentIndex=${currentIndex}`
+	)
+
 	const data = build(fetchedActions.data.slice(insertFromIndex ?? Number.MAX_VALUE), currentIndex)
 
-	if (forkAtIndex) {
-		// Rollback DB to the detected fork
+	if (forkAtIndex !== null) {
+		logger.info(`[handleFork] rolling back from fork at index ${forkAtIndex} and re-inserting`)
 		await db.transaction(async (tx) => {
 			await deleteFromIndex(tx, forkAtIndex)
 			await insert(tx, data)
 		})
-	} else {
-		// Insert new events normally (ensure parent action rows are inserted before their children)
+	} else if (newActionsCount > 0) {
+		logger.info(`[handleFork] inserting ${newActionsCount} new actions`)
 		await db.transaction(async (tx) => {
 			await insert(tx, data)
 		})
+	} else {
+		logger.info("[handleFork] no new actions to insert, skipping")
 	}
 
 	return fetchedActions

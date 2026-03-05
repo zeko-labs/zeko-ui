@@ -98,7 +98,7 @@ async function insertInner(
 		deffered?: boolean
 	}
 ) {
-	logger.debug(`[inner.insert] inserting ${actionsToInsert.length} actions`)
+	logger.info(`[inner.insert] inserting ${actionsToInsert.length} actions`)
 	if (deffered) {
 		await db.execute(sql`SET CONSTRAINTS ALL DEFERRED;`)
 	}
@@ -110,7 +110,9 @@ export async function handler(db: PostgresJsDatabase) {
 	const tip = await getNetworkTip(l2Client)
 	const lastFinal = await getLastFinalInnerAction(db)
 	const startBlock = lastFinal?.blockHeight ? lastFinal.blockHeight + 1 : 1
-	logger.info(`[inner.handler] runIndexingLoop: tip=${tip}, startBlock=${startBlock}`)
+	logger.info(
+		`[inner.handler] runIndexingLoop: tip=${tip}, startBlock=${startBlock}, lastFinal=${lastFinal ? `index=${lastFinal.index} block=${lastFinal.blockHeight} canonical=${lastFinal.markedAsCanonicalAt}` : "<none>"}`
+	)
 
 	const innerResult = await handleFork(db, {
 		startBlock,

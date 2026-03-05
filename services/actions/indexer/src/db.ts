@@ -11,7 +11,7 @@ export function createDatabase(connectionString?: string): PostgresJsDatabase {
 	const str =
 		connectionString ?? env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5434/actions"
 	const client = postgres(str, { max: 5 })
-	return drizzle(client)
+	return drizzle({ client })
 }
 
 export function createTestDatabase(connectionString?: string) {
@@ -25,7 +25,7 @@ export function createTestDatabase(connectionString?: string) {
 		)
 	}
 	const client = postgres(str, { max: 5 })
-	const db = drizzle(client)
+	const db = drizzle({ client })
 	return {
 		db,
 		async clean() {
@@ -54,10 +54,17 @@ export async function batchInsert<TTable extends AnyPgTable>({
 	values: InferInsertModel<TTable>[]
 	chunkSize?: number
 }): Promise<void> {
+	const totalChunks = Math.ceil(values.length / chunkSize)
+	logger.info(
+		`[batchInsert] inserting ${values.length} rows in ${totalChunks} chunks (chunkSize=${chunkSize})`
+	)
 	for (let i = 0; i < values.length; i += chunkSize) {
 		const chunk = values.slice(i, i + chunkSize)
+		const chunkNum = Math.floor(i / chunkSize) + 1
+		logger.info(`[batchInsert] chunk ${chunkNum}/${totalChunks} (${chunk.length} rows)`)
 		await db.insert(table).values(chunk).onConflictDoNothing()
 	}
+	logger.info(`[batchInsert] done inserting ${values.length} rows`)
 }
 
 export async function clearAllTables(tx: PostgresJsDatabase) {
@@ -68,7 +75,7 @@ export async function clearAllTables(tx: PostgresJsDatabase) {
 }
 
 export async function getLastFinalOuterAction(db: PostgresJsDatabase) {
-	logger.debug("[getLastFinalOuterAction] querying")
+	logger.info("[getLastFinalOuterAction] querying")
 	const result = await db
 		.select()
 		.from(outerActions)
@@ -77,12 +84,14 @@ export async function getLastFinalOuterAction(db: PostgresJsDatabase) {
 		.limit(1)
 
 	const action = result.at(0) ?? null
-	logger.debug(`[getLastFinalOuterAction] got action: ${action?.afterState ?? "<none>"}`)
+	logger.info(
+		`[getLastFinalOuterAction] result: ${action ? `index=${action.index} blockHeight=${action.blockHeight} afterState=${action.afterState}` : "<none>"}`
+	)
 	return action
 }
 
 export async function getLastFinalInnerAction(db: PostgresJsDatabase) {
-	logger.debug("[getLastFinalInnerAction] querying")
+	logger.info("[getLastFinalInnerAction] querying")
 	const result = await db
 		.select()
 		.from(innerActions)
@@ -91,39 +100,47 @@ export async function getLastFinalInnerAction(db: PostgresJsDatabase) {
 		.limit(1)
 
 	const action = result.at(0) ?? null
-	logger.debug(`[getLastFinalInnerAction] got action: ${action?.afterState ?? "<none>"}`)
+	logger.info(
+		`[getLastFinalInnerAction] result: ${action ? `index=${action.index} blockHeight=${action.blockHeight} afterState=${action.afterState}` : "<none>"}`
+	)
 	return action
 }
 
 export async function getOuterActionsFromBlock(db: PostgresJsDatabase, startBlock: number) {
-	logger.debug(`[getOuterActionsFromBlock] querying block >= ${startBlock}`)
+	logger.info(`[getOuterActionsFromBlock] querying block >= ${startBlock}`)
+	const start = performance.now()
 	const actionsList = await db
 		.select()
 		.from(outerActions)
 		.where(sql`${outerActions.blockHeight} >= ${startBlock}`)
 		.orderBy(outerActions.index)
-	logger.debug(`[getOuterActionsFromBlock] got ${actionsList.length} rows`)
+	logger.info(
+		`[getOuterActionsFromBlock] got ${actionsList.length} rows (${Math.round(performance.now() - start)}ms)`
+	)
 	return actionsList
 }
 
 export async function getInnerActionsFromBlock(db: PostgresJsDatabase, startBlock: number) {
-	logger.debug(`[getInnerActionsFromBlock] querying block >= ${startBlock}`)
+	logger.info(`[getInnerActionsFromBlock] querying block >= ${startBlock}`)
+	const start = performance.now()
 	const actionsList = await db
 		.select()
 		.from(innerActions)
 		.where(sql`${innerActions.blockHeight} >= ${startBlock}`)
 		.orderBy(innerActions.index)
-	logger.debug(`[getInnerActionsFromBlock] got ${actionsList.length} rows`)
+	logger.info(
+		`[getInnerActionsFromBlock] got ${actionsList.length} rows (${Math.round(performance.now() - start)}ms)`
+	)
 	return actionsList
 }
 
 export async function deleteOuterActionsFromIndex(tx: PostgresJsDatabase, index: number) {
-	logger.debug(`[deleteOuterActionsFromIndex] deleting from index >= ${index}`)
+	logger.info(`[deleteOuterActionsFromIndex] deleting from index >= ${index}`)
 	await tx.delete(outerActions).where(sql`${outerActions.index} >= ${index}`)
 }
 
 export async function deleteInnerActionsFromIndex(tx: PostgresJsDatabase, index: number) {
-	logger.debug(`[deleteInnerActionsFromIndex] deleting from index >= ${index}`)
+	logger.info(`[deleteInnerActionsFromIndex] deleting from index >= ${index}`)
 	await tx.delete(innerActions).where(sql`${innerActions.index} >= ${index}`)
 }
 

@@ -5,17 +5,25 @@ stack: backend
 fileGroups:
   sources:
     - src/**/*
+    - scripts/**/*
     - moon.yml
     - package.json
-    - tsdown.config.ts
+    - tsconfig.json
   tests:
     - test/**/*
-    - vitest.config.ts
 dependsOn:
   - actions-api
   - graphql
   - bridge-sdk
 tasks:
+  format:
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  format-fix:
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
   dev:
     command: bun --watch src/index.ts
     preset: server
@@ -30,6 +38,13 @@ tasks:
   start:
     command: bun src/index.ts
     preset: server
+  typecheck:
+    deps:
+      - ^:build
+    command: tsc --noEmit -p tsconfig.json
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
   lint:
     command: biome check --formatter-enabled=false
     inputs:

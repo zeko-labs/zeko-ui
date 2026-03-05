@@ -2,7 +2,7 @@ import { commitActions, witnessActions } from "@zeko/actions-api"
 import { emptyActionsList } from "@zeko-labs/bridge-sdk"
 import { sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { outerActions } from "services/actions/api/drizzle/schema"
+import { outerActions } from "../../../api/drizzle/schema"
 import {
 	batchInsert,
 	type CommitInsert,
@@ -21,7 +21,7 @@ import { fetchActions, getNetworkTip, handleFork, l1Client, logger } from "../he
  * Handler for fetching outer actions (deposits) from the L1 archive.
  */
 
-async function fetch({ startBlock }: { startBlock: number }) {
+export async function fetch({ startBlock }: { startBlock: number }) {
 	logger.info(`[outer.fetch] Fetching from ${startBlock}`)
 
 	const actions = await fetchActions({
@@ -141,7 +141,7 @@ async function insertOuter(
 		deffered?: boolean
 	}
 ) {
-	logger.debug(
+	logger.info(
 		`[outer.insert] inserting ${actionsToInsert.length} actions, ${commitToInsert.length} commits, ${witnessToInsert.length} witnesses`
 	)
 	if (deffered) {
@@ -158,7 +158,9 @@ export async function handler(db: PostgresJsDatabase) {
 	const tip = await getNetworkTip(l1Client)
 	const lastFinal = await getLastFinalOuterAction(db)
 	const startBlock = lastFinal?.blockHeight ? lastFinal.blockHeight + 1 : 1
-	logger.info(`[outer.handler] runIndexingLoop: tip=${tip}, startBlock=${startBlock}`)
+	logger.info(
+		`[outer.handler] runIndexingLoop: tip=${tip}, startBlock=${startBlock}, lastFinal=${lastFinal ? `index=${lastFinal.index} block=${lastFinal.blockHeight} canonical=${lastFinal.markedAsCanonicalAt}` : "<none>"}`
+	)
 
 	const outerResult = await handleFork(db, {
 		startBlock,
