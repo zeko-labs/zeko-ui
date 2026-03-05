@@ -20,21 +20,17 @@ const clearDb = async (db: ReturnType<Database>["drizzle"]) => {
 	await db.delete(innerActions)
 }
 
+const testDatabaseUrl =
+	process.env.ACTIONS_API_TEST_DATABASE_URL ??
+	"postgresql://postgres:postgres@localhost:5434/actions"
+
 describe("Actions API - schema queries", () => {
 	let client: Sql
 	let db: ReturnType<Database>["drizzle"]
 	let testDb: ReturnType<Database>
 
 	beforeAll(async () => {
-		client = postgres({
-			host: "127.0.0.1",
-			port: 5434,
-			database: "actions",
-			username: "postgres",
-			password: "postgres",
-			max: 1,
-			fetch_types: false
-		})
+		client = postgres(testDatabaseUrl, { max: 1, fetch_types: false })
 		db = drizzle({ client, logger: false })
 		testDb = { drizzle: db, client } as ReturnType<Database>
 		await clearDb(db)

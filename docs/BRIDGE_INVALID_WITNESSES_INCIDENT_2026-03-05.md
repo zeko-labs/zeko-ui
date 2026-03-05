@@ -162,7 +162,7 @@ From live logs and source mapping:
 
 ### 2026-03-05T13:05Z (Manual Live E2E Re-run)
 
-- Executed `ACTIONS_API_TEST_MODE=e2e moon run actions-api:manual-test` after fixing runtime skip gating in the live e2e test.
+- Executed `moon run actions-api:manual-e2e-live` after fixing runtime skip gating in the live e2e test.
 - Result:
   - `GET https://api.actions.zeko.io/health` failed with HTTP `503`
   - Response body: `database.status=down`, error `Failed query: SELECT 1`
