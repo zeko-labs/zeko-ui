@@ -1,10 +1,10 @@
 # Faucet CLI
 
-> **Public mirror** — This repository is automatically synced from a private monorepo. Development happens in the monorepo; this repo is a read-only source mirror. See [zeko-labs/faucet-cli](https://github.com/zeko-labs/faucet-cli) for issues and releases.
-
 Command-line client for the Zeko testnet faucet. Claim testnet tokens and verify your GitHub authentication from the terminal.
 
 Written in Rust for fast startup and single-binary distribution. Distributed via npm with platform-specific packages.
+
+The CLI is maintained in the private Zeko monorepo and mirrored to [zeko-labs/faucet-cli](https://github.com/zeko-labs/faucet-cli) for issues and releases.
 
 ## Installation
 
@@ -17,7 +17,7 @@ npm install -g @zeko-labs/faucet-cli
 Or run without installing via `npx`:
 
 ```bash
-npx @zeko-labs/faucet-cli whoami
+GITHUB_TOKEN=ghp_xxx npx -y @zeko-labs/faucet-cli whoami
 ```
 
 ### Supported platforms
@@ -36,7 +36,7 @@ The correct platform package is installed automatically via `optionalDependencie
 ## Authentication
 
 Every command requires a **GitHub personal access token** (classic or fine-grained).
-The CLI resolves the token in this order:
+Each command accepts the token in this order:
 
 1. `--token <value>` flag (highest priority)
 2. `GITHUB_TOKEN` environment variable
@@ -57,9 +57,9 @@ zeko-faucet whoami
 Verify your GitHub token and display the associated account.
 
 ```bash
-zeko-faucet whoami
+GITHUB_TOKEN=ghp_xxx zeko-faucet whoami
 zeko-faucet whoami --token ghp_xxx
-zeko-faucet whoami --json
+GITHUB_TOKEN=ghp_xxx zeko-faucet whoami --json
 ```
 
 **Example output:**
@@ -77,9 +77,9 @@ Token source: env
 Submit a faucet claim for the given Mina address on the `zeko-testnet` chain.
 
 ```bash
-zeko-faucet claim B62qexample
+GITHUB_TOKEN=ghp_xxx zeko-faucet claim B62qexample
 zeko-faucet claim B62qexample --token ghp_xxx
-zeko-faucet claim B62qexample --json
+GITHUB_TOKEN=ghp_xxx zeko-faucet claim B62qexample --json
 ```
 
 **Example output:**
@@ -92,7 +92,9 @@ Transaction: 5Jtxxx
 Explorer: https://zekoscan.io/devnet/tx/5Jtxxx
 ```
 
-## Global Flags
+## Command Options
+
+Both `whoami` and `claim` support the same options:
 
 | Flag      | Description                                             |
 | --------- | ------------------------------------------------------- |
@@ -155,14 +157,14 @@ Requires [Rust](https://rustup.rs/) and [pnpm](https://pnpm.io/).
 
 ```bash
 # Build
-moon faucet-cli:build
+moon run faucet-cli:build
 
 # Run integration tests
-moon faucet-cli:test
+moon run faucet-cli:test
 
 # Lint
-moon faucet-cli:lint
+moon run faucet-cli:lint
 
 # Check (fast compile check)
-moon faucet-cli:check
+moon run faucet-cli:check
 ```

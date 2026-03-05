@@ -555,6 +555,12 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
+  packages/cloudflare-build-config:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.8.10
+        version: 20.19.9
+
   packages/design:
     dependencies:
       '@hebilicious/cssforge':

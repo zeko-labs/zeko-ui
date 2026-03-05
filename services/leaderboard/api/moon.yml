@@ -43,6 +43,11 @@ tasks:
       - wrangler.jsonc
     outputs:
       - worker-configuration.d.ts
+  publish-cf-build-config:
+    description: Publish the checked-in Cloudflare Workers Build config for this project.
+    script: pnpm exec moon run cloudflare-build-config:sync -- services/leaderboard/api/workers-build.jsonc
+    options:
+      cache: false
   db-generate:
     description: Generate migrations files after a schema change.
     command: drizzle-kit generate

@@ -1,0 +1,71 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Zeko Cloudflare Workers Build Config",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"$schema": {
+			"type": "string"
+		},
+		"scriptName": {
+			"type": "string"
+		},
+		"enabled": {
+			"type": "boolean"
+		},
+		"buildCommand": {
+			"type": "string"
+		},
+		"rootDirectory": {
+			"type": "string"
+		},
+		"triggers": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"buildCommand": {
+						"type": "string"
+					},
+					"deployCommand": {
+						"type": "string"
+					},
+					"rootDirectory": {
+						"type": "string"
+					},
+					"branchIncludes": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"branchExcludes": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"pathIncludes": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"pathExcludes": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				},
+				"required": ["name", "deployCommand", "branchIncludes", "pathIncludes"]
+			}
+		}
+	},
+	"required": ["triggers"]
+}

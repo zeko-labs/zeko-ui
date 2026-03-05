@@ -1,0 +1,36 @@
+id: cloudflare-build-config
+layer: tool
+fileGroups:
+  src:
+    - src/**/*
+    - schema/**/*
+    - README.md
+    - moon.yml
+    - package.json
+tasks:
+  format:
+    inputs:
+      - "@group(src)"
+  format-fix:
+    inputs:
+      - "@group(src)"
+  lint:
+    command: biome check --formatter-enabled=false src/cli.js
+    inputs:
+      - "@group(src)"
+  lint-fix:
+    command: biome check --formatter-enabled=false --write src/cli.js
+    inputs:
+      - "@group(src)"
+  typecheck:
+    command: tsc --allowJs --checkJs --noEmit --types node --module nodenext --moduleResolution nodenext src/cli.js
+    inputs:
+      - "@group(src)"
+  sync:
+    command: node src/cli.js
+    options:
+      cache: false
+  sync-dry-run:
+    command: node src/cli.js --dry-run
+    options:
+      cache: false

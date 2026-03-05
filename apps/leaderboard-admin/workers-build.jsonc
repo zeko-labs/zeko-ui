@@ -1,0 +1,22 @@
+{
+	"$schema": "../../packages/cloudflare-build-config/schema/workers-build.schema.json",
+	"scriptName": "leaderboard-admin-ui",
+	"triggers": [
+		{
+			"name": "Deploy default branch",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks lb-admin:deploy",
+			"branchIncludes": ["main"],
+			"branchExcludes": [],
+			"pathIncludes": ["apps/leaderboard-admin/**"],
+			"pathExcludes": []
+		},
+		{
+			"name": "Deploy non-production branches",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks lb-admin:deploy-preview",
+			"branchIncludes": ["*"],
+			"branchExcludes": ["main"],
+			"pathIncludes": ["apps/leaderboard-admin/**"],
+			"pathExcludes": []
+		}
+	]
+}
