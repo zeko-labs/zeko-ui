@@ -1,3 +1,5 @@
+import { spawn } from "node:child_process"
+
 export interface NorthflankMetricsInput {
 	projectId: string
 	serviceId: string
@@ -85,16 +87,29 @@ export async function runNorthflankResources({
 }: NorthflankMetricsInput & { northflankExecutable?: string }): Promise<NorthflankResourcesResult> {
 	const metricsArgs = buildNorthflankMetricsArgs({ projectId, serviceId, durationSeconds })
 	const command = ["pnpm", "exec", northflankExecutable, ...metricsArgs]
+	const process = spawn(command[0], command.slice(1), { stdio: ["ignore", "pipe", "pipe"] })
+	const [stdout, stderr, exitCode] = await new Promise<[string, string, number]>(
+		(resolve, reject) => {
+			let stdoutBuffer = ""
+			let stderrBuffer = ""
 
-	const process = Bun.spawn(command, {
-		stdout: "pipe",
-		stderr: "pipe"
-	})
-	const [stdout, stderr, exitCode] = await Promise.all([
-		new Response(process.stdout).text(),
-		new Response(process.stderr).text(),
-		process.exited
-	])
+			process.stdout.on("data", (chunk: Buffer | string) => {
+				stdoutBuffer += chunk.toString()
+			})
+
+			process.stderr.on("data", (chunk: Buffer | string) => {
+				stderrBuffer += chunk.toString()
+			})
+
+			process.on("error", (error) => {
+				reject(error)
+			})
+
+			process.on("close", (code) => {
+				resolve([stdoutBuffer, stderrBuffer, code ?? 1])
+			})
+		}
+	)
 
 	if (exitCode !== 0) {
 		throw new Error(

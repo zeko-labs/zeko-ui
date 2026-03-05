@@ -40,3 +40,5 @@
 - T040 | done | merge-main-and-fix-leaderboard-deploy-and-docker | done/T040-merge-main-and-fix-leaderboard-deploy-and-docker.md
 - T041 | done | fix-actions-api-db-runtime-failures-on-witness-queries | done/T041-fix-actions-api-db-runtime-failures.md
 - T042 | done | add-indexer-diagnostics-cli-and-responsive-health | done/T042-add-indexer-diagnostics-cli-and-responsive-health.md
+- T043 | done | benchmark-and-optimize-indexer-hotpath | done/T043-benchmark-and-optimize-indexer-hotpath.md
+- T044 | done | rename-hotpath-and-finalize-performance-mode | done/T044-rename-hotpath-and-finalize-performance-mode.md

@@ -1,4 +1,6 @@
 import { defineCommand, runMain } from "citty"
+import { runActionProcessingBench } from "./action-processing/bench"
+import { runActionProcessingStress } from "./action-processing/stress"
 import { runHealthCheck, runSyncCheck } from "./cli/checks"
 import { runNorthflankResources } from "./cli/resources"
 
@@ -17,6 +19,47 @@ const readFlagValue = (flag: string): string | undefined => {
 	const index = process.argv.indexOf(flag)
 	if (index === -1) return undefined
 	return process.argv[index + 1]
+}
+
+const readNumericArg = ({
+	args,
+	camelCase,
+	kebabCase,
+	fallback
+}: {
+	args: Record<string, unknown>
+	camelCase: string
+	kebabCase: string
+	fallback: number
+}): number =>
+	asNumber(
+		readFlagValue(`--${kebabCase}`) ??
+			readFlagValue(`--${camelCase}`) ??
+			pickArg(args, camelCase, kebabCase),
+		fallback
+	)
+
+const readBooleanArg = ({
+	args,
+	camelCase,
+	kebabCase,
+	fallback
+}: {
+	args: Record<string, unknown>
+	camelCase: string
+	kebabCase: string
+	fallback: boolean
+}): boolean => {
+	const raw =
+		readFlagValue(`--${kebabCase}`) ??
+		readFlagValue(`--${camelCase}`) ??
+		pickArg(args, camelCase, kebabCase)
+	if (raw == null) return fallback
+	if (typeof raw === "boolean") return raw
+	if (typeof raw === "string") {
+		return raw === "true" || raw === "1"
+	}
+	return fallback
 }
 
 const printOutput = ({ json, table }: { json: boolean; table: Record<string, unknown>[] }) => {
@@ -145,6 +188,122 @@ const runDiagnoseFromArgs = async (args: Record<string, unknown>) => {
 	await runHealthFromArgs(args)
 	await runSyncFromArgs(args)
 	await runResourcesFromArgs(args)
+}
+
+const runActionProcessingBenchFromArgs = async (args: Record<string, unknown>) => {
+	const result = await runActionProcessingBench({
+		blockCount: readNumericArg({
+			args,
+			camelCase: "blockCount",
+			kebabCase: "block-count",
+			fallback: 120
+		}),
+		actionsPerBlock: readNumericArg({
+			args,
+			camelCase: "actionsPerBlock",
+			kebabCase: "actions-per-block",
+			fallback: 12
+		}),
+		fieldsPerAction: readNumericArg({
+			args,
+			camelCase: "fieldsPerAction",
+			kebabCase: "fields-per-action",
+			fallback: 6
+		}),
+		iterations: readNumericArg({
+			args,
+			camelCase: "iterations",
+			kebabCase: "iterations",
+			fallback: 2
+		}),
+		workerThreads:
+			readNumericArg({
+				args,
+				camelCase: "workerThreads",
+				kebabCase: "worker-threads",
+				fallback: 0
+			}) || undefined,
+		strictWorker: true
+	})
+
+	printOutput({
+		json: Boolean(args.json),
+		table: [
+			{
+				check: "action-processing-bench",
+				eventsPerRun: result.workload.eventsPerRun,
+				iterations: result.workload.iterations,
+				bottleneck: result.bottleneck,
+				workerThreadsRequested: result.workerThreadsRequested,
+				workerFallbackCount: result.workerFallbackCount,
+				mainAvgMs: result.main.avgMs,
+				workerAvgMs: result.worker.avgMs,
+				workerSpeedup: result.workerSpeedup
+			}
+		]
+	})
+}
+
+const runActionProcessingStressFromArgs = async (args: Record<string, unknown>) => {
+	const result = await runActionProcessingStress({
+		durationSeconds: readNumericArg({
+			args,
+			camelCase: "durationSeconds",
+			kebabCase: "duration-seconds",
+			fallback: 5
+		}),
+		blockCount: readNumericArg({
+			args,
+			camelCase: "blockCount",
+			kebabCase: "block-count",
+			fallback: 80
+		}),
+		actionsPerBlock: readNumericArg({
+			args,
+			camelCase: "actionsPerBlock",
+			kebabCase: "actions-per-block",
+			fallback: 8
+		}),
+		fieldsPerAction: readNumericArg({
+			args,
+			camelCase: "fieldsPerAction",
+			kebabCase: "fields-per-action",
+			fallback: 6
+		}),
+		preferWorker: readBooleanArg({
+			args,
+			camelCase: "preferWorker",
+			kebabCase: "prefer-worker",
+			fallback: true
+		}),
+		workerThreads:
+			readNumericArg({
+				args,
+				camelCase: "workerThreads",
+				kebabCase: "worker-threads",
+				fallback: 0
+			}) || undefined,
+		strictWorker: true
+	})
+
+	printOutput({
+		json: Boolean(args.json),
+		table: [
+			{
+				check: "action-processing-stress",
+				runs: result.runs,
+				workerThreadsRequested: result.workerThreadsRequested,
+				workerRuns: result.strategy.workerRuns,
+				mainRuns: result.strategy.mainRuns,
+				avgRunMs: result.avgRunMs,
+				p95RunMs: result.p95RunMs,
+				maxRunMs: result.maxRunMs,
+				eventLoopLagMeanMs: result.eventLoopLagMs.mean,
+				eventLoopLagP95Ms: result.eventLoopLagMs.p95,
+				eventLoopLagMaxMs: result.eventLoopLagMs.max
+			}
+		]
+	})
 }
 
 const command = defineCommand({
@@ -321,6 +480,89 @@ const command = defineCommand({
 				}
 			},
 			run: async ({ args }) => runDiagnoseFromArgs(args as Record<string, unknown>)
+		},
+		"action-processing-bench": {
+			meta: {
+				name: "action-processing-bench",
+				description: "Benchmark the indexer action-processing workload"
+			},
+			args: {
+				blockCount: {
+					type: "string",
+					description: "Number of synthetic blocks",
+					default: "120"
+				},
+				actionsPerBlock: {
+					type: "string",
+					description: "Actions per synthetic block",
+					default: "12"
+				},
+				fieldsPerAction: {
+					type: "string",
+					description: "Field count per action payload",
+					default: "6"
+				},
+				iterations: {
+					type: "string",
+					description: "Benchmark iterations",
+					default: "2"
+				},
+				workerThreads: {
+					type: "string",
+					description: "Worker thread count (0 = auto)",
+					default: "0"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runActionProcessingBenchFromArgs(args as Record<string, unknown>)
+		},
+		"action-processing-stress": {
+			meta: {
+				name: "action-processing-stress",
+				description: "Stress test the indexer action-processing workload"
+			},
+			args: {
+				durationSeconds: {
+					type: "string",
+					description: "Stress duration in seconds",
+					default: "5"
+				},
+				blockCount: {
+					type: "string",
+					description: "Number of synthetic blocks",
+					default: "80"
+				},
+				actionsPerBlock: {
+					type: "string",
+					description: "Actions per synthetic block",
+					default: "8"
+				},
+				fieldsPerAction: {
+					type: "string",
+					description: "Field count per action payload",
+					default: "6"
+				},
+				preferWorker: {
+					type: "boolean",
+					description: "Use worker execution path",
+					default: true
+				},
+				workerThreads: {
+					type: "string",
+					description: "Worker thread count (0 = auto)",
+					default: "0"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runActionProcessingStressFromArgs(args as Record<string, unknown>)
 		}
 	}
 })

@@ -7,7 +7,8 @@
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": "./dist/index.js",
-		"./module": "./dist/module.js",
+		"./action-processing-process": "./dist/action-processing-process.js",
+		"./cli": "./dist/cli.js",
 		"./*": "./*"
 	},
 	"dependencies": {
@@ -29,7 +30,7 @@
 	},
 	"devDependencies": {
 		"@northflank/cli": "^0.10.16",
-		"@types/bun": "catalog:",
+		"@types/node": "^20.8.10",
 		"citty": "^0.1.6",
 		"gql.tada": "catalog:graphql",
 		"tsdown": "catalog:",

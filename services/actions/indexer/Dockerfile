@@ -1,7 +1,7 @@
 #### BASE STAGE
 #### Installs proto and the pinned toolchain from .prototools.
 
-FROM oven/bun:1.2.22 AS base
+FROM node:22-bookworm-slim AS base
 WORKDIR /app
 
 COPY .prototools ./.prototools
@@ -16,7 +16,6 @@ ENV PROTO_HOME="/root/.proto"
 ENV PATH="$PROTO_HOME/bin:$PROTO_HOME/shims:$PATH"
 
 # Install the build toolchain pinned by .prototools.
-# Bun is already provided by the base image at the pinned version.
 RUN proto install --yes moon
 RUN proto install --yes node
 RUN proto install --yes npm
@@ -54,10 +53,10 @@ RUN moon docker prune
 #### START STAGE
 #### Runs the project.
 
-FROM oven/bun:1.2.22 AS start
+FROM node:22-bookworm-slim AS start
 WORKDIR /app
 
 COPY --from=build /app .
 EXPOSE 3000
 ENV NODE_ENV=production
-CMD ["bun", "./services/actions/indexer/dist/index.js"]
+CMD ["node", "./services/actions/indexer/dist/index.js"]

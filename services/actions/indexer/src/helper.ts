@@ -1,13 +1,16 @@
 import type { innerActions, outerActions } from "@zeko/actions-api"
-import { createGraphqlClient, fromList, pushHash } from "@zeko/bridge-sdk"
+import { createGraphqlClient } from "@zeko/bridge-sdk"
 import { fetchActionsQuery, networkStateQuery } from "@zeko/graphql/mina-archive"
 import { createConsola } from "consola"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { Field } from "o1js"
 import * as v from "valibot"
+import { runActionProcessing } from "./action-processing/runtime"
+import type { ArchiveAction, ArchiveEvent } from "./action-processing/types"
 import { env } from "./env"
 import type { InnerItem } from "./modules/inner"
 import type { OuterItem } from "./modules/outer"
+
+export type { ArchiveAction, ArchiveEvent } from "./action-processing/types"
 
 export const logger = createConsola({
 	level: 3
@@ -16,33 +19,7 @@ export const logger = createConsola({
 export const l1Client = createGraphqlClient(env.L1_ARCHIVE_URL, "l1-archive")
 export const l2Client = createGraphqlClient(env.L2_ARCHIVE_URL, "l2-archive")
 
-export interface ArchiveActionData {
-	data: string[]
-	transactionInfo: { hash: string }
-}
-
-export interface ArchiveAction {
-	blockInfo: { timestamp: string; height: number; distanceFromMaxBlockHeight: number }
-	actionState: { actionStateOne: string; actionStateTwo: string }
-	actionData: ArchiveActionData[]
-}
-
-export interface ArchiveEvent {
-	action: Field[]
-	beforeActionState: Field
-	afterActionState: Field
-	timestamp: string
-	hash: string
-	blockInfo: { timestamp: string; height: number; distanceFromMaxBlockHeight: number }
-}
-
 const BLOCK_RANGE_SIZE = 10_000
-const HASH_YIELD_EVERY_BLOCKS = 250
-const VALIDATION_YIELD_EVERY_EVENTS = 2_000
-
-async function yieldToEventLoop() {
-	await new Promise((resolve) => setTimeout(resolve, 0))
-}
 
 export async function fetchActions({
 	client,
@@ -163,65 +140,17 @@ export async function fetchActions({
 	)
 	if (output.length === 0)
 		logger.warn(`[fetchActions ${client.label}] No actions found for fromBlock=${fromBlock}`)
-	logger.info(`[fetchActions ${client.label}] hashing started`)
-	const startHashing = Date.now()
-	const result: ArchiveEvent[] = []
-	for (let blockIndex = 0; blockIndex < output.length; blockIndex++) {
-		const {
-			actionState: { actionStateTwo: actionStateBefore, actionStateOne: actionStateAfter },
-			actionData,
-			blockInfo: { timestamp, height, distanceFromMaxBlockHeight }
-		} = output[blockIndex]
-		const actions = actionData.map(({ data, transactionInfo: { hash } }) => ({
-			data: data.map(Field.from),
-			hash
-		}))
-		let actionState = Field.from(actionStateBefore)
-
-		const correctActions = []
-		for (const action of actions) {
-			const afterActionState = pushHash(actionState, fromList([action.data]).hash)
-			correctActions.push({
-				action: action.data,
-				beforeActionState: actionState,
-				afterActionState,
-				timestamp,
-				hash: action.hash,
-				blockInfo: { timestamp, height, distanceFromMaxBlockHeight }
-			})
-			actionState = afterActionState
-		}
-
-		if (!correctActions.at(-1)?.afterActionState.equals(actionStateAfter).toBoolean()) {
-			throw new Error(
-				`[fetchActions ${client.label}] invalid actions sequence: last action afterActionState=${correctActions.at(-1)?.afterActionState.toString()} !== actionStateAfter=${actionStateAfter.toString()}`
-			)
-		}
-
-		result.push(...correctActions)
-
-		if ((blockIndex + 1) % HASH_YIELD_EVERY_BLOCKS === 0) {
-			await yieldToEventLoop()
-		}
-	}
-
-	logger.info(`[fetchActions ${client.label}] hashing took ${Date.now() - startHashing}ms`)
-	logger.info(`[fetchActions ${client.label}] fetched actions length: ${result.length}`)
-
-	for (let i = 0; i < result.length; i++) {
-		const prev = i > 0 ? result[i - 1] : undefined
-		const curr = result[i]
-		if (prev && !prev.afterActionState.equals(curr.beforeActionState).toBoolean()) {
-			throw new Error(
-				`[fetchActions ${client.label}] invalid actions sequence: index=${i} prev.afterActionState=${prev?.afterActionState.toString()} !== curr.beforeActionState=${curr.beforeActionState.toString()}`
-			)
-		}
-		if (i > 0 && i % VALIDATION_YIELD_EVERY_EVENTS === 0) {
-			await yieldToEventLoop()
-		}
-	}
-
-	return result
+	const actionProcessingResult = await runActionProcessing({
+		blocks: output,
+		preferWorker: true
+	})
+	logger.info(
+		`[fetchActions ${client.label}] action-processing strategy=${actionProcessingResult.stats.strategy}, total=${Math.round(actionProcessingResult.stats.totalMs)}ms, hashing=${Math.round(actionProcessingResult.stats.hashingMs)}ms, validation=${Math.round(actionProcessingResult.stats.validationMs)}ms, bottleneck=${actionProcessingResult.stats.bottleneck}`
+	)
+	logger.info(
+		`[fetchActions ${client.label}] fetched actions length: ${actionProcessingResult.events.length}`
+	)
+	return actionProcessingResult.events
 }
 
 export async function getNetworkTip(

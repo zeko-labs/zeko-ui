@@ -19,3 +19,12 @@ Examples:
 moon run actions-indexer:diagnose-health -- --url https://indexer.actions.zeko.io --timeout-ms 30000
 moon run actions-indexer:diagnose-resources -- --project-id <project> --service-id <service>
 ```
+
+## ActionProcessing Benchmark Workflow
+
+Run local benchmark and stress workflows for the extracted action-processing module:
+
+```bash
+moon run actions-indexer:bench-action-processing
+moon run actions-indexer:stress-action-processing
+```
