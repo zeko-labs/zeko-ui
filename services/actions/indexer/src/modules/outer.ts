@@ -2,7 +2,7 @@ import { commitActions, witnessActions } from "@zeko/actions-api"
 import { emptyActionsList } from "@zeko/bridge-sdk"
 import { sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { outerActions } from "services/actions/api/drizzle/schema"
+import { outerActions } from "../../../api/drizzle/schema"
 import {
 	batchInsert,
 	type CommitInsert,
