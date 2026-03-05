@@ -43,7 +43,7 @@ const initializeDrizzle = ({ cache, env }: { cache: boolean; env: Env }) => {
 				prepare: false,
 				fetch_types: false
 			})
-	const db = drizzle(client, { logger: true })
+	const db = drizzle({ client, logger: true })
 	return [db, client] as const
 }
 

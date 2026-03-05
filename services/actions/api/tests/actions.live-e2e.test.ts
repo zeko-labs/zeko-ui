@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-const baseUrl = process.env.ACTIONS_API_E2E_BASE_URL ?? "https://api.actions.zeko.io"
-const runLiveE2E = process.env.RUN_ACTIONS_API_LIVE_E2E === "1"
-
-const describeLive = runLiveE2E ? describe : describe.skip
+const configuredBaseUrl = process.env.ACTIONS_API_E2E_BASE_URL?.trim()
+const baseUrl =
+	configuredBaseUrl && configuredBaseUrl.length > 0
+		? configuredBaseUrl
+		: "https://api.actions.zeko.io"
 
 type HttpJsonResponse = {
 	status: number
@@ -63,7 +64,7 @@ type GraphQlBody = {
 	errors?: unknown
 }
 
-describeLive("actions-api live e2e", () => {
+describe("actions-api live e2e", () => {
 	it("health endpoint reports healthy database", async () => {
 		const url = `${baseUrl}/health`
 		const result = await fetchJson(url)

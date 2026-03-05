@@ -159,3 +159,28 @@ From live logs and source mapping:
 
 - The error is coming from `actions-api` database execution (Hyperdrive/postgres client path), then propagates as GraphQL internal errors, and finally surfaces in bridge-sdk as `Invalid witnesses data`.
 - This is not caused by indexer witness payload shape and not caused by bridge-ui worker logic.
+
+### 2026-03-05T13:05Z (Manual Live E2E Re-run)
+
+- Executed `ACTIONS_API_TEST_MODE=e2e moon run actions-api:manual-test` after fixing runtime skip gating in the live e2e test.
+- Result:
+  - `GET https://api.actions.zeko.io/health` failed with HTTP `503`
+  - Response body: `database.status=down`, error `Failed query: SELECT 1`
+  - GraphQL `outerWitnessesFromAuxes` failed with HTTP `200` + `errors[0].extensions.code=INTERNAL_SERVER_ERROR` and `data.outerWitnessesFromAuxes=null`
+- Interpretation:
+  - The production failure is still active and reproducible.
+  - Root cause remains upstream DB execution failure in actions-api; bridge-sdk `Invalid witnesses data` remains a downstream symptom.
+
+### 2026-03-05T13:10Z -> 13:11Z (Root Cause Isolated in Code)
+
+- Isolated local DB integration failure by running `tests/actions.test.ts` under a Node-only Vitest config.
+- Found API DB client initialization bug:
+  - Code was using `drizzle(client, config)`.
+  - With current `drizzle-orm` beta version, this call shape is invalid and falls through to creating a default postgres client (`pgClient(undefined)`), which targets `localhost:5432`.
+  - This exactly matches observed runtime errors (`ECONNREFUSED ::1:5432` / `127.0.0.1:5432`) and production health/query failures (`Failed query: SELECT 1`).
+- Applied fix in actions-api:
+  - `services/actions/api/src/db.ts`: switched to `drizzle({ client, logger: true })`.
+  - `services/actions/api/tests/actions.test.ts`: switched test DB creation to `drizzle({ client, logger: false })`.
+- Validation:
+  - Local DB integration test now passes (`9/9`).
+  - Live manual e2e against production still fails (expected until this fix is reviewed and deployed).
