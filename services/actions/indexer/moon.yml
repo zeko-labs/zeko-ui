@@ -39,6 +39,8 @@ tasks:
     command: bun src/index.ts
     preset: server
   typecheck:
+    deps:
+      - ^:build
     command: tsc --noEmit -p tsconfig.json
     inputs:
       - "@group(sources)"
