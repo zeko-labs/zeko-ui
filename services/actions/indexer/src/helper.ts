@@ -278,7 +278,7 @@ export async function handleFork<
 			forkAtIndex = currentIndex
 		}
 
-		if (forkAtIndex || !dbItem) {
+		if (forkAtIndex !== null || !dbItem) {
 			insertFromIndex = i
 			break
 		}
@@ -291,7 +291,7 @@ export async function handleFork<
 
 	const data = build(fetchedActions.data.slice(insertFromIndex ?? Number.MAX_VALUE), currentIndex)
 
-	if (forkAtIndex) {
+	if (forkAtIndex !== null) {
 		logger.info(`[handleFork] rolling back from fork at index ${forkAtIndex} and re-inserting`)
 		await db.transaction(async (tx) => {
 			await deleteFromIndex(tx, forkAtIndex)

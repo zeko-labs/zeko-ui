@@ -1,11 +1,11 @@
 import { getNetworkTip, l1Client, logger } from "../src/helper"
-import { handler as outerHandler } from "../src/modules/outer"
+import { fetch as outerFetch } from "../src/modules/outer"
 
 type EventType = "outer"
 
 const eventConfigs = {
 	outer: {
-		handler: outerHandler,
+		fetch: outerFetch,
 		emoji: "💰",
 		identifierField: "afterState"
 	}
@@ -32,18 +32,18 @@ function getUniqueIdentifiers<U extends string, T extends { [key in U]: string }
 	return new Set(data.map((event) => event[identifierField]))
 }
 
-type OuterEvent = Awaited<ReturnType<typeof outerHandler.fetch>>["data"][number]
+type OuterEvent = Awaited<ReturnType<typeof outerFetch>>["data"][number]
 
 async function main() {
 	const eventType = getEventType()
 	const config = eventConfigs[eventType]
-	const { handler, emoji, identifierField } = config
+	const { fetch, emoji, identifierField } = config
 
 	const startBlock = 0
 	logger.info(`${emoji} Fetching ${eventType} events from block ${startBlock} to now...`)
 
 	try {
-		const result = await handler.fetch({ startBlock })
+		const result = await fetch({ startBlock })
 		const tip = await getNetworkTip(l1Client)
 		logger.success(`✅ Fetch completed successfully`)
 		logger.info(`📊 Last fetched block: ${result.lastFetchedBlock}`)

@@ -21,7 +21,7 @@ import { fetchActions, getNetworkTip, handleFork, l1Client, logger } from "../he
  * Handler for fetching outer actions (deposits) from the L1 archive.
  */
 
-async function fetch({ startBlock }: { startBlock: number }) {
+export async function fetch({ startBlock }: { startBlock: number }) {
 	logger.info(`[outer.fetch] Fetching from ${startBlock}`)
 
 	const actions = await fetchActions({

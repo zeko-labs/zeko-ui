@@ -11,7 +11,7 @@ export function createDatabase(connectionString?: string): PostgresJsDatabase {
 	const str =
 		connectionString ?? env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5434/actions"
 	const client = postgres(str, { max: 5 })
-	return drizzle(client)
+	return drizzle({ client })
 }
 
 export function createTestDatabase(connectionString?: string) {
@@ -25,7 +25,7 @@ export function createTestDatabase(connectionString?: string) {
 		)
 	}
 	const client = postgres(str, { max: 5 })
-	const db = drizzle(client)
+	const db = drizzle({ client })
 	return {
 		db,
 		async clean() {
