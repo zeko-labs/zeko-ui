@@ -5,7 +5,7 @@ status: done
 blockedBy: []
 owner: main-agent
 created_at: 2026-03-05T18:10:00Z
-updated_at: 2026-03-05T18:35:00Z
+updated_at: 2026-03-05T18:50:00Z
 ---
 
 Remove duplicate release publish checks, document the reusable sync workflow, and migrate `sync-standalone-package` into a package project with integration coverage.
@@ -27,3 +27,10 @@ Decomposed local sync validation (using the built package CLI):
 - Created a temp workspace skeleton and ran:
   - `node packages/sync-standalone-package/dist/cli.js --package-dir packages/faucet-cli --project-id faucet-cli --workspace-packages ".,npm/*"` — passed
   - Copied prepared package into a standalone temp repo and ran `moon query projects` — passed (standalone Moon project/task discovery works)
+
+Follow-up hardening:
+
+- Reworked `sync-standalone-package` integration test to use committed fixture files under `tests/fixtures/workspace` (with `.fixture.*` extensions to avoid pnpm pickup), then materialize real file names in a temp workspace during test execution.
+- Added package README documenting purpose, CLI usage, and arguments.
+- `pnpm exec moon run sync-standalone-package:typecheck` — passed
+- `pnpm exec moon run sync-standalone-package:test` — passed

@@ -4,6 +4,7 @@ fileGroups:
   src:
     - src/**/*
     - tests/**/*
+    - README.md
     - tsconfig.json
     - tsconfig.build.json
     - tsdown.config.ts

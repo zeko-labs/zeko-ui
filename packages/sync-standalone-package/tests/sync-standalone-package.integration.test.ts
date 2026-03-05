@@ -1,17 +1,43 @@
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
+import { fileURLToPath } from "node:url"
 import { afterEach, describe, expect, it } from "vitest"
 import { prepareStandalonePackage } from "../src/index"
 
-const writeJson = (filePath: string, value: unknown) => {
-	fs.mkdirSync(path.dirname(filePath), { recursive: true })
-	fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`)
-}
+const thisDir = path.dirname(fileURLToPath(import.meta.url))
+const fixtureRoot = path.join(thisDir, "fixtures", "workspace")
 
-const writeText = (filePath: string, value: string) => {
-	fs.mkdirSync(path.dirname(filePath), { recursive: true })
-	fs.writeFileSync(filePath, value)
+const materializeFixtureFiles = (rootDir: string) => {
+	const stack = [rootDir]
+
+	while (stack.length > 0) {
+		const current = stack.pop()
+		if (!current) {
+			continue
+		}
+
+		for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+			const source = path.join(current, entry.name)
+
+			if (entry.isDirectory()) {
+				stack.push(source)
+				continue
+			}
+
+			if (!entry.isFile()) {
+				continue
+			}
+
+			const target = source
+				.replace(/\.fixture\.json$/, ".json")
+				.replace(/\.fixture\.ya?ml$/, (match) => match.replace(".fixture", ""))
+
+			if (target !== source) {
+				fs.renameSync(source, target)
+			}
+		}
+	}
 }
 
 describe("prepareStandalonePackage", () => {
@@ -27,65 +53,8 @@ describe("prepareStandalonePackage", () => {
 	it("rewrites package metadata and scaffolds standalone moon workspace", () => {
 		const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "sync-standalone-package-test-"))
 		tempDirs.push(rootDir)
-
-		writeJson(path.join(rootDir, "package.json"), {
-			name: "workspace-root",
-			packageManager: "pnpm@10.16.1"
-		})
-
-		writeText(
-			path.join(rootDir, "pnpm-workspace.yaml"),
-			`packages:
-  - packages/**
-
-catalog:
-  "@scope/catalog-dep": ^1.4.0
-  typescript: ^5.9.2
-
-catalogs:
-  tools:
-    tsdown: ^0.13.4
-`
-		)
-
-		writeText(path.join(rootDir, ".moon", "toolchains.yml"), "node:\n  version: 24.5.0\n")
-
-		writeJson(path.join(rootDir, "packages", "shared", "package.json"), {
-			name: "@scope/shared",
-			version: "2.3.4"
-		})
-
-		writeJson(path.join(rootDir, "packages", "sync-target", "package.json"), {
-			name: "@scope/sync-target",
-			version: "1.0.0",
-			dependencies: {
-				"@scope/catalog-dep": "catalog:",
-				"@scope/shared": "workspace:^"
-			},
-			devDependencies: {
-				typescript: "catalog:",
-				tsdown: "catalog:tools"
-			}
-		})
-
-		writeJson(path.join(rootDir, "packages", "sync-target", "npm", "linux-x64", "package.json"), {
-			name: "@scope/sync-target-linux-x64",
-			version: "1.0.0",
-			dependencies: {
-				"@scope/sync-target": "workspace:^"
-			}
-		})
-
-		writeText(
-			path.join(rootDir, "packages", "sync-target", "moon.yml"),
-			`layer: tool
-dependsOn:
-  - shared
-tasks:
-  build:
-    command: echo build
-`
-		)
+		fs.cpSync(fixtureRoot, rootDir, { recursive: true })
+		materializeFixtureFiles(rootDir)
 
 		prepareStandalonePackage({
 			rootDir,
