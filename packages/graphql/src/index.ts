@@ -24,3 +24,10 @@ export const bridgeIndexer = initGraphQLTada<{
 	scalars: Scalars
 }>()
 export const leaderboard = initGraphQLTada<{ introspection: leaderboardSchema; scalars: Scalars }>()
+
+export * from "./bridge-indexer"
+export * from "./leaderboard"
+export * from "./mina"
+export * from "./mina-archive"
+export * from "./zeko"
+export * from "./zeko-archive"

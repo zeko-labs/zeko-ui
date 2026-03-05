@@ -1,6 +1,6 @@
 # Zeko Bridge SDK
 
-> **Public mirror** — This package is automatically synced from the private `zeko-ui` monorepo. Development happens in the monorepo; this package mirror is the public source of truth for releases.
+This package is developed in the private `zeko-ui` monorepo and mirrored here for public releases. The docs site reuses this README so package docs and website docs stay aligned.
 
 TypeScript SDK for interacting with the Zeko bridge and coordinating deposits and withdrawals between Mina (L1) and Zeko (L2).
 

@@ -30,3 +30,4 @@
 - T030 | done | fix-docs-cloudflare-build-watch-for-faucet-cli-readme | done/T030-fix-docs-cloudflare-build-watch-for-faucet-cli-readme.md
 - T031 | done | finalize-faucet-e2e-release-and-integration-pr | done/T031-finalize-faucet-e2e-release-and-integration-pr.md
 - T032 | done | codify-cloudflare-workers-build-config | done/T032-codify-cloudflare-workers-build-config.md
+- T033 | done | open-source-bridge-sdk | done/T033-open-source-bridge-sdk.md
