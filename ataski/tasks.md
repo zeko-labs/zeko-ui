@@ -30,3 +30,6 @@
 - T030 | done | fix-docs-cloudflare-build-watch-for-faucet-cli-readme | done/T030-fix-docs-cloudflare-build-watch-for-faucet-cli-readme.md
 - T031 | done | finalize-faucet-e2e-release-and-integration-pr | done/T031-finalize-faucet-e2e-release-and-integration-pr.md
 - T032 | done | codify-cloudflare-workers-build-config | done/T032-codify-cloudflare-workers-build-config.md
+- T033 | done | document-cloudflare-build-config-and-automation | done/T033-document-cloudflare-build-config-and-automation.md
+- T034 | done | fix-bridge-ui-deploy-task-entrypoint | done/T034-fix-bridge-ui-deploy-task-entrypoint.md
+- T035 | done | fix-indexer-logging | done/T035-fix-indexer-logging.md
