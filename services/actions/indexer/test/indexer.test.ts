@@ -24,13 +24,13 @@ describe("Actions Indexer basic tests", () => {
 		expect(s).toHaveProperty("config")
 	})
 
-	it("should start and stop indexer", () => {
+	it("should start and stop indexer", async () => {
 		const indexer = new Indexer(db)
 		// stop auto-start so we can test start behavior
-		indexer.stop()
+		await indexer.stop()
 		const start = indexer.start({ intervalSeconds: 1 })
 		expect(start.success).toBeTruthy()
-		const stop = indexer.stop()
+		const stop = await indexer.stop()
 		expect(stop.success).toBeTruthy()
 	})
 })

@@ -36,15 +36,13 @@ export async function runActionProcessingBench({
 	actionsPerBlock = 12,
 	fieldsPerAction = 6,
 	iterations = 2,
-	workerThreads,
-	strictWorker = false
+	workerThreads
 }: {
 	blockCount?: number
 	actionsPerBlock?: number
 	fieldsPerAction?: number
 	iterations?: number
 	workerThreads?: number
-	strictWorker?: boolean
 } = {}) {
 	const blocks = generateSyntheticArchiveBlocks({
 		blockCount,
@@ -68,8 +66,7 @@ export async function runActionProcessingBench({
 		const result = await runActionProcessing({
 			blocks,
 			preferWorker: true,
-			workerThreads,
-			fallbackToMain: !strictWorker
+			workerThreads
 		})
 		workerSamples.push({
 			totalMs: result.stats.totalMs,
@@ -96,7 +93,6 @@ export async function runActionProcessingBench({
 		bottleneck,
 		main: mainSummary,
 		worker: workerSummary,
-		workerFallbackCount: workerSamples.filter((sample) => sample.strategy === "main").length,
 		workerSpeedup: Number((mainSummary.avgMs / Math.max(workerSummary.avgMs, 1)).toFixed(2))
 	}
 }

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process"
+import * as v from "valibot"
 
 export interface NorthflankMetricsInput {
 	projectId: string
@@ -123,12 +124,12 @@ export async function runNorthflankResources({
 		throw new Error(`northflank command failed (${exitCode}): ${message}`)
 	}
 
-	let raw: unknown
-	try {
-		raw = JSON.parse(stdout)
-	} catch {
+	const parsedOutput = v.safeParse(v.pipe(v.string(), v.parseJson(), v.unknown()), stdout)
+	if (!parsedOutput.success) {
 		throw new Error(`northflank command returned invalid JSON: ${stdout.slice(0, 300)}`)
 	}
+
+	const raw = parsedOutput.output
 
 	const parsed = parseMetrics(raw)
 

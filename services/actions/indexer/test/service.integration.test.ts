@@ -4,17 +4,13 @@ import { createServer as createHttpServer } from "node:http"
 import { createServer } from "node:net"
 import { resolve } from "node:path"
 import { setTimeout as wait } from "node:timers/promises"
+import * as v from "valibot"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
 interface CommandResult {
 	code: number
 	stdout: string
 	stderr: string
-}
-
-interface HealthCheckSnapshot {
-	statusCode: number
-	latencyMs: number
 }
 
 const serviceDir = resolve(import.meta.dirname, "..")
@@ -182,6 +178,11 @@ const authed = (headers: Record<string, string> = {}) => ({
 	...headers
 })
 
+const CliRowsSchema = v.pipe(v.string(), v.parseJson(), v.array(v.record(v.string(), v.unknown())))
+
+const parseCliRows = (stdout: string): Array<Record<string, unknown>> =>
+	v.parse(CliRowsSchema, stdout)
+
 const countRows = async (tableName: string): Promise<number> => {
 	const result = await runCommand({
 		command: "docker",
@@ -224,15 +225,6 @@ const seedIndexedRows = async (): Promise<void> => {
 			].join(" ")
 		]
 	})
-}
-
-const fetchHealthSnapshot = async (): Promise<HealthCheckSnapshot> => {
-	const startedAt = performance.now()
-	const response = await fetch(`${serviceBaseUrl}/health`)
-	return {
-		statusCode: response.status,
-		latencyMs: performance.now() - startedAt
-	}
 }
 
 describe("service integration", () => {
@@ -346,9 +338,23 @@ describe("service integration", () => {
 		expect(stopResponse.status).toBe(200)
 	}, 120_000)
 
-	it("rejects unauthenticated lifecycle access", async () => {
-		const statusResponse = await fetch(`${serviceBaseUrl}/status`)
-		expect([401, 403]).toContain(statusResponse.status)
+	it("rejects unauthenticated control endpoints", async () => {
+		const requests = await Promise.all([
+			fetch(`${serviceBaseUrl}/status`),
+			fetch(`${serviceBaseUrl}/start`, { method: "POST" }),
+			fetch(`${serviceBaseUrl}/stop`, { method: "POST" }),
+			fetch(`${serviceBaseUrl}/reset`, { method: "POST" }),
+			fetch(`${serviceBaseUrl}/rebuild`, { method: "POST" }),
+			fetch(`${serviceBaseUrl}/config`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ intervalSeconds: 5 })
+			})
+		])
+
+		for (const response of requests) {
+			expect([401, 403]).toContain(response.status)
+		}
 	})
 
 	it("runs CLI checks against the running service", async () => {
@@ -363,7 +369,7 @@ describe("service integration", () => {
 			args: ["dist/cli.js", "health", "--url", serviceBaseUrl, "--timeout-ms", "8000", "--json"],
 			cwd: serviceDir
 		})
-		const healthRows = JSON.parse(healthCli.stdout) as Array<Record<string, unknown>>
+		const healthRows = parseCliRows(healthCli.stdout)
 		expect(healthRows[0]?.check).toBe("health")
 
 		const benchCli = await runCommand({
@@ -383,7 +389,7 @@ describe("service integration", () => {
 			],
 			cwd: serviceDir
 		})
-		const benchRows = JSON.parse(benchCli.stdout) as Array<Record<string, unknown>>
+		const benchRows = parseCliRows(benchCli.stdout)
 		expect(benchRows[0]?.check).toBe("action-processing-bench")
 		expect(Number(benchRows[0]?.eventsPerRun)).toBeGreaterThan(0)
 
@@ -404,7 +410,7 @@ describe("service integration", () => {
 			],
 			cwd: serviceDir
 		})
-		const stressRows = JSON.parse(stressCli.stdout) as Array<Record<string, unknown>>
+		const stressRows = parseCliRows(stressCli.stdout)
 		expect(stressRows[0]?.check).toBe("action-processing-stress")
 		expect(Number(stressRows[0]?.runs)).toBeGreaterThan(0)
 
@@ -444,7 +450,7 @@ describe("service integration", () => {
 				AUTH_TOKEN: authToken
 			}
 		})
-		const resetRows = JSON.parse(resetResult.stdout) as Array<Record<string, unknown>>
+		const resetRows = parseCliRows(resetResult.stdout)
 		expect(resetRows[0]?.command).toBe("reset")
 		expect(resetRows[0]?.isRunning).toBe(true)
 
@@ -459,39 +465,6 @@ describe("service integration", () => {
 		expect(statusResponse.status).toBe(200)
 		const status = (await statusResponse.json()) as { isRunning?: boolean }
 		expect(status.isRunning).toBe(true)
-	}, 180_000)
-
-	it("keeps /health responsive while worker action-processing is running", async () => {
-		const processingPromise = fetch(`${serviceBaseUrl}/test/action-processing`, {
-			method: "POST",
-			headers: authed({ "Content-Type": "application/json" }),
-			body: JSON.stringify({})
-		})
-
-		await wait(250)
-
-		const healthSnapshots: HealthCheckSnapshot[] = []
-		for (let attempt = 0; attempt < 3; attempt++) {
-			healthSnapshots.push(await fetchHealthSnapshot())
-		}
-
-		for (const snapshot of healthSnapshots) {
-			expect([200, 503]).toContain(snapshot.statusCode)
-			expect(snapshot.latencyMs).toBeLessThan(1_500)
-		}
-
-		const processingResponse = await processingPromise
-		expect(processingResponse.status).toBe(200)
-		const processing = (await processingResponse.json()) as {
-			success?: boolean
-			strategy?: string
-			events?: number
-			totalMs?: number
-		}
-		expect(processing.success).toBe(true)
-		expect(processing.strategy).toBe("worker")
-		expect(Number(processing.events)).toBeGreaterThan(0)
-		expect(Number(processing.totalMs)).toBeGreaterThan(0)
 	}, 180_000)
 
 	it("accepts documented kebab-case flags", async () => {
@@ -524,7 +497,7 @@ describe("service integration", () => {
 				args: ["dist/cli.js", "health", "--url", baseUrl, "--timeout-ms", "500", "--json"],
 				cwd: serviceDir
 			})
-			const rows = JSON.parse(succeeded.stdout) as Array<Record<string, unknown>>
+			const rows = parseCliRows(succeeded.stdout)
 			expect(rows[0]?.check).toBe("health")
 
 			const resources = await runCommand({

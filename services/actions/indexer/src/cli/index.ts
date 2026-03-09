@@ -1,4 +1,5 @@
 import { defineCommand, runMain } from "citty"
+import * as v from "valibot"
 import { runActionProcessingBench } from "../benchmark/action-processing-bench"
 import { runActionProcessingProof } from "../benchmark/action-processing-proof"
 import { runActionProcessingStress } from "../benchmark/action-processing-stress"
@@ -16,71 +17,270 @@ const printOutput = ({ json, table }: { json: boolean; table: Record<string, unk
 
 const normalizeUrl = (url: string): string => url.replace(/\/+$/, "")
 
-const readRequiredAuthToken = (): string => {
+const JsonUnknownSchema = v.pipe(v.string(), v.parseJson(), v.unknown())
+
+const IndexerStatusSchema = v.object({
+	isRunning: v.boolean(),
+	lastRunTimestamp: v.nullable(v.number()),
+	lastFetchedBlock: v.object({
+		outer: v.nullable(v.number()),
+		inner: v.nullable(v.number())
+	}),
+	config: v.object({
+		intervalSeconds: v.number()
+	}),
+	consecutiveErrors: v.number()
+})
+
+const ControlResponseSchema = v.object({
+	success: v.boolean(),
+	message: v.string(),
+	status: v.optional(IndexerStatusSchema),
+	config: v.optional(
+		v.object({
+			intervalSeconds: v.number()
+		})
+	),
+	actionsProcessed: v.optional(v.number())
+})
+
+const HealthPayloadSchema = v.object({
+	status: v.string()
+})
+
+type IndexerStatus = v.InferOutput<typeof IndexerStatusSchema>
+type ControlResponse = v.InferOutput<typeof ControlResponseSchema>
+
+const defaultControlUrl = (): string => `http://127.0.0.1:${process.env.PORT ?? "3000"}`
+
+const readRequiredAuthToken = (commandName: string): string => {
 	const authToken = asString(process.env.AUTH_TOKEN)
 	if (!authToken) {
-		throw new Error("reset requires AUTH_TOKEN in the environment")
+		throw new Error(`${commandName} requires AUTH_TOKEN in the environment`)
 	}
 	return authToken
 }
 
-const parseJsonResponse = async (response: Response): Promise<unknown> => {
+const parseJsonResponse = async (response: Response, label: string): Promise<unknown | null> => {
 	const text = await response.text()
 	if (text.length === 0) return null
+	const parsed = v.safeParse(JsonUnknownSchema, text)
+	if (!parsed.success) {
+		throw new Error(`${label} returned invalid JSON`)
+	}
+	return parsed.output
+}
+
+const requireControlResponse = (payload: unknown, commandName: string): ControlResponse => {
 	try {
-		return JSON.parse(text)
-	} catch {
-		return text
+		return v.parse(ControlResponseSchema, payload)
+	} catch (error) {
+		throw new Error(`${commandName} returned an unexpected response payload`, { cause: error })
 	}
 }
 
-const runResetFromArgs = async (args: Record<string, unknown>) => {
-	const url = asString(args.url) ?? `http://127.0.0.1:${process.env.PORT ?? "3000"}`
+const requireIndexerStatus = (payload: unknown, commandName: string): IndexerStatus => {
+	try {
+		return v.parse(IndexerStatusSchema, payload)
+	} catch (error) {
+		throw new Error(`${commandName} returned an unexpected response payload`, { cause: error })
+	}
+}
+
+const statusFields = (status?: IndexerStatus) => ({
+	isRunning: status?.isRunning ?? null,
+	lastRunTimestamp: status?.lastRunTimestamp ?? null,
+	lastFetchedOuter: status?.lastFetchedBlock.outer ?? null,
+	lastFetchedInner: status?.lastFetchedBlock.inner ?? null,
+	intervalSeconds: status?.config.intervalSeconds ?? null,
+	consecutiveErrors: status?.consecutiveErrors ?? null
+})
+
+const controlRequest = async ({
+	args,
+	commandName,
+	path,
+	method = "POST",
+	body
+}: {
+	args: Record<string, unknown>
+	commandName: string
+	path: string
+	method?: "GET" | "POST"
+	body?: unknown
+}): Promise<{ httpStatus: number; payload: unknown | null; json: boolean }> => {
+	const url = asString(args.url) ?? defaultControlUrl()
 	const timeoutMs = readCliNumberArg(args, ["timeoutMs", "timeout-ms", "timeout"], 30_000)
-	const authToken = readRequiredAuthToken()
+	const authToken = readRequiredAuthToken(commandName)
 	const json = Boolean(args.json)
 
-	const response = await fetch(`${normalizeUrl(url)}/reset`, {
-		method: "POST",
+	const response = await fetch(`${normalizeUrl(url)}${path}`, {
+		method,
 		headers: {
-			Authorization: `Bearer ${authToken}`
+			Authorization: `Bearer ${authToken}`,
+			...(body == null ? {} : { "Content-Type": "application/json" })
 		},
+		body: body == null ? undefined : JSON.stringify(body),
 		signal: AbortSignal.timeout(timeoutMs)
 	})
-	const payload = await parseJsonResponse(response)
-	const message =
-		typeof payload === "object" && payload && "message" in payload
-			? String((payload as { message: unknown }).message)
-			: response.statusText
+	const payload = await parseJsonResponse(response, commandName)
 
 	if (!response.ok) {
-		throw new Error(`reset failed with HTTP ${response.status}: ${message}`)
+		const parsedPayload =
+			payload != null && typeof payload === "object"
+				? v.safeParse(ControlResponseSchema, payload)
+				: null
+		const message =
+			parsedPayload?.success && parsedPayload.output.message.length > 0
+				? parsedPayload.output.message
+				: response.statusText
+		throw new Error(`${commandName} failed with HTTP ${response.status}: ${message}`)
 	}
 
-	const status =
-		typeof payload === "object" && payload && "status" in payload
-			? ((payload as { status: unknown }).status as
-					| {
-							isRunning?: unknown
-							lastFetchedBlock?: { outer?: unknown; inner?: unknown }
-					  }
-					| undefined)
-			: undefined
+	return {
+		httpStatus: response.status,
+		payload,
+		json
+	}
+}
 
+const printControlResult = ({
+	commandName,
+	httpStatus,
+	payload,
+	json
+}: {
+	commandName: string
+	httpStatus: number
+	payload: ControlResponse
+	json: boolean
+}) => {
 	printOutput({
 		json,
 		table: [
 			{
-				command: "reset",
-				httpStatus: response.status,
-				message,
-				isRunning: status?.isRunning ?? null,
-				lastFetchedOuter: status?.lastFetchedBlock?.outer ?? null,
-				lastFetchedInner: status?.lastFetchedBlock?.inner ?? null
+				command: commandName,
+				httpStatus,
+				message: payload.message,
+				actionsProcessed: payload.actionsProcessed ?? null,
+				...statusFields(payload.status),
+				intervalSeconds:
+					payload.config?.intervalSeconds ?? payload.status?.config.intervalSeconds ?? null
+			}
+		]
+	})
+}
+
+const runStatusFromArgs = async (args: Record<string, unknown>) => {
+	const result = await controlRequest({
+		args,
+		commandName: "status",
+		path: "/status",
+		method: "GET"
+	})
+	const payload = requireIndexerStatus(result.payload, "status")
+
+	printOutput({
+		json: result.json,
+		table: [
+			{
+				command: "status",
+				httpStatus: result.httpStatus,
+				...statusFields(payload)
 			}
 		]
 	})
 
+	return payload
+}
+
+const runStartFromArgs = async (args: Record<string, unknown>) => {
+	const result = await controlRequest({
+		args,
+		commandName: "start",
+		path: "/start"
+	})
+	const payload = requireControlResponse(result.payload, "start")
+	printControlResult({
+		commandName: "start",
+		httpStatus: result.httpStatus,
+		payload,
+		json: result.json
+	})
+	return payload
+}
+
+const runStopFromArgs = async (args: Record<string, unknown>) => {
+	const result = await controlRequest({
+		args,
+		commandName: "stop",
+		path: "/stop"
+	})
+	const payload = requireControlResponse(result.payload, "stop")
+	printControlResult({
+		commandName: "stop",
+		httpStatus: result.httpStatus,
+		payload,
+		json: result.json
+	})
+	return payload
+}
+
+const runResetFromArgs = async (args: Record<string, unknown>) => {
+	const result = await controlRequest({
+		args,
+		commandName: "reset",
+		path: "/reset"
+	})
+	const payload = requireControlResponse(result.payload, "reset")
+	printControlResult({
+		commandName: "reset",
+		httpStatus: result.httpStatus,
+		payload,
+		json: result.json
+	})
+	return payload
+}
+
+const runRebuildFromArgs = async (args: Record<string, unknown>) => {
+	const result = await controlRequest({
+		args,
+		commandName: "rebuild",
+		path: "/rebuild"
+	})
+	const payload = requireControlResponse(result.payload, "rebuild")
+	printControlResult({
+		commandName: "rebuild",
+		httpStatus: result.httpStatus,
+		payload,
+		json: result.json
+	})
+	return payload
+}
+
+const runSetIntervalFromArgs = async (args: Record<string, unknown>) => {
+	const intervalSeconds = readCliNumberArg(
+		args,
+		["intervalSeconds", "interval-seconds", "interval"],
+		0
+	)
+	if (intervalSeconds <= 0) {
+		throw new Error("set-interval requires a positive interval-seconds value")
+	}
+
+	const result = await controlRequest({
+		args,
+		commandName: "set-interval",
+		path: "/config",
+		body: { intervalSeconds }
+	})
+	const payload = requireControlResponse(result.payload, "set-interval")
+	printControlResult({
+		commandName: "set-interval",
+		httpStatus: result.httpStatus,
+		payload,
+		json: result.json
+	})
 	return payload
 }
 
@@ -90,10 +290,11 @@ const runHealthFromArgs = async (args: Record<string, unknown>) => {
 	const json = Boolean(args.json)
 
 	const health = await runHealthCheck({ baseUrl: url, timeoutMs })
-	const status =
-		typeof health.payload === "object" && health.payload && "status" in health.payload
-			? String((health.payload as { status: unknown }).status)
-			: "unknown"
+	const parsedPayload =
+		health.payload != null && typeof health.payload === "object"
+			? v.safeParse(HealthPayloadSchema, health.payload)
+			: null
+	const status = parsedPayload?.success ? parsedPayload.output.status : "unknown"
 
 	printOutput({
 		json,
@@ -202,8 +403,7 @@ const runActionProcessingBenchFromArgs = async (args: Record<string, unknown>) =
 		actionsPerBlock: readCliNumberArg(args, ["actionsPerBlock", "actions-per-block"], 12),
 		fieldsPerAction: readCliNumberArg(args, ["fieldsPerAction", "fields-per-action"], 6),
 		iterations: readCliNumberArg(args, ["iterations"], 2),
-		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined,
-		strictWorker: true
+		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined
 	})
 
 	printOutput({
@@ -215,7 +415,6 @@ const runActionProcessingBenchFromArgs = async (args: Record<string, unknown>) =
 				iterations: result.workload.iterations,
 				bottleneck: result.bottleneck,
 				workerThreadsRequested: result.workerThreadsRequested,
-				workerFallbackCount: result.workerFallbackCount,
 				mainAvgMs: result.main.avgMs,
 				workerAvgMs: result.worker.avgMs,
 				workerSpeedup: result.workerSpeedup
@@ -231,8 +430,7 @@ const runActionProcessingStressFromArgs = async (args: Record<string, unknown>) 
 		actionsPerBlock: readCliNumberArg(args, ["actionsPerBlock", "actions-per-block"], 8),
 		fieldsPerAction: readCliNumberArg(args, ["fieldsPerAction", "fields-per-action"], 6),
 		preferWorker: readCliBooleanArg(args, ["preferWorker", "prefer-worker"], true),
-		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined,
-		strictWorker: true
+		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined
 	})
 
 	printOutput({
@@ -262,8 +460,7 @@ const runActionProcessingProofFromArgs = async (args: Record<string, unknown>) =
 		fieldsPerAction: readCliNumberArg(args, ["fieldsPerAction", "fields-per-action"], 6),
 		warmupRuns: readCliNumberArg(args, ["warmupRuns", "warmup-runs"], 1),
 		sampleRuns: readCliNumberArg(args, ["sampleRuns", "sample-runs"], 6),
-		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined,
-		strictWorker: true
+		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined
 	})
 
 	if (args.json) {
@@ -279,7 +476,6 @@ const runActionProcessingProofFromArgs = async (args: Record<string, unknown>) =
 					mainP95Ms: result.summary.mainP95Ms,
 					workerP95Ms: result.summary.workerP95Ms,
 					speedupRatio: result.summary.speedupRatio,
-					workerFallbackCount: result.summary.workerFallbackCount,
 					passed: result.passed
 				}
 			]
@@ -326,6 +522,78 @@ const command = defineCommand({
 				await runHealthFromArgs(args as Record<string, unknown>)
 			}
 		},
+		status: {
+			meta: {
+				name: "status",
+				description: "Read the authenticated indexer status snapshot"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runStatusFromArgs(args as Record<string, unknown>)
+		},
+		start: {
+			meta: {
+				name: "start",
+				description: "Start the authenticated indexer loop"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runStartFromArgs(args as Record<string, unknown>)
+		},
+		stop: {
+			meta: {
+				name: "stop",
+				description: "Stop the authenticated indexer loop"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runStopFromArgs(args as Record<string, unknown>)
+		},
 		reset: {
 			meta: {
 				name: "reset",
@@ -335,7 +603,7 @@ const command = defineCommand({
 				url: {
 					type: "string",
 					description: "Indexer base URL",
-					default: `http://127.0.0.1:${process.env.PORT ?? "3000"}`
+					default: defaultControlUrl()
 				},
 				"timeout-ms": {
 					type: "string",
@@ -349,6 +617,59 @@ const command = defineCommand({
 				}
 			},
 			run: async ({ args }) => runResetFromArgs(args as Record<string, unknown>)
+		},
+		rebuild: {
+			meta: {
+				name: "rebuild",
+				description: "Stop the indexer, rebuild indexed data from archive sources, then resume"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runRebuildFromArgs(args as Record<string, unknown>)
+		},
+		"set-interval": {
+			meta: {
+				name: "set-interval",
+				description: "Update the authenticated indexer polling interval"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				"interval-seconds": {
+					type: "string",
+					description: "Polling interval in seconds",
+					default: "15"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runSetIntervalFromArgs(args as Record<string, unknown>)
 		},
 		sync: {
 			meta: {
@@ -520,7 +841,7 @@ const command = defineCommand({
 				},
 				"worker-threads": {
 					type: "string",
-					description: "Worker thread count (0 = auto)",
+					description: "Worker process count (0 = auto)",
 					default: "0"
 				},
 				json: {
@@ -564,7 +885,7 @@ const command = defineCommand({
 				},
 				"worker-threads": {
 					type: "string",
-					description: "Worker thread count (0 = auto)",
+					description: "Worker process count (0 = auto)",
 					default: "0"
 				},
 				json: {

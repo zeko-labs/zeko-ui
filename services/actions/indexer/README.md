@@ -11,7 +11,12 @@ moon run actions-indexer:diagnose
 moon run actions-indexer:diagnose-health
 moon run actions-indexer:diagnose-sync
 moon run actions-indexer:diagnose-resources
+AUTH_TOKEN=admin moon run actions-indexer:status -- --url http://127.0.0.1:3000
+AUTH_TOKEN=admin moon run actions-indexer:start-indexer -- --url http://127.0.0.1:3000
+AUTH_TOKEN=admin moon run actions-indexer:stop-indexer -- --url http://127.0.0.1:3000
 AUTH_TOKEN=admin moon run actions-indexer:reset -- --url http://127.0.0.1:3000
+AUTH_TOKEN=admin moon run actions-indexer:rebuild -- --url http://127.0.0.1:3000
+AUTH_TOKEN=admin moon run actions-indexer:set-interval -- --url http://127.0.0.1:3000 --interval-seconds 30
 ```
 
 Examples:
@@ -21,7 +26,12 @@ moon run actions-indexer:diagnose-health -- --url https://indexer.actions.zeko.i
 moon run actions-indexer:diagnose-resources -- --project-id actions-indexer --service-id actions-indexer-deployment
 ```
 
-The `reset` command is authenticated and requires `AUTH_TOKEN` in the environment. It stops the service, clears all indexed table data, and starts the indexer again so it can resync from scratch.
+Authenticated admin commands (`status`, `start`, `stop`, `reset`, `rebuild`, `set-interval`) require `AUTH_TOKEN` in the environment because the matching server endpoints are not public.
+
+`reset` and `rebuild` are different operations:
+
+- `reset`: stops the indexer, clears all indexed table data, and starts it again so it resyncs from scratch.
+- `rebuild`: stops the indexer, repopulates indexed table data from the archive sources immediately, and then resumes with the rebuilt heads preserved.
 
 `diagnose-resources` requires an authenticated Northflank CLI context in the service workspace:
 
@@ -68,7 +78,7 @@ Implementation layout:
 - Transport: parent writes a JSON request to child `stdin`; child writes JSON result to `stdout`.
 - Process model: each worker chunk runs in a short-lived Node subprocess.
 - Storage: this IPC path does not write payloads to files, so there are no temporary IPC files to clean up.
-- Failure behavior: if worker execution fails and fallback is enabled, runtime logs a warning and falls back to main-thread processing.
+- Failure behavior: worker execution errors fail the run. There is no fallback-to-main path.
 
 ## Proving IPC Is Faster
 
@@ -80,7 +90,6 @@ moon run actions-indexer:prove-action-processing -- --sample-runs 6 --warmup-run
 
 Pass criteria:
 
-- worker fallback count is `0`
 - worker median runtime is strictly lower than main median runtime
 
 The command exits non-zero when criteria are not met.

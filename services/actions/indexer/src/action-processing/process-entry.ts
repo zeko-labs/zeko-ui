@@ -1,5 +1,6 @@
+import * as v from "valibot"
 import { processArchiveBlocks } from "./core"
-import type { ProcessRequest, ProcessResponse } from "./process-protocol"
+import { ProcessRequestSchema, type ProcessResponse } from "./process-protocol"
 
 const readStdin = async (): Promise<string> =>
 	new Promise((resolve, reject) => {
@@ -20,7 +21,7 @@ const run = async () => {
 	let response: ProcessResponse
 	try {
 		const input = await readStdin()
-		const request = JSON.parse(input) as ProcessRequest
+		const request = v.parse(v.pipe(v.string(), v.parseJson(), ProcessRequestSchema), input)
 		const result = processArchiveBlocks({
 			blocks: request.blocks,
 			strategy: "worker"
