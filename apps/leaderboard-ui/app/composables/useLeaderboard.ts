@@ -1,6 +1,6 @@
 import { getCoreRowModel, getPaginationRowModel, useVueTable } from "@tanstack/vue-table"
 import { useQuery, useSubscription } from "@urql/vue"
-import { leaderboardQuery, leaderboardUpdateSubscription } from "@zeko/graphql/leaderboard"
+import { leaderboardQuery, leaderboardUpdateSubscription } from "@zeko-labs/graphql/leaderboard"
 import { defineStore } from "pinia"
 
 const PAGE_SIZE = 20

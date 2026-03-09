@@ -91,17 +91,29 @@ Finalization time depends on the size of the witness data the bridge must prove.
 
 ## Development
 
+These commands are maintainer workflows and only run from the private zeko-ui monorepo.
+
+These commands are maintainer workflows and only run from the private zeko-ui monorepo.
+
+These commands are maintainer workflows and only run from the private zeko-ui monorepo.
+
 Run all commands from the monorepo root with Moon:
 
 ```bash
-moon bridge-sdk:build
-moon bridge-sdk:typecheck
+moon run bridge-sdk:build
+moon run bridge-sdk:typecheck
 ```
+
+This schema refresh command is not available in the standalone bridge-sdk mirror.
+
+This schema refresh command is not available in the standalone bridge-sdk mirror.
+
+This schema refresh command is not available in the standalone bridge-sdk mirror.
 
 To refresh the generated GraphQL schema types used by the package:
 
 ```bash
-moon graphql:schema-get
+moon run graphql:schema-get
 ```
 
 ## Local Examples
@@ -109,12 +121,12 @@ moon graphql:schema-get
 The repository includes example scripts in `packages/bridge-sdk/examples`. From the monorepo root:
 
 ```bash
-moon bridge-sdk:submitDeposit
-moon bridge-sdk:finalizeDeposit
-moon bridge-sdk:submitWithdrawal
-moon bridge-sdk:finalizeWithdrawal
-moon bridge-sdk:fetchOuterActions
-moon bridge-sdk:fetchInnerActions
+moon run bridge-sdk:submitDeposit
+moon run bridge-sdk:finalizeDeposit
+moon run bridge-sdk:submitWithdrawal
+moon run bridge-sdk:finalizeWithdrawal
+moon run bridge-sdk:fetchOuterActions
+moon run bridge-sdk:fetchInnerActions
 ```
 
 ## License

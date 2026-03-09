@@ -18,7 +18,7 @@
 		"@elysiajs/node": "catalog:elysia",
 		"@zeko/actions-api": "workspace:^",
 		"@zeko-labs/bridge-sdk": "workspace:^",
-		"@zeko/graphql": "workspace:^",
+		"@zeko-labs/graphql": "workspace:^",
 		"consola": "catalog:",
 		"drizzle-orm": "catalog:",
 		"elysia": "catalog:elysia",

@@ -8,7 +8,7 @@ import {
 	networkStateQuery,
 	fetchOuterActionsQueryIndexer,
 	fetchOuterWitnessesFromAuxesQuery
-} from "@zeko/graphql"
+} from "@zeko-labs/graphql"
 import { empty, fromList, pushHash } from "./actions"
 import type { GqlClient } from "./graphql"
 import type {

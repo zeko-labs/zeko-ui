@@ -1,6 +1,6 @@
 {
 	"name": "@zeko-labs/bridge-sdk",
-	"version": "1.0.0",
+	"version": "0.0.0",
 	"description": "Public TypeScript SDK for interacting with the Zeko bridge.",
 	"type": "module",
 	"keywords": ["typescript", "library"],
@@ -29,7 +29,7 @@
 		"typescript": "catalog:"
 	},
 	"dependencies": {
-		"@zeko/graphql": "workspace:^",
+		"@zeko-labs/graphql": "workspace:^",
 		"@urql/exchange-retry": "^1.3.0",
 		"o1js": "catalog:",
 		"urql": "^4.2.2",

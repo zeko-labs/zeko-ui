@@ -11,7 +11,7 @@ import {
 	sequencerPkQuery,
 	submitDepositMutation,
 	submitWithdrawalMutation
-} from "@zeko/graphql"
+} from "@zeko-labs/graphql"
 import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
