@@ -142,7 +142,8 @@ export async function fetchActions({
 		logger.warn(`[fetchActions ${client.label}] No actions found for fromBlock=${fromBlock}`)
 	const actionProcessingResult = await runActionProcessing({
 		blocks: output,
-		preferWorker: true
+		preferWorker: true,
+		fallbackToMain: false
 	})
 	logger.info(
 		`[fetchActions ${client.label}] action-processing strategy=${actionProcessingResult.stats.strategy}, total=${Math.round(actionProcessingResult.stats.totalMs)}ms, hashing=${Math.round(actionProcessingResult.stats.hashingMs)}ms, validation=${Math.round(actionProcessingResult.stats.validationMs)}ms, bottleneck=${actionProcessingResult.stats.bottleneck}`
