@@ -112,9 +112,13 @@ export async function runNorthflankResources({
 	)
 
 	if (exitCode !== 0) {
-		throw new Error(
-			`northflank command failed (${exitCode}): ${stderr.trim() || stdout.trim() || command.join(" ")}`
-		)
+		const message = stderr.trim() || stdout.trim() || command.join(" ")
+		if (message.includes("No CLI context present")) {
+			throw new Error(
+				`northflank command failed (${exitCode}): ${message}. Run 'pnpm exec northflank login' in services/actions/indexer first.`
+			)
+		}
+		throw new Error(`northflank command failed (${exitCode}): ${message}`)
 	}
 
 	let raw: unknown

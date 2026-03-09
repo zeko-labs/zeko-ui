@@ -1,5 +1,6 @@
 import { type ChildProcess, execFile, spawn } from "node:child_process"
 import { once } from "node:events"
+import { createServer as createHttpServer } from "node:http"
 import { createServer } from "node:net"
 import { resolve } from "node:path"
 import { setTimeout as wait } from "node:timers/promises"
@@ -314,11 +315,11 @@ describe("service integration", () => {
 				"action-processing-bench",
 				"--iterations",
 				"1",
-				"--blockCount",
+				"--block-count",
 				"40",
-				"--actionsPerBlock",
+				"--actions-per-block",
 				"8",
-				"--fieldsPerAction",
+				"--fields-per-action",
 				"6",
 				"--json"
 			],
@@ -333,13 +334,13 @@ describe("service integration", () => {
 			args: [
 				"dist/cli.js",
 				"action-processing-stress",
-				"--durationSeconds",
+				"--duration-seconds",
 				"1",
-				"--blockCount",
+				"--block-count",
 				"40",
-				"--actionsPerBlock",
+				"--actions-per-block",
 				"8",
-				"--fieldsPerAction",
+				"--fields-per-action",
 				"6",
 				"--json"
 			],
@@ -355,4 +356,69 @@ describe("service integration", () => {
 		})
 		expect(stopResponse.status).toBe(200)
 	}, 180_000)
+
+	it("accepts documented kebab-case flags", async () => {
+		const port = await allocatePort()
+		const baseUrl = `http://127.0.0.1:${port}`
+		const server = createHttpServer((_, response) => {
+			setTimeout(() => {
+				response.writeHead(200, { "content-type": "application/json" })
+				response.end(JSON.stringify({ status: "healthy" }))
+			}, 50)
+		})
+
+		await new Promise<void>((resolveServer, reject) => {
+			server.listen(port, "127.0.0.1", () => resolveServer())
+			server.on("error", reject)
+		})
+
+		try {
+			const timedOut = await runCommand({
+				command: "node",
+				args: ["dist/cli.js", "health", "--url", baseUrl, "--timeout-ms", "10", "--json"],
+				cwd: serviceDir,
+				allowFailure: true
+			})
+			expect(timedOut.code).not.toBe(0)
+			expect(timedOut.stderr).toContain("timed out after 10ms")
+
+			const succeeded = await runCommand({
+				command: "node",
+				args: ["dist/cli.js", "health", "--url", baseUrl, "--timeout-ms", "500", "--json"],
+				cwd: serviceDir
+			})
+			const rows = JSON.parse(succeeded.stdout) as Array<Record<string, unknown>>
+			expect(rows[0]?.check).toBe("health")
+
+			const resources = await runCommand({
+				command: "node",
+				args: [
+					"dist/cli.js",
+					"resources",
+					"--project-id",
+					"project",
+					"--service-id",
+					"service",
+					"--duration-seconds",
+					"60",
+					"--json"
+				],
+				cwd: serviceDir,
+				allowFailure: true
+			})
+			const resourcesOutput = `${resources.stdout}${resources.stderr}`
+			expect(resourcesOutput).toContain("northflank")
+			expect(resourcesOutput).not.toContain("project-id and service-id")
+		} finally {
+			await new Promise<void>((resolveServer, reject) => {
+				server.close((error) => {
+					if (error) {
+						reject(error)
+						return
+					}
+					resolveServer()
+				})
+			})
+		}
+	}, 60_000)
 })

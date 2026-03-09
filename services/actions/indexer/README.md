@@ -20,6 +20,15 @@ moon run actions-indexer:diagnose-health -- --url https://indexer.actions.zeko.i
 moon run actions-indexer:diagnose-resources -- --project-id <project> --service-id <service>
 ```
 
+`diagnose-resources` requires an authenticated Northflank CLI context in the service workspace:
+
+```bash
+cd services/actions/indexer
+pnpm exec northflank login
+```
+
+The `resources` and `diagnose` commands also need `project-id` and `service-id` values for the deployed service.
+
 ## Action Processing Benchmark Workflow
 
 Run local benchmark and stress workflows for the extracted action-processing module:

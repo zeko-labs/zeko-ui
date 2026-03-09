@@ -51,7 +51,9 @@ const runSyncFromArgs = async (args: Record<string, unknown>) => {
 	const innerPk = asString(args.innerPk ?? args["inner-pk"])
 
 	if (!l1ArchiveUrl || !l2ArchiveUrl || !outerPk || !innerPk) {
-		throw new Error("sync requires l1ArchiveUrl, l2ArchiveUrl, outerPk, and innerPk (args or env)")
+		throw new Error(
+			"sync requires l1-archive-url, l2-archive-url, outer-pk, and inner-pk (args or env)"
+		)
 	}
 
 	const result = await runSyncCheck({
@@ -94,7 +96,7 @@ const runResourcesFromArgs = async (args: Record<string, unknown>) => {
 	const projectId = asString(args.projectId ?? args["project-id"])
 	const serviceId = asString(args.serviceId ?? args["service-id"])
 	if (!projectId || !serviceId) {
-		throw new Error("resources requires projectId and serviceId (args or env)")
+		throw new Error("resources requires project-id and service-id (args or env)")
 	}
 
 	const result = await runNorthflankResources({
@@ -239,7 +241,7 @@ const command = defineCommand({
 					description: "Indexer base URL",
 					default: "https://indexer.actions.zeko.io"
 				},
-				timeoutMs: {
+				"timeout-ms": {
 					type: "string",
 					description: "Request timeout in milliseconds",
 					default: "8000"
@@ -265,27 +267,27 @@ const command = defineCommand({
 					description: "Indexer base URL",
 					default: "https://indexer.actions.zeko.io"
 				},
-				timeoutMs: {
+				"timeout-ms": {
 					type: "string",
 					description: "Request timeout in milliseconds",
 					default: "8000"
 				},
-				l1ArchiveUrl: {
+				"l1-archive-url": {
 					type: "string",
 					description: "L1 archive URL",
 					default: process.env.L1_ARCHIVE_URL
 				},
-				l2ArchiveUrl: {
+				"l2-archive-url": {
 					type: "string",
 					description: "L2 archive URL",
 					default: process.env.L2_ARCHIVE_URL
 				},
-				outerPk: {
+				"outer-pk": {
 					type: "string",
 					description: "Outer action public key",
 					default: process.env.OUTER_PK
 				},
-				innerPk: {
+				"inner-pk": {
 					type: "string",
 					description: "Inner action public key",
 					default: process.env.INNER_PK
@@ -304,22 +306,22 @@ const command = defineCommand({
 				description: "Fetch CPU/RAM resources from Northflank CLI"
 			},
 			args: {
-				projectId: {
+				"project-id": {
 					type: "string",
 					description: "Northflank project ID",
 					default: process.env.NORTHFLANK_PROJECT_ID
 				},
-				serviceId: {
+				"service-id": {
 					type: "string",
 					description: "Northflank service ID",
 					default: process.env.NORTHFLANK_SERVICE_ID
 				},
-				durationSeconds: {
+				"duration-seconds": {
 					type: "string",
 					description: "Metrics duration window in seconds",
 					default: "900"
 				},
-				northflankExecutable: {
+				"northflank-executable": {
 					type: "string",
 					description: "Northflank executable name",
 					default: "northflank"
@@ -343,47 +345,47 @@ const command = defineCommand({
 					description: "Indexer base URL",
 					default: "https://indexer.actions.zeko.io"
 				},
-				timeoutMs: {
+				"timeout-ms": {
 					type: "string",
 					description: "Request timeout in milliseconds",
 					default: "8000"
 				},
-				l1ArchiveUrl: {
+				"l1-archive-url": {
 					type: "string",
 					description: "L1 archive URL",
 					default: process.env.L1_ARCHIVE_URL
 				},
-				l2ArchiveUrl: {
+				"l2-archive-url": {
 					type: "string",
 					description: "L2 archive URL",
 					default: process.env.L2_ARCHIVE_URL
 				},
-				outerPk: {
+				"outer-pk": {
 					type: "string",
 					description: "Outer action public key",
 					default: process.env.OUTER_PK
 				},
-				innerPk: {
+				"inner-pk": {
 					type: "string",
 					description: "Inner action public key",
 					default: process.env.INNER_PK
 				},
-				projectId: {
+				"project-id": {
 					type: "string",
 					description: "Northflank project ID",
 					default: process.env.NORTHFLANK_PROJECT_ID
 				},
-				serviceId: {
+				"service-id": {
 					type: "string",
 					description: "Northflank service ID",
 					default: process.env.NORTHFLANK_SERVICE_ID
 				},
-				durationSeconds: {
+				"duration-seconds": {
 					type: "string",
 					description: "Metrics duration window in seconds",
 					default: "900"
 				},
-				northflankExecutable: {
+				"northflank-executable": {
 					type: "string",
 					description: "Northflank executable name",
 					default: "northflank"
@@ -402,17 +404,17 @@ const command = defineCommand({
 				description: "Benchmark the indexer action-processing workload"
 			},
 			args: {
-				blockCount: {
+				"block-count": {
 					type: "string",
 					description: "Number of synthetic blocks",
 					default: "120"
 				},
-				actionsPerBlock: {
+				"actions-per-block": {
 					type: "string",
 					description: "Actions per synthetic block",
 					default: "12"
 				},
-				fieldsPerAction: {
+				"fields-per-action": {
 					type: "string",
 					description: "Field count per action payload",
 					default: "6"
@@ -422,7 +424,7 @@ const command = defineCommand({
 					description: "Benchmark iterations",
 					default: "2"
 				},
-				workerThreads: {
+				"worker-threads": {
 					type: "string",
 					description: "Worker thread count (0 = auto)",
 					default: "0"
@@ -441,32 +443,32 @@ const command = defineCommand({
 				description: "Stress test the indexer action-processing workload"
 			},
 			args: {
-				durationSeconds: {
+				"duration-seconds": {
 					type: "string",
 					description: "Stress duration in seconds",
 					default: "5"
 				},
-				blockCount: {
+				"block-count": {
 					type: "string",
 					description: "Number of synthetic blocks",
 					default: "80"
 				},
-				actionsPerBlock: {
+				"actions-per-block": {
 					type: "string",
 					description: "Actions per synthetic block",
 					default: "8"
 				},
-				fieldsPerAction: {
+				"fields-per-action": {
 					type: "string",
 					description: "Field count per action payload",
 					default: "6"
 				},
-				preferWorker: {
+				"prefer-worker": {
 					type: "boolean",
 					description: "Use worker execution path",
 					default: true
 				},
-				workerThreads: {
+				"worker-threads": {
 					type: "string",
 					description: "Worker thread count (0 = auto)",
 					default: "0"
@@ -485,32 +487,32 @@ const command = defineCommand({
 				description: "Prove IPC worker path is faster than main-thread processing"
 			},
 			args: {
-				blockCount: {
+				"block-count": {
 					type: "string",
 					description: "Number of synthetic blocks",
 					default: "120"
 				},
-				actionsPerBlock: {
+				"actions-per-block": {
 					type: "string",
 					description: "Actions per synthetic block",
 					default: "12"
 				},
-				fieldsPerAction: {
+				"fields-per-action": {
 					type: "string",
 					description: "Field count per action payload",
 					default: "6"
 				},
-				warmupRuns: {
+				"warmup-runs": {
 					type: "string",
 					description: "Unmeasured warmup runs before sampling",
 					default: "1"
 				},
-				sampleRuns: {
+				"sample-runs": {
 					type: "string",
 					description: "Measured runs used for proof",
 					default: "6"
 				},
-				workerThreads: {
+				"worker-threads": {
 					type: "string",
 					description: "Worker process count (0 = auto)",
 					default: "0"
