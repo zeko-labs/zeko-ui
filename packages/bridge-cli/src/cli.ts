@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
 import { defineCommand, runMain, type CommandDef } from "citty"
+import { createBridgeCommand } from "./commands/bridge"
+import { createDoctorCommand } from "./commands/doctor"
 import { createDepositCommand, createWithdrawalCommand } from "./commands/direct"
-import { createPlaceholderCommand } from "./commands/placeholder"
+import { createOperationCommand } from "./commands/operation"
+import { createTuiCommand } from "./commands/tui"
 
 export const createBridgeCli = (): CommandDef =>
 	defineCommand({
@@ -12,24 +15,12 @@ export const createBridgeCli = (): CommandDef =>
 			description: "Agent-first CLI for bridging between Mina and Zeko."
 		},
 		subCommands: {
-			bridge: createPlaceholderCommand({
-				name: "bridge",
-				description: "Run a full bridge flow from source to destination."
-			}),
+			bridge: createBridgeCommand(),
 			deposit: createDepositCommand(),
 			withdrawal: createWithdrawalCommand(),
-			operation: createPlaceholderCommand({
-				name: "operation",
-				description: "Inspect or resume persisted bridge operations."
-			}),
-			tui: createPlaceholderCommand({
-				name: "tui",
-				description: "Open the bridge operation terminal UI."
-			}),
-			doctor: createPlaceholderCommand({
-				name: "doctor",
-				description: "Check CLI prerequisites and environment configuration."
-			})
+			operation: createOperationCommand(),
+			tui: createTuiCommand(),
+			doctor: createDoctorCommand()
 		}
 	})
 

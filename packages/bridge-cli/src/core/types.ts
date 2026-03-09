@@ -42,3 +42,41 @@ export type StatusResult<T> = {
 	count: number
 	operations: T[]
 }
+
+export type OperationPhase =
+	| "initializing"
+	| "submitted"
+	| "waiting"
+	| "finalizing"
+	| "canceling"
+	| "finalized"
+	| "completed"
+	| "cancelled"
+	| "failed"
+
+export type OperationStatus = "running" | "completed" | "cancelled" | "failed"
+
+export type OperationSession = {
+	id: string
+	status: OperationStatus
+	phase: OperationPhase
+	route: `${ChainRef}->${ChainRef}`
+	direction: Direction
+	account: string
+	recipient?: string
+	amount: string
+	logPath: string
+	createdAt: string
+	updatedAt: string
+	timeoutSlots?: number
+	lastError?: string
+	submittedTransactions: Array<{
+		action: "submit" | "finalize" | "cancel"
+		hash: string
+	}>
+	finalTransaction?: {
+		action: "submit" | "finalize" | "cancel"
+		hash: string
+		explorerUrl: string
+	}
+}

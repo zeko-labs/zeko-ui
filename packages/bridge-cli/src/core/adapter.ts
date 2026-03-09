@@ -10,6 +10,9 @@ import type { DepositStatus, TransactionResult, WithdrawalStatus } from "./types
 export type BridgeAdapter = {
 	getDepositStatuses(account: string): Promise<DepositStatus[]>
 	getWithdrawalStatuses(account: string): Promise<WithdrawalStatus[]>
+	canFinalizeDeposit?(account?: string): Promise<boolean>
+	canCancelDeposit?(account?: string): Promise<boolean>
+	canFinalizeWithdrawal?(account?: string): Promise<boolean>
 	submitDeposit(input: {
 		account?: string
 		amount: string
@@ -214,6 +217,16 @@ export const createBridgeAdapter = ({
 			const result = await tx.sign([signer]).send()
 			return normalizeTxResult({ action: "submit", direction: "deposit", route, result, wait })
 		},
+		async canFinalizeDeposit(account) {
+			const bridge = await getBridge(route)
+			const { publicKey } = resolvePublicKey({ account, secrets, network: route.to })
+			return bridge.canFinalizeDeposit(publicKey)
+		},
+		async canCancelDeposit(account) {
+			const bridge = await getBridge(route)
+			const { publicKey } = resolvePublicKey({ account, secrets, network: route.from })
+			return bridge.canCancelDeposit(publicKey)
+		},
 		async finalizeDeposit({ account, wait }) {
 			const bridge = await getBridge(route)
 			const { publicKey, signer } = resolvePublicKey({ account, secrets, network: route.to })
@@ -237,6 +250,11 @@ export const createBridgeAdapter = ({
 			)
 			const result = await tx.sign([signer]).send()
 			return normalizeTxResult({ action: "submit", direction: "withdrawal", route, result, wait })
+		},
+		async canFinalizeWithdrawal(account) {
+			const bridge = await getBridge(route)
+			const { publicKey } = resolvePublicKey({ account, secrets, network: route.to })
+			return bridge.canFinalizeWithdrawal(publicKey)
 		},
 		async finalizeWithdrawal({ account, wait }) {
 			const bridge = await getBridge(route)

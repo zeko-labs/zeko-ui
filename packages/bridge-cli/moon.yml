@@ -37,3 +37,40 @@ tasks:
     command: vitest run
     inputs:
       - "@group(src)"
+  integration-mina-to-zeko:
+    deps:
+      - build
+    script: |
+      if [ "${ZEKO_BRIDGE_ENABLE_INTEGRATION:-0}" != "1" ]; then
+        echo "Skipping Mina->Zeko integration run. Set ZEKO_BRIDGE_ENABLE_INTEGRATION=1 to enable it."
+        exit 0
+      fi
+      node ./dist/cli.js bridge --from mina:testnet --to zeko:testnet --amount "${ZEKO_BRIDGE_TEST_AMOUNT:-1}" --json
+    inputs:
+      - "@group(src)"
+  integration-zeko-to-mina:
+    deps:
+      - build
+    script: |
+      if [ "${ZEKO_BRIDGE_ENABLE_INTEGRATION:-0}" != "1" ]; then
+        echo "Skipping Zeko->Mina integration run. Set ZEKO_BRIDGE_ENABLE_INTEGRATION=1 to enable it."
+        exit 0
+      fi
+      node ./dist/cli.js bridge --from zeko:testnet --to mina:testnet --amount "${ZEKO_BRIDGE_TEST_AMOUNT:-1}" --json
+    inputs:
+      - "@group(src)"
+  integration-resume:
+    deps:
+      - build
+    script: |
+      if [ "${ZEKO_BRIDGE_ENABLE_INTEGRATION:-0}" != "1" ]; then
+        echo "Skipping resume integration run. Set ZEKO_BRIDGE_ENABLE_INTEGRATION=1 to enable it."
+        exit 0
+      fi
+      if [ -z "${ZEKO_BRIDGE_RESUME_OPERATION_ID:-}" ]; then
+        echo "Set ZEKO_BRIDGE_RESUME_OPERATION_ID to resume an interrupted operation."
+        exit 1
+      fi
+      node ./dist/cli.js operation resume "${ZEKO_BRIDGE_RESUME_OPERATION_ID}" --json
+    inputs:
+      - "@group(src)"
