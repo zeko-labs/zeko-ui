@@ -65,6 +65,10 @@ export const server = new Elysia({
 		const result = indexer.stop()
 		return status(result.success ? 200 : 500, result)
 	})
+	.post("/reset", async ({ status }) => {
+		const result = await indexer.reset()
+		return status(result.success ? 200 : 500, result)
+	})
 	.post("/rebuild", async ({ status }) => {
 		const result = await indexer.rebuild()
 		return status(result.success ? 200 : 500, result)

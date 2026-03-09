@@ -1,11 +1,7 @@
 import { defineConfig } from "tsdown"
 
 export default defineConfig({
-	entry: {
-		index: "./src/index.ts",
-		actions: "./src/actions.ts",
-		graphql: "./src/graphql/index.ts"
-	},
+	entry: ["./src/index.ts"],
 	platform: "browser",
 	dts: true,
 	tsconfig: "./tsconfig.build.json"

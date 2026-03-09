@@ -73,6 +73,12 @@ tasks:
     command: node dist/cli.js resources
     inputs:
       - "@group(sources)"
+  reset:
+    deps:
+      - build
+    command: node dist/cli.js reset
+    inputs:
+      - "@group(sources)"
   bench-action-processing:
     deps:
       - build

@@ -182,6 +182,50 @@ const authed = (headers: Record<string, string> = {}) => ({
 	...headers
 })
 
+const countRows = async (tableName: string): Promise<number> => {
+	const result = await runCommand({
+		command: "docker",
+		args: [
+			"exec",
+			containerName,
+			"psql",
+			"-U",
+			"postgres",
+			"-d",
+			"actions",
+			"-t",
+			"-A",
+			"-c",
+			`SELECT COUNT(*) FROM ${tableName};`
+		]
+	})
+
+	return Number(result.stdout.trim())
+}
+
+const seedIndexedRows = async (): Promise<void> => {
+	await runCommand({
+		command: "docker",
+		args: [
+			"exec",
+			containerName,
+			"psql",
+			"-U",
+			"postgres",
+			"-d",
+			"actions",
+			"-c",
+			[
+				'INSERT INTO outer_actions (after_state, kind, before_state, index, block_height, timestamp, txn_hash, fields, slot_range_lower, slot_range_upper, marked_as_canonical_at) VALUES (\'outer-witness-1\', \'witness\', NULL, 0, 1, NOW(), \'txn-outer-witness\', \'["0","1","2","3","4"]\'::jsonb, 0, 1, NOW());',
+				"INSERT INTO witness_actions (after_state, aux) VALUES ('outer-witness-1', 'aux-outer');",
+				'INSERT INTO outer_actions (after_state, kind, before_state, index, block_height, timestamp, txn_hash, fields, slot_range_lower, slot_range_upper, marked_as_canonical_at) VALUES (\'outer-commit-1\', \'commit\', \'outer-witness-1\', 1, 2, NOW(), \'txn-outer-commit\', \'["1","2","3","4","5","6","7","8"]\'::jsonb, 1, 2, NOW());',
+				"INSERT INTO commit_actions (after_state, ledger, inner_action_state, inner_action_state_length, synchronized_outer_action_state, synchronized_outer_action_state_length) VALUES ('outer-commit-1', 'ledger-1', 'inner-state-1', 1, 'sync-outer-state-1', 1);",
+				"INSERT INTO inner_actions (after_state, before_state, index, block_height, timestamp, txn_hash, fields, marked_as_canonical_at, aux) VALUES ('inner-1', NULL, 0, 1, NOW(), 'txn-inner-1', '[\"9\",\"10\"]'::jsonb, NOW(), 'aux-inner');"
+			].join(" ")
+		]
+	})
+}
+
 const fetchHealthSnapshot = async (): Promise<HealthCheckSnapshot> => {
 	const startedAt = performance.now()
 	const response = await fetch(`${serviceBaseUrl}/health`)
@@ -369,6 +413,52 @@ describe("service integration", () => {
 			headers: authed()
 		})
 		expect(stopResponse.status).toBe(200)
+	}, 180_000)
+
+	it("requires AUTH_TOKEN for reset and clears all indexed tables before restarting", async () => {
+		await seedIndexedRows()
+		expect(await countRows("outer_actions")).toBe(2)
+		expect(await countRows("commit_actions")).toBe(1)
+		expect(await countRows("witness_actions")).toBe(1)
+		expect(await countRows("inner_actions")).toBe(1)
+
+		const missingAuth = await runCommand({
+			command: "node",
+			args: ["dist/cli.js", "reset", "--url", serviceBaseUrl, "--json"],
+			cwd: serviceDir,
+			env: {
+				...process.env,
+				AUTH_TOKEN: ""
+			},
+			allowFailure: true
+		})
+		expect(missingAuth.code).not.toBe(0)
+		expect(`${missingAuth.stdout}${missingAuth.stderr}`).toContain("AUTH_TOKEN")
+
+		const resetResult = await runCommand({
+			command: "node",
+			args: ["dist/cli.js", "reset", "--url", serviceBaseUrl, "--json"],
+			cwd: serviceDir,
+			env: {
+				...process.env,
+				AUTH_TOKEN: authToken
+			}
+		})
+		const resetRows = JSON.parse(resetResult.stdout) as Array<Record<string, unknown>>
+		expect(resetRows[0]?.command).toBe("reset")
+		expect(resetRows[0]?.isRunning).toBe(true)
+
+		expect(await countRows("outer_actions")).toBe(0)
+		expect(await countRows("commit_actions")).toBe(0)
+		expect(await countRows("witness_actions")).toBe(0)
+		expect(await countRows("inner_actions")).toBe(0)
+
+		const statusResponse = await fetch(`${serviceBaseUrl}/status`, {
+			headers: authed()
+		})
+		expect(statusResponse.status).toBe(200)
+		const status = (await statusResponse.json()) as { isRunning?: boolean }
+		expect(status.isRunning).toBe(true)
 	}, 180_000)
 
 	it("keeps /health responsive while worker action-processing is running", async () => {

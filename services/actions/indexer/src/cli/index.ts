@@ -14,6 +14,76 @@ const printOutput = ({ json, table }: { json: boolean; table: Record<string, unk
 	console.table(table)
 }
 
+const normalizeUrl = (url: string): string => url.replace(/\/+$/, "")
+
+const readRequiredAuthToken = (): string => {
+	const authToken = asString(process.env.AUTH_TOKEN)
+	if (!authToken) {
+		throw new Error("reset requires AUTH_TOKEN in the environment")
+	}
+	return authToken
+}
+
+const parseJsonResponse = async (response: Response): Promise<unknown> => {
+	const text = await response.text()
+	if (text.length === 0) return null
+	try {
+		return JSON.parse(text)
+	} catch {
+		return text
+	}
+}
+
+const runResetFromArgs = async (args: Record<string, unknown>) => {
+	const url = asString(args.url) ?? `http://127.0.0.1:${process.env.PORT ?? "3000"}`
+	const timeoutMs = readCliNumberArg(args, ["timeoutMs", "timeout-ms", "timeout"], 30_000)
+	const authToken = readRequiredAuthToken()
+	const json = Boolean(args.json)
+
+	const response = await fetch(`${normalizeUrl(url)}/reset`, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${authToken}`
+		},
+		signal: AbortSignal.timeout(timeoutMs)
+	})
+	const payload = await parseJsonResponse(response)
+	const message =
+		typeof payload === "object" && payload && "message" in payload
+			? String((payload as { message: unknown }).message)
+			: response.statusText
+
+	if (!response.ok) {
+		throw new Error(`reset failed with HTTP ${response.status}: ${message}`)
+	}
+
+	const status =
+		typeof payload === "object" && payload && "status" in payload
+			? ((payload as { status: unknown }).status as
+					| {
+							isRunning?: unknown
+							lastFetchedBlock?: { outer?: unknown; inner?: unknown }
+					  }
+					| undefined)
+			: undefined
+
+	printOutput({
+		json,
+		table: [
+			{
+				command: "reset",
+				httpStatus: response.status,
+				message,
+				isRunning: status?.isRunning ?? null,
+				lastFetchedOuter: status?.lastFetchedBlock?.outer ?? null,
+				lastFetchedInner: status?.lastFetchedBlock?.inner ?? null
+			}
+		]
+	})
+
+	return payload
+}
+
 const runHealthFromArgs = async (args: Record<string, unknown>) => {
 	const url = asString(args.url) ?? "https://indexer.actions.zeko.io"
 	const timeoutMs = readCliNumberArg(args, ["timeoutMs", "timeout-ms", "timeout"], 8000)
@@ -227,7 +297,7 @@ const command = defineCommand({
 	meta: {
 		name: "actions-indexer",
 		version: "1.0.0",
-		description: "Indexer diagnostics CLI"
+		description: "Indexer operations CLI"
 	},
 	subCommands: {
 		health: {
@@ -255,6 +325,30 @@ const command = defineCommand({
 			run: async ({ args }) => {
 				await runHealthFromArgs(args as Record<string, unknown>)
 			}
+		},
+		reset: {
+			meta: {
+				name: "reset",
+				description: "Stop the indexer, clear indexed data, and restart from scratch"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: `http://127.0.0.1:${process.env.PORT ?? "3000"}`
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runResetFromArgs(args as Record<string, unknown>)
 		},
 		sync: {
 			meta: {

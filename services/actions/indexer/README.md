@@ -2,15 +2,16 @@
 
 Actions Indexer is a service that indexes actions from the Zeko blockchain and stores them in a database for easy retrieval and querying.
 
-## Diagnostics CLI
+## CLI
 
-Run diagnostics through moon tasks (all tasks invoke the actions-indexer CLI):
+Run diagnostics and control operations through moon tasks (all tasks invoke the actions-indexer CLI):
 
 ```bash
 moon run actions-indexer:diagnose
 moon run actions-indexer:diagnose-health
 moon run actions-indexer:diagnose-sync
 moon run actions-indexer:diagnose-resources
+AUTH_TOKEN=admin moon run actions-indexer:reset -- --url http://127.0.0.1:3000
 ```
 
 Examples:
@@ -19,6 +20,8 @@ Examples:
 moon run actions-indexer:diagnose-health -- --url https://indexer.actions.zeko.io --timeout-ms 30000
 moon run actions-indexer:diagnose-resources -- --project-id actions-indexer --service-id actions-indexer-deployment
 ```
+
+The `reset` command is authenticated and requires `AUTH_TOKEN` in the environment. It stops the service, clears all indexed table data, and starts the indexer again so it can resync from scratch.
 
 `diagnose-resources` requires an authenticated Northflank CLI context in the service workspace:
 
