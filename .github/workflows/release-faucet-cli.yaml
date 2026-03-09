@@ -168,6 +168,11 @@ jobs:
           for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64 win32-arm64; do
             PKG="@zeko-labs/faucet-cli-${platform}"
             VERSION=$(node -p "require('./npm/${platform}/package.json').version")
+            PUBLISHED=$(npm view "${PKG}@${VERSION}" version 2>/dev/null || true)
+            if [ -n "$PUBLISHED" ]; then
+              echo "${PKG}@${VERSION} already published, skipping."
+              continue
+            fi
             echo "Publishing ${PKG}@${VERSION}..."
             npm publish "./npm/${platform}" --access public --loglevel verbose
           done
@@ -179,7 +184,12 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
-          npm publish "zeko-labs-faucet-cli-${VERSION}.tgz" --access public --loglevel verbose
+          PUBLISHED=$(npm view "@zeko-labs/faucet-cli@${VERSION}" version 2>/dev/null || true)
+          if [ -n "$PUBLISHED" ]; then
+            echo "@zeko-labs/faucet-cli@${VERSION} already published, skipping."
+          else
+            npm publish "zeko-labs-faucet-cli-${VERSION}.tgz" --access public --loglevel verbose
+          fi
 
   github-release:
     needs: [version-check, publish]
