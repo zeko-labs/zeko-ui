@@ -11,7 +11,8 @@
 			"@zeko-labs/faucet-cli-linux-arm64",
 			"@zeko-labs/faucet-cli-win32-x64",
 			"@zeko-labs/faucet-cli-win32-arm64"
-		]
+		],
+		["@zeko-labs/bridge-cli"]
 	],
 	"linked": [],
 	"access": "public",
