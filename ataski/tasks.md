@@ -42,3 +42,6 @@
 - T042 | done | add-indexer-diagnostics-cli-and-responsive-health | done/T042-add-indexer-diagnostics-cli-and-responsive-health.md
 - T043 | done | benchmark-and-optimize-indexer-hotpath | done/T043-benchmark-and-optimize-indexer-hotpath.md
 - T044 | done | rename-hotpath-and-finalize-performance-mode | done/T044-rename-hotpath-and-finalize-performance-mode.md
+- T045 | done | separate-indexer-cli-layout-and-add-docker-service-integration-suite | done/T045-separate-indexer-cli-layout-and-add-docker-service-integration-suite.md
+- T046 | done | separate-indexer-benchmark-modules-and-fix-docker-integration-db-setup | done/T046-separate-indexer-benchmark-modules-and-fix-docker-integration-db-setup.md
+- T047 | done | fix-indexer-node24-startup-with-web-standard-adapter | done/T047-fix-indexer-node24-startup-with-web-standard-adapter.md

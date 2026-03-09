@@ -1,5 +1,6 @@
 import { bearer } from "@elysiajs/bearer"
 import { cors } from "@elysiajs/cors"
+import { node } from "@elysiajs/node"
 import { Elysia, t } from "elysia"
 import { checkDatabaseHealth, createDatabase } from "./db"
 import { env } from "./env"
@@ -16,7 +17,9 @@ dbHealthMonitor.start()
 
 const authToken = env.AUTH_TOKEN
 
-export const server = new Elysia()
+export const server = new Elysia({
+	adapter: node()
+})
 	.use(bearer())
 	.use(
 		cors({

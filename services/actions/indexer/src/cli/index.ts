@@ -1,8 +1,8 @@
 import { defineCommand, runMain } from "citty"
-import { runActionProcessingBench } from "./action-processing/bench"
-import { runActionProcessingStress } from "./action-processing/stress"
-import { runHealthCheck, runSyncCheck } from "./cli/checks"
-import { runNorthflankResources } from "./cli/resources"
+import { runActionProcessingBench } from "../benchmark/action-processing-bench"
+import { runActionProcessingStress } from "../benchmark/action-processing-stress"
+import { runHealthCheck, runSyncCheck } from "./checks"
+import { runNorthflankResources } from "./resources"
 
 const asString = (value: unknown): string | undefined =>
 	typeof value === "string" && value.length > 0 ? value : undefined

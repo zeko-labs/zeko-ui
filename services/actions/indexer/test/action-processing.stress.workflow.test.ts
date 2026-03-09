@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { runActionProcessingStress } from "../scripts/action-processing-stress"
+import { runActionProcessingStress } from "../src/benchmark/action-processing-stress"
 
 describe("action-processing stress workflow", () => {
 	it("runs stress scenario and reports event loop lag", async () => {

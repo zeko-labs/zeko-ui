@@ -1,6 +1,6 @@
 import { monitorEventLoopDelay } from "node:perf_hooks"
-import { runActionProcessing, shutdownActionProcessingRuntime } from "./runtime"
-import { generateSyntheticArchiveBlocks } from "./synthetic"
+import { runActionProcessing, shutdownActionProcessingRuntime } from "../action-processing/runtime"
+import { generateSyntheticArchiveBlocks } from "./action-processing-synthetic"
 
 const average = (values: number[]): number =>
 	values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length

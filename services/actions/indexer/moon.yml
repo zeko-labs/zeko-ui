@@ -87,6 +87,13 @@ tasks:
     inputs:
       - "@group(sources)"
       - "@group(tests)"
+  test-service-integration:
+    deps:
+      - build
+    command: pnpm --filter @zeko/actions-indexer exec vitest run test/service.integration.test.ts
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
   typecheck:
     deps:
       - ^:build

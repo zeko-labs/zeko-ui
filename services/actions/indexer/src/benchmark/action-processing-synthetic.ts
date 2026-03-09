@@ -1,6 +1,6 @@
 import { fromList, pushHash } from "@zeko/bridge-sdk"
 import { Field } from "o1js"
-import type { ArchiveAction } from "./types"
+import type { ArchiveAction } from "../action-processing/types"
 
 const createPseudoRandom = (seed: number) => {
 	let state = BigInt(seed)

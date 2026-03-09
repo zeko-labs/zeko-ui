@@ -20,11 +20,29 @@ moon run actions-indexer:diagnose-health -- --url https://indexer.actions.zeko.i
 moon run actions-indexer:diagnose-resources -- --project-id <project> --service-id <service>
 ```
 
-## ActionProcessing Benchmark Workflow
+## Action Processing Benchmark Workflow
 
 Run local benchmark and stress workflows for the extracted action-processing module:
 
 ```bash
 moon run actions-indexer:bench-action-processing
 moon run actions-indexer:stress-action-processing
+```
+
+Implementation layout:
+
+- CLI commands: `src/cli/*`
+- Benchmark/stress workloads: `src/benchmark/*`
+
+## Service Integration Suite
+
+Run a full local integration suite that:
+
+1. starts a Postgres Docker container,
+2. migrates the actions schema,
+3. starts the actions-indexer service,
+4. verifies health/lifecycle endpoints and CLI checks.
+
+```bash
+moon run actions-indexer:test-service-integration
 ```

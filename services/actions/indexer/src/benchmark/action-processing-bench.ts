@@ -1,6 +1,6 @@
-import { processArchiveBlocks } from "./core"
-import { runActionProcessing, shutdownActionProcessingRuntime } from "./runtime"
-import { generateSyntheticArchiveBlocks } from "./synthetic"
+import { processArchiveBlocks } from "../action-processing/core"
+import { runActionProcessing, shutdownActionProcessingRuntime } from "../action-processing/runtime"
+import { generateSyntheticArchiveBlocks } from "./action-processing-synthetic"
 
 interface BenchSample {
 	totalMs: number
