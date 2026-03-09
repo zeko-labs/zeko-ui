@@ -28,6 +28,30 @@ tasks:
       - "@group(sources)"
     outputs:
       - dist/**
+  manual-db-test:
+    description: Manual local Postgres integration test. Starts Docker, prepares schema, runs test, and tears down.
+    script: |
+      set -eu
+      db_url="postgresql://postgres:postgres@localhost:5434/actions"
+      if ! docker info >/dev/null 2>&1; then
+        echo "Docker daemon is not running. Start Docker/OrbStack and rerun moon run actions-api:manual-db-test."
+        exit 1
+      fi
+      docker compose down -v --remove-orphans || true
+      docker compose up -d --wait
+      cleanup() {
+        docker compose down -v --remove-orphans || true
+      }
+      trap cleanup EXIT
+      DATABASE_URL="$db_url" pnpm exec drizzle-kit push
+      ACTIONS_API_TEST_DATABASE_URL="$db_url" vitest run --config vitest.node.config.ts
+    options:
+      cache: false
+  manual-e2e-live:
+    description: Manual live smoke test against deployed actions-api endpoint (set ACTIONS_API_E2E_BASE_URL to override).
+    script: vitest run tests/actions.live-e2e.test.ts
+    options:
+      cache: false
   schema:
     command: bun run graphql/printSchema.ts
     inputs:

@@ -9,6 +9,7 @@ fileGroups:
     - moon.yml
     - package.json
     - tsconfig.json
+    - tsdown.config.ts
   tests:
     - test/**/*
 dependsOn:
@@ -35,9 +36,71 @@ tasks:
       - "@group(sources)"
     outputs:
       - dist/index.js
+      - dist/cli.js
+      - dist/action-processing-process.js
   start:
-    command: bun src/index.ts
+    deps:
+      - build
+    command: node dist/index.js
     preset: server
+  cli:
+    deps:
+      - build
+    command: node dist/cli.js
+    inputs:
+      - "@group(sources)"
+  diagnose:
+    deps:
+      - build
+    command: node dist/cli.js diagnose
+    inputs:
+      - "@group(sources)"
+  diagnose-health:
+    deps:
+      - build
+    command: node dist/cli.js health
+    inputs:
+      - "@group(sources)"
+  diagnose-sync:
+    deps:
+      - build
+    command: node dist/cli.js sync
+    inputs:
+      - "@group(sources)"
+  diagnose-resources:
+    deps:
+      - build
+    command: node dist/cli.js resources
+    inputs:
+      - "@group(sources)"
+  bench-action-processing:
+    deps:
+      - build
+    command: node dist/cli.js action-processing-bench
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  stress-action-processing:
+    deps:
+      - build
+    command: node dist/cli.js action-processing-stress
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  prove-action-processing:
+    deps:
+      - build
+    command: node dist/cli.js action-processing-proof
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  test-service-integration:
+    deps:
+      - build
+    command: pnpm --filter @zeko/actions-indexer exec vitest run test/service.integration.test.ts
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
   typecheck:
     deps:
       - ^:build

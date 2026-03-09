@@ -18,6 +18,8 @@ import { fetchActions, getNetworkTip, handleFork, l2Client, logger } from "../he
  * Handler for fetching inner actions (withdrawals) from the L2 archive.
  */
 
+const EMPTY_ACTIONS_STATE = emptyActionsList.toString()
+
 async function fetch({ startBlock }: { startBlock: number }) {
 	logger.info(`[inner.fetch] Fetching from ${startBlock}`)
 
@@ -28,10 +30,9 @@ async function fetch({ startBlock }: { startBlock: number }) {
 	})
 
 	const data = actions.map((item: ArchiveEvent) => {
-		const beforeState = item.beforeActionState.equals(emptyActionsList).toBoolean()
-			? null
-			: item.beforeActionState.toString()
-		const afterState = item.afterActionState.toString()
+		const beforeState =
+			item.beforeActionState === EMPTY_ACTIONS_STATE ? null : item.beforeActionState
+		const afterState = item.afterActionState
 		const blockHeight = item.blockInfo.height
 		const now = +Date.now()
 		const blockTimestamp = +new Date(+item.blockInfo.timestamp)
@@ -78,7 +79,7 @@ function buildInner(items: InnerItem[], currIndex: number) {
 			blockHeight: item.blockHeight,
 			timestamp: new Date(+item.timestamp),
 			txnHash: item.hash,
-			fields: item.fields.map((x) => x.toString()),
+			fields: item.fields,
 			markedAsCanonicalAt: item.markedAsCanonicalAt,
 			aux: item.aux
 		})

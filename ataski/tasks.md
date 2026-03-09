@@ -33,3 +33,16 @@
 - T033 | done | document-cloudflare-build-config-and-automation | done/T033-document-cloudflare-build-config-and-automation.md
 - T034 | done | fix-bridge-ui-deploy-task-entrypoint | done/T034-fix-bridge-ui-deploy-task-entrypoint.md
 - T035 | done | fix-indexer-logging | done/T035-fix-indexer-logging.md
+- T036 | done | fix-handlefork-fork-detection-branch-condition | done/T036-fix-handlefork-fork-detection.md
+- T037 | done | setup-actions-indexer-typecheck-lint-format-tasks | done/T037-setup-actions-indexer-typecheck-lint-format.md
+- T038 | done | migrate-actions-indexer-dockerfile-to-moon-v2-proto-flow | done/T038-migrate-actions-indexer-dockerfile-to-moon-v2.md
+- T039 | done | fix-actions-indexer-typecheck-ci-ordering | done/T039-fix-actions-indexer-typecheck-ci-ordering.md
+- T040 | done | merge-main-and-fix-leaderboard-deploy-and-docker | done/T040-merge-main-and-fix-leaderboard-deploy-and-docker.md
+- T041 | done | fix-actions-api-db-runtime-failures-on-witness-queries | done/T041-fix-actions-api-db-runtime-failures.md
+- T042 | done | add-indexer-diagnostics-cli-and-responsive-health | done/T042-add-indexer-diagnostics-cli-and-responsive-health.md
+- T043 | done | benchmark-and-optimize-indexer-hotpath | done/T043-benchmark-and-optimize-indexer-hotpath.md
+- T044 | done | rename-hotpath-and-finalize-performance-mode | done/T044-rename-hotpath-and-finalize-performance-mode.md
+- T045 | done | separate-indexer-cli-layout-and-add-docker-service-integration-suite | done/T045-separate-indexer-cli-layout-and-add-docker-service-integration-suite.md
+- T046 | done | separate-indexer-benchmark-modules-and-fix-docker-integration-db-setup | done/T046-separate-indexer-benchmark-modules-and-fix-docker-integration-db-setup.md
+- T047 | done | fix-indexer-node24-startup-with-web-standard-adapter | done/T047-fix-indexer-node24-startup-with-web-standard-adapter.md
+- T048 | done | fix-ipc-review-findings-and-proof-workflow | done/T048-fix-ipc-review-findings-and-proof.md

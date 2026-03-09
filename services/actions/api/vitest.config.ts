@@ -3,7 +3,8 @@ import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config"
 export default defineWorkersConfig({
 	test: {
 		env: {
-			DATABASE_URL: "postgresql://postgres:postgres@localhost:5434/actions"
+			DATABASE_URL: "postgresql://postgres:postgres@localhost:5434/actions",
+			ACTIONS_API_E2E_BASE_URL: process.env.ACTIONS_API_E2E_BASE_URL ?? ""
 		},
 		fileParallelism: false,
 		poolOptions: {

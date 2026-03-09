@@ -17,21 +17,33 @@ export const rc = new WeakMap<
 	}
 >()
 
+const formatDatabaseError = (error: unknown): string => {
+	if (!(error instanceof Error)) return String(error)
+	const cause = (error as Error & { cause?: unknown }).cause
+	if (cause === undefined || cause === null) return error.message
+	const causeText = cause instanceof Error ? cause.message : String(cause)
+	return `${error.message} | cause: ${causeText}`
+}
+
 const initializeDrizzle = ({ cache, env }: { cache: boolean; env: Env }) => {
-	const connectionString =
-		env.ENVIRONMENT === "local"
-			? env.DATABASE_URL
-			: cache
-				? `${env.HYPERDRIVE.connectionString}`
-				: `${env.HYPERDRIVE_NO_CACHE.connectionString}`
-	const client = postgres(connectionString, {
-		// prepare: false,
-		// idle_timeout: 20,
-		// max_lifetime: 60 * 30,
-		max: 5,
-		fetch_types: false
-	})
-	const db = drizzle(client, { logger: true })
+	const isLocal = env.ENVIRONMENT === "local"
+	const hyperdrive = cache ? env.HYPERDRIVE : env.HYPERDRIVE_NO_CACHE
+	const client = isLocal
+		? postgres(env.DATABASE_URL, {
+				max: 5,
+				fetch_types: false
+			})
+		: postgres({
+				host: hyperdrive.host,
+				port: hyperdrive.port,
+				database: hyperdrive.database,
+				username: hyperdrive.user,
+				password: hyperdrive.password,
+				max: 1,
+				prepare: false,
+				fetch_types: false
+			})
+	const db = drizzle({ client, logger: true })
 	return [db, client] as const
 }
 
@@ -81,7 +93,7 @@ export async function checkDatabaseHealth(
 		return {
 			healthy: false,
 			latency: performance.now() - start,
-			error: error instanceof Error ? error.message : String(error)
+			error: formatDatabaseError(error)
 		}
 	}
 }

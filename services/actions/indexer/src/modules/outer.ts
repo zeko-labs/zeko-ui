@@ -21,6 +21,8 @@ import { fetchActions, getNetworkTip, handleFork, l1Client, logger } from "../he
  * Handler for fetching outer actions (deposits) from the L1 archive.
  */
 
+const EMPTY_ACTIONS_STATE = emptyActionsList.toString()
+
 export async function fetch({ startBlock }: { startBlock: number }) {
 	logger.info(`[outer.fetch] Fetching from ${startBlock}`)
 
@@ -31,11 +33,10 @@ export async function fetch({ startBlock }: { startBlock: number }) {
 	})
 
 	const data = actions.map((item: ArchiveEvent) => {
-		const beforeState = item.beforeActionState.equals(emptyActionsList).toBoolean()
-			? null
-			: item.beforeActionState.toString()
-		const afterState = item.afterActionState.toString()
-		const kind = item.action[0].equals(0).toBoolean() ? "commit" : "witness"
+		const beforeState =
+			item.beforeActionState === EMPTY_ACTIONS_STATE ? null : item.beforeActionState
+		const afterState = item.afterActionState
+		const kind = item.action[0] === "0" ? "commit" : "witness"
 		const blockHeight = item.blockInfo.height
 		const markedAsCanonicalAt =
 			item.blockInfo.distanceFromMaxBlockHeight >= env.L1_FINALITY ? new Date() : null
@@ -106,7 +107,7 @@ function buildOuter(items: OuterItem[], currIndex: number) {
 			slotRangeUpper: BigInt(item.slotRangeUpper),
 			timestamp: new Date(+item.timestamp),
 			txnHash: item.hash,
-			fields: item.fields.map((x) => x.toString()),
+			fields: item.fields,
 			markedAsCanonicalAt: item.markedAsCanonicalAt
 		})
 		if (item.kind === "commit") {

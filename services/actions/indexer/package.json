@@ -7,13 +7,15 @@
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": "./dist/index.js",
-		"./module": "./dist/module.js",
+		"./action-processing-process": "./dist/action-processing-process.js",
+		"./cli": "./dist/cli.js",
 		"./*": "./*"
 	},
 	"dependencies": {
 		"@elysiajs/bearer": "catalog:elysia",
 		"@elysiajs/cors": "catalog:elysia",
 		"@elysiajs/eden": "catalog:elysia",
+		"@elysiajs/node": "catalog:elysia",
 		"@zeko/actions-api": "workspace:^",
 		"@zeko-labs/bridge-sdk": "workspace:^",
 		"@zeko/graphql": "workspace:^",
@@ -28,7 +30,9 @@
 		"valibot": "catalog:"
 	},
 	"devDependencies": {
-		"@types/bun": "catalog:",
+		"@northflank/cli": "^0.10.16",
+		"@types/node": "^20.8.10",
+		"citty": "^0.1.6",
 		"gql.tada": "catalog:graphql",
 		"tsdown": "catalog:",
 		"type-fest": "catalog:",

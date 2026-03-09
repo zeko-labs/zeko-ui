@@ -29,6 +29,7 @@ export async function runIndexingLoop(db: PostgresJsDatabase, state: IndexerStat
 				`runIndexingLoop: finished run (outer=${state.lastFetchedBlock.outer ?? 0}, inner=${state.lastFetchedBlock.inner ?? 0})`
 			)
 		} catch (err: unknown) {
+			state.consecutiveErrors += 1
 			const retryDelay = Math.min(45, baseDelay * (state.consecutiveErrors ?? 0) + 1)
 			const missingParents: string[] | undefined = (err as unknown as { missingParents?: string[] })
 				?.missingParents
