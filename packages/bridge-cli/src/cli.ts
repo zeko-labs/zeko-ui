@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { defineCommand, runMain, type CommandDef } from "citty"
+import { createDepositCommand, createWithdrawalCommand } from "./commands/direct"
 import { createPlaceholderCommand } from "./commands/placeholder"
 
 export const createBridgeCli = (): CommandDef =>
@@ -15,14 +16,8 @@ export const createBridgeCli = (): CommandDef =>
 				name: "bridge",
 				description: "Run a full bridge flow from source to destination."
 			}),
-			deposit: createPlaceholderCommand({
-				name: "deposit",
-				description: "Perform deposit-level bridge operations."
-			}),
-			withdrawal: createPlaceholderCommand({
-				name: "withdrawal",
-				description: "Perform withdrawal-level bridge operations."
-			}),
+			deposit: createDepositCommand(),
+			withdrawal: createWithdrawalCommand(),
 			operation: createPlaceholderCommand({
 				name: "operation",
 				description: "Inspect or resume persisted bridge operations."

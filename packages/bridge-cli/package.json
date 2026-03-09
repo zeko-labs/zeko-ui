@@ -22,7 +22,9 @@
 		"valibot": "catalog:"
 	},
 	"devDependencies": {
+		"@zeko/bridge-sdk": "workspace:^",
 		"@types/node": "^20.8.10",
+		"o1js": "catalog:",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
