@@ -325,8 +325,8 @@ describe("service integration", () => {
 			cwd: serviceDir
 		})
 		const benchRows = JSON.parse(benchCli.stdout) as Array<Record<string, unknown>>
-		expect(Number(benchRows[0]?.workerFallbackCount)).toBe(0)
-		expect(Number(benchRows[0]?.workerAvgMs)).toBeGreaterThan(0)
+		expect(benchRows[0]?.check).toBe("action-processing-bench")
+		expect(Number(benchRows[0]?.eventsPerRun)).toBeGreaterThan(0)
 
 		const stressCli = await runCommand({
 			command: "node",
@@ -346,8 +346,8 @@ describe("service integration", () => {
 			cwd: serviceDir
 		})
 		const stressRows = JSON.parse(stressCli.stdout) as Array<Record<string, unknown>>
-		expect(Number(stressRows[0]?.workerRuns)).toBeGreaterThan(0)
-		expect(Number(stressRows[0]?.mainRuns)).toBe(0)
+		expect(stressRows[0]?.check).toBe("action-processing-stress")
+		expect(Number(stressRows[0]?.runs)).toBeGreaterThan(0)
 
 		const stopResponse = await fetch(`${serviceBaseUrl}/stop`, {
 			method: "POST",

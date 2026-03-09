@@ -1,66 +1,10 @@
 import { defineCommand, runMain } from "citty"
 import { runActionProcessingBench } from "../benchmark/action-processing-bench"
+import { runActionProcessingProof } from "../benchmark/action-processing-proof"
 import { runActionProcessingStress } from "../benchmark/action-processing-stress"
+import { asString, readCliBooleanArg, readCliNumberArg } from "./args"
 import { runHealthCheck, runSyncCheck } from "./checks"
 import { runNorthflankResources } from "./resources"
-
-const asString = (value: unknown): string | undefined =>
-	typeof value === "string" && value.length > 0 ? value : undefined
-
-const asNumber = (value: unknown, fallback: number): number => {
-	const parsed = Number(value)
-	return Number.isFinite(parsed) ? parsed : fallback
-}
-
-const pickArg = (args: Record<string, unknown>, camelCase: string, kebabCase: string): unknown =>
-	args[camelCase] ?? args[kebabCase]
-
-const readFlagValue = (flag: string): string | undefined => {
-	const index = process.argv.indexOf(flag)
-	if (index === -1) return undefined
-	return process.argv[index + 1]
-}
-
-const readNumericArg = ({
-	args,
-	camelCase,
-	kebabCase,
-	fallback
-}: {
-	args: Record<string, unknown>
-	camelCase: string
-	kebabCase: string
-	fallback: number
-}): number =>
-	asNumber(
-		readFlagValue(`--${kebabCase}`) ??
-			readFlagValue(`--${camelCase}`) ??
-			pickArg(args, camelCase, kebabCase),
-		fallback
-	)
-
-const readBooleanArg = ({
-	args,
-	camelCase,
-	kebabCase,
-	fallback
-}: {
-	args: Record<string, unknown>
-	camelCase: string
-	kebabCase: string
-	fallback: boolean
-}): boolean => {
-	const raw =
-		readFlagValue(`--${kebabCase}`) ??
-		readFlagValue(`--${camelCase}`) ??
-		pickArg(args, camelCase, kebabCase)
-	if (raw == null) return fallback
-	if (typeof raw === "boolean") return raw
-	if (typeof raw === "string") {
-		return raw === "true" || raw === "1"
-	}
-	return fallback
-}
 
 const printOutput = ({ json, table }: { json: boolean; table: Record<string, unknown>[] }) => {
 	if (json) {
@@ -72,12 +16,7 @@ const printOutput = ({ json, table }: { json: boolean; table: Record<string, unk
 
 const runHealthFromArgs = async (args: Record<string, unknown>) => {
 	const url = asString(args.url) ?? "https://indexer.actions.zeko.io"
-	const timeoutMs = asNumber(
-		readFlagValue("--timeout-ms") ??
-			readFlagValue("--timeout") ??
-			pickArg(args, "timeoutMs", "timeout-ms"),
-		8000
-	)
+	const timeoutMs = readCliNumberArg(args, ["timeoutMs", "timeout-ms", "timeout"], 8000)
 	const json = Boolean(args.json)
 
 	const health = await runHealthCheck({ baseUrl: url, timeoutMs })
@@ -106,10 +45,10 @@ const runHealthFromArgs = async (args: Record<string, unknown>) => {
 }
 
 const runSyncFromArgs = async (args: Record<string, unknown>) => {
-	const l1ArchiveUrl = asString(pickArg(args, "l1ArchiveUrl", "l1-archive-url"))
-	const l2ArchiveUrl = asString(pickArg(args, "l2ArchiveUrl", "l2-archive-url"))
-	const outerPk = asString(pickArg(args, "outerPk", "outer-pk"))
-	const innerPk = asString(pickArg(args, "innerPk", "inner-pk"))
+	const l1ArchiveUrl = asString(args.l1ArchiveUrl ?? args["l1-archive-url"])
+	const l2ArchiveUrl = asString(args.l2ArchiveUrl ?? args["l2-archive-url"])
+	const outerPk = asString(args.outerPk ?? args["outer-pk"])
+	const innerPk = asString(args.innerPk ?? args["inner-pk"])
 
 	if (!l1ArchiveUrl || !l2ArchiveUrl || !outerPk || !innerPk) {
 		throw new Error("sync requires l1ArchiveUrl, l2ArchiveUrl, outerPk, and innerPk (args or env)")
@@ -117,12 +56,7 @@ const runSyncFromArgs = async (args: Record<string, unknown>) => {
 
 	const result = await runSyncCheck({
 		baseUrl: asString(args.url) ?? "https://indexer.actions.zeko.io",
-		timeoutMs: asNumber(
-			readFlagValue("--timeout-ms") ??
-				readFlagValue("--timeout") ??
-				pickArg(args, "timeoutMs", "timeout-ms"),
-			8000
-		),
+		timeoutMs: readCliNumberArg(args, ["timeoutMs", "timeout-ms", "timeout"], 8000),
 		l1ArchiveUrl,
 		l2ArchiveUrl,
 		outerPk,
@@ -157,8 +91,8 @@ const runSyncFromArgs = async (args: Record<string, unknown>) => {
 }
 
 const runResourcesFromArgs = async (args: Record<string, unknown>) => {
-	const projectId = asString(pickArg(args, "projectId", "project-id"))
-	const serviceId = asString(pickArg(args, "serviceId", "service-id"))
+	const projectId = asString(args.projectId ?? args["project-id"])
+	const serviceId = asString(args.serviceId ?? args["service-id"])
 	if (!projectId || !serviceId) {
 		throw new Error("resources requires projectId and serviceId (args or env)")
 	}
@@ -166,9 +100,9 @@ const runResourcesFromArgs = async (args: Record<string, unknown>) => {
 	const result = await runNorthflankResources({
 		projectId,
 		serviceId,
-		durationSeconds: asNumber(pickArg(args, "durationSeconds", "duration-seconds"), 900),
+		durationSeconds: readCliNumberArg(args, ["durationSeconds", "duration-seconds"], 900),
 		northflankExecutable:
-			asString(pickArg(args, "northflankExecutable", "northflank-executable")) ?? "northflank"
+			asString(args.northflankExecutable ?? args["northflank-executable"]) ?? "northflank"
 	})
 
 	printOutput({
@@ -192,37 +126,11 @@ const runDiagnoseFromArgs = async (args: Record<string, unknown>) => {
 
 const runActionProcessingBenchFromArgs = async (args: Record<string, unknown>) => {
 	const result = await runActionProcessingBench({
-		blockCount: readNumericArg({
-			args,
-			camelCase: "blockCount",
-			kebabCase: "block-count",
-			fallback: 120
-		}),
-		actionsPerBlock: readNumericArg({
-			args,
-			camelCase: "actionsPerBlock",
-			kebabCase: "actions-per-block",
-			fallback: 12
-		}),
-		fieldsPerAction: readNumericArg({
-			args,
-			camelCase: "fieldsPerAction",
-			kebabCase: "fields-per-action",
-			fallback: 6
-		}),
-		iterations: readNumericArg({
-			args,
-			camelCase: "iterations",
-			kebabCase: "iterations",
-			fallback: 2
-		}),
-		workerThreads:
-			readNumericArg({
-				args,
-				camelCase: "workerThreads",
-				kebabCase: "worker-threads",
-				fallback: 0
-			}) || undefined,
+		blockCount: readCliNumberArg(args, ["blockCount", "block-count"], 120),
+		actionsPerBlock: readCliNumberArg(args, ["actionsPerBlock", "actions-per-block"], 12),
+		fieldsPerAction: readCliNumberArg(args, ["fieldsPerAction", "fields-per-action"], 6),
+		iterations: readCliNumberArg(args, ["iterations"], 2),
+		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined,
 		strictWorker: true
 	})
 
@@ -246,43 +154,12 @@ const runActionProcessingBenchFromArgs = async (args: Record<string, unknown>) =
 
 const runActionProcessingStressFromArgs = async (args: Record<string, unknown>) => {
 	const result = await runActionProcessingStress({
-		durationSeconds: readNumericArg({
-			args,
-			camelCase: "durationSeconds",
-			kebabCase: "duration-seconds",
-			fallback: 5
-		}),
-		blockCount: readNumericArg({
-			args,
-			camelCase: "blockCount",
-			kebabCase: "block-count",
-			fallback: 80
-		}),
-		actionsPerBlock: readNumericArg({
-			args,
-			camelCase: "actionsPerBlock",
-			kebabCase: "actions-per-block",
-			fallback: 8
-		}),
-		fieldsPerAction: readNumericArg({
-			args,
-			camelCase: "fieldsPerAction",
-			kebabCase: "fields-per-action",
-			fallback: 6
-		}),
-		preferWorker: readBooleanArg({
-			args,
-			camelCase: "preferWorker",
-			kebabCase: "prefer-worker",
-			fallback: true
-		}),
-		workerThreads:
-			readNumericArg({
-				args,
-				camelCase: "workerThreads",
-				kebabCase: "worker-threads",
-				fallback: 0
-			}) || undefined,
+		durationSeconds: readCliNumberArg(args, ["durationSeconds", "duration-seconds"], 5),
+		blockCount: readCliNumberArg(args, ["blockCount", "block-count"], 80),
+		actionsPerBlock: readCliNumberArg(args, ["actionsPerBlock", "actions-per-block"], 8),
+		fieldsPerAction: readCliNumberArg(args, ["fieldsPerAction", "fields-per-action"], 6),
+		preferWorker: readCliBooleanArg(args, ["preferWorker", "prefer-worker"], true),
+		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined,
 		strictWorker: true
 	})
 
@@ -304,6 +181,44 @@ const runActionProcessingStressFromArgs = async (args: Record<string, unknown>) 
 			}
 		]
 	})
+}
+
+const runActionProcessingProofFromArgs = async (args: Record<string, unknown>) => {
+	const result = await runActionProcessingProof({
+		blockCount: readCliNumberArg(args, ["blockCount", "block-count"], 120),
+		actionsPerBlock: readCliNumberArg(args, ["actionsPerBlock", "actions-per-block"], 12),
+		fieldsPerAction: readCliNumberArg(args, ["fieldsPerAction", "fields-per-action"], 6),
+		warmupRuns: readCliNumberArg(args, ["warmupRuns", "warmup-runs"], 1),
+		sampleRuns: readCliNumberArg(args, ["sampleRuns", "sample-runs"], 6),
+		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined,
+		strictWorker: true
+	})
+
+	if (args.json) {
+		console.log(JSON.stringify(result, null, 2))
+	} else {
+		printOutput({
+			json: false,
+			table: [
+				{
+					check: "action-processing-proof",
+					mainMedianMs: result.summary.mainMedianMs,
+					workerMedianMs: result.summary.workerMedianMs,
+					mainP95Ms: result.summary.mainP95Ms,
+					workerP95Ms: result.summary.workerP95Ms,
+					speedupRatio: result.summary.speedupRatio,
+					workerFallbackCount: result.summary.workerFallbackCount,
+					passed: result.passed
+				}
+			]
+		})
+	}
+
+	if (!result.passed) {
+		throw new Error(
+			`action-processing proof failed: worker median (${result.summary.workerMedianMs}ms) must be lower than main median (${result.summary.mainMedianMs}ms)`
+		)
+	}
 }
 
 const command = defineCommand({
@@ -563,6 +478,50 @@ const command = defineCommand({
 				}
 			},
 			run: async ({ args }) => runActionProcessingStressFromArgs(args as Record<string, unknown>)
+		},
+		"action-processing-proof": {
+			meta: {
+				name: "action-processing-proof",
+				description: "Prove IPC worker path is faster than main-thread processing"
+			},
+			args: {
+				blockCount: {
+					type: "string",
+					description: "Number of synthetic blocks",
+					default: "120"
+				},
+				actionsPerBlock: {
+					type: "string",
+					description: "Actions per synthetic block",
+					default: "12"
+				},
+				fieldsPerAction: {
+					type: "string",
+					description: "Field count per action payload",
+					default: "6"
+				},
+				warmupRuns: {
+					type: "string",
+					description: "Unmeasured warmup runs before sampling",
+					default: "1"
+				},
+				sampleRuns: {
+					type: "string",
+					description: "Measured runs used for proof",
+					default: "6"
+				},
+				workerThreads: {
+					type: "string",
+					description: "Worker process count (0 = auto)",
+					default: "0"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runActionProcessingProofFromArgs(args as Record<string, unknown>)
 		}
 	}
 })

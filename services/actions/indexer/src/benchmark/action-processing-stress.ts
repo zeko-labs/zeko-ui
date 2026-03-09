@@ -1,5 +1,5 @@
 import { monitorEventLoopDelay } from "node:perf_hooks"
-import { runActionProcessing, shutdownActionProcessingRuntime } from "../action-processing/runtime"
+import { runActionProcessing } from "../action-processing/runtime"
 import { generateSyntheticArchiveBlocks } from "./action-processing-synthetic"
 
 const average = (values: number[]): number =>
@@ -67,7 +67,6 @@ export async function runActionProcessingStress({
 	}
 
 	delayHistogram.disable()
-	await shutdownActionProcessingRuntime()
 
 	return {
 		runs,

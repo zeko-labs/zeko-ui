@@ -27,12 +27,37 @@ Run local benchmark and stress workflows for the extracted action-processing mod
 ```bash
 moon run actions-indexer:bench-action-processing
 moon run actions-indexer:stress-action-processing
+moon run actions-indexer:prove-action-processing
 ```
 
 Implementation layout:
 
 - CLI commands: `src/cli/*`
 - Benchmark/stress workloads: `src/benchmark/*`
+
+## Action Processing IPC Runtime
+
+`runActionProcessing` uses a subprocess worker path for the hashing-heavy action-processing workload.
+
+- Transport: parent writes a JSON request to child `stdin`; child writes JSON result to `stdout`.
+- Process model: each worker chunk runs in a short-lived Node subprocess.
+- Storage: this IPC path does not write payloads to files, so there are no temporary IPC files to clean up.
+- Failure behavior: if worker execution fails and fallback is enabled, runtime logs a warning and falls back to main-thread processing.
+
+## Proving IPC Is Faster
+
+Use the proof command to compare main-thread and worker-path median runtimes on the same synthetic workload:
+
+```bash
+moon run actions-indexer:prove-action-processing -- --sample-runs 6 --warmup-runs 1 --json
+```
+
+Pass criteria:
+
+- worker fallback count is `0`
+- worker median runtime is strictly lower than main median runtime
+
+The command exits non-zero when criteria are not met.
 
 ## Service Integration Suite
 

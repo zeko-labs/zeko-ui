@@ -3,25 +3,17 @@ import { existsSync } from "node:fs"
 import { availableParallelism } from "node:os"
 import { fileURLToPath } from "node:url"
 import { processArchiveBlocks, validateEventChain } from "./core"
+import type { ProcessRequest, ProcessResponse } from "./process-protocol"
 import type { ActionProcessingResult, ArchiveAction } from "./types"
 
-interface ProcessRequest {
-	blocks: ArchiveAction[]
-}
-
-interface ProcessSuccessResponse {
-	ok: true
-	result: ActionProcessingResult
-}
-
-interface ProcessErrorResponse {
-	ok: false
-	error: string
-}
-
-type ProcessResponse = ProcessSuccessResponse | ProcessErrorResponse
-
 const MAX_WORKER_PROCESSES = 4
+const DEFAULT_WORKER_PROCESS_TIMEOUT_MS = 45_000
+const configuredTimeoutMs = Number(
+	process.env.ACTION_PROCESSING_WORKER_TIMEOUT_MS ?? DEFAULT_WORKER_PROCESS_TIMEOUT_MS
+)
+const WORKER_PROCESS_TIMEOUT_MS = Number.isFinite(configuredTimeoutMs)
+	? Math.max(1_000, configuredTimeoutMs)
+	: DEFAULT_WORKER_PROCESS_TIMEOUT_MS
 
 function getProcessScriptPath(): URL {
 	return new URL("./action-processing-process.js", import.meta.url)
@@ -59,10 +51,20 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 		let stdout = ""
 		let stderr = ""
 		let settled = false
+		const timeout = setTimeout(() => {
+			subprocess.kill("SIGKILL")
+			finalize(() =>
+				reject(
+					new Error(`action-processing process timed out after ${WORKER_PROCESS_TIMEOUT_MS}ms`)
+				)
+			)
+		}, WORKER_PROCESS_TIMEOUT_MS)
+		timeout.unref?.()
 
 		const finalize = (handler: () => void) => {
 			if (settled) return
 			settled = true
+			clearTimeout(timeout)
 			subprocess.removeAllListeners("error")
 			subprocess.removeAllListeners("close")
 			handler()
@@ -171,10 +173,8 @@ export async function runActionProcessing({
 		if (!fallbackToMain) {
 			throw error
 		}
+		const message = error instanceof Error ? error.message : String(error)
+		console.warn(`[action-processing] worker path failed; falling back to main: ${message}`)
 		return processArchiveBlocks({ blocks, strategy: "main" })
 	}
-}
-
-export async function shutdownActionProcessingRuntime(): Promise<void> {
-	return Promise.resolve()
 }

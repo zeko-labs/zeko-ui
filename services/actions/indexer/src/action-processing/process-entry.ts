@@ -1,21 +1,5 @@
 import { processArchiveBlocks } from "./core"
-import type { ActionProcessingResult, ArchiveAction } from "./types"
-
-interface ProcessRequest {
-	blocks: ArchiveAction[]
-}
-
-interface ProcessSuccessResponse {
-	ok: true
-	result: ActionProcessingResult
-}
-
-interface ProcessErrorResponse {
-	ok: false
-	error: string
-}
-
-type ProcessResponse = ProcessSuccessResponse | ProcessErrorResponse
+import type { ProcessRequest, ProcessResponse } from "./process-protocol"
 
 const readStdin = async (): Promise<string> =>
 	new Promise((resolve, reject) => {

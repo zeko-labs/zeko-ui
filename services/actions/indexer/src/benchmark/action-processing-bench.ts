@@ -1,5 +1,5 @@
 import { processArchiveBlocks } from "../action-processing/core"
-import { runActionProcessing, shutdownActionProcessingRuntime } from "../action-processing/runtime"
+import { runActionProcessing } from "../action-processing/runtime"
 import { generateSyntheticArchiveBlocks } from "./action-processing-synthetic"
 
 interface BenchSample {
@@ -78,8 +78,6 @@ export async function runActionProcessingBench({
 			strategy: result.stats.strategy
 		})
 	}
-
-	await shutdownActionProcessingRuntime()
 
 	const mainSummary = summarize(mainSamples)
 	const workerSummary = summarize(workerSamples)
