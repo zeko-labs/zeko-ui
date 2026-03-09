@@ -8,7 +8,7 @@ export interface NorthflankMetricsInput {
 
 export interface NorthflankResourcesResult {
 	cpuPercent: number | null
-	memoryMb: number | null
+	memoryPercent: number | null
 	raw: unknown
 	command: string[]
 }
@@ -70,13 +70,15 @@ const collectValues = (
 	if (path.includes("memory") || path.includes("ram")) memoryValues.push(numeric)
 }
 
-const parseMetrics = (raw: unknown): { cpuPercent: number | null; memoryMb: number | null } => {
+export const parseMetrics = (
+	raw: unknown
+): { cpuPercent: number | null; memoryPercent: number | null } => {
 	const cpuValues: number[] = []
 	const memoryValues: number[] = []
 	collectValues(raw, "root", cpuValues, memoryValues)
 	const cpuPercent = cpuValues.length ? cpuValues.at(-1) ?? null : null
-	const memoryMb = memoryValues.length ? memoryValues.at(-1) ?? null : null
-	return { cpuPercent, memoryMb }
+	const memoryPercent = memoryValues.length ? memoryValues.at(-1) ?? null : null
+	return { cpuPercent, memoryPercent }
 }
 
 export async function runNorthflankResources({

@@ -38,6 +38,11 @@ NORTHFLANK_SERVICE_ID=actions-indexer-deployment
 
 The authenticated Northflank identity also needs the permission `Project > Services > Deployment > View Observability`. Without it, the command fails before metrics are returned.
 
+Current metrics output:
+
+- `cpuPercent`: latest Northflank CPU percentage
+- `memoryPercent`: latest Northflank memory percentage
+
 ## Action Processing Benchmark Workflow
 
 Run local benchmark and stress workflows for the extracted action-processing module:

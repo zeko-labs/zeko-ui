@@ -113,7 +113,7 @@ const runResourcesFromArgs = async (args: Record<string, unknown>) => {
 			{
 				check: "resources",
 				cpuPercent: result.cpuPercent,
-				memoryMb: result.memoryMb,
+				memoryPercent: result.memoryPercent,
 				command: result.command.join(" ")
 			}
 		]
