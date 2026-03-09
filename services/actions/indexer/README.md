@@ -17,7 +17,7 @@ Examples:
 
 ```bash
 moon run actions-indexer:diagnose-health -- --url https://indexer.actions.zeko.io --timeout-ms 30000
-moon run actions-indexer:diagnose-resources -- --project-id <project> --service-id <service>
+moon run actions-indexer:diagnose-resources -- --project-id actions-indexer --service-id actions-indexer-deployment
 ```
 
 `diagnose-resources` requires an authenticated Northflank CLI context in the service workspace:
@@ -28,6 +28,15 @@ pnpm exec northflank login
 ```
 
 The `resources` and `diagnose` commands also need `project-id` and `service-id` values for the deployed service.
+
+Current production values:
+
+```bash
+NORTHFLANK_PROJECT_ID=actions-indexer
+NORTHFLANK_SERVICE_ID=actions-indexer-deployment
+```
+
+The authenticated Northflank identity also needs the permission `Project > Services > Deployment > View Observability`. Without it, the command fails before metrics are returned.
 
 ## Action Processing Benchmark Workflow
 
