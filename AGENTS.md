@@ -78,3 +78,6 @@ For chore/tooling/config/docs-only changes, this workflow is optional unless exp
 7. Follow the concrete task format, ID allocation, lifecycle, tracker rules, and source-code workflow gates from the `ataski` skill definition.
 8. If `ataski/config.md` exists, it overrides defaults and must be followed.
 9. For source-code changes, this `AGENTS.md` section is the mandate to use Ataski, and the `ataski` skill is the authoritative operational procedure (task lifecycle ordering, TDD gates, and completion checks).
+10. Before editing any source file, the task must already exist in the canonical `ataski/` board and already be `in-progress`. No retroactive Ataski bookkeeping is allowed.
+11. Never reuse or guess task IDs. Read the canonical tracker, allocate the next unused ID, and stop to repair the board first if you discover duplicate IDs.
+12. Worktree-local `ataski/` copies are forbidden. All task creation, moves, and completion updates must happen in the canonical board in the main worktree.

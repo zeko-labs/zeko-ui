@@ -7,20 +7,6 @@ import type { ProcessRequest, ProcessResponse } from "./process-protocol"
 import type { ActionProcessingResult, ArchiveAction } from "./types"
 
 const MAX_WORKER_PROCESSES = 4
-const DEFAULT_WORKER_PROCESS_TIMEOUT_MS = 45_000
-const configuredTimeoutMs = Number(
-	process.env.ACTION_PROCESSING_WORKER_TIMEOUT_MS ?? DEFAULT_WORKER_PROCESS_TIMEOUT_MS
-)
-const WORKER_PROCESS_TIMEOUT_MS = Number.isFinite(configuredTimeoutMs)
-	? Math.max(1_000, configuredTimeoutMs)
-	: DEFAULT_WORKER_PROCESS_TIMEOUT_MS
-
-class ActionProcessingWorkerTimeoutError extends Error {
-	constructor(message: string) {
-		super(message)
-		this.name = "ActionProcessingWorkerTimeoutError"
-	}
-}
 
 function getProcessScriptPath(): URL {
 	return new URL("./action-processing-process.js", import.meta.url)
@@ -58,22 +44,10 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 		let stdout = ""
 		let stderr = ""
 		let settled = false
-		const timeout = setTimeout(() => {
-			subprocess.kill("SIGKILL")
-			finalize(() =>
-				reject(
-					new ActionProcessingWorkerTimeoutError(
-						`action-processing process timed out after ${WORKER_PROCESS_TIMEOUT_MS}ms`
-					)
-				)
-			)
-		}, WORKER_PROCESS_TIMEOUT_MS)
-		timeout.unref?.()
 
 		const finalize = (handler: () => void) => {
 			if (settled) return
 			settled = true
-			clearTimeout(timeout)
 			subprocess.removeAllListeners("error")
 			subprocess.removeAllListeners("close")
 			handler()
@@ -121,28 +95,6 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 	})
 }
 
-async function runChunkInDedicatedProcess(
-	blocks: ArchiveAction[]
-): Promise<ActionProcessingResult[]> {
-	try {
-		return [await runInDedicatedProcess(blocks)]
-	} catch (error) {
-		if (!(error instanceof ActionProcessingWorkerTimeoutError) || blocks.length <= 1) {
-			throw error
-		}
-
-		const midpoint = Math.ceil(blocks.length / 2)
-		console.warn(
-			`[action-processing] worker chunk timed out with ${blocks.length} blocks; retrying with smaller chunks`
-		)
-		const [leftResults, rightResults] = await Promise.all([
-			runChunkInDedicatedProcess(blocks.slice(0, midpoint)),
-			runChunkInDedicatedProcess(blocks.slice(midpoint))
-		])
-		return [...leftResults, ...rightResults]
-	}
-}
-
 async function runInWorkerPool({
 	blocks,
 	workerThreads
@@ -152,9 +104,7 @@ async function runInWorkerPool({
 }): Promise<ActionProcessingResult> {
 	const startedAt = performance.now()
 	const chunks = splitIntoChunks(blocks, workerThreads)
-	const chunkResults = (
-		await Promise.all(chunks.map((chunk) => runChunkInDedicatedProcess(chunk)))
-	).flat()
+	const chunkResults = await Promise.all(chunks.map((chunk) => runInDedicatedProcess(chunk)))
 
 	const validationStartedAt = performance.now()
 	const events = chunkResults.flatMap((chunk) => chunk.events)

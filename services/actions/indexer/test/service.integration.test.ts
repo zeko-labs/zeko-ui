@@ -12,6 +12,11 @@ interface CommandResult {
 	stderr: string
 }
 
+interface HealthCheckSnapshot {
+	statusCode: number
+	latencyMs: number
+}
+
 const serviceDir = resolve(import.meta.dirname, "..")
 const repoRoot = resolve(serviceDir, "../../..")
 const authToken = "indexer-test-token"
@@ -176,6 +181,15 @@ const authed = (headers: Record<string, string> = {}) => ({
 	Authorization: `Bearer ${authToken}`,
 	...headers
 })
+
+const fetchHealthSnapshot = async (): Promise<HealthCheckSnapshot> => {
+	const startedAt = performance.now()
+	const response = await fetch(`${serviceBaseUrl}/health`)
+	return {
+		statusCode: response.status,
+		latencyMs: performance.now() - startedAt
+	}
+}
 
 describe("service integration", () => {
 	beforeAll(async () => {
@@ -355,6 +369,39 @@ describe("service integration", () => {
 			headers: authed()
 		})
 		expect(stopResponse.status).toBe(200)
+	}, 180_000)
+
+	it("keeps /health responsive while worker action-processing is running", async () => {
+		const processingPromise = fetch(`${serviceBaseUrl}/test/action-processing`, {
+			method: "POST",
+			headers: authed({ "Content-Type": "application/json" }),
+			body: JSON.stringify({})
+		})
+
+		await wait(250)
+
+		const healthSnapshots: HealthCheckSnapshot[] = []
+		for (let attempt = 0; attempt < 3; attempt++) {
+			healthSnapshots.push(await fetchHealthSnapshot())
+		}
+
+		for (const snapshot of healthSnapshots) {
+			expect([200, 503]).toContain(snapshot.statusCode)
+			expect(snapshot.latencyMs).toBeLessThan(1_500)
+		}
+
+		const processingResponse = await processingPromise
+		expect(processingResponse.status).toBe(200)
+		const processing = (await processingResponse.json()) as {
+			success?: boolean
+			strategy?: string
+			events?: number
+			totalMs?: number
+		}
+		expect(processing.success).toBe(true)
+		expect(processing.strategy).toBe("worker")
+		expect(Number(processing.events)).toBeGreaterThan(0)
+		expect(Number(processing.totalMs)).toBeGreaterThan(0)
 	}, 180_000)
 
 	it("accepts documented kebab-case flags", async () => {
