@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: tool
+
+fileGroups:
+  src:
+    - src/**/*
+    - tests/**/*
+    - README.md
+    - moon.yml
+    - package.json
+    - tsconfig.json
+    - tsconfig.build.json
+    - tsdown.config.ts
+    - vitest.config.ts
+
+tasks:
+  build:
+    command: tsdown
+    inputs:
+      - "@group(src)"
+    outputs:
+      - dist/**
+  lint:
+    command: biome lint --diagnostic-level=error
+    inputs:
+      - "@group(src)"
+  lint-fix:
+    command: biome lint --fix --unsafe --diagnostic-level=error
+    inputs:
+      - "@group(src)"
+  typecheck:
+    command: tsc --noEmit
+    inputs:
+      - "@group(src)"
+  test:
+    command: vitest run
+    inputs:
+      - "@group(src)"

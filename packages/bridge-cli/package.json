@@ -1,0 +1,30 @@
+{
+	"name": "@zeko-labs/bridge-cli",
+	"version": "0.1.0",
+	"description": "Agent-first CLI for the Zeko bridge.",
+	"type": "module",
+	"bin": {
+		"zeko-bridge": "./dist/cli.js"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": ["dist", "README.md"],
+	"keywords": ["zeko", "bridge", "cli", "mina"],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/zeko-labs/zeko-ui.git",
+		"directory": "packages/bridge-cli"
+	},
+	"dependencies": {
+		"citty": "^0.1.6",
+		"valibot": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "^20.8.10",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}
