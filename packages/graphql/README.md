@@ -7,7 +7,7 @@ Shared GraphQL documents and generated TypeScript types used by the public Zeko 
 ## Installation
 
 ```bash
-npm install @zeko/graphql
+npm install @zeko-labs/graphql
 ```
 
 ## Usage
@@ -15,21 +15,33 @@ npm install @zeko/graphql
 Import the generated document nodes from the entrypoint that matches the target service.
 
 ```typescript
-import { accountQuery } from "@zeko/graphql/mina"
-import { fetchConfigQuery } from "@zeko/graphql/zeko"
+import { accountQuery } from "@zeko-labs/graphql/mina"
+import { fetchConfigQuery } from "@zeko-labs/graphql/zeko"
 ```
 
 ## Development
 
+These commands are maintainer workflows and only run from the private zeko-ui monorepo.
+
+These commands are maintainer workflows and only run from the private zeko-ui monorepo.
+
+These commands are maintainer workflows and only run from the private zeko-ui monorepo.
+
 Run all commands from the monorepo root with Moon:
 
 ```bash
-moon graphql:build
-moon graphql:typecheck
+moon run graphql:build
+moon run graphql:typecheck
 ```
+
+These schema refresh tasks are maintainer workflows, and some of them depend on internal monorepo schemas.
+
+These schema refresh tasks are maintainer workflows, and some of them depend on internal monorepo schemas.
+
+These schema refresh tasks are maintainer workflows, and some of them depend on internal monorepo schemas.
 
 Use the schema refresh tasks when GraphQL schemas change:
 
 ```bash
-moon graphql:schema-get
+moon run graphql:schema-get
 ```

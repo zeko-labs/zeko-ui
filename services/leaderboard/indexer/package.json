@@ -16,7 +16,7 @@
 		"@elysiajs/eden": "catalog:elysia",
 		"@leaderboard/api": "workspace:^",
 		"@lumina-dex/sdk": "catalog:",
-		"@zeko/graphql": "workspace:^",
+		"@zeko-labs/graphql": "workspace:^",
 		"consola": "catalog:",
 		"drizzle-orm": "catalog:",
 		"elysia": "catalog:elysia",

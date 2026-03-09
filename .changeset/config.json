@@ -12,7 +12,7 @@
 			"@zeko-labs/faucet-cli-win32-x64",
 			"@zeko-labs/faucet-cli-win32-arm64"
 		],
-		["@zeko/graphql", "@zeko-labs/bridge-sdk"]
+		["@zeko-labs/graphql", "@zeko-labs/bridge-sdk"]
 	],
 	"linked": [],
 	"access": "public",

@@ -1,5 +1,5 @@
-import { createGraphqlClient } from "@zeko/bridge-sdk"
-import { fetchActionsQuery, networkStateQuery } from "@zeko/graphql/mina-archive"
+import { createGraphqlClient } from "@zeko-labs/bridge-sdk"
+import { fetchActionsQuery, networkStateQuery } from "@zeko-labs/graphql/mina-archive"
 
 export interface HealthCheckResult {
 	statusCode: number

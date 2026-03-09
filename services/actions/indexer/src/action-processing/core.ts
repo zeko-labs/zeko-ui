@@ -1,4 +1,4 @@
-import { fromList, pushHash } from "@zeko/bridge-sdk"
+import { fromList, pushHash } from "@zeko-labs/bridge-sdk"
 import { Field } from "o1js"
 import type { ActionProcessingResult, ArchiveAction, ArchiveEvent } from "./types"
 
