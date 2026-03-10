@@ -1,5 +1,5 @@
 import { commitActions, witnessActions } from "@zeko/actions-api"
-import { emptyActionsList } from "@zeko/bridge-sdk"
+import { emptyActionsList } from "@zeko-labs/bridge-sdk"
 import { sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { outerActions } from "../../../api/drizzle/schema"

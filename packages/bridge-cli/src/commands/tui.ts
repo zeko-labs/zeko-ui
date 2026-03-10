@@ -1,10 +1,18 @@
+import { spawn } from "node:child_process"
+import { readFileSync } from "node:fs"
 import { readFile } from "node:fs/promises"
+import path from "node:path"
 import { defineCommand, type CommandDef } from "citty"
+import { createRequire } from "node:module"
 import { resolveAppPaths } from "../core/paths"
 import { createSessionStore } from "../core/session-store"
 import type { OperationSession } from "../core/types"
 
 type TuiModule = typeof import("@opentui/core")
+
+type TuiCommandArgs = {
+	id: { type: "positional"; required: false }
+}
 
 export const renderTuiSnapshot = ({
 	sessions,
@@ -68,11 +76,64 @@ const readLogFile = async (logPath: string): Promise<string> => {
 	}
 }
 
+const parseOptionalId = (value: unknown): string | undefined =>
+	typeof value === "string" && value.length > 0 ? value : undefined
+
+const parseBunManifest = (value: unknown): { bin: { bun: string } } => {
+	if (
+		typeof value !== "object" ||
+		value === null ||
+		!("bin" in value) ||
+		typeof value.bin !== "object" ||
+		value.bin === null ||
+		!("bun" in value.bin) ||
+		typeof value.bin.bun !== "string"
+	) {
+		throw new Error("Unable to resolve bundled Bun binary from bun/package.json")
+	}
+
+	return { bin: { bun: value.bin.bun } }
+}
+
+const resolveBundledBunPath = (): string => {
+	const require = createRequire(import.meta.url)
+	const packageJsonPath = require.resolve("bun/package.json")
+	const pkg = parseBunManifest(JSON.parse(readFileSync(packageJsonPath, "utf8")))
+	return path.join(path.dirname(packageJsonPath), pkg.bin.bun)
+}
+
+const runBundledBunTui = async (id?: string): Promise<void> => {
+	const bunPath = resolveBundledBunPath()
+	const cliPath = process.argv[1]
+	if (!cliPath) {
+		throw new Error("Unable to determine the current CLI entrypoint for TUI respawn.")
+	}
+
+	await new Promise<void>((resolve, reject) => {
+		const child = spawn(bunPath, [cliPath, "tui", ...(id ? [id] : [])], {
+			stdio: "inherit",
+			env: process.env
+		})
+
+		child.once("error", reject)
+		child.once("exit", (code) => {
+			if (code === 0) {
+				resolve()
+				return
+			}
+
+			reject(new Error(`Bundled Bun TUI exited with code ${code ?? "unknown"}`))
+		})
+	})
+}
+
 export const createTuiCommand = ({
-	loadRenderer
+	loadRenderer,
+	spawnBundledTui = runBundledBunTui
 }: {
 	loadRenderer?: () => Promise<TuiModule>
-} = {}): CommandDef<any> =>
+	spawnBundledTui?: (id?: string) => Promise<void>
+} = {}): CommandDef<TuiCommandArgs> =>
 	defineCommand({
 		meta: {
 			name: "tui",
@@ -82,15 +143,14 @@ export const createTuiCommand = ({
 			id: { type: "positional", required: false }
 		},
 		async run({ args }) {
+			const targetId = parseOptionalId(args.id)
 			if (!("bun" in process.versions)) {
-				throw new Error(
-					"`tui` currently requires Bun because OpenTUI's native renderer is Bun-only. Use `bun x zeko-bridge tui`."
-				)
+				await spawnBundledTui(targetId)
+				return
 			}
 
 			const appPaths = resolveAppPaths()
 			const store = createSessionStore({ stateDir: appPaths.stateDir })
-			const targetId = args.id as string | undefined
 
 			const rendererModule = await (loadRenderer ?? (() => import("@opentui/core")))()
 			const { BoxRenderable, TextRenderable, createCliRenderer } = rendererModule

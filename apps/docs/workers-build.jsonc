@@ -8,7 +8,11 @@
 			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks docs:deploy",
 			"branchIncludes": ["main"],
 			"branchExcludes": [],
-			"pathIncludes": ["apps/docs/**", "packages/faucet-cli/README.md"],
+			"pathIncludes": [
+				"apps/docs/**",
+				"packages/bridge-cli/README.md",
+				"packages/faucet-cli/README.md"
+			],
 			"pathExcludes": []
 		},
 		{
@@ -16,7 +20,11 @@
 			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks docs:deploy-preview",
 			"branchIncludes": ["*"],
 			"branchExcludes": ["main"],
-			"pathIncludes": ["apps/docs/**", "packages/faucet-cli/README.md"],
+			"pathIncludes": [
+				"apps/docs/**",
+				"packages/bridge-cli/README.md",
+				"packages/faucet-cli/README.md"
+			],
 			"pathExcludes": []
 		}
 	]

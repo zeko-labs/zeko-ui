@@ -64,10 +64,10 @@ Creates a GitHub release on `zeko-labs/bridge-cli` and attaches the packaged npm
 
 ### `sync-bridge-cli.yaml` — public mirror
 
-Force-pushes `packages/bridge-cli` to the standalone public repo after resolving monorepo-only metadata:
+Force-pushes `packages/bridge-cli` to the standalone public repo via the shared `sync-package-repo.yaml` helper after resolving monorepo-only metadata:
 
 - resolves `catalog:` versions
-- removes the private monorepo-only `@zeko/bridge-sdk` dev dependency
+- resolves `workspace:` versions using the bridge-sdk and graphql package manifests
 - injects the root `packageManager`
 - writes a standalone `pnpm-workspace.yaml`
 

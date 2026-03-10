@@ -1,0 +1,16 @@
+name: Sync Bridge SDK
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    uses: ./.github/workflows/sync-package-repo.yaml
+    with:
+      package-path: packages/bridge-sdk
+      standalone-repo: bridge-sdk
+      project-id: bridge-sdk
+      workspace-packages: .
+      extra-workspace-version-sources: packages/graphql/package.json
+    secrets: inherit

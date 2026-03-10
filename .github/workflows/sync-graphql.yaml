@@ -1,0 +1,15 @@
+name: Sync GraphQL
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    uses: ./.github/workflows/sync-package-repo.yaml
+    with:
+      package-path: packages/graphql
+      standalone-repo: graphql
+      project-id: graphql
+      workspace-packages: .
+    secrets: inherit

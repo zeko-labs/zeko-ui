@@ -1,7 +1,6 @@
 import { defineCommand, type CommandDef } from "citty"
 import type { BridgeAdapter } from "../core/adapter"
-import type { ChainRef } from "../core/routes"
-import { resolveRoute } from "../core/routes"
+import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
 import type {
 	DepositStatus,
 	StatusResult,
@@ -16,12 +15,107 @@ type StatusArgs = {
 	latest: boolean
 }
 
+type RouteArgs = {
+	from: ChainRef
+	to: ChainRef
+	json: boolean
+}
+
+type DepositSubmitArgs = RouteArgs & {
+	account?: string
+	amount: string
+	timeoutSlots?: number
+	wait: boolean
+}
+
+type DepositActionArgs = RouteArgs & {
+	account?: string
+	wait: boolean
+}
+
+type DepositStatusArgs = RouteArgs & StatusArgs
+
+type WithdrawalSubmitArgs = RouteArgs & {
+	account?: string
+	amount: string
+	wait: boolean
+}
+
+type WithdrawalActionArgs = RouteArgs & {
+	account?: string
+	wait: boolean
+}
+
+type WithdrawalStatusArgs = RouteArgs & StatusArgs
+
 type DirectCommandDeps = {
 	createAdapter?: (input: { from: ChainRef; to: ChainRef }) =>
 		| Promise<BridgeAdapter>
 		| BridgeAdapter
 	write?: (message: string) => void
 }
+
+const parseString = (value: unknown, flag: string): string => {
+	if (typeof value !== "string" || value.length === 0) {
+		throw new Error(`Missing required ${flag}`)
+	}
+
+	return value
+}
+
+const parseOptionalString = (value: unknown): string | undefined =>
+	typeof value === "string" && value.length > 0 ? value : undefined
+
+const parseOptionalNumber = (value: unknown): number | undefined =>
+	typeof value === "string" && value.length > 0 ? Number(value) : undefined
+
+const parseBoolean = (value: unknown, fallback: boolean): boolean =>
+	typeof value === "boolean" ? value : fallback
+
+const readRouteArgs = (args: Record<string, unknown>): RouteArgs => ({
+	from: parseChainRef(args.from, "--from"),
+	to: parseChainRef(args.to, "--to"),
+	json: parseBoolean(args.json, false)
+})
+
+const readDepositSubmitArgs = (args: Record<string, unknown>): DepositSubmitArgs => ({
+	...readRouteArgs(args),
+	account: parseOptionalString(args.account),
+	amount: parseString(args.amount, "--amount"),
+	timeoutSlots: parseOptionalNumber(args.timeoutSlots),
+	wait: parseBoolean(args.wait, true)
+})
+
+const readDepositActionArgs = (args: Record<string, unknown>): DepositActionArgs => ({
+	...readRouteArgs(args),
+	account: parseOptionalString(args.account),
+	wait: parseBoolean(args.wait, true)
+})
+
+const readDepositStatusArgs = (args: Record<string, unknown>): DepositStatusArgs => ({
+	...readRouteArgs(args),
+	account: parseString(args.account, "--account"),
+	latest: parseBoolean(args.latest, true)
+})
+
+const readWithdrawalSubmitArgs = (args: Record<string, unknown>): WithdrawalSubmitArgs => ({
+	...readRouteArgs(args),
+	account: parseOptionalString(args.account),
+	amount: parseString(args.amount, "--amount"),
+	wait: parseBoolean(args.wait, true)
+})
+
+const readWithdrawalActionArgs = (args: Record<string, unknown>): WithdrawalActionArgs => ({
+	...readRouteArgs(args),
+	account: parseOptionalString(args.account),
+	wait: parseBoolean(args.wait, true)
+})
+
+const readWithdrawalStatusArgs = (args: Record<string, unknown>): WithdrawalStatusArgs => ({
+	...readRouteArgs(args),
+	account: parseString(args.account, "--account"),
+	latest: parseBoolean(args.latest, true)
+})
 
 const defaultCreateAdapter = async ({
 	from,
@@ -37,6 +131,47 @@ const defaultCreateAdapter = async ({
 const selectLatest = <T extends { index: number }>(items: T[], latest: boolean): T[] =>
 	latest ? [...items].sort((left, right) => right.index - left.index).slice(0, 1) : items
 
+export const runDepositSubmit = async (
+	input: DepositSubmitArgs,
+	{
+		adapter
+	}: {
+		adapter: Pick<BridgeAdapter, "submitDeposit">
+	}
+): Promise<TransactionResult> =>
+	adapter.submitDeposit({
+		account: input.account,
+		amount: input.amount,
+		timeoutSlots: input.timeoutSlots,
+		wait: input.wait
+	})
+
+export const runDepositFinalize = async (
+	input: DepositActionArgs,
+	{
+		adapter
+	}: {
+		adapter: Pick<BridgeAdapter, "finalizeDeposit">
+	}
+): Promise<TransactionResult> =>
+	adapter.finalizeDeposit({
+		account: input.account,
+		wait: input.wait
+	})
+
+export const runDepositCancel = async (
+	input: DepositActionArgs,
+	{
+		adapter
+	}: {
+		adapter: Pick<BridgeAdapter, "cancelDeposit">
+	}
+): Promise<TransactionResult> =>
+	adapter.cancelDeposit({
+		account: input.account,
+		wait: input.wait
+	})
+
 export const runDepositStatus = async (
 	input: StatusArgs,
 	{
@@ -49,12 +184,39 @@ export const runDepositStatus = async (
 	return {
 		success: true,
 		direction: "deposit",
-		route: `${input.from}->${input.to}`,
+		route: formatRoute(input.from, input.to),
 		account: input.account,
 		count: operations.length,
 		operations
 	}
 }
+
+export const runWithdrawalSubmit = async (
+	input: WithdrawalSubmitArgs,
+	{
+		adapter
+	}: {
+		adapter: Pick<BridgeAdapter, "submitWithdrawal">
+	}
+): Promise<TransactionResult> =>
+	adapter.submitWithdrawal({
+		account: input.account,
+		amount: input.amount,
+		wait: input.wait
+	})
+
+export const runWithdrawalFinalize = async (
+	input: WithdrawalActionArgs,
+	{
+		adapter
+	}: {
+		adapter: Pick<BridgeAdapter, "finalizeWithdrawal">
+	}
+): Promise<TransactionResult> =>
+	adapter.finalizeWithdrawal({
+		account: input.account,
+		wait: input.wait
+	})
 
 export const runWithdrawalStatus = async (
 	input: StatusArgs,
@@ -68,7 +230,7 @@ export const runWithdrawalStatus = async (
 	return {
 		success: true,
 		direction: "withdrawal",
-		route: `${input.from}->${input.to}`,
+		route: formatRoute(input.from, input.to),
 		account: input.account,
 		count: operations.length,
 		operations
@@ -96,19 +258,20 @@ const renderTransaction = (result: TransactionResult): string =>
 		`Explorer: ${result.explorerUrl}`
 	].join("\n")
 
+const stringArg = (defaultValue: string): { type: "string"; default: string } => ({
+	type: "string",
+	default: defaultValue
+})
+
+const booleanArg = (defaultValue: boolean): { type: "boolean"; default: boolean } => ({
+	type: "boolean",
+	default: defaultValue
+})
+
 const routeArgs = (defaults: { from: ChainRef; to: ChainRef }) => ({
-	from: {
-		type: "string" as const,
-		default: defaults.from
-	},
-	to: {
-		type: "string" as const,
-		default: defaults.to
-	},
-	json: {
-		type: "boolean" as const,
-		default: false
-	}
+	from: stringArg(defaults.from),
+	to: stringArg(defaults.to),
+	json: booleanArg(false)
 })
 
 const writeResult = ({
@@ -153,18 +316,13 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					wait: { type: "boolean", default: true }
 				},
 				async run({ args }) {
+					const commandArgs = readDepositSubmitArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
-						from: args.from as ChainRef,
-						to: args.to as ChainRef
+						from: commandArgs.from,
+						to: commandArgs.to
 					})
-					const result = await adapter.submitDeposit({
-						account: args.account as string | undefined,
-						amount: args.amount as string,
-						timeoutSlots:
-							typeof args.timeoutSlots === "string" ? Number(args.timeoutSlots) : undefined,
-						wait: args.wait as boolean
-					})
-					writeResult({ json: args.json as boolean, result, write: deps.write ?? console.log })
+					const result = await runDepositSubmit(commandArgs, { adapter })
+					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
 				}
 			}),
 			finalize: defineCommand({
@@ -178,15 +336,13 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					wait: { type: "boolean", default: true }
 				},
 				async run({ args }) {
+					const commandArgs = readDepositActionArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
-						from: args.from as ChainRef,
-						to: args.to as ChainRef
+						from: commandArgs.from,
+						to: commandArgs.to
 					})
-					const result = await adapter.finalizeDeposit({
-						account: args.account as string | undefined,
-						wait: args.wait as boolean
-					})
-					writeResult({ json: args.json as boolean, result, write: deps.write ?? console.log })
+					const result = await runDepositFinalize(commandArgs, { adapter })
+					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
 				}
 			}),
 			cancel: defineCommand({
@@ -200,15 +356,13 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					wait: { type: "boolean", default: true }
 				},
 				async run({ args }) {
+					const commandArgs = readDepositActionArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
-						from: args.from as ChainRef,
-						to: args.to as ChainRef
+						from: commandArgs.from,
+						to: commandArgs.to
 					})
-					const result = await adapter.cancelDeposit({
-						account: args.account as string | undefined,
-						wait: args.wait as boolean
-					})
-					writeResult({ json: args.json as boolean, result, write: deps.write ?? console.log })
+					const result = await runDepositCancel(commandArgs, { adapter })
+					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
 				}
 			}),
 			status: defineCommand({
@@ -222,20 +376,13 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					latest: { type: "boolean", default: true }
 				},
 				async run({ args }) {
+					const commandArgs = readDepositStatusArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
-						from: args.from as ChainRef,
-						to: args.to as ChainRef
+						from: commandArgs.from,
+						to: commandArgs.to
 					})
-					const result = await runDepositStatus(
-						{
-							account: args.account as string,
-							from: args.from as ChainRef,
-							to: args.to as ChainRef,
-							latest: args.latest as boolean
-						},
-						{ adapter }
-					)
-					writeResult({ json: args.json as boolean, result, write: deps.write ?? console.log })
+					const result = await runDepositStatus(commandArgs, { adapter })
+					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
 				}
 			})
 		}
@@ -260,16 +407,13 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					wait: { type: "boolean", default: true }
 				},
 				async run({ args }) {
+					const commandArgs = readWithdrawalSubmitArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
-						from: args.from as ChainRef,
-						to: args.to as ChainRef
+						from: commandArgs.from,
+						to: commandArgs.to
 					})
-					const result = await adapter.submitWithdrawal({
-						account: args.account as string | undefined,
-						amount: args.amount as string,
-						wait: args.wait as boolean
-					})
-					writeResult({ json: args.json as boolean, result, write: deps.write ?? console.log })
+					const result = await runWithdrawalSubmit(commandArgs, { adapter })
+					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
 				}
 			}),
 			finalize: defineCommand({
@@ -283,15 +427,13 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					wait: { type: "boolean", default: true }
 				},
 				async run({ args }) {
+					const commandArgs = readWithdrawalActionArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
-						from: args.from as ChainRef,
-						to: args.to as ChainRef
+						from: commandArgs.from,
+						to: commandArgs.to
 					})
-					const result = await adapter.finalizeWithdrawal({
-						account: args.account as string | undefined,
-						wait: args.wait as boolean
-					})
-					writeResult({ json: args.json as boolean, result, write: deps.write ?? console.log })
+					const result = await runWithdrawalFinalize(commandArgs, { adapter })
+					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
 				}
 			}),
 			status: defineCommand({
@@ -305,20 +447,13 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					latest: { type: "boolean", default: true }
 				},
 				async run({ args }) {
+					const commandArgs = readWithdrawalStatusArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
-						from: args.from as ChainRef,
-						to: args.to as ChainRef
+						from: commandArgs.from,
+						to: commandArgs.to
 					})
-					const result = await runWithdrawalStatus(
-						{
-							account: args.account as string,
-							from: args.from as ChainRef,
-							to: args.to as ChainRef,
-							latest: args.latest as boolean
-						},
-						{ adapter }
-					)
-					writeResult({ json: args.json as boolean, result, write: deps.write ?? console.log })
+					const result = await runWithdrawalStatus(commandArgs, { adapter })
+					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
 				}
 			})
 		}

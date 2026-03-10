@@ -6,119 +6,13 @@ on:
 
 jobs:
   sync:
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: moonrepo/setup-toolchain@v0
-
-      - name: Create GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.ZEKO_LABS_GH_APP_ID }}
-          private-key: ${{ secrets.ZEKO_LABS_GH_APP_PRIVATE_KEY }}
-          owner: zeko-labs
-          repositories: bridge-cli
-
-      - name: Resolve standalone package metadata
-        run: |
-          node -e "
-          const fs = require('fs');
-          const path = require('path');
-
-          const workspace = fs.readFileSync('pnpm-workspace.yaml', 'utf8');
-          const catalog = {};
-          let inCatalog = false;
-          for (const line of workspace.split('\n')) {
-            if (line.trim() === 'catalog:') { inCatalog = true; continue; }
-            if (/^\S/.test(line) && inCatalog) { inCatalog = false; }
-            if (!inCatalog) continue;
-            const match = line.match(/^\s+['\"]?(.+?)['\"]?:\s+(.+?)$/);
-            if (!match) continue;
-            const name = match[1].replace(/['\"]$/g, '').trim();
-            const version = match[2].replace(/^['\"]|['\"]$/g, '').trim();
-            catalog[name] = version;
-          }
-
-          const packageVersions = {};
-          for (const entry of fs.readdirSync('packages', { withFileTypes: true })) {
-            if (!entry.isDirectory()) continue;
-            const file = path.join('packages', entry.name, 'package.json');
-            if (!fs.existsSync(file)) continue;
-            const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
-            packageVersions[pkg.name] = pkg.version;
-          }
-
-          const file = 'packages/bridge-cli/package.json';
-          const raw = fs.readFileSync(file, 'utf8');
-          const pkg = JSON.parse(raw);
-          let changed = false;
-          const omitFromStandalone = new Set(['@zeko/bridge-sdk']);
-
-          for (const section of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
-            if (!pkg[section]) continue;
-            for (const [name, specifier] of Object.entries({ ...pkg[section] })) {
-              if (omitFromStandalone.has(name)) {
-                delete pkg[section][name];
-                changed = true;
-                continue;
-              }
-              if (specifier === 'catalog:' && catalog[name]) {
-                pkg[section][name] = catalog[name];
-                changed = true;
-                continue;
-              }
-              if (typeof specifier === 'string' && specifier.startsWith('workspace:')) {
-                const range = specifier.slice('workspace:'.length);
-                const version = packageVersions[name];
-                if (!version) continue;
-                pkg[section][name] = range === '^' ? '^' + version : range === '~' ? '~' + version : version;
-                changed = true;
-              }
-            }
-          }
-
-          if (changed) {
-            const indent = raw.startsWith('{\n\t') ? '\t' : 2;
-            fs.writeFileSync(file, JSON.stringify(pkg, null, indent) + '\n');
-            console.log('Resolved standalone metadata in', file);
-          }
-          "
-
-      - name: Inject packageManager field
-        run: |
-          PM=$(node -p "require('./package.json').packageManager")
-          node -e "
-            const fs = require('fs');
-            const file = 'packages/bridge-cli/package.json';
-            const raw = fs.readFileSync(file, 'utf8');
-            const pkg = JSON.parse(raw);
-            pkg.packageManager = '$PM';
-            const indent = raw.startsWith('{\n\t') ? '\t' : 2;
-            fs.writeFileSync(file, JSON.stringify(pkg, null, indent) + '\n');
-          "
-
-      - name: Generate pnpm-workspace.yaml for standalone repo
-        run: printf 'packages:\n  - .\n' > packages/bridge-cli/pnpm-workspace.yaml
-
-      - name: Force-push clean commit to standalone repo
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          REMOTE_URL="https://x-access-token:${GH_TOKEN}@github.com/zeko-labs/bridge-cli.git"
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-
-          tmp=$(mktemp -d)
-          git init "$tmp"
-          cp -a packages/bridge-cli/. "$tmp/"
-          cd "$tmp"
-          git add -A
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: sync from monorepo (${COMMIT_SHA})"
-          git push --force "$REMOTE_URL" HEAD:main
+    uses: ./.github/workflows/sync-package-repo.yaml
+    with:
+      package-path: packages/bridge-cli
+      standalone-repo: bridge-cli
+      project-id: bridge-cli
+      workspace-packages: .
+      extra-workspace-version-sources: |
+        packages/bridge-sdk/package.json
+        packages/graphql/package.json
+    secrets: inherit

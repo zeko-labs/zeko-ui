@@ -1,0 +1,12 @@
+{
+	"name": "@scope/sync-target",
+	"version": "1.0.0",
+	"dependencies": {
+		"@scope/catalog-dep": "catalog:",
+		"@scope/shared": "workspace:^"
+	},
+	"devDependencies": {
+		"typescript": "catalog:",
+		"tsdown": "catalog:tools"
+	}
+}

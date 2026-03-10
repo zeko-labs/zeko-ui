@@ -1,60 +1,54 @@
 # Zeko Bridge SDK
 
-A TypeScript SDK for interacting with the Zeko bridge, enabling deposits and withdrawals between Mina (L1) and Zeko (L2).
+This package is developed in the private `zeko-ui` monorepo and mirrored here for public releases. The docs site reuses this README so package docs and website docs stay aligned.
+
+TypeScript SDK for interacting with the Zeko bridge and coordinating deposits and withdrawals between Mina (L1) and Zeko (L2).
 
 ## Installation
 
-You will need `pnpm` and `bun` installed to run this project.
+Install with npm:
 
 ```bash
-pnpm install
+npm install @zeko-labs/bridge-sdk
 ```
 
-## Build
-
-You can build the libraries with tsdown :
+Or with pnpm:
 
 ```bash
-bun run build
+pnpm add @zeko-labs/bridge-sdk
 ```
 
-## Development
+## Quick Start
 
-### Graphql
-
-The library uses `gql.tada` to generate types from the GraphQL schema. You can run the following command to download the latest schema and generate types:
-
-```bash
-bun run schema:get
-```
-
-If the queries in the `src/queries` are out of sync with the schema, there will be a typescript error.
-
-## Usage
-
-### Initialize the Bridge
+Initialize a bridge client with the network GraphQL endpoints you want to target.
 
 ```typescript
-import { Bridge } from "bridge-sdk"
+import { Bridge } from "@zeko-labs/bridge-sdk"
 
 const bridge = await Bridge.init({
-	l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
-	l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
-	zekoUrl: "https://alphanet.zeko.io/graphql",
+	l1Url: "https://gateway.mina.devnet.zeko.io",
+	l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
+	zekoUrl: "https://testnet.zeko.io/graphql",
+	zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql",
+	actionsApi: "https://api.actions.zeko.io/graphql",
 	l1Network: "testnet",
 	l2Network: "testnet"
 })
 ```
+
+The endpoints above are testnet examples. Use the matching mainnet endpoints for production traffic.
+
+## Usage
 
 ### Submit a Deposit
 
 ```typescript
 import { PrivateKey, UInt32, UInt64 } from "o1js"
 
-const signer = PrivateKey.fromBase58(process.env.MINA_PRIVATE_KEY)
+const signer = PrivateKey.fromBase58(process.env.MINA_PRIVATE_KEY!)
 const recipient = signer.toPublicKey()
 
-const txn = await bridge.submitDeposit(
+const transaction = await bridge.submitDeposit(
 	{ sender: recipient, fee: 0.1 * 10e8 },
 	{
 		recipient,
@@ -64,13 +58,13 @@ const txn = await bridge.submitDeposit(
 	}
 )
 
-const result = await txn.sign([signer]).send()
+await transaction.sign([signer]).send()
 ```
 
 ### Submit a Withdrawal
 
 ```typescript
-const txn = await bridge.submitWithdrawal(
+const transaction = await bridge.submitWithdrawal(
 	{ sender: recipient, fee: 0.1 * 10e8 },
 	{
 		recipient,
@@ -78,16 +72,14 @@ const txn = await bridge.submitWithdrawal(
 	}
 )
 
-const result = await txn.sign([signer]).send()
+await transaction.sign([signer]).send()
 ```
 
 ### Finalize Operations
 
 ```typescript
-// Finalize a deposit
 await bridge.finalizeDeposit(recipient)
 
-// Finalize a withdrawal
 await bridge.finalizeWithdrawal(
 	recipient,
 	{ sender: recipient, fee: 0.1 * 10e8 },
@@ -95,30 +87,46 @@ await bridge.finalizeWithdrawal(
 )
 ```
 
-The proving time depens on the length of `checkAccepted.elems.length` and `ase.fields`. These grow with time, so longer you wait, the longer the proving time.
-The sequencer doesn’t know if you’ve abandoned the request and so it is still proving it. On alphanet we have only one prover, so if you keep trying and abandoning it, each request needs to wait for more.
+Finalization time depends on the size of the witness data the bridge must prove. Longer gaps between submission and finalization generally mean more proof work and slower completion.
 
-In the future :
+## Development
 
-- caching of those proofs inside the sequencer, so users would not have to prove the whole extensions
-- moving this proving into the browser
+These commands are maintainer workflows and only run from the private zeko-ui monorepo.
 
-## Examples
+These commands are maintainer workflows and only run from the private zeko-ui monorepo.
 
-Set your wallet private key in the `.env` file.
-Run the example scripts:
+These commands are maintainer workflows and only run from the private zeko-ui monorepo.
+
+Run all commands from the monorepo root with Moon:
 
 ```bash
-# Make sure that you have at least 10 MINA on L1.
-bun run submitDeposit 
-# You will have to wait until the deposit went through on L1
-bun run finalizeDeposit
-# Nothing to note here
-bun run submitWithdrawal
-# You will have to wait until the withdrawal is synced
-bun run finalizeWithdrawal
-bun run fetchOuterActions
-bun run fetchInnerActions
+moon run bridge-sdk:build
+moon run bridge-sdk:typecheck
+```
+
+This schema refresh command is not available in the standalone bridge-sdk mirror.
+
+This schema refresh command is not available in the standalone bridge-sdk mirror.
+
+This schema refresh command is not available in the standalone bridge-sdk mirror.
+
+To refresh the generated GraphQL schema types used by the package:
+
+```bash
+moon run graphql:schema-get
+```
+
+## Local Examples
+
+The repository includes example scripts in `packages/bridge-sdk/examples`. From the monorepo root:
+
+```bash
+moon run bridge-sdk:submitDeposit
+moon run bridge-sdk:finalizeDeposit
+moon run bridge-sdk:submitWithdrawal
+moon run bridge-sdk:finalizeWithdrawal
+moon run bridge-sdk:fetchOuterActions
+moon run bridge-sdk:fetchInnerActions
 ```
 
 ## License

@@ -1,6 +1,6 @@
 import type { Client } from "@urql/core"
-import { networkStateQuery } from "@zeko/graphql/mina-archive"
-import { FetchZekoArchiveEvents } from "@zeko/graphql/zeko-archive"
+import { networkStateQuery } from "@zeko-labs/graphql/mina-archive"
+import { FetchZekoArchiveEvents } from "@zeko-labs/graphql/zeko-archive"
 import { createConsola } from "consola"
 
 export const logger = createConsola().withTag("LEADERBOARD_API")

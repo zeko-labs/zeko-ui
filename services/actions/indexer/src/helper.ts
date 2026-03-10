@@ -1,6 +1,6 @@
 import type { innerActions, outerActions } from "@zeko/actions-api"
-import { createGraphqlClient } from "@zeko/bridge-sdk"
-import { fetchActionsQuery, networkStateQuery } from "@zeko/graphql/mina-archive"
+import { createGraphqlClient } from "@zeko-labs/bridge-sdk"
+import { fetchActionsQuery, networkStateQuery } from "@zeko-labs/graphql/mina-archive"
 import { createConsola } from "consola"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import * as v from "valibot"

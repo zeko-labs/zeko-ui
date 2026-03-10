@@ -1,4 +1,4 @@
-import { leaderboard as graphql } from "."
+import { leaderboard as graphql } from "./clients"
 
 export const leaderboardQuery = graphql(`
   query FetchLeaderboard($input: LeaderboardInput) {

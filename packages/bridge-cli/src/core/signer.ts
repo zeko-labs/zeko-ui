@@ -1,15 +1,15 @@
 type EnvLike = Partial<Record<string, string | undefined>>
 
-export type SignerSecrets = {
+export type SignerKeys = {
 	mina: string
 	zeko: string
 	eth?: string
 }
 
-export const resolveSignerSecrets = (env: EnvLike = process.env): SignerSecrets => {
+export const resolveSignerKeys = (env: EnvLike = process.env): SignerKeys => {
 	const mina = env.ZEKO_BRIDGE_MINA_PRIVATE_KEY?.trim()
 	if (!mina) {
-		throw new Error("Missing required signing secret: ZEKO_BRIDGE_MINA_PRIVATE_KEY")
+		throw new Error("Missing required signer private key: ZEKO_BRIDGE_MINA_PRIVATE_KEY")
 	}
 
 	const zeko = env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY?.trim() || mina

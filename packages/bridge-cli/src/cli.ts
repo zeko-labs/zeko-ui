@@ -11,7 +11,7 @@ export const createBridgeCli = (): CommandDef =>
 	defineCommand({
 		meta: {
 			name: "zeko-bridge",
-			version: "0.1.0",
+			version: "0.0.0",
 			description: "Agent-first CLI for bridging between Mina and Zeko."
 		},
 		subCommands: {

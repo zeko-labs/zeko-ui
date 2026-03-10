@@ -1,13 +1,14 @@
 import { Field, fetchAccount, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
 import * as v from "valibot"
 import {
+	fetchActionsQuery,
 	fetchCommitAsePastSlotQuery,
 	fetchInnerActionsQueryIndexer,
 	fetchInnerWitnessesFromAuxesQuery,
+	networkStateQuery,
 	fetchOuterActionsQueryIndexer,
 	fetchOuterWitnessesFromAuxesQuery
-} from "../../graphql/src/bridge-indexer"
-import { fetchActionsQuery, networkStateQuery } from "../../graphql/src/mina-archive"
+} from "@zeko-labs/graphql"
 import { empty, fromList, pushHash } from "./actions"
 import type { GqlClient } from "./graphql"
 import type {

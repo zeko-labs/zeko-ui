@@ -4,13 +4,13 @@ import { defineCommand, type CommandDef } from "citty"
 import { PrivateKey } from "o1js"
 import type { BridgeAdapter } from "../core/adapter"
 import { createOperationLogger } from "../core/logger"
+import { createOperationStateController } from "../core/operation-machine"
 import { resolveAppPaths } from "../core/paths"
 import { renderBridgeResult, renderOperationProgress, toBridgeJsonResult } from "../core/reporter"
-import type { ChainRef } from "../core/routes"
-import { resolveRoute } from "../core/routes"
-import { resolveSignerSecrets } from "../core/signer"
+import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
+import { resolveSignerKeys } from "../core/signer"
 import { createSessionStore, type SessionStore } from "../core/session-store"
-import type { OperationPhase, OperationSession, OperationStatus } from "../core/types"
+import type { OperationPhase, OperationSession } from "../core/types"
 
 type LogFn = (entry: {
 	event: string
@@ -53,6 +53,35 @@ type BridgeFlowInput = {
 	session?: OperationSession
 }
 
+type BridgeCommandDeps = {
+	createAdapter?: (input: { from: ChainRef; to: ChainRef }) =>
+		| Promise<BridgeAdapter>
+		| BridgeAdapter
+	createStore?: (input: { stateDir: string }) => Pick<SessionStore, "save">
+	createLogger?: (input: { logPath: string }) => Pick<
+		ReturnType<typeof createOperationLogger>,
+		"write"
+	>
+	now?: () => string
+	resolvePaths?: typeof resolveAppPaths
+	generateId?: () => string
+	write?: (message: string) => void
+	writeProgress?: (message: string) => void
+	sleep?: (ms: number) => Promise<void>
+	pollIntervalMs?: number
+}
+
+type BridgeCommandArgs = {
+	from: { type: "string"; default: string }
+	to: { type: "string"; default: string }
+	amount: { type: "string"; required: true }
+	account: { type: "string"; required: false }
+	recipient: { type: "string"; required: false }
+	timeoutSlots: { type: "string"; required: false }
+	wait: { type: "boolean"; default: true }
+	json: { type: "boolean"; default: false }
+}
+
 const persistSession = async ({
 	session,
 	sessionStore,
@@ -70,25 +99,35 @@ const persistSession = async ({
 	await log({ event, phase: session.phase, details })
 }
 
-const updateSession = ({
+const transitionSession = ({
+	controller,
 	session,
-	phase,
-	status,
+	event,
 	now,
 	patch = {}
 }: {
+	controller: ReturnType<typeof createOperationStateController>
 	session: OperationSession
-	phase: OperationPhase
-	status?: OperationStatus
+	event:
+		| "MARK_SUBMITTED"
+		| "MARK_WAITING"
+		| "MARK_FINALIZING"
+		| "MARK_CANCELLING"
+		| "MARK_COMPLETED"
+		| "MARK_CANCELLED"
+		| "MARK_FAILED"
 	now: () => string
 	patch?: Partial<OperationSession>
-}): OperationSession => ({
-	...session,
-	...patch,
-	phase,
-	status: status ?? session.status,
-	updatedAt: now()
-})
+}): OperationSession => {
+	const next = controller.transition({ type: event })
+	return {
+		...session,
+		...patch,
+		phase: next.phase,
+		status: next.status,
+		updatedAt: now()
+	}
+}
 
 const latestByIndex = <T extends { index: number }>(items: T[]): T | null =>
 	items.length === 0 ? null : [...items].sort((left, right) => right.index - left.index)[0] ?? null
@@ -96,12 +135,30 @@ const latestByIndex = <T extends { index: number }>(items: T[]): T | null =>
 const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	if (explicit) return explicit
 
-	const secrets = resolveSignerSecrets()
-	const secret = from.startsWith("zeko:") ? secrets.zeko : secrets.mina
+	const keys = resolveSignerKeys()
+	const secret = from.startsWith("zeko:") ? keys.zeko : keys.mina
 	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
 }
 
-const routeString = (from: ChainRef, to: ChainRef) => `${from}->${to}` as const
+const parseOptionalString = (value: unknown): string | undefined =>
+	typeof value === "string" && value.length > 0 ? value : undefined
+
+const parseOptionalNumber = (value: unknown): number | undefined =>
+	typeof value === "string" && value.length > 0 ? Number(value) : undefined
+
+const parseBoolean = (value: unknown, fallback: boolean): boolean =>
+	typeof value === "boolean" ? value : fallback
+
+const parseBridgeCommandArgs = (args: Record<string, unknown>) => ({
+	from: parseChainRef(args.from, "--from"),
+	to: parseChainRef(args.to, "--to"),
+	amount: String(args.amount),
+	account: parseOptionalString(args.account),
+	recipient: parseOptionalString(args.recipient),
+	timeoutSlots: parseOptionalNumber(args.timeoutSlots),
+	wait: parseBoolean(args.wait, true),
+	json: parseBoolean(args.json, false)
+})
 
 const requireAdapterMethod = <T extends keyof BridgeFlowDeps["adapter"]>(
 	adapter: BridgeFlowDeps["adapter"],
@@ -127,7 +184,7 @@ export const runBridgeOperation = async (
 			id: input.id,
 			status: "running",
 			phase: "initializing",
-			route: routeString(input.from, input.to),
+			route: formatRoute(input.from, input.to),
 			direction: route.direction,
 			account: input.account,
 			recipient: input.recipient ?? input.account,
@@ -138,6 +195,10 @@ export const runBridgeOperation = async (
 			updatedAt: now(),
 			submittedTransactions: []
 		} satisfies OperationSession)
+	const operationState = createOperationStateController({
+		phase: session.phase,
+		status: session.status
+	})
 
 	await persistSession({
 		session,
@@ -157,9 +218,10 @@ export const runBridgeOperation = async (
 				timeoutSlots: session.timeoutSlots,
 				wait: true
 			})
-			session = updateSession({
+			session = transitionSession({
+				controller: operationState,
 				session,
-				phase: "submitted",
+				event: "MARK_SUBMITTED",
 				now,
 				patch: {
 					submittedTransactions: [{ action: "submit", hash: submitResult.hash }]
@@ -183,10 +245,10 @@ export const runBridgeOperation = async (
 				await requireAdapterMethod(deps.adapter, "getDepositStatuses")(session.account)
 			)
 			if (latest?.finalised) {
-				session = updateSession({
+				session = transitionSession({
+					controller: operationState,
 					session,
-					phase: "completed",
-					status: "completed",
+					event: "MARK_COMPLETED",
 					now,
 					patch: {
 						finalTransaction: {
@@ -207,7 +269,12 @@ export const runBridgeOperation = async (
 			}
 
 			if (latest?.cancelled) {
-				session = updateSession({ session, phase: "cancelled", status: "cancelled", now })
+				session = transitionSession({
+					controller: operationState,
+					session,
+					event: "MARK_CANCELLED",
+					now
+				})
 				await persistSession({
 					session,
 					sessionStore: deps.sessionStore,
@@ -228,9 +295,10 @@ export const runBridgeOperation = async (
 					account: session.account,
 					wait: true
 				})
-				session = updateSession({
+				session = transitionSession({
+					controller: operationState,
 					session,
-					phase: "finalizing",
+					event: "MARK_FINALIZING",
 					now,
 					patch: {
 						submittedTransactions: [
@@ -265,9 +333,10 @@ export const runBridgeOperation = async (
 					account: session.account,
 					wait: true
 				})
-				session = updateSession({
+				session = transitionSession({
+					controller: operationState,
 					session,
-					phase: "canceling",
+					event: "MARK_CANCELLING",
 					now,
 					patch: {
 						submittedTransactions: [
@@ -290,7 +359,12 @@ export const runBridgeOperation = async (
 				})
 			}
 
-			session = updateSession({ session, phase: "waiting", now })
+			session = transitionSession({
+				controller: operationState,
+				session,
+				event: "MARK_WAITING",
+				now
+			})
 			await deps.sessionStore.save(session)
 			await deps.sleep(deps.pollIntervalMs)
 		}
@@ -305,9 +379,10 @@ export const runBridgeOperation = async (
 			amount: session.amount,
 			wait: true
 		})
-		session = updateSession({
+		session = transitionSession({
+			controller: operationState,
 			session,
-			phase: "submitted",
+			event: "MARK_SUBMITTED",
 			now,
 			patch: {
 				submittedTransactions: [{ action: "submit", hash: submitResult.hash }]
@@ -331,10 +406,10 @@ export const runBridgeOperation = async (
 			await requireAdapterMethod(deps.adapter, "getWithdrawalStatuses")(session.account)
 		)
 		if (latest?.finalised) {
-			session = updateSession({
+			session = transitionSession({
+				controller: operationState,
 				session,
-				phase: "completed",
-				status: "completed",
+				event: "MARK_COMPLETED",
 				now,
 				patch: {
 					finalTransaction: {
@@ -365,9 +440,10 @@ export const runBridgeOperation = async (
 				account: session.account,
 				wait: true
 			})
-			session = updateSession({
+			session = transitionSession({
+				controller: operationState,
 				session,
-				phase: "finalizing",
+				event: "MARK_FINALIZING",
 				now,
 				patch: {
 					submittedTransactions: [
@@ -391,13 +467,18 @@ export const runBridgeOperation = async (
 			continue
 		}
 
-		session = updateSession({ session, phase: "waiting", now })
+		session = transitionSession({
+			controller: operationState,
+			session,
+			event: "MARK_WAITING",
+			now
+		})
 		await deps.sessionStore.save(session)
 		await deps.sleep(deps.pollIntervalMs)
 	}
 }
 
-export const createBridgeCommand = (): CommandDef<any> =>
+export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<BridgeCommandArgs> =>
 	defineCommand({
 		meta: {
 			name: "bridge",
@@ -414,48 +495,60 @@ export const createBridgeCommand = (): CommandDef<any> =>
 			json: { type: "boolean", default: false }
 		},
 		async run({ args }) {
-			const from = args.from as ChainRef
-			const to = args.to as ChainRef
-			const route = resolveRoute(from, to)
-			const recipient =
-				(args.recipient as string | undefined) ?? (args.account as string | undefined)
-			const appPaths = resolveAppPaths()
-			const store = createSessionStore({ stateDir: appPaths.stateDir })
-			const id = randomUUID()
+			const commandArgs = parseBridgeCommandArgs(args)
+			const from = commandArgs.from
+			const to = commandArgs.to
+			const recipient = commandArgs.recipient ?? commandArgs.account
+			const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
+			const store = (deps.createStore ?? createSessionStore)({ stateDir: appPaths.stateDir })
+			const id = (deps.generateId ?? randomUUID)()
 			const logPath = path.join(appPaths.logDir, `${id}.jsonl`)
-			const logger = createOperationLogger({ logPath })
-			const { createBridgeAdapter } = await import("../core/adapter")
+			const logger = (deps.createLogger ?? createOperationLogger)({ logPath })
+			const createAdapter =
+				deps.createAdapter ??
+				(async ({
+					from: inputFrom,
+					to: inputTo
+				}: {
+					from: ChainRef
+					to: ChainRef
+				}) => {
+					const { createBridgeAdapter } = await import("../core/adapter")
+					return createBridgeAdapter({ route: resolveRoute(inputFrom, inputTo) })
+				})
 			const session = await runBridgeOperation(
 				{
 					id,
 					from,
 					to,
-					amount: args.amount as string,
+					amount: commandArgs.amount,
 					account: deriveAccount(from, recipient),
 					recipient,
-					timeoutSlots:
-						typeof args.timeoutSlots === "string" ? Number(args.timeoutSlots) : undefined,
-					waitForCompletion: args.wait as boolean
+					timeoutSlots: commandArgs.timeoutSlots,
+					waitForCompletion: commandArgs.wait
 				},
 				{
-					adapter: createBridgeAdapter({ route }),
+					adapter: await createAdapter({ from, to }),
 					sessionStore: {
 						async save(operation) {
 							await store.save({ ...operation, logPath })
 						}
 					},
 					log: async ({ event, phase, details }) => {
-						console.error(renderOperationProgress({ event, phase, details }))
+						;(deps.writeProgress ?? console.error)(
+							renderOperationProgress({ event, phase, details })
+						)
 						await logger.write(event, { phase, ...details })
 					},
-					sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-					pollIntervalMs: 20_000
+					sleep: deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+					pollIntervalMs: deps.pollIntervalMs ?? 20_000,
+					now: deps.now
 				}
 			)
 
 			const finalSession = { ...session, logPath }
-			console.log(
-				args.json
+			;(deps.write ?? console.log)(
+				commandArgs.json
 					? JSON.stringify(toBridgeJsonResult(finalSession), null, 2)
 					: renderBridgeResult(finalSession)
 			)

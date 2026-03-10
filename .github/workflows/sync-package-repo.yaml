@@ -1,0 +1,114 @@
+name: Sync Package Repo
+
+# Reusable workflow to mirror a monorepo package into a standalone public repo.
+# Inputs define what package folder to export, how to rewrite monorepo-specific
+# dependency metadata, and which repository/branch receives the forced sync.
+on:
+  workflow_call:
+    inputs:
+      # Relative path to the package in this monorepo (for example packages/graphql).
+      package-path:
+        required: true
+        type: string
+      # Target standalone repository name under the zeko-labs org.
+      standalone-repo:
+        required: true
+        type: string
+      # Project id to write in standalone .moon/workspace.yml.
+      project-id:
+        required: true
+        type: string
+      # Packages stanza to write in standalone pnpm-workspace.yaml.
+      # Accepts newline or comma separated values.
+      workspace-packages:
+        required: false
+        default: "."
+        type: string
+      # Extra package.json files (outside package-path) used to resolve workspace: versions.
+      extra-workspace-version-sources:
+        required: false
+        default: ""
+        type: string
+      # Branch in the standalone repository to force-update.
+      branch:
+        required: false
+        default: "main"
+        type: string
+  workflow_dispatch:
+    inputs:
+      package-path:
+        required: true
+        type: string
+      standalone-repo:
+        required: true
+        type: string
+      project-id:
+        required: true
+        type: string
+      workspace-packages:
+        required: false
+        default: "."
+        type: string
+      extra-workspace-version-sources:
+        required: false
+        default: ""
+        type: string
+      branch:
+        required: false
+        default: "main"
+        type: string
+
+jobs:
+  sync:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build sync tooling package
+        run: pnpm exec moon run sync-standalone-package:build
+
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ZEKO_LABS_GH_APP_ID }}
+          private-key: ${{ secrets.ZEKO_LABS_GH_APP_PRIVATE_KEY }}
+          owner: zeko-labs
+          repositories: ${{ inputs.standalone-repo }}
+
+      - name: Prepare package for standalone sync
+        run: |
+          node packages/sync-standalone-package/dist/cli.js \
+            --package-dir "${{ inputs.package-path }}" \
+            --project-id "${{ inputs.project-id }}" \
+            --workspace-packages "${{ inputs.workspace-packages }}" \
+            --extra-workspace-version-sources "${{ inputs.extra-workspace-version-sources }}"
+
+      - name: Force-push clean commit to standalone repo
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          REMOTE_URL="https://x-access-token:${GH_TOKEN}@github.com/zeko-labs/${{ inputs.standalone-repo }}.git"
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+
+          tmp=$(mktemp -d)
+          git init "$tmp"
+          cp -a "${{ inputs.package-path }}/." "$tmp/"
+          cd "$tmp"
+          git add -A
+          git config user.name "github-actions[bot]"
+          # 41898282 is the immutable GitHub user id for github-actions[bot].
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: sync from monorepo (${COMMIT_SHA})"
+          git push --force "$REMOTE_URL" "HEAD:${{ inputs.branch }}"

@@ -1,0 +1,10 @@
+packages:
+  - packages/**
+
+catalog:
+  "@scope/catalog-dep": ^1.4.0
+  typescript: ^5.9.2
+
+catalogs:
+  tools:
+    tsdown: ^0.13.4

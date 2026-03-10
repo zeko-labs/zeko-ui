@@ -139,7 +139,7 @@ zeko-ui/
 
 **Dependencies**:
 
-- Internal: `@zeko/bridge-sdk`, `@zeko/layer`, `@zeko/graphql`
+- Internal: `@zeko-labs/bridge-sdk`, `@zeko/layer`, `@zeko-labs/graphql`
 - External: `@lumina-dex/sdk`, `xstate`, `o1js`, Auro wallet
 
 **Patterns**:
@@ -279,7 +279,7 @@ zeko-ui/
 
 **Dependencies**:
 
-- Internal: `@zeko/graphql`, `@zeko/layer`
+- Internal: `@zeko-labs/graphql`, `@zeko/layer`
 - External: `@urql/vue`, `@tanstack/vue-table`, `@ark-ui/vue`, `@number-flow/vue`
 
 **Patterns**:
@@ -359,7 +359,7 @@ class Bridge {
 
 **Dependencies**:
 
-- Internal: `@zeko/graphql`
+- Internal: `@zeko-labs/graphql`
 - External: `o1js`, `urql`, `valibot`
 
 **Patterns**:
@@ -901,7 +901,7 @@ sequenceDiagram
 2. Use gql.tada syntax for type safety
 3. Export from `packages/graphql/src/index.ts`
 4. Run `moon graphql:build` to compile
-5. Use in applications via `import { queryName } from '@zeko/graphql'`
+5. Use in applications via `import { queryName } from '@zeko-labs/graphql'`
 
 ### To update design tokens
 

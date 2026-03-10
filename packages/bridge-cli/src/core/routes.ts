@@ -77,6 +77,33 @@ export const KNOWN_ROUTES: RouteDescriptor[] = [
 	}
 ]
 
+export const CHAIN_REFS: ChainRef[] = [
+	...new Set(KNOWN_ROUTES.flatMap(({ from, to }) => [from, to]))
+]
+
+export const isChainRef = (value: string): value is ChainRef =>
+	CHAIN_REFS.includes(value as ChainRef)
+
+export const parseChainRef = (value: unknown, flag: string): ChainRef => {
+	if (typeof value !== "string" || !isChainRef(value)) {
+		throw new Error(`Invalid ${flag} chain: ${String(value)}`)
+	}
+
+	return value
+}
+
+export const parseRouteString = (value: string): [ChainRef, ChainRef] => {
+	const [from, to] = value.split("->")
+	if (typeof from !== "string" || typeof to !== "string" || !isChainRef(from) || !isChainRef(to)) {
+		throw new Error(`Invalid persisted route: ${value}`)
+	}
+
+	return [from, to]
+}
+
+export const formatRoute = (from: ChainRef, to: ChainRef): `${ChainRef}->${ChainRef}` =>
+	`${from}->${to}`
+
 export class UnknownRouteError extends Error {
 	constructor(from: ChainRef, to: ChainRef) {
 		super(`Unknown bridge route: ${from} -> ${to}`)

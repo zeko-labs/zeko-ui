@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
-import { renderTuiSnapshot } from "../src/commands/tui"
+import { describe, expect, it, vi } from "vitest"
+import { createTuiCommand, renderTuiSnapshot } from "../src/commands/tui"
 import type { OperationSession } from "../src/core/types"
 
 describe("tui snapshot", () => {
@@ -45,5 +45,20 @@ describe("tui snapshot", () => {
 		expect(output).toContain("op-old completed zeko:testnet->mina:testnet amount=1")
 		expect(output).toContain("Recent log lines:")
 		expect(output).toContain('{"event":"waiting"}')
+	})
+
+	it("respawns the TUI through the bundled Bun runtime when not already in Bun", async () => {
+		const spawnBundledTui = vi.fn(async () => {})
+		const command = createTuiCommand({
+			spawnBundledTui
+		})
+
+		await command.run?.({
+			args: {
+				id: "op-new"
+			}
+		} as never)
+
+		expect(spawnBundledTui).toHaveBeenCalledWith("op-new")
 	})
 })

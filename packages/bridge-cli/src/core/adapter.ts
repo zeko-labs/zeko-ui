@@ -1,10 +1,10 @@
-import { Bridge } from "../../../bridge-sdk/src/index"
+import { Bridge } from "@zeko-labs/bridge-sdk"
 import { PrivateKey, PublicKey, UInt32, UInt64, fetchTransactionStatus } from "o1js"
 import { createExplorerUrl } from "./explorer"
 import { nanominaToMinaString } from "./format"
 import type { ChainRef, Direction, RouteDescriptor } from "./routes"
 import { createSdkConfig } from "./sdk-config"
-import { resolveSignerSecrets } from "./signer"
+import { resolveSignerKeys } from "./signer"
 import type { DepositStatus, TransactionResult, WithdrawalStatus } from "./types"
 
 export type BridgeAdapter = {
@@ -45,21 +45,21 @@ const getBridge = (route: RouteDescriptor) => {
 
 const resolvePublicKey = ({
 	account,
-	secrets,
+	keys,
 	network
 }: {
 	account?: string
-	secrets: ReturnType<typeof resolveSignerSecrets>
+	keys: ReturnType<typeof resolveSignerKeys>
 	network: ChainRef
 }): { publicKey: PublicKey; signer: PrivateKey } => {
 	const secret = network.startsWith("zeko:")
-		? secrets.zeko
+		? keys.zeko
 		: network.startsWith("eth:")
-			? secrets.eth
-			: secrets.mina
+			? keys.eth
+			: keys.mina
 
 	if (!secret) {
-		throw new Error(`Missing required signing secret for ${network}`)
+		throw new Error(`Missing required signer private key for ${network}`)
 	}
 
 	const signer = PrivateKey.fromBase58(secret)
@@ -168,7 +168,7 @@ export const createBridgeAdapter = ({
 	route: RouteDescriptor
 	env?: Partial<Record<string, string | undefined>>
 }): BridgeAdapter => {
-	const secrets = resolveSignerSecrets(env)
+	const keys = resolveSignerKeys(env)
 
 	return {
 		async getDepositStatuses(account) {
@@ -206,7 +206,7 @@ export const createBridgeAdapter = ({
 		},
 		async submitDeposit({ account, amount, timeoutSlots, wait }) {
 			const bridge = await getBridge(route)
-			const { publicKey, signer } = resolvePublicKey({ account, secrets, network: route.from })
+			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
 			const currentSlot = await bridge.fetchCurrentSlot()
 			const timeout =
 				timeoutSlots === undefined ? UInt32.MAXINT() : currentSlot.add(UInt32.from(timeoutSlots))
@@ -219,31 +219,31 @@ export const createBridgeAdapter = ({
 		},
 		async canFinalizeDeposit(account) {
 			const bridge = await getBridge(route)
-			const { publicKey } = resolvePublicKey({ account, secrets, network: route.to })
+			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
 			return bridge.canFinalizeDeposit(publicKey)
 		},
 		async canCancelDeposit(account) {
 			const bridge = await getBridge(route)
-			const { publicKey } = resolvePublicKey({ account, secrets, network: route.from })
+			const { publicKey } = resolvePublicKey({ account, keys, network: route.from })
 			return bridge.canCancelDeposit(publicKey)
 		},
 		async finalizeDeposit({ account, wait }) {
 			const bridge = await getBridge(route)
-			const { publicKey, signer } = resolvePublicKey({ account, secrets, network: route.to })
+			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
 			const tx = await bridge.finalizeDeposit(publicKey)
 			const result = await tx.sign([signer]).send()
 			return normalizeTxResult({ action: "finalize", direction: "deposit", route, result, wait })
 		},
 		async cancelDeposit({ account, wait }) {
 			const bridge = await getBridge(route)
-			const { publicKey, signer } = resolvePublicKey({ account, secrets, network: route.from })
+			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
 			const tx = await bridge.cancelDeposit(publicKey, { sender: publicKey, fee: 0.1 * 10e8 })
 			const result = await tx.sign([signer]).send()
 			return normalizeTxResult({ action: "cancel", direction: "deposit", route, result, wait })
 		},
 		async submitWithdrawal({ account, amount, wait }) {
 			const bridge = await getBridge(route)
-			const { publicKey, signer } = resolvePublicKey({ account, secrets, network: route.from })
+			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
 			const tx = await bridge.submitWithdrawal(
 				{ sender: publicKey, fee: 0.1 * 10e8 },
 				{ recipient: publicKey, amount: UInt64.from(Number(amount) * 10e8) }
@@ -253,12 +253,12 @@ export const createBridgeAdapter = ({
 		},
 		async canFinalizeWithdrawal(account) {
 			const bridge = await getBridge(route)
-			const { publicKey } = resolvePublicKey({ account, secrets, network: route.to })
+			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
 			return bridge.canFinalizeWithdrawal(publicKey)
 		},
 		async finalizeWithdrawal({ account, wait }) {
 			const bridge = await getBridge(route)
-			const { publicKey, signer } = resolvePublicKey({ account, secrets, network: route.to })
+			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
 			const tx = await bridge.finalizeWithdrawal(publicKey, { sender: publicKey, fee: 0.1 * 10e8 })
 			const result = await tx.sign([signer]).send()
 			return normalizeTxResult({

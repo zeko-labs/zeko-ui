@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest"
-import { resolveSignerSecrets } from "../src/core/signer"
+import { resolveSignerKeys } from "../src/core/signer"
 
-describe("signer secrets", () => {
+describe("signer keys", () => {
 	it("falls back to the mina private key for zeko", () => {
-		const secrets = resolveSignerSecrets({
+		const keys = resolveSignerKeys({
 			ZEKO_BRIDGE_MINA_PRIVATE_KEY: "mina-secret"
 		})
 
-		expect(secrets.mina).toBe("mina-secret")
-		expect(secrets.zeko).toBe("mina-secret")
-		expect(secrets.eth).toBeUndefined()
+		expect(keys.mina).toBe("mina-secret")
+		expect(keys.zeko).toBe("mina-secret")
+		expect(keys.eth).toBeUndefined()
 	})
 
 	it("throws a redacted error when mina is missing", () => {
-		expect(() => resolveSignerSecrets({})).toThrowError(
-			"Missing required signing secret: ZEKO_BRIDGE_MINA_PRIVATE_KEY"
+		expect(() => resolveSignerKeys({})).toThrowError(
+			"Missing required signer private key: ZEKO_BRIDGE_MINA_PRIVATE_KEY"
 		)
 	})
 })

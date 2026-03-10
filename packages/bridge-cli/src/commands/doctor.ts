@@ -1,30 +1,36 @@
 import { defineCommand, type CommandDef } from "citty"
 import { resolveAppPaths } from "../core/paths"
-import { resolveSignerSecrets } from "../core/signer"
+import { resolveSignerKeys } from "../core/signer"
 import { KNOWN_ROUTES } from "../core/routes"
 
-export const createDoctorCommand = (): CommandDef =>
+type DoctorCommandDeps = {
+	resolvePaths?: typeof resolveAppPaths
+	resolveKeys?: typeof resolveSignerKeys
+	write?: (message: string) => void
+}
+
+export const createDoctorCommand = (deps: DoctorCommandDeps = {}): CommandDef =>
 	defineCommand({
 		meta: {
 			name: "doctor",
 			description: "Check CLI prerequisites and environment configuration."
 		},
 		async run() {
-			const paths = resolveAppPaths()
-			const secrets = (() => {
+			const paths = (deps.resolvePaths ?? resolveAppPaths)()
+			const keyConfig = (() => {
 				try {
-					return { ok: true, value: resolveSignerSecrets() }
+					return { ok: true, value: (deps.resolveKeys ?? resolveSignerKeys)() }
 				} catch (error) {
 					return { ok: false, message: error instanceof Error ? error.message : String(error) }
 				}
 			})()
-			console.log(
+			;(deps.write ?? console.log)(
 				[
 					"bridge doctor",
 					`Data dir: ${paths.dataDir}`,
 					`State dir: ${paths.stateDir}`,
 					`Log dir: ${paths.logDir}`,
-					`Mina signer: ${secrets.ok ? "configured" : secrets.message}`,
+					`Mina private key: ${keyConfig.ok ? "configured" : keyConfig.message}`,
 					`Known routes: ${KNOWN_ROUTES.map((route) => `${route.from}->${route.to}`).join(", ")}`
 				].join("\n")
 			)

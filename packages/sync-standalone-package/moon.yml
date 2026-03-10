@@ -1,0 +1,41 @@
+id: sync-standalone-package
+layer: tool
+fileGroups:
+  src:
+    - src/**/*
+    - tests/**/*
+    - README.md
+    - tsconfig.json
+    - tsconfig.build.json
+    - tsdown.config.ts
+    - moon.yml
+    - package.json
+tasks:
+  format:
+    inputs:
+      - "@group(src)"
+  format-fix:
+    inputs:
+      - "@group(src)"
+  lint:
+    command: biome check --formatter-enabled=false src tests
+    inputs:
+      - "@group(src)"
+  lint-fix:
+    command: biome check --formatter-enabled=false --write src tests
+    inputs:
+      - "@group(src)"
+  build:
+    command: tsdown
+    inputs:
+      - "@group(src)"
+    outputs:
+      - dist/**
+  typecheck:
+    command: tsc --noEmit
+    inputs:
+      - "@group(src)"
+  test:
+    command: vitest run
+    inputs:
+      - "@group(src)"

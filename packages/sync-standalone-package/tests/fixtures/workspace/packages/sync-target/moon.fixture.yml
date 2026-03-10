@@ -1,0 +1,6 @@
+layer: tool
+dependsOn:
+  - shared
+tasks:
+  build:
+    command: echo build

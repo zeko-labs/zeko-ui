@@ -1,15 +1,17 @@
-import { accountQuery, genesisConstantsQueryL1, runtimeConfigQuery } from "@zeko/graphql/mina"
 import {
+	accountQuery,
 	cancelDepositMutation,
 	fetchConfigQuery,
 	finalizeDepositMutation,
 	finalizeWithdrawalMutation,
+	genesisConstantsQueryL1,
 	genesisConstantsQueryL2,
 	provedForestQuery,
+	runtimeConfigQuery,
 	sequencerPkQuery,
 	submitDepositMutation,
 	submitWithdrawalMutation
-} from "@zeko/graphql/zeko"
+} from "@zeko-labs/graphql"
 import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"

@@ -19,7 +19,7 @@
 		"@vite-pwa/nuxt": "1.0.4",
 		"@vueuse/core": "catalog:",
 		"@xstate/vue": "catalog:",
-		"@zeko/bridge-sdk": "workspace:^",
+		"@zeko-labs/bridge-sdk": "workspace:^",
 		"@zeko/design": "workspace:^",
 		"@zeko/layer": "workspace:^",
 		"comlink": "^4.4.2",

@@ -168,7 +168,7 @@ jobs:
           for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64 win32-arm64; do
             PKG="@zeko-labs/faucet-cli-${platform}"
             VERSION=$(node -p "require('./npm/${platform}/package.json').version")
-            PUBLISHED=$(npm view "${PKG}@${VERSION}" version 2>/dev/null || echo "")
+            PUBLISHED=$(npm view "${PKG}@${VERSION}" version 2>/dev/null || true)
             if [ -n "$PUBLISHED" ]; then
               echo "${PKG}@${VERSION} already published, skipping."
               continue
@@ -184,7 +184,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
-          PUBLISHED=$(npm view "@zeko-labs/faucet-cli@${VERSION}" version 2>/dev/null || echo "")
+          PUBLISHED=$(npm view "@zeko-labs/faucet-cli@${VERSION}" version 2>/dev/null || true)
           if [ -n "$PUBLISHED" ]; then
             echo "@zeko-labs/faucet-cli@${VERSION} already published, skipping."
           else

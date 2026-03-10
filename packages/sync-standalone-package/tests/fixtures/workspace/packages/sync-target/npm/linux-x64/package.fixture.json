@@ -1,0 +1,7 @@
+{
+	"name": "@scope/sync-target-linux-x64",
+	"version": "1.0.0",
+	"dependencies": {
+		"@scope/sync-target": "workspace:^"
+	}
+}

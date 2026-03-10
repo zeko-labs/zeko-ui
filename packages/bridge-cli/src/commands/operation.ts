@@ -1,14 +1,44 @@
 import { readFile } from "node:fs/promises"
 import { defineCommand, type CommandDef } from "citty"
 import { runBridgeOperation } from "./bridge"
+import type { BridgeAdapter } from "../core/adapter"
 import { createOperationLogger } from "../core/logger"
 import { resolveAppPaths } from "../core/paths"
 import { renderBridgeResult, renderOperationProgress, toBridgeJsonResult } from "../core/reporter"
-import { createSessionStore } from "../core/session-store"
+import { createSessionStore, type SessionStore } from "../core/session-store"
 import type { ChainRef } from "../core/routes"
-import { resolveRoute } from "../core/routes"
+import { parseRouteString, resolveRoute } from "../core/routes"
 
-export const createOperationCommand = (): CommandDef =>
+type OperationCommandDeps = {
+	createStore?: (input: { stateDir: string }) => Pick<SessionStore, "list" | "load" | "save">
+	resolvePaths?: typeof resolveAppPaths
+	createAdapter?: (input: { from: ChainRef; to: ChainRef }) =>
+		| Promise<BridgeAdapter>
+		| BridgeAdapter
+	readLog?: (path: string) => Promise<string>
+	createLogger?: (input: { logPath: string }) => Pick<
+		ReturnType<typeof createOperationLogger>,
+		"write"
+	>
+	write?: (message: string) => void
+	writeProgress?: (message: string) => void
+	sleep?: (ms: number) => Promise<void>
+	pollIntervalMs?: number
+}
+
+const parseId = (value: unknown): string => {
+	if (typeof value !== "string" || value.length === 0) {
+		throw new Error("Missing required operation id")
+	}
+
+	return value
+}
+
+const parseJsonFlag = (value: unknown): boolean => (typeof value === "boolean" ? value : false)
+
+const parseRoutePair = (value: string): [ChainRef, ChainRef] => parseRouteString(value)
+
+export const createOperationCommand = (deps: OperationCommandDeps = {}): CommandDef =>
 	defineCommand({
 		meta: {
 			name: "operation",
@@ -18,8 +48,10 @@ export const createOperationCommand = (): CommandDef =>
 			list: defineCommand({
 				meta: { name: "list", description: "List persisted operations." },
 				async run() {
-					const store = createSessionStore({ stateDir: resolveAppPaths().stateDir })
-					console.log(JSON.stringify(await store.list(), null, 2))
+					const store = (deps.createStore ?? createSessionStore)({
+						stateDir: (deps.resolvePaths ?? resolveAppPaths)().stateDir
+					})
+					;(deps.write ?? console.log)(JSON.stringify(await store.list(), null, 2))
 				}
 			}),
 			status: defineCommand({
@@ -28,8 +60,11 @@ export const createOperationCommand = (): CommandDef =>
 					id: { type: "positional", required: true }
 				},
 				async run({ args }) {
-					const store = createSessionStore({ stateDir: resolveAppPaths().stateDir })
-					console.log(JSON.stringify(await store.load(args.id as string), null, 2))
+					const id = parseId(args.id)
+					const store = (deps.createStore ?? createSessionStore)({
+						stateDir: (deps.resolvePaths ?? resolveAppPaths)().stateDir
+					})
+					;(deps.write ?? console.log)(JSON.stringify(await store.load(id), null, 2))
 				}
 			}),
 			logs: defineCommand({
@@ -38,10 +73,15 @@ export const createOperationCommand = (): CommandDef =>
 					id: { type: "positional", required: true }
 				},
 				async run({ args }) {
-					const store = createSessionStore({ stateDir: resolveAppPaths().stateDir })
-					const session = await store.load(args.id as string)
-					if (!session) throw new Error(`Operation ${args.id as string} not found`)
-					console.log(await readFile(session.logPath, "utf8"))
+					const id = parseId(args.id)
+					const store = (deps.createStore ?? createSessionStore)({
+						stateDir: (deps.resolvePaths ?? resolveAppPaths)().stateDir
+					})
+					const session = await store.load(id)
+					if (!session) throw new Error(`Operation ${id} not found`)
+					;(deps.write ?? console.log)(
+						await (deps.readLog ?? ((path) => readFile(path, "utf8")))(session.logPath)
+					)
 				}
 			}),
 			resume: defineCommand({
@@ -51,13 +91,28 @@ export const createOperationCommand = (): CommandDef =>
 					json: { type: "boolean", default: false }
 				},
 				async run({ args }) {
-					const appPaths = resolveAppPaths()
-					const store = createSessionStore({ stateDir: appPaths.stateDir })
-					const session = await store.load(args.id as string)
-					if (!session) throw new Error(`Operation ${args.id as string} not found`)
-					const [from, to] = session.route.split("->") as [ChainRef, ChainRef]
-					const logger = createOperationLogger({ logPath: session.logPath })
-					const { createBridgeAdapter } = await import("../core/adapter")
+					const id = parseId(args.id)
+					const json = parseJsonFlag(args.json)
+					const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
+					const store = (deps.createStore ?? createSessionStore)({ stateDir: appPaths.stateDir })
+					const session = await store.load(id)
+					if (!session) throw new Error(`Operation ${id} not found`)
+					const [from, to] = parseRoutePair(session.route)
+					const logger = (deps.createLogger ?? createOperationLogger)({
+						logPath: session.logPath
+					})
+					const createAdapter =
+						deps.createAdapter ??
+						(async ({
+							from: inputFrom,
+							to: inputTo
+						}: {
+							from: ChainRef
+							to: ChainRef
+						}) => {
+							const { createBridgeAdapter } = await import("../core/adapter")
+							return createBridgeAdapter({ route: resolveRoute(inputFrom, inputTo) })
+						})
 					const resumed = await runBridgeOperation(
 						{
 							id: session.id,
@@ -70,18 +125,20 @@ export const createOperationCommand = (): CommandDef =>
 							session
 						},
 						{
-							adapter: createBridgeAdapter({ route: resolveRoute(from, to) }),
+							adapter: await createAdapter({ from, to }),
 							sessionStore: store,
 							log: async ({ event, phase, details }) => {
-								console.error(renderOperationProgress({ event, phase, details }))
+								;(deps.writeProgress ?? console.error)(
+									renderOperationProgress({ event, phase, details })
+								)
 								await logger.write(event, { phase, ...details })
 							},
-							sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-							pollIntervalMs: 20_000
+							sleep: deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+							pollIntervalMs: deps.pollIntervalMs ?? 20_000
 						}
 					)
-					console.log(
-						args.json
+					;(deps.write ?? console.log)(
+						json
 							? JSON.stringify(toBridgeJsonResult(resumed), null, 2)
 							: renderBridgeResult(resumed)
 					)
