@@ -5,7 +5,7 @@ status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-09T17:26:39Z
-updated_at: 2026-03-10T01:46:00Z
+updated_at: 2026-03-10T09:00:00Z
 ---
 
 ## Scope
@@ -37,4 +37,5 @@ Result:
 - `moon run actions-indexer:typecheck -f` passed after building `graphql`, `bridge-sdk`, and `actions-api`.
 - `moon run actions-indexer:lint -f` passed.
 - `moon run actions-indexer:test-service-integration -f` passed with all 5 tests green, including authenticated control-endpoint coverage, authenticated CLI reset coverage, and the existing kebab-case CLI flag coverage.
+- Reran `moon run actions-indexer:typecheck -f`, `moon run actions-indexer:lint -f`, and `moon run actions-indexer:test-service-integration -f` after addressing PR review findings; all three passed again.
 - Fetched the latest remote `main` to `origin/main` at commit `f2001f6` (`release: version packages (#138)`) and rebased the PR worktree branch on top of it with `git rebase --autostash origin/main`.

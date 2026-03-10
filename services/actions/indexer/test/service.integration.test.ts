@@ -520,15 +520,8 @@ describe("service integration", () => {
 			expect(resourcesOutput).toContain("northflank")
 			expect(resourcesOutput).not.toContain("project-id and service-id")
 		} finally {
-			await new Promise<void>((resolveServer, reject) => {
-				server.close((error) => {
-					if (error) {
-						reject(error)
-						return
-					}
-					resolveServer()
-				})
-			})
+			server.close()
+			await once(server, "close")
 		}
 	}, 60_000)
 })

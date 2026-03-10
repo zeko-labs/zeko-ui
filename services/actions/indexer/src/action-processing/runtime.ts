@@ -12,6 +12,7 @@ import {
 import type { ActionProcessingResult, ArchiveAction } from "./types"
 
 const MAX_WORKER_PROCESSES = 4
+const WORKER_PROCESS_TIMEOUT_MS = 60_000
 
 function getProcessScriptPath(): URL {
 	return new URL("./action-processing-process.js", import.meta.url)
@@ -53,10 +54,20 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 		let stdout = ""
 		let stderr = ""
 		let settled = false
+		const timeout = setTimeout(() => {
+			subprocess.kill("SIGKILL")
+			settle(() =>
+				reject(
+					new Error(`action-processing process timed out after ${WORKER_PROCESS_TIMEOUT_MS}ms`)
+				)
+			)
+		}, WORKER_PROCESS_TIMEOUT_MS)
+		timeout.unref?.()
 
 		const settle = (callback: () => void) => {
 			if (settled) return
 			settled = true
+			clearTimeout(timeout)
 			callback()
 		}
 
@@ -79,7 +90,14 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 					return
 				}
 
-				const parsed = parseProcessResponse(stdout)
+				let parsed: ProcessResponse
+				try {
+					parsed = parseProcessResponse(stdout)
+				} catch (error) {
+					reject(error)
+					return
+				}
+
 				if (!parsed.ok) {
 					reject(new Error(parsed.error))
 					return

@@ -104,7 +104,11 @@ const hasPendingActions = async ({
 
 const readLastFetched = (payload: unknown, key: "outer" | "inner"): number => {
 	const health = v.parse(HealthResponseSchema, payload)
-	return health.indexer.lastFetchedBlock[key] ?? 0
+	const blockHeight = health.indexer.lastFetchedBlock[key]
+	if (blockHeight === null) {
+		throw new Error(`health payload has null for indexer.lastFetchedBlock.${key}`)
+	}
+	return blockHeight
 }
 
 export async function runSyncCheck({
