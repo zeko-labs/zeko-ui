@@ -101,7 +101,7 @@ project-root/
 ### Getting/Creating configuration files
 
 - Copy `docker-compose.yaml` to your project folder.
-  ::: details Click to expand
+  ::: details Click to expand `docker-compose.yaml`
   ```yaml
   services:
     init-db:
@@ -114,10 +114,8 @@ project-root/
         - sh
         - -c
       command: >
-        "curl -o /data/initdb/create_schema.sql 'https://raw.githubusercontent.com/zeko-labs/zeko/compatible/src/app/archive/create_schema.sql' &&
-         echo 'CREATE DATABASE sequencer; CREATE USER sequencer; ALTER DATABASE sequencer OWNER TO sequencer;' > /data/initdb/init.sql &&
-         echo 'Bootstrap complete' &&
-         exit 0"
+        "echo 'ALTER DATABASE sequencer OWNER TO sequencer;' > /data/initdb/init.sql &&
+        echo 'Bootstrap complete' && exit 0"
     init-config:
       image: docker.io/zekolabs/zeko:latest
       container_name: init-config

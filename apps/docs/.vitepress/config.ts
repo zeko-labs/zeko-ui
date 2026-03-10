@@ -132,6 +132,7 @@ export default defineConfig({
 						collapsed: true,
 						items: [
 							{ text: "Launch a Rollup", link: "/operators/guides/launch-rollup.md" },
+							{ text: "Run a DA layer", link: "/operators/guides/da-layer.md" },
 							{ text: "Rollup on Phala", link: "/operators/guides/rollup-on-phala.md" }
 						]
 					},
