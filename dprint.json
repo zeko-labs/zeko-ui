@@ -28,6 +28,7 @@
 		"**/.nuxt",
 		"**/generated/*.d.ts",
 		"**/worker-configuration.d.ts",
+		".agents/skills/ataski/**",
 		"pnpm-workspace.yaml",
 		"pnpm-lock.yaml"
 	],
