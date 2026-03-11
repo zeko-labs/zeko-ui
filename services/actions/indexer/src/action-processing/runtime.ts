@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
 import { availableParallelism } from "node:os"
 import { fileURLToPath } from "node:url"
+import { createConsola } from "consola"
 import * as v from "valibot"
 import { processArchiveBlocks, validateEventChain } from "./core"
 import {
@@ -13,6 +14,9 @@ import type { ActionProcessingResult, ArchiveAction } from "./types"
 
 const MAX_WORKER_PROCESSES = 4
 const SLOW_WORKER_CHUNK_WARNING_MS = 60_000
+const logger = createConsola({
+	level: 3
+}).withTag("ACTIONS_INDEXER")
 
 function getProcessScriptPath(): URL {
 	return new URL("./action-processing-process.js", import.meta.url)
@@ -48,12 +52,11 @@ const logWorkerChunkCompletion = ({
 	eventCount: number
 	elapsedMs: number
 }) => {
-	const message = `[action-processing] worker chunk completed: blocks=${blockCount}, events=${eventCount}, elapsedMs=${Math.round(elapsedMs)}`
-	if (elapsedMs >= SLOW_WORKER_CHUNK_WARNING_MS) {
-		process.stderr.write(`${message}, slow=true\n`)
-		return
-	}
-	process.stderr.write(`${message}\n`)
+	if (elapsedMs < SLOW_WORKER_CHUNK_WARNING_MS) return
+
+	logger.warn(
+		`[action-processing] worker chunk completed: blocks=${blockCount}, events=${eventCount}, elapsedMs=${Math.round(elapsedMs)}, slow=true`
+	)
 }
 
 async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionProcessingResult> {

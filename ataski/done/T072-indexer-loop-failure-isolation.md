@@ -1,11 +1,11 @@
 ---
-id: T069
+id: T072
 title: "Isolate outer and inner indexing loop failures"
 status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-11T15:53:04Z
-updated_at: 2026-03-11T16:43:05Z
+updated_at: 2026-03-11T17:04:16Z
 ---
 
 ## Requirements

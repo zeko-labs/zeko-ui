@@ -1,11 +1,11 @@
 ---
-id: T071
+id: T074
 title: "Merge origin main and resolve web-395 conflicts"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-11T16:58:07Z
-updated_at: 2026-03-11T16:58:07Z
+updated_at: 2026-03-11T17:04:16Z
 ---
 
 ## Requirements
@@ -28,3 +28,10 @@ updated_at: 2026-03-11T16:58:07Z
 The integration work depends on the exact delta from `origin/main`, so there is no useful RED test to run before the merge reveals the actual conflicts. This task will treat the merge as the discovery step, then rerun the affected automated validations after the resolutions land.
 
 ## GREEN Evidence
+
+- `moon run actions-indexer:typecheck -f`
+  - Passed on the merged canonical branch.
+- `DATABASE_URL=postgresql://postgres:postgres@localhost:5434/actions AUTH_TOKEN=test-token L1_ARCHIVE_URL=http://127.0.0.1:1/graphql L2_ARCHIVE_URL=http://127.0.0.1:1/graphql OUTER_PK=test-outer INNER_PK=test-inner pnpm --filter @zeko/actions-indexer exec vitest run test/indexer.test.ts test/canonical-progress.test.ts test/health.monitor.test.ts`
+  - Passed on the merged canonical branch: 3 files, 10 tests.
+- `moon run actions-indexer:test-service-integration -f`
+  - Passed on the merged canonical branch: 1 file, 6 tests.

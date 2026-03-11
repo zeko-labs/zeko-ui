@@ -117,6 +117,7 @@ export class Indexer {
 	#loopPromise: Promise<void> | null = null
 	#loopAbortController: AbortController | null = null
 	#loopDeps: Partial<IndexingLoopDependencies>
+	#resetInProgress = false
 
 	constructor(
 		db: PostgresJsDatabase,
@@ -133,11 +134,11 @@ export class Indexer {
 		}
 
 		if (opts?.autostart !== false) {
-			this.start()
+			this.#start({ intervalSeconds: this.#state.config.intervalSeconds })
 		}
 	}
 
-	start(input?: { intervalSeconds?: number }) {
+	#start(input?: { intervalSeconds?: number }) {
 		if (this.#state.isRunning) {
 			return {
 				success: false,
@@ -174,7 +175,19 @@ export class Indexer {
 		return { success: true, message: "Indexer started", status: this.getStatus() }
 	}
 
-	setConfig(input: { intervalSeconds?: number }) {
+	start(input?: { intervalSeconds?: number }) {
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		return this.#start(input)
+	}
+
+	#setConfig(input: { intervalSeconds?: number }) {
 		if (input.intervalSeconds) {
 			this.#state.config.intervalSeconds = input.intervalSeconds
 		}
@@ -187,7 +200,11 @@ export class Indexer {
 		}
 	}
 
-	async stop() {
+	setConfig(input: { intervalSeconds?: number }) {
+		return this.#setConfig(input)
+	}
+
+	async #stop() {
 		if (!this.#state.isRunning) {
 			return {
 				success: false,
@@ -206,6 +223,18 @@ export class Indexer {
 		return { success: true, message: "Indexer stopped", status: this.getStatus() }
 	}
 
+	async stop() {
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		return this.#stop()
+	}
+
 	getStatus() {
 		return {
 			isRunning: this.#state.isRunning,
@@ -216,12 +245,12 @@ export class Indexer {
 		}
 	}
 
-	async rebuild() {
+	async #rebuild() {
 		const wasRunning = this.#state.isRunning
 		const previousConfig = { ...this.#state.config }
 
 		if (this.#state.isRunning) {
-			await this.stop()
+			await this.#stop()
 		}
 
 		try {
@@ -236,7 +265,7 @@ export class Indexer {
 			}
 
 			if (wasRunning) {
-				this.start(previousConfig)
+				this.#start(previousConfig)
 			}
 
 			return {
@@ -251,11 +280,23 @@ export class Indexer {
 		}
 	}
 
-	async reset() {
+	async rebuild() {
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		return this.#rebuild()
+	}
+
+	async #reset() {
 		const previousConfig = { ...this.#state.config }
 
 		if (this.#state.isRunning) {
-			await this.stop()
+			await this.#stop()
 		}
 
 		try {
@@ -267,7 +308,7 @@ export class Indexer {
 			this.#state.lastFetchedBlock = { outer: null, inner: null }
 			this.#state.consecutiveErrors = 0
 
-			const startResult = this.start(previousConfig)
+			const startResult = this.#start(previousConfig)
 			if (!startResult.success) {
 				return {
 					success: false,
@@ -283,6 +324,24 @@ export class Indexer {
 		} catch (error) {
 			logger.error("Error during reset:", error)
 			return { success: false, message: error instanceof Error ? error.message : String(error) }
+		}
+	}
+
+	async reset() {
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		this.#resetInProgress = true
+
+		try {
+			return await this.#reset()
+		} finally {
+			this.#resetInProgress = false
 		}
 	}
 }
