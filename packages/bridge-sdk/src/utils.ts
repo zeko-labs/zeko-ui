@@ -224,7 +224,7 @@ export async function fetchCommitAsePastSlot(
 	)
 	if (!result.success) {
 		throw createInvalidPayloadError({
-			label: "Invalid commit ase past withdrawal delay data",
+			label: "Invalid commit ASE past withdrawal delay data",
 			error,
 			issues: result.issues
 		})

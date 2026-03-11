@@ -59,3 +59,5 @@
 - T073 | done | bridge-history-diagnostics | done/T073-bridge-history-diagnostics.md
 - T074 | done | merge-main-and-resolve-web-395-conflicts | done/T074-merge-main-and-resolve-web-395-conflicts.md
 - T075 | done | fix-bridge-sdk-ci-test-ordering | done/T075-fix-bridge-sdk-ci-test-ordering.md
+- T076 | done | investigate-indexer-review-followups | done/T076-investigate-indexer-review-followups.md
+- T077 | done | investigate-bridge-sdk-review-followups | done/T077-investigate-bridge-sdk-review-followups.md

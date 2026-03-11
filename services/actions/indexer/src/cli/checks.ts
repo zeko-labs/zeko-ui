@@ -34,18 +34,20 @@ const HealthResponseSchema = v.object({
 			outer: v.nullable(v.number()),
 			inner: v.nullable(v.number())
 		}),
-		canonicalProgress: v.object({
-			outer: v.object({
-				lastFinalIndex: v.nullable(v.number()),
-				lastFinalBlockHeight: v.nullable(v.number()),
-				nonCanonicalTailCount: v.number()
-			}),
-			inner: v.object({
-				lastFinalIndex: v.nullable(v.number()),
-				lastFinalBlockHeight: v.nullable(v.number()),
-				nonCanonicalTailCount: v.number()
+		canonicalProgress: v.optional(
+			v.object({
+				outer: v.object({
+					lastFinalIndex: v.nullable(v.number()),
+					lastFinalBlockHeight: v.nullable(v.number()),
+					nonCanonicalTailCount: v.number()
+				}),
+				inner: v.object({
+					lastFinalIndex: v.nullable(v.number()),
+					lastFinalBlockHeight: v.nullable(v.number()),
+					nonCanonicalTailCount: v.number()
+				})
 			})
-		})
+		)
 	})
 })
 

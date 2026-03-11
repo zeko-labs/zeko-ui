@@ -128,7 +128,7 @@ const countNonCanonicalTail = async ({
 }) => {
 	const [{ count }] = await db
 		.select({
-			count: sql<number>`COUNT(*)`
+			count: sql<string>`COUNT(*)`
 		})
 		.from(table)
 		.where(

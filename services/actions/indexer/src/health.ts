@@ -66,6 +66,12 @@ export interface HealthComputationResult {
 
 const MIN_CONSECUTIVE_ERRORS = 5
 
+const cloneCanonicalProgressStream = (
+	stream: CanonicalProgressStreamSnapshot
+): CanonicalProgressStreamSnapshot => ({
+	...stream
+})
+
 export function computeHealthStatus({
 	now,
 	dbHealth,
@@ -113,7 +119,7 @@ export function computeHealthStatus({
 			},
 			indexer: {
 				status: indexerStatus.isRunning ? "running" : "stopped",
-				lastFetchedBlock: indexerStatus.lastFetchedBlock,
+				lastFetchedBlock: { ...indexerStatus.lastFetchedBlock },
 				consecutiveErrors: indexerStatus.consecutiveErrors,
 				canonicalProgress: {
 					checkedAt:
@@ -122,8 +128,8 @@ export function computeHealthStatus({
 							: new Date(canonicalProgress.checkedAt).toISOString(),
 					ageMs: canonicalProgressAgeMs,
 					...(canonicalProgress.error && { error: canonicalProgress.error }),
-					outer: canonicalProgress.outer,
-					inner: canonicalProgress.inner
+					outer: cloneCanonicalProgressStream(canonicalProgress.outer),
+					inner: cloneCanonicalProgressStream(canonicalProgress.inner)
 				}
 			}
 		}
@@ -230,7 +236,11 @@ export function createCanonicalProgressMonitor({
 			timer = null
 		},
 		getSnapshot() {
-			return { ...snapshot }
+			return {
+				...snapshot,
+				outer: cloneCanonicalProgressStream(snapshot.outer),
+				inner: cloneCanonicalProgressStream(snapshot.inner)
+			}
 		}
 	}
 }

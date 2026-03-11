@@ -136,4 +136,46 @@ describe("sync checks", () => {
 		expect(result.inner.hasPendingActions).toBe(true)
 		expect(result.inner.status).toBe("behind")
 	})
+
+	it("accepts legacy health payloads that omit canonical progress", async () => {
+		mockArchiveQuery.mockImplementation(
+			async ({
+				archiveUrl,
+				variables
+			}: { archiveUrl: string; variables: Record<string, unknown> }) => {
+				if (!("pk" in variables)) {
+					return {
+						error: null,
+						data: {
+							networkState: {
+								maxBlockHeight: {
+									pendingMaxBlockHeight: archiveUrl.includes("l1") ? 101 : 202
+								}
+							}
+						}
+					}
+				}
+
+				return {
+					error: null,
+					data: {
+						actions: []
+					}
+				}
+			}
+		)
+
+		const { runSyncCheck } = await import("../src/cli/checks")
+		const result = await runSyncCheck({
+			baseUrl: "https://indexer.actions.zeko.io",
+			timeoutMs: 1000,
+			l1ArchiveUrl: "https://l1.example/graphql",
+			l2ArchiveUrl: "https://l2.example/graphql",
+			outerPk: "outer-pk",
+			innerPk: "inner-pk"
+		})
+
+		expect(result.outer.lastFetchedBlock).toBe(100)
+		expect(result.inner.lastFetchedBlock).toBe(200)
+	})
 })

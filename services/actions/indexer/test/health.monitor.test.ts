@@ -93,4 +93,66 @@ describe("health monitor", () => {
 		expect(snapshot.error).toBe("canonical progress pending")
 		expect(snapshot.outer.nonCanonicalTailCount).toBe(0)
 	})
+
+	it("returns defensive copies for canonical progress snapshots", () => {
+		const monitor = createCanonicalProgressMonitor({
+			refreshIntervalMs: 10_000,
+			check: async () => ({
+				outer: {
+					lastFinalIndex: 10,
+					lastFinalBlockHeight: 100,
+					nonCanonicalTailCount: 1
+				},
+				inner: {
+					lastFinalIndex: 5,
+					lastFinalBlockHeight: 50,
+					nonCanonicalTailCount: 0
+				}
+			})
+		})
+
+		const first = monitor.getSnapshot()
+		first.outer.nonCanonicalTailCount = 99
+
+		const second = monitor.getSnapshot()
+		expect(second.outer.nonCanonicalTailCount).toBe(0)
+	})
+
+	it("does not expose canonical progress references in health responses", () => {
+		const canonicalProgress = {
+			checkedAt: 1,
+			outer: {
+				lastFinalIndex: 10,
+				lastFinalBlockHeight: 100,
+				nonCanonicalTailCount: 2
+			},
+			inner: {
+				lastFinalIndex: 5,
+				lastFinalBlockHeight: 50,
+				nonCanonicalTailCount: 1
+			}
+		}
+
+		const result = computeHealthStatus({
+			now: 2_000,
+			dbHealth: {
+				healthy: true,
+				latency: 10,
+				checkedAt: 1
+			},
+			canonicalProgress,
+			indexerStatus: {
+				isRunning: true,
+				lastFetchedBlock: { outer: 1, inner: 1 },
+				consecutiveErrors: 0
+			},
+			staleAfterMs: 500
+		})
+
+		result.response.indexer.canonicalProgress.outer.nonCanonicalTailCount = 42
+		result.response.indexer.lastFetchedBlock.outer = 99
+
+		expect(canonicalProgress.outer.nonCanonicalTailCount).toBe(2)
+		expect(canonicalProgress.inner.nonCanonicalTailCount).toBe(1)
+	})
 })
