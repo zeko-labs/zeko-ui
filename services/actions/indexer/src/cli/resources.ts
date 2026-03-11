@@ -210,17 +210,43 @@ export async function runNorthflankLogs({
 		deploymentId
 	})
 	const command = ["pnpm", "exec", northflankExecutable, ...logArgs]
-	const process = spawn(command[0], command.slice(1), { stdio: "inherit" })
+	const childProcess = spawn(command[0], command.slice(1), { stdio: "inherit" })
+	let interrupted = false
 
-	const exitCode = await new Promise<number>((resolve, reject) => {
-		process.on("error", (error) => {
-			reject(error)
-		})
+	const handleInterrupt = (signal: NodeJS.Signals) => {
+		interrupted = true
+		childProcess.kill(signal)
+	}
 
-		process.on("close", (code) => {
-			resolve(code ?? 1)
-		})
-	})
+	const handleSigint = () => handleInterrupt("SIGINT")
+	const handleSigterm = () => handleInterrupt("SIGTERM")
+	globalThis.process.once("SIGINT", handleSigint)
+	globalThis.process.once("SIGTERM", handleSigterm)
+
+	const outcome = await (async () => {
+		try {
+			return await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+				(resolve, reject) => {
+					childProcess.on("error", (error) => {
+						reject(error)
+					})
+
+					childProcess.on("close", (code, signal) => {
+						resolve({ code, signal })
+					})
+				}
+			)
+		} finally {
+			globalThis.process.off("SIGINT", handleSigint)
+			globalThis.process.off("SIGTERM", handleSigterm)
+		}
+	})()
+
+	if (interrupted || outcome.signal === "SIGINT" || outcome.signal === "SIGTERM") {
+		return
+	}
+
+	const exitCode = outcome.code ?? 1
 
 	if (exitCode !== 0) {
 		throw new Error(
