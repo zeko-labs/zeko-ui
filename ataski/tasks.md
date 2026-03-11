@@ -65,4 +65,4 @@
 - T065 | done | reconcile-main-ataski-state | done/T065-reconcile-main-ataski-state.md
 - T066 | done | vendor-ataski-vnext-skill | done/T066-vendor-ataski-vnext-skill.md
 - T067 | done | align-repo-ataski-policy | done/T067-align-repo-ataski-policy.md
-- T068 | in-progress | finalize-pr-and-conflict-readiness | in-progress/T068-finalize-pr-and-conflict-readiness.md
+- T068 | done | finalize-pr-and-conflict-readiness | done/T068-finalize-pr-and-conflict-readiness.md
