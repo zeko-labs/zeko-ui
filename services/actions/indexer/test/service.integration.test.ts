@@ -467,6 +467,43 @@ describe("service integration", () => {
 		expect(status.isRunning).toBe(true)
 	}, 180_000)
 
+	it("serializes overlapping reset requests", async () => {
+		await seedIndexedRows()
+
+		const [firstReset, secondReset] = await Promise.all([
+			fetch(`${serviceBaseUrl}/reset`, {
+				method: "POST",
+				headers: authed()
+			}),
+			fetch(`${serviceBaseUrl}/reset`, {
+				method: "POST",
+				headers: authed()
+			})
+		])
+
+		expect(firstReset.status).toBe(200)
+		expect(secondReset.status).toBe(200)
+
+		const firstPayload = (await firstReset.json()) as {
+			success?: boolean
+			status?: { isRunning?: boolean }
+		}
+		const secondPayload = (await secondReset.json()) as {
+			success?: boolean
+			status?: { isRunning?: boolean }
+		}
+
+		expect(firstPayload.success).toBe(true)
+		expect(secondPayload.success).toBe(true)
+		expect(firstPayload.status?.isRunning).toBe(true)
+		expect(secondPayload.status?.isRunning).toBe(true)
+
+		expect(await countRows("outer_actions")).toBe(0)
+		expect(await countRows("commit_actions")).toBe(0)
+		expect(await countRows("witness_actions")).toBe(0)
+		expect(await countRows("inner_actions")).toBe(0)
+	}, 180_000)
+
 	it("accepts documented kebab-case flags", async () => {
 		const port = await allocatePort()
 		const baseUrl = `http://127.0.0.1:${port}`

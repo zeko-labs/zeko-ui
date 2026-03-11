@@ -28,7 +28,7 @@ describe("Actions Indexer basic tests", () => {
 		const indexer = new Indexer(db)
 		// stop auto-start so we can test start behavior
 		await indexer.stop()
-		const start = indexer.start({ intervalSeconds: 1 })
+		const start = await indexer.start({ intervalSeconds: 1 })
 		expect(start.success).toBeTruthy()
 		const stop = await indexer.stop()
 		expect(stop.success).toBeTruthy()

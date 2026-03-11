@@ -77,6 +77,7 @@ export class Indexer {
 	#state: IndexerState
 	#loopPromise: Promise<void> | null = null
 	#loopAbortController: AbortController | null = null
+	#controlQueue: Promise<void> = Promise.resolve()
 
 	constructor(db: PostgresJsDatabase, opts?: { autostart?: boolean }) {
 		this.#db = db
@@ -89,11 +90,27 @@ export class Indexer {
 		}
 
 		if (opts?.autostart !== false) {
-			this.start()
+			this.#start({ intervalSeconds: this.#state.config.intervalSeconds })
 		}
 	}
 
-	start(input?: { intervalSeconds?: number }) {
+	async #runExclusive<T>(operation: () => Promise<T> | T): Promise<T> {
+		const previous = this.#controlQueue
+		let releaseQueue = () => {}
+		this.#controlQueue = new Promise<void>((resolve) => {
+			releaseQueue = resolve
+		})
+
+		await previous
+
+		try {
+			return await operation()
+		} finally {
+			releaseQueue()
+		}
+	}
+
+	#start(input?: { intervalSeconds?: number }) {
 		if (this.#state.isRunning) {
 			return {
 				success: false,
@@ -125,7 +142,11 @@ export class Indexer {
 		return { success: true, message: "Indexer started", status: this.getStatus() }
 	}
 
-	setConfig(input: { intervalSeconds?: number }) {
+	async start(input?: { intervalSeconds?: number }) {
+		return this.#runExclusive(() => this.#start(input))
+	}
+
+	#setConfig(input: { intervalSeconds?: number }) {
 		if (input.intervalSeconds) {
 			this.#state.config.intervalSeconds = input.intervalSeconds
 		}
@@ -138,7 +159,11 @@ export class Indexer {
 		}
 	}
 
-	async stop() {
+	async setConfig(input: { intervalSeconds?: number }) {
+		return this.#runExclusive(() => this.#setConfig(input))
+	}
+
+	async #stop() {
 		if (!this.#state.isRunning) {
 			return {
 				success: false,
@@ -157,6 +182,10 @@ export class Indexer {
 		return { success: true, message: "Indexer stopped", status: this.getStatus() }
 	}
 
+	async stop() {
+		return this.#runExclusive(() => this.#stop())
+	}
+
 	getStatus() {
 		return {
 			isRunning: this.#state.isRunning,
@@ -167,12 +196,12 @@ export class Indexer {
 		}
 	}
 
-	async rebuild() {
+	async #rebuild() {
 		const wasRunning = this.#state.isRunning
 		const previousConfig = { ...this.#state.config }
 
 		if (this.#state.isRunning) {
-			await this.stop()
+			await this.#stop()
 		}
 
 		try {
@@ -187,7 +216,7 @@ export class Indexer {
 			}
 
 			if (wasRunning) {
-				this.start(previousConfig)
+				this.#start(previousConfig)
 			}
 
 			return {
@@ -202,11 +231,15 @@ export class Indexer {
 		}
 	}
 
-	async reset() {
+	async rebuild() {
+		return this.#runExclusive(() => this.#rebuild())
+	}
+
+	async #reset() {
 		const previousConfig = { ...this.#state.config }
 
 		if (this.#state.isRunning) {
-			await this.stop()
+			await this.#stop()
 		}
 
 		try {
@@ -218,7 +251,7 @@ export class Indexer {
 			this.#state.lastFetchedBlock = { outer: null, inner: null }
 			this.#state.consecutiveErrors = 0
 
-			const startResult = this.start(previousConfig)
+			const startResult = this.#start(previousConfig)
 			if (!startResult.success) {
 				return {
 					success: false,
@@ -235,5 +268,9 @@ export class Indexer {
 			logger.error("Error during reset:", error)
 			return { success: false, message: error instanceof Error ? error.message : String(error) }
 		}
+	}
+
+	async reset() {
+		return this.#runExclusive(() => this.#reset())
 	}
 }

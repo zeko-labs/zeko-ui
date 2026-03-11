@@ -51,3 +51,4 @@
 - T065 | done | log-slow-worker-chunks-as-warning | done/T065-log-slow-worker-chunks-as-warning.md
 - T066 | done | fix-sync-lag-reporting | done/T066-fix-sync-lag-reporting.md
 - T067 | done | add-indexer-log-stream-command | done/T067-add-indexer-log-stream-command.md
+- T068 | done | fix-indexer-reset-control-race | done/T068-fix-indexer-reset-control-race.md

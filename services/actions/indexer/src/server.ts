@@ -31,8 +31,8 @@ const controlServer = new Elysia()
 		beforeHandle: authorizeControlRequest
 	})
 	.get("/status", () => indexer.getStatus())
-	.post("/start", ({ status }) => {
-		const result = indexer.start()
+	.post("/start", async ({ status }) => {
+		const result = await indexer.start()
 		return status(result.success ? 200 : 500, result)
 	})
 	.post("/stop", async ({ status }) => {
@@ -49,8 +49,8 @@ const controlServer = new Elysia()
 	})
 	.post(
 		"/config",
-		({ body, status }) => {
-			const result = indexer.setConfig({ intervalSeconds: body.intervalSeconds })
+		async ({ body, status }) => {
+			const result = await indexer.setConfig({ intervalSeconds: body.intervalSeconds })
 			return status(200, result)
 		},
 		{ body: t.Object({ intervalSeconds: t.Number() }) }
