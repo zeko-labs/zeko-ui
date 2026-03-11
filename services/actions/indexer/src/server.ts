@@ -26,6 +26,12 @@ const authorizeControlRequest = ({
 	return status(401, { success: false, message: "Unauthorized" })
 }
 
+const controlStatusCode = (result: { success: boolean; message?: string }): number => {
+	if (result.success) return 200
+	if (result.message === "A reset is already in progress") return 409
+	return 500
+}
+
 const controlServer = new Elysia()
 	.guard({
 		beforeHandle: authorizeControlRequest
@@ -33,19 +39,19 @@ const controlServer = new Elysia()
 	.get("/status", () => indexer.getStatus())
 	.post("/start", async ({ status }) => {
 		const result = await indexer.start()
-		return status(result.success ? 200 : 500, result)
+		return status(controlStatusCode(result), result)
 	})
 	.post("/stop", async ({ status }) => {
 		const result = await indexer.stop()
-		return status(result.success ? 200 : 500, result)
+		return status(controlStatusCode(result), result)
 	})
 	.post("/reset", async ({ status }) => {
 		const result = await indexer.reset()
-		return status(result.success ? 200 : 500, result)
+		return status(controlStatusCode(result), result)
 	})
 	.post("/rebuild", async ({ status }) => {
 		const result = await indexer.rebuild()
-		return status(result.success ? 200 : 500, result)
+		return status(controlStatusCode(result), result)
 	})
 	.post(
 		"/config",

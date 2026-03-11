@@ -77,7 +77,7 @@ export class Indexer {
 	#state: IndexerState
 	#loopPromise: Promise<void> | null = null
 	#loopAbortController: AbortController | null = null
-	#controlQueue: Promise<void> = Promise.resolve()
+	#resetInProgress = false
 
 	constructor(db: PostgresJsDatabase, opts?: { autostart?: boolean }) {
 		this.#db = db
@@ -91,22 +91,6 @@ export class Indexer {
 
 		if (opts?.autostart !== false) {
 			this.#start({ intervalSeconds: this.#state.config.intervalSeconds })
-		}
-	}
-
-	async #runExclusive<T>(operation: () => Promise<T> | T): Promise<T> {
-		const previous = this.#controlQueue
-		let releaseQueue = () => {}
-		this.#controlQueue = new Promise<void>((resolve) => {
-			releaseQueue = resolve
-		})
-
-		await previous
-
-		try {
-			return await operation()
-		} finally {
-			releaseQueue()
 		}
 	}
 
@@ -142,8 +126,16 @@ export class Indexer {
 		return { success: true, message: "Indexer started", status: this.getStatus() }
 	}
 
-	async start(input?: { intervalSeconds?: number }) {
-		return this.#runExclusive(() => this.#start(input))
+	start(input?: { intervalSeconds?: number }) {
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		return this.#start(input)
 	}
 
 	#setConfig(input: { intervalSeconds?: number }) {
@@ -159,8 +151,8 @@ export class Indexer {
 		}
 	}
 
-	async setConfig(input: { intervalSeconds?: number }) {
-		return this.#runExclusive(() => this.#setConfig(input))
+	setConfig(input: { intervalSeconds?: number }) {
+		return this.#setConfig(input)
 	}
 
 	async #stop() {
@@ -183,7 +175,15 @@ export class Indexer {
 	}
 
 	async stop() {
-		return this.#runExclusive(() => this.#stop())
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		return this.#stop()
 	}
 
 	getStatus() {
@@ -232,7 +232,15 @@ export class Indexer {
 	}
 
 	async rebuild() {
-		return this.#runExclusive(() => this.#rebuild())
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		return this.#rebuild()
 	}
 
 	async #reset() {
@@ -271,6 +279,20 @@ export class Indexer {
 	}
 
 	async reset() {
-		return this.#runExclusive(() => this.#reset())
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		this.#resetInProgress = true
+
+		try {
+			return await this.#reset()
+		} finally {
+			this.#resetInProgress = false
+		}
 	}
 }

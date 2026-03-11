@@ -467,7 +467,7 @@ describe("service integration", () => {
 		expect(status.isRunning).toBe(true)
 	}, 180_000)
 
-	it("serializes overlapping reset requests", async () => {
+	it("rejects overlapping reset requests with a clear in-progress error", async () => {
 		await seedIndexedRows()
 
 		const [firstReset, secondReset] = await Promise.all([
@@ -481,22 +481,29 @@ describe("service integration", () => {
 			})
 		])
 
-		expect(firstReset.status).toBe(200)
-		expect(secondReset.status).toBe(200)
+		expect([firstReset.status, secondReset.status].sort((left, right) => left - right)).toEqual([
+			200, 409
+		])
 
 		const firstPayload = (await firstReset.json()) as {
 			success?: boolean
+			message?: string
 			status?: { isRunning?: boolean }
 		}
 		const secondPayload = (await secondReset.json()) as {
 			success?: boolean
+			message?: string
 			status?: { isRunning?: boolean }
 		}
 
-		expect(firstPayload.success).toBe(true)
-		expect(secondPayload.success).toBe(true)
-		expect(firstPayload.status?.isRunning).toBe(true)
-		expect(secondPayload.status?.isRunning).toBe(true)
+		const messages = [firstPayload.message, secondPayload.message]
+		const successes = [firstPayload.success, secondPayload.success]
+		const runningStates = [firstPayload.status?.isRunning, secondPayload.status?.isRunning]
+
+		expect(successes).toContain(true)
+		expect(successes).toContain(false)
+		expect(messages).toContain("A reset is already in progress")
+		expect(runningStates).toContain(true)
 
 		expect(await countRows("outer_actions")).toBe(0)
 		expect(await countRows("commit_actions")).toBe(0)
