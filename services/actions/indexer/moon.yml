@@ -73,6 +73,12 @@ tasks:
     command: node dist/cli.js resources
     inputs:
       - "@group(sources)"
+  logs:
+    deps:
+      - build
+    command: node dist/cli.js logs
+    inputs:
+      - "@group(sources)"
   status:
     deps:
       - build

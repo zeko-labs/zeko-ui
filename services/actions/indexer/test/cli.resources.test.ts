@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { buildNorthflankMetricsArgs, parseMetrics } from "../src/cli/resources"
+import {
+	buildNorthflankLogsArgs,
+	buildNorthflankMetricsArgs,
+	parseMetrics
+} from "../src/cli/resources"
 
 describe("resources command", () => {
 	it("builds northflank metrics args", () => {
@@ -25,6 +29,40 @@ describe("resources command", () => {
 			"900",
 			"-o",
 			"json"
+		])
+	})
+
+	it("builds northflank log args", () => {
+		const args = buildNorthflankLogsArgs({
+			projectId: "proj_123",
+			serviceId: "svc_456",
+			durationSeconds: 300,
+			lineLimit: 200,
+			tail: true,
+			types: ["runtime"],
+			containerId: "container-1",
+			deploymentId: "deployment-1"
+		})
+
+		expect(args).toEqual([
+			"get",
+			"service",
+			"logs",
+			"--project",
+			"proj_123",
+			"--service",
+			"svc_456",
+			"--container",
+			"container-1",
+			"--deployment",
+			"deployment-1",
+			"-t",
+			"runtime",
+			"--duration",
+			"300",
+			"-l",
+			"200",
+			"-f"
 		])
 	})
 
