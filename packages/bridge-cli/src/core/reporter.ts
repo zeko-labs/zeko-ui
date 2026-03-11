@@ -1,4 +1,5 @@
 import type { OperationPhase, OperationSession, OperationStatus } from "./types"
+import { color, icon, keyValue, section } from "./terminal"
 
 export type BridgeCommandJsonResult = {
 	success: boolean
@@ -32,14 +33,16 @@ export const toBridgeJsonResult = (session: OperationSession): BridgeCommandJson
 
 export const renderBridgeResult = (session: OperationSession): string =>
 	[
-		`bridge ${session.status}`,
-		`Operation: ${session.id}`,
-		`Route: ${session.route}`,
-		`Phase: ${session.phase}`,
-		`Recipient: ${session.recipient ?? session.account}`,
-		`Amount: ${session.amount}`,
-		`Log: ${session.logPath}`,
-		session.finalTransaction ? `Final hash: ${session.finalTransaction.hash}` : ""
+		`${session.status === "completed" ? icon.success() : icon.error()} ${section(
+			`Bridge ${session.status}`
+		)}`,
+		keyValue("Operation", session.id),
+		keyValue("Route", session.route),
+		keyValue("Phase", session.phase),
+		keyValue("Recipient", session.recipient ?? session.account),
+		keyValue("Amount", session.amount),
+		keyValue("Log", session.logPath),
+		session.finalTransaction ? keyValue("Final hash", session.finalTransaction.hash) : ""
 	]
 		.filter(Boolean)
 		.join("\n")
@@ -55,10 +58,25 @@ export const renderOperationProgress = ({
 }): string => {
 	const suffix = Object.entries(details ?? {})
 		.filter(([, value]) => value !== undefined && value !== null && value !== "")
-		.map(([key, value]) => `${key}=${String(value)}`)
-		.join(" ")
+		.map(([key, value]) => `${color.gray(`${key}=`)}${String(value)}`)
+		.join(` ${icon.bullet()} `)
 
-	return [`[${new Date().toISOString()}]`, event, `phase=${phase}`, suffix]
+	const eventIcon =
+		event === "failed"
+			? icon.error()
+			: event === "completed" || event === "finalized" || event === "submitted"
+				? icon.success()
+				: event === "heartbeat" || event.startsWith("waiting-")
+					? icon.waiting()
+					: icon.info()
+
+	return [
+		color.dim(`[${new Date().toISOString()}]`),
+		eventIcon,
+		color.bold(event),
+		color.gray(`phase=${phase}`),
+		suffix
+	]
 		.filter(Boolean)
 		.join(" ")
 }

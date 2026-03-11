@@ -23,17 +23,20 @@ const MAINNET_CONFIG = {
 	pollTimeout: 1_200_000
 } as const satisfies Config
 
-export const createSdkConfig = (route: RouteDescriptor): Config => {
+export const createSdkConfig = (
+	route: RouteDescriptor,
+	options: { verbose?: boolean } = {}
+): Config => {
 	if (!route.enabled) {
 		throw new Error(route.reason ?? `Bridge route ${route.label} is not enabled.`)
 	}
 
 	if (route.from.includes("testnet") && route.to.includes("testnet")) {
-		return { ...TESTNET_CONFIG }
+		return { ...TESTNET_CONFIG, verbose: options.verbose === true }
 	}
 
 	if (route.from.includes("mainnet") && route.to.includes("mainnet")) {
-		return { ...MAINNET_CONFIG }
+		return { ...MAINNET_CONFIG, verbose: options.verbose === true }
 	}
 
 	throw new Error(`Unsupported network pairing for ${route.label}`)

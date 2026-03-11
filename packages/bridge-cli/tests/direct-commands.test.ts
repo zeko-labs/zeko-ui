@@ -455,7 +455,8 @@ describe("direct commands", () => {
 			cmd: subCommands.status
 		})
 
-		expect(writes[0]).toContain("deposit status for B62test")
+		expect(writes[0]).toContain("deposit status")
+		expect(writes[0]).toContain("Account: B62test")
 		expect(writes[0]).toContain("deposit-status-command")
 	})
 
@@ -556,7 +557,8 @@ describe("direct commands", () => {
 			cmd: subCommands.status
 		})
 
-		expect(writes[0]).toContain("withdrawal status for B62test")
+		expect(writes[0]).toContain("withdrawal status")
+		expect(writes[0]).toContain("Account: B62test")
 		expect(writes[0]).toContain("withdraw-status-command")
 	})
 })

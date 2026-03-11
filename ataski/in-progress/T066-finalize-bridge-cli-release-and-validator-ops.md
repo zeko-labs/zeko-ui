@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T065]
 owner: codex
 created_at: 2026-03-11T13:15:00Z
-updated_at: 2026-03-11T13:15:00Z
+updated_at: 2026-03-12T00:48:00Z
 ---
 
 Finalize the bridge-cli PR for review by validating the real high-level bridge flow locally, fixing any issues found, shifting release instructions to the Changesets flow, and adding a post-deploy script that pushes validator secrets from an `.env` file into Cloudflare.
@@ -49,6 +49,9 @@ Failures reproduced:
 - the manual live-validation Moon task invoked Vitest through the default config, which excludes `tests/**/*.manual.test.ts`, so the task exited with `No test files found`
 - after fixing the task path, the built CLI crashed under Node 24 with `ERR_AMBIGUOUS_MODULE_SYNTAX` because `o1js` had been bundled into the ESM output
 - during resumed long-wait operation polling, the bridge SDK leaked `canCancelDeposit result:` debug output into stderr, making progress noisy
+- later live validation against the real bridge exposed two more runtime gaps:
+  - withdrawal submission polling could crash on `Field 'transactionStatus' is not defined on type 'query'`
+  - resumed deposit tracking could stick to an older persisted target index instead of rebinding to the submitted hash for the current operation
 
 ## GREEN Evidence
 
@@ -68,3 +71,17 @@ Real-network validation evidence:
 - `bridge --from mina:testnet --to zeko:testnet --amount 1 --json` successfully submitted a live deposit with hash `5JtdoTmyLTSJ5v1na3YjjUzx5RPsQpM4MRSNU8VNfw4UFKHNQuW1`
 - persisted operation `52387a62-e395-4a1b-87ea-4c22f9e191a0` resumed cleanly through `operation resume` after the harness fixes
 - resumed progress showed only curated heartbeat lines after removing the SDK debug log leak
+
+Validated in `/Users/hebilicious/GitHub/.ataski/worktrees/canonical-bridge-cli` on 2026-03-12:
+
+- `moon run bridge-cli:test`
+- `moon run bridge-cli:typecheck`
+- `moon run bridge-cli:lint`
+- `moon run bridge-cli:build`
+- `moon run bridge-sdk:typecheck`
+
+Follow-up fixes completed:
+
+- restored the bridge SDK debug output behind a new `verbose` config/CLI flag instead of deleting it outright
+- improved human CLI output readability with modest colors, icons, section headings, and clearer status/result formatting while keeping `--json` output unchanged
+- hardened bridge polling against missing transaction-status queries, stale submitted-hash discovery, and stale prior-claim blocking with explicit terminal failures instead of indefinite hangs

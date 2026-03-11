@@ -10,6 +10,15 @@ describe("sdk config", () => {
 		expect(config.zekoUrl).toBe("https://testnet.zeko.io/graphql")
 		expect(config.l1Network).toBe("testnet")
 		expect(config.l2Network).toBe("testnet")
+		expect(config.verbose).toBe(false)
+	})
+
+	it("can enable verbose sdk logging explicitly", () => {
+		const config = createSdkConfig(resolveRoute("mina:testnet", "zeko:testnet"), {
+			verbose: true
+		})
+
+		expect(config.verbose).toBe(true)
 	})
 
 	it("rejects disabled routes", () => {

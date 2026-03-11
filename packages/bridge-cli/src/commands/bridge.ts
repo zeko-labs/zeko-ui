@@ -45,6 +45,8 @@ type BridgeFlowDeps = {
 	pollIntervalMs: number
 	retryDelayMs?: number
 	now?: () => string
+	stalledSubmissionSeconds?: number
+	stalledPriorClaimSeconds?: number
 }
 
 type BridgeFlowInput = {
@@ -59,7 +61,7 @@ type BridgeFlowInput = {
 }
 
 type BridgeCommandDeps = {
-	createAdapter?: (input: { from: ChainRef; to: ChainRef }) =>
+	createAdapter?: (input: { from: ChainRef; to: ChainRef; verbose: boolean }) =>
 		| Promise<BridgeAdapter>
 		| BridgeAdapter
 	createStore?: (input: { stateDir: string }) => Pick<SessionStore, "save">
@@ -85,6 +87,7 @@ type BridgeCommandArgs = {
 	recipient: { type: "string"; required: false }
 	timeoutSlots: { type: "string"; required: false }
 	json: { type: "boolean"; default: false }
+	verbose: { type: "boolean"; default: false }
 }
 
 type BridgeCommandRunArgs = {
@@ -95,6 +98,7 @@ type BridgeCommandRunArgs = {
 	recipient?: string
 	timeoutSlots?: string
 	json?: boolean
+	verbose?: boolean
 }
 
 type TransitionEvent =
@@ -117,6 +121,8 @@ type WaitStateTracker = {
 
 const HEARTBEAT_INTERVAL_MS = 30_000
 const RETRY_SLEEP_MS = 5_000
+const DEFAULT_STALLED_SUBMISSION_SECONDS = 7_200
+const DEFAULT_STALLED_PRIOR_CLAIM_SECONDS = 7_200
 
 const persistSession = async ({
 	session,
@@ -179,7 +185,8 @@ const parseBridgeCommandArgs = (args: BridgeCommandRunArgs) => ({
 	account: parseOptionalString(args.account),
 	recipient: parseOptionalString(args.recipient),
 	timeoutSlots: parseOptionalNumber(args.timeoutSlots),
-	json: args.json === true
+	json: args.json === true,
+	verbose: args.verbose === true
 })
 
 const requireAdapterMethod = <T extends keyof BridgeFlowDeps["adapter"]>(
@@ -444,6 +451,40 @@ const cancelSession = async ({
 	return cancelled
 }
 
+const failSession = async ({
+	session,
+	controller,
+	sessionStore,
+	log,
+	now,
+	error
+}: {
+	session: OperationSession
+	controller: ReturnType<typeof createOperationStateController>
+	sessionStore: Pick<SessionStore, "save">
+	log: LogFn
+	now: () => string
+	error: string
+}) => {
+	const failed = transitionSession({
+		controller,
+		session,
+		event: "MARK_FAILED",
+		now,
+		patch: {
+			lastError: error
+		}
+	})
+	await persistSession({
+		session: failed,
+		sessionStore,
+		log,
+		event: "failed",
+		details: { message: error }
+	})
+	return failed
+}
+
 const resolveTargetIndex = ({
 	session,
 	statuses
@@ -451,16 +492,16 @@ const resolveTargetIndex = ({
 	session: OperationSession
 	statuses: Array<DepositStatus | WithdrawalStatus>
 }): number | undefined => {
-	if (session.targetIndex !== undefined) {
-		return session.targetIndex
-	}
-
 	const submitHash = getSubmitHash(session)
 	if (submitHash !== undefined) {
 		const matchedIndex = statuses.find((status) => status.hash === submitHash)?.index
 		if (matchedIndex !== undefined) {
 			return matchedIndex
 		}
+	}
+
+	if (session.targetIndex !== undefined) {
+		return session.targetIndex
 	}
 
 	return statuses.length > 0 ? maxIndex(statuses) : undefined
@@ -649,6 +690,20 @@ export const runBridgeOperation = async (
 			}
 
 			if (pendingAhead > 0) {
+				if (
+					getElapsedSeconds(session, now) >=
+					(deps.stalledPriorClaimSeconds ?? DEFAULT_STALLED_PRIOR_CLAIM_SECONDS)
+				) {
+					return failSession({
+						session,
+						controller,
+						sessionStore: deps.sessionStore,
+						log: deps.log,
+						now,
+						error: `Bridge remained blocked by ${pendingAhead} earlier queued claim(s) before target index ${targetIndex ?? "unknown"} beyond the stale-prior-claim threshold.`
+					})
+				}
+
 				session = await maybeEnterWaitState({
 					session,
 					controller,
@@ -670,6 +725,20 @@ export const runBridgeOperation = async (
 					}
 				})
 			} else if (!target) {
+				if (
+					getElapsedSeconds(session, now) >=
+					(deps.stalledSubmissionSeconds ?? DEFAULT_STALLED_SUBMISSION_SECONDS)
+				) {
+					return failSession({
+						session,
+						controller,
+						sessionStore: deps.sessionStore,
+						log: deps.log,
+						now,
+						error: `Submitted ${session.direction} transaction ${getSubmitHash(session) ?? "unknown"} was not observed in bridge status before the stale-submission threshold elapsed.`
+					})
+				}
+
 				session = await maybeEnterWaitState({
 					session,
 					controller,
@@ -789,6 +858,48 @@ export const runBridgeOperation = async (
 				pendingAhead === 0 &&
 				!target.confirmed &&
 				!session.submittedTransactions.some((transaction) => transaction.action === "cancel")
+
+			const shouldAdvancePriorCancellation =
+				canCancelResult.value &&
+				pendingAhead > 0 &&
+				(claimableIndex === undefined || !canFinalizeResult.value)
+
+			if (shouldAdvancePriorCancellation) {
+				const cancelResult = await requireAdapterMethod(
+					deps.adapter,
+					"cancelDeposit"
+				)({
+					account: session.account,
+					wait: true
+				})
+				session = transitionSession({
+					controller,
+					session,
+					event: "MARK_CANCELLING",
+					now,
+					patch: {
+						...appendSubmittedTransaction(session, {
+							action: "cancel",
+							hash: cancelResult.hash
+						}),
+						queueAdvances: (session.queueAdvances ?? 0) + 1
+					}
+				})
+				waitTracker.lastWaitSignature = undefined
+				waitTracker.emittedImmediateHeartbeat = false
+				await persistSession({
+					session,
+					sessionStore: deps.sessionStore,
+					log: deps.log,
+					event: "cancel-submitted",
+					details: {
+						hash: cancelResult.hash,
+						advancedPriorClaim: true,
+						pendingAhead
+					}
+				})
+				continue
+			}
 
 			if (shouldCancel) {
 				const cancelResult = await requireAdapterMethod(
@@ -920,6 +1031,20 @@ export const runBridgeOperation = async (
 		}
 
 		if (pendingAhead > 0) {
+			if (
+				getElapsedSeconds(session, now) >=
+				(deps.stalledPriorClaimSeconds ?? DEFAULT_STALLED_PRIOR_CLAIM_SECONDS)
+			) {
+				return failSession({
+					session,
+					controller,
+					sessionStore: deps.sessionStore,
+					log: deps.log,
+					now,
+					error: `Bridge remained blocked by ${pendingAhead} earlier queued claim(s) before target index ${targetIndex ?? "unknown"} beyond the stale-prior-claim threshold.`
+				})
+			}
+
 			session = await maybeEnterWaitState({
 				session,
 				controller,
@@ -941,6 +1066,20 @@ export const runBridgeOperation = async (
 				}
 			})
 		} else if (!target) {
+			if (
+				getElapsedSeconds(session, now) >=
+				(deps.stalledSubmissionSeconds ?? DEFAULT_STALLED_SUBMISSION_SECONDS)
+			) {
+				return failSession({
+					session,
+					controller,
+					sessionStore: deps.sessionStore,
+					log: deps.log,
+					now,
+					error: `Submitted ${session.direction} transaction ${getSubmitHash(session) ?? "unknown"} was not observed in bridge status before the stale-submission threshold elapsed.`
+				})
+			}
+
 			session = await maybeEnterWaitState({
 				session,
 				controller,
@@ -1069,7 +1208,8 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			account: { type: "string", required: false },
 			recipient: { type: "string", required: false },
 			timeoutSlots: { type: "string", required: false },
-			json: { type: "boolean", default: false }
+			json: { type: "boolean", default: false },
+			verbose: { type: "boolean", default: false }
 		},
 		async run({ args }) {
 			const commandArgs = parseBridgeCommandArgs({
@@ -1079,7 +1219,8 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 				account: typeof args.account === "string" ? args.account : undefined,
 				recipient: typeof args.recipient === "string" ? args.recipient : undefined,
 				timeoutSlots: typeof args.timeoutSlots === "string" ? args.timeoutSlots : undefined,
-				json: args.json === true
+				json: args.json === true,
+				verbose: args.verbose === true
 			} satisfies BridgeCommandRunArgs)
 			const from = commandArgs.from
 			const to = commandArgs.to
@@ -1094,13 +1235,18 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 				deps.createAdapter ??
 				(async ({
 					from: inputFrom,
-					to: inputTo
+					to: inputTo,
+					verbose
 				}: {
 					from: ChainRef
 					to: ChainRef
+					verbose: boolean
 				}) => {
 					const { createBridgeAdapter } = await import("../core/adapter")
-					return createBridgeAdapter({ route: resolveRoute(inputFrom, inputTo) })
+					return createBridgeAdapter({
+						route: resolveRoute(inputFrom, inputTo),
+						verbose
+					})
 				})
 			const session = await runBridgeOperation(
 				{
@@ -1113,7 +1259,7 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 					timeoutSlots: commandArgs.timeoutSlots
 				},
 				{
-					adapter: await createAdapter({ from, to }),
+					adapter: await createAdapter({ from, to, verbose: commandArgs.verbose }),
 					sessionStore: {
 						async save(operation) {
 							await store.save({ ...operation, logPath })

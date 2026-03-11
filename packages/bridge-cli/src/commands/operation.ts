@@ -13,7 +13,7 @@ import type { OperationPhase } from "../core/types"
 type OperationCommandDeps = {
 	createStore?: (input: { stateDir: string }) => Pick<SessionStore, "list" | "load" | "save">
 	resolvePaths?: typeof resolveAppPaths
-	createAdapter?: (input: { from: ChainRef; to: ChainRef }) =>
+	createAdapter?: (input: { from: ChainRef; to: ChainRef; verbose: boolean }) =>
 		| Promise<BridgeAdapter>
 		| BridgeAdapter
 	readLog?: (path: string) => Promise<string>
@@ -45,13 +45,19 @@ const createAdapterWithRetries = async ({
 	createAdapter,
 	from,
 	to,
+	verbose,
 	log,
 	sleep,
 	retryDelayMs
 }: {
-	createAdapter: (input: { from: ChainRef; to: ChainRef }) => Promise<BridgeAdapter> | BridgeAdapter
+	createAdapter: (input: {
+		from: ChainRef
+		to: ChainRef
+		verbose: boolean
+	}) => Promise<BridgeAdapter> | BridgeAdapter
 	from: ChainRef
 	to: ChainRef
+	verbose: boolean
 	log: (entry: {
 		event: string
 		phase: OperationPhase
@@ -62,7 +68,7 @@ const createAdapterWithRetries = async ({
 }): Promise<BridgeAdapter> => {
 	for (let attempt = 1; ; attempt += 1) {
 		try {
-			return await createAdapter({ from, to })
+			return await createAdapter({ from, to, verbose })
 		} catch (error) {
 			await log({
 				event: "retrying",
@@ -128,11 +134,13 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 				meta: { name: "resume", description: "Resume a persisted operation." },
 				args: {
 					id: { type: "positional", required: true },
-					json: { type: "boolean", default: false }
+					json: { type: "boolean", default: false },
+					verbose: { type: "boolean", default: false }
 				},
 				async run({ args }) {
 					const id = parseId(args.id)
 					const json = parseJsonFlag(args.json)
+					const verbose = typeof args.verbose === "boolean" ? args.verbose : false
 					const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
 					const store = (deps.createStore ?? createSessionStore)({ stateDir: appPaths.stateDir })
 					const session = await store.load(id)
@@ -145,13 +153,18 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						deps.createAdapter ??
 						(async ({
 							from: inputFrom,
-							to: inputTo
+							to: inputTo,
+							verbose: inputVerbose
 						}: {
 							from: ChainRef
 							to: ChainRef
+							verbose: boolean
 						}) => {
 							const { createBridgeAdapter } = await import("../core/adapter")
-							return createBridgeAdapter({ route: resolveRoute(inputFrom, inputTo) })
+							return createBridgeAdapter({
+								route: resolveRoute(inputFrom, inputTo),
+								verbose: inputVerbose
+							})
 						})
 					const sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
 					const log = async ({
@@ -184,6 +197,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 								createAdapter,
 								from,
 								to,
+								verbose,
 								log,
 								sleep,
 								retryDelayMs: deps.retryDelayMs ?? 5_000

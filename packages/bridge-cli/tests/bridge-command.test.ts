@@ -104,7 +104,8 @@ describe("bridge command", () => {
 				account: "B62test",
 				recipient: "",
 				timeoutSlots: "",
-				json: true
+				json: true,
+				verbose: false
 			},
 			rawArgs: [],
 			cmd: command
@@ -170,7 +171,8 @@ describe("bridge command", () => {
 					account: "",
 					recipient: "B62qrecipient1111111111111111111111111111111111111111111111",
 					timeoutSlots: "",
-					json: true
+					json: true,
+					verbose: false
 				},
 				rawArgs: [],
 				cmd: command
@@ -187,5 +189,46 @@ describe("bridge command", () => {
 		expect(JSON.parse(writes[0] ?? "{}")).toMatchObject({
 			recipient: "B62qrecipient1111111111111111111111111111111111111111111111"
 		})
+	})
+
+	it("passes the verbose flag through to adapter creation", async () => {
+		const seen: Array<{ from: string; to: string; verbose: boolean }> = []
+		const command = createBridgeCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async ({ from, to, verbose }) => {
+				seen.push({ from, to, verbose })
+				return createAdapter()
+			},
+			generateId: () => "bridge-op-3",
+			write: () => {},
+			writeProgress: () => {},
+			sleep: async () => {},
+			pollIntervalMs: 0,
+			now: () => "2026-03-10T00:00:00.000Z"
+		})
+
+		await command.run?.({
+			args: {
+				_: [],
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "2",
+				account: "B62test",
+				recipient: "",
+				timeoutSlots: "",
+				json: false,
+				verbose: true
+			},
+			rawArgs: [],
+			cmd: command
+		})
+
+		expect(seen).toEqual([{ from: "mina:testnet", to: "zeko:testnet", verbose: true }])
 	})
 })

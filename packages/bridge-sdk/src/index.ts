@@ -53,6 +53,17 @@ export * from "./graphql/index"
 export * from "./types"
 
 export class Bridge {
+	private debug(message: string, details?: unknown): void {
+		if (!this.config.verbose) return
+
+		if (details === undefined) {
+			console.debug(message)
+			return
+		}
+
+		console.debug(message, details)
+	}
+
 	constructor(
 		private readonly config: Config,
 
@@ -777,6 +788,7 @@ export class Bridge {
 
 	public async canCancelDeposit(pk: PublicKey): Promise<boolean> {
 		const result = await this.fetchDepositCancellationWitnesses(pk, this.outerTokenOwner)
+		this.debug("canCancelDeposit result", result)
 		return result.ok
 	}
 

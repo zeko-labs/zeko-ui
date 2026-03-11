@@ -1,6 +1,7 @@
 import { defineCommand, type CommandDef } from "citty"
 import type { BridgeAdapter } from "../core/adapter"
 import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
+import { color, icon, keyValue, section } from "../core/terminal"
 import type {
 	DepositStatus,
 	StatusResult,
@@ -19,6 +20,7 @@ type RouteArgs = {
 	from: ChainRef
 	to: ChainRef
 	json: boolean
+	verbose?: boolean
 }
 
 type DepositSubmitArgs = RouteArgs & {
@@ -49,7 +51,7 @@ type WithdrawalActionArgs = RouteArgs & {
 type WithdrawalStatusArgs = RouteArgs & StatusArgs
 
 type DirectCommandDeps = {
-	createAdapter?: (input: { from: ChainRef; to: ChainRef }) =>
+	createAdapter?: (input: { from: ChainRef; to: ChainRef; verbose: boolean }) =>
 		| Promise<BridgeAdapter>
 		| BridgeAdapter
 	write?: (message: string) => void
@@ -75,7 +77,8 @@ const parseBoolean = (value: unknown, fallback: boolean): boolean =>
 const readRouteArgs = (args: Record<string, unknown>): RouteArgs => ({
 	from: parseChainRef(args.from, "--from"),
 	to: parseChainRef(args.to, "--to"),
-	json: parseBoolean(args.json, false)
+	json: parseBoolean(args.json, false),
+	verbose: parseBoolean(args.verbose, false)
 })
 
 const readDepositSubmitArgs = (args: Record<string, unknown>): DepositSubmitArgs => ({
@@ -119,13 +122,15 @@ const readWithdrawalStatusArgs = (args: Record<string, unknown>): WithdrawalStat
 
 const defaultCreateAdapter = async ({
 	from,
-	to
+	to,
+	verbose
 }: {
 	from: ChainRef
 	to: ChainRef
+	verbose: boolean
 }): Promise<BridgeAdapter> => {
 	const { createBridgeAdapter } = await import("../core/adapter")
-	return createBridgeAdapter({ route: resolveRoute(from, to) })
+	return createBridgeAdapter({ route: resolveRoute(from, to), verbose })
 }
 
 const selectLatest = <T extends { index: number }>(items: T[], latest: boolean): T[] =>
@@ -241,21 +246,28 @@ const renderStatus = <T extends { index: number; hash: string; amount: string; r
 	result: StatusResult<T>
 ): string =>
 	[
-		`${result.direction} status for ${result.account}`,
-		`Route: ${result.route}`,
-		`Count: ${result.count}`,
+		`${icon.info()} ${section(`${result.direction} status`)}`,
+		keyValue("Account", result.account),
+		keyValue("Route", result.route),
+		keyValue("Count", result.count),
 		...result.operations.map(
-			(item) => `#${item.index} amount=${item.amount} recipient=${item.recipient} hash=${item.hash}`
+			(item) =>
+				`${icon.bullet()} ${color.bold(`#${item.index}`)}  ${keyValue("amount", item.amount)}  ${keyValue(
+					"recipient",
+					item.recipient
+				)}  ${keyValue("hash", item.hash)}`
 		)
 	].join("\n")
 
 const renderTransaction = (result: TransactionResult): string =>
 	[
-		`${result.direction} ${result.action} sent`,
-		`Route: ${result.route}`,
-		`Hash: ${result.hash}`,
-		`Included: ${result.included ? "yes" : "no"}`,
-		`Explorer: ${result.explorerUrl}`
+		`${result.success ? icon.success() : icon.error()} ${section(
+			`${result.direction} ${result.action} sent`
+		)}`,
+		keyValue("Route", result.route),
+		keyValue("Hash", result.hash),
+		keyValue("Included", result.included ? "yes" : "no"),
+		keyValue("Explorer", result.explorerUrl)
 	].join("\n")
 
 const stringArg = (defaultValue: string): { type: "string"; default: string } => ({
@@ -271,7 +283,8 @@ const booleanArg = (defaultValue: boolean): { type: "boolean"; default: boolean 
 const routeArgs = (defaults: { from: ChainRef; to: ChainRef }) => ({
 	from: stringArg(defaults.from),
 	to: stringArg(defaults.to),
-	json: booleanArg(false)
+	json: booleanArg(false),
+	verbose: booleanArg(false)
 })
 
 const writeResult = ({
@@ -319,7 +332,8 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					const commandArgs = readDepositSubmitArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
 						from: commandArgs.from,
-						to: commandArgs.to
+						to: commandArgs.to,
+						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runDepositSubmit(commandArgs, { adapter })
 					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
@@ -339,7 +353,8 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					const commandArgs = readDepositActionArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
 						from: commandArgs.from,
-						to: commandArgs.to
+						to: commandArgs.to,
+						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runDepositFinalize(commandArgs, { adapter })
 					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
@@ -359,7 +374,8 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					const commandArgs = readDepositActionArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
 						from: commandArgs.from,
-						to: commandArgs.to
+						to: commandArgs.to,
+						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runDepositCancel(commandArgs, { adapter })
 					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
@@ -379,7 +395,8 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					const commandArgs = readDepositStatusArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
 						from: commandArgs.from,
-						to: commandArgs.to
+						to: commandArgs.to,
+						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runDepositStatus(commandArgs, { adapter })
 					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
@@ -410,7 +427,8 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					const commandArgs = readWithdrawalSubmitArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
 						from: commandArgs.from,
-						to: commandArgs.to
+						to: commandArgs.to,
+						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runWithdrawalSubmit(commandArgs, { adapter })
 					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
@@ -430,7 +448,8 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					const commandArgs = readWithdrawalActionArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
 						from: commandArgs.from,
-						to: commandArgs.to
+						to: commandArgs.to,
+						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runWithdrawalFinalize(commandArgs, { adapter })
 					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
@@ -450,7 +469,8 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					const commandArgs = readWithdrawalStatusArgs(args)
 					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
 						from: commandArgs.from,
-						to: commandArgs.to
+						to: commandArgs.to,
+						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runWithdrawalStatus(commandArgs, { adapter })
 					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
