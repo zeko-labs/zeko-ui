@@ -26,6 +26,12 @@ describe("isWalletRejection", () => {
 	it("handles string errors", () => {
 		expect(isWalletRejection("User reject")).toBe(true)
 	})
+
+	it("handles plain objects with message property", () => {
+		expect(isWalletRejection({ code: 1002, message: "User reject the request" })).toBe(true)
+		expect(isWalletRejection({ code: 1002, message: "connection declined" })).toBe(true)
+		expect(isWalletRejection({ code: 500, message: "Server error" })).toBe(false)
+	})
 })
 
 describe("toQuietIfWalletRejection", () => {

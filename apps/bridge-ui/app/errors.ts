@@ -3,7 +3,12 @@ export class QuietError extends Error {}
 const walletRejectionPatterns = [/user reject/i, /connection declined/i]
 
 export const isWalletRejection = (error: unknown): boolean => {
-	const message = error instanceof Error ? error.message : String(error)
+	const message =
+		error instanceof Error
+			? error.message
+			: typeof error === "object" && error !== null && "message" in error
+				? String((error as { message: unknown }).message)
+				: String(error)
 	return walletRejectionPatterns.some((pattern) => pattern.test(message))
 }
 
