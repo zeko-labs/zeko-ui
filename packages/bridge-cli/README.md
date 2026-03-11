@@ -44,12 +44,6 @@ The npm release is a single built JavaScript tarball. There are no platform-spec
 
 The CLI signs transactions from environment variables only in v1.
 
-Create an env file from `packages/bridge-cli/.env.example`:
-
-```bash
-cp .env.example .env
-```
-
 Required variables:
 
 | Variable                       | Required | Description                                                                                        |
@@ -156,20 +150,73 @@ Release and mirror details live in the package-level release notes within the mo
 
 Before local live validation or scheduled monitoring can work, make sure all of the following are done:
 
-1. Add funded testnet signer keys locally:
-   `ZEKO_BRIDGE_MINA_PRIVATE_KEY`
-   `ZEKO_BRIDGE_ZEKO_PRIVATE_KEY` if you do not want to reuse the Mina key
-   Then run:
-   `moon run bridge-cli:live-bridge-mina-to-zeko`
-   or
-   `moon run bridge-cli:live-bridge-zeko-to-mina`
-2. Publish or confirm the npm version of `@zeko-labs/bridge-cli` that the validator should execute.
-3. Create a Slack bot, grant it permission to post messages, and capture:
-   `SLACK_BOT_TOKEN`
-   `SLACK_CHANNEL_ID`
-4. Create or configure the Inngest Cloud app and capture:
-   `INNGEST_EVENT_KEY`
-   `INNGEST_SIGNING_KEY`
-5. Add the required env variables to the bridge-validator runtime.
-6. Add the `INNGEST_EVENT_KEY` GitHub secret used by the scheduled dispatch workflow.
-7. Confirm `.github/workflows/validate-bridge-cli-live.yaml` is enabled and the validator service is running before expecting Slack alerts.
+1. Export funded testnet keys locally so the live validation can be run immediately:
+
+   ```bash
+   export ZEKO_BRIDGE_MINA_PRIVATE_KEY='<mina testnet private key>'
+   export ZEKO_BRIDGE_ZEKO_PRIVATE_KEY='<optional zeko testnet private key>'
+   ```
+
+   Then tell me which direction to run, or run the checks yourself:
+
+   ```bash
+   moon run bridge-cli:live-bridge-mina-to-zeko
+   moon run bridge-cli:live-bridge-zeko-to-mina
+   ```
+
+2. Claim the npm package name with the required first manual publish. npm OIDC cannot create a brand-new package name.
+
+   Log in once:
+
+   ```bash
+   npm login
+   ```
+
+   Then run the repo helper from the monorepo root with your npm OTP:
+
+   ```bash
+   bun scripts/npm-init-publish.ts packages/bridge-cli --otp 123456
+   ```
+
+   That script temporarily publishes `@zeko-labs/bridge-cli@0.0.0` so the name is claimed, then restores the working tree.
+
+3. Create the npm trusted publisher relationship for ongoing GitHub OIDC releases.
+   There is no supported npm CLI flow for this today; do it once in the npm UI:
+
+   ```bash
+   open 'https://www.npmjs.com/package/@zeko-labs/bridge-cli/access'
+   ```
+
+   In npm Trusted Publisher, use:
+   - GitHub organization: `zeko-labs`
+   - repository: `zeko-ui`
+   - workflow filename: `changesets.yaml`
+   - environment: leave empty unless you intentionally gate releases through a GitHub Environment
+
+   The workflow filename must be `changesets.yaml`, not `release-bridge-cli.yaml`, because npm validates the caller workflow for `workflow_call` releases.
+
+4. Publish the package from this branch after the trusted publisher is configured:
+
+   ```bash
+   gh workflow run "Release Bridge CLI" --ref canonical/bridge-cli
+   gh run watch --exit-status
+   ```
+
+5. Create the Slack bot for validator failures using the manifest at `services/bridge-validator/slack-app-manifest.json`, then capture:
+   - `SLACK_BOT_TOKEN`
+   - `SLACK_CHANNEL_ID`
+
+6. Deploy the Cloudflare-based validator service and push its secrets:
+   - `ZEKO_BRIDGE_MINA_PRIVATE_KEY`
+   - optional `ZEKO_BRIDGE_ZEKO_PRIVATE_KEY`
+   - `SLACK_BOT_TOKEN`
+   - `SLACK_CHANNEL_ID`
+
+7. Trigger both Cloudflare workflow directions manually once after deploy:
+
+   ```bash
+   pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config services/bridge-validator/wrangler.jsonc
+   pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config services/bridge-validator/wrangler.jsonc
+   ```
+
+8. Confirm the Cloudflare cron trigger remains enabled before expecting recurring Slack alerts.

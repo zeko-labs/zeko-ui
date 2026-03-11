@@ -14,6 +14,8 @@ Run manual live validation from the monorepo root:
 - `moon run bridge-cli:live-bridge-mina-to-zeko`
 - `moon run bridge-cli:live-bridge-zeko-to-mina`
 
+Exact env setup lives in [testing.md](./testing.md). If a human wants you to run the bridge live from this machine, have them export the keys first, then run one direction at a time.
+
 These are manual only. Do not add them to automatic local workflows or CI.
 
 ## Parallel Subagents

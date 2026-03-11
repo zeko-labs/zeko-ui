@@ -16,12 +16,27 @@ export ZEKO_BRIDGE_MINA_PRIVATE_KEY="<mina testnet private key>"
 export ZEKO_BRIDGE_ZEKO_PRIVATE_KEY="<optional zeko testnet private key>"
 ```
 
+If you want me to run the live bridge validation from this machine, set the variables exactly like that in the shell first, then tell me which direction to run.
+
 ## Manual Live Validation
 
 Run from the monorepo root:
 
 ```bash
 moon run bridge-cli:live-bridge-mina-to-zeko
+moon run bridge-cli:live-bridge-zeko-to-mina
+```
+
+Exact one-shot command examples:
+
+```bash
+export ZEKO_BRIDGE_MINA_PRIVATE_KEY='<mina testnet private key>'
+moon run bridge-cli:live-bridge-mina-to-zeko
+```
+
+```bash
+export ZEKO_BRIDGE_MINA_PRIVATE_KEY='<mina testnet private key>'
+export ZEKO_BRIDGE_ZEKO_PRIVATE_KEY='<zeko testnet private key>'
 moon run bridge-cli:live-bridge-zeko-to-mina
 ```
 

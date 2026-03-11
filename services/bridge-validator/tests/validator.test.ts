@@ -1,88 +1,83 @@
 import { describe, expect, it } from "vitest"
-import { validatorRoutes } from "../src/routes"
-import { buildSlackFailureMessage } from "../src/slack"
-import { buildBridgeInvocation, validatePublishedBridge } from "../src/validator"
+import { readValidatorEnv } from "../src/config"
+import {
+	buildBridgeProcessScript,
+	buildScheduledValidations,
+	DEFAULT_CLI_SPECIFIER,
+	parseBridgeJson
+} from "../src/validator"
 
 describe("bridge validator", () => {
-	it("runs the published bridge command through the high-level bridge subcommand", async () => {
-		const result = await validatePublishedBridge({
-			route: validatorRoutes.minaToZeko,
-			cliVersion: "0.0.0",
-			env: process.env,
-			runCommandImpl: async ({ command, args }) => {
-				expect(command).toBe("npx")
-				expect(args).toEqual([
-					"-y",
-					"@zeko-labs/bridge-cli@0.0.0",
-					"bridge",
-					"--from",
-					"mina:testnet",
-					"--to",
-					"zeko:testnet",
-					"--amount",
-					"1",
-					"--json"
-				])
-
-				return {
-					exitCode: 0,
-					stdout: JSON.stringify({
-						success: true,
-						operation_id: "bridge-op-1",
-						route: "mina:testnet->zeko:testnet",
-						direction: "deposit",
-						status: "completed",
-						amount: "1",
-						recipient: "B62test",
-						submitted_transactions: [{ action: "submit", hash: "hash-1" }],
-						final_transaction: { action: "finalize", hash: "hash-2" },
-						explorer_urls: [],
-						log_path: "/tmp/bridge-op-1.jsonl"
-					}),
-					stderr: ""
-				}
-			}
+	it("builds a sandbox script that runs the published high-level bridge command", () => {
+		const script = buildBridgeProcessScript({
+			routeKey: "mina-to-zeko",
+			cliSpecifier: DEFAULT_CLI_SPECIFIER
 		})
 
-		expect(result.result.operation_id).toBe("bridge-op-1")
+		expect(script).toContain("npm view @zeko-labs/bridge-cli@latest version")
+		expect(script).toContain(
+			"npx -y @zeko-labs/bridge-cli@latest bridge --from mina:testnet --to zeko:testnet --amount 1 --json"
+		)
+		expect(script).toContain("/workspace/bridge-validator/result.json")
+		expect(script).toContain("/workspace/bridge-validator/progress.log")
 	})
 
-	it("throws a command-stage failure when the published cli exits non-zero", async () => {
-		try {
-			await validatePublishedBridge({
-				route: validatorRoutes.zekoToMina,
-				cliVersion: "0.0.0",
-				env: process.env,
-				runCommandImpl: async () => ({
-					exitCode: 1,
-					stdout: "",
-					stderr: "bridge failed"
+	it("creates exactly two scheduled workflow payloads, one per bridge direction", () => {
+		const validations = buildScheduledValidations({
+			scheduledTime: 1_762_684_800_000,
+			cliSpecifier: DEFAULT_CLI_SPECIFIER
+		})
+
+		expect(validations).toEqual([
+			expect.objectContaining({
+				id: "bridge-validator-mina-to-zeko-1762684800000",
+				params: expect.objectContaining({
+					routeKey: "mina-to-zeko",
+					cliSpecifier: DEFAULT_CLI_SPECIFIER
+				})
+			}),
+			expect.objectContaining({
+				id: "bridge-validator-zeko-to-mina-1762684800000",
+				params: expect.objectContaining({
+					routeKey: "zeko-to-mina",
+					cliSpecifier: DEFAULT_CLI_SPECIFIER
 				})
 			})
-			throw new Error("expected validatePublishedBridge to throw")
-		} catch (error) {
-			expect(error).toMatchObject({
-				stage: "command",
-				exitCode: 1,
-				stderr: "bridge failed"
-			})
-		}
+		])
 	})
 
-	it("formats a compact slack failure message", () => {
+	it("requires only bridge keys and slack delivery config", () => {
 		expect(
-			buildSlackFailureMessage({
-				route: validatorRoutes.minaToZeko,
-				cliVersion: "0.0.0",
-				stage: "command",
-				exitCode: 1,
-				stdout: "stdout text",
-				stderr: "stderr text",
-				message: "Bridge command exited with 1"
+			readValidatorEnv({
+				ZEKO_BRIDGE_MINA_PRIVATE_KEY: "mina-key",
+				SLACK_BOT_TOKEN: "xoxb-token",
+				SLACK_CHANNEL_ID: "C123"
 			})
-		).toContain("Route: mina:testnet->zeko:testnet")
+		).toEqual({
+			minaPrivateKey: "mina-key",
+			zekoPrivateKey: "mina-key",
+			slackBotToken: "xoxb-token",
+			slackChannelId: "C123"
+		})
+	})
+
+	it("parses the final bridge json payload", () => {
 		expect(
-			buildBridgeInvocation({ route: validatorRoutes.zekoToMina, cliVersion: "0.0.0" }).args
-		).toContain("bridge")
+			parseBridgeJson(
+				JSON.stringify({
+					success: true,
+					operation_id: "bridge-op-1",
+					route: "mina:testnet->zeko:testnet",
+					direction: "deposit",
+					status: "completed",
+					amount: "1",
+					recipient: "B62test",
+					submitted_transactions: [{ action: "submit", hash: "hash-1" }],
+					final_transaction: { action: "finalize", hash: "hash-2" },
+					explorer_urls: [],
+					log_path: "/tmp/bridge-op-1.jsonl"
+				})
+			).operation_id
+		).toBe("bridge-op-1")
 	})
 })

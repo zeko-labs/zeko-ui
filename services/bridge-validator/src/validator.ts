@@ -1,11 +1,19 @@
-import { spawn } from "node:child_process"
-import type { BridgeValidatorRoute } from "./routes"
-import type { BridgeCliJsonResult, CommandExecutionResult } from "./types"
+import { getValidatorRoute, type BridgeValidatorRouteKey } from "./routes"
+import type { BridgeCliJsonResult, ScheduledValidation } from "./types"
+
+export const DEFAULT_CLI_SPECIFIER = "@zeko-labs/bridge-cli@latest"
+export const BRIDGE_VALIDATION_ROOT = "/workspace/bridge-validator"
+export const BRIDGE_SCRIPT_PATH = `${BRIDGE_VALIDATION_ROOT}/run-bridge.sh`
+export const BRIDGE_RESULT_PATH = `${BRIDGE_VALIDATION_ROOT}/result.json`
+export const BRIDGE_PROGRESS_PATH = `${BRIDGE_VALIDATION_ROOT}/progress.log`
+export const BRIDGE_VERSION_PATH = `${BRIDGE_VALIDATION_ROOT}/resolved-version.txt`
+export const BRIDGE_PROCESS_ID = "bridge-command"
+export const DEFAULT_BRIDGE_AMOUNT = "1"
 
 export class BridgeValidationError extends Error {
 	constructor(
 		message: string,
-		readonly stage: "command" | "json" | "result",
+		readonly stage: "process" | "json" | "result",
 		readonly exitCode?: number,
 		readonly stdout = "",
 		readonly stderr = ""
@@ -14,58 +22,70 @@ export class BridgeValidationError extends Error {
 	}
 }
 
-type RunCommand = (input: {
-	command: string
-	args: string[]
-	env: NodeJS.ProcessEnv
-}) => Promise<CommandExecutionResult>
+const shellQuote = (value: string): string => `'${value.replaceAll("'", `'\"'\"'`)}'`
 
-export const runCommand: RunCommand = ({ command, args, env }) =>
-	new Promise((resolve, reject) => {
-		const child = spawn(command, args, {
-			env,
-			stdio: ["ignore", "pipe", "pipe"]
-		})
-		let stdout = ""
-		let stderr = ""
+const CLI_SPECIFIER_PATTERN = /^[@a-z0-9._/-]+(?:@[a-z0-9._-]+)?$/i
 
-		child.stdout.on("data", (chunk) => {
-			stdout += String(chunk)
-		})
-		child.stderr.on("data", (chunk) => {
-			stderr += String(chunk)
-		})
-		child.on("error", reject)
-		child.on("close", (code) => {
-			resolve({
-				exitCode: code ?? 1,
-				stdout,
-				stderr
-			})
-		})
-	})
+const assertCliSpecifier = (cliSpecifier: string): string => {
+	if (!CLI_SPECIFIER_PATTERN.test(cliSpecifier)) {
+		throw new Error(`Unsupported CLI specifier: ${cliSpecifier}`)
+	}
 
-export const buildBridgeInvocation = ({
-	route,
-	cliVersion
+	return cliSpecifier
+}
+
+export const buildBridgeProcessScript = ({
+	routeKey,
+	cliSpecifier
 }: {
-	route: BridgeValidatorRoute
-	cliVersion: string
-}) => ({
-	command: "npx",
-	args: [
-		"-y",
-		`@zeko-labs/bridge-cli@${cliVersion}`,
-		"bridge",
-		"--from",
-		route.from,
-		"--to",
-		route.to,
-		"--amount",
-		"1",
-		"--json"
-	]
-})
+	routeKey: BridgeValidatorRouteKey
+	cliSpecifier: string
+}) => {
+	const route = getValidatorRoute(routeKey)
+	const safeCliSpecifier = assertCliSpecifier(cliSpecifier)
+
+	return [
+		"#!/bin/sh",
+		"set -eu",
+		`mkdir -p ${shellQuote(BRIDGE_VALIDATION_ROOT)}`,
+		`npm view ${safeCliSpecifier} version > ${shellQuote(BRIDGE_VERSION_PATH)}`,
+		[
+			"npx -y",
+			safeCliSpecifier,
+			"bridge",
+			"--from",
+			route.from,
+			"--to",
+			route.to,
+			"--amount",
+			DEFAULT_BRIDGE_AMOUNT,
+			"--json"
+		].join(" ") + ` > ${shellQuote(BRIDGE_RESULT_PATH)} 2> ${shellQuote(BRIDGE_PROGRESS_PATH)}`
+	].join("\n")
+}
+
+export const buildScheduledValidations = ({
+	scheduledTime,
+	cliSpecifier = DEFAULT_CLI_SPECIFIER
+}: {
+	scheduledTime: number
+	cliSpecifier?: string
+}): ScheduledValidation[] => [
+	{
+		id: `bridge-validator-mina-to-zeko-${scheduledTime}`,
+		params: {
+			routeKey: "mina-to-zeko",
+			cliSpecifier
+		}
+	},
+	{
+		id: `bridge-validator-zeko-to-mina-${scheduledTime}`,
+		params: {
+			routeKey: "zeko-to-mina",
+			cliSpecifier
+		}
+	}
+]
 
 export const parseBridgeJson = (stdout: string): BridgeCliJsonResult => {
 	try {
@@ -77,49 +97,5 @@ export const parseBridgeJson = (stdout: string): BridgeCliJsonResult => {
 			undefined,
 			stdout
 		)
-	}
-}
-
-export const validatePublishedBridge = async ({
-	route,
-	cliVersion,
-	env,
-	runCommandImpl = runCommand
-}: {
-	route: BridgeValidatorRoute
-	cliVersion: string
-	env: NodeJS.ProcessEnv
-	runCommandImpl?: RunCommand
-}) => {
-	const invocation = buildBridgeInvocation({ route, cliVersion })
-	const execution = await runCommandImpl({
-		...invocation,
-		env
-	})
-
-	if (execution.exitCode !== 0) {
-		throw new BridgeValidationError(
-			`Bridge command exited with ${execution.exitCode}`,
-			"command",
-			execution.exitCode,
-			execution.stdout,
-			execution.stderr
-		)
-	}
-
-	const result = parseBridgeJson(execution.stdout)
-	if (!result.success || result.status !== "completed") {
-		throw new BridgeValidationError(
-			`Bridge command finished with status ${result.status}`,
-			"result",
-			execution.exitCode,
-			execution.stdout,
-			execution.stderr
-		)
-	}
-
-	return {
-		result,
-		execution
 	}
 }

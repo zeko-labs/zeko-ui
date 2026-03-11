@@ -1,3 +1,5 @@
+import type { BridgeValidatorRouteKey } from "./routes"
+
 export type BridgeCliJsonResult = {
 	success: boolean
 	operation_id: string
@@ -12,8 +14,12 @@ export type BridgeCliJsonResult = {
 	log_path: string
 }
 
-export type CommandExecutionResult = {
-	exitCode: number
-	stdout: string
-	stderr: string
+export type BridgeValidationParams = {
+	routeKey: BridgeValidatorRouteKey
+	cliSpecifier?: string
+}
+
+export type ScheduledValidation = {
+	id: string
+	params: BridgeValidationParams
 }

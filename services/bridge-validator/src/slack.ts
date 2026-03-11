@@ -16,6 +16,7 @@ const excerpt = (value: string): string => {
 export const buildSlackFailureMessage = ({
 	route,
 	cliVersion,
+	instanceId,
 	stage,
 	exitCode,
 	stdout,
@@ -24,6 +25,7 @@ export const buildSlackFailureMessage = ({
 }: {
 	route: BridgeValidatorRoute
 	cliVersion: string
+	instanceId: string
 	stage: string
 	exitCode?: number
 	stdout?: string
@@ -32,6 +34,7 @@ export const buildSlackFailureMessage = ({
 }) =>
 	[
 		`Bridge validator failure`,
+		`Workflow instance: ${instanceId}`,
 		`Route: ${route.route}`,
 		`CLI version: ${cliVersion}`,
 		`Stage: ${stage}`,

@@ -1,6 +1,7 @@
+export type BridgeValidatorRouteKey = "mina-to-zeko" | "zeko-to-mina"
+
 export type BridgeValidatorRoute = {
-	functionId: string
-	eventName: string
+	key: BridgeValidatorRouteKey
 	from: "mina:testnet" | "zeko:testnet"
 	to: "mina:testnet" | "zeko:testnet"
 	route: "mina:testnet->zeko:testnet" | "zeko:testnet->mina:testnet"
@@ -9,16 +10,14 @@ export type BridgeValidatorRoute = {
 
 export const validatorRoutes = {
 	minaToZeko: {
-		functionId: "validate-mina-to-zeko",
-		eventName: "bridge-validator/mina-to-zeko.requested",
+		key: "mina-to-zeko",
 		from: "mina:testnet",
 		to: "zeko:testnet",
 		route: "mina:testnet->zeko:testnet",
 		direction: "deposit"
 	},
 	zekoToMina: {
-		functionId: "validate-zeko-to-mina",
-		eventName: "bridge-validator/zeko-to-mina.requested",
+		key: "zeko-to-mina",
 		from: "zeko:testnet",
 		to: "mina:testnet",
 		route: "zeko:testnet->mina:testnet",
@@ -26,6 +25,15 @@ export const validatorRoutes = {
 	}
 } satisfies Record<string, BridgeValidatorRoute>
 
-export type BridgeValidatorRequest = {
-	cliVersion: string
-}
+export const validatorRouteKeys = [
+	validatorRoutes.minaToZeko.key,
+	validatorRoutes.zekoToMina.key
+] as const satisfies readonly BridgeValidatorRouteKey[]
+
+export const validatorRoutesByKey = {
+	[validatorRoutes.minaToZeko.key]: validatorRoutes.minaToZeko,
+	[validatorRoutes.zekoToMina.key]: validatorRoutes.zekoToMina
+} satisfies Record<BridgeValidatorRouteKey, BridgeValidatorRoute>
+
+export const getValidatorRoute = (routeKey: BridgeValidatorRouteKey): BridgeValidatorRoute =>
+	validatorRoutesByKey[routeKey]

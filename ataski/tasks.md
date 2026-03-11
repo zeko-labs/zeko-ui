@@ -62,3 +62,4 @@
 - T062 | done | merge-main-fix-bridge-cli-ci-and-docs | done/T062-merge-main-fix-bridge-cli-ci-and-docs.md
 - T063 | done | investigate-pr-139-review-findings | done/T063-investigate-pr-139-review-findings.md
 - T064 | done | single-command-bridge-validation-and-ordered-claims | done/T064-single-command-bridge-validation-and-ordered-claims.md
+- T065 | done | replace-bridge-validator-with-cloudflare-workflows | done/T065-replace-bridge-validator-with-cloudflare-workflows.md

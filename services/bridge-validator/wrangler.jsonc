@@ -1,0 +1,57 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"compatibility_date": "2026-03-11",
+	"name": "bridge-validator",
+	"main": "src/index.ts",
+	"workers_dev": true,
+	"preview_urls": true,
+	"observability": {
+		"traces": {
+			"enabled": true,
+			"destinations": ["zeko-traces"],
+			"head_sampling_rate": 1
+		},
+		"logs": {
+			"enabled": true,
+			"destinations": ["zeko-logs"],
+			"head_sampling_rate": 1
+		}
+	},
+	"triggers": {
+		"crons": ["0 */6 * * *"]
+	},
+	"workflows": [
+		{
+			"name": "bridge-validator",
+			"binding": "BRIDGE_VALIDATION_WORKFLOW",
+			"class_name": "BridgeValidationWorkflow"
+		}
+	],
+	"containers": [
+		{
+			"name": "bridge-validator-sandbox",
+			"class_name": "Sandbox",
+			"image": "./Dockerfile",
+			"instance_type": "standard-1",
+			"max_instances": 4,
+			"image_build_context": "../.."
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "Sandbox",
+				"class_name": "Sandbox"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["Sandbox"]
+		}
+	],
+	"limits": {
+		"cpu_ms": 300000
+	}
+}

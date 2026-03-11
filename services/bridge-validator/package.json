@@ -7,16 +7,17 @@
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": "./dist/index.js",
-		"./server": "./dist/server.js",
 		"./*": "./*"
 	},
 	"dependencies": {
-		"inngest": "^3.52.6"
+		"@cloudflare/sandbox": "^0.2.0"
 	},
 	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "catalog:",
 		"@types/node": "^25.4.0",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"wrangler": "catalog:"
 	}
 }

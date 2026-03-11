@@ -1,10 +1,9 @@
 {
 	"compilerOptions": {
-		"target": "ES2022",
-		"module": "esnext",
+		"target": "ESNext",
+		"module": "ESNext",
 		"lib": ["ES2022"],
 		"moduleResolution": "bundler",
-		"types": ["node"],
 		"strict": true,
 		"noImplicitAny": true,
 		"noImplicitReturns": true,
@@ -18,5 +17,5 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true
 	},
-	"include": ["src", "tests"]
+	"include": ["worker-configuration.d.ts", "src", "tests"]
 }
