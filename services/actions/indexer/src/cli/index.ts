@@ -343,6 +343,7 @@ const runSyncFromArgs = async (args: Record<string, unknown>) => {
 				stream: "outer",
 				lastFetchedBlock: result.outer.lastFetchedBlock,
 				tip: result.outer.tip,
+				tipDistance: result.outer.tipDistance,
 				lag: result.outer.lag,
 				hasPendingActions: result.outer.hasPendingActions,
 				status: result.outer.status
@@ -351,6 +352,7 @@ const runSyncFromArgs = async (args: Record<string, unknown>) => {
 				stream: "inner",
 				lastFetchedBlock: result.inner.lastFetchedBlock,
 				tip: result.inner.tip,
+				tipDistance: result.inner.tipDistance,
 				lag: result.inner.lag,
 				hasPendingActions: result.inner.hasPendingActions,
 				status: result.inner.status
