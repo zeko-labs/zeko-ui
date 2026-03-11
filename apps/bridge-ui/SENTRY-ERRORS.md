@@ -2,7 +2,9 @@
 
 Tracking document for bridge-ui Sentry issues from Linear Web team triage.
 
-## Category A: Third-party Extension Noise (Filtered in `ignoreErrors`)
+## Category A: Third-party Extension Noise (Filtered)
+
+Not our code. Zero signal. Safe to filter.
 
 | Linear ID | Error                                                        | Resolution                            | Status   |
 | --------- | ------------------------------------------------------------ | ------------------------------------- | -------- |
@@ -13,7 +15,7 @@ Tracking document for bridge-ui Sentry issues from Linear Web team triage.
 | WEB-168   | `TypeError: Illegal invocation`                              | Filter: generic extension             | filtered |
 | WEB-298   | `Invalid property descriptor. Cannot both specify accessors` | Filter: browser extension compat      | filtered |
 
-## Category B: Service Worker / Notifications (Code Fix)
+## Category B: Service Worker / Notifications (Fixed)
 
 | Linear ID | Error                                                             | Resolution                                       | Status |
 | --------- | ----------------------------------------------------------------- | ------------------------------------------------ | ------ |
@@ -21,17 +23,17 @@ Tracking document for bridge-ui Sentry issues from Linear Web team triage.
 | WEB-127   | `Cannot read properties of undefined (reading 'permissionState')` | Same root cause as WEB-253                       | fixed  |
 | WEB-198   | `null is not an object (evaluating 't.scriptURL')`                | Guard service worker registration access         | fixed  |
 
-## Category C: Network / Backend Errors (Filtered)
+## Category C: Network / Backend Errors (Keep in Sentry)
 
-bridge-sdk uses urql with `retryExchange` (5 retries, exponential backoff). These errors only surface after all retries are exhausted, meaning the backend is genuinely down. Users cannot take action — filtering prevents quota burn.
+bridge-sdk retries 5x via urql `retryExchange`. These errors surface only after retries are exhausted. They are real backend/infrastructure signals — if the backend is down or returning bad data, we need to know.
 
-| Linear ID | Error                                       | Resolution                                              | Status   |
-| --------- | ------------------------------------------- | ------------------------------------------------------- | -------- |
-| WEB-334   | `CombinedError: [Network] Failed to fetch`  | Filter: bridge-sdk retries 5x via urql before surfacing | filtered |
-| WEB-346   | `CombinedError: [GraphQL] Unexpected error` | Filter: backend error after retries exhausted           | filtered |
-| WEB-276   | `TypeError: Load failed`                    | Filter: generic fetch/asset failure, same class         | filtered |
-| WEB-317   | `Unexpected end of input`                   | Filter: truncated response from network issues          | filtered |
-| WEB-204   | `Error getting account data`                | Filter: network-dependent account fetch after retries   | filtered |
+| Linear ID | Error                                       | Resolution                                                           | Status  |
+| --------- | ------------------------------------------- | -------------------------------------------------------------------- | ------- |
+| WEB-334   | `CombinedError: [Network] Failed to fetch`  | Keep: backend outage signal after 5 retries                          | monitor |
+| WEB-346   | `CombinedError: [GraphQL] Unexpected error` | Keep: backend bug signal                                             | monitor |
+| WEB-276   | `TypeError: Load failed`                    | Keep: could be our assets or fetch calls, needs investigation        | monitor |
+| WEB-317   | `Unexpected end of input`                   | Keep: backend returning truncated JSON is a bug                      | monitor |
+| WEB-204   | `Error getting account data`                | Keep: network-dependent account fetch failure, infrastructure signal | monitor |
 
 ## Category D: User Navigation (Filtered)
 
@@ -39,7 +41,7 @@ bridge-sdk uses urql with `retryExchange` (5 retries, exponential backoff). Thes
 | --------- | ---------------------------------------- | --------------------------- | -------- |
 | WEB-252   | `AbortError: The user aborted a request` | Filter: user navigated away | filtered |
 
-## Category E: Stale Deployment Cache (Chunk Reload Plugin)
+## Category E: Stale Deployment Cache (Fixed)
 
 | Linear ID | Error                                               | Resolution                    | Status |
 | --------- | --------------------------------------------------- | ----------------------------- | ------ |
@@ -49,19 +51,19 @@ bridge-sdk uses urql with `retryExchange` (5 retries, exponential backoff). Thes
 
 ## Category F: Wallet Interaction
 
-| Linear ID | Error                                                     | Resolution                                                                   | Status   |
-| --------- | --------------------------------------------------------- | ---------------------------------------------------------------------------- | -------- |
-| WEB-184   | User rejecting the request (Auro)                         | Wrap as QuietError in signTransaction                                        | fixed    |
-| WEB-291   | `connection declined`                                     | Wallet connection refused → QuietError                                       | fixed    |
-| WEB-290   | `Failed to connect to MetaMask`                           | Filter: MetaMask not relevant to Mina                                        | filtered |
-| WEB-189   | `Attempting to use a disconnected port object`            | Filter: browser extension port disconnect                                    | filtered |
-| WEB-197   | `registeredMessage[id].resolve` is undefined              | Filter: Auro extension internal messaging race — not in our code             | filtered |
-| WEB-154   | `Cannot read properties of undefined (reading 'resolve')` | Filter: same Auro internal pattern as WEB-197                                | filtered |
-| WEB-206   | `Error invoking post: Method not found`                   | Filter: Auro extension RPC method mismatch — wallet SDK manages this, not us | filtered |
+| Linear ID | Error                                                     | Resolution                                                                    | Status   |
+| --------- | --------------------------------------------------------- | ----------------------------------------------------------------------------- | -------- |
+| WEB-184   | User rejecting the request (Auro)                         | Fix: wrap as QuietError in signTransaction                                    | fixed    |
+| WEB-291   | `connection declined`                                     | Fix: wallet connection refused → QuietError                                   | fixed    |
+| WEB-290   | `Failed to connect to MetaMask`                           | Filter: MetaMask not relevant to Mina bridge                                  | filtered |
+| WEB-189   | `Attempting to use a disconnected port object`            | Filter: browser extension port lifecycle, not our code                        | filtered |
+| WEB-197   | `registeredMessage[id].resolve` is undefined              | Filter: Auro extension internal messaging race, confirmed not in our codebase | filtered |
+| WEB-154   | `Cannot read properties of undefined (reading 'resolve')` | Filter: same Auro internal pattern as WEB-197                                 | filtered |
+| WEB-206   | `Error invoking post: Method not found`                   | Keep: could indicate Auro version incompatibility with our wallet SDK calls   | monitor  |
 
 ## Category G: iOS / WKWebView (Filtered)
 
-Bridge does not support iOS embedded browsers. These errors come from users opening the site in an iOS app's WKWebView (e.g. Telegram, Twitter in-app browser). Filtering is appropriate.
+Bridge does not support iOS embedded browsers (Telegram, Twitter in-app browser). Filtering is appropriate given the conscious decision not to support this platform.
 
 | Linear ID | Error                                                          | Resolution                            | Status   |
 | --------- | -------------------------------------------------------------- | ------------------------------------- | -------- |
@@ -71,19 +73,19 @@ Bridge does not support iOS embedded browsers. These errors come from users open
 
 ## Category H: Application Errors
 
-| Linear ID | Error                                                      | Resolution                                                                                         | Status   |
-| --------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------- |
-| WEB-333   | `Invalid actions data`                                     | Filter: bridge-sdk validation of chain data; corrupted data from backend, user cannot fix          | filtered |
-| WEB-341   | `Invalid witnesses data`                                   | Filter: same — bridge-sdk validation of chain data                                                 | filtered |
-| WEB-340   | `Invalid commit ase past withdrawal delay data`            | Filter: same — bridge-sdk validation of chain data                                                 | filtered |
-| WEB-258   | `Invalid runtime config`                                   | Filter: transient SSR/deployment issue, Sentry itself would fail to init                           | filtered |
-| WEB-362   | `fromBase58Check: invalid checksum`                        | Fix: `validatePublicKey` wrapper with `{ cause }` in operations.worker.ts                          | fixed    |
-| WEB-118   | `Cannot assign to read only property 'toString' of Sha256` | Filter: o1js internal error, not our code                                                          | filtered |
-| WEB-344   | `rangeCheck32: expected field to fit in 32 bits`           | Filter: o1js constraint violation from chain data, not actionable                                  | filtered |
-| WEB-307   | `Reflect.getMetadata is not a function`                    | Filter: not in our code or direct deps; likely browser extension injecting decorator metadata      | filtered |
-| WEB-251   | `Object.groupBy is not a function`                         | Fix: replaced `Object.groupBy` with manual loop in Bridge.vue for browser compat                   | fixed    |
-| WEB-129   | `Actor with system ID already exists`                      | Fix: added guard in bridge.ts `startOperation` to skip spawn if operation ID already exists        | fixed    |
-| WEB-323   | `Failed to read 'localStorage'`                            | Filter: already guarded with optional chaining in debug.ts; privacy/incognito browser edge case    | filtered |
-| WEB-388   | `NotAllowedError: play method not allowed`                 | Filter: background video autoplay with muted+playsinline; browser policy blocks in some edge cases | filtered |
-| WEB-356   | `<unknown>`                                                | Filter: cannot identify without Sentry context; unidentifiable errors are noise                    | filtered |
-| WEB-256   | `<unknown>`                                                | Filter: same — unidentifiable                                                                      | filtered |
+| Linear ID | Error                                                      | Resolution                                                                                       | Status   |
+| --------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------- |
+| WEB-333   | `Invalid actions data`                                     | Keep: actions API serving corrupted chain data — infrastructure/backend signal                   | monitor  |
+| WEB-341   | `Invalid witnesses data`                                   | Keep: same — backend data quality signal                                                         | monitor  |
+| WEB-340   | `Invalid commit ase past withdrawal delay data`            | Keep: same — backend data quality signal                                                         | monitor  |
+| WEB-258   | `Invalid runtime config`                                   | Keep: deployment configuration broken, must be visible                                           | monitor  |
+| WEB-362   | `fromBase58Check: invalid checksum`                        | Fix: `validatePublicKey` wrapper with `{ cause }` in operations.worker.ts                        | fixed    |
+| WEB-118   | `Cannot assign to read only property 'toString' of Sha256` | Filter: o1js internal read-only property mutation, not triggered by our code                     | filtered |
+| WEB-344   | `rangeCheck32: expected field to fit in 32 bits`           | Keep: invalid data reaching o1js proofs, likely bad backend data or unexpected user input        | monitor  |
+| WEB-307   | `Reflect.getMetadata is not a function`                    | Keep: needs investigation — could be missing polyfill a dependency needs                         | monitor  |
+| WEB-251   | `Object.groupBy is not a function`                         | Fix: replaced `Object.groupBy` with manual loop in Bridge.vue                                    | fixed    |
+| WEB-129   | `Actor with system ID already exists`                      | Fix: guard in bridge.ts `startOperation` to skip spawn if operation already exists               | fixed    |
+| WEB-323   | `Failed to read 'localStorage'`                            | Keep: optional chaining exists but still fires — unguarded code path or property access throwing | monitor  |
+| WEB-388   | `NotAllowedError: play method not allowed`                 | Filter: background video with muted+playsinline, cosmetic browser policy edge case               | filtered |
+| WEB-356   | `<unknown>`                                                | Keep: unidentified errors need sentry-cli investigation before deciding                          | monitor  |
+| WEB-256   | `<unknown>`                                                | Keep: same — cannot justify hiding what hasn't been investigated                                 | monitor  |

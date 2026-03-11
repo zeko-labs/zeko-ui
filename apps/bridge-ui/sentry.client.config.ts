@@ -2,44 +2,27 @@ import * as Sentry from "@sentry/nuxt"
 import { QuietError } from "~/errors"
 
 const ignorePatterns = [
-	// Category A: Third-party browser extension noise
+	// Category A: Third-party browser extension noise — not our code, zero signal
 	"zaloJSV2 is not defined",
 	/window\.misesEthereum/,
 	"SecurityError: Blocked a frame",
 	"Error: no ad",
 	"TypeError: Illegal invocation",
 	/Invalid property descriptor\. Cannot both specify accessors/,
-	// Category C: Network/backend errors (bridge-sdk already retries 5x via urql retryExchange)
-	/CombinedError/,
-	"TypeError: Load failed",
-	"Unexpected end of input",
-	"Error getting account data",
-	// Category D: User navigation (benign)
+	// Category D: User navigation — benign, user navigated away
 	"AbortError: The user aborted a request",
-	// Category F: Unrelated wallet extensions and Auro internals
+	// Category F: Unrelated wallet extensions — not our code
 	"Failed to connect to MetaMask",
 	"Attempting to use a disconnected port object",
 	/registeredMessage\[.*\]\.resolve/,
-	"Error invoking post: Method not found",
 	// Category G: Browser extension messaging and iOS WKWebView
 	"Failed to send message to background script",
 	"no messageHandlers",
 	"WKWebView API client did not respond",
-	// Category H: Third-party library internals (o1js)
+	// o1js internal: read-only property mutation, not triggered by our code
 	/Cannot assign to read only property.*toString.*Sha256/,
-	/rangeCheck32/,
-	"Reflect.getMetadata is not a function",
-	// Category H: Browser environment edge cases
-	"Failed to read 'localStorage'",
-	"NotAllowedError: play() request was interrupted",
-	/NotAllowedError.*play/,
-	// bridge-sdk validation errors (corrupted chain data, user cannot fix)
-	"Invalid actions data",
-	"Invalid witnesses data",
-	/Invalid commit.*withdrawal delay/,
-	"Invalid runtime config",
-	// XState race condition (guarded in code, filter residual)
-	"Actor with system ID already exists"
+	// Browser autoplay policy: background videos are muted+playsinline, cosmetic
+	/NotAllowedError.*play/
 ]
 
 Sentry.init({
