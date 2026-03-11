@@ -1,11 +1,11 @@
 ---
 id: T068
 title: "Fix indexer canonical progression and diagnostics"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-11T15:53:04Z
-updated_at: 2026-03-11T15:53:04Z
+updated_at: 2026-03-11T16:43:05Z
 ---
 
 ## Requirements
@@ -29,3 +29,10 @@ updated_at: 2026-03-11T15:53:04Z
 This fix changes existing indexer progression behavior across the handler, DB, and diagnostics surfaces. There is no current focused failing test that isolates the production starvation path without first adding new test scaffolding. The implementation will add targeted coverage immediately after the new seams exist, and GREEN evidence must include those targeted tests plus `moon run actions-indexer:typecheck -f`.
 
 ## GREEN Evidence
+
+- `DATABASE_URL=postgresql://postgres:postgres@localhost:5434/actions AUTH_TOKEN=test-token L1_ARCHIVE_URL=http://127.0.0.1:1/graphql L2_ARCHIVE_URL=http://127.0.0.1:1/graphql OUTER_PK=test-outer INNER_PK=test-inner pnpm --filter @zeko/actions-indexer exec vitest run test/canonical-progress.test.ts test/health.monitor.test.ts`
+  - Passed in the task worktree before merge.
+- `DATABASE_URL=postgresql://postgres:postgres@localhost:5434/actions AUTH_TOKEN=test-token L1_ARCHIVE_URL=http://127.0.0.1:1/graphql L2_ARCHIVE_URL=http://127.0.0.1:1/graphql OUTER_PK=test-outer INNER_PK=test-inner pnpm --filter @zeko/actions-indexer exec vitest run test/indexer.test.ts test/canonical-progress.test.ts test/health.monitor.test.ts`
+  - Passed on the canonical branch after merges.
+- `moon run actions-indexer:typecheck -f`
+  - Passed on the task worktree and again on the canonical branch after merges.

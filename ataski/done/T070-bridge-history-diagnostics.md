@@ -1,11 +1,11 @@
 ---
 id: T070
 title: "Add bridge history diagnostics and stronger witness errors"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-11T15:53:04Z
-updated_at: 2026-03-11T15:53:04Z
+updated_at: 2026-03-11T16:43:05Z
 ---
 
 ## Requirements
@@ -29,3 +29,10 @@ updated_at: 2026-03-11T15:53:04Z
 `bridge-sdk` currently lacks dedicated automated coverage for the new wallet diagnostic entrypoint. This task will add the minimal targeted harness needed to validate the new behavior, and GREEN evidence must include that coverage plus `moon run bridge-sdk:typecheck -f`.
 
 ## GREEN Evidence
+
+- `moon run bridge-sdk:test -f`
+  - Passed in the task worktree before merge and again on the canonical branch after merges: 1 file, 4 tests.
+- `moon run bridge-sdk:typecheck -f`
+  - Passed in the task worktree and again on the canonical branch after merges.
+- `moon run bridge-sdk:lint -f`
+  - Passed in the task worktree before merge. Biome still reported the pre-existing `packages/bridge-sdk/src/types.ts` warnings about `ExtractInput<T>` using `any`.

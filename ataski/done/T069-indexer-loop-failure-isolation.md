@@ -1,11 +1,11 @@
 ---
 id: T069
 title: "Isolate outer and inner indexing loop failures"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-11T15:53:04Z
-updated_at: 2026-03-11T15:53:04Z
+updated_at: 2026-03-11T16:43:05Z
 ---
 
 ## Requirements
@@ -29,3 +29,10 @@ updated_at: 2026-03-11T15:53:04Z
 The current loop orchestration does not expose a narrow existing failing test seam for partial-success behavior. This task will add focused tests around the refactored loop behavior, and GREEN evidence must include those tests plus `moon run actions-indexer:typecheck -f`.
 
 ## GREEN Evidence
+
+- `./node_modules/.bin/vitest run test/indexer.test.ts`
+  - Passed in the task worktree before merge: 1 file, 5 tests.
+- `DATABASE_URL=postgresql://postgres:postgres@localhost:5434/actions AUTH_TOKEN=test-token L1_ARCHIVE_URL=http://127.0.0.1:1/graphql L2_ARCHIVE_URL=http://127.0.0.1:1/graphql OUTER_PK=test-outer INNER_PK=test-inner pnpm --filter @zeko/actions-indexer exec vitest run test/indexer.test.ts test/canonical-progress.test.ts test/health.monitor.test.ts`
+  - Passed on the canonical branch after merges, including the loop-orchestration coverage in `test/indexer.test.ts`.
+- `moon run actions-indexer:typecheck -f`
+  - Passed in the task worktree and again on the canonical branch after merges.
