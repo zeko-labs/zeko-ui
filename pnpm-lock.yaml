@@ -278,6 +278,9 @@ importers:
       pinia:
         specifier: ^2.3.0
         version: 2.3.0(typescript@5.9.3)(vue@3.5.22(typescript@5.9.3))
+      reflect-metadata:
+        specifier: ^0.1.14
+        version: 0.1.14
       valibot:
         specifier: 'catalog:'
         version: 1.1.0(typescript@5.9.3)
@@ -14999,11 +15002,11 @@ snapshots:
       vite: rolldown-vite@7.1.9(@types/node@24.9.2)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
       vue: 3.5.22(typescript@5.9.3)
 
-  '@vitest/browser@3.2.4(bufferutil@4.1.0)(msw@2.11.1(@types/node@20.19.9)(typescript@5.9.3))(playwright@1.55.0)(rolldown-vite@7.1.9(@types/node@20.19.9)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(utf-8-validate@6.0.6)(vitest@3.2.4)':
+  '@vitest/browser@3.2.4(bufferutil@4.1.0)(msw@2.11.1(@types/node@20.19.9)(typescript@5.9.3))(playwright@1.55.0)(utf-8-validate@6.0.6)(vite@7.1.5(@types/node@20.19.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4)':
     dependencies:
       '@testing-library/dom': 10.4.1
       '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
-      '@vitest/mocker': 3.2.4(msw@2.11.1(@types/node@20.19.9)(typescript@5.9.3))(rolldown-vite@7.1.9(@types/node@20.19.9)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))
+      '@vitest/mocker': 3.2.4(msw@2.11.1(@types/node@20.19.9)(typescript@5.9.3))(vite@7.1.5(@types/node@20.19.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))
       '@vitest/utils': 3.2.4
       magic-string: 0.30.19
       sirv: 3.0.2
@@ -15054,6 +15057,16 @@ snapshots:
     optionalDependencies:
       msw: 2.11.1(@types/node@20.19.9)(typescript@5.9.3)
       vite: rolldown-vite@7.1.9(@types/node@20.19.9)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
+
+  '@vitest/mocker@3.2.4(msw@2.11.1(@types/node@20.19.9)(typescript@5.9.3))(vite@7.1.5(@types/node@20.19.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))':
+    dependencies:
+      '@vitest/spy': 3.2.4
+      estree-walker: 3.0.3
+      magic-string: 0.30.19
+    optionalDependencies:
+      msw: 2.11.1(@types/node@20.19.9)(typescript@5.9.3)
+      vite: 7.1.5(@types/node@20.19.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
+    optional: true
 
   '@vitest/mocker@3.2.4(msw@2.11.1(@types/node@24.9.2)(typescript@5.9.3))(rolldown-vite@7.1.9(@types/node@24.9.2)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
@@ -21921,6 +21934,24 @@ snapshots:
       vite: 7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
       vue: 3.5.22(typescript@5.9.3)
 
+  vite@7.1.5(@types/node@20.19.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1):
+    dependencies:
+      esbuild: 0.25.12
+      fdir: 6.5.0(picomatch@4.0.3)
+      picomatch: 4.0.3
+      postcss: 8.5.6
+      rollup: 4.52.5
+      tinyglobby: 0.2.15
+    optionalDependencies:
+      '@types/node': 20.19.9
+      fsevents: 2.3.3
+      jiti: 2.6.1
+      lightningcss: 1.30.2
+      terser: 5.34.1
+      tsx: 4.20.3
+      yaml: 2.8.1
+    optional: true
+
   vite@7.1.5(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1):
     dependencies:
       esbuild: 0.25.12
@@ -22040,7 +22071,7 @@ snapshots:
     optionalDependencies:
       '@types/debug': 4.1.12
       '@types/node': 20.19.9
-      '@vitest/browser': 3.2.4(bufferutil@4.1.0)(msw@2.11.1(@types/node@20.19.9)(typescript@5.9.3))(playwright@1.55.0)(rolldown-vite@7.1.9(@types/node@20.19.9)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(utf-8-validate@6.0.6)(vitest@3.2.4)
+      '@vitest/browser': 3.2.4(bufferutil@4.1.0)(msw@2.11.1(@types/node@20.19.9)(typescript@5.9.3))(playwright@1.55.0)(utf-8-validate@6.0.6)(vite@7.1.5(@types/node@20.19.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4)
     transitivePeerDependencies:
       - esbuild
       - jiti

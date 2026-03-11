@@ -1,3 +1,4 @@
+import "reflect-metadata"
 import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"

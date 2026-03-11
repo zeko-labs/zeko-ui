@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { isWalletRejection, QuietError, toQuietIfWalletRejection } from "../../app/errors"
+import {
+	isWalletRejection,
+	QuietError,
+	toQuietIfWalletRejection,
+	toUserFriendlyMessage
+} from "../../app/errors"
 
 describe("isWalletRejection", () => {
 	it("detects 'User reject' as a wallet rejection", () => {
@@ -46,5 +51,70 @@ describe("toQuietIfWalletRejection", () => {
 		const result = toQuietIfWalletRejection("string error")
 		expect(result).toBeInstanceOf(Error)
 		expect(result.message).toBe("string error")
+	})
+})
+
+describe("toUserFriendlyMessage", () => {
+	it("maps wallet RPC 'Method not found' to update message", () => {
+		expect(toUserFriendlyMessage(new Error("Error invoking post: Method not found"))).toContain(
+			"update your Auro Wallet"
+		)
+	})
+
+	it("maps CombinedError network failure", () => {
+		expect(toUserFriendlyMessage(new Error("CombinedError: [Network] Failed to fetch"))).toContain(
+			"temporarily unreachable"
+		)
+	})
+
+	it("maps CombinedError GraphQL failure", () => {
+		expect(toUserFriendlyMessage(new Error("CombinedError: [GraphQL] Unexpected error"))).toContain(
+			"unexpected error"
+		)
+	})
+
+	it("maps 'TypeError: Load failed'", () => {
+		expect(toUserFriendlyMessage(new Error("TypeError: Load failed"))).toContain(
+			"network request failed"
+		)
+	})
+
+	it("maps truncated JSON response", () => {
+		expect(toUserFriendlyMessage(new Error("Unexpected end of input"))).toContain(
+			"incomplete response"
+		)
+	})
+
+	it("maps account data fetch failure", () => {
+		expect(toUserFriendlyMessage(new Error("Error getting account data"))).toContain("account data")
+	})
+
+	it("maps bridge-sdk validation errors", () => {
+		expect(toUserFriendlyMessage(new Error("Invalid actions data"))).toContain(
+			"invalid on-chain data"
+		)
+		expect(toUserFriendlyMessage(new Error("Invalid witnesses data"))).toContain(
+			"invalid proof data"
+		)
+	})
+
+	it("maps runtime config error", () => {
+		expect(toUserFriendlyMessage(new Error("Invalid runtime config"))).toContain(
+			"network configuration"
+		)
+	})
+
+	it("maps rangeCheck32 error", () => {
+		expect(
+			toUserFriendlyMessage(new Error("rangeCheck32: expected field to fit in 32 bits"))
+		).toContain("out-of-range data")
+	})
+
+	it("passes through unknown errors unchanged", () => {
+		expect(toUserFriendlyMessage(new Error("Something totally new"))).toBe("Something totally new")
+	})
+
+	it("handles string input", () => {
+		expect(toUserFriendlyMessage("Invalid actions data")).toContain("invalid on-chain data")
 	})
 })

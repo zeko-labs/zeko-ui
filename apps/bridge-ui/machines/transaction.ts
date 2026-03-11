@@ -99,6 +99,12 @@ export const transactionMachine = setup({
 								transaction: JSON.stringify(originalTransaction)
 							})
 						} catch (error) {
+							const msg = error instanceof Error ? error.message : String(error)
+							if (/Method not found/i.test(msg)) {
+								throw new Error(
+									"Your wallet does not support this operation. Please update your Auro Wallet extension to the latest version."
+								)
+							}
 							throw toQuietIfWalletRejection(error)
 						}
 						if (result instanceof Error) throw toQuietIfWalletRejection(result)

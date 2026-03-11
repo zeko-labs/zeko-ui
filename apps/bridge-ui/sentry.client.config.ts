@@ -36,6 +36,21 @@ Sentry.init({
 		if (hint?.originalException instanceof QuietError) return null
 		// Filter errors tagged as exclusively third-party by thirdPartyErrorFilterIntegration
 		if (event.tags?.third_party_code) return null
+		// Handle non-Error promise rejections (wallet extensions throw plain objects)
+		const exception = hint?.originalException
+		if (exception && typeof exception === "object" && !(exception instanceof Error)) {
+			const obj = exception as Record<string, unknown>
+			// Wallet rejection as plain object {code, message} — treat as QuietError
+			if (
+				"code" in obj &&
+				"message" in obj &&
+				/user reject|connection declined/i.test(String(obj.message))
+			) {
+				return null
+			}
+			// Empty object rejections — no useful signal
+			if (Object.keys(obj).length === 0) return null
+		}
 		return event
 	},
 	// Adds request headers and IP for users, for more info visit:
