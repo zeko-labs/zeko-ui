@@ -48,4 +48,5 @@
 - T048 | done | fix-ipc-review-findings-and-proof-workflow | done/T048-fix-ipc-review-findings-and-proof.md
 - T058 | done | rebase-pr-137-and-add-indexer-reset-cli | done/T058-rebase-pr-137-and-add-indexer-reset-cli.md
 - T064 | done | remove-actions-indexer-worker-timeout-regression | done/T064-remove-actions-indexer-worker-timeout-regression.md
+- T065 | done | log-slow-worker-chunks-as-warning | done/T065-log-slow-worker-chunks-as-warning.md
 - T067 | done | add-indexer-log-stream-command | done/T067-add-indexer-log-stream-command.md
