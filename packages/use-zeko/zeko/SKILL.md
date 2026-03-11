@@ -9,9 +9,10 @@ Use this skill when the user wants to use Zeko, inspect the network, bridge asse
 
 Defaults:
 
-- Prefer public docs first: `https://docs.zeko.io/llms-full.txt` is the fastest navigation index.
 - For agents, prefer private keys and environment variables over browser wallet flows.
 - Only discuss Auro Wallet when the agent is actively driving a browser with extension access.
+- Start with the smallest relevant reference file in this skill instead of a broad docs dump.
+- Use the public docs pages behind `https://docs.zeko.io` through the targeted references below.
 - Default to gateway-backed Mina testnet endpoints and direct Zeko GraphQL endpoints from `references/40-endpoints-and-curl.md`.
 - Use the live node for current chain config and the archive node for historical actions and events.
 

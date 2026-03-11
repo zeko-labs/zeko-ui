@@ -40,6 +40,7 @@ describe("use-zeko validation tooling", () => {
 		expect(skill).toContain("private key")
 		expect(skill).toContain("browser")
 		expect(skill).toContain("docs.zeko.io")
+		expect(skill).not.toContain("llms-full.txt")
 		expect(skill).not.toContain("references/copied/")
 		expect(skill).not.toContain("99-source-of-truth")
 		expect(skill).not.toContain("80-troubleshooting")

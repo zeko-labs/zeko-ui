@@ -38,6 +38,7 @@ describe("use-zeko skill structure", () => {
 
 		expect(skill).toContain("docs.zeko.io")
 		expect(skill).not.toContain("references/copied/")
+		expect(skill).not.toContain("llms-full.txt")
 	})
 
 	it("keeps shipped markdown self-contained to the skill directory and rich enough for agents", () => {
@@ -69,5 +70,9 @@ describe("use-zeko skill structure", () => {
 		expect(protocol).toContain("sequencer")
 		expect(protocol).toContain("archive node")
 		expect(protocol).toContain("DA layer")
+
+		const navigation = fs.readFileSync(path.join(referencesDir, "10-navigation.md"), "utf8")
+		expect(navigation).toContain("llms-full.txt")
+		expect(navigation.toLowerCase()).toContain("fallback")
 	})
 })

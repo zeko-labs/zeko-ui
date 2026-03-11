@@ -2,10 +2,10 @@
 
 Start with public Zeko docs, not internal repo assumptions.
 
-## Fastest index
+## First stop
 
-- Full docs map for agents: `https://docs.zeko.io/llms-full.txt`
 - Docs home: `https://docs.zeko.io`
+- Pick the smallest relevant page below before widening scope.
 
 ## User docs
 
@@ -33,3 +33,7 @@ Start with public Zeko docs, not internal repo assumptions.
 - Need bridge or faucet workflow guidance: read `references/30-bridge-and-faucet.md`.
 - Need zkApp or contract guidance: read `references/50-build-on-zeko.md`.
 - Need protocol roles or data-flow explanation: read `references/60-sequencer-archive-and-da.md`.
+
+## Fallback
+
+- If the targeted pages above are still not enough, use `https://docs.zeko.io/llms-full.txt` as a fallback discovery index.
