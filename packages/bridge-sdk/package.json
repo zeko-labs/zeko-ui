@@ -26,7 +26,8 @@
 		"@types/node": "^20.8.10",
 		"gql.tada": "catalog:graphql",
 		"tsdown": "catalog:",
-		"typescript": "catalog:"
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	},
 	"dependencies": {
 		"@zeko-labs/graphql": "workspace:^",

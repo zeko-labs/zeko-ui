@@ -23,6 +23,31 @@ import type {
 	Withdrawal
 } from "./types"
 
+const describeGraphqlError = (error: unknown): string | null => {
+	if (error == null) return null
+	if (error instanceof Error && error.message) return error.message
+	return String(error)
+}
+
+const describeValidationIssues = (issues: ReadonlyArray<{ message: string }>): string =>
+	issues.map((issue) => issue.message).join("; ")
+
+const createInvalidPayloadError = ({
+	label,
+	error,
+	issues
+}: {
+	label: string
+	error: unknown
+	issues: ReadonlyArray<{ message: string }>
+}): Error => {
+	const details = [describeGraphqlError(error), describeValidationIssues(issues)].filter(
+		(detail): detail is string => detail != null && detail.length > 0
+	)
+
+	return new Error(details.length > 0 ? `${label}: ${details.join("; ")}` : label)
+}
+
 const InnerActionSchema = v.object({
 	afterState: v.string(),
 	beforeState: v.nullable(v.string()),
@@ -111,9 +136,11 @@ export async function fetchOuterActionsFromIndexer(
 
 	const result = v.safeParse(v.array(OuterActionSchema), data?.outerActions)
 	if (!result.success) {
-		console.error(error)
-		console.error(result.issues)
-		throw new Error("Invalid actions data")
+		throw createInvalidPayloadError({
+			label: "Invalid actions data",
+			error,
+			issues: result.issues
+		})
 	}
 
 	return result.output.map((action) => ({
@@ -135,9 +162,11 @@ export async function fetchInnerActionsFromIndexer(
 
 	const result = v.safeParse(v.array(InnerActionSchema), data?.innerActions)
 	if (!result.success) {
-		console.error(error)
-		console.error(result.issues)
-		throw new Error("Invalid actions data")
+		throw createInvalidPayloadError({
+			label: "Invalid actions data",
+			error,
+			issues: result.issues
+		})
 	}
 
 	return result.output.map(innerActionFromSchema)
@@ -151,9 +180,11 @@ export async function fetchOuterWitnessesFromAuxes(
 
 	const result = v.safeParse(v.array(WitnessSchema), data?.outerWitnessesFromAuxes)
 	if (!result.success) {
-		console.error(error)
-		console.error(result.issues)
-		throw new Error("Invalid witnesses data")
+		throw createInvalidPayloadError({
+			label: "Invalid witnesses data",
+			error,
+			issues: result.issues
+		})
 	}
 
 	return result.output.map((witness) => ({
@@ -171,9 +202,11 @@ export async function fetchInnerWitnessesFromAuxes(
 
 	const result = v.safeParse(v.array(InnerActionSchema), data?.innerWitnessesFromAuxes)
 	if (!result.success) {
-		console.error(error)
-		console.error(result.issues)
-		throw new Error("Invalid witnesses data")
+		throw createInvalidPayloadError({
+			label: "Invalid witnesses data",
+			error,
+			issues: result.issues
+		})
 	}
 
 	return result.output.map(innerActionFromSchema)
@@ -190,9 +223,11 @@ export async function fetchCommitAsePastSlot(
 		data?.commitAsePastSlot
 	)
 	if (!result.success) {
-		console.error(error)
-		console.error(result.issues)
-		throw new Error("Invalid commit ase past withdrawal delay data")
+		throw createInvalidPayloadError({
+			label: "Invalid commit ase past withdrawal delay data",
+			error,
+			issues: result.issues
+		})
 	}
 
 	return {
@@ -233,7 +268,7 @@ export async function fetchActions(
 	const fetchActionsRecursive = async (toBlock: number) => {
 		if (toBlock < stopAtBlock) return []
 
-		const { data } = await client().query(fetchActionsQuery, {
+		const { data, error } = await client().query(fetchActionsQuery, {
 			pk: pk.toBase58(),
 			from: toBlock - BLOCK_RANGE_SIZE,
 			to: toBlock
@@ -267,7 +302,13 @@ export async function fetchActions(
 		)
 
 		const result = v.safeParse(schema, dataWithDefault)
-		if (!result.success) throw new Error("Invalid actions data")
+		if (!result.success) {
+			throw createInvalidPayloadError({
+				label: "Invalid actions data",
+				error,
+				issues: result.issues
+			})
+		}
 
 		const prevOutput: v.InferOutput<typeof schema> = await fetchActionsRecursive(
 			toBlock - BLOCK_RANGE_SIZE
