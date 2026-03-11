@@ -1,0 +1,54 @@
+[
+	{
+		"id": "get-tmina",
+		"prompt": "How do I get tMINA on Zeko testnet?",
+		"expectedReferences": ["10-users.md", "40-faucet.md"],
+		"expectedFragments": ["https://faucet.zeko.io", "Auro Wallet", "https://testnet.zeko.io"]
+	},
+	{
+		"id": "bridge-mina-to-zeko",
+		"prompt": "How do I bridge from Mina to Zeko?",
+		"expectedReferences": ["10-users.md", "30-bridge.md"],
+		"expectedFragments": ["https://bridge.zeko.io", "deposit", "withdrawal"]
+	},
+	{
+		"id": "bridge-sdk-endpoints",
+		"prompt": "Which endpoints do I pass to @zeko-labs/bridge-sdk?",
+		"expectedReferences": ["30-bridge.md", "60-networks-and-endpoints.md"],
+		"expectedFragments": [
+			"https://gateway.mina.devnet.zeko.io",
+			"https://gateway.mina.archive.devnet.zeko.io",
+			"https://testnet.zeko.io/graphql",
+			"https://archive.testnet.zeko.io/graphql",
+			"https://api.actions.zeko.io/graphql"
+		]
+	},
+	{
+		"id": "o1js-first-read",
+		"prompt": "I want to build a zkApp on Zeko; what should I read in o1js first?",
+		"expectedReferences": ["20-build-on-zeko.md", "50-o1js-and-tooling.md"],
+		"expectedFragments": [
+			"https://docs.o1labs.org/o1js/",
+			"https://docs.o1labs.org/o1js/getting-started/what-is-a-zk-constraint-system",
+			"https://docs.o1labs.org/o1js/zkapps/intro"
+		]
+	},
+	{
+		"id": "protocol-overview",
+		"prompt": "Explain the sequencer, DA layer, and L1 verifier contract.",
+		"expectedReferences": ["70-architecture-and-protocol.md"],
+		"expectedFragments": ["sequencer", "DA layer", "Commit"]
+	},
+	{
+		"id": "faucet-json-mode",
+		"prompt": "How do I use the faucet CLI in JSON mode?",
+		"expectedReferences": ["40-faucet.md"],
+		"expectedFragments": ["--json", "GITHUB_TOKEN", "claim <address>"]
+	},
+	{
+		"id": "wallet-choice",
+		"prompt": "Which wallet should I use?",
+		"expectedReferences": ["10-users.md", "50-o1js-and-tooling.md"],
+		"expectedFragments": ["Auro Wallet"]
+	}
+]

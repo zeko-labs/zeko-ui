@@ -48,3 +48,6 @@
 - T048 | done | fix-ipc-review-findings-and-proof-workflow | done/T048-fix-ipc-review-findings-and-proof.md
 - T058 | done | rebase-pr-137-and-add-indexer-reset-cli | done/T058-rebase-pr-137-and-add-indexer-reset-cli.md
 - T064 | done | remove-actions-indexer-worker-timeout-regression | done/T064-remove-actions-indexer-worker-timeout-regression.md
+- T068 | done | create-use-zeko-skill-content | done/T068-create-use-zeko-skill-content.md
+- T069 | done | add-use-zeko-validation-evals-and-ci | done/T069-add-use-zeko-validation-evals-and-ci.md
+- T070 | done | add-use-zeko-public-mirror-sync | done/T070-add-use-zeko-public-mirror-sync.md

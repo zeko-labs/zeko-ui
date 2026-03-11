@@ -1,0 +1,20 @@
+name: Sync Use Zeko
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/sync-use-zeko.yaml"
+      - "packages/use-zeko/**"
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    uses: ./.github/workflows/sync-package-repo.yaml
+    with:
+      package-path: packages/use-zeko
+      standalone-repo: use-zeko
+      project-id: use-zeko
+      workspace-packages: .
+    secrets: inherit
