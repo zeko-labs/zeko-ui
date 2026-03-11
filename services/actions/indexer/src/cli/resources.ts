@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process"
+import * as v from "valibot"
 
 export interface NorthflankMetricsInput {
 	projectId: string
@@ -8,7 +9,7 @@ export interface NorthflankMetricsInput {
 
 export interface NorthflankResourcesResult {
 	cpuPercent: number | null
-	memoryMb: number | null
+	memoryPercent: number | null
 	raw: unknown
 	command: string[]
 }
@@ -70,13 +71,15 @@ const collectValues = (
 	if (path.includes("memory") || path.includes("ram")) memoryValues.push(numeric)
 }
 
-const parseMetrics = (raw: unknown): { cpuPercent: number | null; memoryMb: number | null } => {
+export const parseMetrics = (
+	raw: unknown
+): { cpuPercent: number | null; memoryPercent: number | null } => {
 	const cpuValues: number[] = []
 	const memoryValues: number[] = []
 	collectValues(raw, "root", cpuValues, memoryValues)
 	const cpuPercent = cpuValues.length ? cpuValues.at(-1) ?? null : null
-	const memoryMb = memoryValues.length ? memoryValues.at(-1) ?? null : null
-	return { cpuPercent, memoryMb }
+	const memoryPercent = memoryValues.length ? memoryValues.at(-1) ?? null : null
+	return { cpuPercent, memoryPercent }
 }
 
 export async function runNorthflankResources({
@@ -112,17 +115,21 @@ export async function runNorthflankResources({
 	)
 
 	if (exitCode !== 0) {
-		throw new Error(
-			`northflank command failed (${exitCode}): ${stderr.trim() || stdout.trim() || command.join(" ")}`
-		)
+		const message = stderr.trim() || stdout.trim() || command.join(" ")
+		if (message.includes("No CLI context present")) {
+			throw new Error(
+				`northflank command failed (${exitCode}): ${message}. Run 'pnpm exec northflank login' in services/actions/indexer first.`
+			)
+		}
+		throw new Error(`northflank command failed (${exitCode}): ${message}`)
 	}
 
-	let raw: unknown
-	try {
-		raw = JSON.parse(stdout)
-	} catch {
+	const parsedOutput = v.safeParse(v.pipe(v.string(), v.parseJson(), v.unknown()), stdout)
+	if (!parsedOutput.success) {
 		throw new Error(`northflank command returned invalid JSON: ${stdout.slice(0, 300)}`)
 	}
+
+	const raw = parsedOutput.output
 
 	const parsed = parseMetrics(raw)
 

@@ -1,4 +1,5 @@
 import { defineCommand, runMain } from "citty"
+import * as v from "valibot"
 import { runActionProcessingBench } from "../benchmark/action-processing-bench"
 import { runActionProcessingProof } from "../benchmark/action-processing-proof"
 import { runActionProcessingStress } from "../benchmark/action-processing-stress"
@@ -14,16 +15,286 @@ const printOutput = ({ json, table }: { json: boolean; table: Record<string, unk
 	console.table(table)
 }
 
+const normalizeUrl = (url: string): string => url.replace(/\/+$/, "")
+
+const JsonUnknownSchema = v.pipe(v.string(), v.parseJson(), v.unknown())
+
+const IndexerStatusSchema = v.object({
+	isRunning: v.boolean(),
+	lastRunTimestamp: v.nullable(v.number()),
+	lastFetchedBlock: v.object({
+		outer: v.nullable(v.number()),
+		inner: v.nullable(v.number())
+	}),
+	config: v.object({
+		intervalSeconds: v.number()
+	}),
+	consecutiveErrors: v.number()
+})
+
+const ControlResponseSchema = v.object({
+	success: v.boolean(),
+	message: v.string(),
+	status: v.optional(IndexerStatusSchema),
+	config: v.optional(
+		v.object({
+			intervalSeconds: v.number()
+		})
+	),
+	actionsProcessed: v.optional(v.number())
+})
+
+const HealthPayloadSchema = v.object({
+	status: v.string()
+})
+
+type IndexerStatus = v.InferOutput<typeof IndexerStatusSchema>
+type ControlResponse = v.InferOutput<typeof ControlResponseSchema>
+
+const defaultControlUrl = (): string => `http://127.0.0.1:${process.env.PORT ?? "3000"}`
+
+const readRequiredAuthToken = (commandName: string): string => {
+	const authToken = asString(process.env.AUTH_TOKEN)
+	if (!authToken) {
+		throw new Error(`${commandName} requires AUTH_TOKEN in the environment`)
+	}
+	return authToken
+}
+
+const parseJsonResponse = async (response: Response, label: string): Promise<unknown | null> => {
+	const text = await response.text()
+	if (text.length === 0) return null
+	const parsed = v.safeParse(JsonUnknownSchema, text)
+	if (!parsed.success) {
+		throw new Error(`${label} returned invalid JSON`)
+	}
+	return parsed.output
+}
+
+const requireControlResponse = (payload: unknown, commandName: string): ControlResponse => {
+	try {
+		return v.parse(ControlResponseSchema, payload)
+	} catch (error) {
+		throw new Error(`${commandName} returned an unexpected response payload`, { cause: error })
+	}
+}
+
+const requireIndexerStatus = (payload: unknown, commandName: string): IndexerStatus => {
+	try {
+		return v.parse(IndexerStatusSchema, payload)
+	} catch (error) {
+		throw new Error(`${commandName} returned an unexpected response payload`, { cause: error })
+	}
+}
+
+const statusFields = (status?: IndexerStatus) => ({
+	isRunning: status?.isRunning ?? null,
+	lastRunTimestamp: status?.lastRunTimestamp ?? null,
+	lastFetchedOuter: status?.lastFetchedBlock.outer ?? null,
+	lastFetchedInner: status?.lastFetchedBlock.inner ?? null,
+	intervalSeconds: status?.config.intervalSeconds ?? null,
+	consecutiveErrors: status?.consecutiveErrors ?? null
+})
+
+const controlRequest = async ({
+	args,
+	commandName,
+	path,
+	method = "POST",
+	body
+}: {
+	args: Record<string, unknown>
+	commandName: string
+	path: string
+	method?: "GET" | "POST"
+	body?: unknown
+}): Promise<{ httpStatus: number; payload: unknown | null; json: boolean }> => {
+	const url = asString(args.url) ?? defaultControlUrl()
+	const timeoutMs = readCliNumberArg(args, ["timeoutMs", "timeout-ms", "timeout"], 30_000)
+	const authToken = readRequiredAuthToken(commandName)
+	const json = Boolean(args.json)
+
+	const response = await fetch(`${normalizeUrl(url)}${path}`, {
+		method,
+		headers: {
+			Authorization: `Bearer ${authToken}`,
+			...(body == null ? {} : { "Content-Type": "application/json" })
+		},
+		body: body == null ? undefined : JSON.stringify(body),
+		signal: AbortSignal.timeout(timeoutMs)
+	})
+	const payload = await parseJsonResponse(response, commandName)
+
+	if (!response.ok) {
+		const parsedPayload =
+			payload != null && typeof payload === "object"
+				? v.safeParse(ControlResponseSchema, payload)
+				: null
+		const message =
+			parsedPayload?.success && parsedPayload.output.message.length > 0
+				? parsedPayload.output.message
+				: response.statusText
+		throw new Error(`${commandName} failed with HTTP ${response.status}: ${message}`)
+	}
+
+	return {
+		httpStatus: response.status,
+		payload,
+		json
+	}
+}
+
+const printControlResult = ({
+	commandName,
+	httpStatus,
+	payload,
+	json
+}: {
+	commandName: string
+	httpStatus: number
+	payload: ControlResponse
+	json: boolean
+}) => {
+	printOutput({
+		json,
+		table: [
+			{
+				command: commandName,
+				httpStatus,
+				message: payload.message,
+				actionsProcessed: payload.actionsProcessed ?? null,
+				...statusFields(payload.status),
+				intervalSeconds:
+					payload.config?.intervalSeconds ?? payload.status?.config.intervalSeconds ?? null
+			}
+		]
+	})
+}
+
+const runStatusFromArgs = async (args: Record<string, unknown>) => {
+	const result = await controlRequest({
+		args,
+		commandName: "status",
+		path: "/status",
+		method: "GET"
+	})
+	const payload = requireIndexerStatus(result.payload, "status")
+
+	printOutput({
+		json: result.json,
+		table: [
+			{
+				command: "status",
+				httpStatus: result.httpStatus,
+				...statusFields(payload)
+			}
+		]
+	})
+
+	return payload
+}
+
+const runStartFromArgs = async (args: Record<string, unknown>) => {
+	const result = await controlRequest({
+		args,
+		commandName: "start",
+		path: "/start"
+	})
+	const payload = requireControlResponse(result.payload, "start")
+	printControlResult({
+		commandName: "start",
+		httpStatus: result.httpStatus,
+		payload,
+		json: result.json
+	})
+	return payload
+}
+
+const runStopFromArgs = async (args: Record<string, unknown>) => {
+	const result = await controlRequest({
+		args,
+		commandName: "stop",
+		path: "/stop"
+	})
+	const payload = requireControlResponse(result.payload, "stop")
+	printControlResult({
+		commandName: "stop",
+		httpStatus: result.httpStatus,
+		payload,
+		json: result.json
+	})
+	return payload
+}
+
+const runResetFromArgs = async (args: Record<string, unknown>) => {
+	const result = await controlRequest({
+		args,
+		commandName: "reset",
+		path: "/reset"
+	})
+	const payload = requireControlResponse(result.payload, "reset")
+	printControlResult({
+		commandName: "reset",
+		httpStatus: result.httpStatus,
+		payload,
+		json: result.json
+	})
+	return payload
+}
+
+const runRebuildFromArgs = async (args: Record<string, unknown>) => {
+	const result = await controlRequest({
+		args,
+		commandName: "rebuild",
+		path: "/rebuild"
+	})
+	const payload = requireControlResponse(result.payload, "rebuild")
+	printControlResult({
+		commandName: "rebuild",
+		httpStatus: result.httpStatus,
+		payload,
+		json: result.json
+	})
+	return payload
+}
+
+const runSetIntervalFromArgs = async (args: Record<string, unknown>) => {
+	const intervalSeconds = readCliNumberArg(
+		args,
+		["intervalSeconds", "interval-seconds", "interval"],
+		0
+	)
+	if (intervalSeconds <= 0) {
+		throw new Error("set-interval requires a positive interval-seconds value")
+	}
+
+	const result = await controlRequest({
+		args,
+		commandName: "set-interval",
+		path: "/config",
+		body: { intervalSeconds }
+	})
+	const payload = requireControlResponse(result.payload, "set-interval")
+	printControlResult({
+		commandName: "set-interval",
+		httpStatus: result.httpStatus,
+		payload,
+		json: result.json
+	})
+	return payload
+}
+
 const runHealthFromArgs = async (args: Record<string, unknown>) => {
 	const url = asString(args.url) ?? "https://indexer.actions.zeko.io"
 	const timeoutMs = readCliNumberArg(args, ["timeoutMs", "timeout-ms", "timeout"], 8000)
 	const json = Boolean(args.json)
 
 	const health = await runHealthCheck({ baseUrl: url, timeoutMs })
-	const status =
-		typeof health.payload === "object" && health.payload && "status" in health.payload
-			? String((health.payload as { status: unknown }).status)
-			: "unknown"
+	const parsedPayload =
+		health.payload != null && typeof health.payload === "object"
+			? v.safeParse(HealthPayloadSchema, health.payload)
+			: null
+	const status = parsedPayload?.success ? parsedPayload.output.status : "unknown"
 
 	printOutput({
 		json,
@@ -51,7 +322,9 @@ const runSyncFromArgs = async (args: Record<string, unknown>) => {
 	const innerPk = asString(args.innerPk ?? args["inner-pk"])
 
 	if (!l1ArchiveUrl || !l2ArchiveUrl || !outerPk || !innerPk) {
-		throw new Error("sync requires l1ArchiveUrl, l2ArchiveUrl, outerPk, and innerPk (args or env)")
+		throw new Error(
+			"sync requires l1-archive-url, l2-archive-url, outer-pk, and inner-pk (args or env)"
+		)
 	}
 
 	const result = await runSyncCheck({
@@ -94,7 +367,7 @@ const runResourcesFromArgs = async (args: Record<string, unknown>) => {
 	const projectId = asString(args.projectId ?? args["project-id"])
 	const serviceId = asString(args.serviceId ?? args["service-id"])
 	if (!projectId || !serviceId) {
-		throw new Error("resources requires projectId and serviceId (args or env)")
+		throw new Error("resources requires project-id and service-id (args or env)")
 	}
 
 	const result = await runNorthflankResources({
@@ -111,7 +384,7 @@ const runResourcesFromArgs = async (args: Record<string, unknown>) => {
 			{
 				check: "resources",
 				cpuPercent: result.cpuPercent,
-				memoryMb: result.memoryMb,
+				memoryPercent: result.memoryPercent,
 				command: result.command.join(" ")
 			}
 		]
@@ -130,8 +403,7 @@ const runActionProcessingBenchFromArgs = async (args: Record<string, unknown>) =
 		actionsPerBlock: readCliNumberArg(args, ["actionsPerBlock", "actions-per-block"], 12),
 		fieldsPerAction: readCliNumberArg(args, ["fieldsPerAction", "fields-per-action"], 6),
 		iterations: readCliNumberArg(args, ["iterations"], 2),
-		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined,
-		strictWorker: true
+		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined
 	})
 
 	printOutput({
@@ -143,7 +415,6 @@ const runActionProcessingBenchFromArgs = async (args: Record<string, unknown>) =
 				iterations: result.workload.iterations,
 				bottleneck: result.bottleneck,
 				workerThreadsRequested: result.workerThreadsRequested,
-				workerFallbackCount: result.workerFallbackCount,
 				mainAvgMs: result.main.avgMs,
 				workerAvgMs: result.worker.avgMs,
 				workerSpeedup: result.workerSpeedup
@@ -159,8 +430,7 @@ const runActionProcessingStressFromArgs = async (args: Record<string, unknown>) 
 		actionsPerBlock: readCliNumberArg(args, ["actionsPerBlock", "actions-per-block"], 8),
 		fieldsPerAction: readCliNumberArg(args, ["fieldsPerAction", "fields-per-action"], 6),
 		preferWorker: readCliBooleanArg(args, ["preferWorker", "prefer-worker"], true),
-		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined,
-		strictWorker: true
+		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined
 	})
 
 	printOutput({
@@ -190,8 +460,7 @@ const runActionProcessingProofFromArgs = async (args: Record<string, unknown>) =
 		fieldsPerAction: readCliNumberArg(args, ["fieldsPerAction", "fields-per-action"], 6),
 		warmupRuns: readCliNumberArg(args, ["warmupRuns", "warmup-runs"], 1),
 		sampleRuns: readCliNumberArg(args, ["sampleRuns", "sample-runs"], 6),
-		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined,
-		strictWorker: true
+		workerThreads: readCliNumberArg(args, ["workerThreads", "worker-threads"], 0) || undefined
 	})
 
 	if (args.json) {
@@ -207,7 +476,6 @@ const runActionProcessingProofFromArgs = async (args: Record<string, unknown>) =
 					mainP95Ms: result.summary.mainP95Ms,
 					workerP95Ms: result.summary.workerP95Ms,
 					speedupRatio: result.summary.speedupRatio,
-					workerFallbackCount: result.summary.workerFallbackCount,
 					passed: result.passed
 				}
 			]
@@ -225,7 +493,7 @@ const command = defineCommand({
 	meta: {
 		name: "actions-indexer",
 		version: "1.0.0",
-		description: "Indexer diagnostics CLI"
+		description: "Indexer operations CLI"
 	},
 	subCommands: {
 		health: {
@@ -239,7 +507,7 @@ const command = defineCommand({
 					description: "Indexer base URL",
 					default: "https://indexer.actions.zeko.io"
 				},
-				timeoutMs: {
+				"timeout-ms": {
 					type: "string",
 					description: "Request timeout in milliseconds",
 					default: "8000"
@@ -254,6 +522,155 @@ const command = defineCommand({
 				await runHealthFromArgs(args as Record<string, unknown>)
 			}
 		},
+		status: {
+			meta: {
+				name: "status",
+				description: "Read the authenticated indexer status snapshot"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runStatusFromArgs(args as Record<string, unknown>)
+		},
+		start: {
+			meta: {
+				name: "start",
+				description: "Start the authenticated indexer loop"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runStartFromArgs(args as Record<string, unknown>)
+		},
+		stop: {
+			meta: {
+				name: "stop",
+				description: "Stop the authenticated indexer loop"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runStopFromArgs(args as Record<string, unknown>)
+		},
+		reset: {
+			meta: {
+				name: "reset",
+				description: "Stop the indexer, clear indexed data, and restart from scratch"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runResetFromArgs(args as Record<string, unknown>)
+		},
+		rebuild: {
+			meta: {
+				name: "rebuild",
+				description: "Stop the indexer, rebuild indexed data from archive sources, then resume"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runRebuildFromArgs(args as Record<string, unknown>)
+		},
+		"set-interval": {
+			meta: {
+				name: "set-interval",
+				description: "Update the authenticated indexer polling interval"
+			},
+			args: {
+				url: {
+					type: "string",
+					description: "Indexer base URL",
+					default: defaultControlUrl()
+				},
+				"timeout-ms": {
+					type: "string",
+					description: "Request timeout in milliseconds",
+					default: "30000"
+				},
+				"interval-seconds": {
+					type: "string",
+					description: "Polling interval in seconds",
+					default: "15"
+				},
+				json: {
+					type: "boolean",
+					description: "Output as JSON",
+					default: false
+				}
+			},
+			run: async ({ args }) => runSetIntervalFromArgs(args as Record<string, unknown>)
+		},
 		sync: {
 			meta: {
 				name: "sync",
@@ -265,27 +682,27 @@ const command = defineCommand({
 					description: "Indexer base URL",
 					default: "https://indexer.actions.zeko.io"
 				},
-				timeoutMs: {
+				"timeout-ms": {
 					type: "string",
 					description: "Request timeout in milliseconds",
 					default: "8000"
 				},
-				l1ArchiveUrl: {
+				"l1-archive-url": {
 					type: "string",
 					description: "L1 archive URL",
 					default: process.env.L1_ARCHIVE_URL
 				},
-				l2ArchiveUrl: {
+				"l2-archive-url": {
 					type: "string",
 					description: "L2 archive URL",
 					default: process.env.L2_ARCHIVE_URL
 				},
-				outerPk: {
+				"outer-pk": {
 					type: "string",
 					description: "Outer action public key",
 					default: process.env.OUTER_PK
 				},
-				innerPk: {
+				"inner-pk": {
 					type: "string",
 					description: "Inner action public key",
 					default: process.env.INNER_PK
@@ -304,22 +721,22 @@ const command = defineCommand({
 				description: "Fetch CPU/RAM resources from Northflank CLI"
 			},
 			args: {
-				projectId: {
+				"project-id": {
 					type: "string",
 					description: "Northflank project ID",
 					default: process.env.NORTHFLANK_PROJECT_ID
 				},
-				serviceId: {
+				"service-id": {
 					type: "string",
 					description: "Northflank service ID",
 					default: process.env.NORTHFLANK_SERVICE_ID
 				},
-				durationSeconds: {
+				"duration-seconds": {
 					type: "string",
 					description: "Metrics duration window in seconds",
 					default: "900"
 				},
-				northflankExecutable: {
+				"northflank-executable": {
 					type: "string",
 					description: "Northflank executable name",
 					default: "northflank"
@@ -343,47 +760,47 @@ const command = defineCommand({
 					description: "Indexer base URL",
 					default: "https://indexer.actions.zeko.io"
 				},
-				timeoutMs: {
+				"timeout-ms": {
 					type: "string",
 					description: "Request timeout in milliseconds",
 					default: "8000"
 				},
-				l1ArchiveUrl: {
+				"l1-archive-url": {
 					type: "string",
 					description: "L1 archive URL",
 					default: process.env.L1_ARCHIVE_URL
 				},
-				l2ArchiveUrl: {
+				"l2-archive-url": {
 					type: "string",
 					description: "L2 archive URL",
 					default: process.env.L2_ARCHIVE_URL
 				},
-				outerPk: {
+				"outer-pk": {
 					type: "string",
 					description: "Outer action public key",
 					default: process.env.OUTER_PK
 				},
-				innerPk: {
+				"inner-pk": {
 					type: "string",
 					description: "Inner action public key",
 					default: process.env.INNER_PK
 				},
-				projectId: {
+				"project-id": {
 					type: "string",
 					description: "Northflank project ID",
 					default: process.env.NORTHFLANK_PROJECT_ID
 				},
-				serviceId: {
+				"service-id": {
 					type: "string",
 					description: "Northflank service ID",
 					default: process.env.NORTHFLANK_SERVICE_ID
 				},
-				durationSeconds: {
+				"duration-seconds": {
 					type: "string",
 					description: "Metrics duration window in seconds",
 					default: "900"
 				},
-				northflankExecutable: {
+				"northflank-executable": {
 					type: "string",
 					description: "Northflank executable name",
 					default: "northflank"
@@ -402,17 +819,17 @@ const command = defineCommand({
 				description: "Benchmark the indexer action-processing workload"
 			},
 			args: {
-				blockCount: {
+				"block-count": {
 					type: "string",
 					description: "Number of synthetic blocks",
 					default: "120"
 				},
-				actionsPerBlock: {
+				"actions-per-block": {
 					type: "string",
 					description: "Actions per synthetic block",
 					default: "12"
 				},
-				fieldsPerAction: {
+				"fields-per-action": {
 					type: "string",
 					description: "Field count per action payload",
 					default: "6"
@@ -422,9 +839,9 @@ const command = defineCommand({
 					description: "Benchmark iterations",
 					default: "2"
 				},
-				workerThreads: {
+				"worker-threads": {
 					type: "string",
-					description: "Worker thread count (0 = auto)",
+					description: "Worker process count (0 = auto)",
 					default: "0"
 				},
 				json: {
@@ -441,34 +858,34 @@ const command = defineCommand({
 				description: "Stress test the indexer action-processing workload"
 			},
 			args: {
-				durationSeconds: {
+				"duration-seconds": {
 					type: "string",
 					description: "Stress duration in seconds",
 					default: "5"
 				},
-				blockCount: {
+				"block-count": {
 					type: "string",
 					description: "Number of synthetic blocks",
 					default: "80"
 				},
-				actionsPerBlock: {
+				"actions-per-block": {
 					type: "string",
 					description: "Actions per synthetic block",
 					default: "8"
 				},
-				fieldsPerAction: {
+				"fields-per-action": {
 					type: "string",
 					description: "Field count per action payload",
 					default: "6"
 				},
-				preferWorker: {
+				"prefer-worker": {
 					type: "boolean",
 					description: "Use worker execution path",
 					default: true
 				},
-				workerThreads: {
+				"worker-threads": {
 					type: "string",
-					description: "Worker thread count (0 = auto)",
+					description: "Worker process count (0 = auto)",
 					default: "0"
 				},
 				json: {
@@ -485,32 +902,32 @@ const command = defineCommand({
 				description: "Prove IPC worker path is faster than main-thread processing"
 			},
 			args: {
-				blockCount: {
+				"block-count": {
 					type: "string",
 					description: "Number of synthetic blocks",
 					default: "120"
 				},
-				actionsPerBlock: {
+				"actions-per-block": {
 					type: "string",
 					description: "Actions per synthetic block",
 					default: "12"
 				},
-				fieldsPerAction: {
+				"fields-per-action": {
 					type: "string",
 					description: "Field count per action payload",
 					default: "6"
 				},
-				warmupRuns: {
+				"warmup-runs": {
 					type: "string",
 					description: "Unmeasured warmup runs before sampling",
 					default: "1"
 				},
-				sampleRuns: {
+				"sample-runs": {
 					type: "string",
 					description: "Measured runs used for proof",
 					default: "6"
 				},
-				workerThreads: {
+				"worker-threads": {
 					type: "string",
 					description: "Worker process count (0 = auto)",
 					default: "0"

@@ -23,8 +23,7 @@ export async function runActionProcessingStress({
 	actionsPerBlock = 8,
 	fieldsPerAction = 6,
 	preferWorker = true,
-	workerThreads,
-	strictWorker = false
+	workerThreads
 }: {
 	durationSeconds?: number
 	blockCount?: number
@@ -32,7 +31,6 @@ export async function runActionProcessingStress({
 	fieldsPerAction?: number
 	preferWorker?: boolean
 	workerThreads?: number
-	strictWorker?: boolean
 } = {}) {
 	const blocks = generateSyntheticArchiveBlocks({
 		blockCount,
@@ -54,8 +52,7 @@ export async function runActionProcessingStress({
 		const result = await runActionProcessing({
 			blocks,
 			preferWorker,
-			workerThreads,
-			fallbackToMain: !strictWorker
+			workerThreads
 		})
 		if (result.stats.strategy === "worker") {
 			workerRuns += 1

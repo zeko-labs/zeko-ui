@@ -71,10 +71,13 @@ For chore/tooling/config/docs-only changes, this workflow is optional unless exp
 
 1. To keep track and organize your work, you must use the `ataski` skill.
 2. Use Ataski as the shared coordination board for repository task status and handoffs.
-3. When using git worktrees, keep one canonical `ataski/` board in the main worktree; do not maintain per-worktree copies of the Ataski board.
+3. When using git worktrees, keep the task's `ataski/` updates in the same worktree and branch as the source-code changes so the PR carries both together for review and merge.
 4. Enforce task dependencies with `blockedBy` as a hard gate: do not claim/start a task until all `blockedBy` task IDs are `done`.
 5. For each task, use a dedicated worktree, branch, and PR. Leverage multiple agents and sub-agents when possible.
 6. Keep Ataski updated whenever shared task coordination state changes.
 7. Follow the concrete task format, ID allocation, lifecycle, tracker rules, and source-code workflow gates from the `ataski` skill definition.
 8. If `ataski/config.md` exists, it overrides defaults and must be followed.
 9. For source-code changes, this `AGENTS.md` section is the mandate to use Ataski, and the `ataski` skill is the authoritative operational procedure (task lifecycle ordering, TDD gates, and completion checks).
+10. Before editing any source file, the task must already exist in the canonical `ataski/` board and already be `in-progress`. No retroactive Ataski bookkeeping is allowed.
+11. Never reuse or guess task IDs. Read the canonical tracker, allocate the next unused ID, and stop to repair the board first if you discover duplicate IDs.
+12. Do not leave `ataski/` changes stranded in another checkout. The task worktree must include the relevant tracker updates that belong with the source changes.

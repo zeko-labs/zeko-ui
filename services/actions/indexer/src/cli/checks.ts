@@ -1,5 +1,6 @@
 import { createGraphqlClient } from "@zeko-labs/bridge-sdk"
 import { fetchActionsQuery, networkStateQuery } from "@zeko-labs/graphql/mina-archive"
+import * as v from "valibot"
 
 export interface HealthCheckResult {
 	statusCode: number
@@ -23,6 +24,18 @@ export interface SyncCheckResult {
 		status: "ok" | "behind"
 	}
 }
+
+const HealthResponseSchema = v.object({
+	status: v.string(),
+	indexer: v.object({
+		lastFetchedBlock: v.object({
+			outer: v.nullable(v.number()),
+			inner: v.nullable(v.number())
+		})
+	})
+})
+
+const JsonPayloadSchema = v.pipe(v.string(), v.parseJson(), v.unknown())
 
 const withTimeout = async <T>(
 	promise: Promise<T>,
@@ -51,12 +64,8 @@ export async function runHealthCheck({
 		"health request"
 	)
 	const text = await response.text()
-	let payload: unknown = text
-	try {
-		payload = JSON.parse(text)
-	} catch {
-		// Keep plain text payload for diagnostics.
-	}
+	const parsedPayload = v.safeParse(JsonPayloadSchema, text)
+	const payload = parsedPayload.success ? parsedPayload.output : text
 
 	return {
 		statusCode: response.status,
@@ -94,13 +103,12 @@ const hasPendingActions = async ({
 }
 
 const readLastFetched = (payload: unknown, key: "outer" | "inner"): number => {
-	const value = (payload as { indexer?: { lastFetchedBlock?: { outer?: number; inner?: number } } })
-		.indexer?.lastFetchedBlock?.[key]
-	const output = Number(value)
-	if (!Number.isFinite(output)) {
-		throw new Error(`health payload is missing indexer.lastFetchedBlock.${key}`)
+	const health = v.parse(HealthResponseSchema, payload)
+	const blockHeight = health.indexer.lastFetchedBlock[key]
+	if (blockHeight === null) {
+		throw new Error(`health payload has null for indexer.lastFetchedBlock.${key}`)
 	}
-	return output
+	return blockHeight
 }
 
 export async function runSyncCheck({

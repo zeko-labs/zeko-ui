@@ -2,18 +2,17 @@ import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
 import { availableParallelism } from "node:os"
 import { fileURLToPath } from "node:url"
+import * as v from "valibot"
 import { processArchiveBlocks, validateEventChain } from "./core"
-import type { ProcessRequest, ProcessResponse } from "./process-protocol"
+import {
+	type ProcessRequest,
+	type ProcessResponse,
+	ProcessResponseSchema
+} from "./process-protocol"
 import type { ActionProcessingResult, ArchiveAction } from "./types"
 
 const MAX_WORKER_PROCESSES = 4
-const DEFAULT_WORKER_PROCESS_TIMEOUT_MS = 45_000
-const configuredTimeoutMs = Number(
-	process.env.ACTION_PROCESSING_WORKER_TIMEOUT_MS ?? DEFAULT_WORKER_PROCESS_TIMEOUT_MS
-)
-const WORKER_PROCESS_TIMEOUT_MS = Number.isFinite(configuredTimeoutMs)
-	? Math.max(1_000, configuredTimeoutMs)
-	: DEFAULT_WORKER_PROCESS_TIMEOUT_MS
+const WORKER_PROCESS_TIMEOUT_MS = 60_000
 
 function getProcessScriptPath(): URL {
 	return new URL("./action-processing-process.js", import.meta.url)
@@ -36,6 +35,10 @@ function splitIntoChunks(blocks: ArchiveAction[], workerThreads: number): Archiv
 	return chunks
 }
 
+const parseProcessResponse = (stdout: string): ProcessResponse => {
+	return v.parse(v.pipe(v.string(), v.parseJson(), ProcessResponseSchema), stdout)
+}
+
 async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionProcessingResult> {
 	const scriptPath = getProcessScriptPath()
 	if (!existsSync(scriptPath)) {
@@ -53,7 +56,7 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 		let settled = false
 		const timeout = setTimeout(() => {
 			subprocess.kill("SIGKILL")
-			finalize(() =>
+			settle(() =>
 				reject(
 					new Error(`action-processing process timed out after ${WORKER_PROCESS_TIMEOUT_MS}ms`)
 				)
@@ -61,13 +64,11 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 		}, WORKER_PROCESS_TIMEOUT_MS)
 		timeout.unref?.()
 
-		const finalize = (handler: () => void) => {
+		const settle = (callback: () => void) => {
 			if (settled) return
 			settled = true
 			clearTimeout(timeout)
-			subprocess.removeAllListeners("error")
-			subprocess.removeAllListeners("close")
-			handler()
+			callback()
 		}
 
 		subprocess.stdout.on("data", (chunk: Buffer | string) => {
@@ -79,30 +80,29 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 		})
 
 		subprocess.on("error", (error) => {
-			finalize(() => reject(error))
+			settle(() => reject(error))
 		})
 
 		subprocess.on("close", (code) => {
-			finalize(() => {
+			settle(() => {
 				if (code !== 0) {
 					reject(new Error(stderr.trim() || `action-processing process exited with code ${code}`))
 					return
 				}
+
 				let parsed: ProcessResponse
 				try {
-					parsed = JSON.parse(stdout) as ProcessResponse
+					parsed = parseProcessResponse(stdout)
 				} catch (error) {
-					reject(
-						new Error(
-							`failed to parse action-processing process output: ${error instanceof Error ? error.message : String(error)}`
-						)
-					)
+					reject(error)
 					return
 				}
+
 				if (!parsed.ok) {
 					reject(new Error(parsed.error))
 					return
 				}
+
 				resolve(parsed.result)
 			})
 		})
@@ -151,30 +151,19 @@ async function runInWorkerPool({
 export async function runActionProcessing({
 	blocks,
 	preferWorker = true,
-	workerThreads,
-	fallbackToMain = true
+	workerThreads
 }: {
 	blocks: ArchiveAction[]
 	preferWorker?: boolean
 	workerThreads?: number
-	fallbackToMain?: boolean
 }): Promise<ActionProcessingResult> {
 	if (!preferWorker || blocks.length === 0) {
 		return processArchiveBlocks({ blocks, strategy: "main" })
 	}
 
 	const resolvedWorkerThreads = resolveWorkerThreads(blocks.length, workerThreads)
-	try {
-		return await runInWorkerPool({
-			blocks,
-			workerThreads: resolvedWorkerThreads
-		})
-	} catch (error) {
-		if (!fallbackToMain) {
-			throw error
-		}
-		const message = error instanceof Error ? error.message : String(error)
-		console.warn(`[action-processing] worker path failed; falling back to main: ${message}`)
-		return processArchiveBlocks({ blocks, strategy: "main" })
-	}
+	return runInWorkerPool({
+		blocks,
+		workerThreads: resolvedWorkerThreads
+	})
 }

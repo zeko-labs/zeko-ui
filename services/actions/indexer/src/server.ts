@@ -15,7 +15,46 @@ const dbHealthMonitor = createDatabaseHealthMonitor({
 })
 dbHealthMonitor.start()
 
-const authToken = env.AUTH_TOKEN
+const authorizeControlRequest = ({
+	bearer,
+	status
+}: {
+	bearer?: string
+	status: (code: number, body: { success: false; message: string }) => unknown
+}) => {
+	if (bearer === env.AUTH_TOKEN) return
+	return status(401, { success: false, message: "Unauthorized" })
+}
+
+const controlServer = new Elysia()
+	.guard({
+		beforeHandle: authorizeControlRequest
+	})
+	.get("/status", () => indexer.getStatus())
+	.post("/start", ({ status }) => {
+		const result = indexer.start()
+		return status(result.success ? 200 : 500, result)
+	})
+	.post("/stop", async ({ status }) => {
+		const result = await indexer.stop()
+		return status(result.success ? 200 : 500, result)
+	})
+	.post("/reset", async ({ status }) => {
+		const result = await indexer.reset()
+		return status(result.success ? 200 : 500, result)
+	})
+	.post("/rebuild", async ({ status }) => {
+		const result = await indexer.rebuild()
+		return status(result.success ? 200 : 500, result)
+	})
+	.post(
+		"/config",
+		({ body, status }) => {
+			const result = indexer.setConfig({ intervalSeconds: body.intervalSeconds })
+			return status(200, result)
+		},
+		{ body: t.Object({ intervalSeconds: t.Number() }) }
+	)
 
 export const server = new Elysia({
 	adapter: node()
@@ -40,31 +79,6 @@ export const server = new Elysia({
 		set.status = result.httpStatus
 		return result.response
 	})
-	.guard({
-		beforeHandle: ({ bearer, status }) => {
-			if (bearer !== authToken) return status(401, { success: false, message: "Unauthorized" })
-		}
-	})
-	.get("/status", () => indexer.getStatus())
-	.post("/start", ({ status }) => {
-		const result = indexer.start()
-		return status(result.success ? 200 : 500, result)
-	})
-	.post("/stop", ({ status }) => {
-		const result = indexer.stop()
-		return status(result.success ? 200 : 500, result)
-	})
-	.post("/rebuild", async ({ status }) => {
-		const result = await indexer.rebuild()
-		return status(result.success ? 200 : 500, result)
-	})
-	.post(
-		"/config",
-		({ body, status }) => {
-			const result = indexer.setConfig({ intervalSeconds: body.intervalSeconds })
-			return status(200, result)
-		},
-		{ body: t.Object({ intervalSeconds: t.Number() }) }
-	)
+	.use(controlServer)
 
 export type App = typeof server

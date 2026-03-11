@@ -73,6 +73,42 @@ tasks:
     command: node dist/cli.js resources
     inputs:
       - "@group(sources)"
+  status:
+    deps:
+      - build
+    command: node dist/cli.js status
+    inputs:
+      - "@group(sources)"
+  start-indexer:
+    deps:
+      - build
+    command: node dist/cli.js start
+    inputs:
+      - "@group(sources)"
+  stop-indexer:
+    deps:
+      - build
+    command: node dist/cli.js stop
+    inputs:
+      - "@group(sources)"
+  reset:
+    deps:
+      - build
+    command: node dist/cli.js reset
+    inputs:
+      - "@group(sources)"
+  rebuild:
+    deps:
+      - build
+    command: node dist/cli.js rebuild
+    inputs:
+      - "@group(sources)"
+  set-interval:
+    deps:
+      - build
+    command: node dist/cli.js set-interval
+    inputs:
+      - "@group(sources)"
   bench-action-processing:
     deps:
       - build

@@ -46,3 +46,4 @@
 - T046 | done | separate-indexer-benchmark-modules-and-fix-docker-integration-db-setup | done/T046-separate-indexer-benchmark-modules-and-fix-docker-integration-db-setup.md
 - T047 | done | fix-indexer-node24-startup-with-web-standard-adapter | done/T047-fix-indexer-node24-startup-with-web-standard-adapter.md
 - T048 | done | fix-ipc-review-findings-and-proof-workflow | done/T048-fix-ipc-review-findings-and-proof.md
+- T058 | done | rebase-pr-137-and-add-indexer-reset-cli | done/T058-rebase-pr-137-and-add-indexer-reset-cli.md

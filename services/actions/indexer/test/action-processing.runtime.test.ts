@@ -17,21 +17,6 @@ describe("action-processing runtime", () => {
 		expect(result.stats.strategy).toBe("main")
 	})
 
-	it("falls back to main when worker process script is unavailable", async () => {
-		const blocks = generateSyntheticArchiveBlocks({
-			blockCount: 2,
-			actionsPerBlock: 2,
-			fieldsPerAction: 2,
-			seed: 9
-		})
-		const result = await runActionProcessing({
-			blocks,
-			preferWorker: true,
-			fallbackToMain: true
-		})
-		expect(result.stats.strategy).toBe("main")
-	})
-
 	it("surfaces worker failure when fallback is disabled", async () => {
 		const blocks = generateSyntheticArchiveBlocks({
 			blockCount: 2,
@@ -42,8 +27,7 @@ describe("action-processing runtime", () => {
 		await expect(
 			runActionProcessing({
 				blocks,
-				preferWorker: true,
-				fallbackToMain: false
+				preferWorker: true
 			})
 		).rejects.toThrow("action-processing process file not found")
 	})
