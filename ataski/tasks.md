@@ -48,3 +48,4 @@
 - T048 | done | fix-ipc-review-findings-and-proof-workflow | done/T048-fix-ipc-review-findings-and-proof.md
 - T058 | done | rebase-pr-137-and-add-indexer-reset-cli | done/T058-rebase-pr-137-and-add-indexer-reset-cli.md
 - T064 | done | remove-actions-indexer-worker-timeout-regression | done/T064-remove-actions-indexer-worker-timeout-regression.md
+- T066 | done | fix-sync-lag-reporting | done/T066-fix-sync-lag-reporting.md

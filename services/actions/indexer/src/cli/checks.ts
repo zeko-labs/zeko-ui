@@ -12,6 +12,7 @@ export interface SyncCheckResult {
 	outer: {
 		lastFetchedBlock: number
 		tip: number
+		tipDistance: number
 		lag: number
 		hasPendingActions: boolean
 		status: "ok" | "behind"
@@ -19,6 +20,7 @@ export interface SyncCheckResult {
 	inner: {
 		lastFetchedBlock: number
 		tip: number
+		tipDistance: number
 		lag: number
 		hasPendingActions: boolean
 		status: "ok" | "behind"
@@ -152,13 +154,16 @@ export async function runSyncCheck({
 		})
 	])
 
-	const outerLag = Math.max(0, outerTip - outerLastFetchedBlock)
-	const innerLag = Math.max(0, innerTip - innerLastFetchedBlock)
+	const outerTipDistance = Math.max(0, outerTip - outerLastFetchedBlock)
+	const innerTipDistance = Math.max(0, innerTip - innerLastFetchedBlock)
+	const outerLag = outerPending ? outerTipDistance : 0
+	const innerLag = innerPending ? innerTipDistance : 0
 
 	return {
 		outer: {
 			lastFetchedBlock: outerLastFetchedBlock,
 			tip: outerTip,
+			tipDistance: outerTipDistance,
 			lag: outerLag,
 			hasPendingActions: outerPending,
 			status: outerPending ? "behind" : "ok"
@@ -166,6 +171,7 @@ export async function runSyncCheck({
 		inner: {
 			lastFetchedBlock: innerLastFetchedBlock,
 			tip: innerTip,
+			tipDistance: innerTipDistance,
 			lag: innerLag,
 			hasPendingActions: innerPending,
 			status: innerPending ? "behind" : "ok"
