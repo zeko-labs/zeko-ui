@@ -1,0 +1,35 @@
+---
+name: config.jsonc Reference
+description: Default `ataski/config.jsonc` contents.
+---
+
+Use this default `ataski/config.jsonc` when a project has not customized Ataski:
+
+```json
+{
+  "structure": {
+    "0": "todo/",
+    "1": "in-progress/",
+    "2": "done/"
+  },
+  "taskID": {
+    "prefix": "T",
+    "length": 3,
+    "example": "T001"
+  },
+  "taskFrontMatter": {
+    "id": "The task ID",
+    "title": "The task title",
+    "status": "The task status",
+    "blockedBy": "Array of task IDs that must be done before this task can start",
+    "owner": "Optional current owner/agent",
+    "created_at": "The task creation datetime",
+    "updated_at": "The task update datetime"
+  },
+  "testStrategy": "BDD/TDD/DDD (choose the best fit)",
+  "tracker": "tasks.md",
+  "worktreesDir": "ataski/worktrees/"
+}
+```
+
+`worktreesDir` is the git worktree root. By default, the canonical worktree and all task worktrees live under `ataski/worktrees/`, and that directory should be git-ignored.
