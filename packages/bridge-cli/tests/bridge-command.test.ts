@@ -1,3 +1,4 @@
+import { PrivateKey } from "o1js"
 import { describe, expect, it } from "vitest"
 import { createBridgeCommand } from "../src/commands/bridge"
 import type { BridgeAdapter } from "../src/core/adapter"
@@ -65,6 +66,12 @@ const createAdapter = (): BridgeAdapter => ({
 })
 
 describe("bridge command", () => {
+	it("does not expose a public wait flag on the high-level bridge command", () => {
+		const command = createBridgeCommand()
+
+		expect(command.args).not.toHaveProperty("wait")
+	})
+
 	it("runs the end-to-end bridge command and emits a final JSON result", async () => {
 		const writes: string[] = []
 		const progress: string[] = []
@@ -97,7 +104,6 @@ describe("bridge command", () => {
 				account: "B62test",
 				recipient: "",
 				timeoutSlots: "",
-				wait: true,
 				json: true
 			},
 			rawArgs: [],
@@ -111,6 +117,75 @@ describe("bridge command", () => {
 			operation_id: "bridge-op-1",
 			status: "completed",
 			route: "mina:testnet->zeko:testnet"
+		})
+	})
+
+	it("keeps the signer-derived sender account when only recipient is provided", async () => {
+		const signerKey = PrivateKey.random().toBase58()
+		const expectedSender = PrivateKey.fromBase58(signerKey).toPublicKey().toBase58()
+		const writes: string[] = []
+		const submittedAccounts: string[] = []
+		const command = createBridgeCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async () => ({
+				...createAdapter(),
+				async submitDeposit(input) {
+					submittedAccounts.push(input.account ?? "")
+					return {
+						success: true,
+						direction: "deposit",
+						action: "submit",
+						route: "mina:testnet->zeko:testnet",
+						hash: "deposit-submit-command",
+						explorerUrl: "https://example.test/deposit-submit-command",
+						included: true
+					}
+				}
+			}),
+			generateId: () => "bridge-op-2",
+			write: (message) => writes.push(message),
+			writeProgress: () => {},
+			sleep: async () => {},
+			pollIntervalMs: 0,
+			now: () => "2026-03-10T00:00:00.000Z"
+		})
+
+		const previousMinaKey = process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY
+		delete process.env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY
+		process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY = signerKey
+
+		try {
+			await command.run?.({
+				args: {
+					_: [],
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					amount: "2",
+					account: "",
+					recipient: "B62qrecipient1111111111111111111111111111111111111111111111",
+					timeoutSlots: "",
+					json: true
+				},
+				rawArgs: [],
+				cmd: command
+			})
+		} finally {
+			if (previousMinaKey === undefined) {
+				delete process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY
+			} else {
+				process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY = previousMinaKey
+			}
+		}
+
+		expect(submittedAccounts).toEqual([expectedSender])
+		expect(JSON.parse(writes[0] ?? "{}")).toMatchObject({
+			recipient: "B62qrecipient1111111111111111111111111111111111111111111111"
 		})
 	})
 })

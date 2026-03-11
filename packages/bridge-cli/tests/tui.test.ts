@@ -8,7 +8,7 @@ describe("tui snapshot", () => {
 			{
 				id: "op-new",
 				status: "running",
-				phase: "waiting",
+				phase: "waiting-finalization",
 				route: "mina:testnet->zeko:testnet",
 				direction: "deposit",
 				account: "B62new",

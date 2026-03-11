@@ -1,7 +1,7 @@
 import { Bridge } from "@zeko-labs/bridge-sdk"
 import { PrivateKey, PublicKey, UInt32, UInt64, fetchTransactionStatus } from "o1js"
 import { createExplorerUrl } from "./explorer"
-import { nanominaToMinaString } from "./format"
+import { minaStringToNanomina, nanominaToMinaString } from "./format"
 import type { ChainRef, Direction, RouteDescriptor } from "./routes"
 import { createSdkConfig } from "./sdk-config"
 import { resolveSignerKeys } from "./signer"
@@ -30,6 +30,7 @@ export type BridgeAdapter = {
 }
 
 const bridges = new Map<string, Promise<Bridge>>()
+const BRIDGE_FEE_NANOMINA = 100_000_000n
 
 const routeKey = (route: RouteDescriptor) => `${route.from}->${route.to}`
 
@@ -38,7 +39,10 @@ const getBridge = (route: RouteDescriptor) => {
 	const cached = bridges.get(key)
 	if (cached) return cached
 
-	const bridge = Bridge.init(createSdkConfig(route))
+	const bridge = Bridge.init(createSdkConfig(route)).catch((error: unknown) => {
+		bridges.delete(key)
+		throw error
+	})
 	bridges.set(key, bridge)
 	return bridge
 }
@@ -211,8 +215,8 @@ export const createBridgeAdapter = ({
 			const timeout =
 				timeoutSlots === undefined ? UInt32.MAXINT() : currentSlot.add(UInt32.from(timeoutSlots))
 			const tx = await bridge.submitDeposit(
-				{ sender: publicKey, fee: 0.1 * 10e8 },
-				{ recipient: publicKey, amount: UInt64.from(Number(amount) * 10e8), timeout }
+				{ sender: publicKey, fee: Number(BRIDGE_FEE_NANOMINA) },
+				{ recipient: publicKey, amount: UInt64.from(minaStringToNanomina(amount)), timeout }
 			)
 			const result = await tx.sign([signer]).send()
 			return normalizeTxResult({ action: "submit", direction: "deposit", route, result, wait })
@@ -237,7 +241,10 @@ export const createBridgeAdapter = ({
 		async cancelDeposit({ account, wait }) {
 			const bridge = await getBridge(route)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
-			const tx = await bridge.cancelDeposit(publicKey, { sender: publicKey, fee: 0.1 * 10e8 })
+			const tx = await bridge.cancelDeposit(publicKey, {
+				sender: publicKey,
+				fee: Number(BRIDGE_FEE_NANOMINA)
+			})
 			const result = await tx.sign([signer]).send()
 			return normalizeTxResult({ action: "cancel", direction: "deposit", route, result, wait })
 		},
@@ -245,8 +252,8 @@ export const createBridgeAdapter = ({
 			const bridge = await getBridge(route)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
 			const tx = await bridge.submitWithdrawal(
-				{ sender: publicKey, fee: 0.1 * 10e8 },
-				{ recipient: publicKey, amount: UInt64.from(Number(amount) * 10e8) }
+				{ sender: publicKey, fee: Number(BRIDGE_FEE_NANOMINA) },
+				{ recipient: publicKey, amount: UInt64.from(minaStringToNanomina(amount)) }
 			)
 			const result = await tx.sign([signer]).send()
 			return normalizeTxResult({ action: "submit", direction: "withdrawal", route, result, wait })
@@ -259,7 +266,10 @@ export const createBridgeAdapter = ({
 		async finalizeWithdrawal({ account, wait }) {
 			const bridge = await getBridge(route)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
-			const tx = await bridge.finalizeWithdrawal(publicKey, { sender: publicKey, fee: 0.1 * 10e8 })
+			const tx = await bridge.finalizeWithdrawal(publicKey, {
+				sender: publicKey,
+				fee: Number(BRIDGE_FEE_NANOMINA)
+			})
 			const result = await tx.sign([signer]).send()
 			return normalizeTxResult({
 				action: "finalize",

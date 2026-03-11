@@ -1,0 +1,45 @@
+id: bridge-validator
+layer: application
+language: typescript
+stack: backend
+fileGroups:
+  sources:
+    - src/**/*
+    - moon.yml
+    - package.json
+    - README.md
+    - AGENTS.md
+    - CLAUDE.md
+    - .env.example
+    - tsconfig.json
+    - tsdown.config.ts
+  tests:
+    - tests/**/*
+    - vitest.config.ts
+tasks:
+  build:
+    command: tsdown
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - dist/**
+  typecheck:
+    command: tsc --noEmit
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  lint:
+    command: biome lint --diagnostic-level=error
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  test:
+    command: vitest run
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  start:
+    command: node dist/server.js
+    deps:
+      - build
+    preset: server

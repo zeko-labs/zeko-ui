@@ -1,4 +1,4 @@
-import type { Config } from "../../../bridge-sdk/src/types"
+import type { Config } from "@zeko-labs/bridge-sdk"
 import type { RouteDescriptor } from "./routes"
 
 const TESTNET_CONFIG = {

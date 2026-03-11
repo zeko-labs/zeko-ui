@@ -12,8 +12,20 @@ describe("operation machine", () => {
 			phase: "submitted",
 			status: "running"
 		})
-		expect(controller.transition({ type: "MARK_WAITING" })).toEqual({
-			phase: "waiting",
+		expect(controller.transition({ type: "MARK_WAITING_SUBMISSION" })).toEqual({
+			phase: "waiting-submission",
+			status: "running"
+		})
+		expect(controller.transition({ type: "MARK_WAITING_PRIOR_CLAIMS" })).toEqual({
+			phase: "waiting-prior-claims",
+			status: "running"
+		})
+		expect(controller.transition({ type: "MARK_WAITING_FINALIZATION" })).toEqual({
+			phase: "waiting-finalization",
+			status: "running"
+		})
+		expect(controller.transition({ type: "MARK_RETRYING" })).toEqual({
+			phase: "retrying",
 			status: "running"
 		})
 		expect(controller.transition({ type: "MARK_FINALIZING" })).toEqual({

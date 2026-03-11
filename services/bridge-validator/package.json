@@ -1,0 +1,22 @@
+{
+	"name": "@zeko/bridge-validator",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": "./dist/index.js",
+		"./server": "./dist/server.js",
+		"./*": "./*"
+	},
+	"dependencies": {
+		"inngest": "^3.52.6"
+	},
+	"devDependencies": {
+		"@types/node": "^25.4.0",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

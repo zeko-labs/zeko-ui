@@ -1,0 +1,45 @@
+name: Validate Bridge CLI Live
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.5.0
+
+      - name: Resolve Latest Bridge CLI Version
+        id: version
+        run: |
+          VERSION=$(npm view @zeko-labs/bridge-cli version)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch Mina To Zeko Validation
+        env:
+          INNGEST_EVENT_KEY: ${{ secrets.INNGEST_EVENT_KEY }}
+          CLI_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          curl --fail-with-body \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data '[{"name":"bridge-validator/mina-to-zeko.requested","data":{"cliVersion":"'"${CLI_VERSION}"'"}}]' \
+            "https://inn.gs/e/${INNGEST_EVENT_KEY}"
+
+      - name: Dispatch Zeko To Mina Validation
+        env:
+          INNGEST_EVENT_KEY: ${{ secrets.INNGEST_EVENT_KEY }}
+          CLI_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          curl --fail-with-body \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data '[{"name":"bridge-validator/zeko-to-mina.requested","data":{"cliVersion":"'"${CLI_VERSION}"'"}}]' \
+            "https://inn.gs/e/${INNGEST_EVENT_KEY}"

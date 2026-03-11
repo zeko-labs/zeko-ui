@@ -4,7 +4,10 @@ import type { OperationPhase, OperationStatus } from "./types"
 type OperationMachineEvent =
 	| { type: "MARK_INITIALIZING" }
 	| { type: "MARK_SUBMITTED" }
-	| { type: "MARK_WAITING" }
+	| { type: "MARK_WAITING_SUBMISSION" }
+	| { type: "MARK_WAITING_PRIOR_CLAIMS" }
+	| { type: "MARK_WAITING_FINALIZATION" }
+	| { type: "MARK_RETRYING" }
 	| { type: "MARK_FINALIZING" }
 	| { type: "MARK_CANCELLING" }
 	| { type: "MARK_COMPLETED" }
@@ -41,9 +44,27 @@ const operationMachine = setup({
 						status: "running"
 					})
 				},
-				MARK_WAITING: {
+				MARK_WAITING_SUBMISSION: {
 					actions: assign({
-						phase: "waiting",
+						phase: "waiting-submission",
+						status: "running"
+					})
+				},
+				MARK_WAITING_PRIOR_CLAIMS: {
+					actions: assign({
+						phase: "waiting-prior-claims",
+						status: "running"
+					})
+				},
+				MARK_WAITING_FINALIZATION: {
+					actions: assign({
+						phase: "waiting-finalization",
+						status: "running"
+					})
+				},
+				MARK_RETRYING: {
+					actions: assign({
+						phase: "retrying",
 						status: "running"
 					})
 				},

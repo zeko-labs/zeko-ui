@@ -46,10 +46,12 @@ export type StatusResult<T> = {
 export type OperationPhase =
 	| "initializing"
 	| "submitted"
-	| "waiting"
+	| "waiting-submission"
+	| "waiting-prior-claims"
+	| "waiting-finalization"
+	| "retrying"
 	| "finalizing"
 	| "canceling"
-	| "finalized"
 	| "completed"
 	| "cancelled"
 	| "failed"
@@ -70,6 +72,9 @@ export type OperationSession = {
 	updatedAt: string
 	timeoutSlots?: number
 	lastError?: string
+	targetIndex?: number
+	pendingFinalizeIndex?: number
+	queueAdvances?: number
 	submittedTransactions: Array<{
 		action: "submit" | "finalize" | "cancel"
 		hash: string

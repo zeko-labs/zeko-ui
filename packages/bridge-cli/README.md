@@ -2,25 +2,20 @@
 
 Agent-first CLI for bridging assets between Mina and Zeko.
 
-`zeko-bridge` is designed for unattended use by agents and automation. It wraps `@zeko-labs/bridge-sdk` with:
+`zeko-bridge` is built for unattended agent use. The primary interface is the single high-level `bridge` command, which signs, submits, waits, retries transient network checks, advances queued claims in order, and streams progress until the requested bridge completes.
 
-- one-command bridge flows
-- lower-level submit/finalize/cancel/status commands
-- resumable disk-backed operations
-- structured log files for debugging
-- machine-readable JSON output
-- a terminal UI powered by OpenTUI
+Lower-level commands still exist, but they are advanced tools for debugging, recovery, and explicit operator control.
 
 The package is maintained in the private Zeko monorepo and mirrored to [zeko-labs/bridge-cli](https://github.com/zeko-labs/bridge-cli) for public source, issues, and releases.
 
 ## Status
 
-Current enabled routes:
+Enabled routes:
 
 - `mina:testnet -> zeko:testnet`
 - `zeko:testnet -> mina:testnet`
 
-Known but disabled routes are already modeled in the CLI:
+Known but not yet enabled:
 
 - `mina:mainnet -> zeko:mainnet`
 - `zeko:mainnet -> mina:mainnet`
@@ -37,7 +32,7 @@ Install globally:
 npm install -g @zeko-labs/bridge-cli
 ```
 
-Or run it directly with `npx`:
+Or run it directly:
 
 ```bash
 npx -y @zeko-labs/bridge-cli bridge --from mina:testnet --to zeko:testnet --amount 1
@@ -63,119 +58,40 @@ Required variables:
 | `ZEKO_BRIDGE_ZEKO_PRIVATE_KEY` | no       | Zeko private key used for Zeko-originated bridge actions. Falls back to the Mina key when omitted. |
 | `ZEKO_BRIDGE_ETH_PRIVATE_KEY`  | no       | Reserved for future Ethereum routes.                                                               |
 
-## Commands
+## Recommended Usage
 
 ### `bridge`
 
-Run a full bridge flow from source to destination with automatic signing and submission.
+Use `bridge` by default. This is the command agents should reach for first.
 
 ```bash
 zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
 zeko-bridge bridge --from zeko:testnet --to mina:testnet --amount 3 --recipient B62q...
 zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1 --json
-zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1 --wait=false
 ```
 
 Flags:
 
-| Flag              | Description                                                                             |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| `--from`          | Source chain reference. Defaults to `mina:testnet`.                                     |
-| `--to`            | Destination chain reference. Defaults to `zeko:testnet`.                                |
-| `--amount`        | Amount in Mina units.                                                                   |
-| `--recipient`     | Optional recipient account. Defaults to the account derived from the active signer key. |
-| `--wait`          | Wait for the full bridge lifecycle. Defaults to `true`.                                 |
-| `--timeout-slots` | Optional deposit timeout override.                                                      |
-| `--json`          | Emit the final result as JSON on stdout. Progress continues on stderr.                  |
+| Flag              | Description                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| `--from`          | Source chain reference. Defaults to `mina:testnet`.                                   |
+| `--to`            | Destination chain reference. Defaults to `zeko:testnet`.                              |
+| `--amount`        | Amount in Mina units.                                                                 |
+| `--recipient`     | Optional destination account. Defaults to the account derived from the active signer. |
+| `--timeout-slots` | Optional deposit timeout override for Mina-originated bridges.                        |
+| `--json`          | Emit the final result as JSON on stdout. Progress continues on stderr.                |
 
-When `--wait=false` is used, the CLI submits the first transaction, persists the operation, and exits. You can continue later with `operation resume`.
+Behavior:
 
-### `deposit`
+- waits for completion by default
+- retries transient bridge status and capability checks
+- keeps printing useful progress during long waits without spamming every poll
+- advances earlier queued claims in order when the account already has pending bridge work
+- writes structured logs to disk for debugging and recovery
 
-Low-level deposit commands for `mina:testnet -> zeko:testnet`.
+### JSON Result
 
-```bash
-zeko-bridge deposit submit --amount 1
-zeko-bridge deposit finalize --account B62q...
-zeko-bridge deposit cancel --account B62q...
-zeko-bridge deposit status --account B62q... --json
-```
-
-Subcommands:
-
-- `submit`
-- `finalize`
-- `cancel`
-- `status`
-
-### `withdrawal`
-
-Low-level withdrawal commands for `zeko:testnet -> mina:testnet`.
-
-```bash
-zeko-bridge withdrawal submit --amount 2
-zeko-bridge withdrawal finalize --account B62q...
-zeko-bridge withdrawal status --account B62q... --json
-```
-
-Subcommands:
-
-- `submit`
-- `finalize`
-- `status`
-
-### `operation`
-
-Inspect or resume persisted bridge operations.
-
-```bash
-zeko-bridge operation list
-zeko-bridge operation status <operation-id>
-zeko-bridge operation logs <operation-id>
-zeko-bridge operation resume <operation-id>
-zeko-bridge operation resume <operation-id> --json
-```
-
-Subcommands:
-
-- `list`
-- `status`
-- `logs`
-- `resume`
-
-Persisted operations include:
-
-- route and direction
-- amount and recipient
-- current phase and status
-- submitted transaction hashes
-- final transaction metadata
-- log path
-
-### `tui`
-
-Open the terminal UI for active and recent operations.
-
-```bash
-zeko-bridge tui
-zeko-bridge tui <operation-id>
-```
-
-The TUI uses OpenTUI. The package ships a bundled Bun runtime dependency so end users do not need to install Bun separately.
-
-### `doctor`
-
-Inspect local paths and key configuration.
-
-```bash
-zeko-bridge doctor
-```
-
-## Output
-
-Human mode writes progress updates to stderr and prints the final result to stdout.
-
-JSON mode prints a final object like:
+`--json` prints a final object like:
 
 ```json
 {
@@ -200,6 +116,18 @@ JSON mode prints a final object like:
 }
 ```
 
+## Advanced Commands
+
+These commands are supported, but they are not the default agent path:
+
+- `deposit` for low-level Mina-to-Zeko submit/finalize/cancel/status control
+- `withdrawal` for low-level Zeko-to-Mina submit/finalize/status control
+- `operation` for listing, inspecting logs, and resuming persisted operations
+- `tui` for viewing active and recent operations in OpenTUI
+- `doctor` for checking local paths, signer env status, and known routes
+
+Use them when you need explicit low-level recovery or debugging. If you are simply trying to bridge, use `bridge`.
+
 ## Logs And State
 
 The CLI writes:
@@ -207,11 +135,11 @@ The CLI writes:
 - persisted operation state under the OS/XDG state directory
 - append-only JSONL logs under the OS/XDG log directory
 
-Use `operation logs` to inspect the log stream for a specific operation.
+Use `operation logs <operation-id>` to inspect the recorded event stream for a specific bridge.
 
 ## Development
 
-Development happens from the monorepo root with `moon`:
+Run from the monorepo root:
 
 ```bash
 moon run bridge-cli:build
@@ -220,12 +148,28 @@ moon run bridge-cli:test
 moon run bridge-cli:lint
 ```
 
-Optional env-gated live validation tasks:
+Manual live validation instructions live in the internal `packages/bridge-cli/testing.md` document in the monorepo.
 
-```bash
-ZEKO_BRIDGE_ENABLE_INTEGRATION=1 moon run bridge-cli:integration-mina-to-zeko
-ZEKO_BRIDGE_ENABLE_INTEGRATION=1 moon run bridge-cli:integration-zeko-to-mina
-ZEKO_BRIDGE_ENABLE_INTEGRATION=1 ZEKO_BRIDGE_RESUME_OPERATION_ID=<id> moon run bridge-cli:integration-resume
-```
+Release and mirror details live in the package-level release notes within the monorepo.
 
-Release and mirror details live in `packages/bridge-cli/RELEASE.md`.
+## Operator Setup Checklist
+
+Before local live validation or scheduled monitoring can work, make sure all of the following are done:
+
+1. Add funded testnet signer keys locally:
+   `ZEKO_BRIDGE_MINA_PRIVATE_KEY`
+   `ZEKO_BRIDGE_ZEKO_PRIVATE_KEY` if you do not want to reuse the Mina key
+   Then run:
+   `moon run bridge-cli:live-bridge-mina-to-zeko`
+   or
+   `moon run bridge-cli:live-bridge-zeko-to-mina`
+2. Publish or confirm the npm version of `@zeko-labs/bridge-cli` that the validator should execute.
+3. Create a Slack bot, grant it permission to post messages, and capture:
+   `SLACK_BOT_TOKEN`
+   `SLACK_CHANNEL_ID`
+4. Create or configure the Inngest Cloud app and capture:
+   `INNGEST_EVENT_KEY`
+   `INNGEST_SIGNING_KEY`
+5. Add the required env variables to the bridge-validator runtime.
+6. Add the `INNGEST_EVENT_KEY` GitHub secret used by the scheduled dispatch workflow.
+7. Confirm `.github/workflows/validate-bridge-cli-live.yaml` is enabled and the validator service is running before expecting Slack alerts.

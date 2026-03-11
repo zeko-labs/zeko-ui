@@ -11,5 +11,5 @@ const EXPLORER_BASE_URLS: Record<ChainRef, string> = {
 
 export const createExplorerUrl = (network: ChainRef, hash: string): string => {
 	const baseUrl = EXPLORER_BASE_URLS[network]
-	return network.startsWith("eth:") ? `${baseUrl}/tx/${hash}` : `${baseUrl}/tx/${hash}`
+	return `${baseUrl}/tx/${hash}`
 }

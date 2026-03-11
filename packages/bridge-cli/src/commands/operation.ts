@@ -8,6 +8,7 @@ import { renderBridgeResult, renderOperationProgress, toBridgeJsonResult } from 
 import { createSessionStore, type SessionStore } from "../core/session-store"
 import type { ChainRef } from "../core/routes"
 import { parseRouteString, resolveRoute } from "../core/routes"
+import type { OperationPhase } from "../core/types"
 
 type OperationCommandDeps = {
 	createStore?: (input: { stateDir: string }) => Pick<SessionStore, "list" | "load" | "save">
@@ -24,6 +25,8 @@ type OperationCommandDeps = {
 	writeProgress?: (message: string) => void
 	sleep?: (ms: number) => Promise<void>
 	pollIntervalMs?: number
+	heartbeatIntervalMs?: number
+	retryDelayMs?: number
 }
 
 const parseId = (value: unknown): string => {
@@ -37,6 +40,43 @@ const parseId = (value: unknown): string => {
 const parseJsonFlag = (value: unknown): boolean => (typeof value === "boolean" ? value : false)
 
 const parseRoutePair = (value: string): [ChainRef, ChainRef] => parseRouteString(value)
+
+const createAdapterWithRetries = async ({
+	createAdapter,
+	from,
+	to,
+	log,
+	sleep,
+	retryDelayMs
+}: {
+	createAdapter: (input: { from: ChainRef; to: ChainRef }) => Promise<BridgeAdapter> | BridgeAdapter
+	from: ChainRef
+	to: ChainRef
+	log: (entry: {
+		event: string
+		phase: OperationPhase
+		details?: Record<string, unknown>
+	}) => Promise<void>
+	sleep: (ms: number) => Promise<void>
+	retryDelayMs: number
+}): Promise<BridgeAdapter> => {
+	for (let attempt = 1; ; attempt += 1) {
+		try {
+			return await createAdapter({ from, to })
+		} catch (error) {
+			await log({
+				event: "retrying",
+				phase: "initializing",
+				details: {
+					operation: "Bridge.init",
+					attempt,
+					message: error instanceof Error ? error.message : String(error)
+				}
+			})
+			await sleep(retryDelayMs)
+		}
+	}
+}
 
 export const createOperationCommand = (deps: OperationCommandDeps = {}): CommandDef =>
 	defineCommand({
@@ -113,6 +153,21 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 							const { createBridgeAdapter } = await import("../core/adapter")
 							return createBridgeAdapter({ route: resolveRoute(inputFrom, inputTo) })
 						})
+					const sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
+					const log = async ({
+						event,
+						phase,
+						details
+					}: {
+						event: string
+						phase: OperationPhase
+						details?: Record<string, unknown>
+					}) => {
+						;(deps.writeProgress ?? console.error)(
+							renderOperationProgress({ event, phase, details })
+						)
+						await logger.write(event, { phase, ...details })
+					}
 					const resumed = await runBridgeOperation(
 						{
 							id: session.id,
@@ -125,16 +180,19 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 							session
 						},
 						{
-							adapter: await createAdapter({ from, to }),
+							adapter: await createAdapterWithRetries({
+								createAdapter,
+								from,
+								to,
+								log,
+								sleep,
+								retryDelayMs: deps.retryDelayMs ?? 5_000
+							}),
 							sessionStore: store,
-							log: async ({ event, phase, details }) => {
-								;(deps.writeProgress ?? console.error)(
-									renderOperationProgress({ event, phase, details })
-								)
-								await logger.write(event, { phase, ...details })
-							},
-							sleep: deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
-							pollIntervalMs: deps.pollIntervalMs ?? 20_000
+							log,
+							sleep,
+							pollIntervalMs: deps.pollIntervalMs ?? 20_000,
+							retryDelayMs: deps.retryDelayMs
 						}
 					)
 					;(deps.write ?? console.log)(
