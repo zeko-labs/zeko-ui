@@ -88,7 +88,12 @@ export async function clearAllTables(tx: PostgresJsDatabase) {
 export async function getLastFinalOuterAction(db: PostgresJsDatabase) {
 	logger.info("[getLastFinalOuterAction] querying")
 	const result = await db
-		.select()
+		.select({
+			afterState: outerActions.afterState,
+			index: outerActions.index,
+			blockHeight: outerActions.blockHeight,
+			markedAsCanonicalAt: outerActions.markedAsCanonicalAt
+		})
 		.from(outerActions)
 		.where(not(isNull(outerActions.markedAsCanonicalAt)))
 		.orderBy(desc(outerActions.index))
@@ -104,7 +109,12 @@ export async function getLastFinalOuterAction(db: PostgresJsDatabase) {
 export async function getLastFinalInnerAction(db: PostgresJsDatabase) {
 	logger.info("[getLastFinalInnerAction] querying")
 	const result = await db
-		.select()
+		.select({
+			afterState: innerActions.afterState,
+			index: innerActions.index,
+			blockHeight: innerActions.blockHeight,
+			markedAsCanonicalAt: innerActions.markedAsCanonicalAt
+		})
 		.from(innerActions)
 		.where(not(isNull(innerActions.markedAsCanonicalAt)))
 		.orderBy(desc(innerActions.index))

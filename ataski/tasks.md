@@ -61,3 +61,5 @@
 - T075 | done | fix-bridge-sdk-ci-test-ordering | done/T075-fix-bridge-sdk-ci-test-ordering.md
 - T076 | done | investigate-indexer-review-followups | done/T076-investigate-indexer-review-followups.md
 - T077 | done | investigate-bridge-sdk-review-followups | done/T077-investigate-bridge-sdk-review-followups.md
+- T078 | done | add-bridge-sdk-changeset-and-clean-test-config | done/T078-add-bridge-sdk-changeset-and-clean-test-config.md
+- T079 | done | review-indexer-query-efficiency-and-indexes | done/T079-review-indexer-query-efficiency-and-indexes.md
