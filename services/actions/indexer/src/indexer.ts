@@ -51,14 +51,17 @@ export async function runIndexingLoop(
 			state.consecutiveErrors += 1
 			const retryDelay = Math.min(45, baseDelay * state.consecutiveErrors + 1)
 			const missingParents = (error as { missingParents?: string[] }).missingParents
+			const message = error instanceof Error ? error.message : String(error)
 
 			logger.error("runIndexingLoop error:", error)
-			logger.warn(
-				"[runIndexingLoop] ordering failed; missing parents:",
-				missingParents
-					? `${missingParents.length} (sample: ${missingParents.slice(0, 5).join(", ")})`
-					: String(error)
-			)
+			if (missingParents) {
+				logger.warn(
+					"[runIndexingLoop] ordering failed; missing parents:",
+					`${missingParents.length} (sample: ${missingParents.slice(0, 5).join(", ")})`
+				)
+			} else {
+				logger.warn(`[runIndexingLoop] iteration failed: ${message}`)
+			}
 			logger.info(`Linear backoff: retrying in ${retryDelay}s`)
 			await waitForDelay(retryDelay, signal)
 			continue
