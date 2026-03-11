@@ -42,6 +42,8 @@ tasks:
     inputs:
       - "@globs(src)"
   test:
+    deps:
+      - ^:build
     command: pnpm exec vitest run test/diagnostics.test.ts
     inputs:
       - "@globs(src)"

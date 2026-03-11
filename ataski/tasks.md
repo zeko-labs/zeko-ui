@@ -58,3 +58,4 @@
 - T072 | done | indexer-loop-failure-isolation | done/T072-indexer-loop-failure-isolation.md
 - T073 | done | bridge-history-diagnostics | done/T073-bridge-history-diagnostics.md
 - T074 | done | merge-main-and-resolve-web-395-conflicts | done/T074-merge-main-and-resolve-web-395-conflicts.md
+- T075 | done | fix-bridge-sdk-ci-test-ordering | done/T075-fix-bridge-sdk-ci-test-ordering.md
