@@ -63,3 +63,9 @@
 - T077 | done | investigate-bridge-sdk-review-followups | done/T077-investigate-bridge-sdk-review-followups.md
 - T078 | done | add-bridge-sdk-changeset-and-clean-test-config | done/T078-add-bridge-sdk-changeset-and-clean-test-config.md
 - T079 | done | review-indexer-query-efficiency-and-indexes | done/T079-review-indexer-query-efficiency-and-indexes.md
+- T080 | done | sentry-cli-tooling | done/T080-sentry-cli-tooling.md
+- T081 | done | sentry-sampling-and-filters | done/T081-sentry-sampling-and-filters.md
+- T082 | done | chunk-reload-plugin | done/T082-chunk-reload-plugin.md
+- T083 | done | service-worker-notification-guards | done/T083-service-worker-notification-guards.md
+- T084 | done | wallet-error-handling | done/T084-wallet-error-handling.md
+- T085 | done | sentry-errors-tracking-doc | done/T085-sentry-errors-tracking-doc.md

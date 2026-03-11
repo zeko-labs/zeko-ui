@@ -20,7 +20,7 @@ export const useNotificationStore = defineStore("notifications", () => {
 		// --- Check for iOS/PWA API ---
 		try {
 			const serviceWorker = await navigator.serviceWorker.getRegistration()
-			if (serviceWorker) {
+			if (serviceWorker?.pushManager) {
 				const permissionState = await serviceWorker.pushManager.permissionState({
 					userVisibleOnly: true
 				})

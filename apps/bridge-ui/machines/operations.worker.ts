@@ -7,6 +7,14 @@ import * as Comlink from "comlink"
 import { fetchTransactionStatus, PublicKey, Transaction, UInt32, UInt64 } from "o1js"
 import { getBridgeConfig } from "./helpers"
 
+function validatePublicKey(address: string): PublicKey {
+	try {
+		return PublicKey.fromBase58(address)
+	} catch (cause) {
+		throw new Error(`Invalid Mina address: ${address}`, { cause })
+	}
+}
+
 export type ActionState = {
 	index: number
 	id: string
@@ -46,7 +54,7 @@ async function findPendingOperations({
 	l2
 }: { account: string } & L1L2): Promise<PendingOperations> {
 	const bridge = await initBridge({ l1, l2 })
-	const recipient = PublicKey.fromBase58(account)
+	const recipient = validatePublicKey(account)
 	const [{ deposits, ...depositIndices }, { withdrawals, ...withdrawalIndices }] =
 		(await Promise.all([
 			bridge.fetchDepositsWithStates(recipient),
@@ -126,7 +134,7 @@ async function submitDeposit({
 	timeoutSlots
 }: L1L2 & { user: string; amount: string; timeoutSlots?: number }): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
-	const recipient = PublicKey.fromBase58(user)
+	const recipient = validatePublicKey(user)
 	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
 	const currentSlot = await bridge.fetchCurrentSlot()
 	const timeout = timeoutSlots ? currentSlot.add(UInt32.from(timeoutSlots)) : UInt32.MAXINT()
@@ -147,7 +155,7 @@ async function submitWithdrawal({
 	amount
 }: L1L2 & { user: string; amount: string }): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
-	const recipient = PublicKey.fromBase58(user)
+	const recipient = validatePublicKey(user)
 	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
 	const submitWithdrawal = {
 		recipient,
@@ -159,25 +167,25 @@ async function submitWithdrawal({
 
 async function canFinalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
 	const bridge = await initBridge({ l1, l2 })
-	const recipient = PublicKey.fromBase58(user)
+	const recipient = validatePublicKey(user)
 	return bridge.canFinalizeDeposit(recipient)
 }
 
 async function canFinalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
 	const bridge = await initBridge({ l1, l2 })
-	const recipient = PublicKey.fromBase58(user)
+	const recipient = validatePublicKey(user)
 	return bridge.canFinalizeWithdrawal(recipient)
 }
 
 async function canCancelDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
 	const bridge = await initBridge({ l1, l2 })
-	const recipient = PublicKey.fromBase58(user)
+	const recipient = validatePublicKey(user)
 	return bridge.canCancelDeposit(recipient)
 }
 
 async function cancelDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
-	const recipient = PublicKey.fromBase58(user)
+	const recipient = validatePublicKey(user)
 	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
 	const transaction = await bridge.cancelDeposit(recipient, feePayer)
 	return transaction.toJSON()
@@ -185,14 +193,14 @@ async function cancelDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise
 
 async function finalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
-	const recipient = PublicKey.fromBase58(user)
+	const recipient = validatePublicKey(user)
 	const transaction = await bridge.finalizeDeposit(recipient)
 	return transaction.toJSON()
 }
 
 async function finalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
-	const recipient = PublicKey.fromBase58(user)
+	const recipient = validatePublicKey(user)
 	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
 	const transaction = await bridge.finalizeWithdrawal(recipient, feePayer)
 	return transaction.toJSON()

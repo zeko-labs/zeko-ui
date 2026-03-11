@@ -3,6 +3,7 @@ import { type Networks, urls, type walletMachine } from "@lumina-dex/sdk"
 import type { Mina } from "o1js"
 import type { ActorRefFromLogic } from "xstate"
 import { assign, enqueueActions, fromPromise, setup } from "xstate"
+import { toQuietIfWalletRejection } from "~/errors"
 import { createLogger } from "./debug"
 import { type HashDb, hashDb, type SavedTransaction } from "./helpers"
 import { sendMetric } from "./metrics"
@@ -91,11 +92,16 @@ export const transactionMachine = setup({
 						if (originalTransaction.feePayer.body.fee === "0") {
 							originalTransaction.feePayer.body.fee = "1"
 						}
-						const result = await window.mina.sendTransaction({
-							onlySign: true,
-							transaction: JSON.stringify(originalTransaction)
-						})
-						if (result instanceof Error) throw result
+						let result: Awaited<ReturnType<typeof window.mina.sendTransaction>>
+						try {
+							result = await window.mina.sendTransaction({
+								onlySign: true,
+								transaction: JSON.stringify(originalTransaction)
+							})
+						} catch (error) {
+							throw toQuietIfWalletRejection(error)
+						}
+						if (result instanceof Error) throw toQuietIfWalletRejection(result)
 						if ("signedData" in result) {
 							// biome-ignore lint/suspicious/noExplicitAny: Parsing without validating
 							const zkappCommand = (JSON.parse(result.signedData) as any)
