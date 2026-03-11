@@ -3,39 +3,13 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 export const requiredReferences = [
+	"10-navigation.md",
 	"10-agent-workflows.md",
-	"20-build-on-zeko.md",
-	"30-bridge-sdk.md",
-	"40-faucet-cli.md",
-	"50-endpoints.md",
-	"60-architecture.md",
-	"copied/bridge-sdk-readme.md",
-	"copied/faucet-cli-readme.md"
-] as const
-
-export type SyncedReference = {
-	sourcePath: string
-	targetPath: string
-	title: string
-	includeFromHeading: string
-	stopBeforeHeading: string
-}
-
-export const syncedReferences: SyncedReference[] = [
-	{
-		sourcePath: "packages/bridge-sdk/README.md",
-		targetPath: "references/copied/bridge-sdk-readme.md",
-		title: "# Bridge SDK Reference",
-		includeFromHeading: "## Installation",
-		stopBeforeHeading: "## Development"
-	},
-	{
-		sourcePath: "packages/faucet-cli/README.md",
-		targetPath: "references/copied/faucet-cli-readme.md",
-		title: "# Faucet CLI Reference",
-		includeFromHeading: "## Installation",
-		stopBeforeHeading: "## Development"
-	}
+	"20-user-flows.md",
+	"30-bridge-and-faucet.md",
+	"40-endpoints-and-curl.md",
+	"50-build-on-zeko.md",
+	"60-sequencer-archive-and-da.md"
 ] as const
 
 export type EndpointCheck = {
@@ -54,6 +28,26 @@ export const endpointChecks: EndpointCheck[] = [
 		name: "zeko archive graphql",
 		expected: "https://archive.testnet.zeko.io/graphql",
 		sources: ["apps/bridge-ui/machines/helpers.ts", "packages/graphql/moon.yml"]
+	},
+	{
+		name: "zeko mainnet graphql",
+		expected: "https://mainnet.zeko.io/graphql",
+		sources: ["apps/bridge-ui/machines/helpers.ts"]
+	},
+	{
+		name: "zeko mainnet archive",
+		expected: "https://archive.mainnet.zeko.io/graphql",
+		sources: ["apps/bridge-ui/machines/helpers.ts"]
+	},
+	{
+		name: "zeko alphanet graphql",
+		expected: "https://alphanet.zeko.io/graphql",
+		sources: ["apps/bridge-ui/machines/helpers.ts"]
+	},
+	{
+		name: "zeko alphanet archive",
+		expected: "https://archive.alphanet.zeko.io/graphql",
+		sources: ["apps/bridge-ui/machines/helpers.ts"]
 	},
 	{
 		name: "mina gateway",
@@ -96,15 +90,15 @@ export type EvalCase = {
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 export const packageRoot = path.resolve(currentDir, "..")
+export const skillRoot = path.join(packageRoot, "zeko")
 export const repoRoot = path.resolve(packageRoot, "..", "..")
 
-export const markdownPathAllowlist = ["references/", "SKILL.md", "README.md"]
 export const forbiddenMarkdownPatterns = [
 	/\b(?:apps|packages|services|docs)\/[^\s)`]+/g,
 	/\.\.\//g,
 	/\/Users\//g
 ]
-export const skippedExternalLinkChecks = new Set(["https://docs.zeko.io/llms.txt"])
+export const skippedExternalLinkChecks = new Set<string>()
 
 const evalPromptPath = path.join(packageRoot, "evals", "prompts.json")
 export const evalCases = JSON.parse(fs.readFileSync(evalPromptPath, "utf8")) as EvalCase[]

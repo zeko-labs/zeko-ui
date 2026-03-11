@@ -5,21 +5,22 @@ import { describe, expect, it } from "vitest"
 
 const thisDir = path.dirname(fileURLToPath(import.meta.url))
 const packageRoot = path.resolve(thisDir, "..")
-const skillPath = path.join(packageRoot, "SKILL.md")
-const referencesDir = path.join(packageRoot, "references")
+const skillRoot = path.join(packageRoot, "zeko")
+const skillPath = path.join(skillRoot, "SKILL.md")
+const referencesDir = path.join(skillRoot, "references")
 const requiredReferences = [
+	"10-navigation.md",
 	"10-agent-workflows.md",
-	"20-build-on-zeko.md",
-	"30-bridge-sdk.md",
-	"40-faucet-cli.md",
-	"50-endpoints.md",
-	"60-architecture.md",
-	"copied/bridge-sdk-readme.md",
-	"copied/faucet-cli-readme.md"
+	"20-user-flows.md",
+	"30-bridge-and-faucet.md",
+	"40-endpoints-and-curl.md",
+	"50-build-on-zeko.md",
+	"60-sequencer-archive-and-da.md"
 ]
 
 describe("use-zeko skill structure", () => {
 	it("ships the router skill and every required reference file", () => {
+		expect(fs.existsSync(skillRoot)).toBe(true)
 		expect(fs.existsSync(skillPath)).toBe(true)
 		expect(fs.existsSync(referencesDir)).toBe(true)
 
@@ -34,9 +35,12 @@ describe("use-zeko skill structure", () => {
 		for (const referenceFile of requiredReferences) {
 			expect(skill).toContain(`references/${referenceFile}`)
 		}
+
+		expect(skill).toContain("docs.zeko.io")
+		expect(skill).not.toContain("references/copied/")
 	})
 
-	it("keeps shipped markdown self-contained to the skill directory", () => {
+	it("keeps shipped markdown self-contained to the skill directory and rich enough for agents", () => {
 		const markdownFiles = [
 			skillPath,
 			path.join(packageRoot, "README.md"),
@@ -49,5 +53,21 @@ describe("use-zeko skill structure", () => {
 			expect(content).not.toContain("../")
 			expect(content).not.toContain("/Users/")
 		}
+
+		const endpointsAndCurl = fs.readFileSync(
+			path.join(referencesDir, "40-endpoints-and-curl.md"),
+			"utf8"
+		)
+		expect(endpointsAndCurl).toContain("curl")
+		expect(endpointsAndCurl).toContain("sequencerPk")
+		expect(endpointsAndCurl).toContain("archive")
+
+		const protocol = fs.readFileSync(
+			path.join(referencesDir, "60-sequencer-archive-and-da.md"),
+			"utf8"
+		)
+		expect(protocol).toContain("sequencer")
+		expect(protocol).toContain("archive node")
+		expect(protocol).toContain("DA layer")
 	})
 })

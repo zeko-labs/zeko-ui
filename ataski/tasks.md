@@ -52,3 +52,4 @@
 - T069 | done | add-use-zeko-validation-evals-and-ci | done/T069-add-use-zeko-validation-evals-and-ci.md
 - T070 | done | add-use-zeko-public-mirror-sync | done/T070-add-use-zeko-public-mirror-sync.md
 - T071 | done | simplify-use-zeko-skill-for-installed-agent-context | done/T071-simplify-use-zeko-skill-for-installed-agent-context.md
+- T072 | done | expand-and-restructure-zeko-skill | done/T072-expand-and-restructure-zeko-skill.md

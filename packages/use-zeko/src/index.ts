@@ -9,12 +9,12 @@ import {
 	packageRoot,
 	repoRoot,
 	requiredReferences,
+	skillRoot,
 	skippedExternalLinkChecks
 } from "./spec.js"
-import { generateSyncedReferences } from "./sync-sources.js"
 
-const SKILL_PATH = path.join(packageRoot, "SKILL.md")
-const REFERENCES_DIR = path.join(packageRoot, "references")
+const SKILL_PATH = path.join(skillRoot, "SKILL.md")
+const REFERENCES_DIR = path.join(skillRoot, "references")
 const requiredReferenceSet = new Set<string>(requiredReferences)
 const ignoredTokens = new Set([
 	"the",
@@ -101,8 +101,9 @@ const collectMarkdownFiles = () => {
 }
 
 export const validateStructure = () => {
-	assert(fs.existsSync(SKILL_PATH), "Missing package root SKILL.md")
-	assert(fs.existsSync(REFERENCES_DIR), "Missing references directory")
+	assert(fs.existsSync(skillRoot), "Missing zeko skill directory")
+	assert(fs.existsSync(SKILL_PATH), "Missing zeko/SKILL.md")
+	assert(fs.existsSync(REFERENCES_DIR), "Missing zeko/references directory")
 
 	const skill = fs.readFileSync(SKILL_PATH, "utf8")
 	const actualReferences = listReferenceFiles(REFERENCES_DIR)
@@ -135,15 +136,6 @@ export const validateSelfContainedMarkdown = () => {
 				`Forbidden local-path reference in ${path.relative(packageRoot, markdownFile)}`
 			)
 		}
-	}
-}
-
-export const validateSyncedReferences = () => {
-	for (const generated of generateSyncedReferences()) {
-		const targetPath = path.join(packageRoot, generated.targetPath)
-		assert(fs.existsSync(targetPath), `Missing synced reference: ${generated.targetPath}`)
-		const actual = fs.readFileSync(targetPath, "utf8")
-		assert(actual === generated.content, `Synced reference is out of date: ${generated.targetPath}`)
 	}
 }
 
@@ -275,7 +267,6 @@ export const runEvals = () => {
 export const runValidation = async () => {
 	validateStructure()
 	validateSelfContainedMarkdown()
-	validateSyncedReferences()
 	validateEndpoints()
 	await validateExternalLinks()
 }

@@ -2,36 +2,49 @@
 	{
 		"id": "bridge-sdk-config",
 		"prompt": "Which endpoints should I pass to the Zeko Bridge SDK from an agent context?",
-		"expectedReferences": ["30-bridge-sdk.md", "50-endpoints.md"],
+		"expectedReferences": ["30-bridge-and-faucet.md", "40-endpoints-and-curl.md"],
 		"expectedFragments": [
 			"https://gateway.mina.devnet.zeko.io",
 			"https://gateway.mina.archive.devnet.zeko.io",
 			"https://testnet.zeko.io/graphql",
 			"https://archive.testnet.zeko.io/graphql",
 			"https://api.actions.zeko.io/graphql",
-			"MINA_PRIVATE_KEY"
+			"MINA_PRIVATE_KEY",
+			"https://docs.zeko.io/developers/guides/bridge-sdk"
 		]
 	},
 	{
 		"id": "faucet-json",
 		"prompt": "How should an agent get testnet funds and use the faucet in JSON mode?",
-		"expectedReferences": [
-			"10-agent-workflows.md",
-			"40-faucet-cli.md",
-			"copied/faucet-cli-readme.md"
-		],
-		"expectedFragments": ["GITHUB_TOKEN", "--json", "claim <address>", "zeko-testnet"]
+		"expectedReferences": ["10-agent-workflows.md", "30-bridge-and-faucet.md"],
+		"expectedFragments": [
+			"GITHUB_TOKEN",
+			"--json",
+			"zeko-testnet",
+			"https://docs.zeko.io/developers/guides/faucet-cli"
+		]
 	},
 	{
 		"id": "browser-wallet",
 		"prompt": "Should I use Auro Wallet here?",
-		"expectedReferences": ["10-agent-workflows.md"],
+		"expectedReferences": ["10-agent-workflows.md", "20-user-flows.md"],
 		"expectedFragments": ["browser", "Auro Wallet", "extension"]
 	},
 	{
 		"id": "build-paths",
 		"prompt": "Can I build on Zeko with o1js or directly with OCaml?",
-		"expectedReferences": ["20-build-on-zeko.md"],
-		"expectedFragments": ["o1js", "OCaml", "https://github.com/zeko-labs/zeko"]
+		"expectedReferences": ["50-build-on-zeko.md"],
+		"expectedFragments": [
+			"o1js",
+			"OCaml",
+			"https://github.com/zeko-labs/zeko",
+			"https://docs.zeko.io/developers/guides/custom-network"
+		]
+	},
+	{
+		"id": "sequencer-and-archive",
+		"prompt": "What do the sequencer and archive node do on Zeko, and what queries can I run against them?",
+		"expectedReferences": ["40-endpoints-and-curl.md", "60-sequencer-archive-and-da.md"],
+		"expectedFragments": ["sequencer", "archive node", "curl", "sequencerPk", "events"]
 	}
 ]

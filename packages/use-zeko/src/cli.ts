@@ -1,16 +1,11 @@
 #!/usr/bin/env node
 
 import { runCheck, runEvals, runValidation } from "./index.js"
-import { syncSources } from "./sync-sources.js"
 
 const command = process.argv[2] ?? "check"
 
 const run = async () => {
 	switch (command) {
-		case "sync-sources":
-			syncSources()
-			console.log("use-zeko sources synced")
-			return
 		case "validate":
 			await runValidation()
 			console.log("use-zeko validation passed")

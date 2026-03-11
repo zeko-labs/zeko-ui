@@ -15,6 +15,7 @@ describe("use-zeko mirror sync", () => {
 		const readme = fs.readFileSync(readmePath, "utf8")
 		expect(readme).toContain("public mirror")
 		expect(readme).toContain("sync-use-zeko.yaml")
+		expect(readme).toContain("zeko/SKILL.md")
 		expect(readme).not.toMatch(/\b(?:apps|packages|services|docs)\/[^\s)`]+/)
 	})
 
