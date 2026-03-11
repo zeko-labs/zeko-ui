@@ -26,6 +26,22 @@ const IndexerStatusSchema = v.object({
 		outer: v.nullable(v.number()),
 		inner: v.nullable(v.number())
 	}),
+	canonicalProgress: v.optional(
+		v.object({
+			checkedAt: v.nullable(v.number()),
+			error: v.optional(v.string()),
+			outer: v.object({
+				lastFinalIndex: v.nullable(v.number()),
+				lastFinalBlockHeight: v.nullable(v.number()),
+				nonCanonicalTailCount: v.number()
+			}),
+			inner: v.object({
+				lastFinalIndex: v.nullable(v.number()),
+				lastFinalBlockHeight: v.nullable(v.number()),
+				nonCanonicalTailCount: v.number()
+			})
+		})
+	),
 	config: v.object({
 		intervalSeconds: v.number()
 	}),
@@ -45,7 +61,21 @@ const ControlResponseSchema = v.object({
 })
 
 const HealthPayloadSchema = v.object({
-	status: v.string()
+	status: v.string(),
+	indexer: v.object({
+		canonicalProgress: v.object({
+			outer: v.object({
+				lastFinalIndex: v.nullable(v.number()),
+				lastFinalBlockHeight: v.nullable(v.number()),
+				nonCanonicalTailCount: v.number()
+			}),
+			inner: v.object({
+				lastFinalIndex: v.nullable(v.number()),
+				lastFinalBlockHeight: v.nullable(v.number()),
+				nonCanonicalTailCount: v.number()
+			})
+		})
+	})
 })
 
 type IndexerStatus = v.InferOutput<typeof IndexerStatusSchema>
@@ -92,6 +122,12 @@ const statusFields = (status?: IndexerStatus) => ({
 	lastRunTimestamp: status?.lastRunTimestamp ?? null,
 	lastFetchedOuter: status?.lastFetchedBlock.outer ?? null,
 	lastFetchedInner: status?.lastFetchedBlock.inner ?? null,
+	outerLastFinalIndex: status?.canonicalProgress?.outer.lastFinalIndex ?? null,
+	outerLastFinalBlock: status?.canonicalProgress?.outer.lastFinalBlockHeight ?? null,
+	outerNonCanonicalTail: status?.canonicalProgress?.outer.nonCanonicalTailCount ?? null,
+	innerLastFinalIndex: status?.canonicalProgress?.inner.lastFinalIndex ?? null,
+	innerLastFinalBlock: status?.canonicalProgress?.inner.lastFinalBlockHeight ?? null,
+	innerNonCanonicalTail: status?.canonicalProgress?.inner.nonCanonicalTailCount ?? null,
 	intervalSeconds: status?.config.intervalSeconds ?? null,
 	consecutiveErrors: status?.consecutiveErrors ?? null
 })
@@ -303,7 +339,25 @@ const runHealthFromArgs = async (args: Record<string, unknown>) => {
 				check: "health",
 				httpStatus: health.statusCode,
 				latencyMs: health.latencyMs,
-				status
+				status,
+				outerLastFinalIndex: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.outer.lastFinalIndex
+					: null,
+				outerLastFinalBlock: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.outer.lastFinalBlockHeight
+					: null,
+				outerNonCanonicalTail: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.outer.nonCanonicalTailCount
+					: null,
+				innerLastFinalIndex: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.inner.lastFinalIndex
+					: null,
+				innerLastFinalBlock: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.inner.lastFinalBlockHeight
+					: null,
+				innerNonCanonicalTail: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.inner.nonCanonicalTailCount
+					: null
 			}
 		]
 	})

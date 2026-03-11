@@ -5,6 +5,19 @@ export interface DatabaseHealthSnapshot {
 	checkedAt: number | null
 }
 
+export interface CanonicalProgressStreamSnapshot {
+	lastFinalIndex: number | null
+	lastFinalBlockHeight: number | null
+	nonCanonicalTailCount: number
+}
+
+export interface CanonicalProgressSnapshot {
+	checkedAt: number | null
+	error?: string
+	outer: CanonicalProgressStreamSnapshot
+	inner: CanonicalProgressStreamSnapshot
+}
+
 export interface IndexerStatusSnapshot {
 	isRunning: boolean
 	lastFetchedBlock: { outer: number | null; inner: number | null }
@@ -14,6 +27,7 @@ export interface IndexerStatusSnapshot {
 export interface HealthComputationInput {
 	now: number
 	dbHealth: DatabaseHealthSnapshot
+	canonicalProgress: CanonicalProgressSnapshot
 	indexerStatus: IndexerStatusSnapshot
 	staleAfterMs: number
 	environment?: string
@@ -39,6 +53,13 @@ export interface HealthComputationResult {
 			status: "running" | "stopped"
 			lastFetchedBlock: { outer: number | null; inner: number | null }
 			consecutiveErrors: number
+			canonicalProgress: {
+				checkedAt: string | null
+				ageMs: number | null
+				error?: string
+				outer: CanonicalProgressStreamSnapshot
+				inner: CanonicalProgressStreamSnapshot
+			}
 		}
 	}
 }
@@ -48,11 +69,14 @@ const MIN_CONSECUTIVE_ERRORS = 5
 export function computeHealthStatus({
 	now,
 	dbHealth,
+	canonicalProgress,
 	indexerStatus,
 	staleAfterMs,
 	environment
 }: HealthComputationInput): HealthComputationResult {
 	const ageMs = dbHealth.checkedAt == null ? null : Math.max(0, now - dbHealth.checkedAt)
+	const canonicalProgressAgeMs =
+		canonicalProgress.checkedAt == null ? null : Math.max(0, now - canonicalProgress.checkedAt)
 	const isDbStale = ageMs == null || ageMs > staleAfterMs
 	const isIndexerHealthy =
 		indexerStatus.isRunning && indexerStatus.consecutiveErrors < MIN_CONSECUTIVE_ERRORS
@@ -90,7 +114,17 @@ export function computeHealthStatus({
 			indexer: {
 				status: indexerStatus.isRunning ? "running" : "stopped",
 				lastFetchedBlock: indexerStatus.lastFetchedBlock,
-				consecutiveErrors: indexerStatus.consecutiveErrors
+				consecutiveErrors: indexerStatus.consecutiveErrors,
+				canonicalProgress: {
+					checkedAt:
+						canonicalProgress.checkedAt == null
+							? null
+							: new Date(canonicalProgress.checkedAt).toISOString(),
+					ageMs: canonicalProgressAgeMs,
+					...(canonicalProgress.error && { error: canonicalProgress.error }),
+					outer: canonicalProgress.outer,
+					inner: canonicalProgress.inner
+				}
 			}
 		}
 	}
@@ -116,6 +150,68 @@ export function createDatabaseHealthMonitor({
 		snapshot = {
 			...result,
 			checkedAt: Date.now()
+		}
+	}
+
+	return {
+		start() {
+			if (timer != null) return
+			void refresh()
+			timer = setInterval(() => {
+				void refresh()
+			}, refreshIntervalMs)
+			timer.unref?.()
+		},
+		stop() {
+			if (timer == null) return
+			clearInterval(timer)
+			timer = null
+		},
+		getSnapshot() {
+			return { ...snapshot }
+		}
+	}
+}
+
+export function createCanonicalProgressMonitor({
+	refreshIntervalMs,
+	check
+}: {
+	refreshIntervalMs: number
+	check: () => Promise<{
+		outer: CanonicalProgressStreamSnapshot
+		inner: CanonicalProgressStreamSnapshot
+	}>
+}) {
+	let snapshot: CanonicalProgressSnapshot = {
+		checkedAt: null,
+		error: "canonical progress pending",
+		outer: {
+			lastFinalIndex: null,
+			lastFinalBlockHeight: null,
+			nonCanonicalTailCount: 0
+		},
+		inner: {
+			lastFinalIndex: null,
+			lastFinalBlockHeight: null,
+			nonCanonicalTailCount: 0
+		}
+	}
+	let timer: ReturnType<typeof setInterval> | null = null
+
+	const refresh = async () => {
+		try {
+			const result = await check()
+			snapshot = {
+				...result,
+				checkedAt: Date.now()
+			}
+		} catch (error) {
+			snapshot = {
+				...snapshot,
+				checkedAt: Date.now(),
+				error: error instanceof Error ? error.message : String(error)
+			}
 		}
 	}
 
