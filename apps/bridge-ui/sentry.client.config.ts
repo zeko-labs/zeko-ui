@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nuxt"
 import { QuietError } from "~/errors"
 
-const thirdPartyIgnorePatterns = [
+const ignorePatterns = [
 	// Category A: Third-party browser extension noise
 	"zaloJSV2 is not defined",
 	/window\.misesEthereum/,
@@ -9,13 +9,37 @@ const thirdPartyIgnorePatterns = [
 	"Error: no ad",
 	"TypeError: Illegal invocation",
 	/Invalid property descriptor\. Cannot both specify accessors/,
+	// Category C: Network/backend errors (bridge-sdk already retries 5x via urql retryExchange)
+	/CombinedError/,
+	"TypeError: Load failed",
+	"Unexpected end of input",
+	"Error getting account data",
 	// Category D: User navigation (benign)
 	"AbortError: The user aborted a request",
-	// Category F: Unrelated wallet extensions
+	// Category F: Unrelated wallet extensions and Auro internals
 	"Failed to connect to MetaMask",
 	"Attempting to use a disconnected port object",
-	// Category G: Browser extension messaging
-	"Failed to send message to background script"
+	/registeredMessage\[.*\]\.resolve/,
+	"Error invoking post: Method not found",
+	// Category G: Browser extension messaging and iOS WKWebView
+	"Failed to send message to background script",
+	"no messageHandlers",
+	"WKWebView API client did not respond",
+	// Category H: Third-party library internals (o1js)
+	/Cannot assign to read only property.*toString.*Sha256/,
+	/rangeCheck32/,
+	"Reflect.getMetadata is not a function",
+	// Category H: Browser environment edge cases
+	"Failed to read 'localStorage'",
+	"NotAllowedError: play() request was interrupted",
+	/NotAllowedError.*play/,
+	// bridge-sdk validation errors (corrupted chain data, user cannot fix)
+	"Invalid actions data",
+	"Invalid witnesses data",
+	/Invalid commit.*withdrawal delay/,
+	"Invalid runtime config",
+	// XState race condition (guarded in code, filter residual)
+	"Actor with system ID already exists"
 ]
 
 Sentry.init({
@@ -24,11 +48,11 @@ Sentry.init({
 	environment: useRuntimeConfig().public.environment,
 	// https://docs.sentry.io/platforms/javascript/troubleshooting/#using-the-tunnel-option
 	tunnel: "/tunnel",
-	ignoreErrors: thirdPartyIgnorePatterns,
+	ignoreErrors: ignorePatterns,
 	beforeSend(event, hint) {
 		if (hint?.originalException instanceof QuietError) return null
 		// Filter errors tagged as exclusively third-party by thirdPartyErrorFilterIntegration
-		if (event.tags?.["third_party_code"]) return null
+		if (event.tags?.third_party_code) return null
 		return event
 	},
 	// Adds request headers and IP for users, for more info visit:
