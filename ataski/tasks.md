@@ -51,3 +51,4 @@
 - T068 | done | indexer-canonical-progression | done/T068-indexer-canonical-progression.md
 - T069 | done | indexer-loop-failure-isolation | done/T069-indexer-loop-failure-isolation.md
 - T070 | done | bridge-history-diagnostics | done/T070-bridge-history-diagnostics.md
+- T071 | in-progress | merge-main-and-resolve-web-395-conflicts | in-progress/T071-merge-main-and-resolve-web-395-conflicts.md
