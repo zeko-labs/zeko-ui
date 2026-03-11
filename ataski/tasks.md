@@ -48,3 +48,6 @@
 - T048 | done | fix-ipc-review-findings-and-proof-workflow | done/T048-fix-ipc-review-findings-and-proof.md
 - T058 | done | rebase-pr-137-and-add-indexer-reset-cli | done/T058-rebase-pr-137-and-add-indexer-reset-cli.md
 - T064 | done | remove-actions-indexer-worker-timeout-regression | done/T064-remove-actions-indexer-worker-timeout-regression.md
+- T068 | in-progress | indexer-canonical-progression | in-progress/T068-indexer-canonical-progression.md
+- T069 | in-progress | indexer-loop-failure-isolation | in-progress/T069-indexer-loop-failure-isolation.md
+- T070 | in-progress | bridge-history-diagnostics | in-progress/T070-bridge-history-diagnostics.md
