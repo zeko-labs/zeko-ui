@@ -31,9 +31,16 @@ tasks:
     command: tsc --noEmit
     inputs:
       - "@group(skill)"
+  sync-sources:
+    command: node dist/cli.js sync-sources
+    deps:
+      - build
+    inputs:
+      - "@group(skill)"
   validate:
     command: node dist/cli.js validate
     deps:
+      - sync-sources
       - build
     inputs:
       - "@group(skill)"
@@ -46,7 +53,7 @@ tasks:
   check:
     command: node dist/cli.js check
     deps:
-      - build
+      - sync-sources
       - test
     inputs:
       - "@group(skill)"

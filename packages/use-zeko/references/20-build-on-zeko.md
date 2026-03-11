@@ -1,37 +1,26 @@
 # Build on Zeko
 
-Use this file for app developers and zkApp builders.
+Use this file when the user wants to build apps, zkApps, or protocol-facing integrations on Zeko.
 
-## Default framing
+## Main paths
 
-- Zeko app development is `o1js`-first.
-- Zeko is Mina-isomorphic enough that standard Mina zkApp patterns usually carry over.
-- Use official o1js docs for framework semantics and the Zeko references here for Zeko-specific network, bridge, faucet, explorer, and protocol details.
+- `o1js` is the default TypeScript path for most app builders.
+- OCaml is also valid for lower-level or protocol-native contract work.
 
-## Recommended builder path
+## o1js path
 
-1. Start with the official o1js docs and zkApp introduction in `50-o1js-and-tooling.md`.
-2. Set up a wallet and get testnet funds using `10-users.md`.
-3. Use `60-networks-and-endpoints.md` for canonical Zeko and Mina GraphQL URLs.
-4. Use `30-bridge.md` if the app needs L1/L2 deposits or withdrawals.
-5. Use `40-faucet.md` if the app or workflow needs automated faucet claims or CLI integration.
+- Docs: `https://docs.o1labs.org/o1js/`
+- Getting started: `https://docs.o1labs.org/o1js/getting-started/what-is-a-zk-constraint-system`
+- zkApps intro: `https://docs.o1labs.org/o1js/zkapps/intro`
+- zkApp CLI: `https://github.com/o1-labs/zkapp-cli`
 
-## What Zeko-specific material adds
+## OCaml path
 
-- Exact Zeko GraphQL and archive endpoints
-- Mina proxy domains preferred by Zeko runtime traffic
-- Bridge semantics and operation states
-- Faucet UX, CLI, and auth expectations
-- High-level rollup, sequencer, and DA concepts
+- Public Zeko protocol repo: `https://github.com/zeko-labs/zeko`
+- Use this when the user explicitly wants direct OCaml contracts, protocol code, or lower-level integration instead of `o1js`.
 
-## Best repo-backed builder sources
+## Practical advice
 
-- `packages/bridge-sdk/README.md`
-- `packages/bridge-sdk/examples/*` as secondary examples, not endpoint authority
-- `packages/graphql/README.md`
-- `apps/docs/content/developers/getting-started.md` as an outbound-link directory, not sole authority
-
-## Caveats
-
-- The developer getting-started page contains useful links, but also stale or placeholder entries. Treat it as a guidepost, not a canonical operational spec.
-- For bridge endpoints, prefer the bridge runtime helper and Bridge SDK README over example scripts.
+- Use `references/50-endpoints.md` for live defaults.
+- Use `references/30-bridge-sdk.md` if the app needs Mina/Zeko bridging.
+- Use `references/40-faucet-cli.md` if the app needs automated testnet funding.

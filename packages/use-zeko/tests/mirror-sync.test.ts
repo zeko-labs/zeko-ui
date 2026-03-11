@@ -15,7 +15,7 @@ describe("use-zeko mirror sync", () => {
 		const readme = fs.readFileSync(readmePath, "utf8")
 		expect(readme).toContain("public mirror")
 		expect(readme).toContain("sync-use-zeko.yaml")
-		expect(readme).toContain("packages/use-zeko")
+		expect(readme).not.toMatch(/\b(?:apps|packages|services|docs)\/[^\s)`]+/)
 	})
 
 	it("adds a dedicated sync wrapper workflow for the public mirror", () => {

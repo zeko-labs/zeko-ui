@@ -8,16 +8,14 @@ const packageRoot = path.resolve(thisDir, "..")
 const skillPath = path.join(packageRoot, "SKILL.md")
 const referencesDir = path.join(packageRoot, "references")
 const requiredReferences = [
-	"01-navigation.md",
-	"10-users.md",
+	"10-agent-workflows.md",
 	"20-build-on-zeko.md",
-	"30-bridge.md",
-	"40-faucet.md",
-	"50-o1js-and-tooling.md",
-	"60-networks-and-endpoints.md",
-	"70-architecture-and-protocol.md",
-	"80-troubleshooting-and-boundaries.md",
-	"99-source-of-truth.md"
+	"30-bridge-sdk.md",
+	"40-faucet-cli.md",
+	"50-endpoints.md",
+	"60-architecture.md",
+	"copied/bridge-sdk-readme.md",
+	"copied/faucet-cli-readme.md"
 ]
 
 describe("use-zeko skill structure", () => {
@@ -38,14 +36,18 @@ describe("use-zeko skill structure", () => {
 		}
 	})
 
-	it("documents the canonical source-of-truth map", () => {
-		const sourceOfTruth = fs.readFileSync(path.join(referencesDir, "99-source-of-truth.md"), "utf8")
+	it("keeps shipped markdown self-contained to the skill directory", () => {
+		const markdownFiles = [
+			skillPath,
+			path.join(packageRoot, "README.md"),
+			...requiredReferences.map((referenceFile) => path.join(referencesDir, referenceFile))
+		]
 
-		expect(sourceOfTruth).toContain("apps/docs/content")
-		expect(sourceOfTruth).toContain("packages/bridge-sdk/README.md")
-		expect(sourceOfTruth).toContain("packages/faucet-cli/README.md")
-		expect(sourceOfTruth).toContain("packages/graphql/README.md")
-		expect(sourceOfTruth).toContain("apps/bridge-ui/machines/helpers.ts")
-		expect(sourceOfTruth).toContain("docs/CODEBASE_MAP.md")
+		for (const markdownFile of markdownFiles) {
+			const content = fs.readFileSync(markdownFile, "utf8")
+			expect(content).not.toMatch(/\b(?:apps|packages|services|docs)\/[^\s)`]+/)
+			expect(content).not.toContain("../")
+			expect(content).not.toContain("/Users/")
+		}
 	})
 })
