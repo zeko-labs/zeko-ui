@@ -12,6 +12,7 @@ fileGroups:
     - CLAUDE.md
     - .env.example
     - Dockerfile
+    - scripts/**/*
     - wrangler.jsonc
     - worker-configuration.d.ts
     - tsconfig.json

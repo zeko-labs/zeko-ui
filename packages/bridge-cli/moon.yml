@@ -11,6 +11,7 @@ fileGroups:
     - AGENTS.md
     - CLAUDE.md
     - .env.example
+    - scripts/**/*
     - moon.yml
     - package.json
     - tsconfig.json
@@ -45,7 +46,7 @@ tasks:
     description: Manual real-network validation of the high-level bridge command from Mina testnet to Zeko testnet.
     deps:
       - build
-    command: vitest run tests/live-bridge.manual.test.ts --testNamePattern "mina:testnet -> zeko:testnet"
+    command: bun ./scripts/run-live-bridge.ts mina:testnet zeko:testnet deposit
     options:
       cache: false
       runInCI: false
@@ -55,7 +56,7 @@ tasks:
     description: Manual real-network validation of the high-level bridge command from Zeko testnet to Mina testnet.
     deps:
       - build
-    command: vitest run tests/live-bridge.manual.test.ts --testNamePattern "zeko:testnet -> mina:testnet"
+    command: bun ./scripts/run-live-bridge.ts zeko:testnet mina:testnet withdrawal
     options:
       cache: false
       runInCI: false

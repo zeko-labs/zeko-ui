@@ -63,3 +63,4 @@
 - T063 | done | investigate-pr-139-review-findings | done/T063-investigate-pr-139-review-findings.md
 - T064 | done | single-command-bridge-validation-and-ordered-claims | done/T064-single-command-bridge-validation-and-ordered-claims.md
 - T065 | done | replace-bridge-validator-with-cloudflare-workflows | done/T065-replace-bridge-validator-with-cloudflare-workflows.md
+- T066 | in-progress | finalize-bridge-cli-release-and-validator-ops | in-progress/T066-finalize-bridge-cli-release-and-validator-ops.md

@@ -123,10 +123,6 @@ The changesets workflow creates a PR titled `release: version packages`. Review 
 
 Once the version PR is merged, the release pipeline builds the package, publishes the tarball to npm, creates a GitHub release on `zeko-labs/bridge-cli`, and syncs the mirror repo.
 
-### Manual release
-
-Trigger `release-bridge-cli.yaml` via `workflow_dispatch` to rerun the packaging, publish check, GitHub release, and mirror sync for the current version.
-
 ## Secrets
 
 | Secret                         | Where    | Purpose                                  |

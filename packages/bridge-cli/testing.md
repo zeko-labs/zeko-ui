@@ -43,7 +43,8 @@ moon run bridge-cli:live-bridge-zeko-to-mina
 Each task:
 
 - builds the local CLI
-- runs the single high-level `bridge` command
+- runs the single high-level `bridge` command directly, not through Vitest
+- streams live progress from stderr while the bridge is waiting on the network
 - validates the final JSON payload
 - fails if the bridge does not complete successfully
 

@@ -72,6 +72,12 @@ printf '%s' "$SLACK_BOT_TOKEN" | pnpm exec wrangler secret put SLACK_BOT_TOKEN -
 printf '%s' "$SLACK_CHANNEL_ID" | pnpm exec wrangler secret put SLACK_CHANNEL_ID --config services/bridge-validator/wrangler.jsonc
 ```
 
+If the worker code is deployed through CI, use the post-deploy sync script instead of entering each secret manually:
+
+```bash
+bash services/bridge-validator/scripts/push-secrets-from-env.sh /absolute/path/to/.env
+```
+
 Generate types and deploy:
 
 ```bash
@@ -172,15 +178,21 @@ Use:
 - repository `zeko-ui`
 - workflow filename `changesets.yaml`
 
-4. Release the package version that the validator should execute:
+4. Add a Changeset for the bridge CLI release work:
 
 ```bash
-gh workflow run "Release Bridge CLI" --ref canonical/bridge-cli
-gh run watch --exit-status
+pnpm changeset
 ```
 
-5. Create and install the Slack bot, then capture `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID`.
-6. Push the validator secrets with `wrangler secret put`.
-7. Deploy the Worker with `wrangler deploy`.
-8. Trigger both workflow directions manually once and confirm they show up in `wrangler workflows instances list`.
-9. Leave the Cloudflare cron trigger enabled for the ongoing 6-hour schedule.
+5. Merge the bridge CLI PR, then let `changesets.yaml` create the `release: version packages` PR on `main`.
+6. Merge the version PR so the OIDC release workflow publishes the real npm version.
+7. Create and install the Slack bot, then capture `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID`.
+8. Deploy the Worker through CI.
+9. Run the post-deploy secret sync script:
+
+```bash
+bash services/bridge-validator/scripts/push-secrets-from-env.sh /absolute/path/to/.env
+```
+
+10. Trigger both workflow directions manually once and confirm they show up in `wrangler workflows instances list`.
+11. Leave the Cloudflare cron trigger enabled for the ongoing 6-hour schedule.

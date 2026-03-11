@@ -195,28 +195,52 @@ Before local live validation or scheduled monitoring can work, make sure all of 
 
    The workflow filename must be `changesets.yaml`, not `release-bridge-cli.yaml`, because npm validates the caller workflow for `workflow_call` releases.
 
-4. Publish the package from this branch after the trusted publisher is configured:
+4. Add a Changeset for the first real bridge-cli release from the monorepo root:
 
    ```bash
-   gh workflow run "Release Bridge CLI" --ref canonical/bridge-cli
-   gh run watch --exit-status
+   pnpm changeset
    ```
 
-5. Create the Slack bot for validator failures using the manifest at `services/bridge-validator/slack-app-manifest.json`, then capture:
+   Choose `@zeko-labs/bridge-cli` and the bump type you want for the first reviewed release.
+
+5. Merge this PR, wait for `changesets.yaml` to open the `release: version packages` PR on `main`, then merge that version PR so the OIDC publish runs automatically.
+
+6. After the first reviewed version is published successfully, remove the accidental `0.0.0` if it is still within npm's unpublish window:
+
+   ```bash
+   npm unpublish @zeko-labs/bridge-cli@0.0.0
+   ```
+
+   If npm no longer allows unpublish, deprecate it instead:
+
+   ```bash
+   npm deprecate @zeko-labs/bridge-cli@0.0.0 "Accidental initial publish. Do not use this version."
+   ```
+
+7. Create the Slack bot for validator failures using the manifest at `services/bridge-validator/slack-app-manifest.json`, then capture:
    - `SLACK_BOT_TOKEN`
    - `SLACK_CHANNEL_ID`
 
-6. Deploy the Cloudflare-based validator service and push its secrets:
-   - `ZEKO_BRIDGE_MINA_PRIVATE_KEY`
-   - optional `ZEKO_BRIDGE_ZEKO_PRIVATE_KEY`
-   - `SLACK_BOT_TOKEN`
-   - `SLACK_CHANNEL_ID`
+8. Deploy the Cloudflare-based validator service through CI.
 
-7. Trigger both Cloudflare workflow directions manually once after deploy:
+9. Run the post-deploy secret sync script against the env file that contains the validator secrets:
 
    ```bash
-   pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config services/bridge-validator/wrangler.jsonc
-   pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config services/bridge-validator/wrangler.jsonc
+   bash services/bridge-validator/scripts/push-secrets-from-env.sh /absolute/path/to/.env
    ```
 
-8. Confirm the Cloudflare cron trigger remains enabled before expecting recurring Slack alerts.
+10. Trigger both Cloudflare workflow directions manually once after deploy:
+
+```bash
+pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config services/bridge-validator/wrangler.jsonc
+pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config services/bridge-validator/wrangler.jsonc
+```
+
+11. Confirm the Cloudflare cron trigger remains enabled before expecting recurring Slack alerts.
+
+The validator service reads only:
+
+- `ZEKO_BRIDGE_MINA_PRIVATE_KEY`
+- optional `ZEKO_BRIDGE_ZEKO_PRIVATE_KEY`
+- `SLACK_BOT_TOKEN`
+- `SLACK_CHANNEL_ID`
