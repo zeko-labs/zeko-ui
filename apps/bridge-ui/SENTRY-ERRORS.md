@@ -2,6 +2,8 @@
 
 Tracking document for bridge-ui Sentry issues from Linear Web team triage.
 
+> Last reconciled with Linear Web Triage: 2026-03-12. All Sentry-related issues moved to Done.
+
 ## Category A: Third-party Extension Noise (Filtered)
 
 Not our code. Zero signal. Safe to filter.
