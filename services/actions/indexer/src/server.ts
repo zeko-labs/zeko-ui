@@ -2,9 +2,13 @@ import { bearer } from "@elysiajs/bearer"
 import { cors } from "@elysiajs/cors"
 import { node } from "@elysiajs/node"
 import { Elysia, t } from "elysia"
-import { checkDatabaseHealth, createDatabase } from "./db"
+import { checkDatabaseHealth, createDatabase, getCanonicalProgressSnapshot } from "./db"
 import { env } from "./env"
-import { computeHealthStatus, createDatabaseHealthMonitor } from "./health"
+import {
+	computeHealthStatus,
+	createCanonicalProgressMonitor,
+	createDatabaseHealthMonitor
+} from "./health"
 import { Indexer } from "./indexer"
 
 const db = createDatabase(env.DATABASE_URL)
@@ -14,6 +18,11 @@ const dbHealthMonitor = createDatabaseHealthMonitor({
 	check: async () => checkDatabaseHealth(db)
 })
 dbHealthMonitor.start()
+const canonicalProgressMonitor = createCanonicalProgressMonitor({
+	refreshIntervalMs: 10_000,
+	check: async () => getCanonicalProgressSnapshot(db)
+})
+canonicalProgressMonitor.start()
 
 const authorizeControlRequest = ({
 	bearer,
@@ -30,7 +39,10 @@ const controlServer = new Elysia()
 	.guard({
 		beforeHandle: authorizeControlRequest
 	})
-	.get("/status", () => indexer.getStatus())
+	.get("/status", () => ({
+		...indexer.getStatus(),
+		canonicalProgress: canonicalProgressMonitor.getSnapshot()
+	}))
 	.post("/start", ({ status }) => {
 		const result = indexer.start()
 		return status(result.success ? 200 : 500, result)
@@ -71,6 +83,7 @@ export const server = new Elysia({
 		const result = computeHealthStatus({
 			now: Date.now(),
 			dbHealth: dbHealthMonitor.getSnapshot(),
+			canonicalProgress: canonicalProgressMonitor.getSnapshot(),
 			indexerStatus: indexer.getStatus(),
 			staleAfterMs: 60_000,
 			environment: env.ENVIRONMENT || "unknown"

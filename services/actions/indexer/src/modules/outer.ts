@@ -11,6 +11,7 @@ import {
 	getLastFinalOuterAction,
 	getOuterActionsFromBlock,
 	type OuterActionsInsert,
+	promoteOuterCanonicalActions,
 	type WitnessInsert
 } from "../db"
 import { env } from "../env"
@@ -172,6 +173,13 @@ export async function handler(db: PostgresJsDatabase) {
 		deleteFromIndex: deleteOuterActionsFromIndex,
 		insert: insertOuter
 	})
+
+	await promoteOuterCanonicalActions(
+		db,
+		outerResult.data
+			.filter((item) => item.markedAsCanonicalAt !== null)
+			.map((item) => item.afterState)
+	)
 
 	return outerResult
 }

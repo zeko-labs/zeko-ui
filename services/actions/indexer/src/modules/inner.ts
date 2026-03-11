@@ -8,7 +8,8 @@ import {
 	deleteInnerActionsFromIndex,
 	getInnerActionsFromBlock,
 	getLastFinalInnerAction,
-	type InnerActionsInsert
+	type InnerActionsInsert,
+	promoteInnerCanonicalActions
 } from "../db"
 import { env } from "../env"
 import type { ArchiveEvent } from "../helper"
@@ -124,6 +125,13 @@ export async function handler(db: PostgresJsDatabase) {
 		deleteFromIndex: deleteInnerActionsFromIndex,
 		insert: insertInner
 	})
+
+	await promoteInnerCanonicalActions(
+		db,
+		innerResult.data
+			.filter((item) => item.markedAsCanonicalAt !== null)
+			.map((item) => item.afterState)
+	)
 
 	return innerResult
 }
