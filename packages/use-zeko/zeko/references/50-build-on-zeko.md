@@ -17,6 +17,58 @@ Use this file when the user wants to build apps, zkApps, contracts, or lower-lev
 - zkApp CLI: `https://github.com/o1-labs/zkapp-cli`
 - o1js repo: `https://github.com/o1-labs/o1js`
 
+## Inline Node plus o1js
+
+- For ad hoc agent scripting, it is useful to have `o1js` installed in the current directory before running inline Node scripts that import it.
+- This is a good fit when `curl` is too limited and the agent needs key handling, amount math, or live account inspection in one short script.
+
+## Inline example: derive a sender public key and convert amounts
+
+```bash
+node --input-type=module <<'EOF'
+import { PrivateKey, UInt64 } from "o1js"
+
+const toNanomina = (value) => {
+  const [whole, frac = ""] = value.split(".")
+  return UInt64.from(
+    BigInt(whole) * 1000000000n + BigInt((frac + "000000000").slice(0, 9))
+  )
+}
+
+const senderKey = PrivateKey.fromBase58(process.env.MINA_PRIVATE_KEY)
+
+console.log({
+  from: senderKey.toPublicKey().toBase58(),
+  amount: toNanomina("1.25").toString(),
+  fee: toNanomina("0.10").toString()
+})
+EOF
+```
+
+## Inline example: inspect a live Zeko account
+
+```bash
+node --input-type=module <<'EOF'
+import { Mina, PublicKey } from "o1js"
+
+const network = Mina.Network({
+  networkId: "zeko",
+  mina: "https://testnet.zeko.io/graphql",
+  archive: "https://archive.testnet.zeko.io/graphql"
+})
+
+Mina.setActiveInstance(network)
+
+const pk = PublicKey.fromBase58(process.env.ADDRESS)
+const { account } = await Mina.fetchAccount({ publicKey: pk })
+
+console.log({
+  nonce: account?.nonce?.toString(),
+  balance: account?.balance?.toString()
+})
+EOF
+```
+
 ## OCaml path
 
 - Direct OCaml and protocol-native work is also valid on Zeko.

@@ -78,5 +78,10 @@ describe("use-zeko skill structure", () => {
 		const navigation = fs.readFileSync(path.join(referencesDir, "10-navigation.md"), "utf8")
 		expect(navigation).toContain("llms-full.txt")
 		expect(navigation.toLowerCase()).toContain("fallback")
+
+		const build = fs.readFileSync(path.join(referencesDir, "50-build-on-zeko.md"), "utf8")
+		expect(build).toContain("node --input-type=module")
+		expect(build).toContain('from "o1js"')
+		expect(build).toContain("installed in the current directory")
 	})
 })
