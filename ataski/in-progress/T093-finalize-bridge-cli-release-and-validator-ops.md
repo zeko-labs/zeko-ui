@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T092]
 owner: codex
 created_at: 2026-03-11T13:15:00Z
-updated_at: 2026-03-12T14:05:00Z
+updated_at: 2026-03-12T14:12:00Z
 ---
 
 Finalize the bridge-cli PR for review by validating the real high-level bridge flow locally, fixing any issues found, shifting release instructions to the Changesets flow, and adding a post-deploy script that pushes validator secrets from an `.env` file into Cloudflare.
@@ -145,6 +145,28 @@ Current conclusion:
 
 - the observed zero-witness withdrawal stall is consistent with backend indexing/data-availability lag across the L2 archive/actions API path, not with a purely local CLI interpretation error
 - because the backend is not healthy on this path, the requested hard terminal failure for zero-witness withdrawals is not yet justified on the merged branch
+
+Endpoint-level retry evidence captured on 2026-03-12:
+
+- the transient `retrying phase=retrying operation=getWithdrawalStatuses • message=[Network] Bad Gateway` loop was reproduced directly against the sequencer endpoint `https://testnet.zeko.io/graphql`
+- exact failing path is the SDK `fetchLiveActionsQuery` request used by `fetchRecentActions(this.l2Client, pk)` inside `fetchWithdrawalsWithStates`
+- the same wallet check returned `HTTP 200` from:
+  - `https://archive.testnet.zeko.io/graphql` on `FetchActions`
+  - `https://api.actions.zeko.io/graphql` on both `FetchInnerWitnessesFromAuxes` and `FetchCommitAsePastSlot`
+- current evidence therefore attributes the `Bad Gateway` retries to the L2 sequencer GraphQL endpoint, not the archive node or actions API
+
+Docs follow-up completed on 2026-03-12:
+
+- replaced the placeholder docs page at `apps/docs/content/users/guides/zeko-bridge.md`
+- the page now links to:
+  - Bridge UI at `https://bridge.zeko.io`
+  - `/developers/tools/bridge-cli`
+  - `/developers/tools/bridge-sdk`
+- the page documents the bridge protocol at a high level, including:
+  - submit-then-claim flow
+  - deposit finalization vs cancellation behavior
+  - withdrawal queue behavior
+  - long waits caused by settlement, archive/indexer catch-up, and proof generation
 
 Fresh-wallet live validation status on 2026-03-12:
 
