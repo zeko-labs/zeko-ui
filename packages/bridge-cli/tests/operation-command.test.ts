@@ -287,6 +287,40 @@ describe("operation command", () => {
 		})
 	})
 
+	it("fails resume immediately on non-retryable adapter initialization errors", async () => {
+		const command = createOperationCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async list() {
+					return [persistedSession]
+				},
+				async load() {
+					return persistedSession
+				},
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async () => {
+				throw new Error("Missing required signer private key for mina:testnet")
+			},
+			write: () => {},
+			writeProgress: () => {},
+			sleep: async () => {},
+			pollIntervalMs: 0
+		})
+		const subCommands = await resolveSubCommands(command.subCommands)
+
+		await expect(
+			subCommands.resume?.run?.({
+				rawArgs: [],
+				args: { _: [], id: "op-1", json: true },
+				cmd: subCommands.resume
+			})
+		).rejects.toThrow("Missing required signer private key for mina:testnet")
+	})
+
 	it("resume-user prioritizes the requested route queue using matching persisted sessions", async () => {
 		const writes: string[] = []
 		const progress: string[] = []

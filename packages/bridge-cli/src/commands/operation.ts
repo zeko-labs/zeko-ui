@@ -336,10 +336,21 @@ const createAdapterWithRetries = async ({
 	sleep: (ms: number) => Promise<void>
 	retryDelayMs: number
 }): Promise<BridgeAdapter> => {
+	const isRetryableInitializationError = (error: unknown): boolean => {
+		const message = error instanceof Error ? error.message : String(error)
+		return !/Missing required signer private key|Unsupported bridge route|Invalid private key/i.test(
+			message
+		)
+	}
+
 	for (let attempt = 1; ; attempt += 1) {
 		try {
 			return await createAdapter({ from, to, verbose })
 		} catch (error) {
+			if (!isRetryableInitializationError(error)) {
+				throw error
+			}
+
 			await log({
 				event: "retrying",
 				phase: "initializing",

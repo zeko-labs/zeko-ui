@@ -2048,6 +2048,41 @@ describe("bridge flow", () => {
 		expect(events.some((entry) => entry.event === "retrying")).toBe(false)
 	})
 
+	it("stops immediately when submission fails instead of falling through to inspect", async () => {
+		let inspected = false
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-submit-failure",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "1",
+				account: "B62submitfail"
+			},
+			{
+				adapter: {
+					async submitDeposit() {
+						throw new Error("submit exploded")
+					},
+					async getDepositStatuses() {
+						inspected = true
+						return []
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(result.status).toBe("failed")
+		expect(result.lastError).toBe("submit exploded")
+		expect(inspected).toBe(false)
+	})
+
 	it("cancels the current deposit when finalize stays unavailable but the SDK marks it cancelable", async () => {
 		let statusCalls = 0
 		let finalizeCalls = 0

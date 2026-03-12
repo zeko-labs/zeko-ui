@@ -16,6 +16,7 @@ export type BridgeAdapter = {
 	canFinalizeWithdrawal?(account?: string): Promise<boolean>
 	submitDeposit(input: {
 		account?: string
+		recipient?: string
 		amount: string
 		timeoutSlots?: number
 		wait: boolean
@@ -24,6 +25,7 @@ export type BridgeAdapter = {
 	cancelDeposit(input: { account?: string; wait: boolean }): Promise<TransactionResult>
 	submitWithdrawal(input: {
 		account?: string
+		recipient?: string
 		amount: string
 		wait: boolean
 	}): Promise<TransactionResult>
@@ -255,9 +257,14 @@ export const createBridgeAdapter = ({
 				})
 			)
 		},
-		async submitDeposit({ account, amount, timeoutSlots, wait }) {
+		async submitDeposit({ account, recipient, amount, timeoutSlots, wait }) {
 			const bridge = await getBridge(route, verbose)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
+			const { publicKey: recipientPublicKey } = resolvePublicKey({
+				account: recipient,
+				keys,
+				network: route.to
+			})
 			const currentSlot = await bridge.fetchCurrentSlot()
 			const timeout = currentSlot.add(UInt32.from(resolveDepositTimeoutSlots(timeoutSlots)))
 			const result = await sendWithFeeRetries<SignedTransactionResult>({
@@ -267,7 +274,7 @@ export const createBridgeAdapter = ({
 					bridge.submitDeposit(
 						{ sender: publicKey, fee: Number(feeNanomina) },
 						{
-							recipient: publicKey,
+							recipient: recipientPublicKey,
 							amount: UInt64.from(minaStringToNanomina(amount)),
 							timeout
 						}
@@ -310,16 +317,24 @@ export const createBridgeAdapter = ({
 			})
 			return normalizeTxResult({ action: "cancel", direction: "deposit", route, result, wait })
 		},
-		async submitWithdrawal({ account, amount, wait }) {
+		async submitWithdrawal({ account, recipient, amount, wait }) {
 			const bridge = await getBridge(route, verbose)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
+			const { publicKey: recipientPublicKey } = resolvePublicKey({
+				account: recipient,
+				keys,
+				network: route.to
+			})
 			const result = await sendWithFeeRetries<SignedTransactionResult>({
 				signer,
 				initialFeeNanomina: WITHDRAWAL_SUBMIT_FEE_NANOMINA,
 				createTransaction: (feeNanomina) =>
 					bridge.submitWithdrawal(
 						{ sender: publicKey, fee: Number(feeNanomina) },
-						{ recipient: publicKey, amount: UInt64.from(minaStringToNanomina(amount)) }
+						{
+							recipient: recipientPublicKey,
+							amount: UInt64.from(minaStringToNanomina(amount))
+						}
 					)
 			})
 			return normalizeTxResult({ action: "submit", direction: "withdrawal", route, result, wait })

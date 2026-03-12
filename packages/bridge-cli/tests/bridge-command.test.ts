@@ -110,7 +110,7 @@ describe("bridge command", () => {
 				to: "zeko:testnet",
 				amount: "2",
 				account: "B62test",
-				recipient: "",
+				recipient: "B62test",
 				timeoutSlots: "",
 				json: true,
 				verbose: false
@@ -201,6 +201,85 @@ describe("bridge command", () => {
 		})
 	})
 
+	it("defaults the recipient to the destination signer when no recipient is provided", async () => {
+		const minaKey = PrivateKey.random().toBase58()
+		const zekoKey = PrivateKey.random().toBase58()
+		const expectedSender = PrivateKey.fromBase58(minaKey).toPublicKey().toBase58()
+		const expectedRecipient = PrivateKey.fromBase58(zekoKey).toPublicKey().toBase58()
+		const writes: string[] = []
+		const submitted: Array<{ account?: string; recipient?: string }> = []
+		const command = createBridgeCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async () => ({
+				...createAdapter({ recipient: expectedRecipient }),
+				async submitDeposit(input) {
+					submitted.push({ account: input.account, recipient: input.recipient })
+					return {
+						success: true,
+						direction: "deposit",
+						action: "submit",
+						route: "mina:testnet->zeko:testnet",
+						hash: "deposit-submit-command",
+						explorerUrl: "https://example.test/deposit-submit-command",
+						included: true
+					}
+				}
+			}),
+			generateId: () => "bridge-op-2b",
+			write: (message) => writes.push(message),
+			writeProgress: () => {},
+			sleep: async () => {},
+			pollIntervalMs: 0,
+			now: () => "2026-03-10T00:00:00.000Z"
+		})
+
+		const previousMinaKey = process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY
+		const previousZekoKey = process.env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY
+		process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY = minaKey
+		process.env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY = zekoKey
+
+		try {
+			await command.run?.({
+				args: {
+					_: [],
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					amount: "2",
+					account: "",
+					recipient: "",
+					timeoutSlots: "",
+					json: true,
+					verbose: false
+				},
+				rawArgs: [],
+				cmd: command
+			})
+		} finally {
+			if (previousMinaKey === undefined) {
+				delete process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY
+			} else {
+				process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY = previousMinaKey
+			}
+
+			if (previousZekoKey === undefined) {
+				delete process.env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY
+			} else {
+				process.env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY = previousZekoKey
+			}
+		}
+
+		expect(submitted).toEqual([{ account: expectedSender, recipient: expectedRecipient }])
+		expect(JSON.parse(writes[0] ?? "{}")).toMatchObject({
+			recipient: expectedRecipient
+		})
+	})
+
 	it("passes the verbose flag through to adapter creation", async () => {
 		const seen: Array<{ from: string; to: string; verbose: boolean }> = []
 		const command = createBridgeCommand({
@@ -230,7 +309,7 @@ describe("bridge command", () => {
 				to: "zeko:testnet",
 				amount: "2",
 				account: "B62test",
-				recipient: "",
+				recipient: "B62test",
 				timeoutSlots: "",
 				json: false,
 				verbose: true
@@ -282,7 +361,7 @@ describe("bridge command", () => {
 				to: "zeko:testnet",
 				amount: "2",
 				account: "B62test",
-				recipient: "",
+				recipient: "B62test",
 				timeoutSlots: "",
 				json: false,
 				verbose: false

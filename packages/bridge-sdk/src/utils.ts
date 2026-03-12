@@ -284,11 +284,12 @@ export async function fetchActions(
 	): Promise<v.InferOutput<typeof ActionOutputsSchema>> => {
 		if (toBlock < stopAtBlock) return []
 
-		const { data } = await client().query(fetchActionsQuery, {
+		const { data, error } = await client().query(fetchActionsQuery, {
 			pk: pk.toBase58(),
 			from: toBlock - BLOCK_RANGE_SIZE,
 			to: toBlock
 		})
+		if (error) throw error
 		const result = parseActionOutputs(data?.actions)
 		const prevOutput: v.InferOutput<typeof ActionOutputsSchema> = await fetchActionsRecursive(
 			toBlock - BLOCK_RANGE_SIZE

@@ -602,6 +602,7 @@ const runSubmitStep = async (
 								"submitDeposit"
 							)({
 								account: session.account,
+								recipient: session.recipient,
 								amount: session.amount,
 								timeoutSlots: session.timeoutSlots,
 								wait: false
@@ -623,6 +624,7 @@ const runSubmitStep = async (
 								"submitWithdrawal"
 							)({
 								account: session.account,
+								recipient: session.recipient,
 								amount: session.amount,
 								wait: false
 							})
@@ -1500,24 +1502,42 @@ const bridgeOperationMachine = setup({
 			invoke: {
 				src: "submitDepositStep",
 				input: ({ context }) => context,
-				onDone: {
-					target: "inspectDeposit",
-					actions: assign({
-						session: ({ event }) => event.output.session
-					})
-				}
+				onDone: [
+					{
+						target: "failed",
+						guard: ({ event }) => event.output.next === "failed",
+						actions: assign({
+							session: ({ event }) => event.output.session
+						})
+					},
+					{
+						target: "inspectDeposit",
+						actions: assign({
+							session: ({ event }) => event.output.session
+						})
+					}
+				]
 			}
 		},
 		submitWithdrawal: {
 			invoke: {
 				src: "submitWithdrawalStep",
 				input: ({ context }) => context,
-				onDone: {
-					target: "inspectWithdrawal",
-					actions: assign({
-						session: ({ event }) => event.output.session
-					})
-				}
+				onDone: [
+					{
+						target: "failed",
+						guard: ({ event }) => event.output.next === "failed",
+						actions: assign({
+							session: ({ event }) => event.output.session
+						})
+					},
+					{
+						target: "inspectWithdrawal",
+						actions: assign({
+							session: ({ event }) => event.output.session
+						})
+					}
+				]
 			}
 		},
 		inspectDeposit: {
@@ -1782,7 +1802,7 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			const from = commandArgs.from
 			const to = commandArgs.to
 			const account = deriveAccount(from, commandArgs.account)
-			const recipient = commandArgs.recipient ?? account
+			const recipient = commandArgs.recipient ?? deriveAccount(to)
 			const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
 			const store = (deps.createStore ?? createSessionStore)({ stateDir: appPaths.stateDir })
 			const id = (deps.generateId ?? randomUUID)()
