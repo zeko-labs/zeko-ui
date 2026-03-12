@@ -45,6 +45,24 @@ console.log({
 EOF
 ```
 
+## Inline example: parse a public key and keep the boundary straight
+
+```bash
+node --input-type=module <<'EOF'
+import { PublicKey } from "o1js"
+
+const pk = PublicKey.fromBase58(process.env.PUBLIC_KEY)
+
+console.log({
+  publicKey: pk.toBase58()
+})
+EOF
+```
+
+- You can derive a public key from a private key.
+- You cannot derive a private key from a public key.
+- So the reverse direction is parse and validate a public key string, not reconstruct a private key.
+
 ## Inline example: inspect a live Zeko account
 
 ```bash

@@ -56,3 +56,4 @@
 - T073 | done | enforce-progressive-discovery-in-zeko-skill | done/T073-enforce-progressive-discovery-in-zeko-skill.md
 - T074 | done | add-native-mina-transfer-and-unit-conversion-guidance | done/T074-add-native-mina-transfer-and-unit-conversion-guidance.md
 - T075 | done | add-inline-o1js-node-script-guidance | done/T075-add-inline-o1js-node-script-guidance.md
+- T076 | done | add-key-conversion-example-and-boundary | done/T076-add-key-conversion-example-and-boundary.md
