@@ -9,6 +9,7 @@ fileGroups:
     - public/**/*
     - server/**/*
     - machines/**/*
+    - observability/**/*
     - worker-configuration.d.ts
     - sentry.client.config.ts
     - global.d.ts
@@ -121,6 +122,30 @@ tasks:
       - playwright-install
     options:
       runInCI: true
+  metrics-report:
+    script: ./observability/bridge-metrics/analytics-engine/scripts/run-all.sh --dry-run
+    inputs:
+      - "@group(sources)"
+    options:
+      cache: false
+  metrics-report-live:
+    script: ./observability/bridge-metrics/analytics-engine/scripts/run-all.sh
+    inputs:
+      - "@group(sources)"
+    options:
+      cache: false
+  grafana-dashboard-generate:
+    command: node --experimental-strip-types ./observability/bridge-metrics/grafana/scripts/generate-dashboard.ts
+    inputs:
+      - "@group(sources)"
+    options:
+      cache: false
+  sentry-audit:
+    command: node --experimental-strip-types ./observability/bridge-metrics/sentry/scripts/generate-audit.ts
+    inputs:
+      - "@group(sources)"
+    options:
+      cache: false
   sentry:
     command: "sentry-cli"
     options:

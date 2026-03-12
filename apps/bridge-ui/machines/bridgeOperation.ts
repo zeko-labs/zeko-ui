@@ -24,8 +24,16 @@ import { type Result, transactionMachine } from "./transaction"
 
 const { act, logger, measure } = createLogger("[BRIDGE OPERATION]", { metrics: true })
 
-const bridgeParameters = ({ bridge, user, l1, l2 }: BridgeOperationContext) => {
-	return { bridge, user, l1, l2 }
+const bridgeParameters = ({
+	bridge,
+	user,
+	l1,
+	l2,
+	source,
+	destination,
+	direction
+}: BridgeOperationContext) => {
+	return { bridge, user, l1, l2, source, destination, direction }
 }
 
 const addError =
@@ -140,7 +148,15 @@ const fetchMina = ({ network }: { network: Networks }) =>
 
 const POLL_INTERVAL = 20_000
 
-type BridgeWorker = { bridge: Bridge; l1: Networks; l2: Networks; user: string }
+type BridgeWorker = {
+	bridge: Bridge
+	l1: Networks
+	l2: Networks
+	user: string
+	source: Networks
+	destination: Networks
+	direction: Direction
+}
 
 //TODO: Error handling
 export const bridgeOperationMachine = setup({
@@ -171,7 +187,12 @@ export const bridgeOperationMachine = setup({
 						const tx = await worker(bridge).submitDeposit({ l1, l2, user, amount, timeoutSlots })
 						return tx
 					},
-					input.user
+					input.user,
+					{
+						source: input.source,
+						destination: input.destination,
+						direction: input.direction
+					}
 				)
 			}
 		),
@@ -214,7 +235,12 @@ export const bridgeOperationMachine = setup({
 					const tx = await worker(bridge).finalizeDeposit({ l1, l2, user })
 					return tx
 				},
-				input.user
+				input.user,
+				{
+					source: input.source,
+					destination: input.destination,
+					direction: input.direction
+				}
 			)
 		}),
 		submitWithdrawal: fromPromise<string, BridgeWorker & { amount: string }>(({ input }) => {
@@ -225,7 +251,12 @@ export const bridgeOperationMachine = setup({
 					const tx = await worker(bridge).submitWithdrawal({ l1, l2, user, amount })
 					return tx
 				},
-				input.user
+				input.user,
+				{
+					source: input.source,
+					destination: input.destination,
+					direction: input.direction
+				}
 			)
 		}),
 		pendingWithdrawal: fromCallback<EventObject, BridgeWorker>(({ sendBack, input }) => {
@@ -261,7 +292,12 @@ export const bridgeOperationMachine = setup({
 					const tx = await worker(bridge).finalizeWithdrawal({ l1, l2, user })
 					return tx
 				},
-				input.user
+				input.user,
+				{
+					source: input.source,
+					destination: input.destination,
+					direction: input.direction
+				}
 			)
 		}),
 		cancelDeposit: fromPromise<string, BridgeWorker>(({ input }) => {
@@ -272,7 +308,12 @@ export const bridgeOperationMachine = setup({
 					const tx = await worker(bridge).cancelDeposit({ l1, l2, user })
 					return tx
 				},
-				input.user
+				input.user,
+				{
+					source: input.source,
+					destination: input.destination,
+					direction: input.direction
+				}
 			)
 		})
 	},

@@ -69,3 +69,12 @@
 - T083 | done | service-worker-notification-guards | done/T083-service-worker-notification-guards.md
 - T084 | done | wallet-error-handling | done/T084-wallet-error-handling.md
 - T085 | done | sentry-errors-tracking-doc | done/T085-sentry-errors-tracking-doc.md
+- T086 | done | scaffold-bridge-observability-workspace-and-ae-runner-contract | done/T086-scaffold-bridge-observability-workspace-and-ae-runner-contract.md
+- T087 | done | author-and-live-validate-the-bridge-ae-sql-pack | done/T087-author-and-live-validate-the-bridge-ae-sql-pack.md
+- T088 | done | generate-and-upsert-the-grafana-bridge-dashboard-from-the-sql-pack | done/T088-generate-and-upsert-the-grafana-bridge-dashboard-from-the-sql-pack.md
+- T089 | done | audit-errors-csv-against-current-bridge-sentry-behavior | done/T089-audit-errors-csv-against-current-bridge-sentry-behavior.md
+- T090 | done | implement-bridge-sentry-capture-strategy-for-handled-machine-errors | done/T090-implement-bridge-sentry-capture-strategy-for-handled-machine-errors.md
+- T091 | done | simplify-bridge-grafana-output-to-json-only | done/T091-simplify-bridge-grafana-output-to-json-only.md
+- T092 | done | fix-non-error-metric-labels-and-sentry-audit | done/T092-fix-non-error-metric-labels-and-sentry-audit.md
+- T093 | done | rename-ae-reporting-to-metrics-report | done/T093-rename-ae-reporting-to-metrics-report.md
+- T094 | in-progress | commit-push-and-open-review-pr-for-observability-followup | in-progress/T094-commit-push-and-open-review-pr-for-observability-followup.md
