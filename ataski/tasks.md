@@ -78,4 +78,4 @@
 - T092 | done | replace-bridge-validator-with-cloudflare-workflows | done/T092-replace-bridge-validator-with-cloudflare-workflows.md
 - T093 | in-progress | finalize-bridge-cli-release-and-validator-ops | in-progress/T093-finalize-bridge-cli-release-and-validator-ops.md
 - T094 | done | split-bridge-validator-scope-from-pr-139 | done/T094-split-bridge-validator-scope-from-pr-139.md
-- T095 | in-progress | validate-and-resolve-pr-139-review-comments | in-progress/T095-validate-and-resolve-pr-139-review-comments.md
+- T095 | done | validate-and-resolve-pr-139-review-comments | done/T095-validate-and-resolve-pr-139-review-comments.md
