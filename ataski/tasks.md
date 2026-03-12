@@ -80,4 +80,4 @@
 - T094 | done | commit-push-and-open-review-pr-for-observability-followup | done/T094-commit-push-and-open-review-pr-for-observability-followup.md
 - T095 | done | relocate-bridge-error-telemetry-helper | done/T095-relocate-bridge-error-telemetry-helper.md
 - T096 | done | make-metrics-report-runner-portable-and-verify-live-report | done/T096-make-metrics-report-runner-portable-and-verify-live-report.md
-- T097 | in-progress | commit-and-push-bridge-observability-fixes | in-progress/T097-commit-and-push-bridge-observability-fixes.md
+- T097 | done | commit-and-push-bridge-observability-fixes | done/T097-commit-and-push-bridge-observability-fixes.md
