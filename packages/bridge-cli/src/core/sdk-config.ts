@@ -8,8 +8,7 @@ const TESTNET_CONFIG = {
 	zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql",
 	actionsApi: "https://api.actions.zeko.io/graphql",
 	l1Network: "testnet",
-	l2Network: "testnet",
-	pollTimeout: 1_200_000
+	l2Network: "testnet"
 } as const satisfies Config
 
 const MAINNET_CONFIG = {
@@ -19,8 +18,7 @@ const MAINNET_CONFIG = {
 	zekoArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
 	actionsApi: "https://api.actions.zeko.io/graphql",
 	l1Network: "mainnet",
-	l2Network: "mainnet",
-	pollTimeout: 1_200_000
+	l2Network: "mainnet"
 } as const satisfies Config
 
 export const createSdkConfig = (

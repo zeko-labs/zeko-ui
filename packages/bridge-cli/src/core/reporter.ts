@@ -41,6 +41,9 @@ export const renderBridgeResult = (session: OperationSession): string =>
 		keyValue("Phase", session.phase),
 		keyValue("Recipient", session.recipient ?? session.account),
 		keyValue("Amount", session.amount),
+		session.queueAdvances && session.queueAdvances > 0
+			? keyValue("Queued operations claimed", String(session.queueAdvances))
+			: "",
 		keyValue("Log", session.logPath),
 		session.finalTransaction ? keyValue("Final hash", session.finalTransaction.hash) : ""
 	]

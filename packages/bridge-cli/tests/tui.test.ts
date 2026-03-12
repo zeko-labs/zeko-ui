@@ -41,7 +41,9 @@ describe("tui snapshot", () => {
 			logContent: '{"event":"submitted"}\n{"event":"waiting"}\n'
 		})
 
+		expect(output).toContain("Active operations:")
 		expect(output).toContain("> op-new running mina:testnet->zeko:testnet amount=2")
+		expect(output).toContain("Completed operations:")
 		expect(output).toContain("op-old completed zeko:testnet->mina:testnet amount=1")
 		expect(output).toContain("Recent log lines:")
 		expect(output).toContain('{"event":"waiting"}')

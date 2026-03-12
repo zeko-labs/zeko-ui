@@ -64,6 +64,12 @@ const createResumeAdapter = (): BridgeAdapter => ({
 	async cancelDeposit() {
 		throw new Error("cancelDeposit should not be called in this test")
 	},
+	async canFinalizeDeposit() {
+		return true
+	},
+	async canCancelDeposit() {
+		return false
+	},
 	async submitWithdrawal() {
 		throw new Error("submitWithdrawal should not be called in this test")
 	},
@@ -113,6 +119,48 @@ describe("operation command", () => {
 		await subCommands.list?.run?.({ rawArgs: [], args: { _: [] }, cmd: subCommands.list })
 
 		expect(JSON.parse(writes[0] ?? "[]")).toHaveLength(1)
+	})
+
+	it("lists completed operations separately", async () => {
+		const writes: string[] = []
+		const completedSession: OperationSession = {
+			...persistedSession,
+			id: "op-complete",
+			status: "completed",
+			phase: "completed",
+			route: "zeko:testnet->mina:testnet",
+			direction: "withdrawal",
+			finalTransaction: {
+				action: "finalize",
+				hash: "withdrawal-final",
+				explorerUrl: "https://example.test/withdrawal-final"
+			}
+		}
+		const command = createOperationCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async list() {
+					return [persistedSession, completedSession]
+				},
+				async load() {
+					return persistedSession
+				},
+				async save() {}
+			}),
+			write: (message) => writes.push(message)
+		})
+		const subCommands = await resolveSubCommands(command.subCommands)
+
+		await subCommands.completed?.run?.({
+			rawArgs: [],
+			args: { _: [], json: true },
+			cmd: subCommands.completed
+		})
+
+		expect(JSON.parse(writes[0] ?? "{}")).toMatchObject({
+			count: 1,
+			operations: [{ operation_id: "op-complete", status: "completed" }]
+		})
 	})
 
 	it("prints persisted logs", async () => {
@@ -181,6 +229,462 @@ describe("operation command", () => {
 		expect(JSON.parse(writes[0] ?? "{}")).toMatchObject({
 			success: true,
 			operation_id: "op-1",
+			status: "completed"
+		})
+	})
+
+	it("resume-user prioritizes the requested route queue using matching persisted sessions", async () => {
+		const writes: string[] = []
+		const progress: string[] = []
+		const saves: OperationSession[] = []
+		const calls: string[] = []
+		let depositFinalized = false
+		let withdrawalFinalized = false
+		const depositSession: OperationSession = {
+			...persistedSession,
+			id: "deposit-op",
+			submittedTransactions: [{ action: "submit", hash: "deposit-submit" }]
+		}
+		const withdrawalSession: OperationSession = {
+			...persistedSession,
+			id: "withdrawal-op",
+			route: "zeko:testnet->mina:testnet",
+			direction: "withdrawal",
+			amount: "3",
+			submittedTransactions: [{ action: "submit", hash: "withdrawal-submit" }]
+		}
+		const command = createOperationCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async list() {
+					return [withdrawalSession, depositSession]
+				},
+				async load(id) {
+					return id === withdrawalSession.id ? withdrawalSession : depositSession
+				},
+				async save(session) {
+					saves.push(session)
+				}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async ({ from, to }) => {
+				const route = `${from}->${to}`
+				if (route === "mina:testnet->zeko:testnet") {
+					return {
+						async getDepositStatuses() {
+							return [
+								{
+									index: 2,
+									amount: "2",
+									recipient: "B62queue",
+									cancelled: false,
+									synced: true,
+									accepted: true,
+									confirmed: true,
+									finalised: depositFinalized,
+									hash: "deposit-submit",
+									timestamp: "2026-03-12T00:00:00.000Z"
+								}
+							]
+						},
+						async getWithdrawalStatuses() {
+							return []
+						},
+						async submitDeposit() {
+							throw new Error("submitDeposit should not be called")
+						},
+						async finalizeDeposit() {
+							calls.push("deposit:finalize")
+							depositFinalized = true
+							return {
+								success: true,
+								direction: "deposit",
+								action: "finalize",
+								route: "mina:testnet->zeko:testnet",
+								hash: "deposit-final",
+								explorerUrl: "https://example.test/deposit-final",
+								included: true
+							}
+						},
+						async cancelDeposit() {
+							throw new Error("cancelDeposit should not be called")
+						},
+						async canFinalizeDeposit() {
+							return true
+						},
+						async submitWithdrawal() {
+							throw new Error("submitWithdrawal should not be called")
+						},
+						async finalizeWithdrawal() {
+							throw new Error("finalizeWithdrawal should not be called")
+						},
+						async canCancelDeposit() {
+							return false
+						}
+					} satisfies BridgeAdapter
+				}
+
+				if (route === "zeko:testnet->mina:testnet") {
+					return {
+						async getDepositStatuses() {
+							return []
+						},
+						async getWithdrawalStatuses() {
+							return [
+								{
+									index: 5,
+									amount: "3",
+									recipient: "B62queue",
+									committed: true,
+									finalised: withdrawalFinalized,
+									hash: "withdrawal-submit",
+									timestamp: "2026-03-12T00:10:00.000Z"
+								}
+							]
+						},
+						async submitDeposit() {
+							throw new Error("submitDeposit should not be called")
+						},
+						async finalizeDeposit() {
+							throw new Error("finalizeDeposit should not be called")
+						},
+						async cancelDeposit() {
+							throw new Error("cancelDeposit should not be called")
+						},
+						async submitWithdrawal() {
+							throw new Error("submitWithdrawal should not be called")
+						},
+						async finalizeWithdrawal() {
+							calls.push("withdrawal:finalize")
+							withdrawalFinalized = true
+							return {
+								success: true,
+								direction: "withdrawal",
+								action: "finalize",
+								route: "zeko:testnet->mina:testnet",
+								hash: "withdrawal-final",
+								explorerUrl: "https://example.test/withdrawal-final",
+								included: true
+							}
+						},
+						async canFinalizeWithdrawal() {
+							return true
+						}
+					} satisfies BridgeAdapter
+				}
+
+				throw new Error(`Unexpected route ${route}`)
+			},
+			write: (message) => writes.push(message),
+			writeProgress: (message) => progress.push(message),
+			sleep: async () => {},
+			pollIntervalMs: 0
+		})
+		const subCommands = await resolveSubCommands(command.subCommands)
+
+		await subCommands["resume-user"]?.run?.({
+			rawArgs: [],
+			args: { _: [], from: "zeko:testnet", to: "mina:testnet", account: "B62queue", json: true },
+			cmd: subCommands["resume-user"]
+		})
+
+		const result = JSON.parse(writes[0] ?? "{}")
+		expect(progress.length).toBeGreaterThan(0)
+		expect(calls).toEqual(["withdrawal:finalize", "deposit:finalize"])
+		expect(result).toMatchObject({
+			success: true,
+			account: "B62queue",
+			operations_found: 2,
+			operations_resolved: 2
+		})
+		expect(
+			result.operations.map((operation: { operation_id: string }) => operation.operation_id)
+		).toEqual(["withdrawal-op", "deposit-op"])
+		expect(saves.at(-1)?.id).toBe("deposit-op")
+	})
+
+	it("resume-user continues draining the opposite bridge direction after a terminal failure", async () => {
+		const writes: string[] = []
+		const calls: string[] = []
+		const depositSession: OperationSession = {
+			...persistedSession,
+			id: "deposit-op",
+			submittedTransactions: [{ action: "submit", hash: "deposit-submit" }]
+		}
+		const withdrawalSession: OperationSession = {
+			...persistedSession,
+			id: "withdrawal-op",
+			route: "zeko:testnet->mina:testnet",
+			direction: "withdrawal",
+			amount: "3",
+			submittedTransactions: [{ action: "submit", hash: "withdrawal-submit" }]
+		}
+		let withdrawalFinalized = false
+		const command = createOperationCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async list() {
+					return [depositSession, withdrawalSession]
+				},
+				async load(id) {
+					return id === withdrawalSession.id ? withdrawalSession : depositSession
+				},
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async ({ from, to }) => {
+				const route = `${from}->${to}`
+				if (route === "mina:testnet->zeko:testnet") {
+					return {
+						async getDepositStatuses() {
+							return [
+								{
+									index: 2,
+									amount: "2",
+									recipient: "B62queue",
+									cancelled: false,
+									synced: true,
+									accepted: true,
+									confirmed: true,
+									finalised: false,
+									hash: "deposit-submit",
+									timestamp: "2026-03-12T00:00:00.000Z"
+								}
+							]
+						},
+						async getWithdrawalStatuses() {
+							return []
+						},
+						async submitDeposit() {
+							throw new Error("submitDeposit should not be called")
+						},
+						async finalizeDeposit() {
+							calls.push("deposit:finalize")
+							throw new Error("[GraphQL] Invalid key")
+						},
+						async cancelDeposit() {
+							throw new Error("cancelDeposit should not be called")
+						},
+						async canFinalizeDeposit() {
+							return true
+						},
+						async canCancelDeposit() {
+							return false
+						},
+						async submitWithdrawal() {
+							throw new Error("submitWithdrawal should not be called")
+						},
+						async finalizeWithdrawal() {
+							throw new Error("finalizeWithdrawal should not be called")
+						}
+					} satisfies BridgeAdapter
+				}
+
+				if (route === "zeko:testnet->mina:testnet") {
+					return {
+						async getDepositStatuses() {
+							return []
+						},
+						async getWithdrawalStatuses() {
+							return [
+								{
+									index: 5,
+									amount: "3",
+									recipient: "B62queue",
+									committed: true,
+									finalised: withdrawalFinalized,
+									hash: "withdrawal-submit",
+									timestamp: "2026-03-12T00:10:00.000Z"
+								}
+							]
+						},
+						async submitDeposit() {
+							throw new Error("submitDeposit should not be called")
+						},
+						async finalizeDeposit() {
+							throw new Error("finalizeDeposit should not be called")
+						},
+						async cancelDeposit() {
+							throw new Error("cancelDeposit should not be called")
+						},
+						async submitWithdrawal() {
+							throw new Error("submitWithdrawal should not be called")
+						},
+						async finalizeWithdrawal() {
+							calls.push("withdrawal:finalize")
+							withdrawalFinalized = true
+							return {
+								success: true,
+								direction: "withdrawal",
+								action: "finalize",
+								route: "zeko:testnet->mina:testnet",
+								hash: "withdrawal-final",
+								explorerUrl: "https://example.test/withdrawal-final",
+								included: true
+							}
+						},
+						async canFinalizeWithdrawal() {
+							return true
+						}
+					} satisfies BridgeAdapter
+				}
+
+				throw new Error(`Unexpected route ${route}`)
+			},
+			write: (message) => writes.push(message),
+			sleep: async () => {},
+			pollIntervalMs: 0
+		})
+		const subCommands = await resolveSubCommands(command.subCommands)
+
+		await subCommands["resume-user"]?.run?.({
+			rawArgs: [],
+			args: { _: [], from: "mina:testnet", to: "zeko:testnet", account: "B62queue", json: true },
+			cmd: subCommands["resume-user"]
+		})
+
+		const result = JSON.parse(writes[0] ?? "{}")
+		expect(calls).toEqual(["deposit:finalize", "withdrawal:finalize"])
+		expect(result).toMatchObject({
+			success: false,
+			account: "B62queue",
+			operations_found: 2,
+			operations_resolved: 1
+		})
+		expect(
+			result.operations.map((operation: { operation_id: string; status: string }) => ({
+				id: operation.operation_id,
+				status: operation.status
+			}))
+		).toEqual([
+			{ id: "deposit-op", status: "failed" },
+			{ id: "withdrawal-op", status: "completed" }
+		])
+	})
+
+	it("resume-user creates a synthetic session when only on-chain pending work exists", async () => {
+		const writes: string[] = []
+		let finalized = false
+		const command = createOperationCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async list() {
+					return []
+				},
+				async load() {
+					return null
+				},
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async ({ from, to }) => {
+				const route = `${from}->${to}`
+				if (route !== "mina:testnet->zeko:testnet") {
+					return {
+						async getDepositStatuses() {
+							return []
+						},
+						async getWithdrawalStatuses() {
+							return []
+						},
+						async submitDeposit() {
+							throw new Error("submitDeposit should not be called")
+						},
+						async finalizeDeposit() {
+							throw new Error("finalizeDeposit should not be called")
+						},
+						async cancelDeposit() {
+							throw new Error("cancelDeposit should not be called")
+						},
+						async submitWithdrawal() {
+							throw new Error("submitWithdrawal should not be called")
+						},
+						async finalizeWithdrawal() {
+							throw new Error("finalizeWithdrawal should not be called")
+						}
+					} satisfies BridgeAdapter
+				}
+
+				return {
+					async getDepositStatuses() {
+						return [
+							{
+								index: 7,
+								amount: "1",
+								recipient: "B62fresh",
+								cancelled: false,
+								synced: true,
+								accepted: true,
+								confirmed: true,
+								finalised: finalized,
+								hash: "fresh-submit",
+								timestamp: "2026-03-12T00:20:00.000Z"
+							}
+						]
+					},
+					async getWithdrawalStatuses() {
+						return []
+					},
+					async submitDeposit() {
+						throw new Error("submitDeposit should not be called")
+					},
+					async finalizeDeposit() {
+						finalized = true
+						return {
+							success: true,
+							direction: "deposit",
+							action: "finalize",
+							route: "mina:testnet->zeko:testnet",
+							hash: "fresh-final",
+							explorerUrl: "https://example.test/fresh-final",
+							included: true
+						}
+					},
+					async cancelDeposit() {
+						throw new Error("cancelDeposit should not be called")
+					},
+					async canFinalizeDeposit() {
+						return true
+					},
+					async submitWithdrawal() {
+						throw new Error("submitWithdrawal should not be called")
+					},
+					async finalizeWithdrawal() {
+						throw new Error("finalizeWithdrawal should not be called")
+					},
+					async canCancelDeposit() {
+						return false
+					}
+				} satisfies BridgeAdapter
+			},
+			generateId: () => "generated-op",
+			write: (message) => writes.push(message),
+			sleep: async () => {},
+			pollIntervalMs: 0
+		})
+		const subCommands = await resolveSubCommands(command.subCommands)
+
+		await subCommands["resume-user"]?.run?.({
+			rawArgs: [],
+			args: { _: [], from: "mina:testnet", to: "zeko:testnet", account: "B62fresh", json: true },
+			cmd: subCommands["resume-user"]
+		})
+
+		const result = JSON.parse(writes[0] ?? "{}")
+		expect(result).toMatchObject({
+			success: true,
+			operations_found: 1,
+			operations_resolved: 1
+		})
+		expect(result.operations[0]).toMatchObject({
+			operation_id: "generated-op",
+			route: "mina:testnet->zeko:testnet",
 			status: "completed"
 		})
 	})

@@ -23,24 +23,32 @@ export const renderTuiSnapshot = ({
 	focus: OperationSession | null
 	logContent: string
 }): string => {
-	const lines = ["zeko-bridge tui", "", "Controls: q quit, Ctrl-C quit", "", "Recent operations:"]
+	const activeSessions = sessions.filter((session) => session.status === "running")
+	const completedSessions = sessions.filter((session) => session.status !== "running")
+	const renderSessionLine = (session: OperationSession) =>
+		[
+			session.id === focus?.id ? ">" : " ",
+			session.id,
+			session.status,
+			session.route,
+			`amount=${session.amount}`,
+			`updated=${session.updatedAt}`
+		].join(" ")
 
-	if (sessions.length === 0) {
-		lines.push("No persisted operations found.")
-	} else {
-		lines.push(
-			...sessions.map((session) =>
-				[
-					session.id === focus?.id ? ">" : " ",
-					session.id,
-					session.status,
-					session.route,
-					`amount=${session.amount}`,
-					`updated=${session.updatedAt}`
-				].join(" ")
-			)
-		)
-	}
+	const lines = ["zeko-bridge tui", "", "Controls: q quit, Ctrl-C quit", "", "Active operations:"]
+
+	lines.push(
+		...(activeSessions.length > 0
+			? activeSessions.map(renderSessionLine)
+			: ["No active operations found."])
+	)
+
+	lines.push("", "Completed operations:")
+	lines.push(
+		...(completedSessions.length > 0
+			? completedSessions.map(renderSessionLine)
+			: ["No completed operations found."])
+	)
 
 	if (!focus) return lines.join("\n")
 

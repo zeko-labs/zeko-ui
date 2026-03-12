@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T092]
 owner: codex
 created_at: 2026-03-11T13:15:00Z
-updated_at: 2026-03-11T18:02:41Z
+updated_at: 2026-03-12T14:05:00Z
 ---
 
 Finalize the bridge-cli PR for review by validating the real high-level bridge flow locally, fixing any issues found, shifting release instructions to the Changesets flow, and adding a post-deploy script that pushes validator secrets from an `.env` file into Cloudflare.
@@ -18,6 +18,24 @@ Scope:
 - add a post-deploy secret sync script for `services/bridge-validator` that reads an `.env` file and pushes the supported secrets to Cloudflare with Wrangler
 - add or update tests for the new script and documentation-adjacent helper logic where practical
 - add a Changeset entry for the bridge-cli release prep work
+
+## Follow-up Requirements
+
+- merge `origin/main` into `canonical/bridge-cli` before continuing live validation
+- the key CLI contract is unattended completion:
+  - a user or agent runs a single bridge CLI command
+  - the process may need to wait a very long time
+  - when checked later, that same operation must have completed successfully without manual babysitting or intermediate resume steps
+  - this must hold for both deposit and withdrawal flows
+  - if meeting that contract requires first-class background-process handling in the CLI, implement it
+- verify whether the withdrawal zero-witness stall is caused by the CLI or by backend data availability by checking the sequencer, archive node, and actions API directly
+- only add a hard terminal failure for the withdrawal zero-witness path if the backend endpoints are healthy and the missing witnesses are a genuine terminal condition rather than an indexing/data-availability issue
+- use the fresh wallet private key `EKFGXZoHswnSgGuBHAmhc3Gi5sAMFgL28hEdvS7FgoYuVeh1zaMr` for the new end-to-end live validation workflow
+- achieve and record these live validation gates in order:
+  - single fresh deposit end to end, unattended from one CLI invocation
+  - single fresh withdrawal end to end, unattended from one CLI invocation
+  - multiple queued deposits end to end
+  - multiple queued withdrawals end to end
 
 ## RED Plan
 
@@ -110,3 +128,37 @@ Output-mode checks:
 - human output from `operation resume ... --verbose` rendered the new labeled summary (`Bridge failed`, `Operation`, `Route`, `Phase`, `Recipient`, `Amount`, `Log`) without breaking progress logs
 - `--json` output from `operation resume ... --json` preserved the expected structured contract with `success`, `operation_id`, `route`, `direction`, `status`, `submitted_transactions`, `final_transaction`, `explorer_urls`, and `log_path`
 - the live runs without `--verbose` emitted only the curated progress lines; no bridge SDK debug output appeared unless the flag was set
+
+Validated in `/Users/hebilicious/GitHub/.ataski/worktrees/canonical-bridge-cli` on 2026-03-12 after merging `origin/main`:
+
+- `git fetch origin main`
+- `git merge --no-edit origin/main`
+
+Backend data verification for the stalled withdrawal queue:
+
+- sequencer query at `https://testnet.zeko.io/graphql` returned `10` live withdrawal actions for account `B62qpLxXFg4rmhce762uiJjNRnp5Bzc9PnCEAcraeaMkVWkPi7kgsWV`
+- the same wallet returned `0` actions from the L2 archive endpoint `https://archive.testnet.zeko.io/graphql`
+- exact auxes derived from those `10` live withdrawal actions returned `0` rows from `innerWitnessesFromAuxes` on `https://api.actions.zeko.io/graphql`
+- a direct `innerActions` range query over the live action-state span also returned `0` rows from `https://api.actions.zeko.io/graphql`
+
+Current conclusion:
+
+- the observed zero-witness withdrawal stall is consistent with backend indexing/data-availability lag across the L2 archive/actions API path, not with a purely local CLI interpretation error
+- because the backend is not healthy on this path, the requested hard terminal failure for zero-witness withdrawals is not yet justified on the merged branch
+
+Fresh-wallet live validation status on 2026-03-12:
+
+- fresh wallet key `EKFGXZoHswnSgGuBHAmhc3Gi5sAMFgL28hEdvS7FgoYuVeh1zaMr` resolves to `B62qoVfH2wKqmePqMHoa8DLRvkrKWQGpWCgsqw4Vnc2fDNhXBqqv37Q`
+- initial status checks returned `count: 0` for both:
+  - `deposit status --from mina:testnet --to zeko:testnet`
+  - `withdrawal status --from zeko:testnet --to mina:testnet`
+- fresh single deposit command submitted hash `5JvN7coBrYuwToFit3TcVVHpHtyPd74z4LzCcoAvix1B4N5RLhUv` under operation `364e1bcf-2cc8-46ef-a2ac-0c3a91a61a19`
+- the Mina node `bestChain` query shows that hash included at block `503353` with `failureReason: null`
+- the Mina archive endpoint `https://gateway.mina.archive.devnet.zeko.io` still returns `0` actions for the fresh wallet over the recent `493353-503353` block window, so the CLI remains in `waiting-submission` with `No deposits found`
+- the same fresh deposit later progressed unattended to `waiting-finalization`, became finalizable, and then completed successfully with finalize hash `5Jtr41h8wH5pK2VPwSveLEkwQ2x1zfNrMo68GVa7SFrxrJXXpotW`
+- fresh withdrawal command `bridge --from zeko:testnet --to mina:testnet --amount 0.2 --json --verbose` submitted hash `5JukqDmxLQzad4oyMLN558X6a8FEtt1WUpffsGFKdNe5GcCYb9TZ` under operation `1163c98b-09aa-4af7-bf4f-9ececb9f2723`
+- current withdrawal evidence:
+  - live sequencer shows the withdrawal immediately
+  - recent archive-node windows near tip still return `actions: []`
+  - `withdrawal status --json` still reports `committed: false` and `finalised: false`
+  - the unattended CLI loop remains alive and keeps retrying through transient gateway errors, but finalization is still blocked on `No withdrawal witnesses found`

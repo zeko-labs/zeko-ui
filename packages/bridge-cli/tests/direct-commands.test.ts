@@ -11,6 +11,7 @@ import {
 	runWithdrawalStatus,
 	runWithdrawalSubmit
 } from "../src/commands/direct"
+import { DEFAULT_DEPOSIT_TIMEOUT_SLOTS } from "../src/core/timeouts"
 
 const createDepositAdapter = (overrides: Partial<BridgeAdapter>): BridgeAdapter => ({
 	async getDepositStatuses() {
@@ -113,6 +114,39 @@ describe("direct commands", () => {
 
 		expect(result.action).toBe("submit")
 		expect(result.hash).toBe("deposit-submit")
+	})
+
+	it("defaults direct deposit submissions to a 24 hour timeout window", async () => {
+		const seenTimeouts: Array<number | undefined> = []
+
+		await runDepositSubmit(
+			{
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				json: false,
+				account: "B62test",
+				amount: "1",
+				wait: true
+			},
+			{
+				adapter: {
+					async submitDeposit(input) {
+						seenTimeouts.push(input.timeoutSlots)
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko:testnet",
+							hash: "deposit-submit-default-timeout",
+							explorerUrl: "https://example.test/deposit-submit-default-timeout",
+							included: true
+						}
+					}
+				}
+			}
+		)
+
+		expect(seenTimeouts).toEqual([DEFAULT_DEPOSIT_TIMEOUT_SLOTS])
 	})
 
 	it("finalizes a deposit", async () => {

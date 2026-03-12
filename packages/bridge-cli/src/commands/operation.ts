@@ -1,14 +1,28 @@
+import { randomUUID } from "node:crypto"
 import { readFile } from "node:fs/promises"
+import path from "node:path"
 import { defineCommand, type CommandDef } from "citty"
+import { PrivateKey } from "o1js"
 import { runBridgeOperation } from "./bridge"
 import type { BridgeAdapter } from "../core/adapter"
 import { createOperationLogger } from "../core/logger"
 import { resolveAppPaths } from "../core/paths"
-import { renderBridgeResult, renderOperationProgress, toBridgeJsonResult } from "../core/reporter"
+import {
+	renderBridgeResult,
+	renderOperationProgress,
+	toBridgeJsonResult,
+	type BridgeCommandJsonResult
+} from "../core/reporter"
+import { resolveSignerKeys } from "../core/signer"
 import { createSessionStore, type SessionStore } from "../core/session-store"
 import type { ChainRef } from "../core/routes"
-import { parseRouteString, resolveRoute } from "../core/routes"
-import type { OperationPhase } from "../core/types"
+import { formatRoute, parseChainRef, parseRouteString, resolveRoute } from "../core/routes"
+import type {
+	DepositStatus,
+	OperationPhase,
+	OperationSession,
+	WithdrawalStatus
+} from "../core/types"
 
 type OperationCommandDeps = {
 	createStore?: (input: { stateDir: string }) => Pick<SessionStore, "list" | "load" | "save">
@@ -27,6 +41,49 @@ type OperationCommandDeps = {
 	pollIntervalMs?: number
 	heartbeatIntervalMs?: number
 	retryDelayMs?: number
+	generateId?: () => string
+	now?: () => string
+}
+
+type ResumeUserQueueItem =
+	| {
+			direction: "deposit"
+			from: ChainRef
+			to: ChainRef
+			target: DepositStatus
+			session?: OperationSession
+	  }
+	| {
+			direction: "withdrawal"
+			from: ChainRef
+			to: ChainRef
+			target: WithdrawalStatus
+			session?: OperationSession
+	  }
+
+type ResumeUserResult = {
+	success: boolean
+	account: string
+	operationsFound: number
+	operationsResolved: number
+	results: OperationSession[]
+}
+
+type ResumeUserJsonResult = {
+	success: boolean
+	account: string
+	operations_found: number
+	operations_resolved: number
+	operations: Array<
+		BridgeCommandJsonResult & {
+			resolved: boolean
+		}
+	>
+}
+
+type CompletedOperationJsonResult = {
+	count: number
+	operations: BridgeCommandJsonResult[]
 }
 
 const parseId = (value: unknown): string => {
@@ -40,6 +97,199 @@ const parseId = (value: unknown): string => {
 const parseJsonFlag = (value: unknown): boolean => (typeof value === "boolean" ? value : false)
 
 const parseRoutePair = (value: string): [ChainRef, ChainRef] => parseRouteString(value)
+
+const parseChainArg = (value: unknown, fallback: ChainRef, flag: "--from" | "--to"): ChainRef =>
+	parseChainRef(typeof value === "string" ? value : fallback, flag)
+
+const parseOptionalString = (value: unknown): string | undefined =>
+	typeof value === "string" && value.length > 0 ? value : undefined
+
+const deriveAccount = (from: ChainRef, explicit?: string): string => {
+	if (explicit) return explicit
+
+	const keys = resolveSignerKeys()
+	const secret = from.startsWith("zeko:") ? keys.zeko : keys.mina
+	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
+}
+
+const sortByIndex = <T extends { index: number }>(items: T[]): T[] =>
+	[...items].sort((left, right) => left.index - right.index)
+
+const getSubmitHash = (session: OperationSession): string | undefined =>
+	session.submittedTransactions.find((transaction) => transaction.action === "submit")?.hash
+
+const toResumeUserJsonResult = (result: ResumeUserResult): ResumeUserJsonResult => ({
+	success: result.success,
+	account: result.account,
+	operations_found: result.operationsFound,
+	operations_resolved: result.operationsResolved,
+	operations: result.results.map((session) => ({
+		...toBridgeJsonResult(session),
+		resolved: session.status === "completed" || session.status === "cancelled"
+	}))
+})
+
+const renderResumeUserResult = (result: ResumeUserResult): string => {
+	const lines = [
+		`${result.success ? "Success" : "Failed"}: resumed ${result.operationsResolved}/${result.operationsFound} pending operation${result.operationsFound === 1 ? "" : "s"}`,
+		`Account: ${result.account}`
+	]
+
+	for (const session of result.results) {
+		lines.push(
+			`- ${session.id} | ${session.direction} | ${session.route} | ${session.status} | submit=${getSubmitHash(session) ?? "-"} | final=${session.finalTransaction?.hash ?? "-"} | log=${session.logPath}`
+		)
+	}
+
+	return lines.join("\n")
+}
+
+const isResolvedOperation = (session: OperationSession): boolean =>
+	session.status === "completed" || session.status === "cancelled"
+
+const renderCompletedOperations = (sessions: OperationSession[]): string => {
+	const lines = [`Completed operations: ${sessions.length}`]
+
+	if (sessions.length === 0) {
+		lines.push("No completed or cancelled operations found.")
+		return lines.join("\n")
+	}
+
+	for (const session of sessions) {
+		lines.push(
+			`- ${session.id} | ${session.status} | ${session.direction} | ${session.route} | submit=${getSubmitHash(session) ?? "-"} | final=${session.finalTransaction?.hash ?? "-"} | updated=${session.updatedAt}`
+		)
+	}
+
+	return lines.join("\n")
+}
+
+const toCompletedOperationsJsonResult = (
+	sessions: OperationSession[]
+): CompletedOperationJsonResult => ({
+	count: sessions.length,
+	operations: sessions.map((session) => toBridgeJsonResult(session))
+})
+
+const resolveRouteQueue = (from: ChainRef, to: ChainRef) => {
+	const route = resolveRoute(from, to)
+	return route.direction === "deposit"
+		? {
+				depositFrom: from,
+				depositTo: to,
+				withdrawalFrom: to,
+				withdrawalTo: from
+			}
+		: {
+				depositFrom: to,
+				depositTo: from,
+				withdrawalFrom: from,
+				withdrawalTo: to
+			}
+}
+
+const matchesPendingItem = ({
+	session,
+	direction,
+	from,
+	to,
+	hash
+}: {
+	session: OperationSession
+	direction: "deposit" | "withdrawal"
+	from: ChainRef
+	to: ChainRef
+	hash: string
+}): boolean =>
+	session.direction === direction &&
+	session.route === formatRoute(from, to) &&
+	getSubmitHash(session) === hash
+
+const withSubmittedHash = ({
+	session,
+	hash
+}: {
+	session: OperationSession
+	hash: string
+}): OperationSession => {
+	if (session.submittedTransactions.some((transaction) => transaction.action === "submit")) {
+		return session.submittedTransactions.some(
+			(transaction) => transaction.action === "submit" && transaction.hash === hash
+		)
+			? session
+			: {
+					...session,
+					submittedTransactions: [
+						{ action: "submit", hash },
+						...session.submittedTransactions.filter(
+							(transaction) => transaction.action !== "submit"
+						)
+					]
+				}
+	}
+
+	return {
+		...session,
+		submittedTransactions: [{ action: "submit", hash }, ...session.submittedTransactions]
+	}
+}
+
+const createResumedSession = ({
+	item,
+	account,
+	now,
+	appPaths,
+	generateId
+}: {
+	item: ResumeUserQueueItem
+	account: string
+	now: () => string
+	appPaths: ReturnType<typeof resolveAppPaths>
+	generateId: () => string
+}): OperationSession => {
+	const existing = item.session
+	const id = existing?.id ?? generateId()
+	const logPath =
+		existing?.logPath && existing.logPath.length > 0
+			? existing.logPath
+			: path.join(appPaths.logDir, `${id}.jsonl`)
+	const next = withSubmittedHash({
+		session:
+			existing ??
+			({
+				id,
+				status: "running",
+				phase: "submitted",
+				route: formatRoute(item.from, item.to),
+				direction: item.direction,
+				account,
+				recipient: item.target.recipient,
+				amount: item.target.amount,
+				logPath,
+				createdAt: now(),
+				updatedAt: now(),
+				submittedTransactions: []
+			} satisfies OperationSession),
+		hash: item.target.hash
+	})
+
+	return {
+		...next,
+		status: "running",
+		phase: "submitted",
+		route: formatRoute(item.from, item.to),
+		direction: item.direction,
+		account,
+		recipient: item.target.recipient,
+		amount: item.target.amount,
+		logPath,
+		targetIndex: item.target.index,
+		pendingFinalizeIndex: undefined,
+		finalTransaction: undefined,
+		lastError: undefined,
+		updatedAt: now()
+	}
+}
 
 const createAdapterWithRetries = async ({
 	createAdapter,
@@ -98,6 +348,24 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						stateDir: (deps.resolvePaths ?? resolveAppPaths)().stateDir
 					})
 					;(deps.write ?? console.log)(JSON.stringify(await store.list(), null, 2))
+				}
+			}),
+			completed: defineCommand({
+				meta: { name: "completed", description: "List completed and cancelled operations." },
+				args: {
+					json: { type: "boolean", default: false }
+				},
+				async run({ args }) {
+					const json = parseJsonFlag(args.json)
+					const store = (deps.createStore ?? createSessionStore)({
+						stateDir: (deps.resolvePaths ?? resolveAppPaths)().stateDir
+					})
+					const completedSessions = (await store.list()).filter(isResolvedOperation)
+					;(deps.write ?? console.log)(
+						json
+							? JSON.stringify(toCompletedOperationsJsonResult(completedSessions), null, 2)
+							: renderCompletedOperations(completedSessions)
+					)
 				}
 			}),
 			status: defineCommand({
@@ -213,6 +481,236 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						json
 							? JSON.stringify(toBridgeJsonResult(resumed), null, 2)
 							: renderBridgeResult(resumed)
+					)
+				}
+			}),
+			"resume-user": defineCommand({
+				meta: {
+					name: "resume-user",
+					description: "Discover and sequentially resume pending bridge operations for a user."
+				},
+				args: {
+					from: { type: "string", default: "mina:testnet" },
+					to: { type: "string", default: "zeko:testnet" },
+					account: { type: "string", required: false },
+					json: { type: "boolean", default: false },
+					verbose: { type: "boolean", default: false }
+				},
+				async run({ args }) {
+					const from = parseChainArg(args.from, "mina:testnet", "--from")
+					const to = parseChainArg(args.to, "zeko:testnet", "--to")
+					const json = parseJsonFlag(args.json)
+					const verbose = typeof args.verbose === "boolean" ? args.verbose : false
+					const account = deriveAccount(from, parseOptionalString(args.account))
+					const now = deps.now ?? (() => new Date().toISOString())
+					const sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
+					const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
+					const store = (deps.createStore ?? createSessionStore)({ stateDir: appPaths.stateDir })
+					const createAdapter =
+						deps.createAdapter ??
+						(async ({
+							from: inputFrom,
+							to: inputTo,
+							verbose: inputVerbose
+						}: {
+							from: ChainRef
+							to: ChainRef
+							verbose: boolean
+						}) => {
+							const { createBridgeAdapter } = await import("../core/adapter")
+							return createBridgeAdapter({
+								route: resolveRoute(inputFrom, inputTo),
+								verbose: inputVerbose
+							})
+						})
+					const queueRoutes = resolveRouteQueue(from, to)
+					const discoveryLog = async ({
+						event,
+						phase,
+						details
+					}: {
+						event: string
+						phase: OperationPhase
+						details?: Record<string, unknown>
+					}) => {
+						;(deps.writeProgress ?? console.error)(
+							renderOperationProgress({ event, phase, details })
+						)
+					}
+					const depositAdapter = await createAdapterWithRetries({
+						createAdapter,
+						from: queueRoutes.depositFrom,
+						to: queueRoutes.depositTo,
+						verbose,
+						log: discoveryLog,
+						sleep,
+						retryDelayMs: deps.retryDelayMs ?? 5_000
+					})
+					const withdrawalAdapter = await createAdapterWithRetries({
+						createAdapter,
+						from: queueRoutes.withdrawalFrom,
+						to: queueRoutes.withdrawalTo,
+						verbose,
+						log: discoveryLog,
+						sleep,
+						retryDelayMs: deps.retryDelayMs ?? 5_000
+					})
+					const [persistedSessions, depositStatuses, withdrawalStatuses] = await Promise.all([
+						store.list(),
+						depositAdapter.getDepositStatuses(account),
+						withdrawalAdapter.getWithdrawalStatuses(account)
+					])
+					const depositQueue: ResumeUserQueueItem[] = sortByIndex(depositStatuses)
+						.filter((status) => !status.finalised && !status.cancelled)
+						.map((target) => ({
+							direction: "deposit" as const,
+							from: queueRoutes.depositFrom,
+							to: queueRoutes.depositTo,
+							target,
+							session: persistedSessions.find((session) =>
+								matchesPendingItem({
+									session,
+									direction: "deposit",
+									from: queueRoutes.depositFrom,
+									to: queueRoutes.depositTo,
+									hash: target.hash
+								})
+							)
+						}))
+					const withdrawalQueue: ResumeUserQueueItem[] = sortByIndex(withdrawalStatuses)
+						.filter((status) => !status.finalised)
+						.map((target) => ({
+							direction: "withdrawal" as const,
+							from: queueRoutes.withdrawalFrom,
+							to: queueRoutes.withdrawalTo,
+							target,
+							session: persistedSessions.find((session) =>
+								matchesPendingItem({
+									session,
+									direction: "withdrawal",
+									from: queueRoutes.withdrawalFrom,
+									to: queueRoutes.withdrawalTo,
+									hash: target.hash
+								})
+							)
+						}))
+					const prioritizedQueues =
+						resolveRoute(from, to).direction === "withdrawal"
+							? [withdrawalQueue, depositQueue]
+							: [depositQueue, withdrawalQueue]
+					const queue = prioritizedQueues.flat()
+
+					if (queue.length === 0) {
+						const result: ResumeUserResult = {
+							success: true,
+							account,
+							operationsFound: 0,
+							operationsResolved: 0,
+							results: []
+						}
+						;(deps.write ?? console.log)(
+							json
+								? JSON.stringify(toResumeUserJsonResult(result), null, 2)
+								: renderResumeUserResult(result)
+						)
+						return
+					}
+
+					const results: OperationSession[] = []
+					for (const group of prioritizedQueues) {
+						for (const item of group) {
+							const session = createResumedSession({
+								item,
+								account,
+								now,
+								appPaths,
+								generateId: deps.generateId ?? randomUUID
+							})
+							const logger = (deps.createLogger ?? createOperationLogger)({
+								logPath: session.logPath
+							})
+							const log = async ({
+								event,
+								phase,
+								details
+							}: {
+								event: string
+								phase: OperationPhase
+								details?: Record<string, unknown>
+							}) => {
+								;(deps.writeProgress ?? console.error)(
+									renderOperationProgress({ event, phase, details })
+								)
+								await logger.write(event, { phase, ...details })
+							}
+
+							await log({
+								event: "queue-resume",
+								phase: session.phase,
+								details: {
+									position: results.length + 1,
+									total: queue.length,
+									operationId: session.id,
+									direction: session.direction,
+									targetIndex: session.targetIndex
+								}
+							})
+
+							const resumed = await runBridgeOperation(
+								{
+									id: session.id,
+									from: item.from,
+									to: item.to,
+									amount: session.amount,
+									account: session.account,
+									recipient: session.recipient,
+									timeoutSlots: session.timeoutSlots,
+									session
+								},
+								{
+									adapter: await createAdapterWithRetries({
+										createAdapter,
+										from: item.from,
+										to: item.to,
+										verbose,
+										log,
+										sleep,
+										retryDelayMs: deps.retryDelayMs ?? 5_000
+									}),
+									sessionStore: store,
+									log,
+									sleep,
+									pollIntervalMs: deps.pollIntervalMs ?? 20_000,
+									retryDelayMs: deps.retryDelayMs,
+									now
+								}
+							)
+
+							results.push(resumed)
+							if (resumed.status === "failed") {
+								break
+							}
+						}
+					}
+
+					const operationsResolved = results.filter(
+						(session) => session.status === "completed" || session.status === "cancelled"
+					).length
+					const result: ResumeUserResult = {
+						success:
+							results.length === queue.length &&
+							results.every(
+								(session) => session.status === "completed" || session.status === "cancelled"
+							),
+						account,
+						operationsFound: queue.length,
+						operationsResolved,
+						results
+					}
+					;(deps.write ?? console.log)(
+						json
+							? JSON.stringify(toResumeUserJsonResult(result), null, 2)
+							: renderResumeUserResult(result)
 					)
 				}
 			})

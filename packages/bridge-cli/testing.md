@@ -47,6 +47,7 @@ Each task:
 - streams live progress from stderr while the bridge is waiting on the network
 - validates the final JSON payload
 - fails if the bridge does not complete successfully
+- is expected to cover the unattended contract: start once, wait as long as needed, and eventually observe completion from that same CLI invocation
 
 These checks are manual entrypoints only. They are excluded from the normal Vitest suite and are not run by CI.
 
@@ -61,6 +62,12 @@ During long waits, expect stderr progress lines for:
 - periodic heartbeat summaries
 
 If the account already has pending bridge work, the command may report that it is advancing an earlier claim before it can complete the current request. That is expected bridge behavior.
+
+Operator notes:
+
+- When checking archive-node action history manually, prefer recent `10_000`-block windows over a `from=0` full-history query.
+- If a proof request sits longer than about 20 minutes, the sequencer may evict it from memory and later return `Invalid key`. That is currently terminal and should be recorded as such.
+- For deposits, a cancellable entry can never also be finalized. Cancellable deposits are skippable in protocol terms, but finalizable deposits must never be skipped.
 
 ## Artifacts
 

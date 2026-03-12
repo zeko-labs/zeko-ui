@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { createBridgeCommand } from "../src/commands/bridge"
 import type { BridgeAdapter } from "../src/core/adapter"
 import type { AppPaths } from "../src/core/paths"
+import { DEFAULT_DEPOSIT_TIMEOUT_SLOTS } from "../src/core/timeouts"
 import type { OperationSession } from "../src/core/types"
 
 const appPaths: AppPaths = {
@@ -12,13 +13,20 @@ const appPaths: AppPaths = {
 	cacheDir: "/tmp/cache"
 }
 
-const createAdapter = (): BridgeAdapter => ({
+const createAdapter = ({
+	recipient = "B62test"
+}: {
+	recipient?: string
+	from?: string
+	to?: string
+	verbose?: boolean
+} = {}): BridgeAdapter => ({
 	async getDepositStatuses() {
 		return [
 			{
 				index: 0,
 				amount: "2",
-				recipient: "B62test",
+				recipient,
 				cancelled: false,
 				synced: true,
 				accepted: true,
@@ -135,7 +143,9 @@ describe("bridge command", () => {
 				async write() {}
 			}),
 			createAdapter: async () => ({
-				...createAdapter(),
+				...createAdapter({
+					recipient: "B62qrecipient1111111111111111111111111111111111111111111111"
+				}),
 				async submitDeposit(input) {
 					submittedAccounts.push(input.account ?? "")
 					return {
@@ -230,5 +240,57 @@ describe("bridge command", () => {
 		})
 
 		expect(seen).toEqual([{ from: "mina:testnet", to: "zeko:testnet", verbose: true }])
+	})
+
+	it("defaults deposit timeout slots to 24 hours when not provided", async () => {
+		const seenTimeouts: Array<number | undefined> = []
+		const command = createBridgeCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async () => ({
+				...createAdapter(),
+				async submitDeposit(input) {
+					seenTimeouts.push(input.timeoutSlots)
+					return {
+						success: true,
+						direction: "deposit",
+						action: "submit",
+						route: "mina:testnet->zeko:testnet",
+						hash: "deposit-submit-command",
+						explorerUrl: "https://example.test/deposit-submit-command",
+						included: true
+					}
+				}
+			}),
+			generateId: () => "bridge-op-timeout",
+			write: () => {},
+			writeProgress: () => {},
+			sleep: async () => {},
+			pollIntervalMs: 0,
+			now: () => "2026-03-10T00:00:00.000Z"
+		})
+
+		await command.run?.({
+			args: {
+				_: [],
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "2",
+				account: "B62test",
+				recipient: "",
+				timeoutSlots: "",
+				json: false,
+				verbose: false
+			},
+			rawArgs: [],
+			cmd: command
+		})
+
+		expect(seenTimeouts).toEqual([DEFAULT_DEPOSIT_TIMEOUT_SLOTS])
 	})
 })

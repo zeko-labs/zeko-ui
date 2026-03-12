@@ -15,6 +15,7 @@ const session: OperationSession = {
 	account: "B62account",
 	recipient: "B62recipient",
 	amount: "5",
+	queueAdvances: 2,
 	logPath: "/tmp/op-1.jsonl",
 	createdAt: "2026-03-10T00:00:00.000Z",
 	updatedAt: "2026-03-10T00:01:00.000Z",
@@ -55,6 +56,7 @@ describe("reporter", () => {
 
 	it("renders stable human output", () => {
 		expect(renderBridgeResult(session)).toContain("Recipient: B62recipient")
+		expect(renderBridgeResult(session)).toContain("Queued operations claimed: 2")
 		expect(renderBridgeResult(session)).toContain("Final hash: finalize-hash")
 		expect(
 			renderOperationProgress({

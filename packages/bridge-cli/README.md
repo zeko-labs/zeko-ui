@@ -82,6 +82,18 @@ Behavior:
 - keeps printing useful progress during long waits without spamming every poll
 - advances earlier queued claims in order when the account already has pending bridge work
 - writes structured logs to disk for debugging and recovery
+- is intended to complete unattended from a single CLI invocation, even when the network wait is very long
+
+### Current Protocol Notes
+
+- Archive queries are most reliable when they scan recent history in roughly `10_000`-block windows instead of using a giant `from=0` range.
+- Sequencer proof requests currently live in memory for about 20 minutes. If proving takes longer than that, the sequencer may return `Invalid key`. That case is currently treated as a terminal failure and is not yet automatically recoverable.
+- A cancellable deposit can never be finalized.
+- Deposit queue behavior is asymmetric:
+  - cancellable deposits are skippable
+  - finalizable deposits must never be skipped
+  - the protocol uses `lastFinalizedDeposit` on L2 and `lastCancelledDeposit` on L1, and only deposits with higher indices than those state values may be claimed
+- The CLI does not fully implement cancellable-deposit skipping yet. The current behavior is documented here so operators understand the protocol rule and the current gap.
 
 ### JSON Result
 

@@ -1,6 +1,7 @@
 import { defineCommand, type CommandDef } from "citty"
 import type { BridgeAdapter } from "../core/adapter"
 import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
+import { resolveDepositTimeoutSlots } from "../core/timeouts"
 import { color, icon, keyValue, section } from "../core/terminal"
 import type {
 	DepositStatus,
@@ -147,7 +148,7 @@ export const runDepositSubmit = async (
 	adapter.submitDeposit({
 		account: input.account,
 		amount: input.amount,
-		timeoutSlots: input.timeoutSlots,
+		timeoutSlots: resolveDepositTimeoutSlots(input.timeoutSlots),
 		wait: input.wait
 	})
 
