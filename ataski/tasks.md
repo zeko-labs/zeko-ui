@@ -79,3 +79,4 @@
 - T093 | in-progress | finalize-bridge-cli-release-and-validator-ops | in-progress/T093-finalize-bridge-cli-release-and-validator-ops.md
 - T094 | done | split-bridge-validator-scope-from-pr-139 | done/T094-split-bridge-validator-scope-from-pr-139.md
 - T095 | done | validate-and-resolve-pr-139-review-comments | done/T095-validate-and-resolve-pr-139-review-comments.md
+- T096 | done | fix-bridge-cli-ci-test-runtime-dependency | done/T096-fix-bridge-cli-ci-test-runtime-dependency.md

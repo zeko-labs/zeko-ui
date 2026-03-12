@@ -39,6 +39,8 @@ tasks:
     inputs:
       - "@group(src)"
   test:
+    deps:
+      - bridge-sdk:build
     command: vitest run
     inputs:
       - "@group(src)"
