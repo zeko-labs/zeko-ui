@@ -1,12 +1,10 @@
 import type { Networks, walletMachine } from "@lumina-dex/sdk"
 import { produce } from "immer"
 import {
-	type ActionArgs,
 	type ActorRef,
 	type ActorRefFromLogic,
 	and,
 	assign,
-	type ErrorActorEvent,
 	type EventObject,
 	enqueueActions,
 	fromCallback,
@@ -16,6 +14,7 @@ import {
 	setup
 } from "xstate"
 import { finalizeNotification } from "../app/service-worker/notificationList"
+import { isTerminalBridgeError } from "../app/errors"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
@@ -33,8 +32,13 @@ const addError =
 	({
 		context,
 		event
-	}: ActionArgs<BridgeOperationContext, ErrorActorEvent, BridgeOperationEvents>) => {
-		const e = event.error instanceof Error ? event.error : error
+	}: {
+		context: BridgeOperationContext
+		event: EventObject & { error?: unknown }
+	}) => {
+		const eventError =
+			typeof event === "object" && event !== null && "error" in event ? event.error : undefined
+		const e = eventError instanceof Error ? eventError : error
 		logger.error(e)
 		return { errors: [...context.errors, e] }
 	}
@@ -98,6 +102,7 @@ type BridgeOperationEvents =
 	| { type: "ReturnTo" }
 	| { type: "CanFinalize" }
 	| { type: "CanCancel" }
+	| { type: "TerminalError"; error: Error }
 	| { type: "Finalize" }
 	| { type: "Cancel" }
 	| { type: "Destroy" }
@@ -243,6 +248,13 @@ export const bridgeOperationMachine = setup({
 					else if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
 				} catch (error) {
 					logger.error(error instanceof Error ? error : new Error(String(error)))
+					if (isTerminalBridgeError(error)) {
+						sendBack({
+							type: "TerminalError",
+							error: error instanceof Error ? error : new Error(String(error))
+						})
+						return
+					}
 					if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
 				}
 			}
@@ -786,7 +798,11 @@ export const bridgeOperationMachine = setup({
 				input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount })
 			},
 			on: {
-				CanFinalize: { target: "TO_FINALIZE" }
+				CanFinalize: { target: "TO_FINALIZE" },
+				TerminalError: {
+					target: "FAILED",
+					actions: assign(addError(new Error("Failed to determine withdrawal status")))
+				}
 			}
 		},
 		FINALIZE_WITHDRAWAL: {
@@ -805,6 +821,11 @@ export const bridgeOperationMachine = setup({
 							)
 						},
 						onError: [
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ event }) => isTerminalBridgeError(event.error),
+								actions: assign(addError(new Error("Failed to finalize withdrawal")))
+							},
 							{
 								target: "#bridgeOperation.FAILED",
 								guard: ({ context }) => context.errors.length >= 3,

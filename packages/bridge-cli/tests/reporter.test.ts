@@ -50,7 +50,8 @@ describe("reporter", () => {
 				explorerUrl: "https://zekoscan.io/testnet/tx/finalize-hash"
 			},
 			explorer_urls: ["https://zekoscan.io/testnet/tx/finalize-hash"],
-			log_path: "/tmp/op-1.jsonl"
+			log_path: "/tmp/op-1.jsonl",
+			error: null
 		})
 	})
 
@@ -58,6 +59,9 @@ describe("reporter", () => {
 		expect(renderBridgeResult(session)).toContain("Recipient: B62recipient")
 		expect(renderBridgeResult(session)).toContain("Queued operations claimed: 2")
 		expect(renderBridgeResult(session)).toContain("Final hash: finalize-hash")
+		expect(renderBridgeResult({ ...session, lastError: "terminal protocol error" })).toContain(
+			"Error: terminal protocol error"
+		)
 		expect(
 			renderOperationProgress({
 				event: "submitted",

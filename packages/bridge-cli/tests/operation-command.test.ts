@@ -233,6 +233,60 @@ describe("operation command", () => {
 		})
 	})
 
+	it("replays a failed persisted operation instead of exiting immediately", async () => {
+		const writes: string[] = []
+		const progress: string[] = []
+		const saves: OperationSession[] = []
+		const failedSession: OperationSession = {
+			...persistedSession,
+			status: "failed",
+			phase: "failed",
+			lastError: "previous opaque failure"
+		}
+		const command = createOperationCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async list() {
+					return [failedSession]
+				},
+				async load() {
+					return failedSession
+				},
+				async save(session) {
+					saves.push(session)
+				}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: createResumeAdapter,
+			write: (message) => writes.push(message),
+			writeProgress: (message) => progress.push(message),
+			sleep: async () => {},
+			pollIntervalMs: 0,
+			now: () => "2026-03-12T14:30:00.000Z"
+		})
+		const subCommands = await resolveSubCommands(command.subCommands)
+
+		await subCommands.resume?.run?.({
+			rawArgs: [],
+			args: { _: [], id: "op-1", json: true },
+			cmd: subCommands.resume
+		})
+
+		expect(progress.length).toBeGreaterThan(0)
+		expect(saves[0]).toMatchObject({
+			status: "running",
+			phase: "submitted"
+		})
+		expect(saves.at(-1)?.status).toBe("completed")
+		expect(JSON.parse(writes[0] ?? "{}")).toMatchObject({
+			success: true,
+			operation_id: "op-1",
+			status: "completed"
+		})
+	})
+
 	it("resume-user prioritizes the requested route queue using matching persisted sessions", async () => {
 		const writes: string[] = []
 		const progress: string[] = []

@@ -291,6 +291,26 @@ const createResumedSession = ({
 	}
 }
 
+const normalizeSessionForResume = ({
+	session,
+	now
+}: {
+	session: OperationSession
+	now: () => string
+}): OperationSession => {
+	if (session.status !== "failed") {
+		return session
+	}
+
+	return {
+		...session,
+		status: "running",
+		phase: "submitted",
+		lastError: undefined,
+		updatedAt: now()
+	}
+}
+
 const createAdapterWithRetries = async ({
 	createAdapter,
 	from,
@@ -409,10 +429,12 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					const id = parseId(args.id)
 					const json = parseJsonFlag(args.json)
 					const verbose = typeof args.verbose === "boolean" ? args.verbose : false
+					const now = deps.now ?? (() => new Date().toISOString())
 					const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
 					const store = (deps.createStore ?? createSessionStore)({ stateDir: appPaths.stateDir })
 					const session = await store.load(id)
 					if (!session) throw new Error(`Operation ${id} not found`)
+					const normalizedSession = normalizeSessionForResume({ session, now })
 					const [from, to] = parseRoutePair(session.route)
 					const logger = (deps.createLogger ?? createOperationLogger)({
 						logPath: session.logPath
@@ -451,14 +473,14 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					}
 					const resumed = await runBridgeOperation(
 						{
-							id: session.id,
+							id: normalizedSession.id,
 							from,
 							to,
-							amount: session.amount,
-							account: session.account,
-							recipient: session.recipient,
-							timeoutSlots: session.timeoutSlots,
-							session
+							amount: normalizedSession.amount,
+							account: normalizedSession.account,
+							recipient: normalizedSession.recipient,
+							timeoutSlots: normalizedSession.timeoutSlots,
+							session: normalizedSession
 						},
 						{
 							adapter: await createAdapterWithRetries({

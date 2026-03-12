@@ -15,6 +15,7 @@ import {
 import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
+import { assertFirstWithdrawalAmountCanCreateHelper } from "./errors"
 import { createGraphqlClient, type GqlClient } from "./graphql"
 import type {
 	Account,
@@ -51,6 +52,7 @@ import {
 } from "./utils"
 
 export * from "./actions"
+export * from "./errors"
 export * from "./graphql/index"
 export * from "./types"
 
@@ -846,6 +848,18 @@ export class Bridge {
 	): Promise<Mina.Transaction<false, false>> {
 		this.setL2()
 
+		const helperAccount = await this.fetchAccount(
+			this.l1Client,
+			recipient,
+			TokenId.derive(this.outerTokenOwner)
+		)
+		assertFirstWithdrawalAmountCanCreateHelper({
+			helperAccountExists: helperAccount !== null,
+			amount,
+			recipient,
+			accountCreationFee: this.l1AccountCreationFee
+		})
+
 		await refreshCache(feePayer)
 
 		const txn = await Mina.transaction(feePayer, async () => {
@@ -1009,6 +1023,12 @@ export class Bridge {
 			actionHash: myWithdrawal.hash,
 			recipient: withdrawalParams.withdrawal.recipient.toBase58(),
 			amount: withdrawalParams.withdrawal.amount.toString()
+		})
+		assertFirstWithdrawalAmountCanCreateHelper({
+			helperAccountExists: helperAccount !== null,
+			amount: withdrawalParams.withdrawal.amount,
+			recipient: withdrawalParams.withdrawal.recipient,
+			accountCreationFee: this.l1AccountCreationFee
 		})
 
 		const withdrawalAse = innerActions

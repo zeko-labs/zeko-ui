@@ -13,6 +13,7 @@ export type BridgeCommandJsonResult = {
 	final_transaction: OperationSession["finalTransaction"] | null
 	explorer_urls: string[]
 	log_path: string
+	error: string | null
 }
 
 export const toBridgeJsonResult = (session: OperationSession): BridgeCommandJsonResult => ({
@@ -28,7 +29,8 @@ export const toBridgeJsonResult = (session: OperationSession): BridgeCommandJson
 	explorer_urls: session.finalTransaction?.explorerUrl
 		? [session.finalTransaction.explorerUrl]
 		: [],
-	log_path: session.logPath
+	log_path: session.logPath,
+	error: session.lastError ?? null
 })
 
 export const renderBridgeResult = (session: OperationSession): string =>
@@ -44,6 +46,7 @@ export const renderBridgeResult = (session: OperationSession): string =>
 		session.queueAdvances && session.queueAdvances > 0
 			? keyValue("Queued operations claimed", String(session.queueAdvances))
 			: "",
+		session.lastError ? keyValue("Error", session.lastError) : "",
 		keyValue("Log", session.logPath),
 		session.finalTransaction ? keyValue("Final hash", session.finalTransaction.hash) : ""
 	]

@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T092]
 owner: codex
 created_at: 2026-03-11T13:15:00Z
-updated_at: 2026-03-12T14:12:00Z
+updated_at: 2026-03-12T14:40:00Z
 ---
 
 Finalize the bridge-cli PR for review by validating the real high-level bridge flow locally, fixing any issues found, shifting release instructions to the Changesets flow, and adding a post-deploy script that pushes validator secrets from an `.env` file into Cloudflare.
@@ -36,6 +36,11 @@ Scope:
   - single fresh withdrawal end to end, unattended from one CLI invocation
   - multiple queued deposits end to end
   - multiple queued withdrawals end to end
+- handle the fresh-wallet first-withdrawal failure mode consistently in the SDK, CLI, and UI:
+  - when the recipient has no L1 helper account and the withdrawal amount is below the L1 account creation fee, raise a clear protocol error instead of surfacing an opaque `rangeCheckN` failure
+  - the CLI must show that message in both human and JSON output
+  - the UI must stop endlessly retrying the pending-withdrawal poll on that terminal condition and show a user-friendly explanation
+  - `operation resume` must re-run a previously failed operation instead of exiting immediately from persisted terminal state, so the resumed run can encounter the same protocol error and settle back into `failed`
 
 ## RED Plan
 
@@ -184,3 +189,39 @@ Fresh-wallet live validation status on 2026-03-12:
   - recent archive-node windows near tip still return `actions: []`
   - `withdrawal status --json` still reports `committed: false` and `finalised: false`
   - the unattended CLI loop remains alive and keeps retrying through transient gateway errors, but finalization is still blocked on `No withdrawal witnesses found`
+
+Additional live failure analysis captured on 2026-03-12:
+
+- once the sequencer recovered and the fresh withdrawal advanced from provisional index `-1` to claim index `0`, the operation failed terminally with:
+  - `rangeCheckN: expected field to fit in 64 bits, got 28948022309329048855892746252171976963363056481941560715954676764349167630337.`
+- direct bridge-sdk inspection confirmed:
+  - the recipient `B62qoVfH2wKqmePqMHoa8DLRvkrKWQGpWCgsqw4Vnc2fDNhXBqqv37Q` does not yet have the L1 helper account
+  - `l1AccountCreationFee = 1000000000`
+  - withdrawal amount = `200000000`
+- the current SDK finalize path subtracts the L1 account creation fee from the withdrawal amount when the helper account is absent, so this first-withdrawal-on-fresh-wallet case currently underflows and escapes as an opaque `UInt64`/`rangeCheckN` failure instead of a clear protocol error
+
+First-withdrawal-too-small handling validated on 2026-03-12 after the SDK/CLI/UI fix set:
+
+- `moon run bridge-sdk:test`
+- `moon run bridge-sdk:typecheck`
+- `moon run bridge-cli:test`
+- `moon run bridge-cli:typecheck`
+- `moon run bridge-cli:lint`
+- `moon run bridge-cli:build`
+- `moon run bridge-ui:test`
+- `moon run bridge-ui:typecheck`
+- `node ./packages/bridge-cli/dist/cli.js operation resume 1163c98b-09aa-4af7-bf4f-9ececb9f2723 --json --verbose`
+
+Validated behavior:
+
+- the SDK now raises a clear protocol error before the previous `UInt64` underflow escapes:
+  - `First Zeko->Mina withdrawal amount is too small: recipient B62qoVfH2wKqmePqMHoa8DLRvkrKWQGpWCgsqw4Vnc2fDNhXBqqv37Q does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot be finalized as submitted.`
+- the CLI now surfaces that same message in both:
+  - human/verbose output (`x failed ... message=...`)
+  - structured JSON output via the new `error` field
+- `operation resume` no longer exits immediately from the persisted `failed` state:
+  - it restarted operation `1163c98b-09aa-4af7-bf4f-9ececb9f2723`
+  - re-entered `waiting-finalization`
+  - re-fetched the now-indexed withdrawal witness data
+  - then failed again with the same explicit protocol error
+- the UI now treats that condition as terminal instead of polling forever and maps it to a user-facing explanation about the first withdrawal needing at least 1 MINA when no Mina helper account exists yet
