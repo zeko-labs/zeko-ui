@@ -228,31 +228,3 @@ Before local live validation or scheduled monitoring can work, make sure all of 
    ```bash
    npm deprecate @zeko-labs/bridge-cli@0.0.0 "Accidental initial publish. Do not use this version."
    ```
-
-7. Create the Slack bot for validator failures using the manifest at `services/bridge-validator/slack-app-manifest.json`, then capture:
-   - `SLACK_BOT_TOKEN`
-   - `SLACK_CHANNEL_ID`
-
-8. Deploy the Cloudflare-based validator service through CI.
-
-9. Run the post-deploy secret sync script against the env file that contains the validator secrets:
-
-   ```bash
-   bash services/bridge-validator/scripts/push-secrets-from-env.sh /absolute/path/to/.env
-   ```
-
-10. Trigger both Cloudflare workflow directions manually once after deploy:
-
-```bash
-pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config services/bridge-validator/wrangler.jsonc
-pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config services/bridge-validator/wrangler.jsonc
-```
-
-11. Confirm the Cloudflare cron trigger remains enabled before expecting recurring Slack alerts.
-
-The validator service reads only:
-
-- `ZEKO_BRIDGE_MINA_PRIVATE_KEY`
-- optional `ZEKO_BRIDGE_ZEKO_PRIVATE_KEY`
-- `SLACK_BOT_TOKEN`
-- `SLACK_CHANNEL_ID`
