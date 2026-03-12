@@ -4,10 +4,10 @@ import {
 	describeBridgeError,
 	normalizeBridgeErrorMessage,
 	shouldSkipBridgeErrorCapture
-} from "../../machines/bridge-sentry"
+} from "../../app/telemetry/bridgeErrors"
 import { QuietError } from "../../app/errors"
 
-describe("bridge-sentry", () => {
+describe("bridge error telemetry", () => {
 	it("normalizes large numeric payloads for grouping", () => {
 		const message =
 			"rangeCheckN: expected field to fit in 64 bits, got 28948022309329048855892746252171976963363056481941560715954676764349637630337."

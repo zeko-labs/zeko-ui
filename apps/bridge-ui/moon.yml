@@ -123,13 +123,13 @@ tasks:
     options:
       runInCI: true
   metrics-report:
-    script: ./observability/bridge-metrics/analytics-engine/scripts/run-all.sh --dry-run
+    script: BRIDGE_METRICS_WORKSPACE_DIR=./observability/bridge-metrics ./observability/bridge-metrics/analytics-engine/scripts/run-all.sh --dry-run
     inputs:
       - "@group(sources)"
     options:
       cache: false
   metrics-report-live:
-    script: ./observability/bridge-metrics/analytics-engine/scripts/run-all.sh
+    script: BRIDGE_METRICS_WORKSPACE_DIR=./observability/bridge-metrics ./observability/bridge-metrics/analytics-engine/scripts/run-all.sh
     inputs:
       - "@group(sources)"
     options:

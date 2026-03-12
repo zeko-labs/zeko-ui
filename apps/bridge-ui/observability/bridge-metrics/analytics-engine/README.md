@@ -17,6 +17,13 @@ moon bridge-ui:metrics-report
 CLOUDFLARE_API_TOKEN=... moon bridge-ui:metrics-report-live
 ```
 
+- Direct script invocation:
+
+```sh
+BRIDGE_METRICS_WORKSPACE_DIR=/absolute/path/to/apps/bridge-ui/observability/bridge-metrics \
+./analytics-engine/scripts/run-all.sh --dry-run
+```
+
 ## SQL Template Rules
 
 - `{{dataset}}` resolves to `AE_DATASET`, defaulting to `bridge_metrics`.

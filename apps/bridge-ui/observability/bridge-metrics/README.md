@@ -29,3 +29,8 @@ Cloudflare Analytics Engine `bridge_metrics` dataset.
 - `moon bridge-ui:grafana-dashboard-generate` regenerates the importable
   dashboard JSON.
 - `moon bridge-ui:sentry-audit` regenerates the CSV audit outputs.
+
+## Direct Script Usage
+
+- `BRIDGE_METRICS_WORKSPACE_DIR=/absolute/path/to/apps/bridge-ui/observability/bridge-metrics ./analytics-engine/scripts/run-all.sh --dry-run`
+- `BRIDGE_METRICS_WORKSPACE_DIR=/absolute/path/to/apps/bridge-ui/observability/bridge-metrics CLOUDFLARE_API_TOKEN=... ./analytics-engine/scripts/run-all.sh`

@@ -1,5 +1,9 @@
 import { type ConsolaInstance, createConsola } from "consola"
-import { captureBridgeError, describeBridgeError, type BridgeSentryContext } from "./bridge-sentry"
+import {
+	captureBridgeError,
+	describeBridgeError,
+	type BridgeSentryContext
+} from "../app/telemetry/bridgeErrors"
 import { sendMetric } from "./metrics"
 import type { MetricEvent } from "./metrics.schema"
 

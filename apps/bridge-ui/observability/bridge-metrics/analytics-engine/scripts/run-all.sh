@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 set -u
 
-ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../../.." && pwd)
-WORKSPACE_DIR="$ROOT_DIR/apps/bridge-ui/observability/bridge-metrics"
-SQL_DIR="$WORKSPACE_DIR/analytics-engine/sql"
-QUERY_SCRIPT="$WORKSPACE_DIR/analytics-engine/scripts/run-query.ts"
-REPORT_SCRIPT="$WORKSPACE_DIR/analytics-engine/scripts/render-report.ts"
+WORKSPACE_DIR="${BRIDGE_METRICS_WORKSPACE_DIR:-}"
+SQL_DIR="${BRIDGE_METRICS_SQL_DIR:-}"
+QUERY_SCRIPT="${BRIDGE_METRICS_QUERY_SCRIPT:-}"
+REPORT_SCRIPT="${BRIDGE_METRICS_REPORT_SCRIPT:-}"
 
 MODE="live"
 WINDOW=""
@@ -16,6 +15,38 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)
       MODE="render"
+      shift
+      ;;
+    --workspace-dir)
+      WORKSPACE_DIR="${2:-}"
+      shift 2
+      ;;
+    --workspace-dir=*)
+      WORKSPACE_DIR="${1#*=}"
+      shift
+      ;;
+    --sql-dir)
+      SQL_DIR="${2:-}"
+      shift 2
+      ;;
+    --sql-dir=*)
+      SQL_DIR="${1#*=}"
+      shift
+      ;;
+    --query-script)
+      QUERY_SCRIPT="${2:-}"
+      shift 2
+      ;;
+    --query-script=*)
+      QUERY_SCRIPT="${1#*=}"
+      shift
+      ;;
+    --report-script)
+      REPORT_SCRIPT="${2:-}"
+      shift 2
+      ;;
+    --report-script=*)
+      REPORT_SCRIPT="${1#*=}"
       shift
       ;;
     --window)
@@ -49,6 +80,23 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "$WORKSPACE_DIR" ]]; then
+  echo "--workspace-dir or BRIDGE_METRICS_WORKSPACE_DIR is required." >&2
+  exit 1
+fi
+
+if [[ -z "$SQL_DIR" ]]; then
+  SQL_DIR="$WORKSPACE_DIR/analytics-engine/sql"
+fi
+
+if [[ -z "$QUERY_SCRIPT" ]]; then
+  QUERY_SCRIPT="$WORKSPACE_DIR/analytics-engine/scripts/run-query.ts"
+fi
+
+if [[ -z "$REPORT_SCRIPT" ]]; then
+  REPORT_SCRIPT="$WORKSPACE_DIR/analytics-engine/scripts/render-report.ts"
+fi
+
 if [[ -z "$RAW_DIR" ]]; then
   RAW_DIR=$(mktemp -d "${TMPDIR:-/tmp}/bridge-metrics-report.XXXXXX")
 fi
@@ -62,12 +110,6 @@ if [[ "$MODE" == "live" ]]; then
   if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
     echo "CLOUDFLARE_API_TOKEN is required for live AE queries." >&2
     exit 1
-  fi
-
-  if pnpm --dir "$ROOT_DIR/apps/bridge-ui" exec wrangler whoami --account "$CLOUDFLARE_ACCOUNT_ID" >/dev/null 2>&1; then
-    :
-  else
-    echo "Warning: wrangler whoami sanity check did not succeed for account $CLOUDFLARE_ACCOUNT_ID." >&2
   fi
 fi
 

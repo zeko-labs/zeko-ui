@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nuxt"
-import { QuietError } from "../app/errors"
+import { QuietError } from "../errors"
 
 export type BridgeSentryContext = {
 	category: string
