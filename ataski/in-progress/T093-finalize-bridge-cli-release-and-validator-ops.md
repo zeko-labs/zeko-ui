@@ -41,6 +41,10 @@ Scope:
   - the CLI must show that message in both human and JSON output
   - the UI must stop endlessly retrying the pending-withdrawal poll on that terminal condition and show a user-friendly explanation
   - `operation resume` must re-run a previously failed operation instead of exiting immediately from persisted terminal state, so the resumed run can encounter the same protocol error and settle back into `failed`
+- preserve the protocol cancel-first rule on deposit-side flows:
+  - the CLI and UI must continue polling `canFinalizeDeposit` and `canCancelDeposit` together
+  - if the current queued deposit is cancellable and not finalizable, they must submit `cancelDeposit` instead of drifting into a terminal failure path
+  - this does not apply to withdrawals, which still have no protocol cancel path
 
 ## RED Plan
 
