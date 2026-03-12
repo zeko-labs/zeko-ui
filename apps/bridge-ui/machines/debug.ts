@@ -4,14 +4,22 @@ import type { MetricEvent } from "./metrics.schema"
 
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 const safeProcess = (globalThis as any).process || { env: {} }
+
+function safeLocalStorage(key: string): string | null {
+	try {
+		return globalThis.localStorage?.getItem(key)
+	} catch {
+		return null
+	}
+}
+
 export const getDebugConfig = () => {
 	return {
 		disableCache:
-			globalThis.localStorage?.getItem("disableCache") === "true" ||
+			safeLocalStorage("disableCache") === "true" ||
 			safeProcess?.env?.BRIDGE_DEBUG_CONFIG_disableCache === "true",
 		debugLogs:
-			globalThis.localStorage?.getItem("debugLevel") === "true" ||
-			safeProcess?.env?.NODE_ENV === "production"
+			safeLocalStorage("debugLevel") === "true" || safeProcess?.env?.NODE_ENV === "production"
 				? 0
 				: 5
 	}

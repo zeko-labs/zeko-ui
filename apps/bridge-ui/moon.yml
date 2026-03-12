@@ -121,6 +121,10 @@ tasks:
       - playwright-install
     options:
       runInCI: true
+  sentry:
+    command: "sentry-cli"
+    options:
+      cache: false
   test-watch:
     command: vitest
     preset: server

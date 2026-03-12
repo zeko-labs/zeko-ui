@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { ActorRefFromLogic } from "xstate"
+import { toUserFriendlyMessage } from "~/errors"
 import {
 	errorToaster,
 	progressFromState,
@@ -57,7 +58,7 @@ watch(machine.value.context.errors, (newErrors) => {
 			console.error(`A total of ${newErrors.length} errors have occurred.`)
 			errorToaster.create({
 				title: "Error",
-				description: e.message,
+				description: toUserFriendlyMessage(e),
 				type: "error",
 				duration: Number.POSITIVE_INFINITY
 			})

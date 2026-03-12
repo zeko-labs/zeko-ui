@@ -41,7 +41,9 @@ export default defineNuxtConfig({
 		//Necessary for Nuxt DevTools
 		"vite:serverCreated": (server) => {
 			server.middlewares.use((_request, response, next) => {
-				response.setHeaders(new Headers(headers))
+				for (const [key, value] of Object.entries(headers)) {
+					response.setHeader(key, value)
+				}
 				next()
 			})
 		}

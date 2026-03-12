@@ -8,6 +8,8 @@ fileGroups:
     - package.json
   examples:
     - examples/**/*
+  tests:
+    - test/**/*
 dependsOn:
   - graphql
 tasks:
@@ -39,6 +41,13 @@ tasks:
     command: tsc --noEmit
     inputs:
       - "@globs(src)"
+  test:
+    deps:
+      - ^:build
+    command: pnpm exec vitest run test/diagnostics.test.ts
+    inputs:
+      - "@globs(src)"
+      - "@globs(tests)"
   fetchOuterActions:
     command: bun examples/fetchOuterActions.ts
     options:
@@ -77,5 +86,9 @@ tasks:
       cache: false
   canCancelDeposit:
     command: bun examples/canCancelDeposit.ts
+    options:
+      cache: false
+  diagnoseHistory:
+    command: bun examples/diagnoseHistory.ts
     options:
       cache: false

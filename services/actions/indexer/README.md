@@ -11,6 +11,7 @@ moon run actions-indexer:diagnose
 moon run actions-indexer:diagnose-health
 moon run actions-indexer:diagnose-sync
 moon run actions-indexer:diagnose-resources
+moon run actions-indexer:logs -- --tail
 AUTH_TOKEN=admin moon run actions-indexer:status -- --url http://127.0.0.1:3000
 AUTH_TOKEN=admin moon run actions-indexer:start-indexer -- --url http://127.0.0.1:3000
 AUTH_TOKEN=admin moon run actions-indexer:stop-indexer -- --url http://127.0.0.1:3000
@@ -24,6 +25,7 @@ Examples:
 ```bash
 moon run actions-indexer:diagnose-health -- --url https://indexer.actions.zeko.io --timeout-ms 30000
 moon run actions-indexer:diagnose-resources -- --project-id actions-indexer --service-id actions-indexer-deployment
+moon run actions-indexer:logs -- --project-id actions-indexer --service-id actions-indexer-deployment --tail
 ```
 
 Authenticated admin commands (`status`, `start`, `stop`, `reset`, `rebuild`, `set-interval`) require `AUTH_TOKEN` in the environment because the matching server endpoints are not public.
@@ -40,7 +42,7 @@ cd services/actions/indexer
 pnpm exec northflank login
 ```
 
-The `resources` and `diagnose` commands also need `project-id` and `service-id` values for the deployed service.
+The `resources`, `logs`, and `diagnose` commands also need `project-id` and `service-id` values for the deployed service.
 
 Current production values:
 

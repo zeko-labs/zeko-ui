@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
 import { availableParallelism } from "node:os"
 import { fileURLToPath } from "node:url"
+import { createConsola } from "consola"
 import * as v from "valibot"
 import { processArchiveBlocks, validateEventChain } from "./core"
 import {
@@ -12,7 +13,10 @@ import {
 import type { ActionProcessingResult, ArchiveAction } from "./types"
 
 const MAX_WORKER_PROCESSES = 4
-const WORKER_PROCESS_TIMEOUT_MS = 60_000
+const SLOW_WORKER_CHUNK_WARNING_MS = 60_000
+const logger = createConsola({
+	level: 3
+}).withTag("ACTIONS_INDEXER")
 
 function getProcessScriptPath(): URL {
 	return new URL("./action-processing-process.js", import.meta.url)
@@ -39,6 +43,22 @@ const parseProcessResponse = (stdout: string): ProcessResponse => {
 	return v.parse(v.pipe(v.string(), v.parseJson(), ProcessResponseSchema), stdout)
 }
 
+const logWorkerChunkCompletion = ({
+	blockCount,
+	eventCount,
+	elapsedMs
+}: {
+	blockCount: number
+	eventCount: number
+	elapsedMs: number
+}) => {
+	if (elapsedMs < SLOW_WORKER_CHUNK_WARNING_MS) return
+
+	logger.warn(
+		`[action-processing] worker chunk completed: blocks=${blockCount}, events=${eventCount}, elapsedMs=${Math.round(elapsedMs)}, slow=true`
+	)
+}
+
 async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionProcessingResult> {
 	const scriptPath = getProcessScriptPath()
 	if (!existsSync(scriptPath)) {
@@ -51,23 +71,14 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 	})
 
 	return new Promise<ActionProcessingResult>((resolve, reject) => {
+		const startedAt = performance.now()
 		let stdout = ""
 		let stderr = ""
 		let settled = false
-		const timeout = setTimeout(() => {
-			subprocess.kill("SIGKILL")
-			settle(() =>
-				reject(
-					new Error(`action-processing process timed out after ${WORKER_PROCESS_TIMEOUT_MS}ms`)
-				)
-			)
-		}, WORKER_PROCESS_TIMEOUT_MS)
-		timeout.unref?.()
 
 		const settle = (callback: () => void) => {
 			if (settled) return
 			settled = true
-			clearTimeout(timeout)
 			callback()
 		}
 
@@ -103,6 +114,11 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 					return
 				}
 
+				logWorkerChunkCompletion({
+					blockCount: blocks.length,
+					eventCount: parsed.result.events.length,
+					elapsedMs: performance.now() - startedAt
+				})
 				resolve(parsed.result)
 			})
 		})

@@ -30,11 +30,10 @@ export const askPermission = async () => {
 	if (!serviceWorker) throw new QuietError("Service worker not registered")
 	const pushManager = serviceWorker.pushManager
 	if (!pushManager) {
-		console.error(`PushManager is not present in service worker registration: ${pushManager}`)
-		console.log("window standalone", (window as Window).navigator.standalone)
+		throw new QuietError("PushManager is not available in this browser")
 	}
-	const permissions = await serviceWorker.pushManager.permissionState({ userVisibleOnly: true })
-	console.log("Permission granted for push notification.", permissions)
+	const permissionState = await pushManager.permissionState({ userVisibleOnly: true })
+	if (permissionState !== "granted") throw new QuietError("Push notification permission denied")
 }
 
 export const checkWebpushCompability = (): void => {

@@ -136,6 +136,10 @@ export const bridgeMachine = setup({
 			)[command]
 
 			const id = state?.id ?? operationId()
+			if (context.operations.has(id)) {
+				logger.warn(`Operation ${id} already exists, skipping spawn`)
+				return {}
+			}
 			const operation = spawn("bridgeOperationMachine", {
 				id,
 				systemId: id,

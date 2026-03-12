@@ -7,6 +7,17 @@ export interface NorthflankMetricsInput {
 	durationSeconds: number
 }
 
+export interface NorthflankLogsInput {
+	projectId: string
+	serviceId: string
+	durationSeconds: number
+	lineLimit?: number
+	tail?: boolean
+	types?: string[]
+	containerId?: string
+	deploymentId?: string
+}
+
 export interface NorthflankResourcesResult {
 	cpuPercent: number | null
 	memoryPercent: number | null
@@ -36,6 +47,43 @@ export function buildNorthflankMetricsArgs({
 		"-o",
 		"json"
 	]
+}
+
+export function buildNorthflankLogsArgs({
+	projectId,
+	serviceId,
+	durationSeconds,
+	lineLimit,
+	tail = true,
+	types = ["runtime"],
+	containerId,
+	deploymentId
+}: NorthflankLogsInput): string[] {
+	const args = ["get", "service", "logs", "--project", projectId, "--service", serviceId]
+
+	if (containerId) {
+		args.push("--container", containerId)
+	}
+
+	if (deploymentId) {
+		args.push("--deployment", deploymentId)
+	}
+
+	for (const type of types) {
+		args.push("-t", type)
+	}
+
+	args.push("--duration", String(durationSeconds))
+
+	if (lineLimit && lineLimit > 0) {
+		args.push("-l", String(lineLimit))
+	}
+
+	if (tail) {
+		args.push("-f")
+	}
+
+	return args
 }
 
 const tryNumber = (value: unknown): number | null => {
@@ -137,5 +185,72 @@ export async function runNorthflankResources({
 		...parsed,
 		raw,
 		command
+	}
+}
+
+export async function runNorthflankLogs({
+	projectId,
+	serviceId,
+	durationSeconds,
+	lineLimit,
+	tail = true,
+	types = ["runtime"],
+	containerId,
+	deploymentId,
+	northflankExecutable = "northflank"
+}: NorthflankLogsInput & { northflankExecutable?: string }): Promise<void> {
+	const logArgs = buildNorthflankLogsArgs({
+		projectId,
+		serviceId,
+		durationSeconds,
+		lineLimit,
+		tail,
+		types,
+		containerId,
+		deploymentId
+	})
+	const command = ["pnpm", "exec", northflankExecutable, ...logArgs]
+	const childProcess = spawn(command[0], command.slice(1), { stdio: "inherit" })
+	let interrupted = false
+
+	const handleInterrupt = (signal: NodeJS.Signals) => {
+		interrupted = true
+		childProcess.kill(signal)
+	}
+
+	const handleSigint = () => handleInterrupt("SIGINT")
+	const handleSigterm = () => handleInterrupt("SIGTERM")
+	globalThis.process.once("SIGINT", handleSigint)
+	globalThis.process.once("SIGTERM", handleSigterm)
+
+	const outcome = await (async () => {
+		try {
+			return await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+				(resolve, reject) => {
+					childProcess.on("error", (error) => {
+						reject(error)
+					})
+
+					childProcess.on("close", (code, signal) => {
+						resolve({ code, signal })
+					})
+				}
+			)
+		} finally {
+			globalThis.process.off("SIGINT", handleSigint)
+			globalThis.process.off("SIGTERM", handleSigterm)
+		}
+	})()
+
+	if (interrupted || outcome.signal === "SIGINT" || outcome.signal === "SIGTERM") {
+		return
+	}
+
+	const exitCode = outcome.code ?? 1
+
+	if (exitCode !== 0) {
+		throw new Error(
+			`northflank logs command failed (${exitCode}). Run 'pnpm exec northflank login' in services/actions/indexer first if needed.`
+		)
 	}
 }

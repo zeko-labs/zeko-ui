@@ -1,5 +1,5 @@
 import { commitActions, innerActions, outerActions, witnessActions } from "@zeko/actions-api"
-import { desc, type InferInsertModel, isNull, not, sql } from "drizzle-orm"
+import { and, desc, type InferInsertModel, inArray, isNull, not, sql } from "drizzle-orm"
 import type { AnyPgTable } from "drizzle-orm/pg-core"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { drizzle } from "drizzle-orm/postgres-js"
@@ -43,6 +43,17 @@ export type CommitInsert = typeof commitActions.$inferInsert
 export type WitnessInsert = typeof witnessActions.$inferInsert
 export type InnerActionsInsert = typeof innerActions.$inferInsert
 
+export interface CanonicalProgressStream {
+	lastFinalIndex: number | null
+	lastFinalBlockHeight: number | null
+	nonCanonicalTailCount: number
+}
+
+export interface CanonicalProgressSnapshot {
+	outer: CanonicalProgressStream
+	inner: CanonicalProgressStream
+}
+
 export async function batchInsert<TTable extends AnyPgTable>({
 	db,
 	table,
@@ -77,7 +88,12 @@ export async function clearAllTables(tx: PostgresJsDatabase) {
 export async function getLastFinalOuterAction(db: PostgresJsDatabase) {
 	logger.info("[getLastFinalOuterAction] querying")
 	const result = await db
-		.select()
+		.select({
+			afterState: outerActions.afterState,
+			index: outerActions.index,
+			blockHeight: outerActions.blockHeight,
+			markedAsCanonicalAt: outerActions.markedAsCanonicalAt
+		})
 		.from(outerActions)
 		.where(not(isNull(outerActions.markedAsCanonicalAt)))
 		.orderBy(desc(outerActions.index))
@@ -93,7 +109,12 @@ export async function getLastFinalOuterAction(db: PostgresJsDatabase) {
 export async function getLastFinalInnerAction(db: PostgresJsDatabase) {
 	logger.info("[getLastFinalInnerAction] querying")
 	const result = await db
-		.select()
+		.select({
+			afterState: innerActions.afterState,
+			index: innerActions.index,
+			blockHeight: innerActions.blockHeight,
+			markedAsCanonicalAt: innerActions.markedAsCanonicalAt
+		})
 		.from(innerActions)
 		.where(not(isNull(innerActions.markedAsCanonicalAt)))
 		.orderBy(desc(innerActions.index))
@@ -104,6 +125,70 @@ export async function getLastFinalInnerAction(db: PostgresJsDatabase) {
 		`[getLastFinalInnerAction] result: ${action ? `index=${action.index} blockHeight=${action.blockHeight} afterState=${action.afterState}` : "<none>"}`
 	)
 	return action
+}
+
+const countNonCanonicalTail = async ({
+	db,
+	table,
+	lastFinalIndex
+}: {
+	db: PostgresJsDatabase
+	table: typeof outerActions | typeof innerActions
+	lastFinalIndex: number | null
+}) => {
+	const [{ count }] = await db
+		.select({
+			count: sql<string>`COUNT(*)`
+		})
+		.from(table)
+		.where(
+			lastFinalIndex == null
+				? isNull(table.markedAsCanonicalAt)
+				: and(sql`${table.index} > ${lastFinalIndex}`, isNull(table.markedAsCanonicalAt))
+		)
+
+	return Number(count)
+}
+
+const buildCanonicalProgressStream = async ({
+	db,
+	getLastFinalAction,
+	table
+}: {
+	db: PostgresJsDatabase
+	getLastFinalAction: typeof getLastFinalOuterAction | typeof getLastFinalInnerAction
+	table: typeof outerActions | typeof innerActions
+}): Promise<CanonicalProgressStream> => {
+	const lastFinal = await getLastFinalAction(db)
+
+	return {
+		lastFinalIndex: lastFinal?.index ?? null,
+		lastFinalBlockHeight: lastFinal?.blockHeight ?? null,
+		nonCanonicalTailCount: await countNonCanonicalTail({
+			db,
+			table,
+			lastFinalIndex: lastFinal?.index ?? null
+		})
+	}
+}
+
+export async function getCanonicalProgressSnapshot(
+	db: PostgresJsDatabase
+): Promise<CanonicalProgressSnapshot> {
+	const [outer, inner] = await Promise.all([
+		buildCanonicalProgressStream({
+			db,
+			getLastFinalAction: getLastFinalOuterAction,
+			table: outerActions
+		}),
+		buildCanonicalProgressStream({
+			db,
+			getLastFinalAction: getLastFinalInnerAction,
+			table: innerActions
+		})
+	])
+
+	return { outer, inner }
 }
 
 export async function getOuterActionsFromBlock(db: PostgresJsDatabase, startBlock: number) {
@@ -142,6 +227,53 @@ export async function deleteOuterActionsFromIndex(tx: PostgresJsDatabase, index:
 export async function deleteInnerActionsFromIndex(tx: PostgresJsDatabase, index: number) {
 	logger.info(`[deleteInnerActionsFromIndex] deleting from index >= ${index}`)
 	await tx.delete(innerActions).where(sql`${innerActions.index} >= ${index}`)
+}
+
+const promoteCanonicalActions = async ({
+	db,
+	table,
+	afterStates,
+	label
+}: {
+	db: PostgresJsDatabase
+	table: typeof outerActions | typeof innerActions
+	afterStates: string[]
+	label: "outer" | "inner"
+}) => {
+	const uniqueAfterStates = [...new Set(afterStates)]
+	if (uniqueAfterStates.length === 0) {
+		logger.info(`[promoteCanonicalActions:${label}] no canonical actions to promote`)
+		return 0
+	}
+
+	const promoted = await db
+		.update(table)
+		.set({ markedAsCanonicalAt: new Date() })
+		.where(and(inArray(table.afterState, uniqueAfterStates), isNull(table.markedAsCanonicalAt)))
+		.returning({ afterState: table.afterState })
+
+	logger.info(
+		`[promoteCanonicalActions:${label}] promoted ${promoted.length}/${uniqueAfterStates.length} actions`
+	)
+	return promoted.length
+}
+
+export async function promoteOuterCanonicalActions(db: PostgresJsDatabase, afterStates: string[]) {
+	return promoteCanonicalActions({
+		db,
+		table: outerActions,
+		afterStates,
+		label: "outer"
+	})
+}
+
+export async function promoteInnerCanonicalActions(db: PostgresJsDatabase, afterStates: string[]) {
+	return promoteCanonicalActions({
+		db,
+		table: innerActions,
+		afterStates,
+		label: "inner"
+	})
 }
 
 export async function checkDatabaseHealth(
