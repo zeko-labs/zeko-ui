@@ -77,4 +77,4 @@
 - T091 | done | simplify-bridge-grafana-output-to-json-only | done/T091-simplify-bridge-grafana-output-to-json-only.md
 - T092 | done | fix-non-error-metric-labels-and-sentry-audit | done/T092-fix-non-error-metric-labels-and-sentry-audit.md
 - T093 | done | rename-ae-reporting-to-metrics-report | done/T093-rename-ae-reporting-to-metrics-report.md
-- T094 | in-progress | commit-push-and-open-review-pr-for-observability-followup | in-progress/T094-commit-push-and-open-review-pr-for-observability-followup.md
+- T094 | done | commit-push-and-open-review-pr-for-observability-followup | done/T094-commit-push-and-open-review-pr-for-observability-followup.md
