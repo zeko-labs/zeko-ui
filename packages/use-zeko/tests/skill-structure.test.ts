@@ -62,6 +62,10 @@ describe("use-zeko skill structure", () => {
 		expect(endpointsAndCurl).toContain("curl")
 		expect(endpointsAndCurl).toContain("sequencerPk")
 		expect(endpointsAndCurl).toContain("archive")
+		expect(endpointsAndCurl).toContain("sendPayment")
+		expect(endpointsAndCurl).toContain("1_000_000_000")
+		expect(endpointsAndCurl).toContain("from")
+		expect(endpointsAndCurl).toContain("to")
 
 		const protocol = fs.readFileSync(
 			path.join(referencesDir, "60-sequencer-archive-and-da.md"),

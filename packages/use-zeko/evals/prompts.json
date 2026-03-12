@@ -46,5 +46,11 @@
 		"prompt": "What do the sequencer and archive node do on Zeko, and what queries can I run against them?",
 		"expectedReferences": ["40-endpoints-and-curl.md", "60-sequencer-archive-and-da.md"],
 		"expectedFragments": ["sequencer", "archive node", "curl", "sequencerPk", "events"]
+	},
+	{
+		"id": "send-mina",
+		"prompt": "How do I send 1.25 MINA from one address to another, and what amount value should I pass in the request?",
+		"expectedReferences": ["20-user-flows.md", "40-endpoints-and-curl.md"],
+		"expectedFragments": ["sendPayment", "1_000_000_000", "from", "to", "amount", "signature"]
 	}
 ]

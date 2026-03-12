@@ -54,3 +54,4 @@
 - T071 | done | simplify-use-zeko-skill-for-installed-agent-context | done/T071-simplify-use-zeko-skill-for-installed-agent-context.md
 - T072 | done | expand-and-restructure-zeko-skill | done/T072-expand-and-restructure-zeko-skill.md
 - T073 | done | enforce-progressive-discovery-in-zeko-skill | done/T073-enforce-progressive-discovery-in-zeko-skill.md
+- T074 | done | add-native-mina-transfer-and-unit-conversion-guidance | done/T074-add-native-mina-transfer-and-unit-conversion-guidance.md

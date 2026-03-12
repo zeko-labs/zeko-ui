@@ -34,6 +34,57 @@ Rule:
 - Treat the gateway Mina endpoints as the default read path.
 - Use Minascan as a backup, not the first choice.
 
+## Native MINA transfer rule
+
+- Use `sendPayment` for native MINA transfers.
+- This path is for native MINA only. Arbitrary zkApp tokens need token-specific flows instead.
+- GraphQL expects `UInt64` base units, not human MINA strings.
+- `1 MINA = 1_000_000_000` base units.
+
+## Shell helper: convert human MINA to base units
+
+```bash
+to_nanomina() {
+  node -e 'const [value] = process.argv.slice(1); const [whole, frac = ""] = value.split("."); const nanos = BigInt(whole) * 1000000000n + BigInt((frac + "000000000").slice(0, 9)); console.log(nanos.toString())' "$1"
+}
+```
+
+## Example: send 1.25 MINA from X to Y
+
+```bash
+FROM="B62qSenderAddress"
+TO="B62qRecipientAddress"
+AMOUNT_MINA="1.25"
+FEE_MINA="0.10"
+
+AMOUNT_NANOMINA="$(to_nanomina "$AMOUNT_MINA")"
+FEE_NANOMINA="$(to_nanomina "$FEE_MINA")"
+
+echo "$AMOUNT_NANOMINA"  # 1250000000
+echo "$FEE_NANOMINA"     # 100000000
+```
+
+## Curl: inspect the sender nonce before signing
+
+```bash
+curl -sS https://testnet.zeko.io/graphql \
+  -H 'content-type: application/json' \
+  --data '{"query":"query SenderNonce($pk: PublicKey!) { account(publicKey: $pk) { nonce inferredNonce } }","variables":{"pk":"B62qSenderAddress"}}'
+```
+
+## Curl: broadcast a signed native MINA payment
+
+```bash
+curl -sS https://testnet.zeko.io/graphql \
+  -H 'content-type: application/json' \
+  --data '{"query":"mutation SendPayment($input: SendPaymentInput!, $signature: SignatureInput) { sendPayment(input: $input, signature: $signature) { payment { hash amount fee from to nonce } } }","variables":{"input":{"from":"B62qSenderAddress","to":"B62qRecipientAddress","amount":"1250000000","fee":"100000000"},"signature":{"rawSignature":"<signed-payment-signature>"}}}'
+```
+
+## Signing note
+
+- On public endpoints, assume you need to provide a valid signature.
+- Generate the signature from the same transaction fields you pass in `input`, typically with a wallet or `o1js`, then submit the signed payload with `curl`.
+
 ## Curl: inspect the sequencer public key
 
 ```bash

@@ -14,6 +14,7 @@ Use this file when the user is trying to do something on Zeko, not build infrast
 - If the user asks for a wallet recommendation in a browser session, Auro Wallet is relevant.
 - If the user asks for automation, prefer direct env vars, SDK calls, CLI calls, or `curl`.
 - If the user asks where to inspect transactions, use `https://zekoscan.io/testnet` for testnet or `https://zekoscan.io/mainnet` for mainnet.
+- If the user asks how to send native MINA from one address to another, route to `references/40-endpoints-and-curl.md` for the `sendPayment` flow and base-unit conversion.
 
 ## Quick routing
 
