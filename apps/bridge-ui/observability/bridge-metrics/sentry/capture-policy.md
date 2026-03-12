@@ -1,38 +1,51 @@
 # Bridge Sentry Capture Policy
 
-## Intended Outcome
+Use this as an investigation guide, not as a frozen list of known tuples.
+
+## What Should Reach Sentry
 
 - Root bridge exceptions should be captured in Sentry with bridge-specific
   context and stable grouping.
-- Synthetic lifecycle metrics such as `bridge_operation / failed / ...` should
-  remain AE-only rollups and should not open separate top-level Sentry issues.
-- Existing intentional filters remain intact for:
-  - `QuietError`
-  - wallet rejection flows
-  - browser extension noise
-  - aborted requests
-  - third-party-only stack traces
+- Examples:
+  - `bridge / findPendingOperation / ...`
+  - `bridge_operation / finalizeWithdrawal / ...`
+  - `bridge_operation / submitDeposit / ...`
+  - `transaction / sendSignedTransaction / ...`
+  - `transaction / signTransaction / ...`
 
-## AE Rows That Should Become Sentry Issues
+## What Should Usually Stay In AE
 
-- `bridge / findPendingOperation / Invalid witnesses data`
-- `bridge_operation / finalizeWithdrawal / rangeCheckN...`
-- `bridge_operation / submitDeposit / Cannot start new transaction within another transaction`
-- `transaction / sendSignedTransaction / Account_nonce_precondition_unsatisfied...`
-- `transaction / sendSignedTransaction / Unknown Error: {}`
-- `transaction / signTransaction / [object Object]`
+- Synthetic lifecycle rollups such as `bridge_operation / failed / ...`
+- These rows summarize failure states and should point back to the captured root
+  exception instead of creating their own Sentry issue family.
 
-## AE Rows That Should Not Become Standalone Sentry Issues
+## What May Be Filtered Intentionally
 
-- `bridge_operation / failed / unknown error`
-- `bridge_operation / failed / <root cause label>`
+- `QuietError`
+- wallet rejection flows
+- browser extension noise
+- aborted requests
+- third-party-only stack traces
 
-Those rows are synthetic bridge-operation rollups. They should point back to a
-captured root exception instead of becoming their own issue family.
+If an AE row falls into one of those categories, verify that the filtering is
+intentional before changing instrumentation.
 
-## Non-Error Object Failures
+## How To Classify A New Error
 
-- Non-Error thrown objects must be serialized into a stable string for both AE
-  metrics and Sentry capture.
-- They should never collapse to `[object Object]`, because that hides the actual
-  failure shape and prevents the existing filters from making the right decision.
+1. Is this row a root exception or a synthetic rollup?
+2. Which action emitted it?
+3. Does `createLogger.act()` capture it through
+   `apps/bridge-ui/app/telemetry/bridgeErrors.ts`?
+4. Could `apps/bridge-ui/sentry.client.config.ts` be filtering it out on
+   purpose?
+5. If it is a non-`Error` object, does the label preserve structured detail or
+   has it degraded into something unhelpful?
+
+## Files To Inspect
+
+- `apps/bridge-ui/machines/debug.ts`
+- `apps/bridge-ui/app/telemetry/bridgeErrors.ts`
+- `apps/bridge-ui/sentry.client.config.ts`
+- `apps/bridge-ui/machines/bridge.ts`
+- `apps/bridge-ui/machines/bridgeOperation.ts`
+- `apps/bridge-ui/machines/transaction.ts`

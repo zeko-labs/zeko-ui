@@ -9,8 +9,8 @@ Cloudflare Analytics Engine `bridge_metrics` dataset.
   runner, and the Markdown formatter.
 - `grafana/` contains the typed dashboard manifest and the generated importable
   dashboard JSON.
-- `sentry/` contains the CSV audit output and the current bridge Sentry capture
-  policy.
+- `sentry/` contains the live AE error export query, the CSV export script, and
+  the current bridge Sentry investigation guide.
 - `lib/` contains shared TypeScript helpers used by the AE runner and the
   Grafana dashboard generator.
 
@@ -28,9 +28,10 @@ Cloudflare Analytics Engine `bridge_metrics` dataset.
   SQL API and prints a Markdown metrics report.
 - `moon bridge-ui:grafana-dashboard-generate` regenerates the importable
   dashboard JSON.
-- `moon bridge-ui:sentry-audit` regenerates the CSV audit outputs.
+- `moon bridge-ui:sentry-errors-csv` exports the current AE error tuples as CSV.
 
 ## Direct Script Usage
 
 - `BRIDGE_METRICS_WORKSPACE_DIR=/absolute/path/to/apps/bridge-ui/observability/bridge-metrics ./analytics-engine/scripts/run-all.sh --dry-run`
 - `BRIDGE_METRICS_WORKSPACE_DIR=/absolute/path/to/apps/bridge-ui/observability/bridge-metrics CLOUDFLARE_API_TOKEN=... ./analytics-engine/scripts/run-all.sh`
+- `CLOUDFLARE_API_TOKEN=... node --experimental-strip-types ./observability/bridge-metrics/sentry/scripts/export-errors-csv.ts --window 7d`

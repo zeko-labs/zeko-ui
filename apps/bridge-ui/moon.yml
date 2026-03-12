@@ -140,8 +140,8 @@ tasks:
       - "@group(sources)"
     options:
       cache: false
-  sentry-audit:
-    command: node --experimental-strip-types ./observability/bridge-metrics/sentry/scripts/generate-audit.ts
+  sentry-errors-csv:
+    command: node --experimental-strip-types ./observability/bridge-metrics/sentry/scripts/export-errors-csv.ts
     inputs:
       - "@group(sources)"
     options:

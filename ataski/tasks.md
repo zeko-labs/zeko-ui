@@ -81,3 +81,5 @@
 - T095 | done | relocate-bridge-error-telemetry-helper | done/T095-relocate-bridge-error-telemetry-helper.md
 - T096 | done | make-metrics-report-runner-portable-and-verify-live-report | done/T096-make-metrics-report-runner-portable-and-verify-live-report.md
 - T097 | done | commit-and-push-bridge-observability-fixes | done/T097-commit-and-push-bridge-observability-fixes.md
+- T098 | done | simplify-sentry-observability-workspace | done/T098-simplify-sentry-observability-workspace.md
+- T099 | done | add-live-ae-error-csv-export-and-docs | done/T099-add-live-ae-error-csv-export-and-docs.md
