@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto"
 import path from "node:path"
 import { defineCommand, type CommandDef } from "citty"
-import { isInsufficientFirstWithdrawalAmountError } from "@zeko-labs/bridge-sdk"
 import { PrivateKey } from "o1js"
 import { assign, createActor, fromPromise, setup, toPromise } from "xstate"
 import type { BridgeAdapter } from "../core/adapter"
@@ -302,9 +301,6 @@ const isTransientClaimUnavailableError = (error: unknown): boolean => {
 	const message = formatErrorMessage(error)
 	return TRANSIENT_CLAIM_UNAVAILABLE_ERROR_PATTERNS.some((pattern) => pattern.test(message))
 }
-
-const isRetryableCapabilityError = (error: unknown): boolean =>
-	!isInsufficientFirstWithdrawalAmountError(error)
 
 const maybeEmitHeartbeat = async ({
 	session,
@@ -1074,7 +1070,6 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			retryDelayMs: deps.retryDelayMs,
 			now,
 			operation: "canFinalizeWithdrawal",
-			shouldRetry: isRetryableCapabilityError,
 			run: async () =>
 				deps.adapter.canFinalizeWithdrawal
 					? deps.adapter.canFinalizeWithdrawal(session.account)

@@ -1,3 +1,4 @@
+import { InsufficientFirstWithdrawalAmountError } from "@zeko-labs/bridge-sdk"
 import { describe, expect, it } from "vitest"
 import { runBridgeOperation } from "../src/commands/bridge"
 
@@ -1984,10 +1985,10 @@ describe("bridge flow", () => {
 		).toBe(true)
 	})
 
-	it("fails clearly on a terminal first-withdrawal amount error instead of retrying forever", async () => {
+	it("fails immediately when submitWithdrawal raises the shared first-withdrawal fee error", async () => {
 		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
-		const errorMessage =
-			"First Zeko->Mina withdrawal amount is too small: recipient B62submitretry does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot be finalized as submitted."
+		let inspected = false
+		let checkedCapability = false
 
 		const result = await runBridgeOperation(
 			{
@@ -2000,31 +2001,19 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitWithdrawal() {
-						return {
-							success: true,
-							direction: "withdrawal",
-							action: "submit",
-							route: "zeko:testnet->mina:testnet",
-							hash: "withdrawal-submit-too-small",
-							explorerUrl: "https://zekoscan.io/testnet/tx/withdrawal-submit-too-small",
-							included: true
-						}
+						throw new InsufficientFirstWithdrawalAmountError({
+							amountNanomina: 200_000_000n,
+							accountCreationFeeNanomina: 1_000_000_000n,
+							recipient: "B62submitretry"
+						})
 					},
 					async getWithdrawalStatuses() {
-						return [
-							{
-								index: 0,
-								amount: "0.2",
-								recipient: "B62submitretry",
-								committed: false,
-								finalised: false,
-								hash: "withdrawal-submit-too-small",
-								timestamp: "2026-03-09T19:03:00.000Z"
-							}
-						]
+						inspected = true
+						return []
 					},
 					async canFinalizeWithdrawal() {
-						throw new Error(errorMessage)
+						checkedCapability = true
+						return false
 					},
 					async finalizeWithdrawal() {
 						throw new Error("finalizeWithdrawal should not be called")
@@ -2044,7 +2033,60 @@ describe("bridge flow", () => {
 		)
 
 		expect(result.status).toBe("failed")
+		expect(result.lastError).toBe(
+			"First Zeko->Mina withdrawal amount is too small: recipient B62submitretry does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot be finalized as submitted."
+		)
+		expect(inspected).toBe(false)
+		expect(checkedCapability).toBe(false)
+		expect(events.some((entry) => entry.event === "retrying")).toBe(false)
+	})
+
+	it("fails immediately when submitWithdrawal returns the backend fee error message", async () => {
+		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
+		const errorMessage =
+			"First Zeko->Mina withdrawal amount is too small: recipient B62submitretry does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot be finalized as submitted."
+		let inspected = false
+		let checkedCapability = false
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-too-small-backend",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "0.2",
+				account: "B62submitretry"
+			},
+			{
+				adapter: {
+					async submitWithdrawal() {
+						throw new Error(errorMessage)
+					},
+					async getWithdrawalStatuses() {
+						inspected = true
+						return []
+					},
+					async canFinalizeWithdrawal() {
+						checkedCapability = true
+						return false
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async ({ event, details }) => {
+					events.push({ event, details })
+				},
+				sleep: async () => {
+					throw new Error("backend fee error should not be retried")
+				},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(result.status).toBe("failed")
 		expect(result.lastError).toBe(errorMessage)
+		expect(inspected).toBe(false)
+		expect(checkedCapability).toBe(false)
 		expect(events.some((entry) => entry.event === "retrying")).toBe(false)
 	})
 
