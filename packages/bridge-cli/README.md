@@ -182,9 +182,3 @@ moon run bridge-cli:typecheck
 moon run bridge-cli:test
 moon run bridge-cli:lint
 ```
-
-Additional maintainer/operator notes live in the monorepo docs:
-
-- manual live validation: `packages/bridge-cli/testing.md`
-- release workflow: `packages/bridge-cli/RELEASE.md`
-- agent-only instructions: `packages/bridge-cli/AGENTS.md`

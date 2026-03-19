@@ -2,6 +2,8 @@
 
 This file covers manual live validation only. Public usage documentation lives in [README.md](./README.md).
 
+Agent-specific workflow rules live in [AGENTS.md](./AGENTS.md).
+
 ## Required Environment
 
 The CLI auto-loads dotenv files in this order before falling back to exported shell variables:
@@ -28,6 +30,8 @@ Run from the monorepo root:
 moon run bridge-cli:live-bridge-mina-to-zeko
 moon run bridge-cli:live-bridge-zeko-to-mina
 ```
+
+Those Moon tasks run the same real `bridge` command shown below with `--json --verbose`. They are convenience entrypoints, not alternate validation logic.
 
 Exact one-command validation examples:
 
