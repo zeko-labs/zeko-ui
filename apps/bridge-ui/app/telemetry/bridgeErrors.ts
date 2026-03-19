@@ -10,7 +10,14 @@ export type BridgeSentryContext = {
 	direction?: string
 }
 
+export const BRIDGE_METRIC_LABEL_MAX_LENGTH = 500
+
 const normalizeWhitespace = (value: string): string => value.replace(/\s+/g, " ").trim()
+
+const truncateBridgeMetricLabel = (value: string): string =>
+	value.length <= BRIDGE_METRIC_LABEL_MAX_LENGTH
+		? value
+		: `${value.slice(0, BRIDGE_METRIC_LABEL_MAX_LENGTH - 3)}...`
 
 const serializeBridgeErrorValue = (value: unknown): string | undefined => {
 	const seen = new WeakSet<object>()
@@ -71,6 +78,9 @@ export const describeBridgeError = (error: unknown): string => {
 
 	return String(error)
 }
+
+export const describeBridgeMetricLabel = (error: unknown): string =>
+	truncateBridgeMetricLabel(describeBridgeError(error))
 
 export const normalizeBridgeErrorMessage = (message: string): string =>
 	normalizeWhitespace(message)

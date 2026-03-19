@@ -16,6 +16,7 @@ import {
 	setup
 } from "xstate"
 import { finalizeNotification } from "../app/service-worker/notificationList"
+import { describeBridgeMetricLabel } from "../app/telemetry/bridgeErrors"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
@@ -936,7 +937,7 @@ export const bridgeOperationMachine = setup({
 						source: context.source,
 						destination: context.destination,
 						success: false,
-						label: lastError?.message ?? "unknown error"
+						label: describeBridgeMetricLabel(lastError ?? "unknown error")
 					},
 					context.user
 				)

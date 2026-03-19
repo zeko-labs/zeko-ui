@@ -88,3 +88,4 @@
 - T102 | done | align-grafana-clickhouse-plugin-with-monitoring-instance | done/T102-align-grafana-clickhouse-plugin-with-monitoring-instance.md
 - T103 | done | emit-vertamedia-compatible-grafana-query-targets | done/T103-emit-vertamedia-compatible-grafana-query-targets.md
 - T104 | done | simplify-grafana-dashboard-output-to-env-bound-artifact | done/T104-simplify-grafana-dashboard-output-to-env-bound-artifact.md
+- T105 | in-progress | validate-and-resolve-pr-review-findings | in-progress/T105-validate-and-resolve-pr-review-findings.md

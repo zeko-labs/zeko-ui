@@ -1,7 +1,7 @@
 import { type ConsolaInstance, createConsola } from "consola"
 import {
 	captureBridgeError,
-	describeBridgeError,
+	describeBridgeMetricLabel,
 	type BridgeSentryContext
 } from "../app/telemetry/bridgeErrors"
 import { sendMetric } from "./metrics"
@@ -117,8 +117,17 @@ export const createLogger = (prefix: string, options?: CreateLoggerOptions) => {
 		} catch (e) {
 			logger.error(`${label} Error:`, e)
 			stop()
+			captureBridgeError({
+				error: e,
+				context: {
+					category,
+					action: label,
+					walletAddress,
+					...sentryContext
+				}
+			})
 			if (metricsEnabled) {
-				const errorLabel = describeBridgeError(e)
+				const errorLabel = describeBridgeMetricLabel(e)
 				sendMetric(
 					{
 						category,
@@ -129,15 +138,6 @@ export const createLogger = (prefix: string, options?: CreateLoggerOptions) => {
 					},
 					walletAddress
 				)
-				captureBridgeError({
-					error: e,
-					context: {
-						category,
-						action: label,
-						walletAddress,
-						...sentryContext
-					}
-				})
 			}
 			throw e
 		}

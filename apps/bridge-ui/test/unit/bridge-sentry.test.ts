@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
+	BRIDGE_METRIC_LABEL_MAX_LENGTH,
 	buildBridgeErrorFingerprint,
 	describeBridgeError,
+	describeBridgeMetricLabel,
 	normalizeBridgeErrorMessage,
 	shouldSkipBridgeErrorCapture
 } from "../../app/telemetry/bridgeErrors"
@@ -27,6 +29,19 @@ describe("bridge error telemetry", () => {
 		expect(describeBridgeError({ code: 500, detail: { reason: "Unknown Error: {}" } })).toBe(
 			'Non-Error object: {"code":500,"detail":{"reason":"Unknown Error: {}"}}'
 		)
+	})
+
+	it("bounds metric labels so they still satisfy the analytics schema", () => {
+		const oversizedError = {
+			detail: {
+				payload: "x".repeat(BRIDGE_METRIC_LABEL_MAX_LENGTH * 2)
+			}
+		}
+
+		const metricLabel = describeBridgeMetricLabel(oversizedError)
+
+		expect(metricLabel.length).toBe(BRIDGE_METRIC_LABEL_MAX_LENGTH)
+		expect(metricLabel.endsWith("...")).toBe(true)
 	})
 
 	it("builds a stable fingerprint from normalized bridge context", () => {
