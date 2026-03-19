@@ -1,8 +1,8 @@
 # Bridge CLI
 
-Agent-first CLI for bridging assets between Mina and Zeko.
+CLI for bridging assets between Mina and Zeko.
 
-`zeko-bridge` is built for unattended agent use. The primary interface is the single high-level `bridge` command, which signs, submits, waits, retries transient network checks, advances queued claims in order, and streams progress until the requested bridge completes.
+`zeko-bridge` is built around a single high-level `bridge` command, which signs, submits, waits, retries transient network checks, advances queued claims in order, and streams progress until the requested bridge completes.
 
 Lower-level commands still exist, but they are advanced tools for debugging, recovery, and explicit operator control.
 
@@ -62,7 +62,7 @@ Earlier files win over later files. If none of those files provide `WALLET_PRIVA
 
 ### `bridge`
 
-Use `bridge` by default. This is the command agents should reach for first.
+Use `bridge` by default.
 
 ```bash
 zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
@@ -133,7 +133,7 @@ Behavior:
 
 ## Advanced Commands
 
-These commands are supported, but they are not the default agent path:
+These commands are supported, but `bridge` is the default path for normal usage:
 
 - `deposit` for low-level Mina-to-Zeko submit/finalize/cancel/status control
 - `withdrawal` for low-level Zeko-to-Mina submit/finalize/status control
@@ -156,6 +156,22 @@ Use `operation logs <operation-id>` to inspect the recorded event stream for a s
 
 `operation status` is a recovery/debugging command, not a validation runner. It does not replace the original long-lived `bridge` process, it does not sign follow-up transactions on its own, and it must not be used as a polling loop to claim that a one-command bridge validation is still alive.
 
+## Manual Validation
+
+For funded real-network validation, run the built CLI directly so one long-lived `bridge` process owns the whole attempt:
+
+```bash
+export WALLET_PRIVATE_KEY='<wallet private key>'
+node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko:testnet --amount 1 --json --verbose
+```
+
+```bash
+export WALLET_PRIVATE_KEY='<wallet private key>'
+node ./packages/bridge-cli/dist/cli.js bridge --from zeko:testnet --to mina:testnet --amount 1 --json --verbose
+```
+
+Keep that same command alive through completion. Progress stays on stderr and the final JSON result stays on stdout.
+
 ## Development
 
 Run from the monorepo root:
@@ -167,82 +183,8 @@ moon run bridge-cli:test
 moon run bridge-cli:lint
 ```
 
-Manual live validation instructions live in the internal `packages/bridge-cli/testing.md` document in the monorepo.
+Additional maintainer/operator notes live in the monorepo docs:
 
-Release and mirror details live in the package-level release notes within the monorepo.
-
-## Operator Setup Checklist
-
-Before local live validation or scheduled monitoring can work, make sure all of the following are done:
-
-1. Export funded testnet keys locally so the live validation can be run immediately:
-
-   ```bash
-   export WALLET_PRIVATE_KEY='<wallet private key>'
-   ```
-
-   Then tell me which direction to run, or run the checks yourself:
-
-   ```bash
-   moon run bridge-cli:live-bridge-mina-to-zeko
-   moon run bridge-cli:live-bridge-zeko-to-mina
-   ```
-
-   The hard validation contract is:
-   - run exactly one long-lived `bridge` command for the attempt
-   - keep that same process alive through completion
-   - monitor that same command's stderr/stdout directly
-   - do not replace it with `operation status` loops or any other sidecar polling command
-
-2. Claim the npm package name with the required first manual publish. npm OIDC cannot create a brand-new package name.
-
-   Log in once:
-
-   ```bash
-   npm login
-   ```
-
-   Then run the repo helper from the monorepo root with your npm OTP:
-
-   ```bash
-   bun scripts/npm-init-publish.ts packages/bridge-cli --otp 123456
-   ```
-
-   That script temporarily publishes `@zeko-labs/bridge-cli@0.0.0` so the name is claimed, then restores the working tree.
-
-3. Create the npm trusted publisher relationship for ongoing GitHub OIDC releases.
-   There is no supported npm CLI flow for this today; do it once in the npm UI:
-
-   ```bash
-   open 'https://www.npmjs.com/package/@zeko-labs/bridge-cli/access'
-   ```
-
-   In npm Trusted Publisher, use:
-   - GitHub organization: `zeko-labs`
-   - repository: `zeko-ui`
-   - workflow filename: `changesets.yaml`
-   - environment: leave empty unless you intentionally gate releases through a GitHub Environment
-
-   The workflow filename must be `changesets.yaml`, not `release-bridge-cli.yaml`, because npm validates the caller workflow for `workflow_call` releases.
-
-4. Add a Changeset for the first real bridge-cli release from the monorepo root:
-
-   ```bash
-   pnpm changeset
-   ```
-
-   Choose `@zeko-labs/bridge-cli` and the bump type you want for the first reviewed release.
-
-5. Merge this PR, wait for `changesets.yaml` to open the `release: version packages` PR on `main`, then merge that version PR so the OIDC publish runs automatically.
-
-6. After the first reviewed version is published successfully, remove the accidental `0.0.0` if it is still within npm's unpublish window:
-
-   ```bash
-   npm unpublish @zeko-labs/bridge-cli@0.0.0
-   ```
-
-   If npm no longer allows unpublish, deprecate it instead:
-
-   ```bash
-   npm deprecate @zeko-labs/bridge-cli@0.0.0 "Accidental initial publish. Do not use this version."
-   ```
+- manual live validation: `packages/bridge-cli/testing.md`
+- release workflow: `packages/bridge-cli/RELEASE.md`
+- agent-only instructions: `packages/bridge-cli/AGENTS.md`

@@ -20,8 +20,6 @@ Example shell setup:
 export WALLET_PRIVATE_KEY="<wallet private key>"
 ```
 
-If you want me to run the live bridge validation from this machine, set the variables exactly like that in the shell first, then tell me which direction to run.
-
 ## Manual Live Validation
 
 Run from the monorepo root:
@@ -57,7 +55,7 @@ Hard validation rule:
 - Run exactly one command for the attempt: the high-level `bridge` command itself.
 - Keep that command alive in one dedicated PTY/background terminal and monitor that same terminal's stdout/stderr. Do not replace it with a second polling command.
 - If the `bridge` process exits, is interrupted, or the terminal/session is aborted, that validation attempt is invalidated immediately.
-- Never report a validation as still running if the original `bridge` process is gone.
+- Do not treat a stopped `bridge` process as an active validation.
 - Persisted operation files are useful for debugging and manual recovery, but they do not prove that the original one-command validation is still running.
 - `operation status` now performs fresh SDK/network reads and persists a refreshed live snapshot, so it is useful for inspecting actual bridge progress after an interruption.
 - That still does not make an interrupted one-command validation successful. A saved status refresh is a recovery/debugging aid, not proof that the original validation process remained alive through completion.

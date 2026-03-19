@@ -6,6 +6,7 @@ Start with [README.md](./README.md) for user-facing CLI behavior. Use [testing.m
 
 - Use `zeko-bridge bridge` by default.
 - Treat `deposit`, `withdrawal`, `operation`, and `tui` as advanced/debug/recovery tools.
+- Keep `README.md` public-facing. Agent-only workflow guidance belongs here, not in the public package README.
 
 ## Manual Validation
 
@@ -21,6 +22,8 @@ Exact env setup lives in [testing.md](./testing.md). If a human wants you to run
 The CLI also auto-loads dotenv files for human usage. Prefer `~/.zeko/.env` first, then a sibling `.env` next to the CLI binary, then a sibling `.env` next to the invocation path.
 
 These are manual only. Do not add them to automatic local workflows or CI.
+
+Do not copy release/publish workflow detail into the package README. Internal release guidance already lives in `RELEASE.md` and the repo skills.
 
 ## Parallel Subagents
 

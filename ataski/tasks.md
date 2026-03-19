@@ -90,3 +90,4 @@
 - T104 | done | clean-operation-status-output | done/T104-clean-operation-status-output.md
 - T105 | done | fix-withdrawal-fee-threshold-early-failure | done/T105-fix-withdrawal-fee-threshold-early-failure.md
 - T106 | done | improve-operation-status-progress-and-live-validation-instructions | done/T106-improve-operation-status-progress-and-live-validation-instructions.md
+- T107 | done | separate-public-docs-from-agent-instructions | done/T107-separate-public-docs-from-agent-instructions.md
