@@ -22,11 +22,6 @@ export const toQuietIfWalletRejection = (error: unknown): Error => {
 	return error instanceof Error ? error : new Error(String(error))
 }
 
-export const isTerminalBridgeError = (error: unknown): boolean => {
-	const message = error instanceof Error ? error.message : String(error)
-	return firstWithdrawalTooSmallPattern.test(message)
-}
-
 const knownErrorMessages: [pattern: RegExp, userMessage: string][] = [
 	// WEB-206: Auro wallet RPC method incompatibility
 	[
