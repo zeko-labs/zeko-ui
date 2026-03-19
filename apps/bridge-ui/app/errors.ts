@@ -1,5 +1,7 @@
 export class QuietError extends Error {}
 
+const firstWithdrawalTooSmallPattern = /First Zeko->Mina withdrawal amount is too small/i
+
 const walletRejectionPatterns = [/user reject/i, /connection declined/i]
 
 export const isWalletRejection = (error: unknown): boolean => {
@@ -18,6 +20,11 @@ export const toQuietIfWalletRejection = (error: unknown): Error => {
 		return new QuietError(message)
 	}
 	return error instanceof Error ? error : new Error(String(error))
+}
+
+export const isTerminalBridgeError = (error: unknown): boolean => {
+	const message = error instanceof Error ? error.message : String(error)
+	return firstWithdrawalTooSmallPattern.test(message)
 }
 
 const knownErrorMessages: [pattern: RegExp, userMessage: string][] = [
@@ -73,6 +80,10 @@ const knownErrorMessages: [pattern: RegExp, userMessage: string][] = [
 	[
 		/rangeCheck32/i,
 		"The bridge received out-of-range data from the network. Please try again later."
+	],
+	[
+		firstWithdrawalTooSmallPattern,
+		"The first Zeko-to-Mina withdrawal to this wallet is too small to create the required Mina helper account. Use at least 1 MINA for the first withdrawal, or use a wallet that already has prior bridge history."
 	]
 ]
 

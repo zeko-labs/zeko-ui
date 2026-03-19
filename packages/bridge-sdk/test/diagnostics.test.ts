@@ -4,6 +4,7 @@ import type { Action, InnerWitness, OuterWitness } from "../src/types"
 import { buildDepositDiagnostics, buildWithdrawalDiagnostics } from "../src/diagnostics"
 import {
 	depositAux,
+	fetchActions,
 	fetchInnerWitnessesFromAuxes,
 	fetchOuterWitnessesFromAuxes,
 	withdrawalAux
@@ -182,5 +183,31 @@ describe("bridge diagnostics", () => {
 			/GraphQL inner witness failure/
 		)
 		await expect(fetchInnerWitnessesFromAuxes(client, ["1"])).rejects.toThrow(/Expected string/)
+	})
+
+	it("throws instead of silently returning empty actions when the archive query errors", async () => {
+		let queryCount = 0
+		const client: GqlClient = Object.assign(
+			() =>
+				({
+					query: async () => {
+						queryCount += 1
+
+						if (queryCount === 1) {
+							return {
+								data: { networkState: { maxBlockHeight: { pendingMaxBlockHeight: 25 } } }
+							}
+						}
+
+						return {
+							data: undefined,
+							error: new Error("Archive fetch failed")
+						}
+					}
+				}) as unknown as ReturnType<GqlClient>,
+			{ label: "test-client" }
+		)
+
+		await expect(fetchActions(client, recipient, 0)).rejects.toThrow("Archive fetch failed")
 	})
 })

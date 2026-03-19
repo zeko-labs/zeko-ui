@@ -38,6 +38,20 @@ const bridge = await Bridge.init({
 
 The endpoints above are testnet examples. Use the matching mainnet endpoints for production traffic.
 
+## Operational Notes
+
+- Archive action history is most reliable when queried in recent `10_000`-block windows. Giant full-history scans starting from block `0` are a poor fit for manual diagnostics.
+- Withdrawal finalization depends on the L2 archive/indexer/actions-api path catching up to the live sequencer action. A live withdrawal may appear on the sequencer before it is witnessable through the archive-backed path.
+- Sequencer proof requests currently live in memory for about 20 minutes. If a prove/finalize request sits longer than that, later polling may return `Invalid key`. That case is currently terminal and not yet automatically recoverable.
+- Deposits obey two important protocol rules:
+  - a cancellable deposit can never later be finalized
+  - cancellable deposits are skippable, but finalizable deposits must never be skipped
+- Deposit queue progression depends on protocol state:
+  - `lastFinalizedDeposit` on L2
+  - `lastCancelledDeposit` on L1
+  - only deposit indices strictly above those state values may be claimed
+- The bridge-cli is expected to satisfy an unattended contract on top of this SDK: one command starts the bridge, the process may wait a long time, and the same operation should later be found completed without manual babysitting.
+
 ## Usage
 
 ### Submit a Deposit
