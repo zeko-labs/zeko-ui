@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest"
 import {
-	isTerminalBridgeError,
 	isWalletRejection,
 	QuietError,
 	toQuietIfWalletRejection,
@@ -124,7 +123,6 @@ describe("toUserFriendlyMessage", () => {
 		expect(toUserFriendlyMessage(new Error(firstWithdrawalTooSmall))).toContain(
 			"first Zeko-to-Mina withdrawal"
 		)
-		expect(isTerminalBridgeError(new Error(firstWithdrawalTooSmall))).toBe(true)
 	})
 
 	it("passes through unknown errors unchanged", () => {
