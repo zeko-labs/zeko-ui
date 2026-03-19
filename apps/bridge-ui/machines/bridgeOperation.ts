@@ -190,13 +190,13 @@ export const bridgeOperationMachine = setup({
 				const checkDepositStatus = async (signal: AbortSignal): Promise<void> => {
 					if (signal.aborted) return
 					try {
-						const [canFinalize, canCancel] = await Promise.all([
+						const [finalizeResult, cancelResult] = await Promise.all([
 							worker(bridge).canFinalizeDeposit({ l1, l2, user }),
 							worker(bridge).canCancelDeposit({ l1, l2, user })
 						])
-						logger.info(`Deposit status: ${JSON.stringify({ canFinalize, canCancel })}`)
-						if (canFinalize) sendBack({ type: "CanFinalize" })
-						else if (canCancel) sendBack({ type: "CanCancel" })
+						logger.info(`Deposit status: ${JSON.stringify({ finalizeResult, cancelResult })}`)
+						if (finalizeResult.available) sendBack({ type: "CanFinalize" })
+						else if (cancelResult.available) sendBack({ type: "CanCancel" })
 						else if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)
 					} catch (error) {
 						logger.error(error instanceof Error ? error : new Error(String(error)))
@@ -243,8 +243,8 @@ export const bridgeOperationMachine = setup({
 				if (signal.aborted) return
 				try {
 					logger.info("Checking withdrawal status...")
-					const can = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
-					if (can) sendBack({ type: "CanFinalize" })
+					const result = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
+					if (result.available) sendBack({ type: "CanFinalize" })
 					else if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
 				} catch (error) {
 					logger.error(error instanceof Error ? error : new Error(String(error)))
@@ -919,7 +919,7 @@ export const bridgeOperationMachine = setup({
 						source: context.source,
 						destination: context.destination,
 						success: false,
-						label: lastError?.message ?? "unknown error"
+						label: (lastError?.message ?? "unknown error").slice(0, 500)
 					},
 					context.user
 				)

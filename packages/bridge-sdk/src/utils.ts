@@ -435,6 +435,21 @@ export function safeDecrement(a: UInt32): UInt32 {
 	return a.greaterThanOrEqual(UInt32.from(1)).toBoolean() ? a.sub(UInt32.from(1)) : a
 }
 
+export const mergeUniqueActions = (...groups: Action[][]): Action[] => {
+	const merged = new Map<string, Action>()
+
+	for (const group of groups) {
+		for (const action of group) {
+			const key = `${action.hash}:${action.afterActionState.toString()}`
+			if (!merged.has(key)) {
+				merged.set(key, action)
+			}
+		}
+	}
+
+	return [...merged.values()]
+}
+
 export function checkAccepted(
 	outerActions: OuterAction[],
 	depositIndex: UInt32,

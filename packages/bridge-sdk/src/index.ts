@@ -50,6 +50,7 @@ import {
 	getNextDepositIndex,
 	getNextWithdrawalIndex,
 	refreshCache,
+	mergeUniqueActions,
 	safeDecrement,
 	withdrawalAux
 } from "./utils"
@@ -59,21 +60,6 @@ export * from "./diagnostics"
 export * from "./errors"
 export * from "./graphql/index"
 export * from "./types"
-
-const mergeUniqueActions = (...groups: Action[][]): Action[] => {
-	const merged = new Map<string, Action>()
-
-	for (const group of groups) {
-		for (const action of group) {
-			const key = `${action.hash}:${action.afterActionState.toString()}`
-			if (!merged.has(key)) {
-				merged.set(key, action)
-			}
-		}
-	}
-
-	return [...merged.values()]
-}
 
 export class Bridge {
 	private debug(message: string, details?: unknown): void {
@@ -604,12 +590,7 @@ export class Bridge {
 		return txn
 	}
 
-	public async canFinalizeDeposit(pk: PublicKey): Promise<boolean> {
-		const result = await this.canFinalizeDepositDetailed(pk)
-		return result.available
-	}
-
-	public async canFinalizeDepositDetailed(
+	public async canFinalizeDeposit(
 		pk: PublicKey
 	): Promise<{ available: boolean; reason: string | null }> {
 		this.debug("canFinalizeDeposit start", { pk: pk.toBase58() })
@@ -844,12 +825,7 @@ export class Bridge {
 		return txn
 	}
 
-	public async canCancelDeposit(pk: PublicKey): Promise<boolean> {
-		const result = await this.canCancelDepositDetailed(pk)
-		return result.available
-	}
-
-	public async canCancelDepositDetailed(
+	public async canCancelDeposit(
 		pk: PublicKey
 	): Promise<{ available: boolean; reason: string | null }> {
 		const result = await this.fetchDepositCancellationWitnesses(pk, this.outerTokenOwner)
@@ -1135,12 +1111,7 @@ export class Bridge {
 		return txn
 	}
 
-	public async canFinalizeWithdrawal(pk: PublicKey): Promise<boolean> {
-		const result = await this.canFinalizeWithdrawalDetailed(pk)
-		return result.available
-	}
-
-	public async canFinalizeWithdrawalDetailed(
+	public async canFinalizeWithdrawal(
 		pk: PublicKey
 	): Promise<{ available: boolean; reason: string | null }> {
 		this.debug("canFinalizeWithdrawal start", { pk: pk.toBase58() })

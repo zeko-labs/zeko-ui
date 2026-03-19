@@ -54,11 +54,8 @@ export const assertFirstWithdrawalAmountCanCreateHelper = ({
 	recipient: PublicKey
 	accountCreationFee: UInt64
 }): void => {
-	// The first Zeko->Mina withdrawal creates the Mina helper account and pays that
-	// account-creation fee out of the withdrawal itself, so amounts below the fee
-	// cannot proceed as submitted.
-	if (helperAccountExists) return
 	if (amount.greaterThanOrEqual(accountCreationFee).toBoolean()) return
+	if (helperAccountExists) return
 
 	throw new InsufficientFirstWithdrawalAmountError({
 		amountNanomina: amount.toBigInt(),
