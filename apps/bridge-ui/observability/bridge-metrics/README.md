@@ -19,6 +19,8 @@ Cloudflare Analytics Engine `bridge_metrics` dataset.
 - `CLOUDFLARE_ACCOUNT_ID` defaults to `a12d2915bc16ee8550f19399839623f7`
 - `CLOUDFLARE_API_TOKEN` is required for live AE queries
 - `AE_DATASET` defaults to `bridge_metrics`
+- `GRAFANA_DATASOURCE_UID` defaults to `dfftad89t7pxcc`
+- `GRAFANA_DATASOURCE_TYPE` defaults to `vertamedia-clickhouse-datasource`
 
 ## Common Commands
 

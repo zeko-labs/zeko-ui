@@ -5,23 +5,21 @@ import { dashboardPanels, type DashboardPanel } from "../dashboard-manifest.ts"
 import { loadQueryTemplate, renderQueryTemplate } from "../../lib/sql.ts"
 import {
 	GRAFANA_CLICKHOUSE_DATASOURCE_NAME,
-	GRAFANA_CLICKHOUSE_DATASOURCE_TYPE,
-	GRAFANA_IMPORT_DATASOURCE_NAME,
 	OBSERVABILITY_ROOT,
 	parseCliArgs,
 	readStringArg,
 	resolveAeDataset,
+	resolveGrafanaDatasourceType,
+	resolveGrafanaDatasourceUid,
 	type RenderMode
 } from "../../lib/runtime.ts"
 
 const defaultOutputPath = resolve(OBSERVABILITY_ROOT, "grafana/bridge-ui.analytics.dashboard.json")
 
-type DatasourceReference =
-	| string
-	| {
-			type: string
-			uid: string
-	  }
+type DatasourceReference = {
+	type: string
+	uid: string
+}
 
 type DatasourceBinding = {
 	type: string
@@ -30,13 +28,10 @@ type DatasourceBinding = {
 
 type ClickHouseTargetFormat = "table" | "time_series"
 
-const createDatasource = (binding?: DatasourceBinding): DatasourceReference =>
-	binding
-		? {
-				type: binding.type,
-				uid: binding.uid
-			}
-		: `\${${GRAFANA_IMPORT_DATASOURCE_NAME}}`
+const createDatasource = (binding: DatasourceBinding): DatasourceReference => ({
+	type: binding.type,
+	uid: binding.uid
+})
 
 const createTarget = ({
 	panel,
@@ -45,7 +40,7 @@ const createTarget = ({
 }: {
 	panel: DashboardPanel
 	sql: string
-	binding?: DatasourceBinding
+	binding: DatasourceBinding
 }) => {
 	const format: ClickHouseTargetFormat = panel.panelType === "timeseries" ? "time_series" : "table"
 
@@ -83,7 +78,7 @@ const createPanel = ({
 }: {
 	panel: DashboardPanel
 	sql: string
-	binding?: DatasourceBinding
+	binding: DatasourceBinding
 }) => {
 	const datasource = createDatasource(binding)
 
@@ -146,7 +141,7 @@ const createPanel = ({
 	}
 }
 
-const createDashboard = async ({ binding }: { binding?: DatasourceBinding }) => {
+const createDashboard = async ({ binding }: { binding: DatasourceBinding }) => {
 	const renderedPanels = await Promise.all(
 		dashboardPanels.map(async (panel) => {
 			const template = await loadQueryTemplate(
@@ -163,24 +158,10 @@ const createDashboard = async ({ binding }: { binding?: DatasourceBinding }) => 
 	)
 
 	return {
-		...(binding
-			? {}
-			: {
-					__inputs: [
-						{
-							name: GRAFANA_IMPORT_DATASOURCE_NAME,
-							label: "Bridge metrics datasource",
-							description: "ClickHouse datasource configured for Cloudflare Analytics Engine",
-							type: "datasource",
-							pluginId: GRAFANA_CLICKHOUSE_DATASOURCE_TYPE,
-							pluginName: GRAFANA_CLICKHOUSE_DATASOURCE_NAME
-						}
-					]
-				}),
 		__requires: [
 			{ id: "grafana", name: "Grafana", type: "grafana", version: "11.0.0" },
 			{
-				id: GRAFANA_CLICKHOUSE_DATASOURCE_TYPE,
+				id: binding.type,
 				name: GRAFANA_CLICKHOUSE_DATASOURCE_NAME,
 				type: "datasource",
 				version: "4.0.6"
@@ -225,16 +206,14 @@ const createDashboard = async ({ binding }: { binding?: DatasourceBinding }) => 
 const run = async () => {
 	const args = parseCliArgs(process.argv.slice(2))
 	const requestedOutputPath = readStringArg(args, "output", defaultOutputPath) ?? defaultOutputPath
-	const datasourceUid = readStringArg(args, "datasource-uid")
-	const datasourceType =
-		readStringArg(args, "datasource-type", GRAFANA_CLICKHOUSE_DATASOURCE_TYPE) ??
-		GRAFANA_CLICKHOUSE_DATASOURCE_TYPE
-	const binding = datasourceUid
-		? {
-				type: datasourceType,
-				uid: datasourceUid
-			}
-		: undefined
+	const binding = {
+		uid:
+			readStringArg(args, "datasource-uid", resolveGrafanaDatasourceUid()) ??
+			resolveGrafanaDatasourceUid(),
+		type:
+			readStringArg(args, "datasource-type", resolveGrafanaDatasourceType()) ??
+			resolveGrafanaDatasourceType()
+	}
 	const outputPath = isAbsolute(requestedOutputPath)
 		? requestedOutputPath
 		: resolve(process.cwd(), requestedOutputPath)

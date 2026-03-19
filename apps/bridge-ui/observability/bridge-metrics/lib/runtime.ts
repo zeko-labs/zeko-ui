@@ -3,9 +3,9 @@ import process from "node:process"
 
 export const DEFAULT_CLOUDFLARE_ACCOUNT_ID = "a12d2915bc16ee8550f19399839623f7"
 export const DEFAULT_AE_DATASET = "bridge_metrics"
+export const DEFAULT_GRAFANA_DATASOURCE_UID = "dfftad89t7pxcc"
 export const GRAFANA_CLICKHOUSE_DATASOURCE_TYPE = "vertamedia-clickhouse-datasource"
 export const GRAFANA_CLICKHOUSE_DATASOURCE_NAME = "Altinity ClickHouse datasource"
-export const GRAFANA_IMPORT_DATASOURCE_NAME = "DS_BRIDGE_METRICS"
 export const OBSERVABILITY_ROOT = fileURLToPath(new URL("..", import.meta.url))
 export const BRIDGE_UI_ROOT = fileURLToPath(new URL("../../..", import.meta.url))
 
@@ -30,6 +30,12 @@ export const resolveCloudflareAccountId = (): string =>
 	readOptionalEnv("CLOUDFLARE_ACCOUNT_ID") ?? DEFAULT_CLOUDFLARE_ACCOUNT_ID
 
 export const resolveAeDataset = (): string => readOptionalEnv("AE_DATASET") ?? DEFAULT_AE_DATASET
+
+export const resolveGrafanaDatasourceUid = (): string =>
+	readOptionalEnv("GRAFANA_DATASOURCE_UID") ?? DEFAULT_GRAFANA_DATASOURCE_UID
+
+export const resolveGrafanaDatasourceType = (): string =>
+	readOptionalEnv("GRAFANA_DATASOURCE_TYPE") ?? GRAFANA_CLICKHOUSE_DATASOURCE_TYPE
 
 export const resolveLiveAeConfig = () => ({
 	accountId: resolveCloudflareAccountId(),
