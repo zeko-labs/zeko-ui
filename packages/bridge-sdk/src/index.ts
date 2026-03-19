@@ -51,7 +51,6 @@ import {
 	getNextDepositIndex,
 	getNextWithdrawalIndex,
 	refreshCache,
-	mergeUniqueActions,
 	safeDecrement,
 	withdrawalAux
 } from "./utils"
@@ -243,14 +242,15 @@ export class Bridge {
 	}
 
 	private async fetchUserWithdrawalActions(pk: PublicKey): Promise<Array<Action & Withdrawal>> {
-		const liveActions = await fetchRecentActions(this.l2Client, pk)
 		const archiveActions = await fetchActions(this.l2ArchiveClient, pk)
-		const userInnerActions = mergeUniqueActions(archiveActions, liveActions)
+		const lastActionState = archiveActions.at(-1)?.afterActionState.toString()
+		const liveActions = await fetchRecentActions(this.l2Client, pk, lastActionState)
+		const userInnerActions = [...archiveActions, ...liveActions]
 
-		this.debug("fetchUserWithdrawals merged action sources", {
+		this.debug("fetchUserWithdrawals action sources", {
 			archiveCount: archiveActions.length,
 			liveCount: liveActions.length,
-			mergedCount: userInnerActions.length
+			totalCount: userInnerActions.length
 		})
 
 		return filterNulls(
