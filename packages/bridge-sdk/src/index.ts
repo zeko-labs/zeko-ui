@@ -16,6 +16,7 @@ import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UIn
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
 import {
+	InsufficientFirstWithdrawalAmountError,
 	assertFirstWithdrawalAmountCanCreateHelper,
 	ensureFirstWithdrawalAmountCanCreateHelper
 } from "./errors"
@@ -1024,12 +1025,19 @@ export class Bridge {
 			recipient: withdrawalParams.withdrawal.recipient.toBase58(),
 			amount: withdrawalParams.withdrawal.amount.toString()
 		})
-		assertFirstWithdrawalAmountCanCreateHelper({
-			helperAccountExists: helperAccount !== null,
-			amount: withdrawalParams.withdrawal.amount,
-			recipient: withdrawalParams.withdrawal.recipient,
-			accountCreationFee: this.l1AccountCreationFee
-		})
+		try {
+			assertFirstWithdrawalAmountCanCreateHelper({
+				helperAccountExists: helperAccount !== null,
+				amount: withdrawalParams.withdrawal.amount,
+				recipient: withdrawalParams.withdrawal.recipient,
+				accountCreationFee: this.l1AccountCreationFee
+			})
+		} catch (e) {
+			if (e instanceof InsufficientFirstWithdrawalAmountError) {
+				return { ok: false, msg: e.message }
+			}
+			throw e
+		}
 
 		const withdrawalAse = innerActions
 			.slice(myWithdrawalIndex + 1)
