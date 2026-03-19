@@ -5,7 +5,7 @@ status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-19T19:45:00Z
-updated_at: 2026-03-19T19:49:00Z
+updated_at: 2026-03-19T19:56:00Z
 ---
 
 ## Requirements
@@ -35,4 +35,6 @@ updated_at: 2026-03-19T19:49:00Z
 - Deleted the duplicated npm publish / trusted-publisher / release checklist from the public package README and replaced it with pointers to the internal maintainer docs.
 - Added an explicit rule in `AGENTS.md` that `README.md` must stay public-facing and must not accumulate agent-only or duplicated release workflow instructions.
 - Refactored `testing.md` to remove direct prompt-style language aimed at future agents while keeping the one-command validation contract clear for maintainers/operators.
+- Removed the public README references to internal maintainer/agent docs so it stands on its own as public-facing package documentation.
+- Reduced overlap between `AGENTS.md` and `testing.md` by making `testing.md` own the validation procedure and `AGENTS.md` only add agent-specific workflow constraints plus cross-references.
 - `moon run bridge-cli:lint`
