@@ -5,7 +5,7 @@ status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-19T20:10:00Z
-updated_at: 2026-03-19T20:38:00Z
+updated_at: 2026-03-19T20:48:00Z
 ---
 
 ## Requirements
@@ -34,8 +34,23 @@ updated_at: 2026-03-19T20:38:00Z
 ## GREEN Evidence
 
 - Created worktree `/Users/hebilicious/GitHub/.ataski/worktrees/T108-split-non-bridge-cli-pr` on branch `branch/T108-split-non-bridge-cli-pr` from `origin/main`.
-- Applied only the `apps/bridge-ui/**`, `packages/bridge-sdk/**`, and `packages/graphql/src/zeko.ts` changes from `canonical/bridge-cli`, leaving out `packages/bridge-cli/**`, `apps/docs/**`, root workflow churn, and Ataski board files.
-- Committed the split branch as `cec7d6b` (`fix(bridge): split sdk and ui changes from bridge-cli pr`).
+- Corrected the initial split after review feedback by removing unintended bridge-ui observability/telemetry deletions and trimming the PR to the canonical three-dot diff for the intended non-CLI files only.
+- The split PR now contains only:
+  - `apps/bridge-ui/app/errors.ts`
+  - `apps/bridge-ui/machines/bridgeOperation.ts`
+  - `apps/bridge-ui/test/unit/bridge-operation.test.ts`
+  - `apps/bridge-ui/test/unit/wallet-errors.test.ts`
+  - `apps/bridge-ui/vitest.config.ts`
+  - `packages/bridge-sdk/README.md`
+  - `packages/bridge-sdk/moon.yml`
+  - `packages/bridge-sdk/src/errors.ts`
+  - `packages/bridge-sdk/src/index.ts`
+  - `packages/bridge-sdk/src/types.ts`
+  - `packages/bridge-sdk/src/utils.ts`
+  - `packages/bridge-sdk/test/diagnostics.test.ts`
+  - `packages/bridge-sdk/test/errors.test.ts`
+  - `packages/graphql/src/zeko.ts`
+- Updated the split branch to commit `24804c4` (`fix(bridge): trim split pr to intended sdk and ui scope`).
 - Pushed the branch to `origin/branch/T108-split-non-bridge-cli-pr`.
 - Opened PR [#152](https://github.com/zeko-labs/zeko-ui/pull/152) against `main`.
 - Verified on the split branch with:
