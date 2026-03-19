@@ -1,0 +1,686 @@
+{
+	"__requires": [
+		{
+			"id": "grafana",
+			"name": "Grafana",
+			"type": "grafana",
+			"version": "11.0.0"
+		},
+		{
+			"id": "vertamedia-clickhouse-datasource",
+			"name": "Altinity ClickHouse datasource",
+			"type": "datasource",
+			"version": "4.0.6"
+		},
+		{
+			"id": "table",
+			"name": "Table",
+			"type": "panel",
+			"version": "11.0.0"
+		},
+		{
+			"id": "timeseries",
+			"name": "Time series",
+			"type": "panel",
+			"version": "11.0.0"
+		}
+	],
+	"annotations": {
+		"list": [
+			{
+				"builtIn": 1,
+				"datasource": "-- Grafana --",
+				"enable": true,
+				"hide": true,
+				"iconColor": "rgba(0, 211, 255, 1)",
+				"name": "Annotations & Alerts",
+				"type": "dashboard"
+			}
+		]
+	},
+	"editable": true,
+	"fiscalYearStartMonth": 0,
+	"graphTooltip": 0,
+	"id": null,
+	"links": [],
+	"liveNow": false,
+	"panels": [
+		{
+			"id": 1,
+			"title": "Overview stats",
+			"description": "Dataset freshness and event volume for the selected time range.",
+			"type": "table",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 7,
+				"w": 24,
+				"x": 0,
+				"y": 0
+			},
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"options": {
+				"cellHeight": "sm",
+				"showHeader": true
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Smoke test dataset health\n-- description: Validates that the dataset is queryable and returns freshness metadata for the selected time range.\n-- default_window: 30d\nSELECT\n  SUM(_sample_interval) AS total_events_in_window,\n  COUNT() AS sampled_rows_in_window,\n  MIN(timestamp) AS first_seen_at,\n  MAX(timestamp) AS last_seen_at\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)",
+					"format": "table",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
+			"id": 2,
+			"title": "Events by category",
+			"description": "Hourly weighted event volume by bridge metric category.",
+			"type": "timeseries",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 9,
+				"w": 12,
+				"x": 0,
+				"y": 7
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"lineInterpolation": "linear",
+						"lineWidth": 2,
+						"pointSize": 3,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": true,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						}
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"calcs": ["lastNotNull"],
+					"displayMode": "table",
+					"placement": "bottom"
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Events by category over time\n-- description: Hourly weighted event totals split by bridge metric category.\n-- default_window: 7d\nSELECT\n  toDateTime(intDiv(toUInt32(timestamp), 3600) * 3600) AS time,\n  blob1 AS category,\n  SUM(_sample_interval) AS events\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\nGROUP BY time, category\nORDER BY time, category",
+					"format": "time_series",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
+			"id": 3,
+			"title": "Events by action",
+			"description": "Hourly weighted event volume by bridge action.",
+			"type": "timeseries",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 9,
+				"w": 12,
+				"x": 12,
+				"y": 7
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"lineInterpolation": "linear",
+						"lineWidth": 2,
+						"pointSize": 3,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": true,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						}
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"calcs": ["lastNotNull"],
+					"displayMode": "table",
+					"placement": "bottom"
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Events by action over time\n-- description: Hourly weighted event totals split by concrete bridge action name.\n-- default_window: 7d\nSELECT\n  toDateTime(intDiv(toUInt32(timestamp), 3600) * 3600) AS time,\n  blob2 AS action,\n  SUM(_sample_interval) AS events\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\nGROUP BY time, action\nORDER BY time, action",
+					"format": "time_series",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
+			"id": 4,
+			"title": "Latency by action",
+			"description": "Weighted duration percentiles for timed bridge operations.",
+			"type": "table",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 12,
+				"x": 0,
+				"y": 16
+			},
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"options": {
+				"cellHeight": "sm",
+				"showHeader": true
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Latency by action\n-- description: Weighted latency percentiles for act()-based bridge operations.\n-- default_window: 7d\nSELECT\n  blob1 AS category,\n  blob2 AS action,\n  SUM(_sample_interval) AS events,\n  SUM(double1 * _sample_interval) / SUM(_sample_interval) AS avg_duration_ms,\n  quantileExactWeighted(0.50)(double1, _sample_interval) AS p50_duration_ms,\n  quantileExactWeighted(0.95)(double1, _sample_interval) AS p95_duration_ms\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\n  AND double1 > 0\nGROUP BY category, action\nORDER BY p95_duration_ms DESC",
+					"format": "table",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
+			"id": 5,
+			"title": "Failure rate by action",
+			"description": "Weighted failure rate for actions that emit explicit outcomes.",
+			"type": "table",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 12,
+				"x": 12,
+				"y": 16
+			},
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"options": {
+				"cellHeight": "sm",
+				"showHeader": true
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Failure rate by action\n-- description: Weighted success and failure rates for actions that report explicit outcome values.\n-- default_window: 7d\nSELECT\n  blob1 AS category,\n  blob2 AS action,\n  sumIf(_sample_interval, double3 = 1.0) AS succeeded,\n  sumIf(_sample_interval, double3 = 0.0) AS failed,\n  sumIf(_sample_interval, double3 = 1.0 OR double3 = 0.0) AS total_with_outcome,\n  if(\n    sumIf(_sample_interval, double3 = 1.0 OR double3 = 0.0) = 0,\n    0.0,\n    100.0 * sumIf(_sample_interval, double3 = 0.0)\n      / sumIf(_sample_interval, double3 = 1.0 OR double3 = 0.0)\n  ) AS failure_pct\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\n  AND double1 > 0\nGROUP BY category, action\nHAVING total_with_outcome > 0\nORDER BY failure_pct DESC, failed DESC",
+					"format": "table",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
+			"id": 6,
+			"title": "Route funnel",
+			"description": "Lifecycle counts and completion ratios grouped by route and inferred direction.",
+			"type": "table",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 12,
+				"x": 0,
+				"y": 26
+			},
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"options": {
+				"cellHeight": "sm",
+				"showHeader": true
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Route funnel\n-- description: Lifecycle counts and completion ratio grouped by source, destination, and direction.\n-- default_window: 7d\nSELECT\n  blob4 AS source,\n  blob5 AS destination,\n  if(\n    startsWith(blob4, 'mina:'),\n    'deposit',\n    if(startsWith(blob4, 'zeko:'), 'withdrawal', 'unknown')\n  ) AS direction,\n  sumIf(_sample_interval, blob2 = 'started') AS started,\n  sumIf(_sample_interval, blob2 = 'completed') AS completed,\n  sumIf(_sample_interval, blob2 = 'failed') AS failed,\n  sumIf(_sample_interval, blob2 = 'canCancel') AS can_cancel,\n  if(\n    sumIf(_sample_interval, blob2 = 'started') = 0,\n    0.0,\n    100.0 * sumIf(_sample_interval, blob2 = 'completed')\n      / sumIf(_sample_interval, blob2 = 'started')\n  ) AS completion_pct\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\n  AND blob1 = 'bridge_operation'\nGROUP BY source, destination, direction\nORDER BY started DESC",
+					"format": "table",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
+			"id": 7,
+			"title": "Top error labels",
+			"description": "Highest-volume recorded bridge error labels in the selected range.",
+			"type": "table",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 12,
+				"x": 12,
+				"y": 26
+			},
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"options": {
+				"cellHeight": "sm",
+				"showHeader": true
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Error labels\n-- description: Weighted counts for recorded metric labels that represent bridge failures or synthetic failed lifecycle events.\n-- default_window: 7d\nSELECT\n  blob1 AS category,\n  blob2 AS action,\n  blob3 AS label,\n  SUM(_sample_interval) AS occurrences\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\n  AND blob3 != ''\n  AND (\n    double3 = 0.0\n    OR (blob1 = 'bridge_operation' AND blob2 = 'failed')\n  )\nGROUP BY category, action, label\nORDER BY occurrences DESC\nLIMIT 50",
+					"format": "table",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
+			"id": 8,
+			"title": "Fee retry trend",
+			"description": "Hourly weighted fee retry events emitted by the transaction machine.",
+			"type": "timeseries",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 36
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"lineInterpolation": "linear",
+						"lineWidth": 2,
+						"pointSize": 3,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": true,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						}
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"calcs": ["lastNotNull"],
+					"displayMode": "table",
+					"placement": "bottom"
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Fee retry trend\n-- description: Hourly weighted volume of transaction fee retry events.\n-- default_window: 14d\nSELECT\n  toDateTime(intDiv(toUInt32(timestamp), 3600) * 3600) AS time,\n  SUM(_sample_interval) AS fee_retry_events\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\n  AND blob1 = 'transaction'\n  AND blob2 = 'feeRetry'\nGROUP BY time\nORDER BY time",
+					"format": "time_series",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
+			"id": 9,
+			"title": "Routes by started events",
+			"description": "Most frequently started bridge routes in the selected range.",
+			"type": "table",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 36
+			},
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"options": {
+				"cellHeight": "sm",
+				"showHeader": true
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Routes by started events\n-- description: Weighted start volume by source, destination, and direction to identify the most-used bridge routes.\n-- default_window: 30d\nSELECT\n  blob4 AS source,\n  blob5 AS destination,\n  blob3 AS direction,\n  SUM(_sample_interval) AS started_events\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\n  AND blob1 = 'bridge_operation'\n  AND blob2 = 'started'\nGROUP BY source, destination, direction\nORDER BY started_events DESC",
+					"format": "table",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
+			"id": 10,
+			"title": "Transaction step health",
+			"description": "Outcome and latency summary for transaction-machine steps.",
+			"type": "table",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 24,
+				"x": 0,
+				"y": 44
+			},
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"options": {
+				"cellHeight": "sm",
+				"showHeader": true
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Transaction step health\n-- description: Weighted counts, success/failure totals, and average latency for transaction-machine steps.\n-- default_window: 7d\nSELECT\n  blob2 AS action,\n  SUM(_sample_interval) AS events,\n  sumIf(_sample_interval, double3 = 1.0) AS succeeded,\n  sumIf(_sample_interval, double3 = 0.0) AS failed,\n  if(\n    SUM(_sample_interval) = 0,\n    0.0,\n    SUM(double1 * _sample_interval) / SUM(_sample_interval)\n  ) AS avg_duration_ms\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\n  AND blob1 = 'transaction'\nGROUP BY action\nORDER BY events DESC",
+					"format": "table",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		}
+	],
+	"refresh": "5m",
+	"schemaVersion": 39,
+	"tags": ["bridge-ui", "cloudflare", "analytics-engine"],
+	"templating": {
+		"list": []
+	},
+	"time": {
+		"from": "now-7d",
+		"to": "now"
+	},
+	"timepicker": {},
+	"timezone": "browser",
+	"title": "Bridge UI Analytics",
+	"uid": "bridge-ui-analytics",
+	"version": 1,
+	"weekStart": ""
+}

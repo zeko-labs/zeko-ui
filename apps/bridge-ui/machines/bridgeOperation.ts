@@ -804,7 +804,13 @@ export const bridgeOperationMachine = setup({
 				CanFinalize: { target: "TO_FINALIZE" },
 				TerminalError: {
 					target: "FAILED",
-					actions: assign(addError(new Error("Failed to determine withdrawal status")))
+					actions: [
+						assign(addError(new Error("Failed to determine withdrawal status"))),
+						sendTo(
+							({ context }) => context.bridge,
+							({ self }) => ({ type: "TerminateOperation", id: self.id })
+						)
+					]
 				}
 			}
 		},
@@ -827,7 +833,13 @@ export const bridgeOperationMachine = setup({
 							{
 								target: "#bridgeOperation.FAILED",
 								guard: ({ event }) => isTerminalBridgeError(event.error),
-								actions: assign(addError(new Error("Failed to finalize withdrawal")))
+								actions: [
+									assign(addError(new Error("Failed to finalize withdrawal"))),
+									sendTo(
+										({ context }) => context.bridge,
+										({ self }) => ({ type: "TerminateOperation", id: self.id })
+									)
+								]
 							},
 							{
 								target: "#bridgeOperation.FAILED",

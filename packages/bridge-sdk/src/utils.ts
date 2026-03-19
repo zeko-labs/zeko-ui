@@ -371,9 +371,14 @@ const mapParsedActions = (output: v.InferOutput<typeof ActionOutputsSchema>): Ac
 		}
 	)
 
-export async function fetchRecentActions(client: GqlClient, pk: PublicKey): Promise<Action[]> {
+export async function fetchRecentActions(
+	client: GqlClient,
+	pk: PublicKey,
+	fromActionState?: string
+): Promise<Action[]> {
 	const { data, error } = await client().query(fetchLiveActionsQuery, {
-		pk: pk.toBase58()
+		pk: pk.toBase58(),
+		fromActionState: fromActionState ?? null
 	})
 	if (error) throw error
 	const output = parseActionOutputs(data?.actions)

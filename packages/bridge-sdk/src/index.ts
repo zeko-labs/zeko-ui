@@ -16,6 +16,7 @@ import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UIn
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
 import {
+	InsufficientFirstWithdrawalAmountError,
 	assertFirstWithdrawalAmountCanCreateHelper,
 	ensureFirstWithdrawalAmountCanCreateHelper
 } from "./errors"
@@ -256,8 +257,9 @@ export class Bridge {
 	}
 
 	private async fetchUserWithdrawalActions(pk: PublicKey): Promise<Array<Action & Withdrawal>> {
-		const liveActions = await fetchRecentActions(this.l2Client, pk)
 		const archiveActions = await fetchActions(this.l2ArchiveClient, pk)
+		const lastActionState = archiveActions.at(-1)?.afterActionState.toString()
+		const liveActions = await fetchRecentActions(this.l2Client, pk, lastActionState)
 		const userInnerActions = mergeUniqueActions(archiveActions, liveActions)
 
 		this.debug("fetchUserWithdrawals merged action sources", {
@@ -604,12 +606,7 @@ export class Bridge {
 		return txn
 	}
 
-	public async canFinalizeDeposit(pk: PublicKey): Promise<boolean> {
-		const result = await this.canFinalizeDepositDetailed(pk)
-		return result.available
-	}
-
-	public async canFinalizeDepositDetailed(
+	public async canFinalizeDeposit(
 		pk: PublicKey
 	): Promise<{ available: boolean; reason: string | null }> {
 		this.debug("canFinalizeDeposit start", { pk: pk.toBase58() })
@@ -844,12 +841,7 @@ export class Bridge {
 		return txn
 	}
 
-	public async canCancelDeposit(pk: PublicKey): Promise<boolean> {
-		const result = await this.canCancelDepositDetailed(pk)
-		return result.available
-	}
-
-	public async canCancelDepositDetailed(
+	public async canCancelDeposit(
 		pk: PublicKey
 	): Promise<{ available: boolean; reason: string | null }> {
 		const result = await this.fetchDepositCancellationWitnesses(pk, this.outerTokenOwner)
@@ -1048,12 +1040,19 @@ export class Bridge {
 			recipient: withdrawalParams.withdrawal.recipient.toBase58(),
 			amount: withdrawalParams.withdrawal.amount.toString()
 		})
-		assertFirstWithdrawalAmountCanCreateHelper({
-			helperAccountExists: helperAccount !== null,
-			amount: withdrawalParams.withdrawal.amount,
-			recipient: withdrawalParams.withdrawal.recipient,
-			accountCreationFee: this.l1AccountCreationFee
-		})
+		try {
+			assertFirstWithdrawalAmountCanCreateHelper({
+				helperAccountExists: helperAccount !== null,
+				amount: withdrawalParams.withdrawal.amount,
+				recipient: withdrawalParams.withdrawal.recipient,
+				accountCreationFee: this.l1AccountCreationFee
+			})
+		} catch (error) {
+			if (error instanceof InsufficientFirstWithdrawalAmountError) {
+				return { ok: false, msg: error.message }
+			}
+			throw error
+		}
 
 		const withdrawalAse = innerActions
 			.slice(myWithdrawalIndex + 1)
@@ -1135,12 +1134,7 @@ export class Bridge {
 		return txn
 	}
 
-	public async canFinalizeWithdrawal(pk: PublicKey): Promise<boolean> {
-		const result = await this.canFinalizeWithdrawalDetailed(pk)
-		return result.available
-	}
-
-	public async canFinalizeWithdrawalDetailed(
+	public async canFinalizeWithdrawal(
 		pk: PublicKey
 	): Promise<{ available: boolean; reason: string | null }> {
 		this.debug("canFinalizeWithdrawal start", { pk: pk.toBase58() })

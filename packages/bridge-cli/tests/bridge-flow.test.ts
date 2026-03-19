@@ -1692,13 +1692,13 @@ describe("bridge flow", () => {
 							}
 						]
 					},
-					async canFinalizeDepositDetailed() {
+					async canFinalizeDeposit() {
 						return {
 							available: false,
 							reason: "No deposit witnesses found"
 						}
 					},
-					async canCancelDepositDetailed() {
+					async canCancelDeposit() {
 						return {
 							available: false,
 							reason: "Not rejected or accepted"

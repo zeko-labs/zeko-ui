@@ -50,11 +50,8 @@ type BridgeFlowDeps = {
 			| "getDepositStatuses"
 			| "getWithdrawalStatuses"
 			| "canFinalizeDeposit"
-			| "canFinalizeDepositDetailed"
 			| "canCancelDeposit"
-			| "canCancelDepositDetailed"
 			| "canFinalizeWithdrawal"
-			| "canFinalizeWithdrawalDetailed"
 		>
 	>
 	sessionStore: Pick<SessionStore, "save">
@@ -272,27 +269,14 @@ const requireAdapterMethod = <T extends keyof BridgeFlowDeps["adapter"]>(
 const getCapabilityDiagnostic = async ({
 	adapter,
 	account,
-	detailedMethod,
-	booleanMethod
+	method
 }: {
 	adapter: BridgeFlowDeps["adapter"]
 	account: string
-	detailedMethod:
-		| "canFinalizeDepositDetailed"
-		| "canCancelDepositDetailed"
-		| "canFinalizeWithdrawalDetailed"
-	booleanMethod: "canFinalizeDeposit" | "canCancelDeposit" | "canFinalizeWithdrawal"
+	method: "canFinalizeDeposit" | "canCancelDeposit" | "canFinalizeWithdrawal"
 }): Promise<BridgeCapabilityDiagnostic> => {
-	const detailed = adapter[detailedMethod]
-	if (detailed) {
-		return detailed(account)
-	}
-
-	const fallback = adapter[booleanMethod]
-	return {
-		available: fallback ? await fallback(account) : false,
-		reason: null
-	}
+	const result = adapter[method] ? await adapter[method](account) : false
+	return typeof result === "boolean" ? { available: result, reason: null } : result
 }
 
 const appendSubmittedTransaction = (
@@ -1127,8 +1111,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 					getCapabilityDiagnostic({
 						adapter: deps.adapter,
 						account: session.account,
-						detailedMethod: "canFinalizeDepositDetailed",
-						booleanMethod: "canFinalizeDeposit"
+						method: "canFinalizeDeposit"
 					})
 			}),
 			withRetry({
@@ -1144,8 +1127,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 					getCapabilityDiagnostic({
 						adapter: deps.adapter,
 						account: session.account,
-						detailedMethod: "canCancelDepositDetailed",
-						booleanMethod: "canCancelDeposit"
+						method: "canCancelDeposit"
 					})
 			})
 		])
@@ -1395,8 +1377,7 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 				getCapabilityDiagnostic({
 					adapter: deps.adapter,
 					account: session.account,
-					detailedMethod: "canFinalizeWithdrawalDetailed",
-					booleanMethod: "canFinalizeWithdrawal"
+					method: "canFinalizeWithdrawal"
 				})
 		})
 		session = canFinalizeResult.session

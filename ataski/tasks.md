@@ -92,4 +92,4 @@
 - T106 | done | improve-operation-status-progress-and-live-validation-instructions | done/T106-improve-operation-status-progress-and-live-validation-instructions.md
 - T107 | done | separate-public-docs-from-agent-instructions | done/T107-separate-public-docs-from-agent-instructions.md
 - T108 | done | split-non-bridge-cli-pr-from-canonical-branch | done/T108-split-non-bridge-cli-pr-from-canonical-branch.md
-- T109 | in-progress | merge-main-after-pr-152-and-resolve-conflicts | in-progress/T109-merge-main-after-pr-152-and-resolve-conflicts.md
+- T109 | done | merge-main-after-pr-152-and-resolve-conflicts | done/T109-merge-main-after-pr-152-and-resolve-conflicts.md

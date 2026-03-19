@@ -24,6 +24,7 @@ import { createSessionStore, type SessionStore } from "../core/session-store"
 import type { ChainRef } from "../core/routes"
 import { formatRoute, parseChainRef, parseRouteString, resolveRoute } from "../core/routes"
 import type {
+	BridgeCapabilityDiagnostic,
 	DepositStatus,
 	OperationLiveSnapshot,
 	OperationPhase,
@@ -436,6 +437,11 @@ const withLiveSnapshot = ({
 	updatedAt: now()
 })
 
+const normalizeCapabilityResult = (
+	result: boolean | BridgeCapabilityDiagnostic
+): BridgeCapabilityDiagnostic =>
+	typeof result === "boolean" ? { available: result, reason: null } : result
+
 const refreshDepositSession = async ({
 	session,
 	adapter,
@@ -447,12 +453,16 @@ const refreshDepositSession = async ({
 }): Promise<OperationSession> => {
 	const deposits = sortByIndex(await adapter.getDepositStatuses(session.account))
 	const analysis = analyzeDepositQueue({ session, statuses: deposits })
-	const [canFinalize, canCancel] = await Promise.all([
+	const [canFinalizeResult, canCancelResult] = await Promise.all([
 		adapter.canFinalizeDeposit
 			? adapter.canFinalizeDeposit(session.account)
-			: Promise.resolve(false),
-		adapter.canCancelDeposit ? adapter.canCancelDeposit(session.account) : Promise.resolve(false)
+			: Promise.resolve(false as boolean | BridgeCapabilityDiagnostic),
+		adapter.canCancelDeposit
+			? adapter.canCancelDeposit(session.account)
+			: Promise.resolve(false as boolean | BridgeCapabilityDiagnostic)
 	])
+	const canFinalize = normalizeCapabilityResult(canFinalizeResult).available
+	const canCancel = normalizeCapabilityResult(canCancelResult).available
 	const liveBase = {
 		refreshedAt: now(),
 		targetIndex: analysis.targetIndex,
@@ -568,7 +578,7 @@ const refreshWithdrawalSession = async ({
 	const withdrawals = sortByIndex(await adapter.getWithdrawalStatuses(session.account))
 	const analysis = analyzeWithdrawalQueue({ session, statuses: withdrawals })
 	const canFinalize = adapter.canFinalizeWithdrawal
-		? await adapter.canFinalizeWithdrawal(session.account)
+		? normalizeCapabilityResult(await adapter.canFinalizeWithdrawal(session.account)).available
 		: false
 	const liveBase = {
 		refreshedAt: now(),

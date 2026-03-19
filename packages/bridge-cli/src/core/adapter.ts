@@ -16,12 +16,9 @@ import type {
 export type BridgeAdapter = {
 	getDepositStatuses(account: string): Promise<DepositStatus[]>
 	getWithdrawalStatuses(account: string): Promise<WithdrawalStatus[]>
-	canFinalizeDeposit?(account?: string): Promise<boolean>
-	canFinalizeDepositDetailed?(account?: string): Promise<BridgeCapabilityDiagnostic>
-	canCancelDeposit?(account?: string): Promise<boolean>
-	canCancelDepositDetailed?(account?: string): Promise<BridgeCapabilityDiagnostic>
-	canFinalizeWithdrawal?(account?: string): Promise<boolean>
-	canFinalizeWithdrawalDetailed?(account?: string): Promise<BridgeCapabilityDiagnostic>
+	canFinalizeDeposit?(account?: string): Promise<boolean | BridgeCapabilityDiagnostic>
+	canCancelDeposit?(account?: string): Promise<boolean | BridgeCapabilityDiagnostic>
+	canFinalizeWithdrawal?(account?: string): Promise<boolean | BridgeCapabilityDiagnostic>
 	submitDeposit(input: {
 		account?: string
 		recipient?: string
@@ -295,20 +292,10 @@ export const createBridgeAdapter = ({
 			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
 			return bridge.canFinalizeDeposit(publicKey)
 		},
-		async canFinalizeDepositDetailed(account) {
-			const bridge = await getBridge(route, verbose)
-			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
-			return bridge.canFinalizeDepositDetailed(publicKey)
-		},
 		async canCancelDeposit(account) {
 			const bridge = await getBridge(route, verbose)
 			const { publicKey } = resolvePublicKey({ account, keys, network: route.from })
 			return bridge.canCancelDeposit(publicKey)
-		},
-		async canCancelDepositDetailed(account) {
-			const bridge = await getBridge(route, verbose)
-			const { publicKey } = resolvePublicKey({ account, keys, network: route.from })
-			return bridge.canCancelDepositDetailed(publicKey)
 		},
 		async finalizeDeposit({ account, wait }) {
 			const bridge = await getBridge(route, verbose)
@@ -361,11 +348,6 @@ export const createBridgeAdapter = ({
 			const bridge = await getBridge(route, verbose)
 			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
 			return bridge.canFinalizeWithdrawal(publicKey)
-		},
-		async canFinalizeWithdrawalDetailed(account) {
-			const bridge = await getBridge(route, verbose)
-			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
-			return bridge.canFinalizeWithdrawalDetailed(publicKey)
 		},
 		async finalizeWithdrawal({ account, wait }) {
 			const bridge = await getBridge(route, verbose)

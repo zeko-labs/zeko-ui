@@ -22,8 +22,8 @@ export const sequencerPkQuery = graphql(`
 `)
 
 export const fetchLiveActionsQuery = graphql(`
-  query FetchLiveActions($pk: PublicKey!) {
-    actions(input: { address: $pk }) {
+  query FetchLiveActions($pk: PublicKey!, $fromActionState: String) {
+    actions(input: { address: $pk, fromActionState: $fromActionState }) {
       blockInfo {
         timestamp
         height
