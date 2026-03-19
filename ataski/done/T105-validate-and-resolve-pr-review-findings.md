@@ -1,11 +1,11 @@
 ---
 id: T105
 title: "Validate and resolve PR review findings"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-19T09:57:48Z
-updated_at: 2026-03-19T10:09:00Z
+updated_at: 2026-03-19T10:19:00Z
 ---
 
 ## Requirements
@@ -41,3 +41,5 @@ updated_at: 2026-03-19T10:09:00Z
 - Added focused regression coverage in `apps/bridge-ui/test/unit/bridge-sentry.test.ts` and `apps/bridge-ui/test/unit/debug.test.ts`
 - Passed: `pnpm --dir apps/bridge-ui exec vitest run test/unit/bridge-sentry.test.ts test/unit/debug.test.ts`
 - Blocked by pre-existing unrelated workspace issue: `pnpm --dir apps/bridge-ui exec nuxt typecheck` fails because `@zeko-labs/bridge-sdk` is unresolved in `machines/helpers.ts` and `machines/operations.worker.ts`
+- Added two PR comments summarizing the outcome for the resolved findings because this account could resolve review threads but did not have permission to post per-thread GraphQL review replies
+- Re-queried PR #149 review threads after cleanup and confirmed all three previously open threads are now `isResolved: true`
