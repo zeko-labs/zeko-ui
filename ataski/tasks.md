@@ -83,3 +83,6 @@
 - T097 | done | consolidate-bridge-cli-wallet-key-and-runtime-findings | done/T097-consolidate-bridge-cli-wallet-key-and-runtime-findings.md
 - T098 | done | fix-bridge-cli-release-workflow-findings | done/T098-fix-bridge-cli-release-workflow-findings.md
 - T099 | done | harden-bridge-cli-test-exit-and-direct-vitest-runs | done/T099-harden-bridge-cli-test-exit-and-direct-vitest.md
+- T100 | in-progress | remove-bridge-ui-post-submit-terminal-fee-error-paths | in-progress/T100-remove-bridge-ui-post-submit-terminal-fee-error-paths.md
+- T101 | in-progress | remove-bridge-cli-post-submit-terminal-fee-error-paths | in-progress/T101-remove-bridge-cli-post-submit-terminal-fee-error-paths.md
+- T102 | todo | validate-fee-error-followup-and-open-pr | todo/T102-validate-fee-error-followup-and-open-pr.md
