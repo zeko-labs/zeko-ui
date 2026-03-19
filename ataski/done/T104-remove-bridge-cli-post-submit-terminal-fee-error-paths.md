@@ -1,11 +1,11 @@
 ---
-id: T101
+id: T104
 title: "Remove bridge-cli post-submit terminal fee-error paths"
 status: done
 blockedBy: []
 owner: codex-cli-worker
 created_at: 2026-03-19T00:00:00Z
-updated_at: 2026-03-19T11:34:31Z
+updated_at: 2026-03-19T11:37:46Z
 ---
 
 ## Requirements
@@ -39,5 +39,5 @@ updated_at: 2026-03-19T11:34:31Z
 
 - Removed the post-submit capability retry special-casing from `packages/bridge-cli/src/commands/bridge.ts` so the fee error is surfaced only from the submit step.
 - Replaced the capability-stage regression with submit-stage coverage for both local and backend-originated fee failures in `packages/bridge-cli/tests/bridge-flow.test.ts`.
-- `moon run bridge-cli:test` passed on the canonical branch with 17 test files and 79 tests passing.
+- `moon run bridge-cli:test` passed on the canonical branch with 17 test files and 83 tests passing after syncing the latest `canonical/bridge-cli`.
 - `moon run bridge-cli:typecheck` passed on the canonical branch.

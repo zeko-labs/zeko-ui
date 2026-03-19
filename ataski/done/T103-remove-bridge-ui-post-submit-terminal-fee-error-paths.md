@@ -1,11 +1,11 @@
 ---
-id: T100
+id: T103
 title: "Remove bridge-ui post-submit terminal fee-error paths"
 status: done
 blockedBy: []
 owner: codex-ui-worker
 created_at: 2026-03-19T00:00:00Z
-updated_at: 2026-03-19T11:34:31Z
+updated_at: 2026-03-19T11:37:46Z
 ---
 
 ## Requirements

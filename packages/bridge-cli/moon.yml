@@ -48,7 +48,7 @@ tasks:
     description: Manual real-network validation of the high-level bridge command from Mina testnet to Zeko testnet.
     deps:
       - build
-    command: bun ./scripts/run-live-bridge.ts mina:testnet zeko:testnet deposit
+    command: node ./scripts/run-live-bridge.mjs mina:testnet zeko:testnet deposit
     options:
       cache: false
       runInCI: false
@@ -58,7 +58,7 @@ tasks:
     description: Manual real-network validation of the high-level bridge command from Zeko testnet to Mina testnet.
     deps:
       - build
-    command: bun ./scripts/run-live-bridge.ts zeko:testnet mina:testnet withdrawal
+    command: node ./scripts/run-live-bridge.mjs zeko:testnet mina:testnet withdrawal
     options:
       cache: false
       runInCI: false

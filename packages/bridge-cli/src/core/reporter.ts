@@ -1,4 +1,11 @@
-import type { OperationPhase, OperationSession, OperationStatus } from "./types"
+import type {
+	BridgeSdkMethodStat,
+	BridgeSdkOperation,
+	BridgeVerboseDiagnostics,
+	OperationPhase,
+	OperationSession,
+	OperationStatus
+} from "./types"
 import { color, icon, keyValue, section } from "./terminal"
 
 export type BridgeCommandJsonResult = {
@@ -14,6 +21,7 @@ export type BridgeCommandJsonResult = {
 	explorer_urls: string[]
 	log_path: string
 	error: string | null
+	verbose_diagnostics?: BridgeVerboseDiagnostics
 }
 
 export const toBridgeJsonResult = (session: OperationSession): BridgeCommandJsonResult => ({
@@ -30,8 +38,45 @@ export const toBridgeJsonResult = (session: OperationSession): BridgeCommandJson
 		? [session.finalTransaction.explorerUrl]
 		: [],
 	log_path: session.logPath,
-	error: session.lastError ?? null
+	error: session.lastError ?? null,
+	...(session.verboseDiagnostics ? { verbose_diagnostics: session.verboseDiagnostics } : {})
 })
+
+const formatDurationMs = (value: number): string => `${(value / 1_000).toFixed(3)}s`
+
+const renderSdkMethodStats = (
+	stats: NonNullable<BridgeVerboseDiagnostics["sdkMethodStats"]>
+): string[] =>
+	(Object.entries(stats) as Array<[BridgeSdkOperation, BridgeSdkMethodStat]>)
+		.filter(([, value]) => value !== undefined)
+		.map(([operation, value]) => {
+			const suffix = [
+				`count=${value.count}`,
+				`ok=${value.successCount}`,
+				`err=${value.errorCount}`,
+				`total=${formatDurationMs(value.totalDurationMs)}`,
+				value.lastDurationMs !== undefined ? `last=${formatDurationMs(value.lastDurationMs)}` : "",
+				value.lastResult ? `result=${value.lastResult}` : "",
+				value.lastMessage ? `message=${value.lastMessage}` : ""
+			]
+				.filter(Boolean)
+				.join(" | ")
+			return `${operation}: ${suffix}`
+		})
+
+const renderPhaseTimings = (diagnostics: BridgeVerboseDiagnostics): string[] =>
+	diagnostics.phaseTimings.map(
+		(phaseTiming) =>
+			`${phaseTiming.phase}: started=${phaseTiming.startedAt} | duration=${formatDurationMs(phaseTiming.durationMs)}`
+	)
+
+const renderWaitReasons = (diagnostics: BridgeVerboseDiagnostics): string[] =>
+	Object.entries(diagnostics.waitReasons ?? {})
+		.filter(([, value]) => value !== undefined)
+		.map(
+			([operation, value]) =>
+				`${operation}: available=${String(value?.available)} | reason=${value?.reason ?? "n/a"}`
+		)
 
 export const renderBridgeResult = (session: OperationSession): string =>
 	[
@@ -47,6 +92,16 @@ export const renderBridgeResult = (session: OperationSession): string =>
 			? keyValue("Queued operations claimed", String(session.queueAdvances))
 			: "",
 		session.lastError ? keyValue("Error", session.lastError) : "",
+		session.verboseDiagnostics ? section("Verbose Diagnostics") : "",
+		session.verboseDiagnostics
+			? [...renderSdkMethodStats(session.verboseDiagnostics.sdkMethodStats)].join("\n")
+			: "",
+		session.verboseDiagnostics
+			? [...renderPhaseTimings(session.verboseDiagnostics)].join("\n")
+			: "",
+		session.verboseDiagnostics && renderWaitReasons(session.verboseDiagnostics).length > 0
+			? renderWaitReasons(session.verboseDiagnostics).join("\n")
+			: "",
 		keyValue("Log", session.logPath),
 		session.finalTransaction ? keyValue("Final hash", session.finalTransaction.hash) : ""
 	]

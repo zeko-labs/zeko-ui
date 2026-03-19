@@ -83,6 +83,9 @@
 - T097 | done | consolidate-bridge-cli-wallet-key-and-runtime-findings | done/T097-consolidate-bridge-cli-wallet-key-and-runtime-findings.md
 - T098 | done | fix-bridge-cli-release-workflow-findings | done/T098-fix-bridge-cli-release-workflow-findings.md
 - T099 | done | harden-bridge-cli-test-exit-and-direct-vitest-runs | done/T099-harden-bridge-cli-test-exit-and-direct-vitest.md
-- T100 | done | remove-bridge-ui-post-submit-terminal-fee-error-paths | done/T100-remove-bridge-ui-post-submit-terminal-fee-error-paths.md
-- T101 | done | remove-bridge-cli-post-submit-terminal-fee-error-paths | done/T101-remove-bridge-cli-post-submit-terminal-fee-error-paths.md
-- T102 | in-progress | validate-fee-error-followup-and-open-pr | in-progress/T102-validate-fee-error-followup-and-open-pr.md
+- T100 | done | fix-bridge-cli-live-validation-contract | done/T100-fix-bridge-cli-live-validation-contract.md
+- T101 | done | add-verbose-bridge-diagnostics | done/T101-add-verbose-bridge-diagnostics.md
+- T102 | done | make-operation-status-network-backed | done/T102-make-operation-status-network-backed.md
+- T103 | done | remove-bridge-ui-post-submit-terminal-fee-error-paths | done/T103-remove-bridge-ui-post-submit-terminal-fee-error-paths.md
+- T104 | done | remove-bridge-cli-post-submit-terminal-fee-error-paths | done/T104-remove-bridge-cli-post-submit-terminal-fee-error-paths.md
+- T105 | in-progress | validate-fee-error-followup-and-open-pr | in-progress/T105-validate-fee-error-followup-and-open-pr.md

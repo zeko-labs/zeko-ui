@@ -20,7 +20,16 @@ import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core
 import { resolveSignerKeys } from "../core/signer"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
 import { createSessionStore, type SessionStore } from "../core/session-store"
-import type { OperationPhase, OperationSession } from "../core/types"
+import type {
+	BridgeCapabilityDiagnostic,
+	BridgePhaseTiming,
+	BridgeSdkCallTrace,
+	BridgeSdkMethodStat,
+	BridgeSdkOperation,
+	BridgeVerboseDiagnostics,
+	OperationPhase,
+	OperationSession
+} from "../core/types"
 
 type LogFn = (entry: {
 	event: string
@@ -40,8 +49,11 @@ type BridgeFlowDeps = {
 			| "getDepositStatuses"
 			| "getWithdrawalStatuses"
 			| "canFinalizeDeposit"
+			| "canFinalizeDepositDetailed"
 			| "canCancelDeposit"
+			| "canCancelDepositDetailed"
 			| "canFinalizeWithdrawal"
+			| "canFinalizeWithdrawalDetailed"
 		>
 	>
 	sessionStore: Pick<SessionStore, "save">
@@ -50,6 +62,7 @@ type BridgeFlowDeps = {
 	pollIntervalMs: number
 	retryDelayMs?: number
 	now?: () => string
+	verbose?: boolean
 }
 
 type BridgeFlowInput = {
@@ -201,12 +214,20 @@ const transitionSession = ({
 	patch?: Partial<OperationSession>
 }): OperationSession => {
 	const next = controller.transition({ type: event })
+	const timestamp = now()
 	return {
 		...session,
 		...patch,
 		phase: next.phase,
 		status: next.status,
-		updatedAt: now()
+		updatedAt: timestamp,
+		verboseDiagnostics: session.verboseDiagnostics
+			? withPhaseTiming({
+					diagnostics: session.verboseDiagnostics,
+					now: timestamp,
+					nextPhase: next.phase
+				})
+			: undefined
 	}
 }
 
@@ -247,6 +268,32 @@ const requireAdapterMethod = <T extends keyof BridgeFlowDeps["adapter"]>(
 	return value
 }
 
+const getCapabilityDiagnostic = async ({
+	adapter,
+	account,
+	detailedMethod,
+	booleanMethod
+}: {
+	adapter: BridgeFlowDeps["adapter"]
+	account: string
+	detailedMethod:
+		| "canFinalizeDepositDetailed"
+		| "canCancelDepositDetailed"
+		| "canFinalizeWithdrawalDetailed"
+	booleanMethod: "canFinalizeDeposit" | "canCancelDeposit" | "canFinalizeWithdrawal"
+}): Promise<BridgeCapabilityDiagnostic> => {
+	const detailed = adapter[detailedMethod]
+	if (detailed) {
+		return detailed(account)
+	}
+
+	const fallback = adapter[booleanMethod]
+	return {
+		available: fallback ? await fallback(account) : false,
+		reason: null
+	}
+}
+
 const appendSubmittedTransaction = (
 	session: OperationSession,
 	transaction: { action: "submit" | "finalize" | "cancel"; hash: string }
@@ -277,6 +324,193 @@ const getHeartbeatBucket = ({
 
 const formatErrorMessage = (error: unknown): string =>
 	error instanceof Error ? error.message : String(error)
+
+const createVerboseDiagnostics = (
+	startedAt: string,
+	phase: OperationPhase
+): BridgeVerboseDiagnostics => ({
+	sdkCalls: [],
+	sdkMethodStats: {},
+	phaseTimings: [{ phase, startedAt, durationMs: 0 }],
+	waitReasons: {}
+})
+
+const summarizeSdkResult = (value: unknown): string | undefined => {
+	if (typeof value === "boolean") {
+		return String(value)
+	}
+
+	if (typeof value === "object" && value !== null) {
+		if ("available" in value && typeof value.available === "boolean") {
+			const reason =
+				"reason" in value && typeof value.reason === "string" ? ` reason=${value.reason}` : ""
+			return `available=${String(value.available)}${reason}`
+		}
+
+		if ("hash" in value && typeof value.hash === "string") {
+			return `hash=${value.hash}`
+		}
+
+		if (Array.isArray(value)) {
+			return `count=${value.length}`
+		}
+	}
+
+	return undefined
+}
+
+const buildSdkMethodStats = (
+	calls: BridgeSdkCallTrace[]
+): Partial<Record<BridgeSdkOperation, BridgeSdkMethodStat>> => {
+	const stats: Partial<Record<BridgeSdkOperation, BridgeSdkMethodStat>> = {}
+
+	for (const trace of calls) {
+		const previous = stats[trace.operation]
+		stats[trace.operation] = {
+			count: (previous?.count ?? 0) + 1,
+			successCount: (previous?.successCount ?? 0) + (trace.success ? 1 : 0),
+			errorCount: (previous?.errorCount ?? 0) + (trace.success ? 0 : 1),
+			totalDurationMs: (previous?.totalDurationMs ?? 0) + trace.durationMs,
+			lastStartedAt: trace.startedAt,
+			lastEndedAt: trace.endedAt,
+			lastDurationMs: trace.durationMs,
+			lastMessage: trace.message,
+			lastResult: trace.result
+		}
+	}
+
+	return stats
+}
+
+const withRecordedSdkCall = ({
+	session,
+	trace
+}: {
+	session: OperationSession
+	trace: BridgeSdkCallTrace
+}): OperationSession => {
+	if (!session.verboseDiagnostics) {
+		return session
+	}
+
+	const sdkCalls = [...session.verboseDiagnostics.sdkCalls, trace]
+
+	return {
+		...session,
+		verboseDiagnostics: {
+			...session.verboseDiagnostics,
+			sdkCalls,
+			sdkMethodStats: buildSdkMethodStats(sdkCalls)
+		}
+	}
+}
+
+const mergeVerboseDiagnosticsFromSessions = ({
+	session,
+	sources
+}: {
+	session: OperationSession
+	sources: OperationSession[]
+}): OperationSession => {
+	if (!session.verboseDiagnostics) {
+		return sources.at(-1) ?? session
+	}
+
+	const baseCallCount = session.verboseDiagnostics.sdkCalls.length
+	const sdkCalls = [...session.verboseDiagnostics.sdkCalls]
+	const waitReasons = { ...(session.verboseDiagnostics.waitReasons ?? {}) }
+
+	for (const source of sources) {
+		if (!source.verboseDiagnostics) {
+			continue
+		}
+
+		sdkCalls.push(...source.verboseDiagnostics.sdkCalls.slice(baseCallCount))
+		Object.assign(waitReasons, source.verboseDiagnostics.waitReasons ?? {})
+	}
+
+	return {
+		...session,
+		verboseDiagnostics: {
+			...session.verboseDiagnostics,
+			sdkCalls,
+			sdkMethodStats: buildSdkMethodStats(sdkCalls),
+			waitReasons
+		}
+	}
+}
+
+const withCapabilityWaitReason = ({
+	session,
+	key,
+	diagnostic
+}: {
+	session: OperationSession
+	key: "canFinalizeDeposit" | "canCancelDeposit" | "canFinalizeWithdrawal"
+	diagnostic: BridgeCapabilityDiagnostic
+}): OperationSession => {
+	if (!session.verboseDiagnostics) {
+		return session
+	}
+
+	return {
+		...session,
+		verboseDiagnostics: {
+			...session.verboseDiagnostics,
+			waitReasons: {
+				...session.verboseDiagnostics.waitReasons,
+				[key]: diagnostic
+			}
+		}
+	}
+}
+
+const withPhaseTiming = ({
+	diagnostics,
+	now,
+	nextPhase
+}: {
+	diagnostics: BridgeVerboseDiagnostics
+	now: string
+	nextPhase: OperationPhase
+}): BridgeVerboseDiagnostics => {
+	const phaseTimings = [...diagnostics.phaseTimings]
+	const current = phaseTimings.at(-1)
+
+	if (!current) {
+		return {
+			...diagnostics,
+			phaseTimings: [{ phase: nextPhase, startedAt: now, durationMs: 0 }]
+		}
+	}
+
+	const elapsed = Math.max(0, Date.parse(now) - Date.parse(current.startedAt))
+	const currentWithElapsed: BridgePhaseTiming = {
+		...current,
+		endedAt: now,
+		durationMs: Number.isNaN(elapsed) ? current.durationMs : elapsed
+	}
+
+	if (current.phase === nextPhase) {
+		phaseTimings[phaseTimings.length - 1] = {
+			...currentWithElapsed,
+			endedAt: undefined
+		}
+
+		return {
+			...diagnostics,
+			phaseTimings
+		}
+	}
+
+	phaseTimings[phaseTimings.length - 1] = currentWithElapsed
+	phaseTimings.push({ phase: nextPhase, startedAt: now, durationMs: 0 })
+
+	return {
+		...diagnostics,
+		phaseTimings
+	}
+}
 
 const RECOVERABLE_MUTATION_ERROR_PATTERNS = [
 	/Failed to fetch proved forest/i,
@@ -417,16 +651,48 @@ const withRetry = async <T>({
 	sleep: (ms: number) => Promise<void>
 	retryDelayMs?: number
 	now: () => string
-	operation: string
+	operation: BridgeSdkOperation
 	shouldRetry?: (error: unknown) => boolean
 	run: () => Promise<T>
 }): Promise<{ session: OperationSession; value: T }> => {
 	let currentSession = session
+	let attempt = 1
 
 	for (;;) {
+		const startedAtMs = Date.now()
+		const startedAt = new Date(startedAtMs).toISOString()
 		try {
-			return { session: currentSession, value: await run() }
+			const value = await run()
+			const endedAtMs = Date.now()
+			const endedAt = new Date(endedAtMs).toISOString()
+			currentSession = withRecordedSdkCall({
+				session: currentSession,
+				trace: {
+					operation,
+					attempt,
+					startedAt,
+					endedAt,
+					durationMs: Math.max(0, endedAtMs - startedAtMs),
+					success: true,
+					result: summarizeSdkResult(value)
+				}
+			})
+			return { session: currentSession, value }
 		} catch (error) {
+			const endedAtMs = Date.now()
+			const endedAt = new Date(endedAtMs).toISOString()
+			currentSession = withRecordedSdkCall({
+				session: currentSession,
+				trace: {
+					operation,
+					attempt,
+					startedAt,
+					endedAt,
+					durationMs: Math.max(0, endedAtMs - startedAtMs),
+					success: false,
+					message: formatErrorMessage(error)
+				}
+			})
 			if (shouldRetry && !shouldRetry(error)) {
 				throw error
 			}
@@ -451,6 +717,7 @@ const withRetry = async <T>({
 				}
 			})
 			await sleep(retryDelayMs ?? RETRY_SLEEP_MS)
+			attempt += 1
 		}
 	}
 }
@@ -585,7 +852,8 @@ const createInitialRunnerContext = (
 ): BridgeRunnerContext => {
 	const route = resolveRoute(input.from, input.to)
 	const now = deps.now ?? (() => new Date().toISOString())
-	const session =
+	const createdAt = now()
+	const baseSession =
 		input.session ??
 		({
 			id: input.id,
@@ -598,10 +866,20 @@ const createInitialRunnerContext = (
 			amount: input.amount,
 			timeoutSlots: input.timeoutSlots,
 			logPath: "",
-			createdAt: now(),
-			updatedAt: now(),
-			submittedTransactions: []
+			createdAt,
+			updatedAt: createdAt,
+			submittedTransactions: [],
+			verboseDiagnostics: deps.verbose
+				? createVerboseDiagnostics(createdAt, "initializing")
+				: undefined
 		} satisfies OperationSession)
+	const session =
+		deps.verbose && !baseSession.verboseDiagnostics
+			? {
+					...baseSession,
+					verboseDiagnostics: createVerboseDiagnostics(baseSession.createdAt, baseSession.phase)
+				}
+			: baseSession
 
 	return {
 		session,
@@ -842,7 +1120,12 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 				now,
 				operation: "canFinalizeDeposit",
 				run: async () =>
-					deps.adapter.canFinalizeDeposit ? deps.adapter.canFinalizeDeposit(session.account) : false
+					getCapabilityDiagnostic({
+						adapter: deps.adapter,
+						account: session.account,
+						detailedMethod: "canFinalizeDepositDetailed",
+						booleanMethod: "canFinalizeDeposit"
+					})
 			}),
 			withRetry({
 				session,
@@ -854,10 +1137,28 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 				now,
 				operation: "canCancelDeposit",
 				run: async () =>
-					deps.adapter.canCancelDeposit ? deps.adapter.canCancelDeposit(session.account) : false
+					getCapabilityDiagnostic({
+						adapter: deps.adapter,
+						account: session.account,
+						detailedMethod: "canCancelDepositDetailed",
+						booleanMethod: "canCancelDeposit"
+					})
 			})
 		])
-		session = canCancelResult.session
+		session = mergeVerboseDiagnosticsFromSessions({
+			session,
+			sources: [canFinalizeDepositResult.session, canCancelResult.session]
+		})
+		session = withCapabilityWaitReason({
+			session,
+			key: "canFinalizeDeposit",
+			diagnostic: canFinalizeDepositResult.value
+		})
+		session = withCapabilityWaitReason({
+			session,
+			key: "canCancelDeposit",
+			diagnostic: canCancelResult.value
+		})
 		const pendingFinalizeState = getPendingFinalizeRetryState({
 			session,
 			claimableIndex,
@@ -879,12 +1180,12 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 		const shouldCancelCurrentTarget =
 			target !== undefined &&
 			pendingAhead === 0 &&
-			!canFinalizeDepositResult.value &&
-			canCancelResult.value &&
+			!canFinalizeDepositResult.value.available &&
+			canCancelResult.value.available &&
 			session.pendingCancelMarker !== currentTargetCancelMarker
 
 		const shouldAdvanceClaim =
-			canFinalizeDepositResult.value &&
+			canFinalizeDepositResult.value.available &&
 			claimableIndex !== undefined &&
 			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 			(shouldAdvanceQueuedClaims || claimableIndex === target?.index) &&
@@ -899,9 +1200,9 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 		}
 
 		const shouldAdvancePriorCancellation =
-			canCancelResult.value &&
+			canCancelResult.value.available &&
 			shouldAdvanceQueuedClaims &&
-			(claimableIndex === undefined || !canFinalizeDepositResult.value) &&
+			(claimableIndex === undefined || !canFinalizeDepositResult.value.available) &&
 			session.pendingCancelMarker !== priorCancelMarker
 
 		if (shouldAdvancePriorCancellation || shouldCancelCurrentTarget) {
@@ -923,15 +1224,30 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 						waiting: "prior-claims",
 						pendingAhead,
 						targetIndex,
-						claimIndex: claimableIndex
+						claimIndex: claimableIndex,
+						finalizeAvailable: canFinalizeDepositResult.value.available,
+						finalizeReason: canFinalizeDepositResult.value.reason,
+						cancelAvailable: canCancelResult.value.available,
+						cancelReason: canCancelResult.value.reason
 					}
 				: target
 					? {
 							waiting: "finalization",
 							targetIndex: target.index,
-							claimIndex: claimableIndex
+							claimIndex: claimableIndex,
+							finalizeAvailable: canFinalizeDepositResult.value.available,
+							finalizeReason: canFinalizeDepositResult.value.reason,
+							cancelAvailable: canCancelResult.value.available,
+							cancelReason: canCancelResult.value.reason
 						}
-					: { waiting: "submission", submitHash: getSubmitHash(session) }
+					: {
+							waiting: "submission",
+							submitHash: getSubmitHash(session),
+							finalizeAvailable: canFinalizeDepositResult.value.available,
+							finalizeReason: canFinalizeDepositResult.value.reason,
+							cancelAvailable: canCancelResult.value.available,
+							cancelReason: canCancelResult.value.reason
+						}
 		})
 
 		return {
@@ -1071,11 +1387,19 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			now,
 			operation: "canFinalizeWithdrawal",
 			run: async () =>
-				deps.adapter.canFinalizeWithdrawal
-					? deps.adapter.canFinalizeWithdrawal(session.account)
-					: false
+				getCapabilityDiagnostic({
+					adapter: deps.adapter,
+					account: session.account,
+					detailedMethod: "canFinalizeWithdrawalDetailed",
+					booleanMethod: "canFinalizeWithdrawal"
+				})
 		})
 		session = canFinalizeResult.session
+		session = withCapabilityWaitReason({
+			session,
+			key: "canFinalizeWithdrawal",
+			diagnostic: canFinalizeResult.value
+		})
 		const pendingFinalizeState = getPendingFinalizeRetryState({
 			session,
 			claimableIndex,
@@ -1083,7 +1407,7 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 		})
 
 		const shouldAdvanceClaim =
-			canFinalizeResult.value &&
+			canFinalizeResult.value.available &&
 			claimableIndex !== undefined &&
 			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 			(shouldAdvanceQueuedClaims || claimableIndex === target?.index)
@@ -1107,15 +1431,24 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 						waiting: "prior-claims",
 						pendingAhead,
 						targetIndex,
-						claimIndex: claimableIndex
+						claimIndex: claimableIndex,
+						finalizeAvailable: canFinalizeResult.value.available,
+						finalizeReason: canFinalizeResult.value.reason
 					}
 				: target
 					? {
 							waiting: "finalization",
 							targetIndex: target.index,
-							claimIndex: claimableIndex
+							claimIndex: claimableIndex,
+							finalizeAvailable: canFinalizeResult.value.available,
+							finalizeReason: canFinalizeResult.value.reason
 						}
-					: { waiting: "submission", submitHash: getSubmitHash(session) }
+					: {
+							waiting: "submission",
+							submitHash: getSubmitHash(session),
+							finalizeAvailable: canFinalizeResult.value.available,
+							finalizeReason: canFinalizeResult.value.reason
+						}
 		})
 
 		return {
@@ -1927,7 +2260,8 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 					sleep: deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
 					pollIntervalMs: deps.pollIntervalMs ?? 20_000,
 					retryDelayMs: deps.retryDelayMs,
-					now: deps.now
+					now: deps.now,
+					verbose: commandArgs.verbose
 				}
 			)
 

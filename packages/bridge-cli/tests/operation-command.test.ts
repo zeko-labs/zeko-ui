@@ -190,6 +190,214 @@ describe("operation command", () => {
 		expect(writes[0]).toBe("log-entry")
 	})
 
+	it("refreshes operation status from live SDK calls before printing", async () => {
+		const writes: string[] = []
+		const saves: OperationSession[] = []
+		const calls: string[] = []
+		const failedSession: OperationSession = {
+			...persistedSession,
+			status: "failed",
+			phase: "failed",
+			lastError: "stale local failure"
+		}
+		const command = createOperationCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async list() {
+					return [failedSession]
+				},
+				async load() {
+					return failedSession
+				},
+				async save(session) {
+					saves.push(session)
+				}
+			}),
+			createAdapter: async () => ({
+				async getDepositStatuses(account) {
+					calls.push(`getDepositStatuses:${account}`)
+					return [
+						{
+							index: 4,
+							amount: "2",
+							recipient: "B62test",
+							cancelled: false,
+							synced: true,
+							accepted: true,
+							confirmed: true,
+							finalised: false,
+							hash: "deposit-submit",
+							timestamp: "2026-03-12T00:01:00.000Z"
+						}
+					]
+				},
+				async getWithdrawalStatuses() {
+					throw new Error("getWithdrawalStatuses should not be called in this test")
+				},
+				async canFinalizeDeposit(account) {
+					calls.push(`canFinalizeDeposit:${account}`)
+					return true
+				},
+				async canCancelDeposit(account) {
+					calls.push(`canCancelDeposit:${account}`)
+					return false
+				},
+				async submitDeposit() {
+					throw new Error("submitDeposit should not be called in this test")
+				},
+				async finalizeDeposit() {
+					throw new Error("finalizeDeposit should not be called in this test")
+				},
+				async cancelDeposit() {
+					throw new Error("cancelDeposit should not be called in this test")
+				},
+				async submitWithdrawal() {
+					throw new Error("submitWithdrawal should not be called in this test")
+				},
+				async finalizeWithdrawal() {
+					throw new Error("finalizeWithdrawal should not be called in this test")
+				}
+			}),
+			write: (message) => writes.push(message),
+			now: () => "2026-03-12T15:00:00.000Z"
+		})
+		const subCommands = await resolveSubCommands(command.subCommands)
+
+		await subCommands.status?.run?.({
+			rawArgs: [],
+			args: { _: [], id: "op-1" },
+			cmd: subCommands.status
+		})
+
+		const result = JSON.parse(writes[0] ?? "{}")
+		expect(calls).toHaveLength(3)
+		expect(calls).toEqual(
+			expect.arrayContaining([
+				"getDepositStatuses:B62test",
+				"canFinalizeDeposit:B62test",
+				"canCancelDeposit:B62test"
+			])
+		)
+		expect(saves).toHaveLength(1)
+		expect(result).toMatchObject({
+			id: "op-1",
+			status: "running",
+			phase: "waiting-finalization",
+			targetIndex: 4,
+			liveSnapshot: {
+				refreshedAt: "2026-03-12T15:00:00.000Z",
+				nextAction: "finalize",
+				waitingOn: "finalization",
+				canFinalize: true,
+				canCancel: false,
+				targetIndex: 4,
+				claimableIndex: 4,
+				pendingAhead: 0,
+				submitHash: "deposit-submit",
+				observedCounts: {
+					deposits: 1,
+					withdrawals: 0
+				}
+			}
+		})
+		expect(result.lastError).toBeUndefined()
+	})
+
+	it("marks operation status completed when live withdrawal state is terminal", async () => {
+		const writes: string[] = []
+		const saves: OperationSession[] = []
+		const session: OperationSession = {
+			...persistedSession,
+			id: "withdrawal-op",
+			route: "zeko:testnet->mina:testnet",
+			direction: "withdrawal",
+			amount: "3",
+			submittedTransactions: [{ action: "submit", hash: "withdrawal-submit" }]
+		}
+		const command = createOperationCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async list() {
+					return [session]
+				},
+				async load() {
+					return session
+				},
+				async save(next) {
+					saves.push(next)
+				}
+			}),
+			createAdapter: async () => ({
+				async getDepositStatuses() {
+					throw new Error("getDepositStatuses should not be called in this test")
+				},
+				async getWithdrawalStatuses() {
+					return [
+						{
+							index: 9,
+							amount: "3",
+							recipient: "B62test",
+							committed: true,
+							finalised: true,
+							hash: "withdrawal-submit",
+							timestamp: "2026-03-12T00:04:00.000Z"
+						}
+					]
+				},
+				async canFinalizeWithdrawal() {
+					return false
+				},
+				async submitDeposit() {
+					throw new Error("submitDeposit should not be called in this test")
+				},
+				async finalizeDeposit() {
+					throw new Error("finalizeDeposit should not be called in this test")
+				},
+				async cancelDeposit() {
+					throw new Error("cancelDeposit should not be called in this test")
+				},
+				async submitWithdrawal() {
+					throw new Error("submitWithdrawal should not be called in this test")
+				},
+				async finalizeWithdrawal() {
+					throw new Error("finalizeWithdrawal should not be called in this test")
+				}
+			}),
+			write: (message) => writes.push(message),
+			now: () => "2026-03-12T15:05:00.000Z"
+		})
+		const subCommands = await resolveSubCommands(command.subCommands)
+
+		await subCommands.status?.run?.({
+			rawArgs: [],
+			args: { _: [], id: "withdrawal-op" },
+			cmd: subCommands.status
+		})
+
+		const result = JSON.parse(writes[0] ?? "{}")
+		expect(saves).toHaveLength(1)
+		expect(result).toMatchObject({
+			id: "withdrawal-op",
+			status: "completed",
+			phase: "completed",
+			targetIndex: 9,
+			finalTransaction: {
+				action: "finalize",
+				hash: "withdrawal-submit",
+				explorerUrl: ""
+			},
+			liveSnapshot: {
+				refreshedAt: "2026-03-12T15:05:00.000Z",
+				nextAction: "completed",
+				targetIndex: 9,
+				observedCounts: {
+					deposits: 0,
+					withdrawals: 1
+				}
+			}
+		})
+	})
+
 	it("resumes a persisted operation and emits a final JSON result", async () => {
 		const writes: string[] = []
 		const progress: string[] = []

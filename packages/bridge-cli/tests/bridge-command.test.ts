@@ -167,8 +167,8 @@ describe("bridge command", () => {
 			now: () => "2026-03-10T00:00:00.000Z"
 		})
 
-		const previousWalletKey = process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY
-		process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY = signerKey
+		const previousWalletKey = process.env.WALLET_PRIVATE_KEY
+		process.env.WALLET_PRIVATE_KEY = signerKey
 
 		try {
 			await command.run?.({
@@ -188,9 +188,9 @@ describe("bridge command", () => {
 			})
 		} finally {
 			if (previousWalletKey === undefined) {
-				delete process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY
+				delete process.env.WALLET_PRIVATE_KEY
 			} else {
-				process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY = previousWalletKey
+				process.env.WALLET_PRIVATE_KEY = previousWalletKey
 			}
 		}
 
@@ -237,8 +237,8 @@ describe("bridge command", () => {
 			now: () => "2026-03-10T00:00:00.000Z"
 		})
 
-		const previousWalletKey = process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY
-		process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY = walletKey
+		const previousWalletKey = process.env.WALLET_PRIVATE_KEY
+		process.env.WALLET_PRIVATE_KEY = walletKey
 
 		try {
 			await command.run?.({
@@ -258,9 +258,9 @@ describe("bridge command", () => {
 			})
 		} finally {
 			if (previousWalletKey === undefined) {
-				delete process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY
+				delete process.env.WALLET_PRIVATE_KEY
 			} else {
-				process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY = previousWalletKey
+				process.env.WALLET_PRIVATE_KEY = previousWalletKey
 			}
 		}
 

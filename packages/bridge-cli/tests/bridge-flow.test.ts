@@ -1635,6 +1635,109 @@ describe("bridge flow", () => {
 		expect(events).toContain("heartbeat")
 	})
 
+	it("captures verbose sdk timings and capability reasons during long waits", async () => {
+		let statusCalls = 0
+		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
+		const result = await runBridgeOperation(
+			{
+				id: "op-verbose-diagnostics",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "1",
+				account: "B62verbose"
+			},
+			{
+				adapter: {
+					async submitDeposit() {
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko:testnet",
+							hash: "verbose-submit",
+							explorerUrl: "https://minascan.io/devnet/tx/verbose-submit",
+							included: true
+						}
+					},
+					async getDepositStatuses() {
+						statusCalls += 1
+						if (statusCalls === 1) {
+							return [
+								{
+									index: 0,
+									amount: "1",
+									recipient: "B62verbose",
+									cancelled: false,
+									synced: true,
+									accepted: true,
+									confirmed: true,
+									finalised: false,
+									hash: "verbose-submit",
+									timestamp: "2026-03-09T19:00:00.000Z"
+								}
+							]
+						}
+
+						return [
+							{
+								index: 0,
+								amount: "1",
+								recipient: "B62verbose",
+								cancelled: false,
+								synced: true,
+								accepted: true,
+								confirmed: true,
+								finalised: true,
+								hash: "verbose-finalize",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeDepositDetailed() {
+						return {
+							available: false,
+							reason: "No deposit witnesses found"
+						}
+					},
+					async canCancelDepositDetailed() {
+						return {
+							available: false,
+							reason: "Not rejected or accepted"
+						}
+					},
+					async finalizeDeposit() {
+						throw new Error("finalizeDeposit should not be called in this test")
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async ({ event, details }) => {
+					events.push({ event, details })
+				},
+				sleep: async () => {},
+				pollIntervalMs: 0,
+				now: () => "2026-03-09T19:00:30.000Z",
+				verbose: true
+			}
+		)
+
+		expect(result.status).toBe("completed")
+		expect(result.verboseDiagnostics?.sdkMethodStats.getDepositStatuses?.count).toBe(2)
+		expect(result.verboseDiagnostics?.sdkMethodStats.canFinalizeDeposit?.count).toBe(1)
+		expect(result.verboseDiagnostics?.waitReasons?.canFinalizeDeposit).toEqual({
+			available: false,
+			reason: "No deposit witnesses found"
+		})
+		expect(
+			events.some(
+				(entry) =>
+					entry.event === "heartbeat" &&
+					entry.details?.finalizeReason === "No deposit witnesses found"
+			)
+		).toBe(true)
+	})
+
 	it("advances earlier deposit claims before completing the current bridge", async () => {
 		let statusCalls = 0
 		let finalizeCalls = 0
