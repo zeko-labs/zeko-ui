@@ -90,3 +90,4 @@
 - T104 | done | simplify-grafana-dashboard-output-to-env-bound-artifact | done/T104-simplify-grafana-dashboard-output-to-env-bound-artifact.md
 - T105 | done | validate-and-resolve-pr-review-findings | done/T105-validate-and-resolve-pr-review-findings.md
 - T106 | done | bridge-sdk-deposit-cancellability | done/T106-bridge-sdk-deposit-cancellability.md
+- T107 | done | bridge-sdk-dedicated-and-live-tests | done/T107-bridge-sdk-dedicated-and-live-tests.md
