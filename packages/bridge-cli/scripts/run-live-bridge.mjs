@@ -1,31 +1,17 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { spawn } from "node:child_process"
-
-type LiveBridgeResult = {
-	success: boolean
-	operation_id: string
-	route: string
-	direction: string
-	status: string
-	amount: string
-	recipient: string
-	submitted_transactions: Array<{ action: string; hash: string }>
-	final_transaction: { action: string; hash: string; explorerUrl?: string } | null
-	explorer_urls: string[]
-	log_path: string
-}
 
 const [, , from, to, direction] = process.argv
 
 if (!from || !to || !direction) {
-	console.error("Usage: bun ./scripts/run-live-bridge.ts <from> <to> <direction>")
+	console.error("Usage: node ./scripts/run-live-bridge.mjs <from> <to> <direction>")
 	process.exit(1)
 }
 
 const expectedRoute = `${from}->${to}`
 
-const validateResult = (result: LiveBridgeResult) => {
+const validateResult = (result) => {
 	if (!result.success) {
 		throw new Error("Bridge result reported success=false")
 	}
@@ -69,12 +55,12 @@ let stdout = ""
 let stderr = ""
 
 child.stdout.setEncoding("utf8")
-child.stdout.on("data", (chunk: string) => {
+child.stdout.on("data", (chunk) => {
 	stdout += chunk
 })
 
 child.stderr.setEncoding("utf8")
-child.stderr.on("data", (chunk: string) => {
+child.stderr.on("data", (chunk) => {
 	stderr += chunk
 	process.stderr.write(chunk)
 })
@@ -94,7 +80,7 @@ child.on("close", (code) => {
 	}
 
 	try {
-		const result = JSON.parse(stdout) as LiveBridgeResult
+		const result = JSON.parse(stdout)
 		validateResult(result)
 		console.log(JSON.stringify(result, null, 2))
 	} catch (error) {

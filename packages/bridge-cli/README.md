@@ -46,9 +46,9 @@ The CLI signs transactions from environment variables only in v1.
 
 Required variables:
 
-| Variable                         | Required | Description                                                        |
-| -------------------------------- | -------- | ------------------------------------------------------------------ |
-| `ZEKO_BRIDGE_WALLET_PRIVATE_KEY` | yes      | Shared wallet private key used for all currently supported routes. |
+| Variable             | Required | Description                                                        |
+| -------------------- | -------- | ------------------------------------------------------------------ |
+| `WALLET_PRIVATE_KEY` | yes      | Shared wallet private key used for all currently supported routes. |
 
 ## Recommended Usage
 
@@ -81,11 +81,14 @@ Behavior:
 - advances earlier queued claims in order when the account already has pending bridge work
 - writes structured logs to disk for debugging and recovery
 - is intended to complete unattended from a single CLI invocation, even when the network wait is very long
+- validation of that unattended contract is only valid if the same original `bridge` process remains alive through completion; local persisted operation state alone is not proof that the live command is still running
 
 ### Current Protocol Notes
 
 - Archive queries are most reliable when they scan recent history in roughly `10_000`-block windows instead of using a giant `from=0` range.
-- Sequencer proof requests currently live in memory for about 20 minutes. If proving takes longer than that, the sequencer may return `Invalid key`. That case is currently treated as a terminal failure and is not yet automatically recoverable.
+- After `submitDeposit`, long waits in `waiting-submission` are primarily an L1 visibility/finality concern. Mina-side progression can be slow, so a long pre-target wait does not by itself imply a stuck proof or sequencer bug.
+- After a deposit has a target index, `canFinalizeDeposit` and `canCancelDeposit` still depend on the sequencer committing enough state to make the capability checks true. Long waits in `waiting-finalization` can therefore also be normal sequencer-side delay rather than a broken command loop.
+- The `Invalid key` failure mode is not a general long-wait condition. It applies only after `finalizeDeposit` has been submitted and the server-side proof request then takes too long to complete. If that post-finalize proving step runs for roughly an hour or longer, the sequencer may evict the proof request from memory and later return `Invalid key`. That case is currently treated as a terminal failure and is not yet automatically recoverable.
 - A cancellable deposit can never be finalized.
 - Deposit queue behavior is asymmetric:
   - cancellable deposits are skippable
@@ -141,6 +144,8 @@ The CLI writes:
 
 Use `operation logs <operation-id>` to inspect the recorded event stream for a specific bridge.
 
+`operation status` now refreshes the persisted session with live SDK/network reads before printing it, so it can be used to inspect actual bridge progress after the original command has stopped. `operation list` still reads local persisted state only.
+
 ## Development
 
 Run from the monorepo root:
@@ -163,7 +168,7 @@ Before local live validation or scheduled monitoring can work, make sure all of 
 1. Export funded testnet keys locally so the live validation can be run immediately:
 
    ```bash
-   export ZEKO_BRIDGE_WALLET_PRIVATE_KEY='<wallet private key>'
+   export WALLET_PRIVATE_KEY='<wallet private key>'
    ```
 
    Then tell me which direction to run, or run the checks yourself:

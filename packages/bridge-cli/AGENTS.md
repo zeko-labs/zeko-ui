@@ -30,6 +30,14 @@ For real network validation:
 - prefer separate funded wallets per direction when you need isolation
 - if subagents share a wallet, expect queued-claim ordering behavior and read the streamed progress carefully
 - always capture `operation_id`, `log_path`, and final transaction hash from each run
+- treat one-command validation strictly:
+  - the validation is only valid while the original single `bridge` process is still alive
+  - if that process exits or is interrupted, the validation attempt is over and must not be reported as still running
+  - `operation status` does fresh SDK/network reads and is useful for live recovery inspection, but it still does not retroactively make an interrupted one-command validation count as successful
+- read long deposit waits correctly:
+  - `waiting-submission` after `submitDeposit` is usually Mina L1 visibility/finality delay
+  - `waiting-finalization` before any finalize transaction exists can still be normal sequencer commit delay from `canFinalizeDeposit` / `canCancelDeposit`
+  - do not infer proof-request eviction risk until after `finalizeDeposit` has actually been submitted
 
 ## Code Landmarks
 

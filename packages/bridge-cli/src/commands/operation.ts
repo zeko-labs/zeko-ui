@@ -5,6 +5,12 @@ import { defineCommand, type CommandDef } from "citty"
 import { PrivateKey } from "o1js"
 import { runBridgeOperation } from "./bridge"
 import type { BridgeAdapter } from "../core/adapter"
+import {
+	analyzeDepositQueue,
+	analyzeWithdrawalQueue,
+	getSubmitHash,
+	sortByIndex
+} from "../core/bridge-queue"
 import { createOperationLogger } from "../core/logger"
 import { resolveAppPaths } from "../core/paths"
 import {
@@ -19,6 +25,7 @@ import type { ChainRef } from "../core/routes"
 import { formatRoute, parseChainRef, parseRouteString, resolveRoute } from "../core/routes"
 import type {
 	DepositStatus,
+	OperationLiveSnapshot,
 	OperationPhase,
 	OperationSession,
 	WithdrawalStatus
@@ -111,12 +118,6 @@ const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	const secret = from.startsWith("zeko:") ? keys.zeko : keys.mina
 	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
 }
-
-const sortByIndex = <T extends { index: number }>(items: T[]): T[] =>
-	[...items].sort((left, right) => left.index - right.index)
-
-const getSubmitHash = (session: OperationSession): string | undefined =>
-	session.submittedTransactions.find((transaction) => transaction.action === "submit")?.hash
 
 const toResumeUserJsonResult = (result: ResumeUserResult): ResumeUserJsonResult => ({
 	success: result.success,
@@ -311,6 +312,251 @@ const normalizeSessionForResume = ({
 	}
 }
 
+const withLiveSnapshot = ({
+	session,
+	now,
+	patch,
+	liveSnapshot
+}: {
+	session: OperationSession
+	now: () => string
+	patch: Partial<OperationSession>
+	liveSnapshot: OperationLiveSnapshot
+}): OperationSession => ({
+	...session,
+	...patch,
+	liveSnapshot,
+	updatedAt: now()
+})
+
+const refreshDepositSession = async ({
+	session,
+	adapter,
+	now
+}: {
+	session: OperationSession
+	adapter: BridgeAdapter
+	now: () => string
+}): Promise<OperationSession> => {
+	const deposits = sortByIndex(await adapter.getDepositStatuses(session.account))
+	const analysis = analyzeDepositQueue({ session, statuses: deposits })
+	const [canFinalize, canCancel] = await Promise.all([
+		adapter.canFinalizeDeposit
+			? adapter.canFinalizeDeposit(session.account)
+			: Promise.resolve(false),
+		adapter.canCancelDeposit ? adapter.canCancelDeposit(session.account) : Promise.resolve(false)
+	])
+	const liveBase = {
+		refreshedAt: now(),
+		targetIndex: analysis.targetIndex,
+		claimableIndex: analysis.claimableIndex,
+		pendingAhead: analysis.pendingAhead,
+		canFinalize,
+		canCancel,
+		submitHash: getSubmitHash(session),
+		observedCounts: {
+			deposits: deposits.length,
+			withdrawals: 0
+		}
+	} satisfies Omit<OperationLiveSnapshot, "nextAction">
+
+	if (analysis.target?.cancelled) {
+		return withLiveSnapshot({
+			session,
+			now,
+			patch: {
+				status: "cancelled",
+				phase: "cancelled",
+				lastError: undefined,
+				targetIndex: analysis.target.index,
+				pendingFinalizeIndex: undefined,
+				pendingFinalizeSubmittedAt: undefined,
+				pendingCancelMarker: undefined,
+				finalTransaction: session.finalTransaction ?? {
+					action: "cancel",
+					hash: analysis.target.hash,
+					explorerUrl: ""
+				}
+			},
+			liveSnapshot: {
+				...liveBase,
+				nextAction: "cancelled"
+			}
+		})
+	}
+
+	if (analysis.target?.finalised) {
+		return withLiveSnapshot({
+			session,
+			now,
+			patch: {
+				status: "completed",
+				phase: "completed",
+				lastError: undefined,
+				targetIndex: analysis.target.index,
+				pendingFinalizeIndex: undefined,
+				pendingFinalizeSubmittedAt: undefined,
+				pendingCancelMarker: undefined,
+				finalTransaction: session.finalTransaction ?? {
+					action: "finalize",
+					hash: analysis.target.hash,
+					explorerUrl: ""
+				}
+			},
+			liveSnapshot: {
+				...liveBase,
+				nextAction: "completed"
+			}
+		})
+	}
+
+	const shouldFinalize =
+		canFinalize &&
+		analysis.claimableIndex !== undefined &&
+		(analysis.shouldAdvanceQueuedClaims || analysis.claimableIndex === analysis.target?.index)
+	const shouldCancel =
+		canCancel &&
+		((analysis.shouldAdvanceQueuedClaims &&
+			(analysis.claimableIndex === undefined || !canFinalize)) ||
+			(analysis.target !== undefined && analysis.pendingAhead === 0 && !canFinalize))
+	const waitingOn =
+		analysis.target === undefined
+			? "submission"
+			: analysis.shouldAdvanceQueuedClaims
+				? "prior-claims"
+				: "finalization"
+	const phase: OperationPhase =
+		waitingOn === "submission"
+			? "waiting-submission"
+			: waitingOn === "prior-claims"
+				? "waiting-prior-claims"
+				: "waiting-finalization"
+
+	return withLiveSnapshot({
+		session,
+		now,
+		patch: {
+			status: "running",
+			phase,
+			lastError: undefined,
+			targetIndex: analysis.targetIndex
+		},
+		liveSnapshot: {
+			...liveBase,
+			nextAction: shouldFinalize ? "finalize" : shouldCancel ? "cancel" : "wait",
+			waitingOn
+		}
+	})
+}
+
+const refreshWithdrawalSession = async ({
+	session,
+	adapter,
+	now
+}: {
+	session: OperationSession
+	adapter: BridgeAdapter
+	now: () => string
+}): Promise<OperationSession> => {
+	const withdrawals = sortByIndex(await adapter.getWithdrawalStatuses(session.account))
+	const analysis = analyzeWithdrawalQueue({ session, statuses: withdrawals })
+	const canFinalize = adapter.canFinalizeWithdrawal
+		? await adapter.canFinalizeWithdrawal(session.account)
+		: false
+	const liveBase = {
+		refreshedAt: now(),
+		targetIndex: analysis.targetIndex,
+		claimableIndex: analysis.claimableIndex,
+		pendingAhead: analysis.pendingAhead,
+		canFinalize,
+		submitHash: getSubmitHash(session),
+		observedCounts: {
+			deposits: 0,
+			withdrawals: withdrawals.length
+		}
+	} satisfies Omit<OperationLiveSnapshot, "nextAction">
+
+	if (analysis.target?.finalised) {
+		return withLiveSnapshot({
+			session,
+			now,
+			patch: {
+				status: "completed",
+				phase: "completed",
+				lastError: undefined,
+				targetIndex: analysis.target.index,
+				pendingFinalizeIndex: undefined,
+				pendingFinalizeSubmittedAt: undefined,
+				finalTransaction: session.finalTransaction ?? {
+					action: "finalize",
+					hash: analysis.target.hash,
+					explorerUrl: ""
+				}
+			},
+			liveSnapshot: {
+				...liveBase,
+				nextAction: "completed"
+			}
+		})
+	}
+
+	const shouldFinalize =
+		canFinalize &&
+		analysis.claimableIndex !== undefined &&
+		(analysis.shouldAdvanceQueuedClaims || analysis.claimableIndex === analysis.target?.index)
+	const waitingOn =
+		analysis.target === undefined
+			? "submission"
+			: analysis.shouldAdvanceQueuedClaims
+				? "prior-claims"
+				: "finalization"
+	const phase: OperationPhase =
+		waitingOn === "submission"
+			? "waiting-submission"
+			: waitingOn === "prior-claims"
+				? "waiting-prior-claims"
+				: "waiting-finalization"
+
+	return withLiveSnapshot({
+		session,
+		now,
+		patch: {
+			status: "running",
+			phase,
+			lastError: undefined,
+			targetIndex: analysis.targetIndex
+		},
+		liveSnapshot: {
+			...liveBase,
+			nextAction: shouldFinalize ? "finalize" : "wait",
+			waitingOn
+		}
+	})
+}
+
+const refreshOperationSession = async ({
+	session,
+	createAdapter,
+	now,
+	verbose
+}: {
+	session: OperationSession
+	createAdapter: (input: {
+		from: ChainRef
+		to: ChainRef
+		verbose: boolean
+	}) => Promise<BridgeAdapter> | BridgeAdapter
+	now: () => string
+	verbose: boolean
+}): Promise<OperationSession> => {
+	const [from, to] = parseRoutePair(session.route)
+	const adapter = await createAdapter({ from, to, verbose })
+
+	return session.direction === "deposit"
+		? refreshDepositSession({ session, adapter, now })
+		: refreshWithdrawalSession({ session, adapter, now })
+}
+
 const createAdapterWithRetries = async ({
 	createAdapter,
 	from,
@@ -402,14 +648,43 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 			status: defineCommand({
 				meta: { name: "status", description: "Show one persisted operation." },
 				args: {
-					id: { type: "positional", required: true }
+					id: { type: "positional", required: true },
+					verbose: { type: "boolean", default: false }
 				},
 				async run({ args }) {
 					const id = parseId(args.id)
+					const verbose = typeof args.verbose === "boolean" ? args.verbose : false
+					const now = deps.now ?? (() => new Date().toISOString())
 					const store = (deps.createStore ?? createSessionStore)({
 						stateDir: (deps.resolvePaths ?? resolveAppPaths)().stateDir
 					})
-					;(deps.write ?? console.log)(JSON.stringify(await store.load(id), null, 2))
+					const session = await store.load(id)
+					if (!session) throw new Error(`Operation ${id} not found`)
+					const createAdapter =
+						deps.createAdapter ??
+						(async ({
+							from: inputFrom,
+							to: inputTo,
+							verbose: inputVerbose
+						}: {
+							from: ChainRef
+							to: ChainRef
+							verbose: boolean
+						}) => {
+							const { createBridgeAdapter } = await import("../core/adapter")
+							return createBridgeAdapter({
+								route: resolveRoute(inputFrom, inputTo),
+								verbose: inputVerbose
+							})
+						})
+					const refreshed = await refreshOperationSession({
+						session,
+						createAdapter,
+						now,
+						verbose
+					})
+					await store.save(refreshed)
+					;(deps.write ?? console.log)(JSON.stringify(refreshed, null, 2))
 				}
 			}),
 			logs: defineCommand({
@@ -507,7 +782,8 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 							log,
 							sleep,
 							pollIntervalMs: deps.pollIntervalMs ?? 20_000,
-							retryDelayMs: deps.retryDelayMs
+							retryDelayMs: deps.retryDelayMs,
+							verbose
 						}
 					)
 					;(deps.write ?? console.log)(
@@ -715,6 +991,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 									sleep,
 									pollIntervalMs: deps.pollIntervalMs ?? 20_000,
 									retryDelayMs: deps.retryDelayMs,
+									verbose,
 									now
 								}
 							)

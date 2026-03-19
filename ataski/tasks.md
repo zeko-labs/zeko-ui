@@ -83,3 +83,6 @@
 - T097 | done | consolidate-bridge-cli-wallet-key-and-runtime-findings | done/T097-consolidate-bridge-cli-wallet-key-and-runtime-findings.md
 - T098 | done | fix-bridge-cli-release-workflow-findings | done/T098-fix-bridge-cli-release-workflow-findings.md
 - T099 | done | harden-bridge-cli-test-exit-and-direct-vitest-runs | done/T099-harden-bridge-cli-test-exit-and-direct-vitest.md
+- T100 | done | fix-bridge-cli-live-validation-contract | done/T100-fix-bridge-cli-live-validation-contract.md
+- T101 | done | add-verbose-bridge-diagnostics | done/T101-add-verbose-bridge-diagnostics.md
+- T102 | done | make-operation-status-network-backed | done/T102-make-operation-status-network-backed.md

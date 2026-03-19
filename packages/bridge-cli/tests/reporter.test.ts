@@ -70,4 +70,63 @@ describe("reporter", () => {
 			})
 		).toContain("hash=submit-hash")
 	})
+
+	it("includes verbose diagnostics only when present", () => {
+		const verboseSession: OperationSession = {
+			...session,
+			verboseDiagnostics: {
+				sdkCalls: [
+					{
+						operation: "getDepositStatuses",
+						attempt: 1,
+						startedAt: "2026-03-10T00:00:00.000Z",
+						endedAt: "2026-03-10T00:00:01.000Z",
+						durationMs: 1_000,
+						success: true,
+						result: "count=1"
+					}
+				],
+				sdkMethodStats: {
+					getDepositStatuses: {
+						count: 1,
+						successCount: 1,
+						errorCount: 0,
+						totalDurationMs: 1_000,
+						lastStartedAt: "2026-03-10T00:00:00.000Z",
+						lastEndedAt: "2026-03-10T00:00:01.000Z",
+						lastDurationMs: 1_000,
+						lastResult: "count=1"
+					}
+				},
+				phaseTimings: [
+					{
+						phase: "waiting-finalization",
+						startedAt: "2026-03-10T00:00:00.000Z",
+						durationMs: 1_000
+					}
+				],
+				waitReasons: {
+					canFinalizeDeposit: {
+						available: false,
+						reason: "No deposit witnesses found"
+					}
+				}
+			}
+		}
+
+		expect(toBridgeJsonResult(verboseSession)).toMatchObject({
+			verbose_diagnostics: {
+				sdkMethodStats: {
+					getDepositStatuses: {
+						count: 1
+					}
+				}
+			}
+		})
+		expect(renderBridgeResult(verboseSession)).toContain("Verbose Diagnostics")
+		expect(renderBridgeResult(verboseSession)).toContain("getDepositStatuses: count=1")
+		expect(renderBridgeResult(verboseSession)).toContain(
+			"canFinalizeDeposit: available=false | reason=No deposit witnesses found"
+		)
+	})
 })

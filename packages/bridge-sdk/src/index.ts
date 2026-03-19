@@ -52,6 +52,7 @@ import {
 } from "./utils"
 
 export * from "./actions"
+export * from "./diagnostics"
 export * from "./errors"
 export * from "./graphql/index"
 export * from "./types"
@@ -601,10 +602,20 @@ export class Bridge {
 	}
 
 	public async canFinalizeDeposit(pk: PublicKey): Promise<boolean> {
+		const result = await this.canFinalizeDepositDetailed(pk)
+		return result.available
+	}
+
+	public async canFinalizeDepositDetailed(
+		pk: PublicKey
+	): Promise<{ available: boolean; reason: string | null }> {
 		this.debug("canFinalizeDeposit start", { pk: pk.toBase58() })
 		const result = await this.fetchDepositFinalizationWitnesses(pk)
 		this.debug("canFinalizeDeposit result", result)
-		return result.ok
+		return {
+			available: result.ok,
+			reason: result.ok ? null : result.msg
+		}
 	}
 
 	private async fetchDepositCancellationWitnesses(
@@ -831,9 +842,19 @@ export class Bridge {
 	}
 
 	public async canCancelDeposit(pk: PublicKey): Promise<boolean> {
+		const result = await this.canCancelDepositDetailed(pk)
+		return result.available
+	}
+
+	public async canCancelDepositDetailed(
+		pk: PublicKey
+	): Promise<{ available: boolean; reason: string | null }> {
 		const result = await this.fetchDepositCancellationWitnesses(pk, this.outerTokenOwner)
 		this.debug("canCancelDeposit result", result)
-		return result.ok
+		return {
+			available: result.ok,
+			reason: result.ok ? null : result.msg
+		}
 	}
 
 	public async submitWithdrawal(
@@ -1112,10 +1133,20 @@ export class Bridge {
 	}
 
 	public async canFinalizeWithdrawal(pk: PublicKey): Promise<boolean> {
+		const result = await this.canFinalizeWithdrawalDetailed(pk)
+		return result.available
+	}
+
+	public async canFinalizeWithdrawalDetailed(
+		pk: PublicKey
+	): Promise<{ available: boolean; reason: string | null }> {
 		this.debug("canFinalizeWithdrawal start", { pk: pk.toBase58() })
 		const result = await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner)
 		this.debug("canFinalizeWithdrawal result", result)
-		return result.ok
+		return {
+			available: result.ok,
+			reason: result.ok ? null : result.msg
+		}
 	}
 
 	public async fetchDepositsWithStates(pk: PublicKey): Promise<{

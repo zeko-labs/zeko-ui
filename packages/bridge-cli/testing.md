@@ -6,12 +6,12 @@ This file covers manual live validation only. Public usage documentation lives i
 
 Set these before running the manual live checks:
 
-- `ZEKO_BRIDGE_WALLET_PRIVATE_KEY`
+- `WALLET_PRIVATE_KEY`
 
 Example shell setup:
 
 ```bash
-export ZEKO_BRIDGE_WALLET_PRIVATE_KEY="<wallet private key>"
+export WALLET_PRIVATE_KEY="<wallet private key>"
 ```
 
 If you want me to run the live bridge validation from this machine, set the variables exactly like that in the shell first, then tell me which direction to run.
@@ -28,12 +28,12 @@ moon run bridge-cli:live-bridge-zeko-to-mina
 Exact one-shot command examples:
 
 ```bash
-export ZEKO_BRIDGE_WALLET_PRIVATE_KEY='<wallet private key>'
+export WALLET_PRIVATE_KEY='<wallet private key>'
 moon run bridge-cli:live-bridge-mina-to-zeko
 ```
 
 ```bash
-export ZEKO_BRIDGE_WALLET_PRIVATE_KEY='<wallet private key>'
+export WALLET_PRIVATE_KEY='<wallet private key>'
 moon run bridge-cli:live-bridge-zeko-to-mina
 ```
 
@@ -45,6 +45,14 @@ Each task:
 - validates the final JSON payload
 - fails if the bridge does not complete successfully
 - is expected to cover the unattended contract: start once, wait as long as needed, and eventually observe completion from that same CLI invocation
+
+Validation rule:
+
+- A live validation succeeds only if that same single `bridge` process stays alive through completion.
+- If the `bridge` process exits, is interrupted, or the terminal/session is aborted, that validation attempt is invalidated immediately.
+- Persisted operation files are useful for debugging and manual recovery, but they do not prove that the original one-command validation is still running.
+- `operation status` now performs fresh SDK/network reads and persists a refreshed live snapshot, so it is useful for inspecting actual bridge progress after an interruption.
+- That still does not make an interrupted one-command validation successful. A saved status refresh is a recovery/debugging aid, not proof that the original validation process remained alive through completion.
 
 These checks are manual entrypoints only. They are excluded from the normal Vitest suite and are not run by CI.
 
@@ -63,7 +71,9 @@ If the account already has pending bridge work, the command may report that it i
 Operator notes:
 
 - When checking archive-node action history manually, prefer recent `10_000`-block windows over a `from=0` full-history query.
-- If a proof request sits longer than about 20 minutes, the sequencer may evict it from memory and later return `Invalid key`. That is currently terminal and should be recorded as such.
+- After `submitDeposit`, a bridge may sit in `waiting-submission` for a long time because Mina L1 visibility/finality is slow. That state alone does not mean the sequencer or proof flow is stuck.
+- After a deposit gets a target index, `canFinalizeDeposit` and `canCancelDeposit` still wait on sequencer commit/progression. A long `waiting-finalization` period can therefore be expected even before any finalize transaction has been submitted.
+- `Invalid key` is not expected just because a bridge spends a long time in pre-finalize waiting states. The relevant risk starts only after `finalizeDeposit` has been submitted and the server-side proof request then runs too long. If that post-finalize proving step stretches to roughly an hour or longer, the sequencer may evict the proof request from memory and later return `Invalid key`. That is currently terminal and should be recorded as such.
 - For deposits, a cancellable entry can never also be finalized. Cancellable deposits are skippable in protocol terms, but finalizable deposits must never be skipped.
 
 ## Artifacts

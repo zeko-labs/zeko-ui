@@ -34,6 +34,81 @@ export type TransactionResult = {
 	zkAppId?: string
 }
 
+export type BridgeCapabilityDiagnostic = {
+	available: boolean
+	reason: string | null
+}
+
+export type BridgeSdkOperation =
+	| "submitDeposit"
+	| "finalizeDeposit"
+	| "cancelDeposit"
+	| "submitWithdrawal"
+	| "finalizeWithdrawal"
+	| "getDepositStatuses"
+	| "getWithdrawalStatuses"
+	| "canFinalizeDeposit"
+	| "canCancelDeposit"
+	| "canFinalizeWithdrawal"
+
+export type BridgeSdkCallTrace = {
+	operation: BridgeSdkOperation
+	attempt: number
+	startedAt: string
+	endedAt: string
+	durationMs: number
+	success: boolean
+	message?: string
+	result?: string
+}
+
+export type BridgeSdkMethodStat = {
+	count: number
+	successCount: number
+	errorCount: number
+	totalDurationMs: number
+	lastStartedAt?: string
+	lastEndedAt?: string
+	lastDurationMs?: number
+	lastMessage?: string
+	lastResult?: string
+}
+
+export type BridgePhaseTiming = {
+	phase: OperationPhase
+	startedAt: string
+	endedAt?: string
+	durationMs: number
+}
+
+export type BridgeVerboseDiagnostics = {
+	sdkCalls: BridgeSdkCallTrace[]
+	sdkMethodStats: Partial<Record<BridgeSdkOperation, BridgeSdkMethodStat>>
+	phaseTimings: BridgePhaseTiming[]
+	waitReasons?: Partial<
+		Record<
+			"canFinalizeDeposit" | "canCancelDeposit" | "canFinalizeWithdrawal",
+			BridgeCapabilityDiagnostic
+		>
+	>
+}
+
+export type OperationLiveSnapshot = {
+	refreshedAt: string
+	nextAction: "wait" | "finalize" | "cancel" | "completed" | "cancelled"
+	waitingOn?: "submission" | "prior-claims" | "finalization"
+	targetIndex?: number
+	claimableIndex?: number
+	pendingAhead?: number
+	canFinalize?: boolean
+	canCancel?: boolean
+	submitHash?: string
+	observedCounts: {
+		deposits: number
+		withdrawals: number
+	}
+}
+
 export type StatusResult<T> = {
 	success: true
 	direction: Direction
@@ -86,4 +161,6 @@ export type OperationSession = {
 		hash: string
 		explorerUrl: string
 	}
+	liveSnapshot?: OperationLiveSnapshot
+	verboseDiagnostics?: BridgeVerboseDiagnostics
 }
