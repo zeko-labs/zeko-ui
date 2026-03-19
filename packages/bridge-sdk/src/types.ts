@@ -69,6 +69,7 @@ export type DepositWithState = Action &
 		accepted: boolean
 		confirmed: boolean
 		finalised: boolean
+		cancellable: boolean
 	}
 
 export const DepositStateProgress = {

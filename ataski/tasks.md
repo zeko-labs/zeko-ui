@@ -89,3 +89,4 @@
 - T103 | done | emit-vertamedia-compatible-grafana-query-targets | done/T103-emit-vertamedia-compatible-grafana-query-targets.md
 - T104 | done | simplify-grafana-dashboard-output-to-env-bound-artifact | done/T104-simplify-grafana-dashboard-output-to-env-bound-artifact.md
 - T105 | done | validate-and-resolve-pr-review-findings | done/T105-validate-and-resolve-pr-review-findings.md
+- T106 | done | bridge-sdk-deposit-cancellability | done/T106-bridge-sdk-deposit-cancellability.md
