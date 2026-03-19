@@ -16,6 +16,8 @@ Run manual live validation from the monorepo root:
 
 Exact env setup lives in [testing.md](./testing.md). If a human wants you to run the bridge live from this machine, have them export the keys first, then run one direction at a time.
 
+The CLI also auto-loads dotenv files for human usage. Prefer `~/.zeko/.env` first, then a sibling `.env` next to the CLI binary, then a sibling `.env` next to the invocation path.
+
 These are manual only. Do not add them to automatic local workflows or CI.
 
 ## Parallel Subagents

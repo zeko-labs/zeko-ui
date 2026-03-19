@@ -50,6 +50,14 @@ Required variables:
 | -------------------- | -------- | ------------------------------------------------------------------ |
 | `WALLET_PRIVATE_KEY` | yes      | Shared wallet private key used for all currently supported routes. |
 
+For human CLI usage, `zeko-bridge` auto-loads dotenv files in this order before falling back to inherited shell environment variables:
+
+1. `~/.zeko/.env`
+2. a sibling `.env` next to the CLI binary
+3. a sibling `.env` next to the invocation path
+
+Earlier files win over later files. If none of those files provide `WALLET_PRIVATE_KEY`, the CLI falls back to the existing exported environment variable.
+
 ## Recommended Usage
 
 ### `bridge`

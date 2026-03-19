@@ -6,6 +6,7 @@ import { createDoctorCommand } from "./commands/doctor"
 import { createDepositCommand, createWithdrawalCommand } from "./commands/direct"
 import { createOperationCommand } from "./commands/operation"
 import { createTuiCommand } from "./commands/tui"
+import { loadBridgeCliEnv } from "./core/env"
 
 export const createBridgeCli = (): CommandDef =>
 	defineCommand({
@@ -25,5 +26,6 @@ export const createBridgeCli = (): CommandDef =>
 	})
 
 if (process.argv[1]?.endsWith("cli.js") || process.argv[1]?.endsWith("cli.ts")) {
+	await loadBridgeCliEnv()
 	await runMain(createBridgeCli())
 }

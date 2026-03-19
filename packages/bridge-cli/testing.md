@@ -4,7 +4,13 @@ This file covers manual live validation only. Public usage documentation lives i
 
 ## Required Environment
 
-Set these before running the manual live checks:
+The CLI auto-loads dotenv files in this order before falling back to exported shell variables:
+
+- `~/.zeko/.env`
+- a sibling `.env` next to the CLI binary
+- a sibling `.env` next to the invocation path
+
+Set this key in one of those locations or export it directly before running the manual live checks:
 
 - `WALLET_PRIVATE_KEY`
 
