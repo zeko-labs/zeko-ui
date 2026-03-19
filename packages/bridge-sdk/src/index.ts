@@ -1032,11 +1032,11 @@ export class Bridge {
 				recipient: withdrawalParams.withdrawal.recipient,
 				accountCreationFee: this.l1AccountCreationFee
 			})
-		} catch (error) {
-			if (error instanceof InsufficientFirstWithdrawalAmountError) {
-				return { ok: false, msg: error.message }
+		} catch (e) {
+			if (e instanceof InsufficientFirstWithdrawalAmountError) {
+				return { ok: false, msg: e.message }
 			}
-			throw error
+			throw e
 		}
 
 		const withdrawalAse = innerActions

@@ -6,65 +6,6 @@ import { bridgeOperationMachine } from "../../machines/bridgeOperation"
 const firstWithdrawalTooSmallMessage =
 	"First Zeko->Mina withdrawal amount is too small: recipient B62test does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot proceed as submitted."
 
-const createBridgeHarness = ({ worker }: { worker: object }) =>
-	createActor(
-		setup({
-			types: {
-				context: {} as {
-					activeOperation: string | null
-					events: Array<{ type: string; id?: string }>
-					worker: object
-				},
-				events: {} as { type: string; id?: string }
-			}
-		}).createMachine({
-			context: {
-				activeOperation: null,
-				events: [],
-				worker
-			},
-			on: {
-				TerminateOperation: {
-					actions: assign({
-						events: ({ context, event }) => [...context.events, event]
-					})
-				}
-			}
-		})
-	)
-
-const createWalletHarness = ({ currentNetwork }: { currentNetwork: string }) =>
-	createActor(
-		setup({
-			types: {
-				context: {} as {
-					account: string
-					currentNetwork: string
-					events: Array<{ type: string; network?: string }>
-				},
-				events: {} as { type: string; network?: string }
-			}
-		}).createMachine({
-			context: {
-				account: "B62test",
-				currentNetwork,
-				events: []
-			},
-			on: {
-				RequestNetworkChange: {
-					actions: assign({
-						events: ({ context, event }) => [...context.events, event]
-					})
-				},
-				FetchBalance: {
-					actions: assign({
-						events: ({ context, event }) => [...context.events, event]
-					})
-				}
-			}
-		})
-	)
-
 describe("bridgeOperationMachine", () => {
 	beforeEach(() => {
 		vi.spyOn(console, "error").mockImplementation(() => {})
@@ -80,8 +21,61 @@ describe("bridgeOperationMachine", () => {
 	})
 
 	it("stores the early withdrawal threshold SDK error from submitWithdrawal", async () => {
-		const bridge = createBridgeHarness({ worker: {} })
-		const wallet = createWalletHarness({ currentNetwork: "zeko:testnet" })
+		const bridge = createActor(
+			setup({
+				types: {
+					context: {} as {
+						activeOperation: string | null
+						events: Array<{ type: string; id?: string }>
+						worker: object
+					},
+					events: {} as { type: string; id?: string }
+				}
+			}).createMachine({
+				context: {
+					activeOperation: null,
+					events: [],
+					worker: {}
+				},
+				on: {
+					TerminateOperation: {
+						actions: assign({
+							events: ({ context, event }) => [...context.events, event]
+						})
+					}
+				}
+			})
+		)
+		const wallet = createActor(
+			setup({
+				types: {
+					context: {} as {
+						account: string
+						currentNetwork: string
+						events: Array<{ type: string; network?: string }>
+					},
+					events: {} as { type: string; network?: string }
+				}
+			}).createMachine({
+				context: {
+					account: "B62test",
+					currentNetwork: "zeko:testnet",
+					events: []
+				},
+				on: {
+					RequestNetworkChange: {
+						actions: assign({
+							events: ({ context, event }) => [...context.events, event]
+						})
+					},
+					FetchBalance: {
+						actions: assign({
+							events: ({ context, event }) => [...context.events, event]
+						})
+					}
+				}
+			})
+		)
 		bridge.start()
 		wallet.start()
 

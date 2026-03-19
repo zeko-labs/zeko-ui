@@ -166,22 +166,34 @@ async function submitWithdrawal({
 	return transaction.toJSON()
 }
 
-async function canFinalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
+async function canFinalizeDeposit({
+	l1,
+	l2,
+	user
+}: L1L2 & { user: string }): Promise<{ available: boolean; reason: string | null }> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	return (await bridge.canFinalizeDeposit(recipient)).available
+	return bridge.canFinalizeDeposit(recipient)
 }
 
-async function canFinalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
+async function canFinalizeWithdrawal({
+	l1,
+	l2,
+	user
+}: L1L2 & { user: string }): Promise<{ available: boolean; reason: string | null }> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	return (await bridge.canFinalizeWithdrawal(recipient)).available
+	return bridge.canFinalizeWithdrawal(recipient)
 }
 
-async function canCancelDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<boolean> {
+async function canCancelDeposit({
+	l1,
+	l2,
+	user
+}: L1L2 & { user: string }): Promise<{ available: boolean; reason: string | null }> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	return (await bridge.canCancelDeposit(recipient)).available
+	return bridge.canCancelDeposit(recipient)
 }
 
 async function cancelDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
