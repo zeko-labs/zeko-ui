@@ -2264,6 +2264,198 @@ describe("bridge flow", () => {
 		expect(events.some((entry) => entry.event === "heartbeat")).toBe(true)
 	})
 
+	it("does not resubmit the same prior cancellation while the first cancel is still pending", async () => {
+		let statusCalls = 0
+		const cancelCalls: string[] = []
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-avoid-duplicate-cancel",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "2",
+				account: "B62cancel"
+			},
+			{
+				adapter: {
+					async submitDeposit() {
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko:testnet",
+							hash: "submit-current",
+							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
+							included: false
+						}
+					},
+					async getDepositStatuses() {
+						statusCalls += 1
+						return [
+							{
+								index: 0,
+								amount: "1",
+								recipient: "B62older",
+								cancelled: false,
+								synced: true,
+								accepted: true,
+								confirmed: false,
+								finalised: false,
+								hash: "submit-older",
+								timestamp: "2026-03-09T19:00:00.000Z"
+							},
+							{
+								index: 1,
+								amount: "2",
+								recipient: "B62cancel",
+								cancelled: false,
+								synced: true,
+								accepted: true,
+								confirmed: true,
+								finalised: false,
+								hash: "submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeDeposit() {
+						return false
+					},
+					async canCancelDeposit() {
+						return true
+					},
+					async cancelDeposit() {
+						cancelCalls.push(`cancel-${cancelCalls.length + 1}`)
+						return {
+							success: true,
+							direction: "deposit",
+							action: "cancel",
+							route: "mina:testnet->zeko:testnet",
+							hash: `cancel-${cancelCalls.length}`,
+							explorerUrl: "https://minascan.io/devnet/tx/cancel-older",
+							included: false
+						}
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					if (statusCalls >= 2) {
+						throw new Error("stop-after-second-poll")
+					}
+				},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(result.status).toBe("failed")
+		expect(result.lastError).toBe("stop-after-second-poll")
+		expect(cancelCalls).toEqual(["cancel-1"])
+	})
+
+	it("retries a stale finalize submission when the claimable index never clears", async () => {
+		let statusCalls = 0
+		const finalizeCalls: string[] = []
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-retry-stale-finalize",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "2",
+				account: "B62finalize"
+			},
+			{
+				adapter: {
+					async submitDeposit() {
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko:testnet",
+							hash: "submit-current",
+							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
+							included: false
+						}
+					},
+					async getDepositStatuses() {
+						statusCalls += 1
+
+						if (finalizeCalls.length >= 2) {
+							return [
+								{
+									index: 7,
+									amount: "2",
+									recipient: "B62finalize",
+									cancelled: false,
+									synced: true,
+									accepted: true,
+									confirmed: true,
+									finalised: true,
+									hash: "finalize-second",
+									timestamp: "2026-03-09T19:03:00.000Z"
+								}
+							]
+						}
+
+						return [
+							{
+								index: 7,
+								amount: "2",
+								recipient: "B62finalize",
+								cancelled: false,
+								synced: true,
+								accepted: true,
+								confirmed: true,
+								finalised: false,
+								hash: "submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeDeposit() {
+						return true
+					},
+					async canCancelDeposit() {
+						return false
+					},
+					async finalizeDeposit() {
+						const hash = finalizeCalls.length === 0 ? "finalize-first" : "finalize-second"
+						finalizeCalls.push(hash)
+						return {
+							success: true,
+							direction: "deposit",
+							action: "finalize",
+							route: "mina:testnet->zeko:testnet",
+							hash,
+							explorerUrl: `https://zekoscan.io/testnet/tx/${hash}`,
+							included: false
+						}
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {},
+				pollIntervalMs: 0,
+				now: () =>
+					statusCalls >= 2 && finalizeCalls.length === 1
+						? "2026-03-10T00:03:01.000Z"
+						: finalizeCalls.length >= 2
+							? "2026-03-10T00:03:02.000Z"
+							: "2026-03-10T00:00:00.000Z"
+			}
+		)
+
+		expect(statusCalls).toBeGreaterThanOrEqual(3)
+		expect(finalizeCalls).toEqual(["finalize-first", "finalize-second"])
+		expect(result.status).toBe("completed")
+		expect(result.finalTransaction?.hash).toBe("finalize-second")
+	})
+
 	it("keeps waiting when a queued withdrawal looks claimable before witnesses are ready", async () => {
 		let withdrawalStatusCalls = 0
 		let finalizeAttempts = 0

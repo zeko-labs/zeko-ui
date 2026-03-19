@@ -26,7 +26,7 @@ describe("doctor command", () => {
 
 		expect(writes[0]).toContain("bridge doctor")
 		expect(writes[0]).toContain("Data dir: /tmp/data")
-		expect(writes[0]).toContain("Mina private key: configured")
+		expect(writes[0]).toContain("Wallet private key: configured")
 		expect(writes[0]).toContain("mina:testnet->zeko:testnet")
 	})
 })

@@ -6,14 +6,12 @@ This file covers manual live validation only. Public usage documentation lives i
 
 Set these before running the manual live checks:
 
-- `ZEKO_BRIDGE_MINA_PRIVATE_KEY`
-- `ZEKO_BRIDGE_ZEKO_PRIVATE_KEY` if you do not want to reuse the Mina key
+- `ZEKO_BRIDGE_WALLET_PRIVATE_KEY`
 
 Example shell setup:
 
 ```bash
-export ZEKO_BRIDGE_MINA_PRIVATE_KEY="<mina testnet private key>"
-export ZEKO_BRIDGE_ZEKO_PRIVATE_KEY="<optional zeko testnet private key>"
+export ZEKO_BRIDGE_WALLET_PRIVATE_KEY="<wallet private key>"
 ```
 
 If you want me to run the live bridge validation from this machine, set the variables exactly like that in the shell first, then tell me which direction to run.
@@ -30,13 +28,12 @@ moon run bridge-cli:live-bridge-zeko-to-mina
 Exact one-shot command examples:
 
 ```bash
-export ZEKO_BRIDGE_MINA_PRIVATE_KEY='<mina testnet private key>'
+export ZEKO_BRIDGE_WALLET_PRIVATE_KEY='<wallet private key>'
 moon run bridge-cli:live-bridge-mina-to-zeko
 ```
 
 ```bash
-export ZEKO_BRIDGE_MINA_PRIVATE_KEY='<mina testnet private key>'
-export ZEKO_BRIDGE_ZEKO_PRIVATE_KEY='<zeko testnet private key>'
+export ZEKO_BRIDGE_WALLET_PRIVATE_KEY='<wallet private key>'
 moon run bridge-cli:live-bridge-zeko-to-mina
 ```
 

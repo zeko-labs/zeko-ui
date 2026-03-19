@@ -125,6 +125,52 @@ type WaitStateTracker = {
 
 const HEARTBEAT_INTERVAL_MS = 30_000
 const RETRY_SLEEP_MS = 5_000
+const FINALIZE_RETRY_AFTER_MS = 180_000
+
+const getPendingFinalizeRetryState = ({
+	session,
+	claimableIndex,
+	now
+}: {
+	session: OperationSession
+	claimableIndex: number | undefined
+	now: () => string
+}): { isPending: boolean; isStale: boolean } => {
+	if (claimableIndex === undefined || session.pendingFinalizeIndex !== claimableIndex) {
+		return { isPending: false, isStale: false }
+	}
+
+	const submittedAt = session.pendingFinalizeSubmittedAt
+	if (!submittedAt) {
+		return { isPending: true, isStale: true }
+	}
+
+	const submittedAtMs = Date.parse(submittedAt)
+	const nowMs = Date.parse(now())
+	if (Number.isNaN(submittedAtMs) || Number.isNaN(nowMs)) {
+		return { isPending: true, isStale: true }
+	}
+
+	return {
+		isPending: true,
+		isStale: nowMs - submittedAtMs >= FINALIZE_RETRY_AFTER_MS
+	}
+}
+
+const toPendingCancelMarker = ({
+	currentTargetIndex,
+	claimableIndex,
+	pendingAhead,
+	isCurrentTarget
+}: {
+	currentTargetIndex?: number
+	claimableIndex?: number
+	pendingAhead: number
+	isCurrentTarget: boolean
+}): string =>
+	isCurrentTarget
+		? `current:${currentTargetIndex ?? "none"}`
+		: `prior:${claimableIndex ?? "none"}:${pendingAhead}`
 const persistSession = async ({
 	session,
 	sessionStore,
@@ -816,18 +862,35 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			})
 		])
 		session = canCancelResult.session
+		const pendingFinalizeState = getPendingFinalizeRetryState({
+			session,
+			claimableIndex,
+			now
+		})
+		const currentTargetCancelMarker = toPendingCancelMarker({
+			currentTargetIndex: target?.index,
+			claimableIndex,
+			pendingAhead,
+			isCurrentTarget: true
+		})
+		const priorCancelMarker = toPendingCancelMarker({
+			currentTargetIndex: target?.index,
+			claimableIndex,
+			pendingAhead,
+			isCurrentTarget: false
+		})
 
 		const shouldCancelCurrentTarget =
 			target !== undefined &&
 			pendingAhead === 0 &&
 			!canFinalizeDepositResult.value &&
 			canCancelResult.value &&
-			!session.submittedTransactions.some((transaction) => transaction.action === "cancel")
+			session.pendingCancelMarker !== currentTargetCancelMarker
 
 		const shouldAdvanceClaim =
 			canFinalizeDepositResult.value &&
 			claimableIndex !== undefined &&
-			claimableIndex !== session.pendingFinalizeIndex &&
+			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 			(shouldAdvanceQueuedClaims || claimableIndex === target?.index) &&
 			!shouldCancelCurrentTarget
 
@@ -842,7 +905,8 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 		const shouldAdvancePriorCancellation =
 			canCancelResult.value &&
 			shouldAdvanceQueuedClaims &&
-			(claimableIndex === undefined || !canFinalizeDepositResult.value)
+			(claimableIndex === undefined || !canFinalizeDepositResult.value) &&
+			session.pendingCancelMarker !== priorCancelMarker
 
 		if (shouldAdvancePriorCancellation || shouldCancelCurrentTarget) {
 			return {
@@ -1017,11 +1081,16 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 					: false
 		})
 		session = canFinalizeResult.session
+		const pendingFinalizeState = getPendingFinalizeRetryState({
+			session,
+			claimableIndex,
+			now
+		})
 
 		const shouldAdvanceClaim =
 			canFinalizeResult.value &&
 			claimableIndex !== undefined &&
-			claimableIndex !== session.pendingFinalizeIndex &&
+			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 			(shouldAdvanceQueuedClaims || claimableIndex === target?.index)
 
 		if (shouldAdvanceClaim) {
@@ -1133,6 +1202,7 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 							}
 						: session.finalTransaction,
 				pendingFinalizeIndex: depositAnalysis.claimableIndex,
+				pendingFinalizeSubmittedAt: now(),
 				queueAdvances: depositAnalysis.shouldAdvanceQueuedClaims
 					? (session.queueAdvances ?? 0) + 1
 					: session.queueAdvances
@@ -1232,6 +1302,12 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 			depositAnalysis.pendingAhead === 0 &&
 			(depositAnalysis.claimableIndex === undefined ||
 				depositAnalysis.claimableIndex === depositAnalysis.target.index)
+		const pendingCancelMarker = toPendingCancelMarker({
+			currentTargetIndex: depositAnalysis.target?.index,
+			claimableIndex: depositAnalysis.claimableIndex,
+			pendingAhead: depositAnalysis.pendingAhead,
+			isCurrentTarget: cancellingCurrentTarget
+		})
 		session = transitionSession({
 			controller,
 			session,
@@ -1249,6 +1325,7 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 							explorerUrl: cancelResult.explorerUrl
 						}
 					: session.finalTransaction,
+				pendingCancelMarker,
 				queueAdvances: depositAnalysis.shouldAdvanceQueuedClaims
 					? (session.queueAdvances ?? 0) + 1
 					: session.queueAdvances
@@ -1348,6 +1425,7 @@ const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<
 							}
 						: session.finalTransaction,
 				pendingFinalizeIndex: withdrawalAnalysis.claimableIndex,
+				pendingFinalizeSubmittedAt: now(),
 				queueAdvances: withdrawalAnalysis.shouldAdvanceQueuedClaims
 					? (session.queueAdvances ?? 0) + 1
 					: session.queueAdvances

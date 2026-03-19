@@ -36,6 +36,7 @@ jobs:
           VERSION="${{ inputs.version }}"
           gh release create "v${VERSION}" release/* \
             --repo zeko-labs/bridge-cli \
+            --target main \
             --title "v${VERSION}" \
             --notes "Published from monorepo. See [npm package](https://www.npmjs.com/package/@zeko-labs/bridge-cli/v/${VERSION})." \
             --latest

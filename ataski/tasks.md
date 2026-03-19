@@ -80,3 +80,6 @@
 - T094 | done | split-bridge-validator-scope-from-pr-139 | done/T094-split-bridge-validator-scope-from-pr-139.md
 - T095 | done | validate-and-resolve-pr-139-review-comments | done/T095-validate-and-resolve-pr-139-review-comments.md
 - T096 | done | fix-bridge-cli-ci-test-runtime-dependency | done/T096-fix-bridge-cli-ci-test-runtime-dependency.md
+- T097 | done | consolidate-bridge-cli-wallet-key-and-runtime-findings | done/T097-consolidate-bridge-cli-wallet-key-and-runtime-findings.md
+- T098 | done | fix-bridge-cli-release-workflow-findings | done/T098-fix-bridge-cli-release-workflow-findings.md
+- T099 | done | harden-bridge-cli-test-exit-and-direct-vitest-runs | done/T099-harden-bridge-cli-test-exit-and-direct-vitest.md

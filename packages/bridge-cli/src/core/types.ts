@@ -74,6 +74,8 @@ export type OperationSession = {
 	lastError?: string
 	targetIndex?: number
 	pendingFinalizeIndex?: number
+	pendingFinalizeSubmittedAt?: string
+	pendingCancelMarker?: string
 	queueAdvances?: number
 	submittedTransactions: Array<{
 		action: "submit" | "finalize" | "cancel"

@@ -30,7 +30,7 @@ export const createDoctorCommand = (deps: DoctorCommandDeps = {}): CommandDef =>
 					`Data dir: ${paths.dataDir}`,
 					`State dir: ${paths.stateDir}`,
 					`Log dir: ${paths.logDir}`,
-					`Mina private key: ${keyConfig.ok ? "configured" : keyConfig.message}`,
+					`Wallet private key: ${keyConfig.ok ? "configured" : keyConfig.message}`,
 					`Known routes: ${KNOWN_ROUTES.map((route) => `${route.from}->${route.to}`).join(", ")}`
 				].join("\n")
 			)

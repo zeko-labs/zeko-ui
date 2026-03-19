@@ -2,7 +2,6 @@ name: Release Bridge CLI
 
 on:
   workflow_call:
-  workflow_dispatch:
 
 jobs:
   version-check:
@@ -20,7 +19,7 @@ jobs:
           VERSION=$(node -p "require('./packages/bridge-cli/package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           PUBLISHED=$(npm view @zeko-labs/bridge-cli@"$VERSION" version 2>/dev/null || echo "")
-          if [ -z "$PUBLISHED" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ -z "$PUBLISHED" ]; then
             echo "should_release=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_release=false" >> "$GITHUB_OUTPUT"
@@ -107,7 +106,7 @@ jobs:
           npm publish "$TARBALL" --access public --loglevel verbose
 
   github-release:
-    needs: [version-check, publish]
+    needs: [version-check, publish, sync]
     if: needs.version-check.outputs.should_release == 'true'
     uses: ./.github/workflows/github-release-bridge-cli.yaml
     with:

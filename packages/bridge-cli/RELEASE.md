@@ -54,13 +54,13 @@ Runs `changesets/action@v1` with `version` only. When `hasChangesets` is `false`
 
 ### `release-bridge-cli.yaml` — build, pack, and publish
 
-Triggered by `workflow_call` from `changesets.yaml` or by `workflow_dispatch`. It checks whether the current version is already on npm, builds the package with `moon run bridge-cli:build`, creates a single tarball with `pnpm pack`, then publishes that tarball with `npm publish` using npm trusted publishing.
+Triggered by `workflow_call` from `changesets.yaml`. It checks whether the current version is already on npm, builds the package with `moon run bridge-cli:build`, creates a single tarball with `pnpm pack`, then publishes that tarball with `npm publish` using npm trusted publishing.
 
 This package does not use platform subpackages. The published artifact is the built JavaScript tarball for `@zeko-labs/bridge-cli`.
 
 ### `github-release-bridge-cli.yaml` — GitHub release
 
-Creates a GitHub release on `zeko-labs/bridge-cli` and attaches the packaged npm tarball from the monorepo release run.
+Creates a GitHub release on `zeko-labs/bridge-cli` and attaches the packaged npm tarball from the monorepo release run after the mirror sync finishes, so the release tag points at the synced standalone source.
 
 ### `sync-bridge-cli.yaml` — public mirror
 

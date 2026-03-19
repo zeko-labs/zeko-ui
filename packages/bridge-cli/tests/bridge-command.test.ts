@@ -167,9 +167,8 @@ describe("bridge command", () => {
 			now: () => "2026-03-10T00:00:00.000Z"
 		})
 
-		const previousMinaKey = process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY
-		delete process.env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY
-		process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY = signerKey
+		const previousWalletKey = process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY
+		process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY = signerKey
 
 		try {
 			await command.run?.({
@@ -188,10 +187,10 @@ describe("bridge command", () => {
 				cmd: command
 			})
 		} finally {
-			if (previousMinaKey === undefined) {
-				delete process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY
+			if (previousWalletKey === undefined) {
+				delete process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY
 			} else {
-				process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY = previousMinaKey
+				process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY = previousWalletKey
 			}
 		}
 
@@ -202,10 +201,9 @@ describe("bridge command", () => {
 	})
 
 	it("defaults the recipient to the destination signer when no recipient is provided", async () => {
-		const minaKey = PrivateKey.random().toBase58()
-		const zekoKey = PrivateKey.random().toBase58()
-		const expectedSender = PrivateKey.fromBase58(minaKey).toPublicKey().toBase58()
-		const expectedRecipient = PrivateKey.fromBase58(zekoKey).toPublicKey().toBase58()
+		const walletKey = PrivateKey.random().toBase58()
+		const expectedSender = PrivateKey.fromBase58(walletKey).toPublicKey().toBase58()
+		const expectedRecipient = expectedSender
 		const writes: string[] = []
 		const submitted: Array<{ account?: string; recipient?: string }> = []
 		const command = createBridgeCommand({
@@ -239,10 +237,8 @@ describe("bridge command", () => {
 			now: () => "2026-03-10T00:00:00.000Z"
 		})
 
-		const previousMinaKey = process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY
-		const previousZekoKey = process.env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY
-		process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY = minaKey
-		process.env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY = zekoKey
+		const previousWalletKey = process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY
+		process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY = walletKey
 
 		try {
 			await command.run?.({
@@ -261,16 +257,10 @@ describe("bridge command", () => {
 				cmd: command
 			})
 		} finally {
-			if (previousMinaKey === undefined) {
-				delete process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY
+			if (previousWalletKey === undefined) {
+				delete process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY
 			} else {
-				process.env.ZEKO_BRIDGE_MINA_PRIVATE_KEY = previousMinaKey
-			}
-
-			if (previousZekoKey === undefined) {
-				delete process.env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY
-			} else {
-				process.env.ZEKO_BRIDGE_ZEKO_PRIVATE_KEY = previousZekoKey
+				process.env.ZEKO_BRIDGE_WALLET_PRIVATE_KEY = previousWalletKey
 			}
 		}
 

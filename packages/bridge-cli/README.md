@@ -46,11 +46,9 @@ The CLI signs transactions from environment variables only in v1.
 
 Required variables:
 
-| Variable                       | Required | Description                                                                                        |
-| ------------------------------ | -------- | -------------------------------------------------------------------------------------------------- |
-| `ZEKO_BRIDGE_MINA_PRIVATE_KEY` | yes      | Mina private key used for Mina-originated bridge actions.                                          |
-| `ZEKO_BRIDGE_ZEKO_PRIVATE_KEY` | no       | Zeko private key used for Zeko-originated bridge actions. Falls back to the Mina key when omitted. |
-| `ZEKO_BRIDGE_ETH_PRIVATE_KEY`  | no       | Reserved for future Ethereum routes.                                                               |
+| Variable                         | Required | Description                                                        |
+| -------------------------------- | -------- | ------------------------------------------------------------------ |
+| `ZEKO_BRIDGE_WALLET_PRIVATE_KEY` | yes      | Shared wallet private key used for all currently supported routes. |
 
 ## Recommended Usage
 
@@ -165,8 +163,7 @@ Before local live validation or scheduled monitoring can work, make sure all of 
 1. Export funded testnet keys locally so the live validation can be run immediately:
 
    ```bash
-   export ZEKO_BRIDGE_MINA_PRIVATE_KEY='<mina testnet private key>'
-   export ZEKO_BRIDGE_ZEKO_PRIVATE_KEY='<optional zeko testnet private key>'
+   export ZEKO_BRIDGE_WALLET_PRIVATE_KEY='<wallet private key>'
    ```
 
    Then tell me which direction to run, or run the checks yourself:
