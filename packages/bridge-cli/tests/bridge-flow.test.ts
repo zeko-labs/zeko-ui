@@ -2087,10 +2087,11 @@ describe("bridge flow", () => {
 		).toBe(true)
 	})
 
-	it("fails clearly on a terminal first-withdrawal amount error instead of retrying forever", async () => {
+	it("fails clearly during withdrawal submission on a terminal first-withdrawal amount error", async () => {
 		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
 		const errorMessage =
-			"First Zeko->Mina withdrawal amount is too small: recipient B62submitretry does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot be finalized as submitted."
+			"First Zeko->Mina withdrawal amount is too small: recipient B62submitretry does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot proceed as submitted."
+		let inspected = false
 
 		const result = await runBridgeOperation(
 			{
@@ -2103,31 +2104,14 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitWithdrawal() {
-						return {
-							success: true,
-							direction: "withdrawal",
-							action: "submit",
-							route: "zeko:testnet->mina:testnet",
-							hash: "withdrawal-submit-too-small",
-							explorerUrl: "https://zekoscan.io/testnet/tx/withdrawal-submit-too-small",
-							included: true
-						}
+						throw new Error(errorMessage)
 					},
 					async getWithdrawalStatuses() {
-						return [
-							{
-								index: 0,
-								amount: "0.2",
-								recipient: "B62submitretry",
-								committed: false,
-								finalised: false,
-								hash: "withdrawal-submit-too-small",
-								timestamp: "2026-03-09T19:03:00.000Z"
-							}
-						]
+						inspected = true
+						return []
 					},
 					async canFinalizeWithdrawal() {
-						throw new Error(errorMessage)
+						throw new Error("canFinalizeWithdrawal should not be called")
 					},
 					async finalizeWithdrawal() {
 						throw new Error("finalizeWithdrawal should not be called")
@@ -2149,6 +2133,7 @@ describe("bridge flow", () => {
 		expect(result.status).toBe("failed")
 		expect(result.lastError).toBe(errorMessage)
 		expect(events.some((entry) => entry.event === "retrying")).toBe(false)
+		expect(inspected).toBe(false)
 	})
 
 	it("stops immediately when submission fails instead of falling through to inspect", async () => {

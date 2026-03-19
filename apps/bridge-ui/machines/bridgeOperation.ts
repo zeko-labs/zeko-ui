@@ -738,10 +738,13 @@ export const bridgeOperationMachine = setup({
 						},
 						onError: {
 							target: "#bridgeOperation.FAILED",
-							actions: sendTo(
-								({ context }) => context.bridge,
-								({ self }) => ({ type: "TerminateOperation", id: self.id })
-							)
+							actions: [
+								assign(addError(new Error("Failed to submit withdrawal"))),
+								sendTo(
+									({ context }) => context.bridge,
+									({ self }) => ({ type: "TerminateOperation", id: self.id })
+								)
+							]
 						}
 					}
 				},

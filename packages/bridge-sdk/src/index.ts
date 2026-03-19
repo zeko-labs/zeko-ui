@@ -15,7 +15,10 @@ import {
 import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
-import { assertFirstWithdrawalAmountCanCreateHelper } from "./errors"
+import {
+	assertFirstWithdrawalAmountCanCreateHelper,
+	ensureFirstWithdrawalAmountCanCreateHelper
+} from "./errors"
 import { createGraphqlClient, type GqlClient } from "./graphql"
 import type {
 	Account,
@@ -869,16 +872,16 @@ export class Bridge {
 	): Promise<Mina.Transaction<false, false>> {
 		this.setL2()
 
-		const helperAccount = await this.fetchAccount(
-			this.l1Client,
-			recipient,
-			TokenId.derive(this.outerTokenOwner)
-		)
-		assertFirstWithdrawalAmountCanCreateHelper({
-			helperAccountExists: helperAccount !== null,
+		await ensureFirstWithdrawalAmountCanCreateHelper({
 			amount,
 			recipient,
-			accountCreationFee: this.l1AccountCreationFee
+			accountCreationFee: this.l1AccountCreationFee,
+			helperAccountExists: async () =>
+				(await this.fetchAccount(
+					this.l1Client,
+					recipient,
+					TokenId.derive(this.outerTokenOwner)
+				)) !== null
 		})
 
 		await refreshCache(feePayer)

@@ -23,7 +23,7 @@ export class InsufficientFirstWithdrawalAmountError extends Error {
 		recipient: string
 	}) {
 		super(
-			`${FIRST_WITHDRAWAL_TOO_SMALL_PREFIX}: recipient ${recipient} does not have an L1 helper account yet, so the first withdrawal must be at least ${formatNanomina(accountCreationFeeNanomina)} MINA to cover the Mina account creation fee. This withdrawal is ${formatNanomina(amountNanomina)} MINA and cannot be finalized as submitted.`
+			`${FIRST_WITHDRAWAL_TOO_SMALL_PREFIX}: recipient ${recipient} does not have an L1 helper account yet, so the first withdrawal must be at least ${formatNanomina(accountCreationFeeNanomina)} MINA to cover the Mina account creation fee. This withdrawal is ${formatNanomina(amountNanomina)} MINA and cannot proceed as submitted.`
 		)
 		this.name = "InsufficientFirstWithdrawalAmountError"
 	}
@@ -56,7 +56,7 @@ export const assertFirstWithdrawalAmountCanCreateHelper = ({
 }): void => {
 	// The first Zeko->Mina withdrawal creates the Mina helper account and pays that
 	// account-creation fee out of the withdrawal itself, so amounts below the fee
-	// cannot be finalized as submitted.
+	// cannot proceed as submitted.
 	if (helperAccountExists) return
 	if (amount.greaterThanOrEqual(accountCreationFee).toBoolean()) return
 
@@ -64,5 +64,26 @@ export const assertFirstWithdrawalAmountCanCreateHelper = ({
 		amountNanomina: amount.toBigInt(),
 		accountCreationFeeNanomina: accountCreationFee.toBigInt(),
 		recipient: recipient.toBase58()
+	})
+}
+
+export const ensureFirstWithdrawalAmountCanCreateHelper = async ({
+	amount,
+	recipient,
+	accountCreationFee,
+	helperAccountExists
+}: {
+	amount: UInt64
+	recipient: PublicKey
+	accountCreationFee: UInt64
+	helperAccountExists: () => boolean | Promise<boolean>
+}): Promise<void> => {
+	if (amount.greaterThanOrEqual(accountCreationFee).toBoolean()) return
+
+	assertFirstWithdrawalAmountCanCreateHelper({
+		helperAccountExists: await helperAccountExists(),
+		amount,
+		recipient,
+		accountCreationFee
 	})
 }

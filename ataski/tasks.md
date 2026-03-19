@@ -88,3 +88,4 @@
 - T102 | done | make-operation-status-network-backed | done/T102-make-operation-status-network-backed.md
 - T103 | done | auto-load-bridge-cli-dotenv | done/T103-auto-load-bridge-cli-dotenv.md
 - T104 | done | clean-operation-status-output | done/T104-clean-operation-status-output.md
+- T105 | done | fix-withdrawal-fee-threshold-early-failure | done/T105-fix-withdrawal-fee-threshold-early-failure.md

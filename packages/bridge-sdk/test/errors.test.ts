@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { PublicKey, UInt64 } from "o1js"
 import {
 	assertFirstWithdrawalAmountCanCreateHelper,
+	ensureFirstWithdrawalAmountCanCreateHelper,
 	InsufficientFirstWithdrawalAmountError,
 	isInsufficientFirstWithdrawalAmountError
 } from "../src/errors"
@@ -38,6 +39,51 @@ describe("first withdrawal amount guard", () => {
 				accountCreationFee: UInt64.from(1_000_000_000)
 			})
 		).not.toThrow()
+	})
+
+	it("skips the helper-account lookup when the withdrawal already meets the threshold", async () => {
+		const helperAccountExists = vi.fn(() => false)
+
+		await expect(
+			ensureFirstWithdrawalAmountCanCreateHelper({
+				amount: UInt64.from(1_000_000_000),
+				recipient,
+				accountCreationFee: UInt64.from(1_000_000_000),
+				helperAccountExists
+			})
+		).resolves.toBeUndefined()
+
+		expect(helperAccountExists).not.toHaveBeenCalled()
+	})
+
+	it("checks for an existing helper account before failing small withdrawals", async () => {
+		const helperAccountExists = vi.fn(() => true)
+
+		await expect(
+			ensureFirstWithdrawalAmountCanCreateHelper({
+				amount: UInt64.from(200_000_000),
+				recipient,
+				accountCreationFee: UInt64.from(1_000_000_000),
+				helperAccountExists
+			})
+		).resolves.toBeUndefined()
+
+		expect(helperAccountExists).toHaveBeenCalledTimes(1)
+	})
+
+	it("fails small withdrawals when the helper account is still missing", async () => {
+		const helperAccountExists = vi.fn(() => false)
+
+		await expect(
+			ensureFirstWithdrawalAmountCanCreateHelper({
+				amount: UInt64.from(200_000_000),
+				recipient,
+				accountCreationFee: UInt64.from(1_000_000_000),
+				helperAccountExists
+			})
+		).rejects.toThrow(InsufficientFirstWithdrawalAmountError)
+
+		expect(helperAccountExists).toHaveBeenCalledTimes(1)
 	})
 
 	it("detects the shared terminal error by instance or message", () => {
