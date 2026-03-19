@@ -59,7 +59,8 @@ export const loadBridgeCliEnv = async ({
 		loadDotenvConfig({
 			path: filePath,
 			processEnv,
-			override: false
+			override: false,
+			quiet: true
 		})
 }: {
 	env?: EnvLike

@@ -87,3 +87,4 @@
 - T101 | done | add-verbose-bridge-diagnostics | done/T101-add-verbose-bridge-diagnostics.md
 - T102 | done | make-operation-status-network-backed | done/T102-make-operation-status-network-backed.md
 - T103 | done | auto-load-bridge-cli-dotenv | done/T103-auto-load-bridge-cli-dotenv.md
+- T104 | done | clean-operation-status-output | done/T104-clean-operation-status-output.md

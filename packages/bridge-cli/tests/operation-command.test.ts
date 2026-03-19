@@ -282,25 +282,23 @@ describe("operation command", () => {
 		expect(result).toMatchObject({
 			id: "op-1",
 			status: "running",
-			phase: "waiting-finalization",
-			targetIndex: 4,
-			liveSnapshot: {
-				refreshedAt: "2026-03-12T15:00:00.000Z",
-				nextAction: "finalize",
-				waitingOn: "finalization",
-				canFinalize: true,
-				canCancel: false,
-				targetIndex: 4,
-				claimableIndex: 4,
-				pendingAhead: 0,
-				submitHash: "deposit-submit",
-				observedCounts: {
-					deposits: 1,
-					withdrawals: 0
-				}
-			}
+			phase: "ready-finalization",
+			refreshed_at: "2026-03-12T15:00:00.000Z",
+			target_index: 4,
+			claimable_index: 4,
+			pending_ahead: 0,
+			can_finalize: true,
+			can_cancel: false,
+			submit_hash: "deposit-submit",
+			observed_counts: {
+				deposits: 1,
+				withdrawals: 0
+			},
+			next_action: "finalize",
+			waiting_on: "finalization"
 		})
-		expect(result.lastError).toBeUndefined()
+		expect(result.error).toBeNull()
+		expect(result.liveSnapshot).toBeUndefined()
 	})
 
 	it("marks operation status completed when live withdrawal state is terminal", async () => {
@@ -380,22 +378,20 @@ describe("operation command", () => {
 			id: "withdrawal-op",
 			status: "completed",
 			phase: "completed",
-			targetIndex: 9,
-			finalTransaction: {
+			target_index: 9,
+			final_transaction: {
 				action: "finalize",
 				hash: "withdrawal-submit",
 				explorerUrl: ""
 			},
-			liveSnapshot: {
-				refreshedAt: "2026-03-12T15:05:00.000Z",
-				nextAction: "completed",
-				targetIndex: 9,
-				observedCounts: {
-					deposits: 0,
-					withdrawals: 1
-				}
+			refreshed_at: "2026-03-12T15:05:00.000Z",
+			next_action: "completed",
+			observed_counts: {
+				deposits: 0,
+				withdrawals: 1
 			}
 		})
+		expect(result.liveSnapshot).toBeUndefined()
 	})
 
 	it("resumes a persisted operation and emits a final JSON result", async () => {

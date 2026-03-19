@@ -93,6 +93,34 @@ type CompletedOperationJsonResult = {
 	operations: BridgeCommandJsonResult[]
 }
 
+type OperationStatusJsonResult = {
+	id: string
+	status: OperationSession["status"]
+	phase: string
+	route: OperationSession["route"]
+	direction: OperationSession["direction"]
+	account: string
+	recipient: string
+	amount: string
+	timeout_slots?: number
+	log_path: string
+	created_at: string
+	updated_at: string
+	refreshed_at?: string
+	submitted_transactions: OperationSession["submittedTransactions"]
+	final_transaction: OperationSession["finalTransaction"] | null
+	target_index?: number
+	claimable_index?: number
+	pending_ahead?: number
+	can_finalize?: boolean
+	can_cancel?: boolean
+	submit_hash?: string
+	observed_counts?: OperationLiveSnapshot["observedCounts"]
+	next_action?: OperationLiveSnapshot["nextAction"]
+	waiting_on?: OperationLiveSnapshot["waitingOn"]
+	error: string | null
+}
+
 const parseId = (value: unknown): string => {
 	if (typeof value !== "string" || value.length === 0) {
 		throw new Error("Missing required operation id")
@@ -170,6 +198,85 @@ const toCompletedOperationsJsonResult = (
 ): CompletedOperationJsonResult => ({
 	count: sessions.length,
 	operations: sessions.map((session) => toBridgeJsonResult(session))
+})
+
+const toOperationStatusPhase = (session: OperationSession): string => {
+	const snapshot = session.liveSnapshot
+	if (!snapshot) {
+		return session.phase
+	}
+
+	if (snapshot.nextAction === "finalize") {
+		return "ready-finalization"
+	}
+
+	if (snapshot.nextAction === "cancel") {
+		return "ready-cancellation"
+	}
+
+	if (snapshot.nextAction === "completed") {
+		return "completed"
+	}
+
+	if (snapshot.nextAction === "cancelled") {
+		return "cancelled"
+	}
+
+	if (snapshot.waitingOn === "submission") {
+		return "waiting-submission"
+	}
+
+	if (snapshot.waitingOn === "prior-claims") {
+		return "waiting-prior-claims"
+	}
+
+	if (snapshot.waitingOn === "finalization") {
+		return "waiting-finalization"
+	}
+
+	return session.phase
+}
+
+const toOperationStatusJsonResult = (session: OperationSession): OperationStatusJsonResult => ({
+	id: session.id,
+	status: session.status,
+	phase: toOperationStatusPhase(session),
+	route: session.route,
+	direction: session.direction,
+	account: session.account,
+	recipient: session.recipient ?? session.account,
+	amount: session.amount,
+	...(session.timeoutSlots !== undefined ? { timeout_slots: session.timeoutSlots } : {}),
+	log_path: session.logPath,
+	created_at: session.createdAt,
+	updated_at: session.updatedAt,
+	...(session.liveSnapshot?.refreshedAt ? { refreshed_at: session.liveSnapshot.refreshedAt } : {}),
+	submitted_transactions: session.submittedTransactions,
+	final_transaction: session.finalTransaction ?? null,
+	...(session.liveSnapshot?.targetIndex !== undefined
+		? { target_index: session.liveSnapshot.targetIndex }
+		: session.targetIndex !== undefined
+			? { target_index: session.targetIndex }
+			: {}),
+	...(session.liveSnapshot?.claimableIndex !== undefined
+		? { claimable_index: session.liveSnapshot.claimableIndex }
+		: {}),
+	...(session.liveSnapshot?.pendingAhead !== undefined
+		? { pending_ahead: session.liveSnapshot.pendingAhead }
+		: {}),
+	...(session.liveSnapshot?.canFinalize !== undefined
+		? { can_finalize: session.liveSnapshot.canFinalize }
+		: {}),
+	...(session.liveSnapshot?.canCancel !== undefined
+		? { can_cancel: session.liveSnapshot.canCancel }
+		: {}),
+	...(session.liveSnapshot?.submitHash ? { submit_hash: session.liveSnapshot.submitHash } : {}),
+	...(session.liveSnapshot?.observedCounts
+		? { observed_counts: session.liveSnapshot.observedCounts }
+		: {}),
+	...(session.liveSnapshot?.nextAction ? { next_action: session.liveSnapshot.nextAction } : {}),
+	...(session.liveSnapshot?.waitingOn ? { waiting_on: session.liveSnapshot.waitingOn } : {}),
+	error: session.lastError ?? null
 })
 
 const resolveRouteQueue = (from: ChainRef, to: ChainRef) => {
@@ -684,7 +791,9 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						verbose
 					})
 					await store.save(refreshed)
-					;(deps.write ?? console.log)(JSON.stringify(refreshed, null, 2))
+					;(deps.write ?? console.log)(
+						JSON.stringify(toOperationStatusJsonResult(refreshed), null, 2)
+					)
 				}
 			}),
 			logs: defineCommand({
