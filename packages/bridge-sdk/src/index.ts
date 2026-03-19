@@ -61,21 +61,6 @@ export * from "./errors"
 export * from "./graphql/index"
 export * from "./types"
 
-const mergeUniqueActions = (...groups: Action[][]): Action[] => {
-	const merged = new Map<string, Action>()
-
-	for (const group of groups) {
-		for (const action of group) {
-			const key = `${action.hash}:${action.afterActionState.toString()}`
-			if (!merged.has(key)) {
-				merged.set(key, action)
-			}
-		}
-	}
-
-	return [...merged.values()]
-}
-
 export class Bridge {
 	private debug(message: string, details?: unknown): void {
 		if (!this.config.verbose) return
@@ -260,12 +245,12 @@ export class Bridge {
 		const archiveActions = await fetchActions(this.l2ArchiveClient, pk)
 		const lastActionState = archiveActions.at(-1)?.afterActionState.toString()
 		const liveActions = await fetchRecentActions(this.l2Client, pk, lastActionState)
-		const userInnerActions = mergeUniqueActions(archiveActions, liveActions)
+		const userInnerActions = [...archiveActions, ...liveActions]
 
-		this.debug("fetchUserWithdrawals merged action sources", {
+		this.debug("fetchUserWithdrawals action sources", {
 			archiveCount: archiveActions.length,
 			liveCount: liveActions.length,
-			mergedCount: userInnerActions.length
+			totalCount: userInnerActions.length
 		})
 
 		return filterNulls(

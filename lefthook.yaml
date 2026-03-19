@@ -24,6 +24,7 @@ pre-commit:
       stage_fixed: true
     - run: pnpm exec moon run :format-all-fix
       stage_fixed: true
+    - run: pnpm exec moon run bridge-ui:typecheck
 #
 #     - name: rubocop
 #       glob: "*.rb"

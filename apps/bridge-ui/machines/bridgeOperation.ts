@@ -18,7 +18,7 @@ import { isTerminalBridgeError } from "../app/errors"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
-import type { ActionState } from "./operations.worker"
+import type { ActionState, OperationsWorker } from "./operations.worker"
 import { type Result, transactionMachine } from "./transaction"
 
 const { act, logger, measure } = createLogger("[BRIDGE OPERATION]", { metrics: true })
@@ -61,7 +61,7 @@ const addToContext = ({
 		}
 	})
 
-const worker = (bridge: Bridge) => bridge.getSnapshot().context.worker
+const worker = (bridge: Bridge): OperationsWorker => bridge.getSnapshot().context.worker
 
 const sendAndConfirm = (
 	context: BridgeOperationContext,
@@ -190,7 +190,7 @@ export const bridgeOperationMachine = setup({
 				const checkDepositStatus = async (signal: AbortSignal): Promise<void> => {
 					if (signal.aborted) return
 					try {
-						const [canFinalize, canCancel] = await Promise.all([
+						const [canFinalize, canCancel]: [boolean, boolean] = await Promise.all([
 							worker(bridge).canFinalizeDeposit({ l1, l2, user }),
 							worker(bridge).canCancelDeposit({ l1, l2, user })
 						])
@@ -243,7 +243,7 @@ export const bridgeOperationMachine = setup({
 				if (signal.aborted) return
 				try {
 					logger.info("Checking withdrawal status...")
-					const can = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
+					const can: boolean = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
 					if (can) sendBack({ type: "CanFinalize" })
 					else if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
 				} catch (error) {
