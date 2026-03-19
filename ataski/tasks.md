@@ -85,3 +85,4 @@
 - T099 | done | add-live-ae-error-csv-export-and-docs | done/T099-add-live-ae-error-csv-export-and-docs.md
 - T100 | done | fix-grafana-clickhouse-dashboard-import-metadata | done/T100-fix-grafana-clickhouse-dashboard-import-metadata.md
 - T101 | done | add-instance-bound-grafana-dashboard-output | done/T101-add-instance-bound-grafana-dashboard-output.md
+- T102 | done | align-grafana-clickhouse-plugin-with-monitoring-instance | done/T102-align-grafana-clickhouse-plugin-with-monitoring-instance.md

@@ -25,7 +25,7 @@ datasource through the import picker, generate an instance-bound artifact:
 node --experimental-strip-types \
 ./apps/bridge-ui/observability/bridge-metrics/grafana/scripts/generate-dashboard.ts \
 --datasource-uid <grafana-datasource-uid> \
---datasource-type grafana-clickhouse-datasource \
+--datasource-type vertamedia-clickhouse-datasource \
 --output ./apps/bridge-ui/observability/bridge-metrics/grafana/bridge-ui.analytics.bound.dashboard.json
 ```
 
@@ -43,9 +43,27 @@ That output will bind every panel and target to:
 
 ```json
 {
-	"type": "grafana-clickhouse-datasource",
+	"type": "vertamedia-clickhouse-datasource",
 	"uid": "<grafana-datasource-uid>"
 }
 ```
 
 and will omit the `__inputs` datasource picker block entirely.
+
+## Monitoring Instance
+
+The current monitoring instance uses:
+
+- Grafana URL: `https://monitoring.zeko.io`
+- datasource UID: `dfftad89t7pxcc`
+- datasource type: `vertamedia-clickhouse-datasource`
+
+This exact bound artifact can be generated from the repo root with:
+
+```sh
+node --experimental-strip-types \
+./apps/bridge-ui/observability/bridge-metrics/grafana/scripts/generate-dashboard.ts \
+--datasource-uid dfftad89t7pxcc \
+--datasource-type vertamedia-clickhouse-datasource \
+--output ./apps/bridge-ui/observability/bridge-metrics/grafana/bridge-ui.analytics.monitoring.zeko.io.dashboard.json
+```

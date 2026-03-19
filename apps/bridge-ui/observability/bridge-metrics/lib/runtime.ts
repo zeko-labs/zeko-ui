@@ -3,8 +3,8 @@ import process from "node:process"
 
 export const DEFAULT_CLOUDFLARE_ACCOUNT_ID = "a12d2915bc16ee8550f19399839623f7"
 export const DEFAULT_AE_DATASET = "bridge_metrics"
-export const GRAFANA_CLICKHOUSE_DATASOURCE_TYPE = "grafana-clickhouse-datasource"
-export const GRAFANA_CLICKHOUSE_DATASOURCE_NAME = "ClickHouse"
+export const GRAFANA_CLICKHOUSE_DATASOURCE_TYPE = "vertamedia-clickhouse-datasource"
+export const GRAFANA_CLICKHOUSE_DATASOURCE_NAME = "Altinity ClickHouse datasource"
 export const GRAFANA_IMPORT_DATASOURCE_NAME = "DS_BRIDGE_METRICS"
 export const OBSERVABILITY_ROOT = fileURLToPath(new URL("..", import.meta.url))
 export const BRIDGE_UI_ROOT = fileURLToPath(new URL("../../..", import.meta.url))

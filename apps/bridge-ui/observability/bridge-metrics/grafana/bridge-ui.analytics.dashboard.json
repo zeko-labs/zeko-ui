@@ -5,8 +5,8 @@
 			"label": "Bridge metrics datasource",
 			"description": "ClickHouse datasource configured for Cloudflare Analytics Engine",
 			"type": "datasource",
-			"pluginId": "grafana-clickhouse-datasource",
-			"pluginName": "ClickHouse"
+			"pluginId": "vertamedia-clickhouse-datasource",
+			"pluginName": "Altinity ClickHouse datasource"
 		}
 	],
 	"__requires": [
@@ -17,8 +17,8 @@
 			"version": "11.0.0"
 		},
 		{
-			"id": "grafana-clickhouse-datasource",
-			"name": "ClickHouse",
+			"id": "vertamedia-clickhouse-datasource",
+			"name": "Altinity ClickHouse datasource",
 			"type": "datasource",
 			"version": "4.0.6"
 		},
