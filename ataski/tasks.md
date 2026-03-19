@@ -86,3 +86,4 @@
 - T100 | done | fix-grafana-clickhouse-dashboard-import-metadata | done/T100-fix-grafana-clickhouse-dashboard-import-metadata.md
 - T101 | done | add-instance-bound-grafana-dashboard-output | done/T101-add-instance-bound-grafana-dashboard-output.md
 - T102 | done | align-grafana-clickhouse-plugin-with-monitoring-instance | done/T102-align-grafana-clickhouse-plugin-with-monitoring-instance.md
+- T103 | done | emit-vertamedia-compatible-grafana-query-targets | done/T103-emit-vertamedia-compatible-grafana-query-targets.md

@@ -28,6 +28,8 @@ type DatasourceBinding = {
 	uid: string
 }
 
+type ClickHouseTargetFormat = "table" | "time_series"
+
 const createDatasource = (binding?: DatasourceBinding): DatasourceReference =>
 	binding
 		? {
@@ -44,24 +46,35 @@ const createTarget = ({
 	panel: DashboardPanel
 	sql: string
 	binding?: DatasourceBinding
-}) => ({
-	datasource: createDatasource(binding),
-	editorType: "sql",
-	format: 1,
-	meta: {
-		builderOptions: {
-			columns: [],
-			database: "",
-			limit: 1000,
-			mode: "list",
-			queryType: panel.queryType,
-			table: ""
-		}
-	},
-	queryType: panel.queryType,
-	rawSql: sql,
-	refId: "A"
-})
+}) => {
+	const format: ClickHouseTargetFormat = panel.panelType === "timeseries" ? "time_series" : "table"
+
+	return {
+		datasource: createDatasource(binding),
+		refId: "A",
+		query: sql,
+		format,
+		editorMode: "sql",
+		datasourceMode: "Datasource",
+		extrapolate: false,
+		rawQuery: "",
+		adHocFilters: [],
+		showHelp: false,
+		showFormattedSQL: false,
+		nullifySparse: false,
+		dateTimeType: "DATETIME",
+		dateTimeColDataType: "timestamp",
+		dateColDataType: "",
+		round: "0s",
+		intervalFactor: 1,
+		interval: "1m",
+		database: "default",
+		table: "",
+		skip_comments: false,
+		add_metadata: false,
+		useWindowFuncForMacros: false
+	}
+}
 
 const createPanel = ({
 	panel,

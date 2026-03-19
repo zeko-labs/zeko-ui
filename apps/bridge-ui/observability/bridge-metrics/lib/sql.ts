@@ -98,7 +98,9 @@ export const renderQueryTemplate = ({
 
 	return renderedDataset.replace(TIME_FILTER_PATTERN, (_fullMatch, defaultWindow: string) => {
 		const effectiveWindow = windowOverride ?? defaultWindow.trim()
-		return mode === "grafana" ? "$timeFilter" : renderWindowInterval(effectiveWindow)
+		return mode === "grafana"
+			? "$timeFilterByColumn(timestamp)"
+			: renderWindowInterval(effectiveWindow)
 	})
 }
 
