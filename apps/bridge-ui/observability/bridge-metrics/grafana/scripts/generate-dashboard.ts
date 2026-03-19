@@ -5,6 +5,7 @@ import { dashboardPanels, type DashboardPanel } from "../dashboard-manifest.ts"
 import { loadQueryTemplate, renderQueryTemplate } from "../../lib/sql.ts"
 import {
 	BRIDGE_UI_ROOT,
+	GRAFANA_CLICKHOUSE_DATASOURCE_NAME,
 	GRAFANA_CLICKHOUSE_DATASOURCE_TYPE,
 	GRAFANA_IMPORT_DATASOURCE_NAME,
 	OBSERVABILITY_ROOT,
@@ -132,17 +133,17 @@ const createDashboard = async () => {
 			{
 				name: GRAFANA_IMPORT_DATASOURCE_NAME,
 				label: "Bridge metrics datasource",
-				description: "Altinity ClickHouse datasource configured for Cloudflare Analytics Engine",
+				description: "ClickHouse datasource configured for Cloudflare Analytics Engine",
 				type: "datasource",
 				pluginId: GRAFANA_CLICKHOUSE_DATASOURCE_TYPE,
-				pluginName: "Altinity ClickHouse datasource"
+				pluginName: GRAFANA_CLICKHOUSE_DATASOURCE_NAME
 			}
 		],
 		__requires: [
 			{ id: "grafana", name: "Grafana", type: "grafana", version: "11.0.0" },
 			{
 				id: GRAFANA_CLICKHOUSE_DATASOURCE_TYPE,
-				name: "Altinity ClickHouse datasource",
+				name: GRAFANA_CLICKHOUSE_DATASOURCE_NAME,
 				type: "datasource",
 				version: "4.0.6"
 			},

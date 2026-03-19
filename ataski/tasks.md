@@ -83,3 +83,4 @@
 - T097 | done | commit-and-push-bridge-observability-fixes | done/T097-commit-and-push-bridge-observability-fixes.md
 - T098 | done | simplify-sentry-observability-workspace | done/T098-simplify-sentry-observability-workspace.md
 - T099 | done | add-live-ae-error-csv-export-and-docs | done/T099-add-live-ae-error-csv-export-and-docs.md
+- T100 | done | fix-grafana-clickhouse-dashboard-import-metadata | done/T100-fix-grafana-clickhouse-dashboard-import-metadata.md
