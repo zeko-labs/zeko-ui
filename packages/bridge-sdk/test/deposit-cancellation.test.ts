@@ -201,7 +201,10 @@ describe("deposit cancellation state", () => {
 		expect(result.deposits[0]?.cancellable).toBe(true)
 		expect(result.deposits[0]?.cancelled).toBe(false)
 		expect(result.deposits[0]?.finalised).toBe(false)
-		await expect(bridge.canCancelDeposit(recipient)).resolves.toBe(true)
+		await expect(bridge.canCancelDeposit(recipient)).resolves.toEqual({
+			available: true,
+			reason: null
+		})
 	})
 
 	it("marks multiple rejected deposits as cancellable", async () => {
@@ -225,7 +228,10 @@ describe("deposit cancellation state", () => {
 		const result = await bridge.fetchDepositsWithStates(recipient)
 
 		expect(result.deposits.map((deposit) => deposit.cancellable)).toEqual([true, true])
-		await expect(bridge.canCancelDeposit(recipient)).resolves.toBe(true)
+		await expect(bridge.canCancelDeposit(recipient)).resolves.toEqual({
+			available: true,
+			reason: null
+		})
 	})
 
 	it("keeps pending deposits non-cancellable", async () => {
@@ -245,7 +251,10 @@ describe("deposit cancellation state", () => {
 		const result = await bridge.fetchDepositsWithStates(recipient)
 
 		expect(result.deposits[0]?.cancellable).toBe(false)
-		await expect(bridge.canCancelDeposit(recipient)).resolves.toBe(false)
+		await expect(bridge.canCancelDeposit(recipient)).resolves.toEqual({
+			available: false,
+			reason: "No cancellable deposit found"
+		})
 	})
 
 	it("does not mark accepted deposits as cancellable", async () => {

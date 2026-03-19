@@ -35,7 +35,10 @@ describe("bridge-sdk live", () => {
 		expect(typeof depositsWithStates.confirmedIndex).toBe("number")
 		expect(typeof depositsWithStates.finalisedIndex).toBe("number")
 		expect(typeof depositsWithStates.cancelledIndex).toBe("number")
-		expect(typeof canCancelDeposit).toBe("boolean")
+		expect(typeof canCancelDeposit.available).toBe("boolean")
+		expect(canCancelDeposit.reason === null || typeof canCancelDeposit.reason === "string").toBe(
+			true
+		)
 
 		for (const deposit of depositsWithStates.deposits) {
 			expect(typeof deposit.cancellable).toBe("boolean")
@@ -47,7 +50,7 @@ describe("bridge-sdk live", () => {
 			}
 		}
 
-		expect(canCancelDeposit).toBe(
+		expect(canCancelDeposit.available).toBe(
 			depositsWithStates.deposits.some((deposit) => deposit.cancellable)
 		)
 	}, 30_000)

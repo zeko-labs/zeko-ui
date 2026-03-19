@@ -20,8 +20,8 @@ async function main() {
 		l2Network: "testnet"
 	})
 
-	const canFinalize = await bridge.canFinalizeDeposit(recipient)
-	console.log("canFinalizeDeposit", canFinalize)
+	const result = await bridge.canFinalizeDeposit(recipient)
+	console.log("canFinalizeDeposit", result)
 }
 
 main().catch(console.error)

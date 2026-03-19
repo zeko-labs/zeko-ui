@@ -1,0 +1,18 @@
+name: Sync Bridge CLI
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    uses: ./.github/workflows/sync-package-repo.yaml
+    with:
+      package-path: packages/bridge-cli
+      standalone-repo: bridge-cli
+      project-id: bridge-cli
+      workspace-packages: .
+      extra-workspace-version-sources: |
+        packages/bridge-sdk/package.json
+        packages/graphql/package.json
+    secrets: inherit

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+	isTerminalBridgeError,
 	isWalletRejection,
 	QuietError,
 	toQuietIfWalletRejection,
@@ -61,6 +62,9 @@ describe("toQuietIfWalletRejection", () => {
 })
 
 describe("toUserFriendlyMessage", () => {
+	const firstWithdrawalTooSmall =
+		"First Zeko->Mina withdrawal amount is too small: recipient B62test does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot proceed as submitted."
+
 	it("maps wallet RPC 'Method not found' to update message", () => {
 		expect(toUserFriendlyMessage(new Error("Error invoking post: Method not found"))).toContain(
 			"update your Auro Wallet"
@@ -114,6 +118,13 @@ describe("toUserFriendlyMessage", () => {
 		expect(
 			toUserFriendlyMessage(new Error("rangeCheck32: expected field to fit in 32 bits"))
 		).toContain("out-of-range data")
+	})
+
+	it("maps the first-withdrawal-too-small protocol error", () => {
+		expect(toUserFriendlyMessage(new Error(firstWithdrawalTooSmall))).toContain(
+			"first Zeko-to-Mina withdrawal"
+		)
+		expect(isTerminalBridgeError(new Error(firstWithdrawalTooSmall))).toBe(true)
 	})
 
 	it("passes through unknown errors unchanged", () => {

@@ -5,6 +5,7 @@ import {
 	fetchCommitAsePastSlotQuery,
 	fetchInnerActionsQueryIndexer,
 	fetchInnerWitnessesFromAuxesQuery,
+	fetchLiveActionsQuery,
 	networkStateQuery,
 	fetchOuterActionsQueryIndexer,
 	fetchOuterWitnessesFromAuxesQuery
@@ -160,22 +161,6 @@ const outerActionFromSchema = (action: v.InferOutput<typeof OuterActionSchema>):
 		: { ...witnessFromSchema(action), type: "witness" })
 })
 
-const FetchActionsSchema = v.array(
-	v.object({
-		blockInfo: v.object({ timestamp: v.string(), height: v.number() }),
-		actionState: v.object({
-			actionStateOne: v.string(),
-			actionStateTwo: v.string()
-		}),
-		actionData: v.array(
-			v.object({
-				data: v.array(v.string()),
-				transactionInfo: v.object({ hash: v.string() })
-			})
-		)
-	})
-)
-
 export async function fetchOuterActionsFromIndexer(
 	client: GqlClient,
 	options: { fromState: string; afterState?: string | null | undefined }
@@ -273,6 +258,8 @@ export async function fetchCommitAsePastSlot(
 	}
 }
 
+// Archive queries are most reliable in recent 10k-block windows.
+// Avoid a giant from=0 scan when investigating missing actions manually.
 // The graphQL schema server will limit the block scan range to a fixed number of blocks.
 // https://github.com/o1-labs/Archive-Node-API/blob/2d726955502fbd02c70d388f589284dd838bbb45/src/server/server.ts#L13
 const BLOCK_RANGE_SIZE = 10_000
@@ -292,10 +279,9 @@ export async function fetchActions(
 	stopAtBlock = 0
 ): Promise<Action[]> {
 	const networkTip = await getNetworkTip(client)
-
 	const fetchActionsRecursive = async (
 		toBlock: number
-	): Promise<v.InferOutput<typeof FetchActionsSchema>> => {
+	): Promise<v.InferOutput<typeof ActionOutputsSchema>> => {
 		if (toBlock < stopAtBlock) return []
 
 		const { data, error } = await client().query(fetchActionsQuery, {
@@ -303,32 +289,59 @@ export async function fetchActions(
 			from: toBlock - BLOCK_RANGE_SIZE,
 			to: toBlock
 		})
-		const dataWithDefault = data?.actions.map((a) => ({
-			...a,
-			actionData: a?.actionData?.map((ad) => ({
-				...ad,
-				transactionInfo: ad?.transactionInfo ?? { status: "status", hash: "hash" }
-			})),
-			blockInfo: {
-				timestamp: String(a?.blockInfo?.timestamp ?? "0"),
-				height: Number(a?.blockInfo?.height ?? 0)
-			}
-		}))
-
-		const actions = parsePayload({
-			schema: FetchActionsSchema,
-			input: dataWithDefault,
-			error,
-			label: "Invalid actions data"
-		})
-
-		const prevOutput = await fetchActionsRecursive(toBlock - BLOCK_RANGE_SIZE)
-		return [...prevOutput, ...actions]
+		if (error) throw error
+		const result = parseActionOutputs(data?.actions)
+		const prevOutput: v.InferOutput<typeof ActionOutputsSchema> = await fetchActionsRecursive(
+			toBlock - BLOCK_RANGE_SIZE
+		)
+		return [...prevOutput, ...result]
 	}
 
 	const output = await fetchActionsRecursive(networkTip)
 
-	return output.flatMap(
+	return mapParsedActions(output)
+}
+
+const ActionOutputsSchema = v.array(
+	v.object({
+		blockInfo: v.object({ timestamp: v.string(), height: v.number() }),
+		actionState: v.object({
+			actionStateOne: v.string(),
+			actionStateTwo: v.string()
+		}),
+		actionData: v.array(
+			v.object({
+				data: v.array(v.string()),
+				transactionInfo: v.object({ hash: v.string() })
+			})
+		)
+	})
+)
+
+const parseActionOutputs = (actions: unknown): v.InferOutput<typeof ActionOutputsSchema> => {
+	const dataWithDefault = (Array.isArray(actions) ? actions : []).map((action) => ({
+		...action,
+		actionData: Array.isArray(action?.actionData)
+			? action.actionData.map(
+					(actionData: { transactionInfo?: { hash?: string } } & Record<string, unknown>) => ({
+						...actionData,
+						transactionInfo: actionData?.transactionInfo ?? { status: "status", hash: "hash" }
+					})
+				)
+			: [],
+		blockInfo: {
+			timestamp: String(action?.blockInfo?.timestamp ?? "0"),
+			height: Number(action?.blockInfo?.height ?? 0)
+		}
+	}))
+
+	const result = v.safeParse(ActionOutputsSchema, dataWithDefault)
+	if (!result.success) throw new Error("Invalid actions data")
+	return result.output
+}
+
+const mapParsedActions = (output: v.InferOutput<typeof ActionOutputsSchema>): Action[] =>
+	output.flatMap(
 		(
 			{ actionState: { actionStateTwo: actionStateBefore }, actionData, blockInfo: { timestamp } },
 			index
@@ -357,6 +370,20 @@ export async function fetchActions(
 			return correctActions
 		}
 	)
+
+export async function fetchRecentActions(
+	client: GqlClient,
+	pk: PublicKey,
+	fromActionState?: string
+): Promise<Action[]> {
+	const { data, error } = await client().query(fetchLiveActionsQuery, {
+		pk: pk.toBase58(),
+		fromActionState: fromActionState ?? null
+	})
+	if (error) throw error
+	const output = parseActionOutputs(data?.actions)
+
+	return mapParsedActions(output)
 }
 
 export function depositAux(deposit: Deposit): Field {

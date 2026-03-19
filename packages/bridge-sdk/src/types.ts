@@ -10,6 +10,7 @@ export type Config = {
 	l2Network: NetworkId
 	actionsApi: string
 	pollTimeout?: number
+	verbose?: boolean
 }
 
 export type Action = {

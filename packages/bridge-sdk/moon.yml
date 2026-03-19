@@ -44,13 +44,13 @@ tasks:
   test:
     deps:
       - ^:build
-    command: pnpm exec vitest run test/diagnostics.test.ts test/deposit-cancellation.test.ts
+    command: pnpm exec vitest run test/*.test.ts
     inputs:
       - "@globs(src)"
       - "@globs(tests)"
   manual-live-test:
     description: Manual live bridge-sdk smoke test against public bridge endpoints.
-    script: pnpm exec vitest run test/live.test.ts
+    script: pnpm exec vitest run test/live.manual.test.ts
     options:
       cache: false
   fetchOuterActions:
