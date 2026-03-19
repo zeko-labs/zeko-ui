@@ -14,7 +14,7 @@ the shared AE SQL templates.
 ## Usage
 
 ```sh
-moon bridge-ui:grafana-dashboard-generate
+moon run bridge-ui:grafana-dashboard-generate
 ```
 
 The generator resolves its datasource binding from:

@@ -27,7 +27,7 @@ The workflow is:
 Run this from the repo root:
 
 ```sh
-CLOUDFLARE_API_TOKEN=... moon bridge-ui:sentry-errors-csv > bridge-errors.csv
+CLOUDFLARE_API_TOKEN=... moon run bridge-ui:sentry-errors-csv > bridge-errors.csv
 ```
 
 If you want a different time window or output path, call the script directly:

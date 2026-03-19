@@ -24,16 +24,18 @@ Cloudflare Analytics Engine `bridge_metrics` dataset.
 
 ## Common Commands
 
-- `moon bridge-ui:metrics-report` renders every SQL file and prints a dry-run
+- `moon run bridge-ui:metrics-report` renders every SQL file and prints a dry-run
   metrics report.
-- `moon bridge-ui:metrics-report-live` runs every SQL file against the live AE
+- `moon run bridge-ui:metrics-report-live` runs every SQL file against the live AE
   SQL API and prints a Markdown metrics report.
-- `moon bridge-ui:grafana-dashboard-generate` regenerates the importable
+- `moon run bridge-ui:grafana-dashboard-generate` regenerates the importable
   dashboard JSON.
-- `moon bridge-ui:sentry-errors-csv` exports the current AE error tuples as CSV.
+- `moon run bridge-ui:sentry-errors-csv` exports the current AE error tuples as CSV.
 
 ## Direct Script Usage
 
-- `BRIDGE_METRICS_WORKSPACE_DIR=/absolute/path/to/apps/bridge-ui/observability/bridge-metrics ./analytics-engine/scripts/run-all.sh --dry-run`
-- `BRIDGE_METRICS_WORKSPACE_DIR=/absolute/path/to/apps/bridge-ui/observability/bridge-metrics CLOUDFLARE_API_TOKEN=... ./analytics-engine/scripts/run-all.sh`
-- `CLOUDFLARE_API_TOKEN=... node --experimental-strip-types ./observability/bridge-metrics/sentry/scripts/export-errors-csv.ts --window 7d`
+Run these from the repo root:
+
+- `./apps/bridge-ui/observability/bridge-metrics/analytics-engine/scripts/run-all.sh --workspace-dir ./apps/bridge-ui/observability/bridge-metrics --dry-run`
+- `CLOUDFLARE_API_TOKEN=... ./apps/bridge-ui/observability/bridge-metrics/analytics-engine/scripts/run-all.sh --workspace-dir ./apps/bridge-ui/observability/bridge-metrics`
+- `CLOUDFLARE_API_TOKEN=... node --experimental-strip-types ./apps/bridge-ui/observability/bridge-metrics/sentry/scripts/export-errors-csv.ts --window 7d`

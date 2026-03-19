@@ -8,20 +8,21 @@ the Grafana dashboard queries.
 - Dry run render:
 
 ```sh
-moon bridge-ui:metrics-report
+moon run bridge-ui:metrics-report
 ```
 
 - Live metrics report:
 
 ```sh
-CLOUDFLARE_API_TOKEN=... moon bridge-ui:metrics-report-live
+CLOUDFLARE_API_TOKEN=... moon run bridge-ui:metrics-report-live
 ```
 
 - Direct script invocation:
 
 ```sh
-BRIDGE_METRICS_WORKSPACE_DIR=/absolute/path/to/apps/bridge-ui/observability/bridge-metrics \
-./analytics-engine/scripts/run-all.sh --dry-run
+./apps/bridge-ui/observability/bridge-metrics/analytics-engine/scripts/run-all.sh \
+  --workspace-dir ./apps/bridge-ui/observability/bridge-metrics \
+  --dry-run
 ```
 
 ## SQL Template Rules
