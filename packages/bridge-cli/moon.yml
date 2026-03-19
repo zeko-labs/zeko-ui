@@ -7,7 +7,7 @@ fileGroups:
     - src/**/*
     - tests/**/*
     - README.md
-    - testing.md
+    - TESTING.md
     - AGENTS.md
     - CLAUDE.md
     - .env.example

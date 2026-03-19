@@ -3,7 +3,7 @@ Start with [AGENTS.md](AGENTS.md).
 Then use:
 
 - [README.md](README.md) for the public CLI contract and operator checklist
-- [testing.md](testing.md) for manual live bridge validation
+- [TESTING.md](TESTING.md) for manual live bridge validation
 - [RELEASE.md](RELEASE.md) for npm release and mirror flow
 
 Key implementation files:

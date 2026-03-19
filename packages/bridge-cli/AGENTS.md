@@ -2,18 +2,18 @@
 
 Start with [README.md](./README.md) for public CLI behavior.
 
-Use [testing.md](./testing.md) for the maintainer/operator live-validation procedure and exact command shape.
+Use [TESTING.md](./TESTING.md) for the maintainer/operator live-validation procedure and exact command shape.
 
 ## Default Path
 
 - Use `zeko-bridge bridge` by default.
 - Treat `deposit`, `withdrawal`, `operation`, and `tui` as advanced/debug/recovery tools.
 - Keep `README.md` public-facing. Agent-only workflow guidance belongs here, not in the public package README.
-- Keep `testing.md` procedure-focused. Do not duplicate the full validation checklist here; reference it and add only agent-specific constraints.
+- Keep `TESTING.md` procedure-focused. Do not duplicate the full validation checklist here; reference it and add only agent-specific constraints.
 
 ## Manual Validation
 
-Follow [testing.md](./testing.md) exactly for live bridge validation.
+Follow [TESTING.md](./TESTING.md) exactly for live bridge validation.
 
 Agent-specific rules on top of that procedure:
 
@@ -32,7 +32,7 @@ For real network validation:
 - prefer separate funded wallets per direction when you need isolation
 - if subagents share a wallet, expect queued-claim ordering behavior and read the streamed progress carefully
 - always capture `operation_id`, `log_path`, and final transaction hash from each run
-- follow the one-command validation contract in [testing.md](./testing.md) without adding sidecar polling commands
+- follow the one-command validation contract in [TESTING.md](./TESTING.md) without adding sidecar polling commands
 - read long deposit waits correctly:
   - `waiting-submission` after `submitDeposit` is usually Mina L1 visibility/finality delay
   - `waiting-finalization` before any finalize transaction exists can still be normal sequencer commit delay from `canFinalizeDeposit` / `canCancelDeposit`
