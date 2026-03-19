@@ -152,7 +152,9 @@ The CLI writes:
 
 Use `operation logs <operation-id>` to inspect the recorded event stream for a specific bridge.
 
-`operation status` now refreshes the persisted session with live SDK/network reads before printing it, so it can be used to inspect actual bridge progress after the original command has stopped. `operation list` still reads local persisted state only.
+`operation status` now refreshes the persisted session with live SDK/network reads before printing it, and it emits a short stderr progress line first so the terminal does not look hung during that refresh. `operation list` still reads local persisted state only.
+
+`operation status` is a recovery/debugging command, not a validation runner. It does not replace the original long-lived `bridge` process, it does not sign follow-up transactions on its own, and it must not be used as a polling loop to claim that a one-command bridge validation is still alive.
 
 ## Development
 
@@ -185,6 +187,12 @@ Before local live validation or scheduled monitoring can work, make sure all of 
    moon run bridge-cli:live-bridge-mina-to-zeko
    moon run bridge-cli:live-bridge-zeko-to-mina
    ```
+
+   The hard validation contract is:
+   - run exactly one long-lived `bridge` command for the attempt
+   - keep that same process alive through completion
+   - monitor that same command's stderr/stdout directly
+   - do not replace it with `operation status` loops or any other sidecar polling command
 
 2. Claim the npm package name with the required first manual publish. npm OIDC cannot create a brand-new package name.
 

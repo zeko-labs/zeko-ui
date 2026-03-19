@@ -192,6 +192,7 @@ describe("operation command", () => {
 
 	it("refreshes operation status from live SDK calls before printing", async () => {
 		const writes: string[] = []
+		const progress: string[] = []
 		const saves: OperationSession[] = []
 		const calls: string[] = []
 		const failedSession: OperationSession = {
@@ -259,6 +260,7 @@ describe("operation command", () => {
 				}
 			}),
 			write: (message) => writes.push(message),
+			writeProgress: (message) => progress.push(message),
 			now: () => "2026-03-12T15:00:00.000Z"
 		})
 		const subCommands = await resolveSubCommands(command.subCommands)
@@ -270,6 +272,9 @@ describe("operation command", () => {
 		})
 
 		const result = JSON.parse(writes[0] ?? "{}")
+		expect(progress).toHaveLength(1)
+		expect(progress[0]).toContain("refreshing-status")
+		expect(progress[0]).toContain("operationId=op-1")
 		expect(calls).toHaveLength(3)
 		expect(calls).toEqual(
 			expect.arrayContaining([

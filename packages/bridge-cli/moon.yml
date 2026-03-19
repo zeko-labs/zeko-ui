@@ -45,20 +45,20 @@ tasks:
     inputs:
       - "@group(src)"
   live-bridge-mina-to-zeko:
-    description: Manual real-network validation of the high-level bridge command from Mina testnet to Zeko testnet.
+    description: Manual real-network validation of the single long-lived bridge command from Mina testnet to Zeko testnet.
     deps:
       - build
-    command: node ./scripts/run-live-bridge.mjs mina:testnet zeko:testnet deposit
+    command: node ./dist/cli.js bridge --from mina:testnet --to zeko:testnet --amount 1 --json --verbose
     options:
       cache: false
       runInCI: false
     inputs:
       - "@group(src)"
   live-bridge-zeko-to-mina:
-    description: Manual real-network validation of the high-level bridge command from Zeko testnet to Mina testnet.
+    description: Manual real-network validation of the single long-lived bridge command from Zeko testnet to Mina testnet.
     deps:
       - build
-    command: node ./scripts/run-live-bridge.mjs zeko:testnet mina:testnet withdrawal
+    command: node ./dist/cli.js bridge --from zeko:testnet --to mina:testnet --amount 1 --json --verbose
     options:
       cache: false
       runInCI: false

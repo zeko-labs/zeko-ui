@@ -784,6 +784,16 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 								verbose: inputVerbose
 							})
 						})
+					;(deps.writeProgress ?? console.error)(
+						renderOperationProgress({
+							event: "refreshing-status",
+							phase: session.phase,
+							details: {
+								operationId: session.id,
+								route: session.route
+							}
+						})
+					)
 					const refreshed = await refreshOperationSession({
 						session,
 						createAdapter,
