@@ -1,10 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises"
-import { dirname, resolve } from "node:path"
+import { dirname, isAbsolute, resolve } from "node:path"
 import process from "node:process"
 import { dashboardPanels, type DashboardPanel } from "../dashboard-manifest.ts"
 import { loadQueryTemplate, renderQueryTemplate } from "../../lib/sql.ts"
 import {
-	BRIDGE_UI_ROOT,
 	GRAFANA_CLICKHOUSE_DATASOURCE_NAME,
 	GRAFANA_CLICKHOUSE_DATASOURCE_TYPE,
 	GRAFANA_IMPORT_DATASOURCE_NAME,
@@ -17,16 +16,36 @@ import {
 
 const defaultOutputPath = resolve(OBSERVABILITY_ROOT, "grafana/bridge-ui.analytics.dashboard.json")
 
-const createDatasource = () => `\${${GRAFANA_IMPORT_DATASOURCE_NAME}}`
+type DatasourceReference =
+	| string
+	| {
+			type: string
+			uid: string
+	  }
+
+type DatasourceBinding = {
+	type: string
+	uid: string
+}
+
+const createDatasource = (binding?: DatasourceBinding): DatasourceReference =>
+	binding
+		? {
+				type: binding.type,
+				uid: binding.uid
+			}
+		: `\${${GRAFANA_IMPORT_DATASOURCE_NAME}}`
 
 const createTarget = ({
 	panel,
-	sql
+	sql,
+	binding
 }: {
 	panel: DashboardPanel
 	sql: string
+	binding?: DatasourceBinding
 }) => ({
-	datasource: createDatasource(),
+	datasource: createDatasource(binding),
 	editorType: "sql",
 	format: 1,
 	meta: {
@@ -46,12 +65,14 @@ const createTarget = ({
 
 const createPanel = ({
 	panel,
-	sql
+	sql,
+	binding
 }: {
 	panel: DashboardPanel
 	sql: string
+	binding?: DatasourceBinding
 }) => {
-	const datasource = createDatasource()
+	const datasource = createDatasource(binding)
 
 	if (panel.panelType === "timeseries") {
 		return {
@@ -89,7 +110,7 @@ const createPanel = ({
 					sort: "desc"
 				}
 			},
-			targets: [createTarget({ panel, sql })]
+			targets: [createTarget({ panel, sql, binding })]
 		}
 	}
 
@@ -108,11 +129,11 @@ const createPanel = ({
 			cellHeight: "sm",
 			showHeader: true
 		},
-		targets: [createTarget({ panel, sql })]
+		targets: [createTarget({ panel, sql, binding })]
 	}
 }
 
-const createDashboard = async () => {
+const createDashboard = async ({ binding }: { binding?: DatasourceBinding }) => {
 	const renderedPanels = await Promise.all(
 		dashboardPanels.map(async (panel) => {
 			const template = await loadQueryTemplate(
@@ -124,21 +145,25 @@ const createDashboard = async () => {
 				dataset: resolveAeDataset()
 			})
 
-			return createPanel({ panel, sql })
+			return createPanel({ panel, sql, binding })
 		})
 	)
 
 	return {
-		__inputs: [
-			{
-				name: GRAFANA_IMPORT_DATASOURCE_NAME,
-				label: "Bridge metrics datasource",
-				description: "ClickHouse datasource configured for Cloudflare Analytics Engine",
-				type: "datasource",
-				pluginId: GRAFANA_CLICKHOUSE_DATASOURCE_TYPE,
-				pluginName: GRAFANA_CLICKHOUSE_DATASOURCE_NAME
-			}
-		],
+		...(binding
+			? {}
+			: {
+					__inputs: [
+						{
+							name: GRAFANA_IMPORT_DATASOURCE_NAME,
+							label: "Bridge metrics datasource",
+							description: "ClickHouse datasource configured for Cloudflare Analytics Engine",
+							type: "datasource",
+							pluginId: GRAFANA_CLICKHOUSE_DATASOURCE_TYPE,
+							pluginName: GRAFANA_CLICKHOUSE_DATASOURCE_NAME
+						}
+					]
+				}),
 		__requires: [
 			{ id: "grafana", name: "Grafana", type: "grafana", version: "11.0.0" },
 			{
@@ -187,8 +212,20 @@ const createDashboard = async () => {
 const run = async () => {
 	const args = parseCliArgs(process.argv.slice(2))
 	const requestedOutputPath = readStringArg(args, "output", defaultOutputPath) ?? defaultOutputPath
-	const outputPath = resolve(BRIDGE_UI_ROOT, requestedOutputPath)
-	const dashboard = await createDashboard()
+	const datasourceUid = readStringArg(args, "datasource-uid")
+	const datasourceType =
+		readStringArg(args, "datasource-type", GRAFANA_CLICKHOUSE_DATASOURCE_TYPE) ??
+		GRAFANA_CLICKHOUSE_DATASOURCE_TYPE
+	const binding = datasourceUid
+		? {
+				type: datasourceType,
+				uid: datasourceUid
+			}
+		: undefined
+	const outputPath = isAbsolute(requestedOutputPath)
+		? requestedOutputPath
+		: resolve(process.cwd(), requestedOutputPath)
+	const dashboard = await createDashboard({ binding })
 
 	await mkdir(dirname(outputPath), { recursive: true })
 	await writeFile(outputPath, `${JSON.stringify(dashboard, null, 2)}\n`, "utf8")
