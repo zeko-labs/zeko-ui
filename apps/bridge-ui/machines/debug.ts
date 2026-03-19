@@ -1,4 +1,9 @@
 import { type ConsolaInstance, createConsola } from "consola"
+import {
+	captureBridgeError,
+	describeBridgeMetricLabel,
+	type BridgeSentryContext
+} from "../app/telemetry/bridgeErrors"
 import { sendMetric } from "./metrics"
 import type { MetricEvent } from "./metrics.schema"
 
@@ -87,7 +92,8 @@ export const createLogger = (prefix: string, options?: CreateLoggerOptions) => {
 	const act = async <T>(
 		label: string,
 		body: ({ stop }: { stop: () => void }) => Promise<T>,
-		walletAddress: string | undefined
+		walletAddress: string | undefined,
+		sentryContext?: Omit<BridgeSentryContext, "category" | "action" | "walletAddress">
 	) => {
 		const start = performance.now()
 		const stop = measure(label)
@@ -111,8 +117,17 @@ export const createLogger = (prefix: string, options?: CreateLoggerOptions) => {
 		} catch (e) {
 			logger.error(`${label} Error:`, e)
 			stop()
+			captureBridgeError({
+				error: e,
+				context: {
+					category,
+					action: label,
+					walletAddress,
+					...sentryContext
+				}
+			})
 			if (metricsEnabled) {
-				const errorLabel = e instanceof Error ? e.message : String(e)
+				const errorLabel = describeBridgeMetricLabel(e)
 				sendMetric(
 					{
 						category,
