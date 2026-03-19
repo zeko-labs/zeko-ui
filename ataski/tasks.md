@@ -88,4 +88,4 @@
 - T102 | done | make-operation-status-network-backed | done/T102-make-operation-status-network-backed.md
 - T103 | done | remove-bridge-ui-post-submit-terminal-fee-error-paths | done/T103-remove-bridge-ui-post-submit-terminal-fee-error-paths.md
 - T104 | done | remove-bridge-cli-post-submit-terminal-fee-error-paths | done/T104-remove-bridge-cli-post-submit-terminal-fee-error-paths.md
-- T105 | in-progress | validate-fee-error-followup-and-open-pr | in-progress/T105-validate-fee-error-followup-and-open-pr.md
+- T105 | done | validate-fee-error-followup-and-open-pr | done/T105-validate-fee-error-followup-and-open-pr.md

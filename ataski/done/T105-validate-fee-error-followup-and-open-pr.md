@@ -1,11 +1,11 @@
 ---
 id: T105
 title: "Validate fee-error followup and open PR"
-status: in-progress
+status: done
 blockedBy: [T103, T104]
 owner: codex
 created_at: 2026-03-19T00:00:00Z
-updated_at: 2026-03-19T11:37:46Z
+updated_at: 2026-03-19T11:40:44Z
 ---
 
 ## Requirements
@@ -37,3 +37,4 @@ updated_at: 2026-03-19T11:37:46Z
 - `moon run bridge-ui:typecheck` passed on the canonical branch.
 - `moon run bridge-cli:test` passed on the canonical branch with 17 test files and 83 tests passing.
 - `moon run bridge-cli:typecheck` passed on the canonical branch.
+- Opened PR `fix(bridge): keep withdrawal fee errors in submit path` against `canonical/bridge-cli`: https://github.com/zeko-labs/zeko-ui/pull/151
