@@ -6,7 +6,7 @@ on:
 jobs:
   version-check:
     name: Check bridge-cli version
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
       version: ${{ steps.check.outputs.version }}
@@ -28,7 +28,7 @@ jobs:
   build:
     needs: version-check
     if: needs.version-check.outputs.should_release == 'true'
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     name: Build and pack bridge-cli
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +66,7 @@ jobs:
   publish:
     needs: [version-check, build]
     if: needs.version-check.outputs.should_release == 'true'
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     name: Publish to npm
     permissions:
       contents: read

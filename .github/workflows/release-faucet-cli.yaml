@@ -7,7 +7,7 @@ on:
 jobs:
   version-check:
     name: Check faucet-cli version
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
       version: ${{ steps.check.outputs.version }}
@@ -40,10 +40,10 @@ jobs:
             runner: macos-14
             platform: darwin-arm64
           - target: x86_64-unknown-linux-gnu
-            runner: ubuntu-latest
+            runner: warp-ubuntu-latest-x64-8x
             platform: linux-x64
           - target: aarch64-unknown-linux-gnu
-            runner: ubuntu-latest
+            runner: warp-ubuntu-latest-x64-8x
             platform: linux-arm64
             use_cross: true
           - target: x86_64-pc-windows-msvc
@@ -110,7 +110,7 @@ jobs:
 
   publish:
     needs: [version-check, build]
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     name: Publish to npm
     permissions:
       contents: read
