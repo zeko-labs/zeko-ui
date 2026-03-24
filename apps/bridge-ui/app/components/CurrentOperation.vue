@@ -39,7 +39,9 @@ const uiProgress = computed(() =>
 )
 
 const status = computed(() =>
-	statusFromState(machine.value.value, machine.value.context.direction)
+	statusFromState(machine.value.value, machine.value.context.direction, {
+		canCancel: machine.value.context.canCancel
+	})
 )
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
 const canCancel = computed(() => machine.value.matches("CAN_CANCEL"))

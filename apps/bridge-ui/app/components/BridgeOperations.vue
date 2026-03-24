@@ -28,7 +28,8 @@ const data = computed(() =>
 			const state = useSelector(operation, (state) => state)
 			const { text, kind } = statusFromState(
 				state.value.value,
-				state.value.context.direction
+				state.value.context.direction,
+				{ canCancel: state.value.context.canCancel }
 			)
 			return {
 				id,

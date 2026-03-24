@@ -176,6 +176,7 @@ export const bridgeOperationMachine = setup({
 			amount: string
 			timeoutSlots?: number
 			transaction?: ActionState["transaction"]
+			cancellable?: boolean
 		},
 		events: {} as BridgeOperationEvents,
 		tags: {} as "loading" | "cta",
@@ -339,8 +340,18 @@ export const bridgeOperationMachine = setup({
 		toFinalizeWithdrawal: ({ context: { returnTo } }) => returnTo === "FINALIZE_WITHDRAWAL",
 		toFinalize: ({ context: { returnTo } }) => returnTo === "TO_FINALIZE",
 		toCancelDeposit: ({ context: { returnTo } }) => returnTo === "CANCEL_DEPOSIT",
+		cancellationReady: ({ context }) => context.canCancel === true,
+		cancellationSlotAvailable: ({ context }) => {
+			const activeCancellationOperation =
+				context.bridge.getSnapshot().context.activeCancellationOperation
+			return activeCancellationOperation === null || activeCancellationOperation === context.id
+		},
 		anotherOperationIsActive: ({ context }) => {
 			const ao = context.bridge.getSnapshot().context.activeOperation
+			return ao !== null && context.id !== ao
+		},
+		anotherCancellationIsActive: ({ context }) => {
+			const ao = context.bridge.getSnapshot().context.activeCancellationOperation
 			return ao !== null && context.id !== ao
 		}
 	},
@@ -351,7 +362,17 @@ export const bridgeOperationMachine = setup({
 	id: "bridgeOperation",
 	initial: "IDLE",
 	context: ({
-		input: { direction, source, destination, amount, timeoutSlots, bridge, wallet, transaction },
+		input: {
+			direction,
+			source,
+			destination,
+			amount,
+			timeoutSlots,
+			bridge,
+			wallet,
+			transaction,
+			cancellable
+		},
 		self: { id }
 	}) => ({
 		id,
@@ -375,7 +396,7 @@ export const bridgeOperationMachine = setup({
 			submitWithdrawal: null,
 			finalizeWithdrawal: null
 		},
-		canCancel: false,
+		canCancel: cancellable ?? false,
 		l1: source.includes("mina") ? source : destination,
 		l2: source.includes("zeko") ? source : destination
 	}),
@@ -446,7 +467,35 @@ export const bridgeOperationMachine = setup({
 		},
 		PAUSED: {
 			on: {
-				Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) }
+				Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) },
+				Cancel: [
+					{
+						target: "CANCEL_DEPOSIT",
+						guard: and([
+							"cancellationReady",
+							"currentNetworkIsSource",
+							"cancellationSlotAvailable"
+						]),
+						actions: sendTo(
+							({ context }) => context.bridge,
+							({ self }) => ({ type: "ActivateCancellationOperation", id: self.id })
+						)
+					},
+					{
+						target: "WAITING_FOR_NETWORK",
+						guard: and(["cancellationReady", "cancellationSlotAvailable"]),
+						actions: [
+							sendTo(
+								({ context }) => context.bridge,
+								({ self }) => ({ type: "ActivateCancellationOperation", id: self.id })
+							),
+							assign({
+								returnTo: "CANCEL_DEPOSIT",
+								changeNetworkTo: ({ context }) => context.source
+							})
+						]
+					}
+				]
 			}
 		},
 		RESUMING: {
@@ -634,14 +683,25 @@ export const bridgeOperationMachine = setup({
 				Cancel: [
 					{
 						target: "CANCEL_DEPOSIT",
-						guard: "currentNetworkIsSource"
+						guard: and(["currentNetworkIsSource", "cancellationSlotAvailable"]),
+						actions: sendTo(
+							({ context }) => context.bridge,
+							({ self }) => ({ type: "ActivateCancellationOperation", id: self.id })
+						)
 					},
 					{
 						target: "WAITING_FOR_NETWORK",
-						actions: assign({
-							returnTo: "CANCEL_DEPOSIT",
-							changeNetworkTo: ({ context }) => context.source
-						})
+						guard: "cancellationSlotAvailable",
+						actions: [
+							sendTo(
+								({ context }) => context.bridge,
+								({ self }) => ({ type: "ActivateCancellationOperation", id: self.id })
+							),
+							assign({
+								returnTo: "CANCEL_DEPOSIT",
+								changeNetworkTo: ({ context }) => context.source
+							})
+						]
 					}
 				]
 			}
@@ -963,20 +1023,26 @@ export const bridgeOperationMachine = setup({
 		},
 		FAILED: {
 			type: "final",
-			entry: ({ context }) => {
-				const lastError = context.errors.at(-1)
-				sendMetric(
-					{
-						category: "bridge_operation",
-						action: "failed",
-						source: context.source,
-						destination: context.destination,
-						success: false,
-						label: (lastError?.message ?? "unknown error").slice(0, 500)
-					},
-					context.user
-				)
-			}
+			entry: [
+				sendTo(
+					({ context }) => context.bridge,
+					({ self }) => ({ type: "ReleaseCancellationOperation", id: self.id })
+				),
+				({ context }) => {
+					const lastError = context.errors.at(-1)
+					sendMetric(
+						{
+							category: "bridge_operation",
+							action: "failed",
+							source: context.source,
+							destination: context.destination,
+							success: false,
+							label: (lastError?.message ?? "unknown error").slice(0, 500)
+						},
+						context.user
+					)
+				}
+			]
 		}
 	}
 })

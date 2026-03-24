@@ -12,7 +12,9 @@ const { operation, index = 0 } = defineProps<{
 const machine = useSelector(operation, (state) => state)
 
 const status = computed(() =>
-	statusFromState(machine.value.value, machine.value.context.direction)
+	statusFromState(machine.value.value, machine.value.context.direction, {
+		canCancel: machine.value.context.canCancel
+	})
 )
 </script>
 <template>

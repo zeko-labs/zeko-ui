@@ -1,49 +1,67 @@
 <script lang="ts" setup>
 import { Settings } from "lucide-vue-next"
+import type { ActorRefFromLogic } from "xstate"
+import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
 const bs = useBridgeStore()
 const isSettingsOpen = ref(false)
 
+type OperationCard = {
+	id: string
+	status: "started" | "paused" | "completed"
+	lane: "main" | "cancellation"
+	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
+}
+
 const allOperations = useSelector(bs.bridge.actorRef, (state) => {
-	const items = [...state.context.operations.values()].map(
-		({ operation, status }) => ({
+	const items: OperationCard[] = [...state.context.operations.values()].map(
+		({ operation, status, lane }) => ({
 			id: operation.id,
 			status,
+			lane,
 			operation
 		})
 	)
-	const grouped: Record<string, typeof items> = {}
-	for (const item of items) {
-		const key = item.status === "completed" ? "complete" : "uncomplete"
-		;(grouped[key] ??= []).push(item)
+
+	const completed = items.filter((item) => item.status === "completed")
+	const mainPending = items.filter(
+		(item) => item.status !== "completed" && item.lane === "main"
+	)
+	const cancellationPending = items.filter(
+		(item) => item.status !== "completed" && item.lane === "cancellation"
+	)
+
+	return {
+		completed,
+		currentMainOperation:
+			mainPending.find((item) => item.status === "started")?.operation ?? null,
+		queuedMainOperations: mainPending
+			.filter((item) => item.status !== "started")
+			.map(({ operation }) => operation),
+		cancellableOperations: cancellationPending.map(
+			({ operation }) => operation
+		),
+		activeCancellationOperation: state.context.activeCancellationOperation
 	}
-	return grouped
 })
-const completedOperations = computed(() => allOperations.value.complete ?? [])
+
+const completedOperations = computed(() => allOperations.value.completed ?? [])
 
 const currentOperation = computed(
-	() => allOperations.value.uncomplete?.[0]?.operation
+	() => allOperations.value.currentMainOperation
 )
 
 const queuedOperations = computed(
-	() =>
-		allOperations.value.uncomplete
-			?.slice(1)
-			.map(({ operation }) => operation) ?? []
-	// Array.from({ length: 10 }).map(
-	// 	() =>
-	// 		useMachine(bridgeOperationMachine, {
-	// 			input: {
-	// 				bridgeMachine: bs.bridge.actorRef,
-	// 				wallet: bs.wallet.actorRef,
-	// 				amount: "10",
-	// 				direction: "withdrawal",
-	// 				source: "zeko:testnet",
-	// 				destination: "mina:devnet"
-	// 			}
-	// 		}).actorRef
-	// )
+	() => allOperations.value.queuedMainOperations ?? []
+)
+
+const cancellableOperations = computed(
+	() => allOperations.value.cancellableOperations ?? []
+)
+
+const activeCancellationOperation = computed(
+	() => allOperations.value.activeCancellationOperation
 )
 </script>
 <template>
@@ -63,9 +81,28 @@ const queuedOperations = computed(
       <Inputs v-if="!currentOperation" />
       <CurrentOperation v-else :operation="currentOperation" />
     </div>
-    <!-- <pre>{{  allOperations }}</pre> -->
+    <div
+      v-if="cancellableOperations.length > 0"
+      class="CancellableTransactions">
+      <h3>Cancellable Deposits</h3>
+      <div class="QueuedOperations">
+        <CancellableOperation
+          v-for="(operation, index) in cancellableOperations"
+          :operation
+          :index
+          :disabled="
+            activeCancellationOperation !== null &&
+            activeCancellationOperation !== operation.id
+          "
+        />
+      </div>
+      <h4>
+        These deposits can be cancelled separately without blocking new bridge
+        requests.
+      </h4>
+    </div>
     <div v-if="queuedOperations.length > 0" class="NextTransactions">
-      <!-- <h3>Next Transactions</h3> -->
+      <h3>Next Transactions</h3>
       <div class="QueuedOperations">
         <QueuedOperation
           v-for="(operation, index) in queuedOperations"
@@ -118,6 +155,7 @@ const queuedOperations = computed(
   }
 }
 
+.CancellableTransactions,
 .NextTransactions {
   margin-top: 2rem;
   h4 {

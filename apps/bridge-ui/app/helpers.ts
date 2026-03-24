@@ -57,7 +57,8 @@ export const statePath = (state: MachineStates) => {
 
 export const statusFromState = (
 	state: MachineStates,
-	direction: Direction
+	direction: Direction,
+	options?: { canCancel?: boolean }
 ): { text: string; kind: "pending" | "complete" | "cancelled" | "error" } => {
 	const isDeposit = direction === "deposit"
 	if (typeof state === "string") {
@@ -68,7 +69,9 @@ export const statusFromState = (
 		if (state === "PENDING_DEPOSIT") return pendingDeposit(1)
 		if (state === "PENDING_WITHDRAWAL") return pendingWithdrawal(1)
 		if (state === "TO_FINALIZE") return isDeposit ? pendingDeposit(2) : pendingWithdrawal(2)
-		if (state === "CAN_CANCEL") return { text: "Failed", kind: "error" }
+		if (state === "CAN_CANCEL") return { text: "Ready to cancel", kind: "pending" }
+		if (state === "PAUSED" && options?.canCancel)
+			return { text: "Ready to cancel", kind: "pending" }
 		if (state === "PAUSED") return { text: "Paused", kind: "pending" }
 		if (state === "IDLE") return { text: "Idle", kind: "pending" }
 		if (state === "FAILED") return { text: "Failed", kind: "error" }

@@ -122,3 +122,6 @@
 - T136 | done | add-use-zeko-validation-evals-and-ci | done/T136-add-use-zeko-validation-evals-and-ci.md
 - T137 | done | add-use-zeko-public-mirror-sync | done/T137-add-use-zeko-public-mirror-sync.md
 - T138 | done | validate-remaining-devin-review-comments | done/T138-validate-remaining-devin-review-comments.md
+- T139 | done | refactor-bridge-recovery-into-main-and-cancellation-lanes | done/T139-refactor-bridge-recovery-into-main-and-cancellation-lanes.md
+- T140 | done | build-cancellation-queue-ui | done/T140-build-cancellation-queue-ui.md
+- T141 | done | add-web-404-regression-tests | done/T141-add-web-404-regression-tests.md
