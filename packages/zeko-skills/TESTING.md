@@ -28,8 +28,14 @@ ZEKO_SKILLS_CLAWHUB_CHANGELOG="Declare OpenClaw metadata and reduce false positi
 moon run -f zeko-skills:publish-clawhub
 ```
 
-There is also a manual GitHub Actions entrypoint at
-`.github/workflows/publish-zeko-skills-clawhub.yaml`.
+Automatic ClawHub publication now runs from `.github/workflows/sync-zeko-skills.yaml`
+on pushes to `main` that change `packages/zeko-skills/**`.
+
+CI secret setup:
+
+- Run `npx clawhub@latest login` once on a publisher account. The CLI opens a browser and stores a bearer token at `~/Library/Application Support/clawhub/config.json` on macOS.
+- Copy the `token` value from that file into the GitHub Actions repository secret `CLAWHUB_TOKEN`.
+- The workflow derives a unique semver automatically from `packages/zeko-skills/package.json` plus the GitHub run number and attempt, so CI does not need a manual version input.
 
 `moon run -f zeko-skills:check` runs the local validation gates:
 

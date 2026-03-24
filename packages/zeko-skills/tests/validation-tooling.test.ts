@@ -90,18 +90,14 @@ describe("zeko-skills validation tooling", () => {
 		)
 	})
 
-	it("ships a manual workflow_dispatch path for ClawHub publication", () => {
-		const workflowPath = path.join(
-			repoRoot,
-			".github",
-			"workflows",
-			"publish-zeko-skills-clawhub.yaml"
-		)
+	it("publishes to ClawHub automatically after mirror sync on main", () => {
+		const workflowPath = path.join(repoRoot, ".github", "workflows", "sync-zeko-skills.yaml")
 		const workflow = fs.readFileSync(workflowPath, "utf8")
 
-		expect(workflow).toContain("workflow_dispatch:")
+		expect(workflow).toContain("publish-clawhub:")
+		expect(workflow).toContain("needs: validate-public-install")
+		expect(workflow).toContain("if: github.event_name == 'push'")
 		expect(workflow).toContain("CLAWHUB_TOKEN")
-		expect(workflow).toContain("ZEKO_SKILLS_CLAWHUB_VERSION")
 		expect(workflow).toContain("moon run -f zeko-skills:publish-clawhub")
 	})
 })
