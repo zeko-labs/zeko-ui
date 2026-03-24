@@ -21,13 +21,15 @@ const isGraphQlEndpoint = (url: string) =>
 	url.includes("gateway.mina.archive.devnet.zeko.io") ||
 	url === "https://testnet.zeko.io"
 
+export const externalLinkPattern = /https:\/\/[^\s)`"'<>]+/g
+
 const extractExternalLinks = () => {
 	const urls = new Set<string>()
 
 	for (const filePath of collectMarkdownFiles()) {
 		const content = fs.readFileSync(filePath, "utf8")
 
-		for (const match of content.matchAll(/https:\/\/[^\s)`"'<>]+/g)) {
+		for (const match of content.matchAll(externalLinkPattern)) {
 			urls.add(match[0])
 		}
 	}

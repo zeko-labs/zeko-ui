@@ -23,9 +23,16 @@ describe("use-zeko validation tooling", () => {
 		expect(moon).toContain("  validate:")
 		expect(moon).toContain("  eval-opencode:")
 		expect(moon).toContain("  check:")
+		expect(moon).toContain("  typecheck:")
 		expect(moon).toContain("      runInCI: true")
 		expect(moon).not.toContain("  eval:")
 		expect(moon).not.toContain("  sync-sources:")
+	})
+
+	it("typechecks both source files and tests", () => {
+		const tsconfig = fs.readFileSync(path.join(packageRoot, "tsconfig.json"), "utf8")
+
+		expect(tsconfig).toContain('"include": ["src", "tests"]')
 	})
 
 	it("adds a dedicated workflow with pull request and weekly schedule coverage", () => {

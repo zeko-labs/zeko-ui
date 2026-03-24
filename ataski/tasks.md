@@ -121,3 +121,4 @@
 - T135 | done | merge-main-and-move-use-zeko-workflow-to-warp | done/T135-merge-main-and-move-use-zeko-workflow-to-warp.md
 - T136 | done | add-use-zeko-validation-evals-and-ci | done/T136-add-use-zeko-validation-evals-and-ci.md
 - T137 | done | add-use-zeko-public-mirror-sync | done/T137-add-use-zeko-public-mirror-sync.md
+- T138 | done | validate-remaining-devin-review-comments | done/T138-validate-remaining-devin-review-comments.md
