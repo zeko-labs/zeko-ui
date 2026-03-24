@@ -93,6 +93,7 @@ export default defineConfig({
 						collapsed: true,
 						items: [
 							{ text: "Bridge SDK", link: "/developers/tools/bridge-sdk" },
+							{ text: "Bridge CLI", link: "/developers/tools/bridge-cli" },
 							{ text: "Faucet CLI", link: "/developers/tools/faucet-cli" }
 						]
 					},

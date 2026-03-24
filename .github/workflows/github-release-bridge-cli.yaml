@@ -1,0 +1,42 @@
+name: GitHub Release Bridge CLI
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+jobs:
+  github-release:
+    runs-on: ubuntu-latest
+    name: Create GitHub Release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ZEKO_LABS_GH_APP_ID }}
+          private-key: ${{ secrets.ZEKO_LABS_GH_APP_PRIVATE_KEY }}
+          owner: zeko-labs
+          repositories: bridge-cli
+
+      - name: Download packaged tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: bridge-cli-package
+          path: release/
+
+      - name: Create release on standalone repo
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          gh release create "v${VERSION}" release/* \
+            --repo zeko-labs/bridge-cli \
+            --target main \
+            --title "v${VERSION}" \
+            --notes "Published from monorepo. See [npm package](https://www.npmjs.com/package/@zeko-labs/bridge-cli/v/${VERSION})." \
+            --latest

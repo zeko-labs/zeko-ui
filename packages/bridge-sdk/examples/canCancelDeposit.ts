@@ -20,8 +20,8 @@ async function main() {
 		l2Network: "testnet"
 	})
 
-	const canCancel = await bridge.canCancelDeposit(recipient)
-	console.log("canCancelDeposit", canCancel)
+	const result = await bridge.canCancelDeposit(recipient)
+	console.log("canCancelDeposit", result)
 }
 
 main().catch(console.error)

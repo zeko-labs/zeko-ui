@@ -5,6 +5,7 @@ import {
 	fetchCommitAsePastSlotQuery,
 	fetchInnerActionsQueryIndexer,
 	fetchInnerWitnessesFromAuxesQuery,
+	fetchLiveActionsQuery,
 	networkStateQuery,
 	fetchOuterActionsQueryIndexer,
 	fetchOuterWitnessesFromAuxesQuery
@@ -23,14 +24,66 @@ import type {
 	Withdrawal
 } from "./types"
 
-const InnerActionSchema = v.object({
+const describeGraphqlError = (error: unknown): string | null => {
+	if (error == null) return null
+	if (error instanceof Error && error.message) return error.message
+	return String(error)
+}
+
+const describeValidationIssues = (issues: ReadonlyArray<{ message: string }>): string =>
+	issues.map((issue) => issue.message).join("; ")
+
+const createInvalidPayloadError = ({
+	label,
+	error,
+	issues
+}: {
+	label: string
+	error: unknown
+	issues: ReadonlyArray<{ message: string }>
+}): Error => {
+	const details = [describeGraphqlError(error), describeValidationIssues(issues)].filter(
+		(detail): detail is string => detail != null && detail.length > 0
+	)
+
+	return new Error(details.length > 0 ? `${label}: ${details.join("; ")}` : label)
+}
+
+const parsePayload = <TSchema extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>>({
+	schema,
+	input,
+	error,
+	label
+}: {
+	schema: TSchema
+	input: unknown
+	error: unknown
+	label: string
+}): v.InferOutput<TSchema> => {
+	const result = v.safeParse(schema, input)
+	if (!result.success) {
+		throw createInvalidPayloadError({
+			label,
+			error,
+			issues: result.issues
+		})
+	}
+
+	return result.output
+}
+
+const indexedActionEntries = {
 	afterState: v.string(),
 	beforeState: v.nullable(v.string()),
 	index: v.number(),
 	blockHeight: v.number(),
 	timestamp: v.string(),
 	txnHash: v.string(),
-	fields: v.array(v.string()),
+	fields: v.array(v.string())
+}
+
+const InnerActionSchema = v.object({
+	...indexedActionEntries,
 	aux: v.string()
 })
 
@@ -45,15 +98,9 @@ const innerActionFromSchema = (x: v.InferOutput<typeof InnerActionSchema>) => ({
 })
 
 const BaseOuterActionSchema = v.object({
-	afterState: v.string(),
-	beforeState: v.nullable(v.string()),
-	index: v.number(),
-	blockHeight: v.number(),
+	...indexedActionEntries,
 	slotRangeLower: v.string(),
 	slotRangeUpper: v.string(),
-	timestamp: v.string(),
-	txnHash: v.string(),
-	fields: v.array(v.string()),
 	kind: v.string()
 })
 
@@ -99,6 +146,20 @@ const witnessFromSchema = (x: v.InferOutput<typeof WitnessSchema>) => ({
 })
 
 const OuterActionSchema = v.variant("kind", [CommitSchema, WitnessSchema])
+const OuterActionsSchema = v.array(OuterActionSchema)
+const InnerActionsSchema = v.array(InnerActionSchema)
+const OuterWitnessesSchema = v.array(WitnessSchema)
+const CommitAsePastSlotSchema = v.object({
+	commit: CommitSchema,
+	ase: OuterActionsSchema
+})
+
+const outerActionFromSchema = (action: v.InferOutput<typeof OuterActionSchema>): OuterAction => ({
+	...baseActionFromSchema(action),
+	...(action.kind === "COMMIT"
+		? { ...commitFromSchema(action), type: "commit" }
+		: { ...witnessFromSchema(action), type: "witness" })
+})
 
 export async function fetchOuterActionsFromIndexer(
 	client: GqlClient,
@@ -109,19 +170,14 @@ export async function fetchOuterActionsFromIndexer(
 		afterState: options.afterState
 	})
 
-	const result = v.safeParse(v.array(OuterActionSchema), data?.outerActions)
-	if (!result.success) {
-		console.error(error)
-		console.error(result.issues)
-		throw new Error("Invalid actions data")
-	}
+	const actions = parsePayload({
+		schema: OuterActionsSchema,
+		input: data?.outerActions,
+		error,
+		label: "Invalid actions data"
+	})
 
-	return result.output.map((action) => ({
-		...baseActionFromSchema(action),
-		...(action.kind === "COMMIT"
-			? { ...commitFromSchema(action), type: "commit" }
-			: { ...witnessFromSchema(action), type: "witness" })
-	}))
+	return actions.map(outerActionFromSchema)
 }
 
 export async function fetchInnerActionsFromIndexer(
@@ -133,14 +189,14 @@ export async function fetchInnerActionsFromIndexer(
 		afterState: options.afterState
 	})
 
-	const result = v.safeParse(v.array(InnerActionSchema), data?.innerActions)
-	if (!result.success) {
-		console.error(error)
-		console.error(result.issues)
-		throw new Error("Invalid actions data")
-	}
+	const actions = parsePayload({
+		schema: InnerActionsSchema,
+		input: data?.innerActions,
+		error,
+		label: "Invalid actions data"
+	})
 
-	return result.output.map(innerActionFromSchema)
+	return actions.map(innerActionFromSchema)
 }
 
 export async function fetchOuterWitnessesFromAuxes(
@@ -149,14 +205,14 @@ export async function fetchOuterWitnessesFromAuxes(
 ): Promise<OuterWitness[]> {
 	const { data, error } = await client().query(fetchOuterWitnessesFromAuxesQuery, { auxes })
 
-	const result = v.safeParse(v.array(WitnessSchema), data?.outerWitnessesFromAuxes)
-	if (!result.success) {
-		console.error(error)
-		console.error(result.issues)
-		throw new Error("Invalid witnesses data")
-	}
+	const witnesses = parsePayload({
+		schema: OuterWitnessesSchema,
+		input: data?.outerWitnessesFromAuxes,
+		error,
+		label: "Invalid witnesses data"
+	})
 
-	return result.output.map((witness) => ({
+	return witnesses.map((witness) => ({
 		...baseActionFromSchema(witness),
 		...witnessFromSchema(witness),
 		type: "witness"
@@ -169,14 +225,14 @@ export async function fetchInnerWitnessesFromAuxes(
 ): Promise<InnerWitness[]> {
 	const { data, error } = await client().query(fetchInnerWitnessesFromAuxesQuery, { auxes })
 
-	const result = v.safeParse(v.array(InnerActionSchema), data?.innerWitnessesFromAuxes)
-	if (!result.success) {
-		console.error(error)
-		console.error(result.issues)
-		throw new Error("Invalid witnesses data")
-	}
+	const witnesses = parsePayload({
+		schema: InnerActionsSchema,
+		input: data?.innerWitnessesFromAuxes,
+		error,
+		label: "Invalid witnesses data"
+	})
 
-	return result.output.map(innerActionFromSchema)
+	return witnesses.map(innerActionFromSchema)
 }
 
 export async function fetchCommitAsePastSlot(
@@ -185,31 +241,25 @@ export async function fetchCommitAsePastSlot(
 ): Promise<{ commit: OuterCommit; ase: OuterAction[] }> {
 	const { data, error } = await client().query(fetchCommitAsePastSlotQuery, { slot })
 
-	const result = v.safeParse(
-		v.object({ commit: CommitSchema, ase: v.array(OuterActionSchema) }),
-		data?.commitAsePastSlot
-	)
-	if (!result.success) {
-		console.error(error)
-		console.error(result.issues)
-		throw new Error("Invalid commit ase past withdrawal delay data")
-	}
+	const commitAsePastSlot = parsePayload({
+		schema: CommitAsePastSlotSchema,
+		input: data?.commitAsePastSlot,
+		error,
+		label: "Invalid commit ASE past withdrawal delay data"
+	})
 
 	return {
 		commit: {
-			...baseActionFromSchema(result.output.commit),
-			...commitFromSchema(result.output.commit),
+			...baseActionFromSchema(commitAsePastSlot.commit),
+			...commitFromSchema(commitAsePastSlot.commit),
 			type: "commit"
 		},
-		ase: result.output.ase.map((action) => ({
-			...baseActionFromSchema(action),
-			...(action.kind === "COMMIT"
-				? { ...commitFromSchema(action), type: "commit" }
-				: { ...witnessFromSchema(action), type: "witness" })
-		}))
+		ase: commitAsePastSlot.ase.map(outerActionFromSchema)
 	}
 }
 
+// Archive queries are most reliable in recent 10k-block windows.
+// Avoid a giant from=0 scan when investigating missing actions manually.
 // The graphQL schema server will limit the block scan range to a fixed number of blocks.
 // https://github.com/o1-labs/Archive-Node-API/blob/2d726955502fbd02c70d388f589284dd838bbb45/src/server/server.ts#L13
 const BLOCK_RANGE_SIZE = 10_000
@@ -229,55 +279,69 @@ export async function fetchActions(
 	stopAtBlock = 0
 ): Promise<Action[]> {
 	const networkTip = await getNetworkTip(client)
-
-	const fetchActionsRecursive = async (toBlock: number) => {
+	const fetchActionsRecursive = async (
+		toBlock: number
+	): Promise<v.InferOutput<typeof ActionOutputsSchema>> => {
 		if (toBlock < stopAtBlock) return []
 
-		const { data } = await client().query(fetchActionsQuery, {
+		const { data, error } = await client().query(fetchActionsQuery, {
 			pk: pk.toBase58(),
 			from: toBlock - BLOCK_RANGE_SIZE,
 			to: toBlock
 		})
-		const dataWithDefault = data?.actions.map((a) => ({
-			...a,
-			actionData: a?.actionData?.map((ad) => ({
-				...ad,
-				transactionInfo: ad?.transactionInfo ?? { status: "status", hash: "hash" }
-			})),
-			blockInfo: {
-				timestamp: String(a?.blockInfo?.timestamp ?? "0"),
-				height: Number(a?.blockInfo?.height ?? 0)
-			}
-		}))
-
-		const schema = v.array(
-			v.object({
-				blockInfo: v.object({ timestamp: v.string(), height: v.number() }),
-				actionState: v.object({
-					actionStateOne: v.string(),
-					actionStateTwo: v.string()
-				}),
-				actionData: v.array(
-					v.object({
-						data: v.array(v.string()),
-						transactionInfo: v.object({ hash: v.string() })
-					})
-				)
-			})
-		)
-
-		const result = v.safeParse(schema, dataWithDefault)
-		if (!result.success) throw new Error("Invalid actions data")
-
-		const prevOutput: v.InferOutput<typeof schema> = await fetchActionsRecursive(
+		if (error) throw error
+		const result = parseActionOutputs(data?.actions)
+		const prevOutput: v.InferOutput<typeof ActionOutputsSchema> = await fetchActionsRecursive(
 			toBlock - BLOCK_RANGE_SIZE
 		)
-		return [...prevOutput, ...result.output]
+		return [...prevOutput, ...result]
 	}
 
 	const output = await fetchActionsRecursive(networkTip)
 
-	return output.flatMap(
+	return mapParsedActions(output)
+}
+
+const ActionOutputsSchema = v.array(
+	v.object({
+		blockInfo: v.object({ timestamp: v.string(), height: v.number() }),
+		actionState: v.object({
+			actionStateOne: v.string(),
+			actionStateTwo: v.string()
+		}),
+		actionData: v.array(
+			v.object({
+				data: v.array(v.string()),
+				transactionInfo: v.object({ hash: v.string() })
+			})
+		)
+	})
+)
+
+const parseActionOutputs = (actions: unknown): v.InferOutput<typeof ActionOutputsSchema> => {
+	const dataWithDefault = (Array.isArray(actions) ? actions : []).map((action) => ({
+		...action,
+		actionData: Array.isArray(action?.actionData)
+			? action.actionData.map(
+					(actionData: { transactionInfo?: { hash?: string } } & Record<string, unknown>) => ({
+						...actionData,
+						transactionInfo: actionData?.transactionInfo ?? { status: "status", hash: "hash" }
+					})
+				)
+			: [],
+		blockInfo: {
+			timestamp: String(action?.blockInfo?.timestamp ?? "0"),
+			height: Number(action?.blockInfo?.height ?? 0)
+		}
+	}))
+
+	const result = v.safeParse(ActionOutputsSchema, dataWithDefault)
+	if (!result.success) throw new Error("Invalid actions data")
+	return result.output
+}
+
+const mapParsedActions = (output: v.InferOutput<typeof ActionOutputsSchema>): Action[] =>
+	output.flatMap(
 		(
 			{ actionState: { actionStateTwo: actionStateBefore }, actionData, blockInfo: { timestamp } },
 			index
@@ -306,6 +370,20 @@ export async function fetchActions(
 			return correctActions
 		}
 	)
+
+export async function fetchRecentActions(
+	client: GqlClient,
+	pk: PublicKey,
+	fromActionState?: string
+): Promise<Action[]> {
+	const { data, error } = await client().query(fetchLiveActionsQuery, {
+		pk: pk.toBase58(),
+		fromActionState: fromActionState ?? null
+	})
+	if (error) throw error
+	const output = parseActionOutputs(data?.actions)
+
+	return mapParsedActions(output)
 }
 
 export function depositAux(deposit: Deposit): Field {

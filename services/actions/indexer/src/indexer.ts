@@ -17,6 +17,17 @@ interface IndexerState {
 	consecutiveErrors: number
 }
 
+interface HandlerResult {
+	lastFetchedBlock: number | null
+}
+
+interface IndexingLoopDependencies {
+	outer: (db: PostgresJsDatabase) => Promise<HandlerResult>
+	inner: (db: PostgresJsDatabase) => Promise<HandlerResult>
+	now: () => number
+	wait: (seconds: number, signal: AbortSignal) => Promise<void>
+}
+
 const waitForDelay = async (seconds: number, signal: AbortSignal): Promise<void> => {
 	try {
 		await sleep(seconds * 1000, undefined, { signal })
@@ -30,45 +41,73 @@ const waitForDelay = async (seconds: number, signal: AbortSignal): Promise<void>
 export async function runIndexingLoop(
 	db: PostgresJsDatabase,
 	state: IndexerState,
-	signal: AbortSignal
+	signal: AbortSignal,
+	deps: Partial<IndexingLoopDependencies> = {}
 ): Promise<void> {
 	const baseDelay = Math.max(1, state.config.intervalSeconds)
+	const outer = deps.outer ?? outerHandler
+	const inner = deps.inner ?? innerHandler
+	const now = deps.now ?? Date.now
+	const wait = deps.wait ?? waitForDelay
 
 	while (state.isRunning) {
-		try {
-			const [outerResult, innerResult] = await Promise.all([outerHandler(db), innerHandler(db)])
+		const [outerResult, innerResult] = await Promise.allSettled([outer(db), inner(db)])
+		const hasSuccess = outerResult.status === "fulfilled" || innerResult.status === "fulfilled"
 
-			state.lastRunTimestamp = Date.now()
-			state.lastFetchedBlock.outer = outerResult.lastFetchedBlock ?? state.lastFetchedBlock.outer
-			state.lastFetchedBlock.inner = innerResult.lastFetchedBlock ?? state.lastFetchedBlock.inner
+		if (outerResult.status === "fulfilled") {
+			state.lastFetchedBlock.outer =
+				outerResult.value.lastFetchedBlock ?? state.lastFetchedBlock.outer
+		}
+
+		if (innerResult.status === "fulfilled") {
+			state.lastFetchedBlock.inner =
+				innerResult.value.lastFetchedBlock ?? state.lastFetchedBlock.inner
+		}
+
+		if (hasSuccess) {
+			state.lastRunTimestamp = now()
 			state.consecutiveErrors = 0
 			logger.info(
 				`runIndexingLoop: finished run (outer=${state.lastFetchedBlock.outer ?? 0}, inner=${state.lastFetchedBlock.inner ?? 0})`
 			)
-		} catch (error) {
+		}
+
+		const failures = [
+			{ stream: "outer", result: outerResult },
+			{ stream: "inner", result: innerResult }
+		].filter(
+			(entry): entry is { stream: "outer" | "inner"; result: PromiseRejectedResult } =>
+				entry.result.status === "rejected"
+		)
+
+		for (const failure of failures) {
+			const error = failure.result.reason
+			const missingParents = (error as { missingParents?: string[] }).missingParents
+			const message = error instanceof Error ? error.message : String(error)
+
+			logger.error(`runIndexingLoop ${failure.stream} error:`, error)
+			if (missingParents) {
+				logger.warn(
+					`[runIndexingLoop] ${failure.stream} ordering failed; missing parents:`,
+					`${missingParents.length} (sample: ${missingParents.slice(0, 5).join(", ")})`
+				)
+			} else {
+				logger.warn(`[runIndexingLoop] ${failure.stream} iteration failed: ${message}`)
+			}
+		}
+
+		if (failures.length === 2) {
 			if (!state.isRunning || signal.aborted) break
 
 			state.consecutiveErrors += 1
 			const retryDelay = Math.min(45, baseDelay * state.consecutiveErrors + 1)
-			const missingParents = (error as { missingParents?: string[] }).missingParents
-			const message = error instanceof Error ? error.message : String(error)
-
-			logger.error("runIndexingLoop error:", error)
-			if (missingParents) {
-				logger.warn(
-					"[runIndexingLoop] ordering failed; missing parents:",
-					`${missingParents.length} (sample: ${missingParents.slice(0, 5).join(", ")})`
-				)
-			} else {
-				logger.warn(`[runIndexingLoop] iteration failed: ${message}`)
-			}
 			logger.info(`Linear backoff: retrying in ${retryDelay}s`)
-			await waitForDelay(retryDelay, signal)
+			await wait(retryDelay, signal)
 			continue
 		}
 
 		if (!state.isRunning || signal.aborted) break
-		await waitForDelay(state.config.intervalSeconds, signal)
+		await wait(state.config.intervalSeconds, signal)
 	}
 }
 
@@ -77,9 +116,15 @@ export class Indexer {
 	#state: IndexerState
 	#loopPromise: Promise<void> | null = null
 	#loopAbortController: AbortController | null = null
+	#loopDeps: Partial<IndexingLoopDependencies>
+	#resetInProgress = false
 
-	constructor(db: PostgresJsDatabase, opts?: { autostart?: boolean }) {
+	constructor(
+		db: PostgresJsDatabase,
+		opts?: { autostart?: boolean; loopDeps?: Partial<IndexingLoopDependencies> }
+	) {
 		this.#db = db
+		this.#loopDeps = opts?.loopDeps ?? {}
 		this.#state = {
 			isRunning: false,
 			lastRunTimestamp: null,
@@ -89,11 +134,11 @@ export class Indexer {
 		}
 
 		if (opts?.autostart !== false) {
-			this.start()
+			this.#start({ intervalSeconds: this.#state.config.intervalSeconds })
 		}
 	}
 
-	start(input?: { intervalSeconds?: number }) {
+	#start(input?: { intervalSeconds?: number }) {
 		if (this.#state.isRunning) {
 			return {
 				success: false,
@@ -111,7 +156,12 @@ export class Indexer {
 
 		const abortController = new AbortController()
 		this.#loopAbortController = abortController
-		this.#loopPromise = runIndexingLoop(this.#db, this.#state, abortController.signal)
+		this.#loopPromise = runIndexingLoop(
+			this.#db,
+			this.#state,
+			abortController.signal,
+			this.#loopDeps
+		)
 			.catch((error: unknown) => {
 				if (error instanceof Error && error.name === "AbortError") return
 				logger.error("Fatal error in indexing loop:", error)
@@ -125,7 +175,19 @@ export class Indexer {
 		return { success: true, message: "Indexer started", status: this.getStatus() }
 	}
 
-	setConfig(input: { intervalSeconds?: number }) {
+	start(input?: { intervalSeconds?: number }) {
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		return this.#start(input)
+	}
+
+	#setConfig(input: { intervalSeconds?: number }) {
 		if (input.intervalSeconds) {
 			this.#state.config.intervalSeconds = input.intervalSeconds
 		}
@@ -138,7 +200,11 @@ export class Indexer {
 		}
 	}
 
-	async stop() {
+	setConfig(input: { intervalSeconds?: number }) {
+		return this.#setConfig(input)
+	}
+
+	async #stop() {
 		if (!this.#state.isRunning) {
 			return {
 				success: false,
@@ -157,6 +223,18 @@ export class Indexer {
 		return { success: true, message: "Indexer stopped", status: this.getStatus() }
 	}
 
+	async stop() {
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		return this.#stop()
+	}
+
 	getStatus() {
 		return {
 			isRunning: this.#state.isRunning,
@@ -167,12 +245,12 @@ export class Indexer {
 		}
 	}
 
-	async rebuild() {
+	async #rebuild() {
 		const wasRunning = this.#state.isRunning
 		const previousConfig = { ...this.#state.config }
 
 		if (this.#state.isRunning) {
-			await this.stop()
+			await this.#stop()
 		}
 
 		try {
@@ -187,7 +265,7 @@ export class Indexer {
 			}
 
 			if (wasRunning) {
-				this.start(previousConfig)
+				this.#start(previousConfig)
 			}
 
 			return {
@@ -202,11 +280,23 @@ export class Indexer {
 		}
 	}
 
-	async reset() {
+	async rebuild() {
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		return this.#rebuild()
+	}
+
+	async #reset() {
 		const previousConfig = { ...this.#state.config }
 
 		if (this.#state.isRunning) {
-			await this.stop()
+			await this.#stop()
 		}
 
 		try {
@@ -218,7 +308,7 @@ export class Indexer {
 			this.#state.lastFetchedBlock = { outer: null, inner: null }
 			this.#state.consecutiveErrors = 0
 
-			const startResult = this.start(previousConfig)
+			const startResult = this.#start(previousConfig)
 			if (!startResult.success) {
 				return {
 					success: false,
@@ -234,6 +324,24 @@ export class Indexer {
 		} catch (error) {
 			logger.error("Error during reset:", error)
 			return { success: false, message: error instanceof Error ? error.message : String(error) }
+		}
+	}
+
+	async reset() {
+		if (this.#resetInProgress) {
+			return {
+				success: false,
+				message: "A reset is already in progress",
+				status: this.getStatus()
+			}
+		}
+
+		this.#resetInProgress = true
+
+		try {
+			return await this.#reset()
+		} finally {
+			this.#resetInProgress = false
 		}
 	}
 }

@@ -1,12 +1,10 @@
 import type { Networks, walletMachine } from "@lumina-dex/sdk"
 import { produce } from "immer"
 import {
-	type ActionArgs,
 	type ActorRef,
 	type ActorRefFromLogic,
 	and,
 	assign,
-	type ErrorActorEvent,
 	type EventObject,
 	enqueueActions,
 	fromCallback,
@@ -16,6 +14,7 @@ import {
 	setup
 } from "xstate"
 import { finalizeNotification } from "../app/service-worker/notificationList"
+import { isTerminalBridgeError } from "../app/errors"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
@@ -24,8 +23,16 @@ import { type Result, transactionMachine } from "./transaction"
 
 const { act, logger, measure } = createLogger("[BRIDGE OPERATION]", { metrics: true })
 
-const bridgeParameters = ({ bridge, user, l1, l2 }: BridgeOperationContext) => {
-	return { bridge, user, l1, l2 }
+const bridgeParameters = ({
+	bridge,
+	user,
+	l1,
+	l2,
+	source,
+	destination,
+	direction
+}: BridgeOperationContext) => {
+	return { bridge, user, l1, l2, source, destination, direction }
 }
 
 const addError =
@@ -33,8 +40,13 @@ const addError =
 	({
 		context,
 		event
-	}: ActionArgs<BridgeOperationContext, ErrorActorEvent, BridgeOperationEvents>) => {
-		const e = event.error instanceof Error ? event.error : error
+	}: {
+		context: BridgeOperationContext
+		event: EventObject & { error?: unknown }
+	}) => {
+		const eventError =
+			typeof event === "object" && event !== null && "error" in event ? event.error : undefined
+		const e = eventError instanceof Error ? eventError : error
 		logger.error(e)
 		return { errors: [...context.errors, e] }
 	}
@@ -98,6 +110,7 @@ type BridgeOperationEvents =
 	| { type: "ReturnTo" }
 	| { type: "CanFinalize" }
 	| { type: "CanCancel" }
+	| { type: "TerminalError"; error: Error }
 	| { type: "Finalize" }
 	| { type: "Cancel" }
 	| { type: "Destroy" }
@@ -140,7 +153,15 @@ const fetchMina = ({ network }: { network: Networks }) =>
 
 const POLL_INTERVAL = 20_000
 
-type BridgeWorker = { bridge: Bridge; l1: Networks; l2: Networks; user: string }
+type BridgeWorker = {
+	bridge: Bridge
+	l1: Networks
+	l2: Networks
+	user: string
+	source: Networks
+	destination: Networks
+	direction: Direction
+}
 
 //TODO: Error handling
 export const bridgeOperationMachine = setup({
@@ -171,7 +192,12 @@ export const bridgeOperationMachine = setup({
 						const tx = await worker(bridge).submitDeposit({ l1, l2, user, amount, timeoutSlots })
 						return tx
 					},
-					input.user
+					input.user,
+					{
+						source: input.source,
+						destination: input.destination,
+						direction: input.direction
+					}
 				)
 			}
 		),
@@ -185,13 +211,13 @@ export const bridgeOperationMachine = setup({
 				const checkDepositStatus = async (signal: AbortSignal): Promise<void> => {
 					if (signal.aborted) return
 					try {
-						const [canFinalize, canCancel] = await Promise.all([
+						const [finalizeResult, cancelResult] = await Promise.all([
 							worker(bridge).canFinalizeDeposit({ l1, l2, user }),
 							worker(bridge).canCancelDeposit({ l1, l2, user })
 						])
-						logger.info(`Deposit status: ${JSON.stringify({ canFinalize, canCancel })}`)
-						if (canFinalize) sendBack({ type: "CanFinalize" })
-						else if (canCancel) sendBack({ type: "CanCancel" })
+						logger.info(`Deposit status: ${JSON.stringify({ finalizeResult, cancelResult })}`)
+						if (finalizeResult.available) sendBack({ type: "CanFinalize" })
+						else if (cancelResult.available) sendBack({ type: "CanCancel" })
 						else if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)
 					} catch (error) {
 						logger.error(error instanceof Error ? error : new Error(String(error)))
@@ -214,7 +240,12 @@ export const bridgeOperationMachine = setup({
 					const tx = await worker(bridge).finalizeDeposit({ l1, l2, user })
 					return tx
 				},
-				input.user
+				input.user,
+				{
+					source: input.source,
+					destination: input.destination,
+					direction: input.direction
+				}
 			)
 		}),
 		submitWithdrawal: fromPromise<string, BridgeWorker & { amount: string }>(({ input }) => {
@@ -225,7 +256,12 @@ export const bridgeOperationMachine = setup({
 					const tx = await worker(bridge).submitWithdrawal({ l1, l2, user, amount })
 					return tx
 				},
-				input.user
+				input.user,
+				{
+					source: input.source,
+					destination: input.destination,
+					direction: input.direction
+				}
 			)
 		}),
 		pendingWithdrawal: fromCallback<EventObject, BridgeWorker>(({ sendBack, input }) => {
@@ -238,11 +274,18 @@ export const bridgeOperationMachine = setup({
 				if (signal.aborted) return
 				try {
 					logger.info("Checking withdrawal status...")
-					const can = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
-					if (can) sendBack({ type: "CanFinalize" })
+					const result = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
+					if (result.available) sendBack({ type: "CanFinalize" })
 					else if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
 				} catch (error) {
 					logger.error(error instanceof Error ? error : new Error(String(error)))
+					if (isTerminalBridgeError(error)) {
+						sendBack({
+							type: "TerminalError",
+							error: error instanceof Error ? error : new Error(String(error))
+						})
+						return
+					}
 					if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
 				}
 			}
@@ -261,7 +304,12 @@ export const bridgeOperationMachine = setup({
 					const tx = await worker(bridge).finalizeWithdrawal({ l1, l2, user })
 					return tx
 				},
-				input.user
+				input.user,
+				{
+					source: input.source,
+					destination: input.destination,
+					direction: input.direction
+				}
 			)
 		}),
 		cancelDeposit: fromPromise<string, BridgeWorker>(({ input }) => {
@@ -272,7 +320,12 @@ export const bridgeOperationMachine = setup({
 					const tx = await worker(bridge).cancelDeposit({ l1, l2, user })
 					return tx
 				},
-				input.user
+				input.user,
+				{
+					source: input.source,
+					destination: input.destination,
+					direction: input.direction
+				}
 			)
 		})
 	},
@@ -726,10 +779,13 @@ export const bridgeOperationMachine = setup({
 						},
 						onError: {
 							target: "#bridgeOperation.FAILED",
-							actions: sendTo(
-								({ context }) => context.bridge,
-								({ self }) => ({ type: "TerminateOperation", id: self.id })
-							)
+							actions: [
+								assign(addError(new Error("Failed to submit withdrawal"))),
+								sendTo(
+									({ context }) => context.bridge,
+									({ self }) => ({ type: "TerminateOperation", id: self.id })
+								)
+							]
 						}
 					}
 				},
@@ -786,7 +842,17 @@ export const bridgeOperationMachine = setup({
 				input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount })
 			},
 			on: {
-				CanFinalize: { target: "TO_FINALIZE" }
+				CanFinalize: { target: "TO_FINALIZE" },
+				TerminalError: {
+					target: "FAILED",
+					actions: [
+						assign(addError(new Error("Failed to determine withdrawal status"))),
+						sendTo(
+							({ context }) => context.bridge,
+							({ self }) => ({ type: "TerminateOperation", id: self.id })
+						)
+					]
+				}
 			}
 		},
 		FINALIZE_WITHDRAWAL: {
@@ -805,6 +871,17 @@ export const bridgeOperationMachine = setup({
 							)
 						},
 						onError: [
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ event }) => isTerminalBridgeError(event.error),
+								actions: [
+									assign(addError(new Error("Failed to finalize withdrawal"))),
+									sendTo(
+										({ context }) => context.bridge,
+										({ self }) => ({ type: "TerminateOperation", id: self.id })
+									)
+								]
+							},
 							{
 								target: "#bridgeOperation.FAILED",
 								guard: ({ context }) => context.errors.length >= 3,
@@ -895,7 +972,7 @@ export const bridgeOperationMachine = setup({
 						source: context.source,
 						destination: context.destination,
 						success: false,
-						label: lastError?.message ?? "unknown error"
+						label: (lastError?.message ?? "unknown error").slice(0, 500)
 					},
 					context.user
 				)

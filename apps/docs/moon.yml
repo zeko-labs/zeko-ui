@@ -10,12 +10,13 @@ fileGroups:
     - vitest.config.ts
 tasks:
   dev:
-    command: vitepress dev
+    script: mkdir -p d2-diagrams && touch d2-diagrams/temp.d2 && vitepress dev
   build:
-    command: vitepress build
+    script: mkdir -p d2-diagrams && touch d2-diagrams/temp.d2 && vitepress build
     inputs:
       - "@globs(sources)"
       - /packages/bridge-sdk/README.md
+      - /packages/bridge-cli/README.md
       - /packages/faucet-cli/README.md
     outputs:
       - .vitepress/dist/**

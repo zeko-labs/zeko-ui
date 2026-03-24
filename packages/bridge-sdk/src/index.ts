@@ -15,9 +15,15 @@ import {
 import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
+import {
+	InsufficientFirstWithdrawalAmountError,
+	assertFirstWithdrawalAmountCanCreateHelper,
+	ensureFirstWithdrawalAmountCanCreateHelper
+} from "./errors"
 import { createGraphqlClient, type GqlClient } from "./graphql"
 import type {
 	Account,
+	Action,
 	Config,
 	Deposit,
 	DepositWithState,
@@ -39,6 +45,7 @@ import {
 	fetchInnerWitnessesFromAuxes,
 	fetchOuterActionsFromIndexer,
 	fetchOuterWitnessesFromAuxes,
+	fetchRecentActions,
 	filterNulls,
 	getNextCancelledDepositIndex,
 	getNextDepositIndex,
@@ -49,10 +56,23 @@ import {
 } from "./utils"
 
 export * from "./actions"
+export * from "./diagnostics"
+export * from "./errors"
 export * from "./graphql/index"
 export * from "./types"
 
 export class Bridge {
+	private debug(message: string, details?: unknown): void {
+		if (!this.config.verbose) return
+
+		if (details === undefined) {
+			console.debug(message)
+			return
+		}
+
+		console.debug(message, details)
+	}
+
 	constructor(
 		private readonly config: Config,
 
@@ -221,24 +241,38 @@ export class Bridge {
 		)
 	}
 
-	private async fetchUserWithdrawals(pk: PublicKey): Promise<Withdrawal[]> {
-		const userInnerActions = await fetchActions(this.l2ArchiveClient, pk)
+	private async fetchUserWithdrawalActions(pk: PublicKey): Promise<Array<Action & Withdrawal>> {
+		const archiveActions = await fetchActions(this.l2ArchiveClient, pk)
+		const lastActionState = archiveActions.at(-1)?.afterActionState.toString()
+		const liveActions = await fetchRecentActions(this.l2Client, pk, lastActionState)
+		const userInnerActions = [...archiveActions, ...liveActions]
+
+		this.debug("fetchUserWithdrawals action sources", {
+			archiveCount: archiveActions.length,
+			liveCount: liveActions.length,
+			totalCount: userInnerActions.length
+		})
 
 		return filterNulls(
-			userInnerActions.map(({ action }) => {
-				const [recipient1, recipient2, amount1] = action
+			userInnerActions.map((item) => {
+				const [recipient1, recipient2, amount1] = item.action
 
 				if (!recipient1 || !recipient2 || !amount1) return null
 
-				const recipient = PublicKey.fromFields([recipient1, recipient2])
-				const amount = UInt64.fromFields([amount1])
-
 				return {
-					recipient,
-					amount
+					...item,
+					recipient: PublicKey.fromFields([recipient1, recipient2]),
+					amount: UInt64.fromFields([amount1])
 				}
 			})
 		)
+	}
+
+	private async fetchUserWithdrawals(pk: PublicKey): Promise<Withdrawal[]> {
+		return (await this.fetchUserWithdrawalActions(pk)).map(({ recipient, amount }) => ({
+			recipient,
+			amount
+		}))
 	}
 
 	private async pollQuery(key: string, pollPeriod = 5_000) {
@@ -246,12 +280,17 @@ export class Bridge {
 		let attempts = 0
 
 		while (!provedForest) {
-			if (attempts > (this.config.pollTimeout ?? 30_000) / pollPeriod) {
+			if (
+				typeof this.config.pollTimeout === "number" &&
+				this.config.pollTimeout >= 0 &&
+				attempts > this.config.pollTimeout / pollPeriod
+			) {
 				throw new Error("Failed to fetch proved forest")
 			}
 
 			await new Promise((resolve) => setTimeout(resolve, pollPeriod))
 			attempts++
+			this.debug("pollQuery waiting", { key, attempts, pollPeriod })
 
 			const resultResponse = await this.l2Client().query(provedForestQuery, { key })
 			if (resultResponse.error) throw resultResponse.error
@@ -552,8 +591,16 @@ export class Bridge {
 		return txn
 	}
 
-	public async canFinalizeDeposit(pk: PublicKey): Promise<boolean> {
-		return (await this.fetchDepositFinalizationWitnesses(pk)).ok
+	public async canFinalizeDeposit(
+		pk: PublicKey
+	): Promise<{ available: boolean; reason: string | null }> {
+		this.debug("canFinalizeDeposit start", { pk: pk.toBase58() })
+		const result = await this.fetchDepositFinalizationWitnesses(pk)
+		this.debug("canFinalizeDeposit result", result)
+		return {
+			available: result.ok,
+			reason: result.ok ? null : result.msg
+		}
 	}
 
 	private async fetchDepositCancellationWitnesses(
@@ -740,8 +787,10 @@ export class Bridge {
 		feePayer: Mina.FeePayerSpec,
 		_outerHolder?: PublicKey
 	): Promise<Mina.Transaction<false, false>> {
+		this.debug("cancelDeposit start", { pk: pk.toBase58() })
 		const outerHolder = _outerHolder ?? this.outerHolders[0]
 		const witnesses = await this.fetchDepositCancellationWitnesses(pk, outerHolder)
+		this.debug("cancelDeposit witnesses", witnesses)
 
 		if (!witnesses.ok) throw new Error("Did not find deposit to cancel")
 
@@ -751,7 +800,9 @@ export class Bridge {
 			input: witness
 		})
 		if (!data?.request?.key) throw new Error("No key returned from mutation")
+		this.debug("cancelDeposit mutation key", { key: data.request.key })
 		const cancelDepositForest = await this.pollQuery(data.request.key)
+		this.debug("cancelDeposit forest ready", { updates: cancelDepositForest.length })
 
 		for (let i = 0; i < cancelDepositForest.length; i++) {
 			if (!cancelDepositForest[i].publicKey.equals(pk).toBoolean()) continue
@@ -775,10 +826,15 @@ export class Bridge {
 		return txn
 	}
 
-	public async canCancelDeposit(pk: PublicKey): Promise<boolean> {
+	public async canCancelDeposit(
+		pk: PublicKey
+	): Promise<{ available: boolean; reason: string | null }> {
 		const result = await this.fetchDepositCancellationWitnesses(pk, this.outerTokenOwner)
-		console.debug("canCancelDeposit result:", result)
-		return result.ok
+		this.debug("canCancelDeposit result", result)
+		return {
+			available: result.ok,
+			reason: result.ok ? null : result.msg
+		}
 	}
 
 	public async submitWithdrawal(
@@ -792,6 +848,18 @@ export class Bridge {
 		}
 	): Promise<Mina.Transaction<false, false>> {
 		this.setL2()
+
+		await ensureFirstWithdrawalAmountCanCreateHelper({
+			amount,
+			recipient,
+			accountCreationFee: this.l1AccountCreationFee,
+			helperAccountExists: async () =>
+				(await this.fetchAccount(
+					this.l1Client,
+					recipient,
+					TokenId.derive(this.outerTokenOwner)
+				)) !== null
+		})
 
 		await refreshCache(feePayer)
 
@@ -838,15 +906,30 @@ export class Bridge {
 			pk,
 			TokenId.derive(this.outerTokenOwner)
 		)
+		this.debug("fetchWithdrawalFinalizationWitnesses helperAccount", {
+			pk: pk.toBase58(),
+			hasHelperAccount: helperAccount !== null
+		})
 
 		const prevNextWithdrawal = helperAccount ? getNextWithdrawalIndex(helperAccount) : UInt32.zero
+		this.debug("fetchWithdrawalFinalizationWitnesses prevNextWithdrawal", {
+			prevNextWithdrawal: prevNextWithdrawal.toString()
+		})
 
 		const withdrawals = (await this.fetchUserWithdrawals(pk)).map((withdrawal) => ({
 			withdrawal,
 			aux: withdrawalAux(withdrawal)
 		}))
+		this.debug("fetchWithdrawalFinalizationWitnesses withdrawals", {
+			count: withdrawals.length,
+			recipients: withdrawals.map(({ withdrawal }) => withdrawal.recipient.toBase58()),
+			amounts: withdrawals.map(({ withdrawal }) => withdrawal.amount.toString())
+		})
 
 		if (withdrawals.length === 0) {
+			this.debug("fetchWithdrawalFinalizationWitnesses no-withdrawals", {
+				pk: pk.toBase58()
+			})
 			return { ok: false, msg: "No withdrawals found" }
 		}
 
@@ -854,31 +937,58 @@ export class Bridge {
 			this.actionsApiClient,
 			withdrawals.map(({ aux }) => aux.toString())
 		)
+		this.debug("fetchWithdrawalFinalizationWitnesses witnessFetch", {
+			requestedAuxes: withdrawals.length,
+			witnessCount: withdrawalWitnesses.length,
+			witnessIndices: withdrawalWitnesses.map((witness) => witness.index)
+		})
 
 		if (withdrawalWitnesses.length === 0) {
+			this.debug("fetchWithdrawalFinalizationWitnesses no-witnesses", {
+				pk: pk.toBase58(),
+				withdrawalCount: withdrawals.length
+			})
 			return { ok: false, msg: "No withdrawal witnesses found" }
 		}
 
 		const earliestBeforeState = withdrawalWitnesses
 			.sort((a, b) => a.index - b.index)
 			.at(0)?.beforeActionState
+		this.debug("fetchWithdrawalFinalizationWitnesses earliestBeforeState", {
+			earliestBeforeState: earliestBeforeState?.toString() ?? null
+		})
 
 		if (earliestBeforeState === undefined) {
 			return { ok: false, msg: "No earliest before state found" }
 		}
 
 		const currentSlot = await this.fetchCurrentSlot()
+		this.debug("fetchWithdrawalFinalizationWitnesses currentSlot", {
+			currentSlot: currentSlot.toString(),
+			withdrawalDelay: this.withdrawalDelay.toString(),
+			targetSlot: currentSlot.sub(this.withdrawalDelay).toString()
+		})
 
 		const { commit: lastCommit, ase } = await fetchCommitAsePastSlot(
 			this.actionsApiClient,
 			+currentSlot.sub(this.withdrawalDelay)
 		)
+		this.debug("fetchWithdrawalFinalizationWitnesses commitAsePastSlot", {
+			aseCount: ase.length,
+			innerActionState: lastCommit.innerActionState.toString(),
+			innerActionStateLength: lastCommit.innerActionStateLength.toString(),
+			afterActionState: lastCommit.afterActionState.toString()
+		})
 
 		const lastCommitAse = ase.map(({ action }) => fromList([action]).hash)
 
 		const innerActions = await fetchInnerActionsFromIndexer(this.actionsApiClient, {
 			fromState: earliestBeforeState.toString(),
 			afterState: lastCommit.innerActionState.toString()
+		})
+		this.debug("fetchWithdrawalFinalizationWitnesses innerActions", {
+			count: innerActions.length,
+			indices: innerActions.map((action) => action.index)
 		})
 
 		const findMatchingWithdrawal = (action: InnerWitness) =>
@@ -893,14 +1003,41 @@ export class Bridge {
 
 			return true
 		})
+		this.debug("fetchWithdrawalFinalizationWitnesses myWithdrawalIndex", {
+			myWithdrawalIndex,
+			prevNextWithdrawal: prevNextWithdrawal.toString()
+		})
 
 		if (myWithdrawalIndex === -1) {
+			this.debug("fetchWithdrawalFinalizationWitnesses no-my-withdrawal", {
+				prevNextWithdrawal: prevNextWithdrawal.toString(),
+				innerActionIndices: innerActions.map((action) => action.index)
+			})
 			return { ok: false, msg: "No my withdrawal index found" }
 		}
 
 		const myWithdrawal = innerActions[myWithdrawalIndex]
 		const withdrawalParams = findMatchingWithdrawal(myWithdrawal)
 		if (!withdrawalParams) throw new Error("Unreachable: Did not find withdrawal parameters")
+		this.debug("fetchWithdrawalFinalizationWitnesses selectedWithdrawal", {
+			index: myWithdrawal.index,
+			actionHash: myWithdrawal.hash,
+			recipient: withdrawalParams.withdrawal.recipient.toBase58(),
+			amount: withdrawalParams.withdrawal.amount.toString()
+		})
+		try {
+			assertFirstWithdrawalAmountCanCreateHelper({
+				helperAccountExists: helperAccount !== null,
+				amount: withdrawalParams.withdrawal.amount,
+				recipient: withdrawalParams.withdrawal.recipient,
+				accountCreationFee: this.l1AccountCreationFee
+			})
+		} catch (e) {
+			if (e instanceof InsufficientFirstWithdrawalAmountError) {
+				return { ok: false, msg: e.message }
+			}
+			throw e
+		}
 
 		const withdrawalAse = innerActions
 			.slice(myWithdrawalIndex + 1)
@@ -982,8 +1119,16 @@ export class Bridge {
 		return txn
 	}
 
-	public async canFinalizeWithdrawal(pk: PublicKey): Promise<boolean> {
-		return (await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner)).ok
+	public async canFinalizeWithdrawal(
+		pk: PublicKey
+	): Promise<{ available: boolean; reason: string | null }> {
+		this.debug("canFinalizeWithdrawal start", { pk: pk.toBase58() })
+		const result = await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner)
+		this.debug("canFinalizeWithdrawal result", result)
+		return {
+			available: result.ok,
+			reason: result.ok ? null : result.msg
+		}
 	}
 
 	public async fetchDepositsWithStates(pk: PublicKey): Promise<{
@@ -1065,11 +1210,11 @@ export class Bridge {
 		committedIndex: number
 		finalisedIndex: number
 	}> {
-		const withdrawals = await this.fetchUserWithdrawals(pk)
+		const withdrawals = await this.fetchUserWithdrawalActions(pk)
 
 		const auxes = withdrawals.map(withdrawalAux)
 
-		const auxesMap = new Map<bigint, Withdrawal>()
+		const auxesMap = new Map<bigint, Action & Withdrawal>()
 		for (const withdrawal of withdrawals) {
 			auxesMap.set(withdrawalAux(withdrawal).toBigInt(), withdrawal)
 		}
@@ -1093,19 +1238,34 @@ export class Bridge {
 			+currentSlot.sub(this.withdrawalDelay)
 		)
 
+		const witnessedAuxes = new Set(
+			withdrawalWitnesses.map((witness) => witness.aux.toBigInt().toString())
+		)
+		const provisionalWithdrawals = withdrawals
+			.filter((withdrawal) => !witnessedAuxes.has(withdrawalAux(withdrawal).toBigInt().toString()))
+			.map((withdrawal, index, pending) => ({
+				...withdrawal,
+				index: -(pending.length - index),
+				committed: false,
+				finalised: false
+			}))
+
 		return {
-			withdrawals: withdrawalWitnesses.map((witness) => {
-				const withdrawal = auxesMap.get(witness.aux.toBigInt())
-				if (!withdrawal) throw new Error("Unreachable: Did not find withdrawal")
-				return {
-					...witness,
-					...withdrawal,
-					committed: lastCommit.innerActionStateLength
-						.greaterThan(UInt32.from(witness.index))
-						.toBoolean(),
-					finalised: nextWithdrawal.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean()
-				}
-			}),
+			withdrawals: [
+				...provisionalWithdrawals,
+				...withdrawalWitnesses.map((witness) => {
+					const withdrawal = auxesMap.get(witness.aux.toBigInt())
+					if (!withdrawal) throw new Error("Unreachable: Did not find withdrawal")
+					return {
+						...witness,
+						...withdrawal,
+						committed: lastCommit.innerActionStateLength
+							.greaterThan(UInt32.from(witness.index))
+							.toBoolean(),
+						finalised: nextWithdrawal.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean()
+					}
+				})
+			],
 			committedIndex: +safeDecrement(lastCommit.innerActionStateLength).toString(),
 			finalisedIndex: +safeDecrement(nextWithdrawal).toString()
 		}

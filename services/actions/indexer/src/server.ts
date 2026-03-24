@@ -2,9 +2,13 @@ import { bearer } from "@elysiajs/bearer"
 import { cors } from "@elysiajs/cors"
 import { node } from "@elysiajs/node"
 import { Elysia, t } from "elysia"
-import { checkDatabaseHealth, createDatabase } from "./db"
+import { checkDatabaseHealth, createDatabase, getCanonicalProgressSnapshot } from "./db"
 import { env } from "./env"
-import { computeHealthStatus, createDatabaseHealthMonitor } from "./health"
+import {
+	computeHealthStatus,
+	createCanonicalProgressMonitor,
+	createDatabaseHealthMonitor
+} from "./health"
 import { Indexer } from "./indexer"
 
 const db = createDatabase(env.DATABASE_URL)
@@ -14,6 +18,11 @@ const dbHealthMonitor = createDatabaseHealthMonitor({
 	check: async () => checkDatabaseHealth(db)
 })
 dbHealthMonitor.start()
+const canonicalProgressMonitor = createCanonicalProgressMonitor({
+	refreshIntervalMs: 10_000,
+	check: async () => getCanonicalProgressSnapshot(db)
+})
+canonicalProgressMonitor.start()
 
 const authorizeControlRequest = ({
 	bearer,
@@ -26,31 +35,40 @@ const authorizeControlRequest = ({
 	return status(401, { success: false, message: "Unauthorized" })
 }
 
+const controlStatusCode = (result: { success: boolean; message?: string }): number => {
+	if (result.success) return 200
+	if (result.message === "A reset is already in progress") return 409
+	return 500
+}
+
 const controlServer = new Elysia()
 	.guard({
 		beforeHandle: authorizeControlRequest
 	})
-	.get("/status", () => indexer.getStatus())
-	.post("/start", ({ status }) => {
-		const result = indexer.start()
-		return status(result.success ? 200 : 500, result)
+	.get("/status", () => ({
+		...indexer.getStatus(),
+		canonicalProgress: canonicalProgressMonitor.getSnapshot()
+	}))
+	.post("/start", async ({ status }) => {
+		const result = await indexer.start()
+		return status(controlStatusCode(result), result)
 	})
 	.post("/stop", async ({ status }) => {
 		const result = await indexer.stop()
-		return status(result.success ? 200 : 500, result)
+		return status(controlStatusCode(result), result)
 	})
 	.post("/reset", async ({ status }) => {
 		const result = await indexer.reset()
-		return status(result.success ? 200 : 500, result)
+		return status(controlStatusCode(result), result)
 	})
 	.post("/rebuild", async ({ status }) => {
 		const result = await indexer.rebuild()
-		return status(result.success ? 200 : 500, result)
+		return status(controlStatusCode(result), result)
 	})
 	.post(
 		"/config",
-		({ body, status }) => {
-			const result = indexer.setConfig({ intervalSeconds: body.intervalSeconds })
+		async ({ body, status }) => {
+			const result = await indexer.setConfig({ intervalSeconds: body.intervalSeconds })
 			return status(200, result)
 		},
 		{ body: t.Object({ intervalSeconds: t.Number() }) }
@@ -71,6 +89,7 @@ export const server = new Elysia({
 		const result = computeHealthStatus({
 			now: Date.now(),
 			dbHealth: dbHealthMonitor.getSnapshot(),
+			canonicalProgress: canonicalProgressMonitor.getSnapshot(),
 			indexerStatus: indexer.getStatus(),
 			staleAfterMs: 60_000,
 			environment: env.ENVIRONMENT || "unknown"

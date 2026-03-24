@@ -1,6 +1,6 @@
 {
 	"name": "@zeko-labs/bridge-sdk",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"description": "Public TypeScript SDK for interacting with the Zeko bridge.",
 	"type": "module",
 	"keywords": ["typescript", "library"],
@@ -26,7 +26,8 @@
 		"@types/node": "^20.8.10",
 		"gql.tada": "catalog:graphql",
 		"tsdown": "catalog:",
-		"typescript": "catalog:"
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	},
 	"dependencies": {
 		"@zeko-labs/graphql": "workspace:^",

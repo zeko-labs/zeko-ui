@@ -5,7 +5,7 @@ import { runActionProcessingProof } from "../benchmark/action-processing-proof"
 import { runActionProcessingStress } from "../benchmark/action-processing-stress"
 import { asString, readCliBooleanArg, readCliNumberArg } from "./args"
 import { runHealthCheck, runSyncCheck } from "./checks"
-import { runNorthflankResources } from "./resources"
+import { runNorthflankLogs, runNorthflankResources } from "./resources"
 
 const printOutput = ({ json, table }: { json: boolean; table: Record<string, unknown>[] }) => {
 	if (json) {
@@ -26,6 +26,22 @@ const IndexerStatusSchema = v.object({
 		outer: v.nullable(v.number()),
 		inner: v.nullable(v.number())
 	}),
+	canonicalProgress: v.optional(
+		v.object({
+			checkedAt: v.nullable(v.number()),
+			error: v.optional(v.string()),
+			outer: v.object({
+				lastFinalIndex: v.nullable(v.number()),
+				lastFinalBlockHeight: v.nullable(v.number()),
+				nonCanonicalTailCount: v.number()
+			}),
+			inner: v.object({
+				lastFinalIndex: v.nullable(v.number()),
+				lastFinalBlockHeight: v.nullable(v.number()),
+				nonCanonicalTailCount: v.number()
+			})
+		})
+	),
 	config: v.object({
 		intervalSeconds: v.number()
 	}),
@@ -45,7 +61,21 @@ const ControlResponseSchema = v.object({
 })
 
 const HealthPayloadSchema = v.object({
-	status: v.string()
+	status: v.string(),
+	indexer: v.object({
+		canonicalProgress: v.object({
+			outer: v.object({
+				lastFinalIndex: v.nullable(v.number()),
+				lastFinalBlockHeight: v.nullable(v.number()),
+				nonCanonicalTailCount: v.number()
+			}),
+			inner: v.object({
+				lastFinalIndex: v.nullable(v.number()),
+				lastFinalBlockHeight: v.nullable(v.number()),
+				nonCanonicalTailCount: v.number()
+			})
+		})
+	})
 })
 
 type IndexerStatus = v.InferOutput<typeof IndexerStatusSchema>
@@ -92,6 +122,12 @@ const statusFields = (status?: IndexerStatus) => ({
 	lastRunTimestamp: status?.lastRunTimestamp ?? null,
 	lastFetchedOuter: status?.lastFetchedBlock.outer ?? null,
 	lastFetchedInner: status?.lastFetchedBlock.inner ?? null,
+	outerLastFinalIndex: status?.canonicalProgress?.outer.lastFinalIndex ?? null,
+	outerLastFinalBlock: status?.canonicalProgress?.outer.lastFinalBlockHeight ?? null,
+	outerNonCanonicalTail: status?.canonicalProgress?.outer.nonCanonicalTailCount ?? null,
+	innerLastFinalIndex: status?.canonicalProgress?.inner.lastFinalIndex ?? null,
+	innerLastFinalBlock: status?.canonicalProgress?.inner.lastFinalBlockHeight ?? null,
+	innerNonCanonicalTail: status?.canonicalProgress?.inner.nonCanonicalTailCount ?? null,
 	intervalSeconds: status?.config.intervalSeconds ?? null,
 	consecutiveErrors: status?.consecutiveErrors ?? null
 })
@@ -303,7 +339,25 @@ const runHealthFromArgs = async (args: Record<string, unknown>) => {
 				check: "health",
 				httpStatus: health.statusCode,
 				latencyMs: health.latencyMs,
-				status
+				status,
+				outerLastFinalIndex: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.outer.lastFinalIndex
+					: null,
+				outerLastFinalBlock: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.outer.lastFinalBlockHeight
+					: null,
+				outerNonCanonicalTail: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.outer.nonCanonicalTailCount
+					: null,
+				innerLastFinalIndex: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.inner.lastFinalIndex
+					: null,
+				innerLastFinalBlock: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.inner.lastFinalBlockHeight
+					: null,
+				innerNonCanonicalTail: parsedPayload?.success
+					? parsedPayload.output.indexer.canonicalProgress.inner.nonCanonicalTailCount
+					: null
 			}
 		]
 	})
@@ -343,6 +397,7 @@ const runSyncFromArgs = async (args: Record<string, unknown>) => {
 				stream: "outer",
 				lastFetchedBlock: result.outer.lastFetchedBlock,
 				tip: result.outer.tip,
+				tipDistance: result.outer.tipDistance,
 				lag: result.outer.lag,
 				hasPendingActions: result.outer.hasPendingActions,
 				status: result.outer.status
@@ -351,6 +406,7 @@ const runSyncFromArgs = async (args: Record<string, unknown>) => {
 				stream: "inner",
 				lastFetchedBlock: result.inner.lastFetchedBlock,
 				tip: result.inner.tip,
+				tipDistance: result.inner.tipDistance,
 				lag: result.inner.lag,
 				hasPendingActions: result.inner.hasPendingActions,
 				status: result.inner.status
@@ -388,6 +444,32 @@ const runResourcesFromArgs = async (args: Record<string, unknown>) => {
 				command: result.command.join(" ")
 			}
 		]
+	})
+}
+
+const runLogsFromArgs = async (args: Record<string, unknown>) => {
+	const projectId = asString(args.projectId ?? args["project-id"])
+	const serviceId = asString(args.serviceId ?? args["service-id"])
+	if (!projectId || !serviceId) {
+		throw new Error("logs requires project-id and service-id (args or env)")
+	}
+
+	const typesValue = asString(args.types)
+
+	await runNorthflankLogs({
+		projectId,
+		serviceId,
+		durationSeconds: readCliNumberArg(args, ["durationSeconds", "duration-seconds"], 900),
+		lineLimit: readCliNumberArg(args, ["lineLimit", "line-limit"], 200) || undefined,
+		tail: readCliBooleanArg(args, ["tail"], true),
+		types: typesValue
+			?.split(",")
+			.map((value) => value.trim())
+			.filter((value) => value.length > 0) ?? ["runtime"],
+		containerId: asString(args.containerId ?? args["container-id"]),
+		deploymentId: asString(args.deploymentId ?? args["deployment-id"]),
+		northflankExecutable:
+			asString(args.northflankExecutable ?? args["northflank-executable"]) ?? "northflank"
 	})
 }
 
@@ -748,6 +830,58 @@ const command = defineCommand({
 				}
 			},
 			run: async ({ args }) => runResourcesFromArgs(args as Record<string, unknown>)
+		},
+		logs: {
+			meta: {
+				name: "logs",
+				description: "Stream service logs through the Northflank CLI"
+			},
+			args: {
+				"project-id": {
+					type: "string",
+					description: "Northflank project ID",
+					default: process.env.NORTHFLANK_PROJECT_ID
+				},
+				"service-id": {
+					type: "string",
+					description: "Northflank service ID",
+					default: process.env.NORTHFLANK_SERVICE_ID
+				},
+				"duration-seconds": {
+					type: "string",
+					description: "Log lookback window in seconds",
+					default: "900"
+				},
+				"line-limit": {
+					type: "string",
+					description: "Maximum number of historical lines to fetch before tailing",
+					default: "200"
+				},
+				tail: {
+					type: "boolean",
+					description: "Keep streaming logs in real time",
+					default: true
+				},
+				types: {
+					type: "string",
+					description: "Comma-separated log types",
+					default: "runtime"
+				},
+				"container-id": {
+					type: "string",
+					description: "Optional container ID"
+				},
+				"deployment-id": {
+					type: "string",
+					description: "Optional deployment ID"
+				},
+				"northflank-executable": {
+					type: "string",
+					description: "Northflank executable name",
+					default: "northflank"
+				}
+			},
+			run: async ({ args }) => runLogsFromArgs(args as Record<string, unknown>)
 		},
 		diagnose: {
 			meta: {

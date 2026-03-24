@@ -5,16 +5,21 @@ import { useSelector } from "~~/machines/vue-xstate"
 const bs = useBridgeStore()
 const isSettingsOpen = ref(false)
 
-const allOperations = useSelector(bs.bridge.actorRef, (state) =>
-	Object.groupBy(
-		[...state.context.operations.values()].map(({ operation, status }) => ({
+const allOperations = useSelector(bs.bridge.actorRef, (state) => {
+	const items = [...state.context.operations.values()].map(
+		({ operation, status }) => ({
 			id: operation.id,
 			status,
 			operation
-		})),
-		({ status }) => (status === "completed" ? "complete" : "uncomplete")
+		})
 	)
-)
+	const grouped: Record<string, typeof items> = {}
+	for (const item of items) {
+		const key = item.status === "completed" ? "complete" : "uncomplete"
+		;(grouped[key] ??= []).push(item)
+	}
+	return grouped
+})
 const completedOperations = computed(() => allOperations.value.complete ?? [])
 
 const currentOperation = computed(

@@ -26,3 +26,27 @@ The CI script does the following :
 - Deploy to Cloudflare
 
 In an ideal world, the nuxt/sentry module would handle all of this automatically. But it doesn't.
+
+## Sentry CLI
+
+`@sentry/cli` is available as a devDependency. Run it via moon:
+
+```sh
+moon bridge-ui:sentry -- <command>
+```
+
+### Authentication
+
+Either run `moon bridge-ui:sentry -- login` for interactive auth, or set the `SENTRY_AUTH_TOKEN` environment variable.
+
+### Common Commands
+
+```sh
+moon bridge-ui:sentry -- issues list
+moon bridge-ui:sentry -- releases list
+moon bridge-ui:sentry -- releases files <release> list
+```
+
+### IDE Integration
+
+The `@sentry/mcp` server can be used for IDE integration with Sentry data.
