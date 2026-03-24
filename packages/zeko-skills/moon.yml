@@ -5,6 +5,7 @@ layer: tool
 fileGroups:
   skill:
     - README.md
+    - TESTING.md
     - zeko/**/*
     - src/**/*
     - evals/**/*
@@ -32,6 +33,12 @@ tasks:
       - "@group(skill)"
   validate:
     command: node dist/cli.js validate
+    deps:
+      - build
+    inputs:
+      - "@group(skill)"
+  validate-public-install:
+    command: node dist/cli.js validate-public-install
     deps:
       - build
     inputs:

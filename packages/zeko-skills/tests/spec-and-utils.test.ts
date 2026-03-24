@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { forbiddenMarkdownPatterns } from "../src/spec.js"
 import { endsWithPathSegment, normalizePath } from "../src/utils.js"
 
-describe("use-zeko spec and utils", () => {
+describe("zeko-skills spec and utils", () => {
 	it("keeps forbidden markdown patterns stateless across repeated checks", () => {
 		for (const pattern of forbiddenMarkdownPatterns) {
 			expect(pattern.global).toBe(false)
@@ -27,7 +27,7 @@ describe("use-zeko spec and utils", () => {
 					path.sep,
 					"repo",
 					"packages",
-					"use-zeko",
+					"zeko-skills",
 					"zeko",
 					"references",
 					"10-navigation.md"
@@ -41,7 +41,7 @@ describe("use-zeko spec and utils", () => {
 					path.sep,
 					"repo",
 					"packages",
-					"use-zeko",
+					"zeko-skills",
 					"zeko",
 					"references",
 					"10-navigation.md"

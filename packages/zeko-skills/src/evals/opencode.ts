@@ -34,7 +34,7 @@ type OpencodeEvent = OpencodeTextEvent | OpencodeToolUseEvent | { type: string }
 const isSkillRootRead = (filePath: string) =>
 	endsWithPathSegment(filePath, path.join(".agents", "skills", "zeko", "SKILL.md")) ||
 	endsWithPathSegment(filePath, path.join(".claude", "skills", "zeko", "SKILL.md")) ||
-	endsWithPathSegment(filePath, path.join("packages", "use-zeko", "zeko", "SKILL.md"))
+	endsWithPathSegment(filePath, path.join("packages", "zeko-skills", "zeko", "SKILL.md"))
 
 const isExpectedReferenceRead = (filePath: string, referenceFile: string) =>
 	endsWithPathSegment(
@@ -47,7 +47,7 @@ const isExpectedReferenceRead = (filePath: string, referenceFile: string) =>
 	) ||
 	endsWithPathSegment(
 		filePath,
-		path.join("packages", "use-zeko", "zeko", "references", referenceFile)
+		path.join("packages", "zeko-skills", "zeko", "references", referenceFile)
 	) ||
 	endsWithPathSegment(filePath, path.join("references", referenceFile))
 
@@ -169,7 +169,7 @@ const assertEvalCase = (evalCase: EvalCase) => {
 		} catch (error) {
 			lastError = error instanceof Error ? error : new Error(String(error))
 			console.warn(
-				`[use-zeko eval-opencode] ${evalCase.id} failed attempt ${attempt}/${opencodeAttempts}: ${lastError.message}`
+				`[zeko-skills eval-opencode] ${evalCase.id} failed attempt ${attempt}/${opencodeAttempts}: ${lastError.message}`
 			)
 		}
 	}
@@ -184,7 +184,7 @@ export const runOpencodeEvals = async () => {
 			encoding: "utf8"
 		})
 	} catch {
-		throw new Error("opencode is required for eval-opencode but was not found in PATH")
+		throw new Error("opencode is required for zeko-skills eval-opencode but was not found in PATH")
 	}
 
 	assert(fs.existsSync(skillPath), "Missing zeko/SKILL.md")
@@ -198,7 +198,7 @@ export const runOpencodeEvals = async () => {
 	for (const evalCase of selectedCases) {
 		const result = assertEvalCase(evalCase)
 		console.log(
-			`[use-zeko eval-opencode] ${result.id} passed (skill-tool=${result.usedSkillTool ? "yes" : "no"}, root-read=${result.usedSkillRoot ? "yes" : "no"}) with reads: ${result.readPaths
+			`[zeko-skills eval-opencode] ${result.id} passed (skill-tool=${result.usedSkillTool ? "yes" : "no"}, root-read=${result.usedSkillRoot ? "yes" : "no"}) with reads: ${result.readPaths
 				.map((filePath) => path.relative(repoRoot, filePath))
 				.join(", ")}`
 		)

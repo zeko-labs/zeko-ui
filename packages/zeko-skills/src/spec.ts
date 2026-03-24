@@ -12,6 +12,11 @@ export const requiredReferences = [
 	"60-sequencer-archive-and-da.md"
 ] as const
 
+export const publicSyncMappings = [
+	{ source: "README.md", target: "README.md" },
+	{ source: "zeko", target: "skills/zeko" }
+] as const
+
 export type EndpointCheck = {
 	name: string
 	expected: string

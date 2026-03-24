@@ -122,3 +122,6 @@
 - T136 | done | add-use-zeko-validation-evals-and-ci | done/T136-add-use-zeko-validation-evals-and-ci.md
 - T137 | done | add-use-zeko-public-mirror-sync | done/T137-add-use-zeko-public-mirror-sync.md
 - T138 | done | validate-remaining-devin-review-comments | done/T138-validate-remaining-devin-review-comments.md
+- T139 | done | rename-use-zeko-package-and-sync-to-zeko-skills | done/T139-rename-use-zeko-package-and-sync-to-zeko-skills.md
+- T140 | done | rewrite-public-readme-and-move-maintainer-docs | done/T140-rewrite-public-readme-and-move-maintainer-docs.md
+- T141 | done | add-docs-site-section-for-zeko-skills | done/T141-add-docs-site-section-for-zeko-skills.md

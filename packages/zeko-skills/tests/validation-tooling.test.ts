@@ -7,13 +7,17 @@ const thisDir = path.dirname(fileURLToPath(import.meta.url))
 const packageRoot = path.resolve(thisDir, "..")
 const repoRoot = path.resolve(packageRoot, "..", "..")
 
-describe("use-zeko validation tooling", () => {
+describe("zeko-skills validation tooling", () => {
 	it("ships the validation spec and CLI sources", () => {
 		expect(fs.existsSync(path.join(packageRoot, "src", "cli.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "check.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "evals", "opencode.ts"))).toBe(true)
+		expect(fs.existsSync(path.join(packageRoot, "src", "public-install.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "spec.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "validation", "index.ts"))).toBe(true)
+		expect(fs.existsSync(path.join(packageRoot, "src", "validation", "public-surface.ts"))).toBe(
+			true
+		)
 		expect(fs.existsSync(path.join(packageRoot, "evals", "prompts.json"))).toBe(true)
 	})
 
@@ -21,10 +25,12 @@ describe("use-zeko validation tooling", () => {
 		const moon = fs.readFileSync(path.join(packageRoot, "moon.yml"), "utf8")
 
 		expect(moon).toContain("  validate:")
+		expect(moon).toContain("  validate-public-install:")
 		expect(moon).toContain("  eval-opencode:")
 		expect(moon).toContain("  check:")
 		expect(moon).toContain("  typecheck:")
 		expect(moon).toContain("      runInCI: true")
+		expect(moon).toContain("    - TESTING.md")
 		expect(moon).not.toContain("  eval:")
 		expect(moon).not.toContain("  sync-sources:")
 	})
@@ -36,14 +42,14 @@ describe("use-zeko validation tooling", () => {
 	})
 
 	it("adds a dedicated workflow with pull request and weekly schedule coverage", () => {
-		const workflowPath = path.join(repoRoot, ".github", "workflows", "use-zeko-skill.yaml")
+		const workflowPath = path.join(repoRoot, ".github", "workflows", "zeko-skills.yaml")
 		expect(fs.existsSync(workflowPath)).toBe(true)
 
 		const workflow = fs.readFileSync(workflowPath, "utf8")
 		expect(workflow).toContain("pull_request:")
 		expect(workflow).toContain("schedule:")
 		expect(workflow).toContain("cron:")
-		expect(workflow).toContain("moon run -f use-zeko:check")
+		expect(workflow).toContain("moon run -f zeko-skills:check")
 		expect(workflow).not.toContain("eval-opencode")
 	})
 
@@ -57,5 +63,19 @@ describe("use-zeko validation tooling", () => {
 		expect(skill).not.toContain("references/copied/")
 		expect(skill).not.toContain("99-source-of-truth")
 		expect(skill).not.toContain("80-troubleshooting")
+	})
+
+	it("keeps maintainer-only guidance in TESTING.md instead of the public README", () => {
+		const readme = fs.readFileSync(path.join(packageRoot, "README.md"), "utf8")
+		const testing = fs.readFileSync(path.join(packageRoot, "TESTING.md"), "utf8")
+
+		expect(readme).toContain("npx skills add https://github.com/zeko-labs/zeko-skills --skill zeko")
+		expect(readme).not.toContain("moon run")
+		expect(testing).toContain("moon run -f zeko-skills:test")
+		expect(testing).toContain("moon run -f zeko-skills:check")
+		expect(testing).toContain("moon run -f zeko-skills:validate-public-install")
+		expect(testing).toContain(
+			"npx skills add https://github.com/zeko-labs/zeko-skills --skill zeko"
+		)
 	})
 })

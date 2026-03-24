@@ -18,7 +18,7 @@ const requiredReferences = [
 	"60-sequencer-archive-and-da.md"
 ]
 
-describe("use-zeko skill structure", () => {
+describe("zeko-skills skill structure", () => {
 	it("ships the router skill and every required reference file", () => {
 		expect(fs.existsSync(skillRoot)).toBe(true)
 		expect(fs.existsSync(skillPath)).toBe(true)
