@@ -2,6 +2,7 @@ name: Release Bridge CLI
 
 on:
   workflow_call:
+  workflow_dispatch:
 
 jobs:
   version-check:
@@ -17,19 +18,22 @@ jobs:
         id: check
         run: |
           VERSION=$(node -p "require('./packages/bridge-cli/package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           PUBLISHED=$(npm view @zeko-labs/bridge-cli@"$VERSION" version 2>/dev/null || echo "")
-          if [ -z "$PUBLISHED" ]; then
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          if [ -z "$PUBLISHED" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
           else
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "should_release=false" >> $GITHUB_OUTPUT
           fi
 
-  build:
+  publish:
     needs: version-check
     if: needs.version-check.outputs.should_release == 'true'
     runs-on: warp-ubuntu-latest-x64-4x
-    name: Build and pack bridge-cli
+    name: Publish to npm
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -40,10 +44,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build bridge-cli
-        run: moon run bridge-cli:build
+      - name: Build package
+        run: pnpm exec moon run bridge-cli:build
 
-      - name: Pack bridge-cli tarball
+      - name: Pack package
         id: pack
         working-directory: packages/bridge-cli
         run: |
@@ -62,52 +66,28 @@ jobs:
           name: bridge-cli-package
           path: packages/bridge-cli/${{ steps.pack.outputs.tarball }}
           retention-days: 1
-
-  publish:
-    needs: [version-check, build]
-    if: needs.version-check.outputs.should_release == 'true'
-    runs-on: warp-ubuntu-latest-x64-2x
-    name: Publish to npm
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download packaged tarball
-        uses: actions/download-artifact@v4
-        with:
-          name: bridge-cli-package
-          path: artifacts/
-
       - name: Configure npm registry
         run: |
           echo "registry=https://registry.npmjs.org/" > "$HOME/.npmrc"
           echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> "$HOME/.npmrc"
 
-      - name: Publish package tarball
+      - name: Publish package
+        working-directory: packages/bridge-cli
         env:
           NPM_CONFIG_PROVENANCE: "false"
         run: |
           set -euo pipefail
-          VERSION="${{ needs.version-check.outputs.version }}"
+          VERSION=$(node -p "require('./package.json').version")
           PUBLISHED=$(npm view "@zeko-labs/bridge-cli@${VERSION}" version 2>/dev/null || echo "")
           if [ -n "$PUBLISHED" ]; then
             echo "@zeko-labs/bridge-cli@${VERSION} already published, skipping."
             exit 0
           fi
 
-          TARBALL=$(find artifacts -maxdepth 2 -name '*.tgz' -print -quit)
-          if [ -z "$TARBALL" ]; then
-            echo "::error::Packaged tarball artifact is missing."
-            exit 1
-          fi
-
-          npm publish "$TARBALL" --access public --loglevel verbose
+          npm publish "zeko-labs-bridge-cli-${VERSION}.tgz" --access public --loglevel verbose
 
   github-release:
     needs: [version-check, publish, sync]
-    if: needs.version-check.outputs.should_release == 'true'
     uses: ./.github/workflows/github-release-bridge-cli.yaml
     with:
       version: ${{ needs.version-check.outputs.version }}
@@ -115,6 +95,5 @@ jobs:
 
   sync:
     needs: [version-check, publish]
-    if: needs.version-check.outputs.should_release == 'true'
     uses: ./.github/workflows/sync-bridge-cli.yaml
     secrets: inherit
