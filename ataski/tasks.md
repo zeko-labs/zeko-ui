@@ -97,3 +97,14 @@
 - T111 | done | rename-testing-doc-and-complete-live-validation-protocol | done/T111-rename-testing-doc-and-complete-live-validation-protocol.md
 - T112 | done | merge-main-and-add-bridge-cli-skill-guidance | done/T112-merge-main-and-add-bridge-cli-skill-guidance.md
 - T113 | done | replace-stale-moon-cache-bypass-flag-references | done/T113-replace-stale-moon-cache-bypass-flag-references.md
+- T114 | done | fix-use-zeko-workflow-force-flag-order | done/T114-fix-use-zeko-workflow-force-flag-order.md
+- T115 | done | create-use-zeko-skill-content | done/T115-create-use-zeko-skill-content.md
+- T116 | done | add-use-zeko-validation-evals-and-ci | done/T116-add-use-zeko-validation-evals-and-ci.md
+- T117 | done | add-use-zeko-public-mirror-sync | done/T117-add-use-zeko-public-mirror-sync.md
+- T118 | done | simplify-use-zeko-skill-for-installed-agent-context | done/T118-simplify-use-zeko-skill-for-installed-agent-context.md
+- T119 | done | expand-and-restructure-zeko-skill | done/T119-expand-and-restructure-zeko-skill.md
+- T120 | done | enforce-progressive-discovery-in-zeko-skill | done/T120-enforce-progressive-discovery-in-zeko-skill.md
+- T121 | done | add-native-mina-transfer-and-unit-conversion-guidance | done/T121-add-native-mina-transfer-and-unit-conversion-guidance.md
+- T122 | done | add-inline-o1js-node-script-guidance | done/T122-add-inline-o1js-node-script-guidance.md
+- T123 | done | add-key-conversion-example-and-boundary | done/T123-add-key-conversion-example-and-boundary.md
+- T124 | done | fix-duplicated-ataski-task-ids-for-use-zeko | done/T124-fix-duplicated-ataski-task-ids-for-use-zeko.md

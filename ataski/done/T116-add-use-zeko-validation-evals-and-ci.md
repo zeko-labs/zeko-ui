@@ -1,8 +1,8 @@
 ---
-id: T069
+id: T116
 title: "Add use-zeko validation, evals, and CI"
 status: done
-blockedBy: [T068]
+blockedBy: [T115]
 owner: codex
 created_at: 2026-03-11T15:23:20Z
 updated_at: 2026-03-11T15:42:30Z

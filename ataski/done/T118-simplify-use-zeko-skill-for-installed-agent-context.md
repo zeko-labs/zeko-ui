@@ -1,5 +1,5 @@
 ---
-id: T071
+id: T118
 title: "Simplify use-zeko skill for installed agent context"
 status: done
 blockedBy: []

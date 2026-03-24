@@ -31,7 +31,7 @@ describe("use-zeko validation tooling", () => {
 		expect(workflow).toContain("pull_request:")
 		expect(workflow).toContain("schedule:")
 		expect(workflow).toContain("cron:")
-		expect(workflow).toContain("moon run use-zeko:check")
+		expect(workflow).toContain("moon run -f use-zeko:check")
 	})
 
 	it("enforces the zeko skill directory and docs-first agent constraints", () => {

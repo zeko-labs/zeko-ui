@@ -1,5 +1,5 @@
 ---
-id: T073
+id: T120
 title: "Enforce progressive discovery in Zeko skill"
 status: done
 blockedBy: []
