@@ -1,6 +1,6 @@
 ---
 name: zeko
-description: Help an agent use Zeko through public docs, gateway-backed endpoints, Bridge SDK and Faucet CLI docs, and practical GraphQL queries for sequencer and archive workflows.
+description: Use when a user needs to actually use or build on Zeko: bridge with Bridge CLI or Bridge SDK, get testnet funds, find the right Zeko and Mina endpoints, run GraphQL or curl queries, understand sequencer and archive-node roles, or build zkApps on Zeko with o1js or OCaml. This skill is for public user and builder workflows, especially agent-driven flows using private keys and environment variables.
 ---
 
 # Zeko
