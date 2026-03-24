@@ -216,8 +216,8 @@ export const bridgeOperationMachine = setup({
 							worker(bridge).canCancelDeposit({ l1, l2, user })
 						])
 						logger.info(`Deposit status: ${JSON.stringify({ finalizeResult, cancelResult })}`)
-						if (finalizeResult.available) sendBack({ type: "CanFinalize" })
-						else if (cancelResult.available) sendBack({ type: "CanCancel" })
+						if (cancelResult.available) sendBack({ type: "CanCancel" })
+						else if (finalizeResult.available) sendBack({ type: "CanFinalize" })
 						else if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)
 					} catch (error) {
 						logger.error(error instanceof Error ? error : new Error(String(error)))

@@ -97,3 +97,4 @@
 - T111 | done | rename-testing-doc-and-complete-live-validation-protocol | done/T111-rename-testing-doc-and-complete-live-validation-protocol.md
 - T112 | done | bridge-sdk-deposit-cancellability | done/T112-bridge-sdk-deposit-cancellability.md
 - T113 | done | bridge-sdk-dedicated-and-live-tests | done/T113-bridge-sdk-dedicated-and-live-tests.md
+- T114 | done | fix-deposit-queue-ordering-across-bridge-stack | done/T114-fix-deposit-queue-ordering-across-bridge-stack.md

@@ -24,8 +24,9 @@ describe("bridge-sdk live", () => {
 		const bridge = await Bridge.init(liveConfig)
 		const recipient = PublicKey.fromBase58(walletAddress)
 
-		const [depositsWithStates, canCancelDeposit] = await Promise.all([
+		const [depositsWithStates, canFinalizeDeposit, canCancelDeposit] = await Promise.all([
 			bridge.fetchDepositsWithStates(recipient),
+			bridge.canFinalizeDeposit(recipient),
 			bridge.canCancelDeposit(recipient)
 		])
 
@@ -35,6 +36,10 @@ describe("bridge-sdk live", () => {
 		expect(typeof depositsWithStates.confirmedIndex).toBe("number")
 		expect(typeof depositsWithStates.finalisedIndex).toBe("number")
 		expect(typeof depositsWithStates.cancelledIndex).toBe("number")
+		expect(typeof canFinalizeDeposit.available).toBe("boolean")
+		expect(
+			canFinalizeDeposit.reason === null || typeof canFinalizeDeposit.reason === "string"
+		).toBe(true)
 		expect(typeof canCancelDeposit.available).toBe("boolean")
 		expect(canCancelDeposit.reason === null || typeof canCancelDeposit.reason === "string").toBe(
 			true

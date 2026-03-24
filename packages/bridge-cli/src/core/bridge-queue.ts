@@ -11,6 +11,9 @@ export const getSubmitHash = (session: OperationSession): string | undefined =>
 
 export const isDepositTerminal = (status: DepositStatus) => status.finalised || status.cancelled
 
+export const isDepositSkippable = (status: DepositStatus) =>
+	isDepositTerminal(status) || status.cancellable === true
+
 export const isWithdrawalTerminal = (status: WithdrawalStatus) => status.finalised
 
 export const resolveTargetIndex = ({
@@ -115,6 +118,8 @@ export type DepositQueueState = {
 	targetIndex?: number
 	claimableIndex?: number
 	pendingAhead: number
+	blockingAhead: number
+	skippableAhead: number
 	shouldAdvanceQueuedClaims: boolean
 }
 
@@ -125,24 +130,24 @@ export const analyzeDepositQueue = ({
 	session: OperationSession
 	statuses: DepositStatus[]
 }): DepositQueueState => {
-	// Protocol note: cancellable deposits are skippable, but finalizable deposits must never be
-	// skipped. Proper support needs both lastFinalizedDeposit (L2) and lastCancelledDeposit (L1)
-	// semantics, so the CLI can only skip entries that are provably cancellable. That behavior is
-	// not fully modeled here yet; current queue analysis only treats finalized/cancelled deposits
-	// as terminal and otherwise preserves strict FIFO behavior.
 	const target = findDepositTarget({ session, statuses })
 	const targetIndex = target?.index ?? resolveTargetIndex({ session, statuses })
 	const claimableIndex = firstClaimableDepositIndex(statuses)
-	const pendingAhead =
+	const pendingAheadStatuses =
 		targetIndex === undefined
-			? 0
-			: statuses.filter((status) => status.index < targetIndex && !isDepositTerminal(status)).length
+			? []
+			: statuses.filter((status) => status.index < targetIndex && !isDepositTerminal(status))
+	const blockingAhead = pendingAheadStatuses.filter((status) => !isDepositSkippable(status)).length
+	const skippableAhead = pendingAheadStatuses.filter((status) => status.cancellable === true).length
+	const pendingAhead = pendingAheadStatuses.length
 
 	return {
 		target,
 		targetIndex,
 		claimableIndex,
 		pendingAhead,
+		blockingAhead,
+		skippableAhead,
 		shouldAdvanceQueuedClaims:
 			pendingAhead > 0 || (target === undefined && claimableIndex !== undefined)
 	}

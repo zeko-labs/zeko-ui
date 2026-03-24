@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { Field, PublicKey, UInt32, UInt64 } from "o1js"
 import { Bridge } from "../src/index"
-import type { Config, Deposit, OuterAction, OuterCommit, OuterWitness } from "../src/types"
+import type {
+	Config,
+	Deposit,
+	OuterAction,
+	OuterCommit,
+	OuterWitness,
+	WitnessFetchResult
+} from "../src/types"
 import type { GqlClient } from "../src/graphql"
 import { depositAux } from "../src/utils"
 import * as utils from "../src/utils"
@@ -137,7 +144,8 @@ const mockDepositState = ({
 	lastCommit,
 	nextCancelledDeposit = 0,
 	nextDeposit = 0,
-	syncedLength = 0
+	syncedLength = 0,
+	syncedState = Field(9_999)
 }: {
 	bridge: Bridge
 	deposits: Deposit[]
@@ -147,6 +155,7 @@ const mockDepositState = ({
 	nextCancelledDeposit?: number
 	nextDeposit?: number
 	syncedLength?: number
+	syncedState?: Field
 }) => {
 	const bridgeInternals = bridge as unknown as {
 		fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
@@ -161,7 +170,7 @@ const mockDepositState = ({
 		.mockResolvedValueOnce({ zkappState: [String(nextCancelledDeposit)] })
 		.mockResolvedValueOnce({ zkappState: [String(nextDeposit)] })
 	vi.spyOn(bridgeInternals, "fetchSyncedOuterActionState").mockResolvedValue({
-		state: Field(9_999),
+		state: syncedState,
 		length: UInt32.from(syncedLength)
 	})
 	vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
@@ -322,5 +331,82 @@ describe("deposit cancellation state", () => {
 
 		expect(result.deposits[0]?.finalised).toBe(true)
 		expect(result.deposits[0]?.cancellable).toBe(false)
+	})
+
+	it("keeps the older required deposit as the finalization target", async () => {
+		const bridge = buildBridge()
+		const bridgeInternals = bridge as unknown as {
+			fetchDepositFinalizationWitnesses: (
+				pk: PublicKey
+			) => ReturnType<Bridge["canFinalizeDeposit"]> | Promise<unknown>
+		}
+		const firstDeposit = buildDeposit({ amount: 10, timeout: 20 })
+		const secondDeposit = buildDeposit({ amount: 12, timeout: 20 })
+		const firstWitness = buildDepositWitness(firstDeposit, 0, { lower: 0, upper: 1 })
+		const secondWitness = buildDepositWitness(secondDeposit, 1, { lower: 2, upper: 3 })
+		const lastCommit = buildCommit({ index: 2, lower: 4, upper: 4, synchronizedLength: 2 })
+
+		mockDepositState({
+			bridge,
+			deposits: [firstDeposit, secondDeposit],
+			depositWitnesses: [firstWitness, secondWitness],
+			outerActions: [firstWitness, secondWitness, lastCommit],
+			lastCommit,
+			syncedLength: 2,
+			syncedState: lastCommit.afterActionState
+		})
+
+		const result = (await bridgeInternals.fetchDepositFinalizationWitnesses(
+			recipient
+		)) as WitnessFetchResult<{
+			witness: { checkAccepted: { init: { depositIndex: string } } }
+		}>
+
+		expect(result.ok).toBe(true)
+		if (!result.ok) throw new Error("Expected a finalization witness")
+		expect(result.value.witness.checkAccepted.init.depositIndex).toBe("0")
+		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
+			available: true,
+			reason: null
+		})
+	})
+
+	it("skips older cancellable deposits when selecting the finalization target", async () => {
+		const bridge = buildBridge()
+		const bridgeInternals = bridge as unknown as {
+			fetchDepositFinalizationWitnesses: (
+				pk: PublicKey
+			) => ReturnType<Bridge["canFinalizeDeposit"]> | Promise<unknown>
+		}
+		const firstDeposit = buildDeposit({ amount: 10, timeout: 5 })
+		const secondDeposit = buildDeposit({ amount: 12, timeout: 8 })
+		const firstWitness = buildDepositWitness(firstDeposit, 0, { lower: 0, upper: 1 })
+		const secondWitness = buildDepositWitness(secondDeposit, 1, { lower: 2, upper: 3 })
+		const timeoutWitness = buildOuterWitness({ index: 2, lower: 6, upper: 6 })
+		const lastCommit = buildCommit({ index: 3, lower: 7, upper: 7, synchronizedLength: 2 })
+
+		mockDepositState({
+			bridge,
+			deposits: [firstDeposit, secondDeposit],
+			depositWitnesses: [firstWitness, secondWitness],
+			outerActions: [firstWitness, secondWitness, timeoutWitness, lastCommit],
+			lastCommit,
+			syncedLength: 2,
+			syncedState: lastCommit.afterActionState
+		})
+
+		const result = (await bridgeInternals.fetchDepositFinalizationWitnesses(
+			recipient
+		)) as WitnessFetchResult<{
+			witness: { checkAccepted: { init: { depositIndex: string } } }
+		}>
+
+		expect(result.ok).toBe(true)
+		if (!result.ok) throw new Error("Expected a finalization witness")
+		expect(result.value.witness.checkAccepted.init.depositIndex).toBe("1")
+		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
+			available: true,
+			reason: null
+		})
 	})
 })

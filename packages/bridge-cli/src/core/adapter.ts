@@ -238,6 +238,7 @@ export const createBridgeAdapter = ({
 					amount: nanominaToMinaString(item.amount.toBigInt()),
 					recipient: item.recipient.toBase58(),
 					cancelled: item.cancelled,
+					cancellable: item.cancellable,
 					synced: item.synced,
 					accepted: item.accepted,
 					confirmed: item.confirmed,

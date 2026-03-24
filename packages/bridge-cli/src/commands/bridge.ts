@@ -997,8 +997,15 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			session,
 			statuses: sortByIndex(depositStatusesResult.value)
 		})
-		const { target, targetIndex, claimableIndex, pendingAhead, shouldAdvanceQueuedClaims } =
-			analysis
+		const {
+			target,
+			targetIndex,
+			claimableIndex,
+			pendingAhead,
+			blockingAhead,
+			skippableAhead,
+			shouldAdvanceQueuedClaims
+		} = analysis
 
 		if (targetIndex !== undefined && session.targetIndex !== targetIndex) {
 			session = {
@@ -1050,7 +1057,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 				log: deps.log,
 				now,
 				tracker: waitTracker,
-				signature: `prior:${targetIndex ?? "unknown"}:${claimableIndex ?? "none"}:${pendingAhead}`,
+				signature: `prior:${targetIndex ?? "unknown"}:${claimableIndex ?? "none"}:${pendingAhead}:${blockingAhead}:${skippableAhead}`,
 				event: "waiting-on-prior-claims",
 				phaseEvent: "MARK_WAITING_PRIOR_CLAIMS",
 				patch: {
@@ -1060,6 +1067,8 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 				details: {
 					targetIndex,
 					pendingAhead,
+					blockingAhead,
+					skippableAhead,
 					claimIndex: claimableIndex
 				}
 			})
@@ -1174,7 +1183,8 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			canFinalizeDepositResult.value.available &&
 			claimableIndex !== undefined &&
 			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
-			(shouldAdvanceQueuedClaims || claimableIndex === target?.index) &&
+			skippableAhead === 0 &&
+			(target === undefined || blockingAhead > 0 || claimableIndex === target.index) &&
 			!shouldCancelCurrentTarget
 
 		if (shouldAdvanceClaim) {
@@ -1187,8 +1197,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 
 		const shouldAdvancePriorCancellation =
 			canCancelResult.value.available &&
-			shouldAdvanceQueuedClaims &&
-			(claimableIndex === undefined || !canFinalizeDepositResult.value.available) &&
+			skippableAhead > 0 &&
 			session.pendingCancelMarker !== priorCancelMarker
 
 		if (shouldAdvancePriorCancellation || shouldCancelCurrentTarget) {
@@ -1209,6 +1218,8 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 				? {
 						waiting: "prior-claims",
 						pendingAhead,
+						blockingAhead,
+						skippableAhead,
 						targetIndex,
 						claimIndex: claimableIndex,
 						finalizeAvailable: canFinalizeDepositResult.value.available,

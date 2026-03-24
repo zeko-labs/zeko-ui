@@ -69,6 +69,7 @@ type DepositParams = {
 
 type DepositStateContext = {
 	helperAccountL1: Account | null
+	helperAccountL2: Account | null
 	prevNextCancelledDeposit: UInt32
 	prevNextDeposit: UInt32
 	syncedOuterActionState: {
@@ -79,6 +80,7 @@ type DepositStateContext = {
 	lastCommitAse: Field[]
 	lastCommitIndex: number
 	synchronizedOuterActionStateIndex: number
+	currentSyncedOuterActionStateIndex: number
 	depositWitnesses: OuterWitness[]
 	depositsByAux: Map<bigint, DepositParams>
 	outerActions: OuterAction[]
@@ -396,159 +398,43 @@ export class Bridge {
 			witness: ExtractInput<typeof finalizeDepositMutation>
 		}>
 	> {
-		const helperAccountL1 = await this.fetchAccount(
-			this.l1Client,
-			pk,
-			TokenId.derive(this.outerTokenOwner)
-		)
+		const context = await this.fetchDepositStateContext(pk)
 
-		const prevNextCancelledDeposit = helperAccountL1
-			? getNextCancelledDepositIndex(helperAccountL1)
-			: UInt32.zero
-
-		const helperAccountL2 = await this.fetchAccount(
-			this.l2Client,
-			pk,
-			TokenId.derive(this.innerHolder)
-		)
-
-		const prevNextDeposit = helperAccountL2 ? getNextDepositIndex(helperAccountL2) : UInt32.zero
-
-		const minDepositIndex = prevNextDeposit.greaterThan(prevNextCancelledDeposit).toBoolean()
-			? prevNextDeposit
-			: prevNextCancelledDeposit
-
-		const deposits = (await this.fetchUserDeposits(pk)).map((deposit) => ({
-			deposit,
-			aux: depositAux(deposit)
-		}))
-
-		if (deposits.length === 0) {
+		if (context.depositsByAux.size === 0) {
 			return { ok: false, msg: "No deposits found" }
 		}
 
-		const depositWitnesses = await fetchOuterWitnessesFromAuxes(
-			this.actionsApiClient,
-			deposits.map(({ aux }) => aux.toString())
-		)
-
-		if (depositWitnesses.length === 0) {
+		if (context.depositWitnesses.length === 0) {
 			return { ok: false, msg: "No deposit witnesses found" }
 		}
 
-		const earliestBeforeState = depositWitnesses
-			.sort((a, b) => a.index - b.index)
-			.at(0)?.beforeActionState
+		const minDepositIndex = this.getMinResolvedDepositIndex(context)
 
-		if (earliestBeforeState === undefined) {
-			return { ok: false, msg: "No earliest before state found" }
-		}
-
-		const outerActions = await fetchOuterActionsFromIndexer(this.actionsApiClient, {
-			fromState: earliestBeforeState.toString()
-		})
-
-		const findMatchingDeposit = (action: OuterWitness) =>
-			deposits.find(({ aux }) => aux.equals(action.aux).toBoolean())
-
-		const myDepositIndex = outerActions.findIndex((action) => {
-			if (action.type === "commit") return false
-
-			const matchingDeposit = findMatchingDeposit(action)
-
-			if (!matchingDeposit) return false
-
-			if (minDepositIndex.greaterThan(UInt32.from(action.index)).toBoolean()) return false
-
-			return true
-		})
-
-		if (myDepositIndex === -1) {
-			return { ok: false, msg: "No my deposit index found" }
-		}
-
-		const myDeposit = outerActions[myDepositIndex] as OuterWitness
-
-		const depositParams = findMatchingDeposit(myDeposit)
-		if (!depositParams) throw new Error("Unreachable: Did not find deposit parameters")
-
-		const { isRejected, isAccepted } = checkAccepted(
-			outerActions,
-			UInt32.from(myDeposit.index),
-			depositParams.deposit
-		)
-
-		if (isRejected || !isAccepted) {
-			return { ok: false, msg: "Not rejected or accepted" }
-		}
-
-		const nextCommitIndex = outerActions.findIndex((action) => {
-			if (action.type !== "commit") return false
-
+		for (const witness of this.getSortedDepositWitnesses(context)) {
 			if (
-				action.synchronizedOuterActionStateLength
-					.lessThanOrEqual(UInt32.from(myDeposit.index))
-					.toBoolean()
-			)
-				return false
+				this.isDepositCancelled(context, witness) ||
+				this.isDepositFinalised(context, witness) ||
+				minDepositIndex.greaterThan(UInt32.from(witness.index)).toBoolean()
+			) {
+				continue
+			}
 
-			return true
-		})
+			if (this.buildDepositCancellationWitnessInput(context, witness) !== null) {
+				continue
+			}
 
-		if (nextCommitIndex === -1) {
-			return { ok: false, msg: "No next commit index found" }
-		}
-
-		const nextCommit = outerActions[nextCommitIndex] as OuterCommit
-
-		const syncedOuterActionState = await this.fetchSyncedOuterActionState()
-
-		const syncedOuterActionStateIndex = outerActions.findIndex(({ afterActionState }) =>
-			afterActionState.equals(syncedOuterActionState.state).toBoolean()
-		)
-
-		if (syncedOuterActionStateIndex === -1 || syncedOuterActionStateIndex < nextCommitIndex) {
-			return { ok: false, msg: "No synced outer action state index found" }
-		}
-
-		const aseElems = outerActions
-			.slice(nextCommitIndex + 1, syncedOuterActionStateIndex + 1)
-			.map(({ action }) => fromList([action]).hash)
-
-		return {
-			ok: true,
-			value: {
-				aseTarget: syncedOuterActionState,
-				depositParams,
-				helperAccount: helperAccountL2,
-				witness: {
-					prevNextDeposit: prevNextDeposit.toString(),
-					checkAccepted: {
-						elems: outerActions
-							.slice(myDepositIndex, nextCommitIndex + 1)
-							.map(({ action }) => ({ actions: action.map((a) => a.toString()) })),
-						init: {
-							depositIndex: myDeposit.index.toString(),
-							orignalActionState: myDeposit.beforeActionState.toString(),
-							params: {
-								amount: depositParams.deposit.amount.toString(),
-								recipient: depositParams.deposit.recipient.toBase58(),
-								holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
-								timeout: +depositParams.deposit.timeout,
-								children: "[]"
-							}
-						}
-					},
-					ase: {
-						stmt: {
-							length: syncedOuterActionState.length.sub(aseElems.length).toString(),
-							actionState: nextCommit.afterActionState.toString()
-						},
-						fields: aseElems.map((elem) => elem.toString())
-					}
+			const finalizationWitness = this.buildDepositFinalizationWitnessValue(context, witness)
+			if (finalizationWitness) {
+				return {
+					ok: true,
+					value: finalizationWitness
 				}
 			}
+
+			return { ok: false, msg: "Earlier deposit must be resolved first" }
 		}
+
+		return { ok: false, msg: "No finalizable deposit found" }
 	}
 
 	public async finalizeDeposit(
@@ -678,6 +564,7 @@ export class Bridge {
 
 		return {
 			helperAccountL1,
+			helperAccountL2,
 			prevNextCancelledDeposit,
 			prevNextDeposit,
 			syncedOuterActionState,
@@ -687,9 +574,144 @@ export class Bridge {
 			synchronizedOuterActionStateIndex: outerActions.findIndex(({ index }) =>
 				lastCommit.synchronizedOuterActionStateLength.equals(UInt32.from(index + 1)).toBoolean()
 			),
+			currentSyncedOuterActionStateIndex: outerActions.findIndex(({ afterActionState }) =>
+				afterActionState.equals(syncedOuterActionState.state).toBoolean()
+			),
 			depositWitnesses,
 			depositsByAux,
 			outerActions
+		}
+	}
+
+	private getSortedDepositWitnesses(context: DepositStateContext): OuterWitness[] {
+		return [...context.depositWitnesses].sort((left, right) => left.index - right.index)
+	}
+
+	private getDepositParamsForWitness(
+		context: DepositStateContext,
+		witness: OuterWitness
+	): DepositParams {
+		const depositParams = context.depositsByAux.get(witness.aux.toBigInt())
+		if (!depositParams) throw new Error("Unreachable: Did not find deposit")
+		return depositParams
+	}
+
+	private isDepositCancelled(context: DepositStateContext, witness: OuterWitness): boolean {
+		return context.prevNextCancelledDeposit.greaterThan(UInt32.from(witness.index)).toBoolean()
+	}
+
+	private isDepositFinalised(context: DepositStateContext, witness: OuterWitness): boolean {
+		return context.prevNextDeposit.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean()
+	}
+
+	private getMinResolvedDepositIndex(context: DepositStateContext): UInt32 {
+		return context.prevNextDeposit.greaterThan(context.prevNextCancelledDeposit).toBoolean()
+			? context.prevNextDeposit
+			: context.prevNextCancelledDeposit
+	}
+
+	private buildDepositFinalizationWitnessValue(
+		context: DepositStateContext,
+		witness: OuterWitness
+	): {
+		aseTarget: {
+			state: Field
+			length: UInt32
+		}
+		depositParams: {
+			deposit: Deposit
+			aux: Field
+		}
+		helperAccount: Account | null
+		witness: ExtractInput<typeof finalizeDepositMutation>
+	} | null {
+		const depositParams = this.getDepositParamsForWitness(context, witness)
+		const minDepositIndex = this.getMinResolvedDepositIndex(context)
+
+		if (this.isDepositCancelled(context, witness) || this.isDepositFinalised(context, witness)) {
+			return null
+		}
+
+		if (minDepositIndex.greaterThan(UInt32.from(witness.index)).toBoolean()) {
+			return null
+		}
+
+		const depositActionIndex = context.outerActions.findIndex(
+			(action) =>
+				action.type === "witness" &&
+				action.index === witness.index &&
+				action.aux.equals(witness.aux).toBoolean()
+		)
+
+		if (depositActionIndex === -1) {
+			return null
+		}
+
+		const { isRejected, isAccepted } = checkAccepted(
+			context.outerActions,
+			UInt32.from(witness.index),
+			depositParams.deposit
+		)
+
+		if (isRejected || !isAccepted) {
+			return null
+		}
+
+		const nextCommitIndex = context.outerActions.findIndex(
+			(action, index) =>
+				index > depositActionIndex &&
+				action.type === "commit" &&
+				action.synchronizedOuterActionStateLength
+					.greaterThan(UInt32.from(witness.index))
+					.toBoolean()
+		)
+
+		if (nextCommitIndex === -1) {
+			return null
+		}
+
+		if (
+			context.currentSyncedOuterActionStateIndex === -1 ||
+			context.currentSyncedOuterActionStateIndex < nextCommitIndex
+		) {
+			return null
+		}
+
+		const nextCommit = context.outerActions[nextCommitIndex] as OuterCommit
+		const aseElems = context.outerActions
+			.slice(nextCommitIndex + 1, context.currentSyncedOuterActionStateIndex + 1)
+			.map(({ action }) => fromList([action]).hash)
+
+		return {
+			aseTarget: context.syncedOuterActionState,
+			depositParams,
+			helperAccount: context.helperAccountL2,
+			witness: {
+				prevNextDeposit: context.prevNextDeposit.toString(),
+				checkAccepted: {
+					elems: context.outerActions
+						.slice(depositActionIndex, nextCommitIndex + 1)
+						.map(({ action }) => ({ actions: action.map((field) => field.toString()) })),
+					init: {
+						depositIndex: witness.index.toString(),
+						orignalActionState: witness.beforeActionState.toString(),
+						params: {
+							amount: depositParams.deposit.amount.toString(),
+							recipient: depositParams.deposit.recipient.toBase58(),
+							holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
+							timeout: +depositParams.deposit.timeout,
+							children: "[]"
+						}
+					}
+				},
+				ase: {
+					stmt: {
+						length: context.syncedOuterActionState.length.sub(aseElems.length).toString(),
+						actionState: nextCommit.afterActionState.toString()
+					},
+					fields: aseElems.map((elem) => elem.toString())
+				}
+			}
 		}
 	}
 
@@ -697,12 +719,9 @@ export class Bridge {
 		context: DepositStateContext,
 		witness: OuterWitness
 	): DepositWithState {
-		const depositParams = context.depositsByAux.get(witness.aux.toBigInt())
-		if (!depositParams) throw new Error("Unreachable: Did not find deposit")
+		const depositParams = this.getDepositParamsForWitness(context, witness)
 
-		const cancelled = context.prevNextCancelledDeposit
-			.greaterThan(UInt32.from(witness.index))
-			.toBoolean()
+		const cancelled = this.isDepositCancelled(context, witness)
 		const synced = context.syncedOuterActionState.length
 			.greaterThanOrEqual(UInt32.from(witness.index + 1))
 			.toBoolean()
@@ -710,9 +729,7 @@ export class Bridge {
 		const confirmed = context.lastCommit.synchronizedOuterActionStateLength
 			.greaterThanOrEqual(UInt32.from(witness.index + 1))
 			.toBoolean()
-		const finalised = context.prevNextDeposit
-			.greaterThanOrEqual(UInt32.from(witness.index + 1))
-			.toBoolean()
+		const finalised = this.isDepositFinalised(context, witness)
 
 		return {
 			...witness,
@@ -730,23 +747,14 @@ export class Bridge {
 		context: DepositStateContext,
 		witness: OuterWitness
 	): Omit<ExtractInput<typeof cancelDepositMutation>, "publicKey"> | null {
-		const depositParams = context.depositsByAux.get(witness.aux.toBigInt())
-		if (!depositParams) throw new Error("Unreachable: Did not find deposit")
+		const depositParams = this.getDepositParamsForWitness(context, witness)
 
-		const cancelled = context.prevNextCancelledDeposit
-			.greaterThan(UInt32.from(witness.index))
-			.toBoolean()
-		const finalised = context.prevNextDeposit
-			.greaterThanOrEqual(UInt32.from(witness.index + 1))
-			.toBoolean()
+		const cancelled = this.isDepositCancelled(context, witness)
+		const finalised = this.isDepositFinalised(context, witness)
 
 		if (cancelled || finalised) return null
 
-		const minDepositIndex = context.prevNextDeposit
-			.greaterThan(context.prevNextCancelledDeposit)
-			.toBoolean()
-			? context.prevNextDeposit
-			: context.prevNextCancelledDeposit
+		const minDepositIndex = this.getMinResolvedDepositIndex(context)
 
 		if (minDepositIndex.greaterThan(UInt32.from(witness.index)).toBoolean()) return null
 
@@ -840,11 +848,10 @@ export class Bridge {
 			return { ok: false, msg: "No deposit witnesses found" }
 		}
 
-		const sortedWitnesses = [...context.depositWitnesses].sort((a, b) => a.index - b.index)
+		const sortedWitnesses = this.getSortedDepositWitnesses(context)
 
 		for (const witness of sortedWitnesses) {
-			const depositParams = context.depositsByAux.get(witness.aux.toBigInt())
-			if (!depositParams) throw new Error("Unreachable: Did not find deposit parameters")
+			const depositParams = this.getDepositParamsForWitness(context, witness)
 
 			const witnessInput = this.buildDepositCancellationWitnessInput(context, witness)
 			if (!witnessInput) continue
@@ -1230,7 +1237,7 @@ export class Bridge {
 		const context = await this.fetchDepositStateContext(pk)
 
 		return {
-			deposits: context.depositWitnesses.map((witness) =>
+			deposits: this.getSortedDepositWitnesses(context).map((witness) =>
 				this.buildDepositWithState(context, witness)
 			),
 			syncedIndex: +safeDecrement(context.syncedOuterActionState.length).toString(),
