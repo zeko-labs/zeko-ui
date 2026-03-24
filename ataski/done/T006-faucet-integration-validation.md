@@ -15,7 +15,7 @@ pipeline after the implementation tasks land.
 
 - `moon faucet:type-cf` passed and regenerated `apps/faucet/worker-configuration.d.ts`
 - `pnpm exec tsc --noEmit -p apps/faucet/tsconfig.json` passed
-- `moon faucet-ui:build -u` passed
+- `moon run faucet-ui:build -f` passed
 - `pnpm install --no-lockfile --ignore-scripts` was required in the main worktree to
   provision the new `packages/faucet-cli` dependencies without touching the lockfile
 - `moon faucet-cli:build` passed after the local install

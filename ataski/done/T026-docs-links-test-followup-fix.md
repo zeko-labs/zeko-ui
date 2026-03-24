@@ -15,7 +15,7 @@ validate the docs test again.
 
 ## RED evidence
 
-`CI=true moon docs:test -u` -> fails because
+`CI=true moon run docs:test -f` -> fails because
 `tests/check-links.test.ts` hits Vitest's default 5000ms timeout while running
 the CI-only external link check.
 
@@ -28,4 +28,4 @@ the CI-only external link check.
 
 ## GREEN evidence
 
-`CI=true moon docs:test -u` -> passes (`1 test`, `1 passed`).
+`CI=true moon run docs:test -f` -> passes (`1 test`, `1 passed`).

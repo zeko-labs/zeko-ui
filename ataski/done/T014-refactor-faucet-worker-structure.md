@@ -21,5 +21,5 @@ This task is a behavior-preserving structural refactor. Instead of introducing n
 ## GREEN Evidence
 
 - `packages/faucet-cli/node_modules/.bin/vitest run apps/faucet/test/worker.test.ts packages/faucet-cli/test/api.test.ts --coverage=false`
-- `moon -u faucet:typecheck`
+- `moon run faucet:typecheck -f`
 - `pnpm exec biome check --formatter-enabled=false apps/faucet/worker.ts apps/faucet/worker/**/*.ts`

@@ -1,0 +1,78 @@
+[
+	{
+		"id": "bridge-sdk-config",
+		"prompt": "Which endpoints should I pass to the Zeko Bridge SDK from an agent context?",
+		"expectedReferences": ["40-endpoints-and-curl.md"],
+		"expectedFragments": [
+			"https://gateway.mina.devnet.zeko.io",
+			"https://gateway.mina.archive.devnet.zeko.io",
+			"https://testnet.zeko.io/graphql",
+			"https://archive.testnet.zeko.io/graphql",
+			"https://api.actions.zeko.io/graphql"
+		]
+	},
+	{
+		"id": "bridge-cli",
+		"prompt": "I want an unattended agent-friendly way to bridge between Mina testnet and Zeko testnet with a local private key. Should I use the bridge CLI, and how?",
+		"expectedReferences": ["30-bridge-and-faucet.md"],
+		"expectedFragments": [
+			"WALLET_PRIVATE_KEY",
+			"zeko-bridge bridge",
+			"--from mina:testnet",
+			"--to zeko:testnet",
+			"--json"
+		]
+	},
+	{
+		"id": "faucet-json",
+		"prompt": "How should an agent get testnet funds and use the faucet in JSON mode?",
+		"expectedReferences": ["30-bridge-and-faucet.md"],
+		"expectedFragments": [
+			"GITHUB_TOKEN",
+			"--json",
+			"zeko-testnet",
+			"https://docs.zeko.io/developers/guides/faucet-cli"
+		]
+	},
+	{
+		"id": "browser-wallet",
+		"prompt": "Should I use Auro Wallet here?",
+		"expectedReferences": ["10-agent-workflows.md", "20-user-flows.md"],
+		"expectedFragments": ["browser", "Auro Wallet", "extension"]
+	},
+	{
+		"id": "build-paths",
+		"prompt": "Can I build on Zeko with o1js or directly with OCaml?",
+		"expectedReferences": ["50-build-on-zeko.md"],
+		"expectedFragments": [
+			"o1js",
+			"OCaml",
+			"https://github.com/zeko-labs/zeko",
+			"https://docs.zeko.io/developers/guides/custom-network"
+		]
+	},
+	{
+		"id": "sequencer-and-archive",
+		"prompt": "What do the sequencer and archive node do on Zeko, and what queries can I run against them?",
+		"expectedReferences": ["40-endpoints-and-curl.md", "60-sequencer-archive-and-da.md"],
+		"expectedFragments": ["sequencer", "archive node", "curl", "sequencerPk", "events"]
+	},
+	{
+		"id": "send-mina",
+		"prompt": "How do I send 1.25 MINA from one address to another, and what amount value should I pass in the request?",
+		"expectedReferences": ["20-user-flows.md", "40-endpoints-and-curl.md"],
+		"expectedFragments": ["sendPayment", "1_000_000_000", "from", "to", "amount", "signature"]
+	},
+	{
+		"id": "inline-o1js",
+		"prompt": "I have o1js installed locally. Can I use an inline Node script to inspect a Zeko account or convert amounts?",
+		"expectedReferences": ["50-build-on-zeko.md", "40-endpoints-and-curl.md"],
+		"expectedFragments": [
+			"node --input-type=module",
+			"from \"o1js\"",
+			"installed in the current directory",
+			"Mina.Network",
+			"UInt64"
+		]
+	}
+]

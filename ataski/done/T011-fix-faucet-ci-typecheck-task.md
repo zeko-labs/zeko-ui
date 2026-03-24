@@ -18,5 +18,5 @@ Fix the faucet `moon` typecheck task so it runs reliably in CI without depending
 
 ## GREEN Evidence
 
-- `moon -u faucet:typecheck` passed with `tsc --noEmit -p test/tsconfig.json`
-- `PATH="/usr/bin:/bin" /Users/hebilicious/.proto/tools/moon/1.41.6/moon -u faucet:typecheck` passed, confirming the task no longer depends on `pnpm` being on `PATH`
+- `moon run faucet:typecheck -f` passed with `tsc --noEmit -p test/tsconfig.json`
+- `PATH="/usr/bin:/bin" /Users/hebilicious/.proto/tools/moon/1.41.6/moon run faucet:typecheck -f` passed, confirming the task no longer depends on `pnpm` being on `PATH`

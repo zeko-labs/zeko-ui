@@ -14,9 +14,9 @@ Reproduce the faucet `moon typecheck` failure from the repo root, identify the a
 
 - No current `moon` failure was reproducible for the faucet project.
 - `moon faucet:typecheck` passed from cache.
-- `moon -u faucet:typecheck` passed after rerunning the task.
+- `moon run faucet:typecheck -f` passed after rerunning the task.
 
 ## Validation
 
 - `moon faucet:typecheck` passed
-- `moon -u faucet:typecheck` passed
+- `moon run faucet:typecheck -f` passed

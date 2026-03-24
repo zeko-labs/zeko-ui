@@ -815,7 +815,7 @@ sequenceDiagram
 ### Development Workflow
 
 - **CRITICAL**: Always run Moon commands from repository root, never from project directories
-- Moon caching is aggressive; use `-u` flag to disable: `moon -u project:task`
+- Moon caching is aggressive; use `-f` flag to disable: `moon run project:task -f`
 - GraphQL schemas must be manually updated: `moon graphql:schema-get`
 - Bun required for running indexer services
 - Both Node and Bun are installed and used in different contexts

@@ -17,4 +17,4 @@ Config/packaging only. No runtime behavior changes.
 - 6 platform package.json files created in npm/{darwin-arm64,darwin-x64,linux-x64,linux-arm64,win32-x64,win32-arm64}/
 - Updated bin/zeko-faucet.js to platform-aware shim with TS fallback
 - Updated package.json with optionalDependencies
-- `moon faucet-cli:test -u` — all 42 tests pass (TS fallback works correctly)
+- `moon run faucet-cli:test -f` — all 42 tests pass (TS fallback works correctly)

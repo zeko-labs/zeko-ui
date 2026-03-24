@@ -2,12 +2,19 @@ name: Release Bridge SDK
 
 on:
   workflow_call:
+    outputs:
+      should_release:
+        description: Whether bridge-sdk should release in this run
+        value: ${{ jobs.version-check.outputs.should_release }}
+      version:
+        description: bridge-sdk package version for this run
+        value: ${{ jobs.version-check.outputs.version }}
   workflow_dispatch:
 
 jobs:
   version-check:
     name: Check bridge-sdk version
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
       version: ${{ steps.check.outputs.version }}
@@ -29,7 +36,7 @@ jobs:
   publish:
     needs: version-check
     if: needs.version-check.outputs.should_release == 'true'
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
     name: Publish to npm
     permissions:
       contents: read

@@ -33,7 +33,7 @@ Use `node:child_process` `execFile` to spawn `node bin/zeko-faucet.js`.
 
 ## RED Evidence
 
-`moon faucet-cli:test -u` — 4 of 9 integration tests failed (help/version tests):
+`moon run faucet-cli:test -f` — 4 of 9 integration tests failed (help/version tests):
 
 - `--help exits 0 and lists both subcommands` → expected '' to contain 'claim'
 - `--version exits 0` → expected '' to match version regex
@@ -43,7 +43,7 @@ Use `node:child_process` `execFile` to spawn `node bin/zeko-faucet.js`.
 
 ## GREEN Evidence
 
-`moon faucet-cli:test -u` — All 42 tests pass (5 files):
+`moon run faucet-cli:test -f` — All 42 tests pass (5 files):
 
 - test/integration.test.ts: 9 tests passed
 - test/api.test.ts: 14 passed

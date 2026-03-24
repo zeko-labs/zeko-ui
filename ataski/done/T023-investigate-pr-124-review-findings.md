@@ -31,6 +31,6 @@ Reported issues not reproduced:
 
 ## GREEN Evidence
 
-- `moon faucet:typecheck -u` passed.
-- `moon faucet:test -u` passed (`21` tests).
-- `moon faucet-cli:test -u` passed (`10` tests).
+- `moon run faucet:typecheck -f` passed.
+- `moon run faucet:test -f` passed (`21` tests).
+- `moon run faucet-cli:test -f` passed (`10` tests).

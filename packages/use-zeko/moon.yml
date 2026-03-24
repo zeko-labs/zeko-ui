@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=../../.moon/cache/schemas/project.json
+
+layer: tool
+
+fileGroups:
+  skill:
+    - README.md
+    - zeko/**/*
+    - src/**/*
+    - evals/**/*
+    - tests/**/*
+    - package.json
+    - tsconfig.json
+    - tsconfig.build.json
+    - vitest.config.ts
+    - moon.yml
+
+tasks:
+  build:
+    command: tsc -p tsconfig.build.json
+    inputs:
+      - "@group(skill)"
+    outputs:
+      - dist/**/*
+  test:
+    command: vitest run
+    inputs:
+      - "@group(skill)"
+  typecheck:
+    command: tsc --noEmit
+    inputs:
+      - "@group(skill)"
+  validate:
+    command: node dist/cli.js validate
+    deps:
+      - build
+    inputs:
+      - "@group(skill)"
+  eval-opencode:
+    command: node dist/cli.js eval-opencode
+    deps:
+      - build
+    inputs:
+      - "@group(skill)"
+  check:
+    command: node dist/cli.js check
+    deps:
+      - build
+      - test
+    inputs:
+      - "@group(skill)"
+    options:
+      runInCI: true
