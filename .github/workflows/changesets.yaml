@@ -74,6 +74,26 @@ jobs:
     uses: ./.github/workflows/release-bridge-cli.yaml
     secrets: inherit
 
+  sync-bridge-cli:
+    name: Sync Bridge CLI Mirror
+    needs: [release, release-bridge-cli]
+    if: needs.release.outputs.hasChangesets == 'false' && needs.release-bridge-cli.outputs.should_release == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/sync-bridge-cli.yaml
+    secrets: inherit
+
+  github-release-bridge-cli:
+    name: GitHub Release Bridge CLI
+    needs: [release, release-bridge-cli, sync-bridge-cli]
+    if: needs.release.outputs.hasChangesets == 'false' && needs.release-bridge-cli.outputs.should_release == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/github-release-bridge-cli.yaml
+    with:
+      version: ${{ needs.release-bridge-cli.outputs.version }}
+    secrets: inherit
+
   release-graphql:
     name: Release GraphQL
     needs: release
@@ -97,7 +117,7 @@ jobs:
   sync-graphql:
     name: Sync GraphQL Mirror
     needs: [release, release-graphql]
-    if: needs.release.outputs.hasChangesets == 'false'
+    if: needs.release.outputs.hasChangesets == 'false' && needs.release-graphql.outputs.should_release == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/sync-graphql.yaml
@@ -106,7 +126,7 @@ jobs:
   sync-bridge-sdk:
     name: Sync Bridge SDK Mirror
     needs: [release, release-bridge-sdk]
-    if: needs.release.outputs.hasChangesets == 'false'
+    if: needs.release.outputs.hasChangesets == 'false' && needs.release-bridge-sdk.outputs.should_release == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/sync-bridge-sdk.yaml

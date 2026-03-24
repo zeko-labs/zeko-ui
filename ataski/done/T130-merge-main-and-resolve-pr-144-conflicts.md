@@ -29,7 +29,7 @@ updated_at: 2026-03-24T12:00:26Z
 
 - Resolved the merge by keeping upstream `T112` through `T115` and renumbering the conflicting local `use-zeko` tasks to `T131` through `T134`.
 - Updated dependent board references:
-  - `T116` and `T117` now depend on `T134`
+  - the `use-zeko` validation and mirror-sync tasks now point at the renamed content task (`T134`)
   - `T124`'s evidence text now reflects the current renamed task range
 - Re-ran the package verification from the repo root:
   - `moon run -f use-zeko:test`

@@ -33,7 +33,16 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          set -euo pipefail
           VERSION="${{ inputs.version }}"
+          if gh release view "v${VERSION}" --repo zeko-labs/bridge-cli >/dev/null 2>&1; then
+            echo "v${VERSION} already exists on zeko-labs/bridge-cli; uploading assets and skipping create."
+            gh release upload "v${VERSION}" release/* \
+              --repo zeko-labs/bridge-cli \
+              --clobber
+            exit 0
+          fi
+
           gh release create "v${VERSION}" release/* \
             --repo zeko-labs/bridge-cli \
             --target main \

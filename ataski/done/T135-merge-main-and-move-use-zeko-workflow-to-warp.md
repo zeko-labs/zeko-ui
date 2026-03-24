@@ -1,11 +1,11 @@
 ---
 id: T135
 title: "Merge main and move use-zeko workflow to Warp runners"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-24T12:09:05Z
-updated_at: 2026-03-24T12:09:05Z
+updated_at: 2026-03-24T12:11:30Z
 ---
 
 ## Requirements
@@ -21,4 +21,15 @@ updated_at: 2026-03-24T12:09:05Z
 
 ## RED Evidence
 
+- `gh pr view 144 --json mergeStateStatus` returned `DIRTY`.
+- `git merge origin/main` reproduced the conflict locally in `ataski/tasks.md`.
+- The conflict came from another upstream Ataski ID reuse wave: `origin/main` had added unrelated `T116` and `T117` tasks while this branch still used those IDs for `use-zeko`.
+- `.github/workflows/use-zeko-skill.yaml` was still on `ubuntu-latest` while the repo had otherwise moved release and CI workflows onto Warp runners.
+
 ## GREEN Evidence
+
+- Kept upstream `T116` and `T117` and renumbered the colliding `use-zeko` tasks to `T136` and `T137`.
+- Updated the dedicated skill workflow to `runs-on: warp-ubuntu-latest-x64-2x`.
+- Re-ran the package verification from the repo root:
+  - `moon run -f use-zeko:test`
+  - `moon run -f use-zeko:check`

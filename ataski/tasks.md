@@ -99,8 +99,8 @@
 - T113 | done | restore-bridge-cli-release-artifact-and-document-github-release-coupling | done/T113-restore-bridge-cli-release-artifact-and-document-gh-release.md
 - T114 | done | fix-bridge-cli-release-retry-and-sync-ordering | done/T114-fix-bridge-cli-release-retry-and-sync-ordering.md
 - T115 | done | switch-gha-workflows-to-warpbuild-runners | done/T115-switch-gha-workflows-to-warpbuild-runners.md
-- T116 | done | add-use-zeko-validation-evals-and-ci | done/T116-add-use-zeko-validation-evals-and-ci.md
-- T117 | done | add-use-zeko-public-mirror-sync | done/T117-add-use-zeko-public-mirror-sync.md
+- T116 | done | unify-bridge-cli-release-topology-and-github-release-retries | done/T116-unify-bridge-cli-release-topology-and-gh-release-retries.md
+- T117 | done | normalize-simple-package-release-gating | done/T117-normalize-simple-package-release-gating.md
 - T118 | done | simplify-use-zeko-skill-for-installed-agent-context | done/T118-simplify-use-zeko-skill-for-installed-agent-context.md
 - T119 | done | expand-and-restructure-zeko-skill | done/T119-expand-and-restructure-zeko-skill.md
 - T120 | done | enforce-progressive-discovery-in-zeko-skill | done/T120-enforce-progressive-discovery-in-zeko-skill.md
@@ -118,4 +118,6 @@
 - T132 | done | replace-stale-moon-cache-bypass-flag-references | done/T132-replace-stale-moon-cache-bypass-flag-references.md
 - T133 | done | fix-use-zeko-workflow-force-flag-order | done/T133-fix-use-zeko-workflow-force-flag-order.md
 - T134 | done | create-use-zeko-skill-content | done/T134-create-use-zeko-skill-content.md
-- T135 | in-progress | merge-main-and-move-use-zeko-workflow-to-warp | in-progress/T135-merge-main-and-move-use-zeko-workflow-to-warp.md
+- T135 | done | merge-main-and-move-use-zeko-workflow-to-warp | done/T135-merge-main-and-move-use-zeko-workflow-to-warp.md
+- T136 | done | add-use-zeko-validation-evals-and-ci | done/T136-add-use-zeko-validation-evals-and-ci.md
+- T137 | done | add-use-zeko-public-mirror-sync | done/T137-add-use-zeko-public-mirror-sync.md

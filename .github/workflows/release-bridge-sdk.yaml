@@ -2,6 +2,13 @@ name: Release Bridge SDK
 
 on:
   workflow_call:
+    outputs:
+      should_release:
+        description: Whether bridge-sdk should release in this run
+        value: ${{ jobs.version-check.outputs.should_release }}
+      version:
+        description: bridge-sdk package version for this run
+        value: ${{ jobs.version-check.outputs.version }}
   workflow_dispatch:
 
 jobs:

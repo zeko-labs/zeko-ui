@@ -2,6 +2,13 @@ name: Release Bridge CLI
 
 on:
   workflow_call:
+    outputs:
+      should_release:
+        description: Whether bridge-cli should release in this run
+        value: ${{ jobs.version-check.outputs.should_release }}
+      version:
+        description: bridge-cli package version for this run
+        value: ${{ jobs.version-check.outputs.version }}
   workflow_dispatch:
 
 jobs:
@@ -85,15 +92,3 @@ jobs:
           fi
 
           npm publish "zeko-labs-bridge-cli-${VERSION}.tgz" --access public --loglevel verbose
-
-  github-release:
-    needs: [version-check, publish, sync]
-    uses: ./.github/workflows/github-release-bridge-cli.yaml
-    with:
-      version: ${{ needs.version-check.outputs.version }}
-    secrets: inherit
-
-  sync:
-    needs: [version-check, publish]
-    uses: ./.github/workflows/sync-bridge-cli.yaml
-    secrets: inherit
