@@ -52,6 +52,32 @@ if [ -n "$PUBLISHED" ]; then echo "Skipping"; continue; fi
 npm publish ...
 ```
 
+### GitHub releases may depend on the packaged tarball artifact
+
+Trusted publishing only covers npm authentication. Some package workflows also have a downstream GitHub release job that attaches the packed tarball to a release in another repo. If a downstream workflow uses `actions/download-artifact`, standardizing the npm publish flow must preserve that artifact producer or intentionally replace the contract.
+
+For example, if `release-<name>.yaml` packs a tarball that `github-release-<name>.yaml` later downloads, keep an `actions/upload-artifact@v4` step after `pnpm pack`:
+
+```yaml
+- name: Pack package
+  id: pack
+  working-directory: packages/<name>
+  run: |
+    set -euo pipefail
+    rm -f ./*.tgz
+    pnpm pack
+    TARBALL=$(find . -maxdepth 1 -name '*.tgz' -print -quit)
+    echo "tarball=${TARBALL#./}" >> "$GITHUB_OUTPUT"
+
+- uses: actions/upload-artifact@v4
+  with:
+    name: <name>-package
+    path: packages/<name>/${{ steps.pack.outputs.tarball }}
+    retention-days: 1
+```
+
+If you remove the upload without updating the GitHub release workflow, `actions/download-artifact` will fail with `Artifact not found` even though npm publish itself is correct.
+
 ## Architecture
 
 ```

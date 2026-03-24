@@ -49,8 +49,24 @@ jobs:
         run: pnpm exec moon run bridge-cli:build
 
       - name: Pack package
+        id: pack
         working-directory: packages/bridge-cli
-        run: pnpm pack
+        run: |
+          set -euo pipefail
+          rm -f ./*.tgz
+          pnpm pack
+          TARBALL=$(find . -maxdepth 1 -name '*.tgz' -print -quit)
+          if [ -z "$TARBALL" ]; then
+            echo "::error::Expected pnpm pack to create a tarball."
+            exit 1
+          fi
+          echo "tarball=${TARBALL#./}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bridge-cli-package
+          path: packages/bridge-cli/${{ steps.pack.outputs.tarball }}
+          retention-days: 1
 
       - name: Configure npm registry
         run: |
