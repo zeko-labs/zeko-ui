@@ -20,6 +20,7 @@ describe("use-zeko validation tooling", () => {
 		expect(moon).toContain("  validate:")
 		expect(moon).toContain("  eval:")
 		expect(moon).toContain("  check:")
+		expect(moon).toContain("      runInCI: true")
 		expect(moon).not.toContain("  sync-sources:")
 	})
 

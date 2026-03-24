@@ -108,3 +108,4 @@
 - T122 | done | add-inline-o1js-node-script-guidance | done/T122-add-inline-o1js-node-script-guidance.md
 - T123 | done | add-key-conversion-example-and-boundary | done/T123-add-key-conversion-example-and-boundary.md
 - T124 | done | fix-duplicated-ataski-task-ids-for-use-zeko | done/T124-fix-duplicated-ataski-task-ids-for-use-zeko.md
+- T125 | done | fix-use-zeko-ci-project-discovery | done/T125-fix-use-zeko-ci-project-discovery.md

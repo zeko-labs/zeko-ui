@@ -49,3 +49,5 @@ tasks:
       - test
     inputs:
       - "@group(skill)"
+    options:
+      runInCI: true
