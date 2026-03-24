@@ -1,3 +1,4 @@
+import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -91,3 +92,13 @@ export const forbiddenMarkdownPatterns = [
 	/\/Users\//g
 ]
 export const skippedExternalLinkChecks = new Set<string>()
+
+export type EvalCase = {
+	id: string
+	prompt: string
+	expectedReferences: string[]
+	expectedFragments: string[]
+}
+
+const evalPromptPath = path.join(packageRoot, "evals", "prompts.json")
+export const evalCases = JSON.parse(fs.readFileSync(evalPromptPath, "utf8")) as EvalCase[]

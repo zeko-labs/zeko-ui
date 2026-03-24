@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { runCheck, runValidation } from "./index.js"
+import { runCheck, runOpencodeEvals, runValidation } from "./index.js"
 
 const command = process.argv[2] ?? "check"
 
@@ -13,6 +13,10 @@ const run = async () => {
 		case "check":
 			await runCheck()
 			console.log("use-zeko check passed")
+			return
+		case "eval-opencode":
+			await runOpencodeEvals()
+			console.log("use-zeko opencode evals passed")
 			return
 		default:
 			throw new Error(`Unknown command: ${command}`)

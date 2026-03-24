@@ -15,10 +15,11 @@ describe("use-zeko validation tooling", () => {
 		expect(fs.existsSync(path.join(packageRoot, "evals", "prompts.json"))).toBe(true)
 	})
 
-	it("declares validate and check moon tasks", () => {
+	it("declares validate, manual opencode eval, and check moon tasks", () => {
 		const moon = fs.readFileSync(path.join(packageRoot, "moon.yml"), "utf8")
 
 		expect(moon).toContain("  validate:")
+		expect(moon).toContain("  eval-opencode:")
 		expect(moon).toContain("  check:")
 		expect(moon).toContain("      runInCI: true")
 		expect(moon).not.toContain("  eval:")
@@ -34,6 +35,7 @@ describe("use-zeko validation tooling", () => {
 		expect(workflow).toContain("schedule:")
 		expect(workflow).toContain("cron:")
 		expect(workflow).toContain("moon run -f use-zeko:check")
+		expect(workflow).not.toContain("eval-opencode")
 	})
 
 	it("enforces the zeko skill directory and docs-first agent constraints", () => {

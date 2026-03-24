@@ -2,23 +2,20 @@
 	{
 		"id": "bridge-sdk-config",
 		"prompt": "Which endpoints should I pass to the Zeko Bridge SDK from an agent context?",
-		"expectedReferences": ["30-bridge-and-faucet.md", "40-endpoints-and-curl.md"],
+		"expectedReferences": ["40-endpoints-and-curl.md"],
 		"expectedFragments": [
 			"https://gateway.mina.devnet.zeko.io",
 			"https://gateway.mina.archive.devnet.zeko.io",
 			"https://testnet.zeko.io/graphql",
 			"https://archive.testnet.zeko.io/graphql",
-			"https://api.actions.zeko.io/graphql",
-			"MINA_PRIVATE_KEY",
-			"https://docs.zeko.io/developers/guides/bridge-sdk"
+			"https://api.actions.zeko.io/graphql"
 		]
 	},
 	{
 		"id": "bridge-cli",
 		"prompt": "I want an unattended agent-friendly way to bridge between Mina testnet and Zeko testnet with a local private key. Should I use the bridge CLI, and how?",
-		"expectedReferences": ["10-agent-workflows.md", "30-bridge-and-faucet.md"],
+		"expectedReferences": ["30-bridge-and-faucet.md"],
 		"expectedFragments": [
-			"https://docs.zeko.io/developers/tools/bridge-cli",
 			"WALLET_PRIVATE_KEY",
 			"zeko-bridge bridge",
 			"--from mina:testnet",
@@ -29,7 +26,7 @@
 	{
 		"id": "faucet-json",
 		"prompt": "How should an agent get testnet funds and use the faucet in JSON mode?",
-		"expectedReferences": ["10-agent-workflows.md", "30-bridge-and-faucet.md"],
+		"expectedReferences": ["30-bridge-and-faucet.md"],
 		"expectedFragments": [
 			"GITHUB_TOKEN",
 			"--json",

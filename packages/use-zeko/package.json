@@ -2,7 +2,7 @@
 	"name": "@zeko/use-zeko",
 	"version": "0.0.1",
 	"private": true,
-	"description": "Public Zeko usage skill with deterministic validation and eval tooling.",
+	"description": "Public Zeko usage skill with deterministic validation and manual opencode evals.",
 	"type": "module",
 	"devDependencies": {
 		"@types/node": "^20.8.10",
