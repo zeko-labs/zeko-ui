@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
 	resolveClawhubPublishChangelog,
+	resolveClawhubPublishTags,
 	resolveClawhubPublishVersion
 } from "../src/publish-clawhub.js"
 
@@ -33,5 +34,11 @@ describe("zeko-skills clawhub publish metadata", () => {
 		delete process.env.ZEKO_SKILLS_CLAWHUB_CHANGELOG
 
 		expect(resolveClawhubPublishChangelog()).toBe("Auto-publish from zeko-ui@abcdef1")
+	})
+
+	it("falls back to latest when tags are blank after trimming", () => {
+		vi.stubEnv("ZEKO_SKILLS_CLAWHUB_TAGS", " ,  , ")
+
+		expect(resolveClawhubPublishTags()).toEqual(["latest"])
 	})
 })

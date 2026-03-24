@@ -40,10 +40,13 @@ export const resolveClawhubPublishChangelog = () => {
 	return "Publish latest Zeko skill update"
 }
 
-export const resolveClawhubPublishTags = () =>
-	process.env.ZEKO_SKILLS_CLAWHUB_TAGS?.split(",")
+export const resolveClawhubPublishTags = () => {
+	const tags = process.env.ZEKO_SKILLS_CLAWHUB_TAGS?.split(",")
 		.map((tag) => tag.trim())
-		.filter(Boolean) || ["latest"]
+		.filter(Boolean)
+
+	return tags && tags.length > 0 ? tags : ["latest"]
+}
 
 const collectTextFiles = (
 	directory: string,
