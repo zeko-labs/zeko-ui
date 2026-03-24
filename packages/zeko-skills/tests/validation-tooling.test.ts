@@ -32,7 +32,23 @@ describe("zeko-skills validation tooling", () => {
 		expect(moon).toContain("  publish-clawhub:")
 		expect(moon).toContain("  check:")
 		expect(moon).toContain("  typecheck:")
-		expect(moon).toContain("      runInCI: true")
+		expect(moon).toContain("  validate-public-install:")
+		expect(moon).toContain("  publish-clawhub:")
+		expect(moon).toContain("  check:")
+		expect(moon).toContain(
+			"  validate-public-install:\n    command: node dist/cli.js validate-public-install"
+		)
+		expect(moon).toContain("  publish-clawhub:\n    command: node dist/cli.js publish-clawhub")
+		expect(moon).toContain("  check:\n    command: node dist/cli.js check")
+		expect(moon).toContain(
+			'  validate-public-install:\n    command: node dist/cli.js validate-public-install\n    deps:\n      - build\n    inputs:\n      - "@group(skill)"\n    options:\n      runInCI: true'
+		)
+		expect(moon).toContain(
+			'  publish-clawhub:\n    command: node dist/cli.js publish-clawhub\n    deps:\n      - check\n    inputs:\n      - "@group(skill)"\n    options:\n      runInCI: true'
+		)
+		expect(moon).toContain(
+			'  check:\n    command: node dist/cli.js check\n    deps:\n      - build\n      - test\n    inputs:\n      - "@group(skill)"\n    options:\n      runInCI: true'
+		)
 		expect(moon).toContain("    - TESTING.md")
 		expect(moon).not.toContain("  eval:")
 		expect(moon).not.toContain("  sync-sources:")

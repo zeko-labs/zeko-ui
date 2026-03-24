@@ -147,3 +147,5 @@
 - T147 | done | validate-and-fix-zeko-skills-clawhub-metadata | done/T147-validate-and-fix-zeko-skills-clawhub-metadata.md
 - T148 | done | automate-zeko-skills-clawhub-publish | done/T148-automate-zeko-skills-clawhub-publish.md
 - T149 | done | fix-clawhub-tag-fallback-and-merge-conflicts | done/T149-fix-clawhub-tag-fallback-and-merge-conflicts.md
+- T150 | done | fix-docs-link-check-flake-for-github-5xx | done/T150-fix-docs-link-check-flake-for-github-5xx.md
+- T151 | done | fix-post-merge-zeko-skills-sync-workflow | done/T151-fix-post-merge-zeko-skills-sync-workflow.md

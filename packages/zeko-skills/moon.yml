@@ -43,6 +43,8 @@ tasks:
       - build
     inputs:
       - "@group(skill)"
+    options:
+      runInCI: true
   eval-opencode:
     command: node dist/cli.js eval-opencode
     deps:
@@ -55,6 +57,8 @@ tasks:
       - check
     inputs:
       - "@group(skill)"
+    options:
+      runInCI: true
   check:
     command: node dist/cli.js check
     deps:
