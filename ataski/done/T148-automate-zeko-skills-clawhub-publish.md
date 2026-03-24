@@ -1,8 +1,8 @@
 ---
-id: T143
+id: T148
 title: "Automate zeko-skills ClawHub publish"
 status: done
-blockedBy: [T142]
+blockedBy: [T147]
 owner: codex
 created_at: 2026-03-24T14:50:00Z
 updated_at: 2026-03-24T14:55:00Z

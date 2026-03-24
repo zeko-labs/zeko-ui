@@ -306,6 +306,109 @@ describe("operation command", () => {
 		expect(result.liveSnapshot).toBeUndefined()
 	})
 
+	it("reports cancel instead of finalize when an older skippable deposit is ahead", async () => {
+		const writes: string[] = []
+		const saves: OperationSession[] = []
+		const session: OperationSession = {
+			...persistedSession,
+			id: "op-skippable-prior",
+			submittedTransactions: [{ action: "submit", hash: "deposit-submit-current" }]
+		}
+		const command = createOperationCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async list() {
+					return [session]
+				},
+				async load() {
+					return session
+				},
+				async save(next) {
+					saves.push(next)
+				}
+			}),
+			createAdapter: async () => ({
+				async getDepositStatuses() {
+					return [
+						{
+							index: 3,
+							amount: "1",
+							recipient: "B62older",
+							cancelled: false,
+							cancellable: true,
+							synced: true,
+							accepted: false,
+							confirmed: false,
+							finalised: false,
+							hash: "deposit-submit-older",
+							timestamp: "2026-03-12T00:00:00.000Z"
+						},
+						{
+							index: 4,
+							amount: "2",
+							recipient: "B62test",
+							cancelled: false,
+							cancellable: false,
+							synced: true,
+							accepted: true,
+							confirmed: true,
+							finalised: false,
+							hash: "deposit-submit-current",
+							timestamp: "2026-03-12T00:01:00.000Z"
+						}
+					]
+				},
+				async getWithdrawalStatuses() {
+					throw new Error("getWithdrawalStatuses should not be called in this test")
+				},
+				async canFinalizeDeposit() {
+					return true
+				},
+				async canCancelDeposit() {
+					return true
+				},
+				async submitDeposit() {
+					throw new Error("submitDeposit should not be called in this test")
+				},
+				async finalizeDeposit() {
+					throw new Error("finalizeDeposit should not be called in this test")
+				},
+				async cancelDeposit() {
+					throw new Error("cancelDeposit should not be called in this test")
+				},
+				async submitWithdrawal() {
+					throw new Error("submitWithdrawal should not be called in this test")
+				},
+				async finalizeWithdrawal() {
+					throw new Error("finalizeWithdrawal should not be called in this test")
+				}
+			}),
+			write: (message) => writes.push(message),
+			now: () => "2026-03-12T15:02:00.000Z"
+		})
+		const subCommands = await resolveSubCommands(command.subCommands)
+
+		await subCommands.status?.run?.({
+			rawArgs: [],
+			args: { _: [], id: "op-skippable-prior" },
+			cmd: subCommands.status
+		})
+
+		const result = JSON.parse(writes[0] ?? "{}")
+		expect(saves).toHaveLength(1)
+		expect(result).toMatchObject({
+			id: "op-skippable-prior",
+			phase: "ready-cancellation",
+			target_index: 4,
+			claimable_index: 4,
+			pending_ahead: 1,
+			can_finalize: true,
+			can_cancel: true,
+			next_action: "cancel",
+			waiting_on: "prior-claims"
+		})
+	})
+
 	it("marks operation status completed when live withdrawal state is terminal", async () => {
 		const writes: string[] = []
 		const saves: OperationSession[] = []

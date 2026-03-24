@@ -530,11 +530,13 @@ const refreshDepositSession = async ({
 	const shouldFinalize =
 		canFinalize &&
 		analysis.claimableIndex !== undefined &&
-		(analysis.shouldAdvanceQueuedClaims || analysis.claimableIndex === analysis.target?.index)
+		analysis.skippableAhead === 0 &&
+		(analysis.target === undefined ||
+			analysis.blockingAhead > 0 ||
+			analysis.claimableIndex === analysis.target.index)
 	const shouldCancel =
 		canCancel &&
-		((analysis.shouldAdvanceQueuedClaims &&
-			(analysis.claimableIndex === undefined || !canFinalize)) ||
+		(analysis.skippableAhead > 0 ||
 			(analysis.target !== undefined && analysis.pendingAhead === 0 && !canFinalize))
 	const waitingOn =
 		analysis.target === undefined

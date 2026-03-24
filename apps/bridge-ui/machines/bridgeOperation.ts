@@ -216,6 +216,9 @@ export const bridgeOperationMachine = setup({
 							worker(bridge).canCancelDeposit({ l1, l2, user })
 						])
 						logger.info(`Deposit status: ${JSON.stringify({ finalizeResult, cancelResult })}`)
+						// Keep finalize-first in the main widget until older queued cancellable deposits
+						// get their own UI surface. This cancel path is terminal for the current
+						// bridge operation, so it must not be used for queue-advancement cancels.
 						if (finalizeResult.available) sendBack({ type: "CanFinalize" })
 						else if (cancelResult.available) sendBack({ type: "CanCancel" })
 						else if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)

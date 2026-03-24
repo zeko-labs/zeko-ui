@@ -48,6 +48,11 @@ tasks:
     inputs:
       - "@globs(src)"
       - "@globs(tests)"
+  manual-live-test:
+    description: Manual live bridge-sdk smoke test against public bridge endpoints.
+    script: pnpm exec vitest run test/live.manual.test.ts
+    options:
+      cache: false
   fetchOuterActions:
     command: bun examples/fetchOuterActions.ts
     options:

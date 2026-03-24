@@ -1,5 +1,5 @@
 ---
-id: T142
+id: T147
 title: "Validate and fix zeko-skills ClawHub metadata"
 status: done
 blockedBy: []

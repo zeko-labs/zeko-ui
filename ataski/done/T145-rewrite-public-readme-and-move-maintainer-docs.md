@@ -1,8 +1,8 @@
 ---
-id: T140
+id: T145
 title: "Rewrite public README and move maintainer docs"
 status: done
-blockedBy: [T139]
+blockedBy: [T144]
 owner: codex
 created_at: 2026-03-24T12:52:14Z
 updated_at: 2026-03-24T13:15:00Z

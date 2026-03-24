@@ -5,6 +5,7 @@ export type DepositStatus = {
 	amount: string
 	recipient: string
 	cancelled: boolean
+	cancellable?: boolean
 	synced: boolean
 	accepted: boolean
 	confirmed: boolean
