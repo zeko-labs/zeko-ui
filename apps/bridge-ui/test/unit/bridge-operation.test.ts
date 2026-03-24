@@ -91,7 +91,6 @@ const createWalletActor = (currentNetwork = "mina:testnet") =>
 			}
 		})
 	)
-
 describe("bridgeOperationMachine", () => {
 	beforeEach(() => {
 		vi.spyOn(console, "error").mockImplementation(() => {})
@@ -149,7 +148,6 @@ describe("bridgeOperationMachine", () => {
 		bridge.stop()
 		wallet.stop()
 	})
-
 	it("allows a recovered cancellable deposit to cancel from PAUSED", async () => {
 		const bridge = createBridgeActor({
 			cancelDeposit: vi.fn(async () => JSON.stringify({ feePayer: {}, accountUpdates: [] }))
@@ -220,6 +218,39 @@ describe("bridgeOperationMachine", () => {
 
 		await Promise.resolve()
 		expect(actor.getSnapshot().matches("PAUSED")).toBe(true)
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("keeps a deposit pending when no finalize or cancel path is available yet", async () => {
+		const bridge = createBridgeActor({
+			canFinalizeDeposit: vi.fn(async () => ({ available: false, reason: "Older deposit blocks" })),
+			canCancelDeposit: vi.fn(async () => ({ available: false, reason: "Not timed out" }))
+		})
+		const wallet = createWalletActor()
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(bridgeOperationMachine, {
+			input: {
+				bridge: bridge as never,
+				wallet: wallet as never,
+				source: "mina:testnet",
+				destination: "zeko:testnet",
+				direction: "deposit",
+				amount: "1"
+			}
+		})
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+
+		await Promise.resolve()
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(actor.getSnapshot().matches("PENDING_DEPOSIT")).toBe(true)
 
 		actor.stop()
 		bridge.stop()

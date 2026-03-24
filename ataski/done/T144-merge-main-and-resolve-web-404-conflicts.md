@@ -1,11 +1,11 @@
 ---
-id: T142
+id: T144
 title: "Merge main and resolve WEB-404 conflicts"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-24T14:21:07Z
-updated_at: 2026-03-24T14:21:07Z
+updated_at: 2026-03-24T14:27:44Z
 ---
 
 ## Requirements
@@ -26,3 +26,8 @@ updated_at: 2026-03-24T14:21:07Z
 
 ## GREEN Evidence
 
+- Merged `origin/main` into `branch/web-404-cancellation-queue` in the canonical Ataski worktree.
+- Resolved conflicts in `apps/bridge-ui/machines/operations.worker.ts`, `apps/bridge-ui/test/unit/bridge-operation.test.ts`, and `ataski/tasks.md`.
+- `moon run bridge-ui:test`
+- `moon run bridge-ui:typecheck`
+- `moon run bridge-ui:build`

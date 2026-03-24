@@ -1,11 +1,11 @@
 ---
-id: T143
+id: T145
 title: "Fix bridge Workers build failure on WEB-404 branch"
-status: todo
-blockedBy: [T142]
-owner: unassigned
+status: in-progress
+blockedBy: [T144]
+owner: codex
 created_at: 2026-03-24T14:21:07Z
-updated_at: 2026-03-24T14:21:07Z
+updated_at: 2026-03-24T14:27:44Z
 ---
 
 ## Requirements
@@ -22,6 +22,10 @@ updated_at: 2026-03-24T14:21:07Z
 ## RED Evidence
 
 - PR `#159` has a failed `Workers Builds: bridge` status check.
+- The first test run in the new worktree failed before local dependencies were installed, so the worktree had to be bootstrapped before validating the real bridge-ui build path.
 
 ## GREEN Evidence
 
+- `moon run bridge-ui:build` now passes locally on the merged branch.
+- `moon run bridge-ui:typecheck` now passes locally on the merged branch.
+- Next verification step is pushing the merged branch so the remote Workers build reruns on the current commit.

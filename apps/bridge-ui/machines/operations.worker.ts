@@ -89,24 +89,21 @@ async function findPendingOperations({
 		cancelled: boolean
 		source: Networks
 		destination: Networks
-	}) => {
-		const cancellableTransfer = transfer as { cancellable?: boolean }
-		return {
-			index: transfer.index,
-			id: transfer.afterActionState.toString(),
-			recipient: transfer.recipient.toBase58(),
-			amount: toAmount(transfer.amount.toBigInt()),
-			cancelled,
-			cancellable: cancellableTransfer.cancellable,
-			finalised: transfer.finalised,
-			transaction: {
-				date: new Date(transfer.timestamp),
-				hash: transfer.hash
-			},
-			source,
-			destination
-		}
-	}
+	}) => ({
+		index: transfer.index,
+		id: transfer.afterActionState.toString(),
+		recipient: transfer.recipient.toBase58(),
+		amount: toAmount(transfer.amount.toBigInt()),
+		cancelled,
+		cancellable: "cancellable" in transfer ? transfer.cancellable : undefined,
+		finalised: transfer.finalised,
+		transaction: {
+			date: new Date(transfer.timestamp),
+			hash: transfer.hash
+		},
+		source,
+		destination
+	})
 
 	return {
 		deposits: deposits.map((deposit) =>

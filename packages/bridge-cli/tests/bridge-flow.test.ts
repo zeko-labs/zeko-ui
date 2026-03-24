@@ -736,7 +736,7 @@ describe("bridge flow", () => {
 		expect(result.status).toBe("completed")
 	})
 
-	it("cancels an older blocking deposit before completing the requested bridge", async () => {
+	it("cancels an older skippable deposit before completing the requested bridge", async () => {
 		let depositStatusCalls = 0
 		let finalizeAttempts = 0
 		const cancelCalls: string[] = []
@@ -774,9 +774,10 @@ describe("bridge flow", () => {
 									amount: "2",
 									recipient: "B62older",
 									cancelled: false,
+									cancellable: true,
 									synced: true,
-									accepted: true,
-									confirmed: true,
+									accepted: false,
+									confirmed: false,
 									finalised: false,
 									hash: "submit-older",
 									timestamp: "2026-03-09T19:00:00.000Z"
@@ -803,8 +804,9 @@ describe("bridge flow", () => {
 									amount: "2",
 									recipient: "B62older",
 									cancelled: true,
+									cancellable: false,
 									synced: true,
-									accepted: true,
+									accepted: false,
 									confirmed: false,
 									finalised: false,
 									hash: "cancel-older",
@@ -832,8 +834,9 @@ describe("bridge flow", () => {
 									amount: "2",
 									recipient: "B62older",
 									cancelled: true,
+									cancellable: false,
 									synced: true,
-									accepted: true,
+									accepted: false,
 									confirmed: false,
 									finalised: false,
 									hash: "cancel-older",
@@ -860,8 +863,9 @@ describe("bridge flow", () => {
 								amount: "2",
 								recipient: "B62older",
 								cancelled: true,
+								cancellable: false,
 								synced: true,
-								accepted: true,
+								accepted: false,
 								confirmed: false,
 								finalised: false,
 								hash: "cancel-older",
@@ -935,6 +939,170 @@ describe("bridge flow", () => {
 				(entry) => entry.event === "cancel-submitted" && entry.details?.advancedPriorClaim === true
 			)
 		).toBe(true)
+		expect(result.finalTransaction?.hash).toBe("finalize-current")
+		expect(result.status).toBe("completed")
+	})
+
+	it("prefers canceling an older skippable deposit before finalizing a later claimable target", async () => {
+		let depositStatusCalls = 0
+		const calls: string[] = []
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-cancel-before-finalize",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "1",
+				account: "B62test"
+			},
+			{
+				adapter: {
+					async submitDeposit() {
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko:testnet",
+							hash: "submit-current",
+							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
+							included: true
+						}
+					},
+					async getDepositStatuses() {
+						depositStatusCalls += 1
+
+						if (depositStatusCalls === 1) {
+							return [
+								{
+									index: 4,
+									amount: "2",
+									recipient: "B62older",
+									cancelled: false,
+									cancellable: true,
+									synced: true,
+									accepted: false,
+									confirmed: false,
+									finalised: false,
+									hash: "submit-older",
+									timestamp: "2026-03-09T19:00:00.000Z"
+								},
+								{
+									index: 5,
+									amount: "1",
+									recipient: "B62test",
+									cancelled: false,
+									cancellable: false,
+									synced: true,
+									accepted: true,
+									confirmed: true,
+									finalised: false,
+									hash: "submit-current",
+									timestamp: "2026-03-09T19:01:00.000Z"
+								}
+							]
+						}
+
+						if (depositStatusCalls === 2) {
+							return [
+								{
+									index: 4,
+									amount: "2",
+									recipient: "B62older",
+									cancelled: true,
+									cancellable: false,
+									synced: true,
+									accepted: false,
+									confirmed: false,
+									finalised: false,
+									hash: "cancel-older",
+									timestamp: "2026-03-09T19:02:00.000Z"
+								},
+								{
+									index: 5,
+									amount: "1",
+									recipient: "B62test",
+									cancelled: false,
+									cancellable: false,
+									synced: true,
+									accepted: true,
+									confirmed: true,
+									finalised: false,
+									hash: "submit-current",
+									timestamp: "2026-03-09T19:01:00.000Z"
+								}
+							]
+						}
+
+						return [
+							{
+								index: 4,
+								amount: "2",
+								recipient: "B62older",
+								cancelled: true,
+								cancellable: false,
+								synced: true,
+								accepted: false,
+								confirmed: false,
+								finalised: false,
+								hash: "cancel-older",
+								timestamp: "2026-03-09T19:02:00.000Z"
+							},
+							{
+								index: 5,
+								amount: "1",
+								recipient: "B62test",
+								cancelled: false,
+								cancellable: false,
+								synced: true,
+								accepted: true,
+								confirmed: true,
+								finalised: true,
+								hash: "finalize-current",
+								timestamp: "2026-03-09T19:03:00.000Z"
+							}
+						]
+					},
+					async canFinalizeDeposit() {
+						return true
+					},
+					async canCancelDeposit() {
+						return true
+					},
+					async cancelDeposit() {
+						calls.push("cancel")
+						return {
+							success: true,
+							direction: "deposit",
+							action: "cancel",
+							route: "mina:testnet->zeko:testnet",
+							hash: "cancel-older",
+							explorerUrl: "https://minascan.io/devnet/tx/cancel-older",
+							included: true
+						}
+					},
+					async finalizeDeposit() {
+						calls.push("finalize")
+						return {
+							success: true,
+							direction: "deposit",
+							action: "finalize",
+							route: "mina:testnet->zeko:testnet",
+							hash: "finalize-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/finalize-current",
+							included: true
+						}
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(calls).toEqual(["cancel", "finalize"])
 		expect(result.finalTransaction?.hash).toBe("finalize-current")
 		expect(result.status).toBe("completed")
 	})
@@ -2352,7 +2520,7 @@ describe("bridge flow", () => {
 		expect(events.some((entry) => entry.event === "heartbeat")).toBe(true)
 	})
 
-	it("does not resubmit the same prior cancellation while the first cancel is still pending", async () => {
+	it("does not resubmit the same prior skippable cancellation while the first cancel is still pending", async () => {
 		let statusCalls = 0
 		const cancelCalls: string[] = []
 
@@ -2385,8 +2553,9 @@ describe("bridge flow", () => {
 								amount: "1",
 								recipient: "B62older",
 								cancelled: false,
+								cancellable: true,
 								synced: true,
-								accepted: true,
+								accepted: false,
 								confirmed: false,
 								finalised: false,
 								hash: "submit-older",
