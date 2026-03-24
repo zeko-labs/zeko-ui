@@ -97,3 +97,4 @@
 - T111 | done | rename-testing-doc-and-complete-live-validation-protocol | done/T111-rename-testing-doc-and-complete-live-validation-protocol.md
 - T112 | done | standardize-simple-npm-release-workflows | done/T112-standardize-simple-npm-release-workflows.md
 - T113 | done | restore-bridge-cli-release-artifact-and-document-github-release-coupling | done/T113-restore-bridge-cli-release-artifact-and-document-gh-release.md
+- T114 | done | fix-bridge-cli-release-retry-and-sync-ordering | done/T114-fix-bridge-cli-release-retry-and-sync-ordering.md

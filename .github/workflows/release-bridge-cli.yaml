@@ -80,10 +80,16 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view "@zeko-labs/bridge-cli@${VERSION}" version 2>/dev/null || echo "")
+          if [ -n "$PUBLISHED" ]; then
+            echo "@zeko-labs/bridge-cli@${VERSION} already published, skipping."
+            exit 0
+          fi
+
           npm publish "zeko-labs-bridge-cli-${VERSION}.tgz" --access public --loglevel verbose
 
   github-release:
-    needs: [version-check, publish]
+    needs: [version-check, publish, sync]
     uses: ./.github/workflows/github-release-bridge-cli.yaml
     with:
       version: ${{ needs.version-check.outputs.version }}
