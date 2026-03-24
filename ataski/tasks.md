@@ -95,10 +95,10 @@
 - T109 | done | merge-main-after-pr-152-and-resolve-conflicts | done/T109-merge-main-after-pr-152-and-resolve-conflicts.md
 - T110 | done | revert-ui-sdk-drift-after-split-pr-and-keep-hook-guardrail | done/T110-revert-ui-sdk-drift-after-split-pr-and-keep-hook-guardrail.md
 - T111 | done | rename-testing-doc-and-complete-live-validation-protocol | done/T111-rename-testing-doc-and-complete-live-validation-protocol.md
-- T112 | done | merge-main-and-add-bridge-cli-skill-guidance | done/T112-merge-main-and-add-bridge-cli-skill-guidance.md
-- T113 | done | replace-stale-moon-cache-bypass-flag-references | done/T113-replace-stale-moon-cache-bypass-flag-references.md
-- T114 | done | fix-use-zeko-workflow-force-flag-order | done/T114-fix-use-zeko-workflow-force-flag-order.md
-- T115 | done | create-use-zeko-skill-content | done/T115-create-use-zeko-skill-content.md
+- T112 | done | standardize-simple-npm-release-workflows | done/T112-standardize-simple-npm-release-workflows.md
+- T113 | done | restore-bridge-cli-release-artifact-and-document-github-release-coupling | done/T113-restore-bridge-cli-release-artifact-and-document-gh-release.md
+- T114 | done | fix-bridge-cli-release-retry-and-sync-ordering | done/T114-fix-bridge-cli-release-retry-and-sync-ordering.md
+- T115 | done | switch-gha-workflows-to-warpbuild-runners | done/T115-switch-gha-workflows-to-warpbuild-runners.md
 - T116 | done | add-use-zeko-validation-evals-and-ci | done/T116-add-use-zeko-validation-evals-and-ci.md
 - T117 | done | add-use-zeko-public-mirror-sync | done/T117-add-use-zeko-public-mirror-sync.md
 - T118 | done | simplify-use-zeko-skill-for-installed-agent-context | done/T118-simplify-use-zeko-skill-for-installed-agent-context.md
@@ -113,4 +113,8 @@
 - T127 | done | add-real-opencode-use-zeko-eval-runner | done/T127-add-real-opencode-use-zeko-eval-runner.md
 - T128 | done | split-use-zeko-check-and-eval-modules | done/T128-split-use-zeko-check-and-eval-modules.md
 - T129 | done | validate-and-resolve-pr-144-review-comments | done/T129-validate-and-resolve-pr-144-review-comments.md
-- T130 | in-progress | merge-main-and-resolve-pr-144-conflicts | in-progress/T130-merge-main-and-resolve-pr-144-conflicts.md
+- T130 | done | merge-main-and-resolve-pr-144-conflicts | done/T130-merge-main-and-resolve-pr-144-conflicts.md
+- T131 | done | merge-main-and-add-bridge-cli-skill-guidance | done/T131-merge-main-and-add-bridge-cli-skill-guidance.md
+- T132 | done | replace-stale-moon-cache-bypass-flag-references | done/T132-replace-stale-moon-cache-bypass-flag-references.md
+- T133 | done | fix-use-zeko-workflow-force-flag-order | done/T133-fix-use-zeko-workflow-force-flag-order.md
+- T134 | done | create-use-zeko-skill-content | done/T134-create-use-zeko-skill-content.md

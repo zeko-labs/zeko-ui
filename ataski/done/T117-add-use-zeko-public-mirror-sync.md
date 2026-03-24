@@ -2,7 +2,7 @@
 id: T117
 title: "Add use-zeko public mirror sync"
 status: done
-blockedBy: [T115]
+blockedBy: [T134]
 owner: codex
 created_at: 2026-03-11T15:23:20Z
 updated_at: 2026-03-11T15:45:30Z

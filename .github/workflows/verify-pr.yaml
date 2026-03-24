@@ -8,7 +8,7 @@ jobs:
   validate-pr-title:
     name: Valid Title
     permissions: write-all
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     steps:
       - name: ✅ Validate PR title (Conventional Commits)
         uses: ytanikin/PRConventionalCommits@1.1.0
@@ -18,7 +18,7 @@ jobs:
           custom_labels: '{"feat": "feature", "fix": "fix", "docs": "documentation", "test": "test", "ci": "CI/CD", "refactor": "refactor", "perf": "performance", "chore": "chore", "revert": "revert", "wip": "WIP", "release": "release"}'
   write-labels:
     name: Has Conflicts
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x
     permissions: write-all
     steps:
       - name: 🏷️ Label merge conflicts

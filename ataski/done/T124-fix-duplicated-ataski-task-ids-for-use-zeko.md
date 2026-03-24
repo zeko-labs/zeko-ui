@@ -28,5 +28,5 @@ updated_at: 2026-03-24T01:44:03Z
 ## GREEN Evidence
 
 - only the original indexer `T068` through `T076` files remain under those IDs
-- `tasks.md` now includes `T115` through `T123` entries for the renamed `use-zeko` tasks
+- `tasks.md` now includes `T134`, plus `T116` through `T123`, for the renamed `use-zeko` tasks
 - targeted ripgrep over the renamed files found no stale `id: T068`–`T076` or `blockedBy: [T068]` content
