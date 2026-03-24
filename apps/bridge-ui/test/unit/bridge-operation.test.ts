@@ -3,6 +3,10 @@ import { assign, createActor, fromPromise, setup, waitFor } from "xstate"
 import { toUserFriendlyMessage } from "../../app/errors"
 import { bridgeOperationMachine } from "../../machines/bridgeOperation"
 
+vi.mock("../../app/service-worker/notificationList", () => ({
+	finalizeNotification: vi.fn(async () => {})
+}))
+
 const firstWithdrawalTooSmallMessage =
 	"First Zeko->Mina withdrawal amount is too small: recipient B62test does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot proceed as submitted."
 
@@ -156,7 +160,7 @@ describe("bridgeOperationMachine", () => {
 		wallet.stop()
 	})
 
-	it("prefers cancellation over finalization when an older cancellable deposit is ahead", async () => {
+	it("keeps the main widget on finalization until queued cancellations have a separate UI", async () => {
 		const bridge = createBridgeActor({
 			canFinalizeDeposit: vi.fn(async () => ({ available: true, reason: null })),
 			canCancelDeposit: vi.fn(async () => ({ available: true, reason: null }))
@@ -179,9 +183,7 @@ describe("bridgeOperationMachine", () => {
 		actor.start()
 		actor.send({ type: "Resume", paused: false })
 
-		await waitFor(actor, (snapshot) => snapshot.matches("CAN_CANCEL"))
-
-		expect(actor.getSnapshot().context.canCancel).toBe(true)
+		await waitFor(actor, (snapshot) => snapshot.matches("TO_FINALIZE"))
 
 		actor.stop()
 		bridge.stop()
