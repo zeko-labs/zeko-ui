@@ -19,6 +19,18 @@ moon run -f zeko-skills:check
 moon run -f zeko-skills:validate-public-install
 ```
 
+Manual ClawHub publication from the repo root:
+
+```bash
+CLAWHUB_TOKEN=... \
+ZEKO_SKILLS_CLAWHUB_VERSION=0.0.2 \
+ZEKO_SKILLS_CLAWHUB_CHANGELOG="Declare OpenClaw metadata and reduce false positives" \
+moon run -f zeko-skills:publish-clawhub
+```
+
+There is also a manual GitHub Actions entrypoint at
+`.github/workflows/publish-zeko-skills-clawhub.yaml`.
+
 `moon run -f zeko-skills:check` runs the local validation gates:
 
 - skill structure and self-contained markdown checks

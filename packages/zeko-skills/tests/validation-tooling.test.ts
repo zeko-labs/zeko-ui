@@ -12,8 +12,10 @@ describe("zeko-skills validation tooling", () => {
 		expect(fs.existsSync(path.join(packageRoot, "src", "cli.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "check.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "evals", "opencode.ts"))).toBe(true)
+		expect(fs.existsSync(path.join(packageRoot, "src", "publish-clawhub.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "public-install.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "spec.ts"))).toBe(true)
+		expect(fs.existsSync(path.join(packageRoot, "src", "validation", "clawhub.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "validation", "index.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "validation", "public-surface.ts"))).toBe(
 			true
@@ -21,12 +23,13 @@ describe("zeko-skills validation tooling", () => {
 		expect(fs.existsSync(path.join(packageRoot, "evals", "prompts.json"))).toBe(true)
 	})
 
-	it("declares validate, manual opencode eval, and check moon tasks", () => {
+	it("declares validation, manual eval, and ClawHub publish moon tasks", () => {
 		const moon = fs.readFileSync(path.join(packageRoot, "moon.yml"), "utf8")
 
 		expect(moon).toContain("  validate:")
 		expect(moon).toContain("  validate-public-install:")
 		expect(moon).toContain("  eval-opencode:")
+		expect(moon).toContain("  publish-clawhub:")
 		expect(moon).toContain("  check:")
 		expect(moon).toContain("  typecheck:")
 		expect(moon).toContain("      runInCI: true")
@@ -56,7 +59,14 @@ describe("zeko-skills validation tooling", () => {
 	it("enforces the zeko skill directory and docs-first agent constraints", () => {
 		const skill = fs.readFileSync(path.join(packageRoot, "zeko", "SKILL.md"), "utf8")
 
-		expect(skill).toContain("private key")
+		expect(skill).toContain("metadata:")
+		expect(skill).toContain("openclaw:")
+		expect(skill).toContain("WALLET_PRIVATE_KEY")
+		expect(skill).toContain("MINA_PRIVATE_KEY")
+		expect(skill).toContain("GITHUB_TOKEN")
+		expect(skill).toContain("@zeko-labs/bridge-cli")
+		expect(skill).toContain("@zeko-labs/faucet-cli")
+		expect(skill).toContain("o1js")
 		expect(skill).toContain("browser")
 		expect(skill).toContain("docs.zeko.io")
 		expect(skill).not.toContain("llms-full.txt")
@@ -74,8 +84,24 @@ describe("zeko-skills validation tooling", () => {
 		expect(testing).toContain("moon run -f zeko-skills:test")
 		expect(testing).toContain("moon run -f zeko-skills:check")
 		expect(testing).toContain("moon run -f zeko-skills:validate-public-install")
+		expect(testing).toContain("moon run -f zeko-skills:publish-clawhub")
 		expect(testing).toContain(
 			"npx skills add https://github.com/zeko-labs/zeko-skills --skill zeko"
 		)
+	})
+
+	it("ships a manual workflow_dispatch path for ClawHub publication", () => {
+		const workflowPath = path.join(
+			repoRoot,
+			".github",
+			"workflows",
+			"publish-zeko-skills-clawhub.yaml"
+		)
+		const workflow = fs.readFileSync(workflowPath, "utf8")
+
+		expect(workflow).toContain("workflow_dispatch:")
+		expect(workflow).toContain("CLAWHUB_TOKEN")
+		expect(workflow).toContain("ZEKO_SKILLS_CLAWHUB_VERSION")
+		expect(workflow).toContain("moon run -f zeko-skills:publish-clawhub")
 	})
 })

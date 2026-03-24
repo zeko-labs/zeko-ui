@@ -37,6 +37,8 @@ describe("zeko-skills skill structure", () => {
 		}
 
 		expect(skill).toContain("docs.zeko.io")
+		expect(skill).toContain("metadata:")
+		expect(skill).toContain("openclaw:")
 		expect(skill).not.toContain("references/copied/")
 		expect(skill).not.toContain("llms-full.txt")
 	})
@@ -79,6 +81,16 @@ describe("zeko-skills skill structure", () => {
 		expect(navigation).toContain("https://docs.zeko.io/developers/tools/bridge-cli")
 		expect(navigation).toContain("llms-full.txt")
 		expect(navigation.toLowerCase()).toContain("fallback")
+
+		const agentWorkflows = fs.readFileSync(
+			path.join(referencesDir, "10-agent-workflows.md"),
+			"utf8"
+		)
+		expect(agentWorkflows).toContain("terminal and API workflows")
+		expect(agentWorkflows).not.toContain("Prefer direct keys and environment variables")
+		expect(agentWorkflows).not.toContain("MINA_PRIVATE_KEY")
+		expect(agentWorkflows).not.toContain("WALLET_PRIVATE_KEY")
+		expect(agentWorkflows).not.toContain("GITHUB_TOKEN")
 
 		const bridgeAndFaucet = fs.readFileSync(
 			path.join(referencesDir, "30-bridge-and-faucet.md"),

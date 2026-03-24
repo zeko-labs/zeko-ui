@@ -49,6 +49,12 @@ tasks:
       - build
     inputs:
       - "@group(skill)"
+  publish-clawhub:
+    command: node dist/cli.js publish-clawhub
+    deps:
+      - check
+    inputs:
+      - "@group(skill)"
   check:
     command: node dist/cli.js check
     deps:

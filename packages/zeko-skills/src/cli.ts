@@ -2,6 +2,7 @@
 
 import { runCheck } from "./check.js"
 import { runOpencodeEvals } from "./evals/opencode.js"
+import { publishClawhub } from "./publish-clawhub.js"
 import { runPublicInstallValidation } from "./public-install.js"
 import { runValidation } from "./validation/index.js"
 
@@ -24,6 +25,9 @@ const run = async () => {
 		case "eval-opencode":
 			await runOpencodeEvals()
 			console.log("zeko-skills opencode evals passed")
+			return
+		case "publish-clawhub":
+			await publishClawhub()
 			return
 		default:
 			throw new Error(`Unknown command: ${command}`)

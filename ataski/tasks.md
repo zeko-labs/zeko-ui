@@ -125,3 +125,4 @@
 - T139 | done | rename-use-zeko-package-and-sync-to-zeko-skills | done/T139-rename-use-zeko-package-and-sync-to-zeko-skills.md
 - T140 | done | rewrite-public-readme-and-move-maintainer-docs | done/T140-rewrite-public-readme-and-move-maintainer-docs.md
 - T141 | done | add-docs-site-section-for-zeko-skills | done/T141-add-docs-site-section-for-zeko-skills.md
+- T142 | done | validate-and-fix-zeko-skills-clawhub-metadata | done/T142-validate-and-fix-zeko-skills-clawhub-metadata.md
