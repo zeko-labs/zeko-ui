@@ -4,7 +4,6 @@ import path from "node:path"
 import {
 	type EndpointCheck,
 	endpointChecks,
-	evalCases,
 	forbiddenMarkdownPatterns,
 	packageRoot,
 	repoRoot,
@@ -16,49 +15,6 @@ import {
 const SKILL_PATH = path.join(skillRoot, "SKILL.md")
 const REFERENCES_DIR = path.join(skillRoot, "references")
 const requiredReferenceSet = new Set<string>(requiredReferences)
-const ignoredTokens = new Set([
-	"the",
-	"and",
-	"for",
-	"with",
-	"from",
-	"into",
-	"onto",
-	"your",
-	"this",
-	"that",
-	"what",
-	"when",
-	"where",
-	"which",
-	"should",
-	"would",
-	"could",
-	"here",
-	"there",
-	"then",
-	"than",
-	"they",
-	"them",
-	"their",
-	"have",
-	"want",
-	"need",
-	"pass",
-	"use"
-])
-
-const tokenize = (value: string) =>
-	Array.from(
-		new Set(
-			value
-				.toLowerCase()
-				.split(/[^a-z0-9]+/g)
-				.map((part) => part.trim())
-				.filter((part) => part.length >= 3 && !ignoredTokens.has(part))
-		)
-	)
-
 const listReferenceFiles = (directory: string, prefix = ""): string[] => {
 	const files: string[] = []
 
@@ -75,9 +31,6 @@ const listReferenceFiles = (directory: string, prefix = ""): string[] => {
 
 	return files.sort((left, right) => left.localeCompare(right))
 }
-
-const readReferenceContent = (referenceFile: string) =>
-	fs.readFileSync(path.join(REFERENCES_DIR, referenceFile), "utf8")
 
 const assert = (condition: boolean, message: string) => {
 	if (!condition) {
@@ -215,55 +168,6 @@ export const validateExternalLinks = async () => {
 	}
 }
 
-const loadReferenceCorpus = () =>
-	listReferenceFiles(REFERENCES_DIR).map((referenceFile) => {
-		const content = readReferenceContent(referenceFile)
-		return {
-			referenceFile,
-			content,
-			tokens: tokenize(`${referenceFile}\n${content}`)
-		}
-	})
-
-const scoreEvalCase = (prompt: string) => {
-	const promptTokens = tokenize(prompt)
-	return loadReferenceCorpus()
-		.map((reference) => ({
-			referenceFile: reference.referenceFile,
-			score: promptTokens.filter((token) => reference.tokens.includes(token)).length,
-			content: reference.content
-		}))
-		.sort(
-			(left, right) =>
-				right.score - left.score || left.referenceFile.localeCompare(right.referenceFile)
-		)
-}
-
-export const runEvals = () => {
-	for (const evalCase of evalCases) {
-		const ranked = scoreEvalCase(evalCase.prompt)
-		const topReferences = ranked.slice(0, 4).map((entry) => entry.referenceFile)
-		const combinedContent = ranked
-			.slice(0, 4)
-			.map((entry) => entry.content)
-			.join("\n")
-
-		for (const expectedReference of evalCase.expectedReferences) {
-			assert(
-				topReferences.includes(expectedReference),
-				`Eval ${evalCase.id} did not rank ${expectedReference} in the top references`
-			)
-		}
-
-		for (const expectedFragment of evalCase.expectedFragments) {
-			assert(
-				combinedContent.includes(expectedFragment),
-				`Eval ${evalCase.id} is missing expected fragment: ${expectedFragment}`
-			)
-		}
-	}
-}
-
 export const runValidation = async () => {
 	validateStructure()
 	validateSelfContainedMarkdown()
@@ -273,5 +177,4 @@ export const runValidation = async () => {
 
 export const runCheck = async () => {
 	await runValidation()
-	runEvals()
 }

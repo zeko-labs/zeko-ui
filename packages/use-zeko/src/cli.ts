@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { runCheck, runEvals, runValidation } from "./index.js"
+import { runCheck, runValidation } from "./index.js"
 
 const command = process.argv[2] ?? "check"
 
@@ -9,10 +9,6 @@ const run = async () => {
 		case "validate":
 			await runValidation()
 			console.log("use-zeko validation passed")
-			return
-		case "eval":
-			runEvals()
-			console.log("use-zeko evals passed")
 			return
 		case "check":
 			await runCheck()

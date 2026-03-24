@@ -12,15 +12,16 @@ describe("use-zeko validation tooling", () => {
 		expect(fs.existsSync(path.join(packageRoot, "src", "cli.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "index.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "spec.ts"))).toBe(true)
+		expect(fs.existsSync(path.join(packageRoot, "evals", "prompts.json"))).toBe(true)
 	})
 
-	it("declares validate, eval, and check moon tasks", () => {
+	it("declares validate and check moon tasks", () => {
 		const moon = fs.readFileSync(path.join(packageRoot, "moon.yml"), "utf8")
 
 		expect(moon).toContain("  validate:")
-		expect(moon).toContain("  eval:")
 		expect(moon).toContain("  check:")
 		expect(moon).toContain("      runInCI: true")
+		expect(moon).not.toContain("  eval:")
 		expect(moon).not.toContain("  sync-sources:")
 	})
 

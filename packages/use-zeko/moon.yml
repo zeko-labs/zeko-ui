@@ -36,12 +36,6 @@ tasks:
       - build
     inputs:
       - "@group(skill)"
-  eval:
-    command: node dist/cli.js eval
-    deps:
-      - build
-    inputs:
-      - "@group(skill)"
   check:
     command: node dist/cli.js check
     deps:

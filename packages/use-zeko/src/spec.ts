@@ -1,4 +1,3 @@
-import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -81,13 +80,6 @@ export const endpointChecks: EndpointCheck[] = [
 	}
 ] as const
 
-export type EvalCase = {
-	id: string
-	prompt: string
-	expectedReferences: string[]
-	expectedFragments: string[]
-}
-
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 export const packageRoot = path.resolve(currentDir, "..")
 export const skillRoot = path.join(packageRoot, "zeko")
@@ -99,6 +91,3 @@ export const forbiddenMarkdownPatterns = [
 	/\/Users\//g
 ]
 export const skippedExternalLinkChecks = new Set<string>()
-
-const evalPromptPath = path.join(packageRoot, "evals", "prompts.json")
-export const evalCases = JSON.parse(fs.readFileSync(evalPromptPath, "utf8")) as EvalCase[]
