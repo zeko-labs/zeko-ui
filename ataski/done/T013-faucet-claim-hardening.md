@@ -34,13 +34,13 @@ Implement the faucet worker hardening plan:
   - Passed and regenerated `apps/faucet/worker-configuration.d.ts` with `ClaimMutex` bindings.
 - `moon faucet-ui:type-cf`
   - Passed and regenerated `apps/faucet-ui/worker-configuration.d.ts`.
-- `moon -u faucet:typecheck`
+- `moon run faucet:typecheck -f`
   - Passed.
-- `moon -u faucet-ui:build`
+- `moon run faucet-ui:build -f`
   - Passed, confirming the new RPC call site compiles in the real app bundle.
-- `moon -u faucet-cli:test`
+- `moon run faucet-cli:test -f`
   - Passed with 33/33 tests.
-- `moon -u faucet-cli:typecheck`
+- `moon run faucet-cli:typecheck -f`
   - Passed.
 - `pnpm exec biome check --formatter-enabled=false apps/faucet/worker.ts apps/faucet/src/index.ts apps/faucet/test/worker.test.ts apps/faucet-ui/server/api/faucet.post.ts packages/faucet-cli/src/api.ts packages/faucet-cli/test/api.test.ts`
   - Passed.

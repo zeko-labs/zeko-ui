@@ -17,7 +17,7 @@ The implementation was validated against the existing integration test suite (fr
 - `cargo build --release` — compiles cleanly
 - `cargo test` — 0 tests, all pass (no Rust unit tests needed; integration tests cover behavior)
 - `cargo clippy -- -D warnings` — no warnings
-- `FAUCET_CLI_BINARY=rust moon faucet-cli:test -u` — all 42 tests pass (9 integration + 33 unit)
+- `FAUCET_CLI_BINARY=rust moon run faucet-cli:test -f` — all 42 tests pass (9 integration + 33 unit)
 - Extra positional args handled correctly (exit 1, JSON `invalid_arguments`)
 - Help/version output contains expected strings
 - Error JSON format matches TS output (`success: false`, `code`, `message`)

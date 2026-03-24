@@ -24,7 +24,7 @@ To install everything, run `pnpm i` from the root.
 - `moon run` is the only supported command interface for repository workflows such as `dev`, `typecheck`, `test`, `build`, and `deploy`.
 - Do not add, invoke, or rely on `package.json` scripts as workflow entrypoints in this repo. If a workflow is missing, add or update the project’s `moon.yml` task instead of adding a new package script.
 - Project tasks are defined in each project’s `moon.yml`. Inspect this file _before_ running any commands in a given project.
-- You can disable moon caching by passing the `-u` flag to any `moon run` command that has cached results.
+- You can disable moon caching by passing the `-f` flag to any `moon run` command that has cached results.
 - If you need to run a command not specified in `moon.yml`, use `pnpm exec <command>`.
 
 ## Testing

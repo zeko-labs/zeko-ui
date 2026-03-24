@@ -20,6 +20,6 @@ validation will use targeted type checking and manual request-flow checks.
 
 ## GREEN Evidence
 
-- `moon faucet-ui:lint -u` passed
-- `moon faucet-ui:build -u` passed
+- `moon run faucet-ui:lint -f` passed
+- `moon run faucet-ui:build -f` passed
 - PR `#121` merged into `epic/faucet-api-cli-refactor`: https://github.com/zeko-labs/zeko-ui/pull/121

@@ -18,7 +18,7 @@ Investigate the failing faucet typecheck, identify the regression, and restore a
 ## GREEN Evidence
 
 - `pnpm --filter faucet typecheck` passed
-- `moon -u faucet:typecheck` passed
+- `moon run faucet:typecheck -f` passed
 
 ## Correction
 

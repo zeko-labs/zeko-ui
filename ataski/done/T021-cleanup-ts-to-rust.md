@@ -14,9 +14,9 @@ Cleanup/migration task. Validated by integration tests passing against the final
 
 ## GREEN Evidence
 
-- `moon faucet-cli:build -u` — cargo build --release succeeds
-- `moon faucet-cli:test -u` — 9 integration tests pass (1 file)
-- `moon faucet-cli:lint -u` — cargo clippy clean, 0 warnings
+- `moon run faucet-cli:build -f` — cargo build --release succeeds
+- `moon run faucet-cli:test -f` — 9 integration tests pass (1 file)
+- `moon run faucet-cli:lint -f` — cargo clippy clean, 0 warnings
 
 ## Changes
 

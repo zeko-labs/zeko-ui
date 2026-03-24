@@ -20,10 +20,10 @@ updated_at: 2026-03-13T00:20:00Z
 - DDD. Reproduce the failure from a clean `packages/bridge-sdk/dist` state before editing code, then update the task graph or test runtime configuration, and re-run the affected Moon tasks.
 - RED path:
   - remove `packages/bridge-sdk/dist`
-  - run `moon run bridge-cli:test -u`
+  - run `moon run bridge-cli:test -f`
   - confirm the Vitest runtime fails to resolve `@zeko-labs/bridge-sdk`
 - GREEN path:
-  - rerun `moon run bridge-cli:test -u`
+  - rerun `moon run bridge-cli:test -f`
   - rerun `moon run bridge-cli:typecheck bridge-cli:build bridge-sdk:test bridge-sdk:typecheck`
 
 ## RED Evidence
