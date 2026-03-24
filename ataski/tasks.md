@@ -125,3 +125,5 @@
 - T139 | done | refactor-bridge-recovery-into-main-and-cancellation-lanes | done/T139-refactor-bridge-recovery-into-main-and-cancellation-lanes.md
 - T140 | done | build-cancellation-queue-ui | done/T140-build-cancellation-queue-ui.md
 - T141 | done | add-web-404-regression-tests | done/T141-add-web-404-regression-tests.md
+- T142 | in-progress | merge-main-and-resolve-web-404-conflicts | in-progress/T142-merge-main-and-resolve-web-404-conflicts.md
+- T143 | todo | fix-bridge-workers-build-failure | todo/T143-fix-bridge-workers-build-failure.md
