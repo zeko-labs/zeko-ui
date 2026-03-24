@@ -22,7 +22,9 @@ describe("zeko-skills mirror sync", () => {
 			`sync-paths: ${publicSyncMappings.map((mapping) => `${mapping.source}:${mapping.target}`).join(",")}`
 		)
 		expect(workflow).toContain("validate-public-install:")
-		expect(workflow).toContain("moon run -f zeko-skills:validate-public-install")
+		expect(workflow).toContain(
+			"./node_modules/.bin/moon exec --ignore-ci-checks zeko-skills:validate-public-install"
+		)
 	})
 
 	it("supports syncing mapped public paths into the standalone repo", () => {

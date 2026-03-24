@@ -32,7 +32,20 @@ describe("zeko-skills validation tooling", () => {
 		expect(moon).toContain("  publish-clawhub:")
 		expect(moon).toContain("  check:")
 		expect(moon).toContain("  typecheck:")
-		expect(moon).toContain("      runInCI: true")
+		expect(moon).toContain(
+			"  validate-public-install:\n    command: node dist/cli.js validate-public-install"
+		)
+		expect(moon).toContain("  publish-clawhub:\n    command: node dist/cli.js publish-clawhub")
+		expect(moon).toContain("  check:\n    command: node dist/cli.js check")
+		expect(moon).toContain(
+			'  check:\n    command: node dist/cli.js check\n    deps:\n      - build\n      - test\n    inputs:\n      - "@group(skill)"\n    options:\n      runInCI: true'
+		)
+		expect(moon).not.toContain(
+			'  validate-public-install:\n    command: node dist/cli.js validate-public-install\n    deps:\n      - build\n    inputs:\n      - "@group(skill)"\n    options:\n      runInCI: true'
+		)
+		expect(moon).not.toContain(
+			'  publish-clawhub:\n    command: node dist/cli.js publish-clawhub\n    deps:\n      - check\n    inputs:\n      - "@group(skill)"\n    options:\n      runInCI: true'
+		)
 		expect(moon).toContain("    - TESTING.md")
 		expect(moon).not.toContain("  eval:")
 		expect(moon).not.toContain("  sync-sources:")
@@ -98,6 +111,8 @@ describe("zeko-skills validation tooling", () => {
 		expect(workflow).toContain("needs: validate-public-install")
 		expect(workflow).toContain("if: github.event_name == 'push'")
 		expect(workflow).toContain("CLAWHUB_TOKEN")
-		expect(workflow).toContain("moon run -f zeko-skills:publish-clawhub")
+		expect(workflow).toContain(
+			"./node_modules/.bin/moon exec --ignore-ci-checks zeko-skills:publish-clawhub"
+		)
 	})
 })

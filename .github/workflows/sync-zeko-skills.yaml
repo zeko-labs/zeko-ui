@@ -40,7 +40,7 @@ jobs:
       - name: Validate public skills install
         env:
           ZEKO_SKILLS_PUBLIC_SOURCE: https://github.com/zeko-labs/zeko-skills
-        run: moon run -f zeko-skills:validate-public-install
+        run: ./node_modules/.bin/moon exec --ignore-ci-checks zeko-skills:validate-public-install
 
   publish-clawhub:
     if: github.event_name == 'push'
@@ -63,4 +63,4 @@ jobs:
       - name: Publish zeko skill to ClawHub
         env:
           CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
-        run: moon run -f zeko-skills:publish-clawhub
+        run: ./node_modules/.bin/moon exec --ignore-ci-checks zeko-skills:publish-clawhub
