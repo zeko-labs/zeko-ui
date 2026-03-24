@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
-import { fileURLToPath } from "node:url"
+import { packageRoot } from "./config.js"
 
 export const requiredReferences = [
 	"10-navigation.md",
@@ -80,11 +80,6 @@ export const endpointChecks: EndpointCheck[] = [
 		sources: ["packages/faucet-cli/src/api.rs"]
 	}
 ] as const
-
-const currentDir = path.dirname(fileURLToPath(import.meta.url))
-export const packageRoot = path.resolve(currentDir, "..")
-export const skillRoot = path.join(packageRoot, "zeko")
-export const repoRoot = path.resolve(packageRoot, "..", "..")
 
 export const forbiddenMarkdownPatterns = [
 	/\b(?:apps|packages|services|docs)\/[^\s)`]+/g,

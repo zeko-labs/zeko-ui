@@ -111,3 +111,4 @@
 - T125 | done | fix-use-zeko-ci-project-discovery | done/T125-fix-use-zeko-ci-project-discovery.md
 - T126 | done | remove-fake-use-zeko-eval-runner | done/T126-remove-fake-use-zeko-eval-runner.md
 - T127 | done | add-real-opencode-use-zeko-eval-runner | done/T127-add-real-opencode-use-zeko-eval-runner.md
+- T128 | done | split-use-zeko-check-and-eval-modules | done/T128-split-use-zeko-check-and-eval-modules.md

@@ -10,8 +10,10 @@ const repoRoot = path.resolve(packageRoot, "..", "..")
 describe("use-zeko validation tooling", () => {
 	it("ships the validation spec and CLI sources", () => {
 		expect(fs.existsSync(path.join(packageRoot, "src", "cli.ts"))).toBe(true)
-		expect(fs.existsSync(path.join(packageRoot, "src", "index.ts"))).toBe(true)
+		expect(fs.existsSync(path.join(packageRoot, "src", "check.ts"))).toBe(true)
+		expect(fs.existsSync(path.join(packageRoot, "src", "evals", "opencode.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "src", "spec.ts"))).toBe(true)
+		expect(fs.existsSync(path.join(packageRoot, "src", "validation", "index.ts"))).toBe(true)
 		expect(fs.existsSync(path.join(packageRoot, "evals", "prompts.json"))).toBe(true)
 	})
 

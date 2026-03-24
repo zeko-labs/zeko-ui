@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-import { runCheck, runOpencodeEvals, runValidation } from "./index.js"
+import { runCheck } from "./check.js"
+import { runOpencodeEvals } from "./evals/opencode.js"
+import { runValidation } from "./validation/index.js"
 
 const command = process.argv[2] ?? "check"
 

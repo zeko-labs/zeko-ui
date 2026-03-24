@@ -29,12 +29,13 @@ moon run use-zeko:eval-opencode
 Useful environment variables:
 
 ```bash
-USE_ZEKO_EVAL_MODEL=opencode/gpt-5-nano moon run use-zeko:eval-opencode
 USE_ZEKO_EVAL_CASE=bridge-sdk-config moon run use-zeko:eval-opencode
 USE_ZEKO_EVAL_ATTEMPTS=3 moon run use-zeko:eval-opencode
+USE_ZEKO_EVAL_MODEL=some/provider-model moon run use-zeko:eval-opencode
 USE_ZEKO_EVAL_ALLOW_WEBSEARCH=1 moon run use-zeko:eval-opencode
 ```
 
 This manual eval verifies actual agent behavior by checking the `opencode` JSON event stream for reads of `.agents/skills/zeko/SKILL.md`, reads of the expected reference files, and answer fragments expected for each prompt.
+By default it lets `opencode` use its configured default model; `USE_ZEKO_EVAL_MODEL` is only an override.
 
 The shipped skill is intentionally lean and only references public URLs plus files inside `zeko/`.
