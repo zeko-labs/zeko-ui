@@ -82,9 +82,9 @@ export const endpointChecks: EndpointCheck[] = [
 ] as const
 
 export const forbiddenMarkdownPatterns = [
-	/\b(?:apps|packages|services|docs)\/[^\s)`]+/g,
-	/\.\.\//g,
-	/\/Users\//g
+	/\b(?:apps|packages|services|docs)\/[^\s)`]+/,
+	/\.\.\//,
+	/\/Users\//
 ]
 export const skippedExternalLinkChecks = new Set<string>()
 

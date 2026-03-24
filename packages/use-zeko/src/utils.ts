@@ -25,10 +25,17 @@ export const listMarkdownFiles = (directory: string, prefix = ""): string[] => {
 	return files.sort((left, right) => left.localeCompare(right))
 }
 
-export const normalizePath = (filePath: string) => path.normalize(path.resolve(filePath))
+export const normalizePath = (filePath: string) => path.normalize(filePath)
 
-export const endsWithPathSegment = (filePath: string, suffix: string) =>
-	normalizePath(filePath).endsWith(normalizePath(suffix))
+export const endsWithPathSegment = (filePath: string, suffix: string) => {
+	const normalizedFilePath = normalizePath(filePath)
+	const normalizedSuffix = normalizePath(suffix)
+
+	return (
+		normalizedFilePath === normalizedSuffix ||
+		normalizedFilePath.endsWith(`${path.sep}${normalizedSuffix}`)
+	)
+}
 
 export const readRepoFile = (relativePath: string) => {
 	const absolutePath = path.resolve(repoRoot, relativePath)
