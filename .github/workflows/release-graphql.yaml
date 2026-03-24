@@ -2,6 +2,13 @@ name: Release GraphQL
 
 on:
   workflow_call:
+    outputs:
+      should_release:
+        description: Whether graphql should release in this run
+        value: ${{ jobs.version-check.outputs.should_release }}
+      version:
+        description: graphql package version for this run
+        value: ${{ jobs.version-check.outputs.version }}
   workflow_dispatch:
 
 jobs:

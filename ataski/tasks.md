@@ -100,3 +100,4 @@
 - T114 | done | fix-bridge-cli-release-retry-and-sync-ordering | done/T114-fix-bridge-cli-release-retry-and-sync-ordering.md
 - T115 | done | switch-gha-workflows-to-warpbuild-runners | done/T115-switch-gha-workflows-to-warpbuild-runners.md
 - T116 | done | unify-bridge-cli-release-topology-and-github-release-retries | done/T116-unify-bridge-cli-release-topology-and-gh-release-retries.md
+- T117 | done | normalize-simple-package-release-gating | done/T117-normalize-simple-package-release-gating.md
