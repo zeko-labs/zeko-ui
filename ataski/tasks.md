@@ -146,4 +146,4 @@
 - T146 | done | add-docs-site-section-for-zeko-skills | done/T146-add-docs-site-section-for-zeko-skills.md
 - T147 | done | validate-and-fix-zeko-skills-clawhub-metadata | done/T147-validate-and-fix-zeko-skills-clawhub-metadata.md
 - T148 | done | automate-zeko-skills-clawhub-publish | done/T148-automate-zeko-skills-clawhub-publish.md
-- T149 | in-progress | fix-clawhub-tag-fallback-and-merge-conflicts | in-progress/T149-fix-clawhub-tag-fallback-and-merge-conflicts.md
+- T149 | done | fix-clawhub-tag-fallback-and-merge-conflicts | done/T149-fix-clawhub-tag-fallback-and-merge-conflicts.md
