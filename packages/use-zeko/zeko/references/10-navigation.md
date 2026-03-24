@@ -17,6 +17,7 @@ Start with public Zeko docs, not internal repo assumptions.
 ## Builder docs
 
 - Developer getting started: `https://docs.zeko.io/developers/getting-started`
+- Bridge CLI: `https://docs.zeko.io/developers/tools/bridge-cli`
 - Bridge SDK: `https://docs.zeko.io/developers/guides/bridge-sdk`
 - Faucet CLI: `https://docs.zeko.io/developers/guides/faucet-cli`
 - Custom network and wallet config: `https://docs.zeko.io/developers/guides/custom-network`
@@ -29,6 +30,7 @@ Start with public Zeko docs, not internal repo assumptions.
 
 ## Routing
 
+- Need an unattended bridge command that can run with a local key: read `references/30-bridge-and-faucet.md`.
 - Need exact endpoints or something runnable right now: read `references/40-endpoints-and-curl.md`.
 - Need bridge or faucet workflow guidance: read `references/30-bridge-and-faucet.md`.
 - Need zkApp or contract guidance: read `references/50-build-on-zeko.md`.

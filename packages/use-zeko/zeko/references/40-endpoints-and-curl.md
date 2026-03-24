@@ -6,6 +6,7 @@ Use this file when you need exact public endpoints, Bridge SDK config values, or
 
 - If the user asks which endpoints to pass to the Zeko Bridge SDK or `Bridge.init`, start here.
 - If the user asks for a query they can run right now with `curl`, start here.
+- If the user asks to actually execute a bridge end to end, do not reconstruct the full protocol with raw `curl`; use the Bridge CLI or SDK instead.
 
 ## Testnet defaults
 

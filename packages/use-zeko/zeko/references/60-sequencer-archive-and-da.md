@@ -13,12 +13,14 @@ Use this file when the user asks how Zeko works or which endpoint role matters f
 - The sequencer is the live coordination point for Zeko L2 state progression.
 - It exposes GraphQL surfaces such as `sequencerPk` and `circuitsConfig`.
 - Use the live Zeko GraphQL endpoint when the user needs current chain config, bridge config, or request lifecycle status.
+- If the user asks which live query to run, route them to the `curl` examples in `references/40-endpoints-and-curl.md`.
 
 ## Archive node
 
 - The archive node is the historical read path.
 - Use it for past actions, events, and timeline debugging.
 - If the user needs to inspect bridge history, historical actions, or event backfills, query the archive node instead of the live node.
+- If the user asks what queries to run against the archive node, route them to the archive `curl` examples in `references/40-endpoints-and-curl.md`.
 
 ## DA layer
 
@@ -31,3 +33,5 @@ Use this file when the user asks how Zeko works or which endpoint role matters f
 - Mina gateway: current Mina reads on testnet.
 - Mina archive gateway: historical Mina actions and archive state.
 - Zeko archive: historical Zeko events.
+- When the question is conceptual, explain the sequencer, archive node, and DA layer here first.
+- When the question is operational, pair this file with `references/40-endpoints-and-curl.md` for exact queries.

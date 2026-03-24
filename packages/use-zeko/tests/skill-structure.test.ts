@@ -76,8 +76,19 @@ describe("use-zeko skill structure", () => {
 		expect(protocol).toContain("DA layer")
 
 		const navigation = fs.readFileSync(path.join(referencesDir, "10-navigation.md"), "utf8")
+		expect(navigation).toContain("https://docs.zeko.io/developers/tools/bridge-cli")
 		expect(navigation).toContain("llms-full.txt")
 		expect(navigation.toLowerCase()).toContain("fallback")
+
+		const bridgeAndFaucet = fs.readFileSync(
+			path.join(referencesDir, "30-bridge-and-faucet.md"),
+			"utf8"
+		)
+		expect(bridgeAndFaucet).toContain("https://docs.zeko.io/developers/tools/bridge-cli")
+		expect(bridgeAndFaucet).toContain("WALLET_PRIVATE_KEY")
+		expect(bridgeAndFaucet).toContain("zeko-bridge bridge")
+		expect(bridgeAndFaucet).toContain("--json")
+		expect(bridgeAndFaucet).toContain("doctor")
 
 		const build = fs.readFileSync(path.join(referencesDir, "50-build-on-zeko.md"), "utf8")
 		expect(build).toContain("node --input-type=module")

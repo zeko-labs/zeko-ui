@@ -21,7 +21,7 @@ Load only what you need:
 - Docs map and routing: [references/10-navigation.md](references/10-navigation.md)
 - Agent-first behavior: [references/10-agent-workflows.md](references/10-agent-workflows.md)
 - User flows and browser-wallet exceptions: [references/20-user-flows.md](references/20-user-flows.md)
-- Bridge SDK and faucet workflows: [references/30-bridge-and-faucet.md](references/30-bridge-and-faucet.md)
+- Bridge CLI, Bridge SDK, and faucet workflows: [references/30-bridge-and-faucet.md](references/30-bridge-and-faucet.md)
 - Endpoints and `curl` queries: [references/40-endpoints-and-curl.md](references/40-endpoints-and-curl.md)
 - Building with `o1js` or OCaml: [references/50-build-on-zeko.md](references/50-build-on-zeko.md)
 - Sequencer, archive node, and DA layer: [references/60-sequencer-archive-and-da.md](references/60-sequencer-archive-and-da.md)

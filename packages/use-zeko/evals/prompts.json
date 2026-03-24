@@ -14,6 +14,19 @@
 		]
 	},
 	{
+		"id": "bridge-cli",
+		"prompt": "I want an unattended agent-friendly way to bridge between Mina testnet and Zeko testnet with a local private key. Should I use the bridge CLI, and how?",
+		"expectedReferences": ["10-agent-workflows.md", "30-bridge-and-faucet.md"],
+		"expectedFragments": [
+			"https://docs.zeko.io/developers/tools/bridge-cli",
+			"WALLET_PRIVATE_KEY",
+			"zeko-bridge bridge",
+			"--from mina:testnet",
+			"--to zeko:testnet",
+			"--json"
+		]
+	},
+	{
 		"id": "faucet-json",
 		"prompt": "How should an agent get testnet funds and use the faucet in JSON mode?",
 		"expectedReferences": ["10-agent-workflows.md", "30-bridge-and-faucet.md"],

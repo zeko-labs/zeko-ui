@@ -95,4 +95,4 @@
 - T109 | done | merge-main-after-pr-152-and-resolve-conflicts | done/T109-merge-main-after-pr-152-and-resolve-conflicts.md
 - T110 | done | revert-ui-sdk-drift-after-split-pr-and-keep-hook-guardrail | done/T110-revert-ui-sdk-drift-after-split-pr-and-keep-hook-guardrail.md
 - T111 | done | rename-testing-doc-and-complete-live-validation-protocol | done/T111-rename-testing-doc-and-complete-live-validation-protocol.md
-- T112 | in-progress | merge-main-and-add-bridge-cli-skill-guidance | in-progress/T112-merge-main-and-add-bridge-cli-skill-guidance.md
+- T112 | done | merge-main-and-add-bridge-cli-skill-guidance | done/T112-merge-main-and-add-bridge-cli-skill-guidance.md
