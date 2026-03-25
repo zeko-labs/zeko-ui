@@ -126,3 +126,4 @@
 - T140 | done | capture-app-root-errors-in-sentry | done/T140-capture-app-root-errors-in-sentry.md
 - T141 | done | validate-bridge-error-capture-and-update-policy-docs | done/T141-validate-bridge-error-capture-and-update-policy-docs.md
 - T142 | done | clarify-default-publish-behavior-for-named-pr-worktrees | done/T142-clarify-default-publish-behavior-for-named-pr-worktrees.md
+- T143 | done | require-remote-review-handoff-with-pr-url | done/T143-require-remote-review-handoff-with-pr-url.md
