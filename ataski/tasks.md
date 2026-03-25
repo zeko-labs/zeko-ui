@@ -122,3 +122,7 @@
 - T136 | done | add-use-zeko-validation-evals-and-ci | done/T136-add-use-zeko-validation-evals-and-ci.md
 - T137 | done | add-use-zeko-public-mirror-sync | done/T137-add-use-zeko-public-mirror-sync.md
 - T138 | done | validate-remaining-devin-review-comments | done/T138-validate-remaining-devin-review-comments.md
+- T139 | done | normalize-bridge-operation-timestamps-and-harden-history-render | done/T139-normalize-bridge-operation-timestamps-and-harden-history-render.md
+- T140 | done | capture-app-root-errors-in-sentry | done/T140-capture-app-root-errors-in-sentry.md
+- T141 | done | validate-bridge-error-capture-and-update-policy-docs | done/T141-validate-bridge-error-capture-and-update-policy-docs.md
+- T142 | done | clarify-default-publish-behavior-for-named-pr-worktrees | done/T142-clarify-default-publish-behavior-for-named-pr-worktrees.md

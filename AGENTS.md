@@ -86,3 +86,4 @@ For chore/tooling/config/docs-only changes, this workflow is optional unless exp
 15. Task content must be self-contained: each task must include all context needed to complete it so a sub-agent can execute without asking the main agent for missing details.
 16. In plan mode, the agent must use Ataski to express the plan: every meaningful plan item must be written as an Ataski task and divided for maximum safe parallelization.
 17. Sub-agents must not open/update/push PR branches; only the main agent performs PR publication steps.
+18. If the user asks for a named PR branch or worktree and also asks for implementation, treat publish as implied completion work: after validation passes, the main agent should commit the finished changes and push the branch unless the user explicitly says not to. If publication is blocked by missing credentials or unavailable tooling, report that specific blocker instead of silently stopping before commit/push.

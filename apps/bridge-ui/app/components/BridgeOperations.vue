@@ -9,6 +9,10 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-vue-next"
 import { computed } from "vue"
 import type { ActorRefFromLogic } from "xstate"
 import { statusFromState } from "~/helpers"
+import {
+	formatOperationDate,
+	sortOperationTimestampsDesc
+} from "~~/machines/operationTimestamps"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
@@ -40,9 +44,10 @@ const data = computed(() =>
 				destination: state.value.context.destination,
 				amount: state.value.context.amount,
 				hash: state.value.context.transaction?.hash ?? "",
-				date:
-					state.value.context.transaction?.date.toISOString() ??
-					new Date().toISOString()
+				timestampMs: state.value.context.transaction?.timestampMs ?? null,
+				dateLabel: formatOperationDate(
+					state.value.context.transaction?.timestampMs ?? null
+				)
 			}
 		})
 		.toSorted((a, b) => {
@@ -50,7 +55,7 @@ const data = computed(() =>
 			const bIsDone = typeof b.status === "string" && b.status.includes("DONE")
 			if (aIsDone && !bIsDone) return 1 // If a is DONE and b is NOT DONE, a goes after b (return 1).
 			if (!aIsDone && bIsDone) return -1 // If a is NOT DONE and b is DONE, a goes before b (return -1).
-			return b.date.localeCompare(a.date) // If both both DONE or both not DONE, sort them by date.
+			return sortOperationTimestampsDesc(a.timestampMs, b.timestampMs)
 		})
 )
 
@@ -168,7 +173,7 @@ const visiblePages = computed(() => {
               </div>
             </td>
             <!-- Date -->
-            <td>{{ new Date(row.original.date).toLocaleDateString() }}</td>
+            <td>{{ row.original.dateLabel }}</td>
           </tr>
           <tr v-if="!loading && table.getRowModel().rows.length === 0">
             <td :colspan="columns.length">No transactions.</td>
