@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { Settings } from "lucide-vue-next"
 import type { ActorRefFromLogic } from "xstate"
+import { sortByQueueOrder } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
@@ -9,6 +10,7 @@ const isSettingsOpen = ref(false)
 
 type OperationCard = {
 	id: string
+	order: number
 	status: "started" | "paused" | "completed"
 	lane: "main" | "cancellation"
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
@@ -16,8 +18,9 @@ type OperationCard = {
 
 const allOperations = useSelector(bs.bridge.actorRef, (state) => {
 	const items: OperationCard[] = [...state.context.operations.values()].map(
-		({ operation, status, lane }) => ({
+		({ operation, order, status, lane }) => ({
 			id: operation.id,
+			order,
 			status,
 			lane,
 			operation
@@ -25,24 +28,40 @@ const allOperations = useSelector(bs.bridge.actorRef, (state) => {
 	)
 
 	const completed = items.filter((item) => item.status === "completed")
-	const mainPending = items.filter(
-		(item) => item.status !== "completed" && item.lane === "main"
+	const mainPending = sortByQueueOrder(
+		items.filter((item) => item.status !== "completed" && item.lane === "main")
 	)
-	const cancellationPending = items.filter(
-		(item) => item.status !== "completed" && item.lane === "cancellation"
+	const cancellationPending = sortByQueueOrder(
+		items.filter(
+			(item) => item.status !== "completed" && item.lane === "cancellation"
+		)
 	)
+	const queuedMainOperations = mainPending.filter(
+		(item) => item.status !== "started"
+	)
+	const depositQueue = queuedMainOperations
+		.filter(
+			({ operation }) => operation.getSnapshot().context.direction === "deposit"
+		)
+		.map(({ operation }) => operation)
+	const withdrawalQueue = queuedMainOperations
+		.filter(
+			({ operation }) =>
+				operation.getSnapshot().context.direction === "withdrawal"
+		)
+		.map(({ operation }) => operation)
 
 	return {
 		completed,
 		currentMainOperation:
 			mainPending.find((item) => item.status === "started")?.operation ?? null,
-		queuedMainOperations: mainPending
-			.filter((item) => item.status !== "started")
-			.map(({ operation }) => operation),
+		depositQueue,
+		withdrawalQueue,
 		cancellableOperations: cancellationPending.map(
 			({ operation }) => operation
 		),
-		activeCancellationOperation: state.context.activeCancellationOperation
+		activeCancellationOperation: state.context.activeCancellationOperation,
+		currentSlot: state.context.currentSlot
 	}
 })
 
@@ -52,8 +71,10 @@ const currentOperation = computed(
 	() => allOperations.value.currentMainOperation
 )
 
-const queuedOperations = computed(
-	() => allOperations.value.queuedMainOperations ?? []
+const depositQueue = computed(() => allOperations.value.depositQueue ?? [])
+
+const withdrawalQueue = computed(
+	() => allOperations.value.withdrawalQueue ?? []
 )
 
 const cancellableOperations = computed(
@@ -63,6 +84,8 @@ const cancellableOperations = computed(
 const activeCancellationOperation = computed(
 	() => allOperations.value.activeCancellationOperation
 )
+
+const currentSlot = computed(() => allOperations.value.currentSlot)
 </script>
 <template>
   <div class="Bridge">
@@ -90,6 +113,7 @@ const activeCancellationOperation = computed(
           v-for="(operation, index) in cancellableOperations"
           :operation
           :index
+          :currentSlot
           :disabled="
             activeCancellationOperation !== null &&
             activeCancellationOperation !== operation.id
@@ -101,18 +125,38 @@ const activeCancellationOperation = computed(
         requests.
       </h4>
     </div>
-    <div v-if="queuedOperations.length > 0" class="NextTransactions">
-      <h3>Next Transactions</h3>
+    <div
+      v-if="depositQueue.length > 0"
+      class="NextTransactions">
+      <h3>Deposit Queue</h3>
       <div class="QueuedOperations">
         <QueuedOperation
-          v-for="(operation, index) in queuedOperations"
+          v-for="(operation, index) in depositQueue"
           :operation
           :index
+          :currentSlot
         />
       </div>
       <h4>
-        You will be able to complete these transactions once the current
-        transaction is completed.
+        Deposits are processed in submission order and always run before queued
+        withdrawals.
+      </h4>
+    </div>
+    <div
+      v-if="withdrawalQueue.length > 0"
+      class="NextTransactions">
+      <h3>Withdrawal Queue</h3>
+      <div class="QueuedOperations">
+        <QueuedOperation
+          v-for="(operation, index) in withdrawalQueue"
+          :operation
+          :index
+          :currentSlot
+        />
+      </div>
+      <h4>
+        Withdrawals run after all non-cancellable deposits ahead of them have
+        been processed.
       </h4>
     </div>
     <div class="CompletedTransactions">

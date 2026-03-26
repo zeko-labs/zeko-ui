@@ -17,63 +17,189 @@ export type RecoveredOperations = {
 	cancelledDeposits: ActionState[]
 }
 
-const compareByRecoveryOrder = (a: ActionState, b: ActionState) => {
-	const timestampDiff = a.transaction.date.getTime() - b.transaction.date.getTime()
-	if (timestampDiff !== 0) return timestampDiff
-	return a.index - b.index
+export type RecoverySyncStatus = "started" | "paused" | "completed"
+
+export type RecoverySyncOperation = {
+	id: string
+	lane: RecoveryLane
+	order: number
+	status: "started" | "paused"
+	cancellable: boolean
+	timeoutSlot?: string
 }
+
+export type RecoverySyncState = {
+	pendingOperations: RecoverySyncOperation[]
+	operationsToUnpause: string[]
+	activeOperation: string | null
+	activeCancellationOperation: string | null
+}
+
+export type RecoverySyncCandidate = {
+	id: string
+	status: RecoverySyncStatus
+	transactionHash?: string
+}
+
+const compareBySubmissionOrder = (a: ActionState, b: ActionState) => a.index - b.index
+
+const toPendingRecoveryOperation = ({
+	actionState,
+	command,
+	lane
+}: {
+	actionState: ActionState
+	command: PendingRecoveryCommand
+	lane: RecoveryLane
+}): PendingRecoveryOperation => ({
+	actionState,
+	command,
+	lane
+})
 
 export const classifyRecoveredOperations = ({
 	deposits,
 	withdrawals
 }: PendingOperations): RecoveredOperations => {
-	const completedDeposits = deposits.filter((deposit) => deposit.finalised === true)
-	const cancelledDeposits = deposits.filter(
-		(deposit) => deposit.cancelled === true && deposit.finalised === false
+	const recovered: RecoveredOperations = {
+		mainPending: [],
+		cancellableDeposits: [],
+		completedDeposits: [],
+		completedWithdrawals: [],
+		cancelledDeposits: []
+	}
+	const pendingDeposits: PendingRecoveryOperation[] = []
+	const pendingWithdrawals: PendingRecoveryOperation[] = []
+
+	for (const deposit of deposits) {
+		if (deposit.finalised === true) {
+			recovered.completedDeposits.push(deposit)
+			continue
+		}
+
+		if (deposit.cancelled === true) {
+			recovered.cancelledDeposits.push(deposit)
+			continue
+		}
+
+		if (deposit.cancellable === true) {
+			recovered.cancellableDeposits.push(
+				toPendingRecoveryOperation({
+					actionState: deposit,
+					command: "resumeDeposit",
+					lane: "cancellation"
+				})
+			)
+			continue
+		}
+
+		pendingDeposits.push(
+			toPendingRecoveryOperation({
+				actionState: deposit,
+				command: "resumeDeposit",
+				lane: "main"
+			})
+		)
+	}
+
+	for (const withdrawal of withdrawals) {
+		if (withdrawal.finalised === true) {
+			recovered.completedWithdrawals.push(withdrawal)
+			continue
+		}
+
+		pendingWithdrawals.push(
+			toPendingRecoveryOperation({
+				actionState: withdrawal,
+				command: "resumeWithdrawal",
+				lane: "main"
+			})
+		)
+	}
+
+	pendingDeposits.sort((a, b) => compareBySubmissionOrder(a.actionState, b.actionState))
+	pendingWithdrawals.sort((a, b) => compareBySubmissionOrder(a.actionState, b.actionState))
+	recovered.mainPending = [...pendingDeposits, ...pendingWithdrawals]
+	recovered.cancellableDeposits.sort((a, b) =>
+		compareBySubmissionOrder(a.actionState, b.actionState)
 	)
-	const completedWithdrawals = withdrawals.filter((withdrawal) => withdrawal.finalised === true)
 
-	const cancellableDeposits = deposits
-		.filter(
-			(deposit) =>
-				deposit.finalised === false && deposit.cancelled === false && deposit.cancellable === true
-		)
-		.toSorted(compareByRecoveryOrder)
-		.map((actionState) => ({
-			actionState,
-			command: "resumeDeposit" as const,
-			lane: "cancellation" as const
-		}))
+	return recovered
+}
 
-	const mainPendingDeposits = deposits
-		.filter(
-			(deposit) =>
-				deposit.finalised === false && deposit.cancelled === false && deposit.cancellable !== true
-		)
-		.map((actionState) => ({
-			actionState,
-			command: "resumeDeposit" as const,
-			lane: "main" as const
-		}))
+export const buildRecoverySyncState = ({
+	recovered,
+	entryStateById
+}: {
+	recovered: RecoveredOperations
+	entryStateById: ReadonlyMap<string, { status: RecoverySyncStatus; lane: RecoveryLane }>
+}): RecoverySyncState => {
+	const pendingOperations = [
+		...recovered.mainPending.map(({ actionState }, order) => ({
+			id: actionState.id,
+			lane: "main" as const,
+			order,
+			status: order === 0 ? ("started" as const) : ("paused" as const),
+			cancellable: actionState.cancellable === true,
+			timeoutSlot: actionState.timeoutSlot
+		})),
+		...recovered.cancellableDeposits.map(({ actionState }, order) => {
+			const entryState = entryStateById.get(actionState.id)
+			const status =
+				entryState?.lane === "cancellation" && entryState.status === "started"
+					? ("started" as const)
+					: ("paused" as const)
 
-	const mainPendingWithdrawals = withdrawals
-		.filter((withdrawal) => withdrawal.finalised === false)
-		.map((actionState) => ({
-			actionState,
-			command: "resumeWithdrawal" as const,
-			lane: "main" as const
-		}))
+			return {
+				id: actionState.id,
+				lane: "cancellation" as const,
+				order,
+				status,
+				cancellable: actionState.cancellable === true,
+				timeoutSlot: actionState.timeoutSlot
+			}
+		})
+	].filter(({ id }) => entryStateById.has(id))
 
-	const mainPending: PendingRecoveryOperation[] = [
-		...mainPendingDeposits,
-		...mainPendingWithdrawals
-	].toSorted((a, b) => compareByRecoveryOrder(a.actionState, b.actionState))
+	const mainPendingIds = pendingOperations.filter(({ lane }) => lane === "main").map(({ id }) => id)
+	const activeCancellationOperation =
+		pendingOperations.find(({ lane, status }) => lane === "cancellation" && status === "started")
+			?.id ?? null
 
 	return {
-		mainPending,
-		cancellableDeposits,
-		completedDeposits,
-		completedWithdrawals,
-		cancelledDeposits
+		pendingOperations,
+		operationsToUnpause: mainPendingIds.slice(1),
+		activeOperation: mainPendingIds[0] ?? null,
+		activeCancellationOperation
 	}
+}
+
+export const matchRecoveryOperationIds = ({
+	actionStates,
+	candidates
+}: {
+	actionStates: ActionState[]
+	candidates: RecoverySyncCandidate[]
+}) => {
+	const matches = new Map<string, string>()
+	const candidateIds = new Set(candidates.map(({ id }) => id))
+	const candidateIdsByHash = new Map(
+		candidates
+			.filter(
+				({ transactionHash }) => typeof transactionHash === "string" && transactionHash.length > 0
+			)
+			.map(({ id, transactionHash }) => [transactionHash as string, id] as const)
+	)
+
+	for (const actionState of actionStates) {
+		if (candidateIds.has(actionState.id)) {
+			matches.set(actionState.id, actionState.id)
+			continue
+		}
+
+		const matchedId = candidateIdsByHash.get(actionState.transaction.hash)
+		if (matchedId) matches.set(actionState.id, matchedId)
+	}
+
+	return matches
 }

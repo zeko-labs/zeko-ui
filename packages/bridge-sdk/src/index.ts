@@ -72,6 +72,7 @@ type DepositStateContext = {
 	helperAccountL2: Account | null
 	prevNextCancelledDeposit: UInt32
 	prevNextDeposit: UInt32
+	currentSlot: UInt32
 	syncedOuterActionState: {
 		state: Field
 		length: UInt32
@@ -567,6 +568,7 @@ export class Bridge {
 			helperAccountL2,
 			prevNextCancelledDeposit,
 			prevNextDeposit,
+			currentSlot,
 			syncedOuterActionState,
 			lastCommit,
 			lastCommitAse: ase.map(({ action }) => fromList([action]).hash),
@@ -1283,6 +1285,8 @@ export class Bridge {
 			+currentSlot.sub(this.withdrawalDelay)
 		)
 
+		const normalizeTimestamp = (timestamp: string) => (timestamp === "0" ? "" : timestamp)
+
 		const witnessedAuxes = new Set(
 			withdrawalWitnesses.map((witness) => witness.aux.toBigInt().toString())
 		)
@@ -1290,6 +1294,7 @@ export class Bridge {
 			.filter((withdrawal) => !witnessedAuxes.has(withdrawalAux(withdrawal).toBigInt().toString()))
 			.map((withdrawal, index, pending) => ({
 				...withdrawal,
+				timestamp: normalizeTimestamp(withdrawal.timestamp),
 				index: -(pending.length - index),
 				committed: false,
 				finalised: false
@@ -1304,6 +1309,7 @@ export class Bridge {
 					return {
 						...witness,
 						...withdrawal,
+						timestamp: normalizeTimestamp(withdrawal.timestamp),
 						committed: lastCommit.innerActionStateLength
 							.greaterThan(UInt32.from(witness.index))
 							.toBoolean(),

@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ArrowBigRightDashIcon } from "lucide-vue-next"
 import type { ActorRefFromLogic } from "xstate"
-import { statusFromState } from "~/helpers"
+import { formatQueueMetadata, statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
 const {
 	operation,
 	index = 0,
+	currentSlot,
 	disabled = false
 } = defineProps<{
+	currentSlot?: string
 	index: number
 	disabled?: boolean
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
@@ -20,6 +22,17 @@ const machine = useSelector(operation, (state) => state)
 const status = computed(() =>
 	statusFromState(machine.value.value, machine.value.context.direction, {
 		canCancel: machine.value.context.canCancel
+	})
+)
+
+const metadata = computed(() =>
+	formatQueueMetadata({
+		cancellable: machine.value.context.canCancel,
+		direction: machine.value.context.direction,
+		currentSlot,
+		timeoutSlot: machine.value.context.timeoutSlot,
+		timeoutSlots: machine.value.context.timeoutSlots,
+		transaction: machine.value.context.transaction
 	})
 )
 
@@ -72,6 +85,9 @@ const message = computed(() => {
         <div class="Mina">
           <SvgMinaLogo width="24" height="24" />
           <span>{{ machine.context.amount }}</span>
+        </div>
+        <div v-if="metadata.length > 0" class="Metadata">
+          <p v-for="line in metadata" :key="line">{{ line }}</p>
         </div>
         <p>{{ message }}</p>
       </div>
@@ -149,6 +165,11 @@ const message = computed(() => {
         color: var(--palette-gray-600);
         font-size: var(--typography_fluid-lexend-xs);
       }
+    }
+
+    .Metadata {
+      display: grid;
+      gap: 0.25rem;
     }
 
     .Mina {

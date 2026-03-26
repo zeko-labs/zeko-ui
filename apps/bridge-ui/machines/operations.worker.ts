@@ -23,9 +23,10 @@ export type ActionState = {
 	amount: string
 	cancelled: boolean
 	cancellable?: boolean
+	timeoutSlot?: string
 	finalised: boolean
 	transaction: {
-		date: Date
+		date?: Date
 		hash: string
 	}
 	source: Networks
@@ -35,6 +36,7 @@ export type ActionState = {
 export type PendingOperations = {
 	deposits: ActionState[]
 	withdrawals: ActionState[]
+	currentSlot: string
 }
 type L1L2 = { l1: Networks; l2: Networks }
 
@@ -57,10 +59,11 @@ async function findPendingOperations({
 }: { account: string } & L1L2): Promise<PendingOperations> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(account)
-	const [{ deposits, ...depositIndices }, { withdrawals, ...withdrawalIndices }] =
+	const [{ deposits, ...depositIndices }, { withdrawals, ...withdrawalIndices }, currentSlot] =
 		(await Promise.all([
 			bridge.fetchDepositsWithStates(recipient),
-			bridge.fetchWithdrawalsWithStates(recipient)
+			bridge.fetchWithdrawalsWithStates(recipient),
+			bridge.fetchCurrentSlot()
 		])) satisfies [
 			{
 				deposits: DepositWithState[]
@@ -74,10 +77,23 @@ async function findPendingOperations({
 				withdrawals: WithdrawalWithState[]
 				committedIndex: number
 				finalisedIndex: number
-			}
+			},
+			UInt32
 		]
 
 	const toAmount = (n: bigint) => Number(Number(n / BigInt(10e8)).toFixed(2)).toString()
+	const toTransaction = ({ hash, timestamp }: { hash: string; timestamp: string }) => {
+		const date = new Date(timestamp)
+		const validDate =
+			timestamp.length > 0 &&
+			timestamp !== "0" &&
+			!Number.isNaN(date.getTime()) &&
+			date.getTime() > 0
+				? date
+				: undefined
+
+		return { hash, ...(validDate ? { date: validDate } : {}) }
+	}
 
 	const transferToString = ({
 		transfer,
@@ -96,11 +112,9 @@ async function findPendingOperations({
 		amount: toAmount(transfer.amount.toBigInt()),
 		cancelled,
 		cancellable: "cancellable" in transfer ? transfer.cancellable : undefined,
+		timeoutSlot: "timeout" in transfer ? transfer.timeout.toString() : undefined,
 		finalised: transfer.finalised,
-		transaction: {
-			date: new Date(transfer.timestamp),
-			hash: transfer.hash
-		},
+		transaction: toTransaction({ hash: transfer.hash, timestamp: transfer.timestamp }),
 		source,
 		destination
 	})
@@ -121,7 +135,8 @@ async function findPendingOperations({
 				source: l2,
 				destination: l1
 			})
-		)
+		),
+		currentSlot: currentSlot.toString()
 	}
 }
 

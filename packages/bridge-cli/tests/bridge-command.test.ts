@@ -1,3 +1,4 @@
+import { runCommand } from "citty"
 import { PrivateKey } from "o1js"
 import { describe, expect, it } from "vitest"
 import { createBridgeCommand } from "../src/commands/bridge"
@@ -361,5 +362,58 @@ describe("bridge command", () => {
 		})
 
 		expect(seenTimeouts).toEqual([DEFAULT_DEPOSIT_TIMEOUT_SLOTS])
+	})
+
+	it("accepts --timeout-slots on the high-level bridge command", async () => {
+		const seenTimeouts: Array<number | undefined> = []
+		const command = createBridgeCommand({
+			resolvePaths: () => appPaths,
+			createStore: () => ({
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async () => ({
+				...createAdapter(),
+				async submitDeposit(input) {
+					seenTimeouts.push(input.timeoutSlots)
+					return {
+						success: true,
+						direction: "deposit",
+						action: "submit",
+						route: "mina:testnet->zeko:testnet",
+						hash: "deposit-submit-kebab-timeout",
+						explorerUrl: "https://example.test/deposit-submit-kebab-timeout",
+						included: true
+					}
+				}
+			}),
+			generateId: () => "bridge-op-kebab-timeout",
+			write: () => {},
+			writeProgress: () => {},
+			sleep: async () => {},
+			pollIntervalMs: 0,
+			now: () => "2026-03-10T00:00:00.000Z"
+		})
+
+		await runCommand(command, {
+			rawArgs: [
+				"--from",
+				"mina:testnet",
+				"--to",
+				"zeko:testnet",
+				"--amount",
+				"2",
+				"--account",
+				"B62test",
+				"--recipient",
+				"B62test",
+				"--timeout-slots",
+				"1"
+			]
+		})
+
+		expect(seenTimeouts).toEqual([1])
 	})
 })

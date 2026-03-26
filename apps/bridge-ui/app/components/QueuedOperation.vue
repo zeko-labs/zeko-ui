@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { ArrowBigRightDashIcon } from "lucide-vue-next"
 import type { ActorRefFromLogic } from "xstate"
-import { statusFromState } from "~/helpers"
+import { formatQueueMetadata, statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
-const { operation, index = 0 } = defineProps<{
+const {
+	operation,
+	index = 0,
+	currentSlot
+} = defineProps<{
+	currentSlot?: string
 	index: number
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 }>()
@@ -14,6 +19,17 @@ const machine = useSelector(operation, (state) => state)
 const status = computed(() =>
 	statusFromState(machine.value.value, machine.value.context.direction, {
 		canCancel: machine.value.context.canCancel
+	})
+)
+
+const metadata = computed(() =>
+	formatQueueMetadata({
+		cancellable: machine.value.context.canCancel,
+		direction: machine.value.context.direction,
+		currentSlot,
+		timeoutSlot: machine.value.context.timeoutSlot,
+		timeoutSlots: machine.value.context.timeoutSlots,
+		transaction: machine.value.context.transaction
 	})
 )
 </script>
@@ -33,6 +49,9 @@ const status = computed(() =>
         <SvgMinaLogo width="24" height="24" />
         <span>{{ machine.context.amount }}</span>
       </div>
+    </div>
+    <div v-if="metadata.length > 0" class="Metadata">
+      <p v-for="line in metadata" :key="line">{{ line }}</p>
     </div>
   </div>
 </template>
@@ -87,6 +106,16 @@ const status = computed(() =>
       display: flex;
       place-items: center;
       gap: 0.5ch;
+    }
+  }
+  .Metadata {
+    display: grid;
+    gap: 0.25rem;
+    p {
+      margin: 0;
+      color: var(--palette-gray-600);
+      font-size: var(--typography_fluid-lexend-xs);
+      white-space: nowrap;
     }
   }
 }

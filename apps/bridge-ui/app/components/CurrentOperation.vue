@@ -19,21 +19,22 @@ const machineStep = computed(() => {
 	// Special case for `WAITING_FOR_NETWORK` state
 	if (machine.value.matches("WAITING_FOR_NETWORK")) {
 		if (!machine.value.context.returnTo) return 0
-		return {
-			INIT_BRIDGE_OPERATION: 0,
-			FINALIZE_DEPOSIT: 2,
-			FINALIZE_WITHDRAWAL: 2,
-			TO_FINALIZE: 2,
-			CANCEL_DEPOSIT: 1
-		}[machine.value.context.returnTo]
+		switch (machine.value.context.returnTo) {
+			case "INIT_BRIDGE_OPERATION":
+				return 0
+			case "FINALIZE_DEPOSIT":
+			case "FINALIZE_WITHDRAWAL":
+			case "TO_FINALIZE":
+				return 2
+			default:
+				return 0
+		}
 	}
 	const meta = machine.value.getMeta()
 	return meta[statePath(machine.value.value)]?.step ?? 0
 })
 const uiProgress = computed(() =>
 	progressFromState({
-		state: machine.value.value,
-		returnTo: machine.value.context.returnTo,
 		step: machineStep.value
 	})
 )
@@ -44,12 +45,6 @@ const status = computed(() =>
 	})
 )
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
-const canCancel = computed(() => machine.value.matches("CAN_CANCEL"))
-const cancelling = computed(
-	() =>
-		machine.value.matches("CANCEL_DEPOSIT") ||
-		machine.value.matches("DEPOSIT_CANCELLED")
-)
 const isLoading = computed(() => machine.value.hasTag("loading"))
 const hasCTA = computed(() => machine.value.hasTag("cta"))
 
@@ -119,13 +114,6 @@ watch(machine.value.context.errors, (newErrors) => {
             Change Network
           </Button>
           <Button
-            v-else-if="canCancel || cancelling"
-            variant="cancel"
-            :disabled="cancelling"
-            @click='operation.send({ type: "Cancel" })'>
-            Cancel
-          </Button>
-          <Button
             v-else
             variant="main"
             :disabled="!toFinalize"
@@ -184,28 +172,6 @@ watch(machine.value.context.errors, (newErrors) => {
 
           <template v-else-if='machine.matches("TO_FINALIZE")'>
             <BridgeMessage messageKey="toFinalize" />
-          </template>
-
-          <template v-else-if='machine.matches("CAN_CANCEL")'>
-            <div class="warning"><BridgeMessage messageKey="canCancel" /></div>
-          </template>
-
-          <template
-            v-else-if='machine.matches({ CANCEL_DEPOSIT: "transaction" })'>
-            <BridgeMessage messageKey="cancellingDeposit" />
-          </template>
-
-          <template
-            v-else-if='machine.matches({ CANCEL_DEPOSIT: "send_and_confirm" })'>
-            <BridgeMessage
-              messageKey="cancelDeposit"
-              :transactions="machine.context.transactions"
-              transactionKey="cancelDeposit"
-            />
-          </template>
-
-          <template v-else-if='machine.matches("DEPOSIT_CANCELLED")'>
-            <BridgeMessage messageKey="depositCancelled" />
           </template>
 
           <template

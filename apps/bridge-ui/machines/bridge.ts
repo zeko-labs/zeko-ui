@@ -7,8 +7,12 @@ import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup
 import { bridgeOperationMachine } from "./bridgeOperation"
 import { createLogger } from "./debug"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
-import type { RecoveryLane } from "./recovery"
-import { classifyRecoveredOperations } from "./recovery"
+import type { RecoveredOperations, RecoveryLane } from "./recovery"
+import {
+	buildRecoverySyncState,
+	classifyRecoveredOperations,
+	matchRecoveryOperationIds
+} from "./recovery"
 import workerUrl from "./operations.worker?worker&url"
 
 const worker = new Worker(new URL(workerUrl, import.meta.url), { type: "module" })
@@ -22,6 +26,7 @@ type OperationStatus = "started" | "paused" | "completed"
 type Operations = Map<
 	string,
 	{
+		order: number
 		status: OperationStatus
 		lane: RecoveryLane
 		operation: ActorRefFromLogic<typeof bridgeOperationMachine>
@@ -29,6 +34,7 @@ type Operations = Map<
 >
 type Wallet = ActorRefFromLogic<typeof walletMachine>
 type OperationWorker = Comlink.Remote<OperationsWorker>
+const REFRESH_INTERVAL = 20_000
 
 type Command = "start" | "resumeDeposit" | "resumeWithdrawal" | "complete" | "completeCancelled"
 type StartOperationSettings = {
@@ -38,11 +44,13 @@ type StartOperationSettings = {
 	timeoutSlots?: number
 	state?: {
 		id?: string
+		index?: number
 		status: OperationStatus
 		source: Networks
 		destination: Networks
 		transaction: ActionState["transaction"]
 		cancellable?: boolean
+		timeoutSlot?: string
 	}
 }
 
@@ -75,14 +83,198 @@ export interface BridgeContext {
 	accountReady: boolean
 	activeOperation: string | null
 	activeCancellationOperation: string | null
+	nextOperationOrder: number
+	currentSlot?: string
 	worker: OperationWorker
 }
 
 const currentNetwork = (context: BridgeContext) =>
 	context.wallet.getSnapshot().context.currentNetwork
 
+const directionPriority = (operation: ActorRefFromLogic<typeof bridgeOperationMachine>) =>
+	operation.getSnapshot().context.direction === "deposit" ? 0 : 1
+
+const pausedMainQueueIds = (operations: Operations) =>
+	[...operations.entries()]
+		.filter(([, { lane, status }]) => lane === "main" && status === "paused")
+		.sort(
+			([, left], [, right]) =>
+				directionPriority(left.operation) - directionPriority(right.operation) ||
+				left.order - right.order
+		)
+		.map(([id]) => id)
+
 const operationId = () => `bridgeOperation-${Date.now()}-${nanoid(8)}`
 const supportedNetworks = ["mina:devnet", "zeko:testnet"] as const
+
+type StartArgs = {
+	status: OperationStatus
+	actionState: ActionState
+	command: Command
+}
+
+type RecoveryEnqueue = {
+	(action: { type: "startOperation"; params: StartOperationSettings }): void
+	assign: (assignment: Partial<BridgeContext>) => void
+}
+
+const enqueueRecoveredOperations = ({
+	enqueue,
+	recovered
+}: {
+	enqueue: RecoveryEnqueue
+	recovered: RecoveredOperations
+}) => {
+	const start = ({ status, actionState, command }: StartArgs) => {
+		const { amount, source, destination, transaction, id, index, cancellable, timeoutSlot } =
+			actionState
+		enqueue({
+			type: "startOperation",
+			params: {
+				amount,
+				command,
+				lane: command === "resumeDeposit" && cancellable === true ? "cancellation" : "main",
+				state: {
+					id,
+					index,
+					status,
+					destination,
+					source,
+					transaction,
+					cancellable,
+					timeoutSlot
+				}
+			}
+		})
+	}
+
+	const [currentMainOperation, ...queuedMainOperations] = recovered.mainPending
+
+	if (currentMainOperation) {
+		start({
+			status: "started",
+			actionState: currentMainOperation.actionState,
+			command: currentMainOperation.command
+		})
+	}
+
+	for (const pendingOperation of queuedMainOperations) {
+		start({
+			status: "paused",
+			actionState: pendingOperation.actionState,
+			command: pendingOperation.command
+		})
+	}
+
+	for (const pendingOperation of recovered.cancellableDeposits) {
+		start({
+			status: "paused",
+			actionState: pendingOperation.actionState,
+			command: pendingOperation.command
+		})
+	}
+
+	enqueue.assign({
+		operationsToUnpause: queuedMainOperations.map(
+			(pendingOperation) => pendingOperation.actionState.id
+		)
+	})
+}
+
+const enqueueRecoveredOperation = ({
+	enqueue,
+	actionState,
+	command,
+	status
+}: {
+	enqueue: RecoveryEnqueue
+	actionState: ActionState
+	command: Command
+	status: OperationStatus
+}) => {
+	enqueue({
+		type: "startOperation",
+		params: {
+			amount: actionState.amount,
+			command,
+			state: {
+				id: actionState.id,
+				index: actionState.index,
+				status,
+				source: actionState.source,
+				destination: actionState.destination,
+				transaction: actionState.transaction,
+				cancellable: actionState.cancellable,
+				timeoutSlot: actionState.timeoutSlot
+			}
+		}
+	})
+}
+
+const syncRecoveredOperations = ({
+	context,
+	recovered
+}: {
+	context: BridgeContext
+	recovered: RecoveredOperations
+}) => {
+	const operations = new Map(context.operations)
+	const recoveryOperationIds = matchRecoveryOperationIds({
+		actionStates: [...recovered.mainPending, ...recovered.cancellableDeposits].map(
+			({ actionState }) => actionState
+		),
+		candidates: [...operations.entries()].map(([id, { status, operation }]) => ({
+			id,
+			status,
+			transactionHash: operation.getSnapshot().context.transaction?.hash
+		}))
+	})
+	const syncState = buildRecoverySyncState({
+		recovered,
+		entryStateById: new Map(
+			[...recoveryOperationIds.entries()].flatMap(([recoveredId, operationId]) => {
+				const operation = operations.get(operationId)
+				return operation
+					? ([[recoveredId, { status: operation.status, lane: operation.lane }]] as const)
+					: []
+			})
+		)
+	})
+
+	for (const { id, lane, order, status, cancellable, timeoutSlot } of syncState.pendingOperations) {
+		const operationId = recoveryOperationIds.get(id)
+		if (!operationId) continue
+		const entry = operations.get(operationId)
+		if (!entry || entry.status === "completed") continue
+		entry.operation.send({ type: "SyncRecoveredState", cancellable, timeoutSlot })
+		if (entry.status !== status) {
+			if (status === "started") entry.operation.send({ type: "Resume", paused: false })
+			if (entry.status === "started" && status === "paused") entry.operation.send({ type: "Pause" })
+		}
+		operations.set(operationId, {
+			...entry,
+			status,
+			lane,
+			order
+		})
+	}
+
+	return {
+		operations,
+		operationsToUnpause: syncState.operationsToUnpause.flatMap((recoveredId) => {
+			const operationId = recoveryOperationIds.get(recoveredId)
+			return operationId ? [operationId] : []
+		}),
+		activeOperation: (() => {
+			if (!syncState.activeOperation) return null
+			return recoveryOperationIds.get(syncState.activeOperation) ?? null
+		})(),
+		activeCancellationOperation: (() => {
+			if (!syncState.activeCancellationOperation) return null
+			return recoveryOperationIds.get(syncState.activeCancellationOperation) ?? null
+		})()
+	}
+}
 
 const bridgeDirections = {
 	"zeko:mainnet": "mina:mainnet",
@@ -100,7 +292,9 @@ export const bridgeMachine = setup({
 	},
 	guards: {
 		validSource: ({ context }) => supportedNetworks.includes(context.sourceNetwork),
-		validDestination: ({ context }) => supportedNetworks.includes(context.destinationNetwork)
+		validDestination: ({ context }) => supportedNetworks.includes(context.destinationNetwork),
+		shouldRefreshPendingOperations: ({ context }) =>
+			[...context.operations.values()].some(({ status }) => status !== "completed")
 	},
 	actors: {
 		bridgeOperationMachine,
@@ -148,6 +342,7 @@ export const bridgeMachine = setup({
 				logger.warn(`Operation ${id} already exists, skipping spawn`)
 				return {}
 			}
+			const order = context.nextOperationOrder
 			const operation = spawn("bridgeOperationMachine", {
 				id,
 				systemId: id,
@@ -159,6 +354,7 @@ export const bridgeMachine = setup({
 					direction,
 					amount,
 					timeoutSlots,
+					timeoutSlot: state?.timeoutSlot,
 					transaction: state?.transaction,
 					cancellable: state?.cancellable
 				}
@@ -171,12 +367,14 @@ export const bridgeMachine = setup({
 			if (command === "completeCancelled")
 				operation.send({ type: "CompleteBridgeOperationCancelled" })
 			const operations = context.operations.set(id, {
+				order,
 				status: state?.status ?? "started",
 				lane,
 				operation
 			})
 			return {
 				operations: new Map(operations),
+				nextOperationOrder: order + 1,
 				activeOperation:
 					lane === "cancellation" ||
 					command === "complete" ||
@@ -196,12 +394,11 @@ export const bridgeMachine = setup({
 			const pausedEntry = operations.get(id)
 			if (!pausedEntry) throw new Error("Operation not found")
 			operations.set(id, { ...pausedEntry, status: "paused" })
+			const operationsToUnpause =
+				pausedEntry.lane === "main" ? pausedMainQueueIds(operations) : context.operationsToUnpause
 			return {
 				operations: new Map(operations),
-				operationsToUnpause:
-					pausedEntry.lane === "main"
-						? [...context.operationsToUnpause, id]
-						: context.operationsToUnpause
+				operationsToUnpause
 			}
 		}),
 		completeOperation: assign(({ context }, params: { id: string; terminate?: boolean }) => {
@@ -210,14 +407,14 @@ export const bridgeMachine = setup({
 			const operations = context.operations
 			const completedEntry = operations.get(id)
 			if (!completedEntry) throw new Error("Operation not found")
-			const { lane, operation: completedOperation } = completedEntry
+			const { lane, operation: completedOperation, order } = completedEntry
 			if (terminate) operations.delete(id)
-			else operations.set(id, { status: "completed", lane, operation: completedOperation })
+			else operations.set(id, { status: "completed", lane, operation: completedOperation, order })
 
 			let idToResume: string | null = null
 			let remainingToUnpause = context.operationsToUnpause
 			if (lane === "main") {
-				const [nextId, ...rest] = context.operationsToUnpause
+				const [nextId, ...rest] = pausedMainQueueIds(operations)
 				idToResume = nextId ?? null
 				remainingToUnpause = rest
 				logger.info("Found operation to resume", idToResume, rest)
@@ -272,7 +469,9 @@ export const bridgeMachine = setup({
 			walletReady: false,
 			accountReady: false,
 			activeOperation: null,
-			activeCancellationOperation: null
+			activeCancellationOperation: null,
+			nextOperationOrder: 0,
+			currentSlot: undefined
 		}
 	},
 	invoke: {
@@ -295,7 +494,9 @@ export const bridgeMachine = setup({
 						operations: new Map(),
 						operationsToUnpause: [],
 						activeOperation: null,
-						activeCancellationOperation: null
+						activeCancellationOperation: null,
+						nextOperationOrder: 0,
+						currentSlot: undefined
 					})
 				})
 			}
@@ -429,7 +630,51 @@ export const bridgeMachine = setup({
 				}
 			}
 		},
-		READY: {},
+		READY: {
+			after: {
+				[REFRESH_INTERVAL]: {
+					target: "REFRESH_OPERATIONS",
+					guard: "shouldRefreshPendingOperations"
+				}
+			}
+		},
+		REFRESH_OPERATIONS: {
+			invoke: {
+				src: "findPendingOperations",
+				input: ({ context: { wallet, worker, sourceNetwork, destinationNetwork } }) => ({
+					wallet,
+					worker,
+					sourceNetwork,
+					destinationNetwork
+				}),
+				onDone: {
+					target: "READY",
+					actions: assign(({ context, event }) => {
+						const recovered = classifyRecoveredOperations(event.output)
+						const {
+							operations,
+							operationsToUnpause,
+							activeOperation,
+							activeCancellationOperation
+						} = syncRecoveredOperations({
+							context,
+							recovered
+						})
+
+						return {
+							operations,
+							operationsToUnpause,
+							activeOperation,
+							activeCancellationOperation,
+							currentSlot: event.output.currentSlot
+						}
+					})
+				},
+				onError: {
+					target: "READY"
+				}
+			}
+		},
 		ERROR: {},
 		FIND_OPERATIONS: {
 			invoke: {
@@ -443,81 +688,44 @@ export const bridgeMachine = setup({
 				onDone: {
 					target: "READY",
 					actions: enqueueActions(({ event, enqueue }) => {
-						interface StartArgs {
-							status: OperationStatus
-							actionState: ActionState
-							command: Command
-						}
-						const start = ({ status, actionState, command }: StartArgs) => {
-							const { amount, source, destination, transaction, id, cancellable } = actionState
-							enqueue({
-								type: "startOperation",
-								params: {
-									amount,
-									command,
-									lane:
-										command === "resumeDeposit" && cancellable === true ? "cancellation" : "main",
-									state: { id, status, destination, source, transaction, cancellable }
-								}
-							})
-						}
-						const handlePending = () => {
-							const recovered = classifyRecoveredOperations(event.output)
-							const [currentMainOperation, ...queuedMainOperations] = recovered.mainPending
-
-							if (currentMainOperation) {
-								start({
-									status: "started",
-									actionState: currentMainOperation.actionState,
-									command: currentMainOperation.command
-								})
-							}
-
-							for (const pendingOperation of queuedMainOperations) {
-								start({
-									status: "paused",
-									actionState: pendingOperation.actionState,
-									command: pendingOperation.command
-								})
-							}
-
-							for (const pendingOperation of recovered.cancellableDeposits) {
-								start({
-									status: "paused",
-									actionState: pendingOperation.actionState,
-									command: pendingOperation.command
-								})
-							}
-
-							enqueue.assign({
-								operationsToUnpause: queuedMainOperations.map(
-									(pendingOperation) => pendingOperation.actionState.id
-								)
-							})
-						}
+						const recovered = classifyRecoveredOperations(event.output)
 
 						const handleComplete = () => {
-							const recovered = classifyRecoveredOperations(event.output)
 							const deposits = recovered.completedDeposits
 							const withdrawals = recovered.completedWithdrawals
 
 							for (const actionState of deposits)
-								start({ status: "completed", actionState, command: "complete" })
+								enqueueRecoveredOperation({
+									enqueue,
+									actionState,
+									command: "complete",
+									status: "completed"
+								})
 
 							for (const actionState of withdrawals)
-								start({ status: "completed", actionState, command: "complete" })
+								enqueueRecoveredOperation({
+									enqueue,
+									actionState,
+									command: "complete",
+									status: "completed"
+								})
 						}
 
 						const handleCancelled = () => {
-							const recovered = classifyRecoveredOperations(event.output)
 							const deposits = recovered.cancelledDeposits
 							for (const actionState of deposits)
-								start({ status: "completed", actionState, command: "completeCancelled" })
+								enqueueRecoveredOperation({
+									enqueue,
+									actionState,
+									command: "completeCancelled",
+									status: "completed"
+								})
 						}
 
-						handlePending()
+						enqueueRecoveredOperations({ enqueue, recovered })
 						handleComplete()
 						handleCancelled()
+						enqueue.assign({ currentSlot: event.output.currentSlot })
 					})
 				},
 				onError: { target: "ERROR" }

@@ -6,6 +6,7 @@ import { PrivateKey } from "o1js"
 import { assign, createActor, fromPromise, setup, toPromise } from "xstate"
 import type { BridgeAdapter } from "../core/adapter"
 import { createOperationLogger } from "../core/logger"
+import { formatErrorMessage, isRecoverableMutationError } from "../core/mutation-errors"
 import { createOperationStateController } from "../core/operation-machine"
 import { resolveAppPaths } from "../core/paths"
 import {
@@ -99,20 +100,9 @@ type BridgeCommandArgs = {
 	amount: { type: "string"; required: true }
 	account: { type: "string"; required: false }
 	recipient: { type: "string"; required: false }
-	timeoutSlots: { type: "string"; required: false }
+	timeoutSlots: { type: "string"; required: false; alias: string[] }
 	json: { type: "boolean"; default: false }
 	verbose: { type: "boolean"; default: false }
-}
-
-type BridgeCommandRunArgs = {
-	from?: string
-	to?: string
-	amount: string
-	account?: string
-	recipient?: string
-	timeoutSlots?: string
-	json?: boolean
-	verbose?: boolean
 }
 
 type TransitionEvent =
@@ -243,13 +233,18 @@ const parseOptionalString = (value: unknown): string | undefined =>
 const parseOptionalNumber = (value: unknown): number | undefined =>
 	typeof value === "string" && value.length > 0 ? Number(value) : undefined
 
-const parseBridgeCommandArgs = (args: BridgeCommandRunArgs) => ({
-	from: parseChainRef(args.from ?? "mina:testnet", "--from"),
-	to: parseChainRef(args.to ?? "zeko:testnet", "--to"),
+const readOptionalStringArg = (args: Record<string, unknown>, key: string): string | undefined => {
+	const kebabKey = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)
+	return parseOptionalString(args[key] ?? args[kebabKey])
+}
+
+const parseBridgeCommandArgs = (args: Record<string, unknown>) => ({
+	from: parseChainRef(readOptionalStringArg(args, "from") ?? "mina:testnet", "--from"),
+	to: parseChainRef(readOptionalStringArg(args, "to") ?? "zeko:testnet", "--to"),
 	amount: String(args.amount),
-	account: parseOptionalString(args.account),
-	recipient: parseOptionalString(args.recipient),
-	timeoutSlots: parseOptionalNumber(args.timeoutSlots),
+	account: readOptionalStringArg(args, "account"),
+	recipient: readOptionalStringArg(args, "recipient"),
+	timeoutSlots: parseOptionalNumber(readOptionalStringArg(args, "timeoutSlots")),
 	json: args.json === true,
 	verbose: args.verbose === true
 })
@@ -306,9 +301,6 @@ const getHeartbeatBucket = ({
 	)
 	return Math.floor((elapsedSeconds * 1_000) / intervalMs)
 }
-
-const formatErrorMessage = (error: unknown): string =>
-	error instanceof Error ? error.message : String(error)
 
 const createVerboseDiagnostics = (
 	startedAt: string,
@@ -497,11 +489,6 @@ const withPhaseTiming = ({
 	}
 }
 
-const RECOVERABLE_MUTATION_ERROR_PATTERNS = [
-	/Failed to fetch proved forest/i,
-	/No key returned from mutation/i
-]
-
 const TRANSIENT_CLAIM_UNAVAILABLE_ERROR_PATTERNS = [
 	/Did not find any (deposit|withdrawal) to finalize/i,
 	/No (deposit|withdrawal) witnesses found/i,
@@ -510,11 +497,6 @@ const TRANSIENT_CLAIM_UNAVAILABLE_ERROR_PATTERNS = [
 	/No next commit index found/i,
 	/No synced outer action state index found/i
 ]
-
-const isRecoverableMutationError = (error: unknown): boolean => {
-	const message = formatErrorMessage(error)
-	return RECOVERABLE_MUTATION_ERROR_PATTERNS.some((pattern) => pattern.test(message))
-}
 
 const isTransientClaimUnavailableError = (error: unknown): boolean => {
 	const message = formatErrorMessage(error)
@@ -2187,21 +2169,12 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			amount: { type: "string", required: true },
 			account: { type: "string", required: false },
 			recipient: { type: "string", required: false },
-			timeoutSlots: { type: "string", required: false },
+			timeoutSlots: { type: "string", required: false, alias: ["timeout-slots"] },
 			json: { type: "boolean", default: false },
 			verbose: { type: "boolean", default: false }
 		},
 		async run({ args }) {
-			const commandArgs = parseBridgeCommandArgs({
-				from: typeof args.from === "string" ? args.from : undefined,
-				to: typeof args.to === "string" ? args.to : undefined,
-				amount: typeof args.amount === "string" ? args.amount : "",
-				account: typeof args.account === "string" ? args.account : undefined,
-				recipient: typeof args.recipient === "string" ? args.recipient : undefined,
-				timeoutSlots: typeof args.timeoutSlots === "string" ? args.timeoutSlots : undefined,
-				json: args.json === true,
-				verbose: args.verbose === true
-			} satisfies BridgeCommandRunArgs)
+			const commandArgs = parseBridgeCommandArgs(args as Record<string, unknown>)
 			const from = commandArgs.from
 			const to = commandArgs.to
 			const account = deriveAccount(from, commandArgs.account)

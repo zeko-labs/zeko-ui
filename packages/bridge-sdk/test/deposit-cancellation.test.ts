@@ -266,7 +266,28 @@ describe("deposit cancellation state", () => {
 		})
 	})
 
-	it("does not mark accepted deposits as cancellable", async () => {
+	it("does not mark accepted deposits as cancellable before timeout expires", async () => {
+		const bridge = buildBridge()
+		const deposit = buildDeposit({ amount: 16, timeout: 500 })
+		const depositWitness = buildDepositWitness(deposit, 0, { lower: 0, upper: 1 })
+		const lastCommit = buildCommit({ index: 1, lower: 4, upper: 4, synchronizedLength: 1 })
+
+		mockDepositState({
+			bridge,
+			deposits: [deposit],
+			depositWitnesses: [depositWitness],
+			outerActions: [depositWitness, lastCommit],
+			lastCommit,
+			syncedLength: 1
+		})
+
+		const result = await bridge.fetchDepositsWithStates(recipient)
+
+		expect(result.deposits[0]?.accepted).toBe(true)
+		expect(result.deposits[0]?.cancellable).toBe(false)
+	})
+
+	it("marks timed-out accepted deposits as cancellable", async () => {
 		const bridge = buildBridge()
 		const deposit = buildDeposit({ amount: 16, timeout: 5 })
 		const depositWitness = buildDepositWitness(deposit, 0, { lower: 0, upper: 1 })
@@ -284,7 +305,11 @@ describe("deposit cancellation state", () => {
 		const result = await bridge.fetchDepositsWithStates(recipient)
 
 		expect(result.deposits[0]?.accepted).toBe(true)
-		expect(result.deposits[0]?.cancellable).toBe(false)
+		expect(result.deposits[0]?.cancellable).toBe(true)
+		await expect(bridge.canCancelDeposit(recipient)).resolves.toEqual({
+			available: true,
+			reason: null
+		})
 	})
 
 	it("does not mark cancelled deposits as cancellable", async () => {
