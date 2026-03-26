@@ -1,11 +1,11 @@
-name: Use Zeko Skill
+name: Zeko Skills
 
 on:
   pull_request:
     branches: ["main"]
     paths:
-      - ".github/workflows/use-zeko-skill.yaml"
-      - "packages/use-zeko/**"
+      - ".github/workflows/zeko-skills.yaml"
+      - "packages/zeko-skills/**"
       - "apps/docs/**"
       - "packages/bridge-sdk/**"
       - "packages/faucet-cli/**"
@@ -18,8 +18,8 @@ on:
   push:
     branches: ["main"]
     paths:
-      - ".github/workflows/use-zeko-skill.yaml"
-      - "packages/use-zeko/**"
+      - ".github/workflows/zeko-skills.yaml"
+      - "packages/zeko-skills/**"
       - "apps/docs/**"
       - "packages/bridge-sdk/**"
       - "packages/faucet-cli/**"
@@ -50,5 +50,5 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run use-zeko check
-        run: moon run -f use-zeko:check
+      - name: Run zeko-skills check
+        run: moon run -f zeko-skills:check

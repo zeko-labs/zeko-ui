@@ -4,12 +4,10 @@ Use this file first for practical agent behavior.
 
 ## Default path
 
-- Prefer direct keys and environment variables.
-- Prefer the Bridge CLI for unattended bridge execution from an agent.
-- Use `MINA_PRIVATE_KEY` for Mina-side signing.
-- Use `WALLET_PRIVATE_KEY` for Bridge CLI signing.
-- Use `GITHUB_TOKEN` for Faucet CLI authentication.
-- Prefer CLI and HTTP flows that can be scripted and parsed.
+- For non-browser automation, prefer terminal and API workflows over wallet UI steps.
+- Prefer the Bridge CLI for terminal-driven bridge execution.
+- When a task needs signing or auth, use the exact credential input expected by the specific tool docs.
+- Prefer commands with machine-readable output and flows that can be resumed or inspected.
 - Reach for the public docs pages before guessing API shapes.
 
 ## Browser exception

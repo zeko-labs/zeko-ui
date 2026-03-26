@@ -12,6 +12,27 @@ export const requiredReferences = [
 	"60-sequencer-archive-and-da.md"
 ] as const
 
+export const clawhubRequiredEnvVars = [
+	"WALLET_PRIVATE_KEY",
+	"MINA_PRIVATE_KEY",
+	"GITHUB_TOKEN",
+	"PUBLIC_KEY",
+	"ADDRESS"
+] as const
+
+export const clawhubRequiredBins = ["curl", "node", "npx"] as const
+
+export const clawhubInstallPackages = [
+	{ packageName: "@zeko-labs/bridge-cli", bins: ["zeko-bridge"] },
+	{ packageName: "@zeko-labs/faucet-cli", bins: ["zeko-faucet"] },
+	{ packageName: "o1js", bins: [] }
+] as const
+
+export const publicSyncMappings = [
+	{ source: "README.md", target: "README.md" },
+	{ source: "zeko", target: "skills/zeko" }
+] as const
+
 export type EndpointCheck = {
 	name: string
 	expected: string

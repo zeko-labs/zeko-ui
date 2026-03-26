@@ -1,8 +1,8 @@
 {
-	"name": "@zeko/use-zeko",
+	"name": "@zeko/zeko-skills",
 	"version": "0.0.1",
 	"private": true,
-	"description": "Public Zeko usage skill with deterministic validation and manual opencode evals.",
+	"description": "Public Zeko skill bundle with deterministic validation and manual opencode evals.",
 	"type": "module",
 	"devDependencies": {
 		"@types/node": "^20.8.10",
@@ -12,7 +12,7 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/zeko-labs/zeko-ui.git",
-		"directory": "packages/use-zeko"
+		"directory": "packages/zeko-skills"
 	},
 	"packageManager": "pnpm@10.16.1"
 }

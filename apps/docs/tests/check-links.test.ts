@@ -118,11 +118,19 @@ async function checkUrl(url: string, options: CheckUrlOptions = {}): Promise<Che
 	return result
 }
 
-type Category = "ok" | "bot_blocked" | "broken" | "unreachable"
+type Category = "ok" | "bot_blocked" | "broken" | "unreachable" | "transient_host_failure"
 
-function categorize(status: CheckStatus): Category {
+function isTransientGitHubFailure(url: string, status: CheckStatus): boolean {
+	if (typeof status !== "number" || status < 500) return false
+
+	const hostname = new URL(url).hostname.toLowerCase()
+	return hostname === "github.com" || hostname.endsWith(".github.com")
+}
+
+function categorize(url: string, status: CheckStatus): Category {
 	if (status === "timeout" || status === "error") return "unreachable"
 	if (isBotBlocked(status)) return "bot_blocked"
+	if (isTransientGitHubFailure(url, status)) return "transient_host_failure"
 	if (status >= 400) return "broken"
 	return "ok"
 }
@@ -200,6 +208,14 @@ describe("checkUrl", () => {
 		expect(result.status).toBe(200)
 		expect(methods).toEqual(["HEAD", "GET"])
 	})
+
+	test("treats GitHub 5xx responses as transient host failures", () => {
+		expect(categorize("https://github.com/MinaFoundation/mina-fungible-token", 502)).toBe(
+			"transient_host_failure"
+		)
+		expect(categorize("https://github.com/MinaFoundation/mina-fungible-token", 404)).toBe("broken")
+		expect(categorize("https://docs.zeko.io", 502)).toBe("broken")
+	})
 })
 
 describe("documentation links", () => {
@@ -230,8 +246,12 @@ describe("documentation links", () => {
 			)
 			const failures = urlEntries.flatMap(([url, occurrences], index) => {
 				const result = checkResults[index]
-				const category = categorize(result.status)
-				if (category === "ok" || category === "bot_blocked") {
+				const category = categorize(url, result.status)
+				if (
+					category === "ok" ||
+					category === "bot_blocked" ||
+					category === "transient_host_failure"
+				) {
 					return []
 				}
 

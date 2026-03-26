@@ -1,6 +1,32 @@
 ---
 name: zeko
-description: Use when a user needs to actually use or build on Zeko: bridge with Bridge CLI or Bridge SDK, get testnet funds, find the right Zeko and Mina endpoints, run GraphQL or curl queries, understand sequencer and archive-node roles, or build zkApps on Zeko with o1js or OCaml. This skill is for public user and builder workflows, especially agent-driven flows using private keys and environment variables.
+description: "Use when a user needs to actually use or build on Zeko: bridge with Bridge CLI or Bridge SDK, get testnet funds, find the right Zeko and Mina endpoints, run GraphQL or curl queries, understand sequencer and archive-node roles, or build zkApps on Zeko with o1js or OCaml. This skill is for public user and builder workflows, especially terminal-driven and non-browser automation flows."
+metadata:
+  openclaw:
+    homepage: https://docs.zeko.io/developers/tools/agent-skills
+    primaryEnv: WALLET_PRIVATE_KEY
+    requires:
+      env:
+        - WALLET_PRIVATE_KEY
+        - MINA_PRIVATE_KEY
+        - GITHUB_TOKEN
+        - PUBLIC_KEY
+        - ADDRESS
+      bins:
+        - curl
+        - node
+        - npx
+    install:
+      - kind: node
+        package: "@zeko-labs/bridge-cli"
+        bins:
+          - zeko-bridge
+      - kind: node
+        package: "@zeko-labs/faucet-cli"
+        bins:
+          - zeko-faucet
+      - kind: node
+        package: o1js
 ---
 
 # Zeko
@@ -9,7 +35,7 @@ Use this skill when the user wants to use Zeko, inspect the network, bridge asse
 
 Defaults:
 
-- For agents, prefer private keys and environment variables over browser wallet flows.
+- For non-browser automation, prefer explicit key-based CLI or HTTP flows over wallet UI steps.
 - Only discuss Auro Wallet when the agent is actively driving a browser with extension access.
 - Start with the smallest relevant reference file in this skill instead of a broad docs dump.
 - Use the public docs pages behind `https://docs.zeko.io` through the targeted references below.

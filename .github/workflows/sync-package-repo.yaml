@@ -29,6 +29,13 @@ on:
         required: false
         default: ""
         type: string
+      # Relative file/directory paths within package-path to copy into the
+      # standalone repo. Entries may be "source" or "source:target". When empty,
+      # sync the whole prepared package directory.
+      sync-paths:
+        required: false
+        default: ""
+        type: string
       # Branch in the standalone repository to force-update.
       branch:
         required: false
@@ -50,6 +57,10 @@ on:
         default: "."
         type: string
       extra-workspace-version-sources:
+        required: false
+        default: ""
+        type: string
+      sync-paths:
         required: false
         default: ""
         type: string
@@ -101,10 +112,38 @@ jobs:
         run: |
           REMOTE_URL="https://x-access-token:${GH_TOKEN}@github.com/zeko-labs/${{ inputs.standalone-repo }}.git"
           COMMIT_SHA=$(git rev-parse --short HEAD)
+          SYNC_PATHS="${{ inputs.sync-paths }}"
 
           tmp=$(mktemp -d)
           git init "$tmp"
-          cp -a "${{ inputs.package-path }}/." "$tmp/"
+          if [ -z "$SYNC_PATHS" ]; then
+            cp -a "${{ inputs.package-path }}/." "$tmp/"
+          else
+            while IFS= read -r REL_PATH; do
+              REL_PATH=$(printf '%s' "$REL_PATH" | xargs)
+              if [ -z "$REL_PATH" ]; then
+                continue
+              fi
+
+              SOURCE_REL_PATH="$REL_PATH"
+              TARGET_REL_PATH="$REL_PATH"
+              if [[ "$REL_PATH" == *:* ]]; then
+                SOURCE_REL_PATH="${REL_PATH%%:*}"
+                TARGET_REL_PATH="${REL_PATH#*:}"
+              fi
+
+              SOURCE_PATH="${{ inputs.package-path }}/$SOURCE_REL_PATH"
+              TARGET_PATH="$tmp/$TARGET_REL_PATH"
+
+              if [ ! -e "$SOURCE_PATH" ]; then
+                echo "Missing sync path: $SOURCE_PATH" >&2
+                exit 1
+              fi
+
+              mkdir -p "$(dirname "$TARGET_PATH")"
+              cp -a "$SOURCE_PATH" "$TARGET_PATH"
+            done <<< "$(printf '%s' "$SYNC_PATHS" | tr ',' '\n')"
+          fi
           cd "$tmp"
           git add -A
           git config user.name "github-actions[bot]"

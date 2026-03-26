@@ -1,0 +1,66 @@
+name: Sync Zeko Skills
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/sync-zeko-skills.yaml"
+      - "packages/zeko-skills/**"
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    uses: ./.github/workflows/sync-package-repo.yaml
+    with:
+      package-path: packages/zeko-skills
+      standalone-repo: zeko-skills
+      project-id: zeko-skills
+      sync-paths: README.md:README.md,zeko:skills/zeko
+      workspace-packages: .
+    secrets: inherit
+
+  validate-public-install:
+    needs: sync
+    runs-on: warp-ubuntu-latest-x64-2x
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate public skills install
+        env:
+          ZEKO_SKILLS_PUBLIC_SOURCE: https://github.com/zeko-labs/zeko-skills
+        run: moon exec --ignore-ci-checks zeko-skills:validate-public-install
+
+  publish-clawhub:
+    if: github.event_name == 'push'
+    needs: validate-public-install
+    runs-on: warp-ubuntu-latest-x64-2x
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish zeko skill to ClawHub
+        env:
+          CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
+        run: moon exec --ignore-ci-checks zeko-skills:publish-clawhub

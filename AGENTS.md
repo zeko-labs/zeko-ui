@@ -22,6 +22,8 @@ To install everything, run `pnpm i` from the root.
 
 - Run all commands from the root using `moon run`. For example, to run the `dev` task for the `faucet-ui` project, go to the repository root and run `moon run faucet-ui:dev`. Do not change into a project directory to run `moon` commands; they must be executed from the root.
 - `moon run` is the only supported command interface for repository workflows such as `dev`, `typecheck`, `test`, `build`, and `deploy`.
+- In GitHub Actions or other CI workflows, do not mark workflow-only tasks with `options.runInCI: true` just to make them invocable. That makes them eligible for generic `moon ci` discovery and can cause unrelated CI jobs to run deploy/publish/manual tasks.
+- When a workflow must invoke a task that should stay out of generic `moon ci`, use `moon exec --ignore-ci-checks <project>:<task>` after dependencies are installed. Reserve `options.runInCI` for tasks that are intentionally part of the normal CI target set.
 - Do not add, invoke, or rely on `package.json` scripts as workflow entrypoints in this repo. If a workflow is missing, add or update the project’s `moon.yml` task instead of adding a new package script.
 - Project tasks are defined in each project’s `moon.yml`. Inspect this file _before_ running any commands in a given project.
 - You can disable moon caching by passing the `-f` flag to any `moon run` command that has cached results.

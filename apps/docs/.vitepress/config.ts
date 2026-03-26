@@ -92,6 +92,7 @@ export default defineConfig({
 						text: "Tools",
 						collapsed: true,
 						items: [
+							{ text: "Agent Skills", link: "/developers/tools/agent-skills" },
 							{ text: "Bridge SDK", link: "/developers/tools/bridge-sdk" },
 							{ text: "Bridge CLI", link: "/developers/tools/bridge-cli" },
 							{ text: "Faucet CLI", link: "/developers/tools/faucet-cli" }
