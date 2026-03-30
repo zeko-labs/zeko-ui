@@ -26,9 +26,11 @@ export type ClaimResult = {
 // We would prefer to use Wrangler's generated env type directly, but this worker source is also
 // imported transitively by faucet-ui's generated `Service<typeof import("../faucet/worker")>`
 // binding types. In the faucet-ui typecheck program, the ambient global `Env` resolves to the UI
-// worker bindings, not the faucet worker bindings, so using bare generated `Env` here would bind
-// this file to the wrong project. Keep this alias until the faucet worker can consume its own
-// generated non-global env interface across both projects without colliding with faucet-ui's `Env`.
+// worker bindings, not the faucet worker bindings. We also tried Wrangler's
+// `wrangler types --env-interface FaucetEnv`, but Wrangler still emits a global `Cloudflare.Env`
+// declaration, so the faucet-ui program still picks up the faucet Durable Object bindings and
+// mis-types `env.FAUCET` there. Keep this alias until the faucet worker can consume a generated
+// non-global env interface that stays isolated from faucet-ui's `Env`.
 export type FaucetWorkerEnv = {
 	FAUCET: DurableObjectNamespace<import("./faucet-container").Faucet>
 	CLAIM_MUTEX: DurableObjectNamespace<import("./mutex").ClaimMutex>
