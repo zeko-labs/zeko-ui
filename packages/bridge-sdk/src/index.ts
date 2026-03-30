@@ -200,7 +200,7 @@ export class Bridge {
 			UInt64.from(l2AccountCreationFee),
 			PublicKey.fromBase58(circuitsConfig.zekoL1), // outerPk
 			PublicKey.fromBase58(circuitsConfig.zekoL2), // innerPk
-			circuitsConfig.holderAccountsL1.map((holder) => PublicKey.fromBase58(holder)), // outerHolders
+			circuitsConfig.holderAccountsL1.map((holder: string) => PublicKey.fromBase58(holder)), // outerHolders
 			PublicKey.fromBase58(circuitsConfig.holderAccountL2), // innerHolder
 			PublicKey.fromBase58(circuitsConfig.helperTokenOwnerL1), // outerTokenOwner
 			PublicKey.fromBase58(sequencerPk),
@@ -1880,6 +1880,8 @@ export class Bridge {
 			+currentSlot.sub(this.withdrawalDelay)
 		)
 
+		const normalizeTimestamp = (timestamp: string) => (timestamp === "0" ? "" : timestamp)
+
 		const witnessedAuxes = new Set(
 			withdrawalWitnesses.map((witness) => witness.aux.toBigInt().toString())
 		)
@@ -1887,6 +1889,7 @@ export class Bridge {
 			.filter((withdrawal) => !witnessedAuxes.has(withdrawalAux(withdrawal).toBigInt().toString()))
 			.map((withdrawal, index, pending) => ({
 				...withdrawal,
+				timestamp: normalizeTimestamp(withdrawal.timestamp),
 				index: -(pending.length - index),
 				committed: false,
 				finalised: false
@@ -1899,6 +1902,7 @@ export class Bridge {
 					if (!withdrawal) throw new Error("Unreachable: Did not find withdrawal")
 					return {
 						...withdrawal,
+						timestamp: normalizeTimestamp(withdrawal.timestamp),
 						...witness,
 						committed: lastCommit.innerActionStateLength
 							.greaterThan(UInt32.from(witness.index))
