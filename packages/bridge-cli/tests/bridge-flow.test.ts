@@ -1639,6 +1639,7 @@ describe("bridge flow", () => {
 
 	it("submits and finalizes a deposit flow", async () => {
 		let depositStatusCalls = 0
+		let finalizeCalls = 0
 		const events: string[] = []
 		const waits: boolean[] = []
 
@@ -1684,6 +1685,23 @@ describe("bridge flow", () => {
 							]
 						}
 
+						if (depositStatusCalls === 2) {
+							return [
+								{
+									index: 0,
+									amount: "2",
+									recipient: "B62test",
+									cancelled: false,
+									synced: true,
+									accepted: true,
+									confirmed: false,
+									finalised: false,
+									hash: "submit-hash",
+									timestamp: "2026-03-09T19:00:30.000Z"
+								}
+							]
+						}
+
 						return [
 							{
 								index: 0,
@@ -1703,6 +1721,7 @@ describe("bridge flow", () => {
 						return true
 					},
 					async finalizeDeposit({ wait }) {
+						finalizeCalls += 1
 						waits.push(wait)
 						return {
 							success: true,
@@ -1732,6 +1751,8 @@ describe("bridge flow", () => {
 
 		expect(result.status).toBe("completed")
 		expect(result.finalTransaction?.hash).toBe("finalize-hash")
+		expect(depositStatusCalls).toBe(3)
+		expect(finalizeCalls).toBe(1)
 		expect(waits).toEqual([false, false])
 		expect(events).toContain("submitted")
 		expect(events).toContain("finalized")

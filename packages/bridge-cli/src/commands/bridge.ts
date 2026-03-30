@@ -106,6 +106,18 @@ type BridgeCommandArgs = {
 	verbose: { type: "boolean"; default: false }
 }
 
+type BridgeCommandRunArgs = {
+	from?: string
+	to?: string
+	amount: string
+	account?: string
+	recipient?: string
+	timeoutSlots?: string
+	"timeout-slots"?: string
+	json?: boolean
+	verbose?: boolean
+}
+
 type TransitionEvent =
 	| "MARK_SUBMITTED"
 	| "MARK_WAITING_SUBMISSION"
@@ -234,18 +246,13 @@ const parseOptionalString = (value: unknown): string | undefined =>
 const parseOptionalNumber = (value: unknown): number | undefined =>
 	typeof value === "string" && value.length > 0 ? Number(value) : undefined
 
-const readOptionalStringArg = (args: Record<string, unknown>, key: string): string | undefined => {
-	const kebabKey = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)
-	return parseOptionalString(args[key] ?? args[kebabKey])
-}
-
-const parseBridgeCommandArgs = (args: Record<string, unknown>) => ({
-	from: parseChainRef(readOptionalStringArg(args, "from") ?? "mina:testnet", "--from"),
-	to: parseChainRef(readOptionalStringArg(args, "to") ?? "zeko:testnet", "--to"),
-	amount: String(args.amount),
-	account: readOptionalStringArg(args, "account"),
-	recipient: readOptionalStringArg(args, "recipient"),
-	timeoutSlots: parseOptionalNumber(readOptionalStringArg(args, "timeoutSlots")),
+const parseBridgeCommandArgs = (args: BridgeCommandRunArgs) => ({
+	from: parseChainRef(args.from ?? "mina:testnet", "--from"),
+	to: parseChainRef(args.to ?? "zeko:testnet", "--to"),
+	amount: args.amount,
+	account: parseOptionalString(args.account),
+	recipient: parseOptionalString(args.recipient),
+	timeoutSlots: parseOptionalNumber(args.timeoutSlots ?? args["timeout-slots"]),
 	json: args.json === true,
 	verbose: args.verbose === true
 })
@@ -2189,7 +2196,7 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			verbose: { type: "boolean", default: false }
 		},
 		async run({ args }) {
-			const commandArgs = parseBridgeCommandArgs(args as Record<string, unknown>)
+			const commandArgs = parseBridgeCommandArgs(args as BridgeCommandRunArgs)
 			const from = commandArgs.from
 			const to = commandArgs.to
 			const account = deriveAccount(from, commandArgs.account)
