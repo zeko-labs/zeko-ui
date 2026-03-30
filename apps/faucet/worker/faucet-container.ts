@@ -2,9 +2,9 @@ import { Container } from "@cloudflare/containers"
 import type { FaucetContainerEnv } from "./types"
 
 export class Faucet extends Container<FaucetContainerEnv> {
-	defaultPort = 3000
-	sleepAfter = "5m"
-	envVars = {
+	override defaultPort = 3000
+	override sleepAfter = "5m"
+	override envVars = {
 		ZEKO_FAUCET_SENDER_PRIVATE_KEY: this.env.ZEKO_FAUCET_SENDER_PRIVATE_KEY,
 		ZEKO_FAUCET_SEND_AMOUNT: this.env.ZEKO_FAUCET_SEND_AMOUNT
 	}

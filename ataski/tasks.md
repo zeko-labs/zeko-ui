@@ -150,3 +150,4 @@
 - T150 | done | fix-docs-link-check-flake-for-github-5xx | done/T150-fix-docs-link-check-flake-for-github-5xx.md
 - T151 | done | fix-faucet-ui-service-rpc-entrypoint-binding | done/T151-fix-faucet-ui-service-rpc-entrypoint-binding.md
 - T152 | done | split-faucet-fetch-and-rpc-service-bindings | done/T152-split-faucet-fetch-and-rpc-service-bindings.md
+- T156 | done | merge-main-and-reapply-faucet-type-refactor | done/T156-merge-main-and-reapply-faucet-type-refactor.md

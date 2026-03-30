@@ -19,6 +19,9 @@
 		"directory": "./.output/public/",
 		"binding": "ASSETS"
 	},
+	"secrets": {
+		"required": ["TURNSTILE_SECRET_KEY"]
+	},
 	"observability": {
 		"traces": {
 			"enabled": true,

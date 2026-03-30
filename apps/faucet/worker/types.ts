@@ -1,5 +1,6 @@
-export type FaucetContainerEnv = Env & {
+export type FaucetContainerEnv = {
 	ZEKO_FAUCET_SENDER_PRIVATE_KEY: string
+	ZEKO_FAUCET_SEND_AMOUNT: string
 }
 
 export type ErrorResponse = {
@@ -22,8 +23,10 @@ export type ClaimResult = {
 	payload: SuccessResponse | ErrorResponse
 }
 
-export type FaucetRuntimeEnv = Env & {
-	CLAIM_MUTEX: DurableObjectNamespace
+export type FaucetWorkerEnv = {
+	FAUCET: DurableObjectNamespace<import("./faucet-container").Faucet>
+	CLAIM_MUTEX: DurableObjectNamespace<import("./mutex").ClaimMutex>
+	FAUCET_CLAIM: KVNamespace
 	FAUCET_BANNED_IPS: KVNamespace
 	FAUCET_IP_SPAM: KVNamespace
 	SPAM_THRESHOLD: string
@@ -82,13 +85,8 @@ export type ClaimMutexLease = {
 
 export type ClaimMutexAcquireResult = { ok: true } | { ok: false; retryAfterMs: number }
 
-export type ClaimMutexStub = {
-	acquire(input: { leaseId: string; now: number; ttlMs: number }): Promise<ClaimMutexAcquireResult>
-	release(input: { leaseId: string }): Promise<{ ok: true }>
-}
-
 export type ClaimMutexHandle = {
 	leaseId: string
 	resource: string
-	stub: ClaimMutexStub
+	stub: ReturnType<FaucetWorkerEnv["CLAIM_MUTEX"]["get"]>
 }

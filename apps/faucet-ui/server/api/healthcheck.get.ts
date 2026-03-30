@@ -3,7 +3,7 @@ const SEQUENCER_URL = "https://testnet.zeko.io/graphql"
 export default defineEventHandler(async (event) => {
 	if (import.meta.dev) return new Response("OK", { status: 200 })
 
-	const { env } = event.context.cloudflare
+	const { env } = event.context.cloudflare as typeof event.context.cloudflare & { env: Env }
 
 	const [faucet, sequencer] = await Promise.all([
 		env.FAUCET.fetch(new Request("https://faucet/healthcheck")),
