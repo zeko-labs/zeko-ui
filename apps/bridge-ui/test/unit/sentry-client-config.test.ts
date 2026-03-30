@@ -33,4 +33,20 @@ describe("sentry.client.config", () => {
 
 		expect(beforeSendBridgeUiEvent(event, { originalException: {} } satisfies EventHint)).toBeNull()
 	})
+
+	it("drops wallet rejection objects only when code and message are present", () => {
+		const event = {} satisfies Event
+
+		expect(
+			beforeSendBridgeUiEvent(event, {
+				originalException: { code: 4001, message: "user reject" }
+			} satisfies EventHint)
+		).toBeNull()
+
+		expect(
+			beforeSendBridgeUiEvent(event, {
+				originalException: { message: "user reject" }
+			} satisfies EventHint)
+		).toBe(event)
+	})
 })

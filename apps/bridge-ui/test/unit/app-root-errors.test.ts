@@ -79,4 +79,17 @@ describe("captureAppRootError", () => {
 
 		expect(captureException).toHaveBeenCalledTimes(1)
 	})
+
+	it("deduplicates repeated primitive captures", () => {
+		captureAppRootError({
+			error: "primitive-dedup-sentinel",
+			surface: "unhandledrejection"
+		})
+		captureAppRootError({
+			error: "primitive-dedup-sentinel",
+			surface: "window-error"
+		})
+
+		expect(captureException).toHaveBeenCalledTimes(1)
+	})
 })

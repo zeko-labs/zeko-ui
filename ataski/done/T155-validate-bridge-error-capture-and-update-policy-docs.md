@@ -33,7 +33,7 @@ updated_at: 2026-03-25T02:32:42Z
 
 ## GREEN Evidence
 
-- `moon run bridge-ui:test -f` passed from the repo root in the canonical worktree with 9 test files and 47 tests green, covering the new timestamp normalization, hardened history rendering, app-root capture helper, and Sentry retention filter behavior.
+- `moon run bridge-ui:test -f` passed from the repo root in the canonical worktree with the bridge-ui suite green, covering the new timestamp normalization, hardened history rendering, app-root capture helper, and Sentry retention filter behavior.
 - `moon run bridge-ui:typecheck -f` passed after binding `beforeSendBridgeUiEvent` to the public `@sentry/nuxt` callback contract, confirming the new client plugin and Sentry config changes compile cleanly.
 - `moon run bridge-ui:build -f` passed and produced a deployable Cloudflare/Nitro output. The remaining Sentry warnings were expected release-upload notices about a missing auth token in local build validation, not runtime failures.
 - The bridge Sentry capture policy doc now states that app-originated Vue render, `window.error`, and `unhandledrejection` root errors must reach Sentry, while existing intentional noise filters remain active.

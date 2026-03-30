@@ -155,6 +155,6 @@
 - T155 | done | validate-bridge-error-capture-and-update-policy-docs | done/T155-validate-bridge-error-capture-and-update-policy-docs.md
 - T156 | done | clarify-default-publish-behavior-for-named-pr-worktrees | done/T156-clarify-default-publish-behavior-for-named-pr-worktrees.md
 - T157 | done | require-remote-review-handoff-with-pr-url | done/T157-require-remote-review-handoff-with-pr-url.md
-- T158 | in-progress | merge-origin-main-and-resolve-conflicts-for-web-410 | in-progress/T158-merge-origin-main-and-resolve-conflicts-for-web-410.md
-- T159 | todo | validate-review-findings-and-simplify-bridge-ui-error-capture | todo/T159-validate-review-findings-and-simplify-bridge-ui-error-capture.md
-- T160 | todo | validate-web-410-after-merge-and-review-fixes | todo/T160-validate-web-410-after-merge-and-review-fixes.md
+- T158 | done | merge-origin-main-and-resolve-conflicts-for-web-410 | done/T158-merge-origin-main-and-resolve-conflicts-for-web-410.md
+- T159 | done | validate-review-findings-and-simplify-bridge-ui-error-capture | done/T159-validate-review-findings-and-simplify-bridge-ui-error-capture.md
+- T160 | done | validate-web-410-after-merge-and-review-fixes | done/T160-validate-web-410-after-merge-and-review-fixes.md

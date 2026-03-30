@@ -2,12 +2,30 @@ import * as Sentry from "@sentry/nuxt"
 
 export type AppRootErrorSurface = "vue-render" | "window-error" | "unhandledrejection"
 
-const capturedErrors = new WeakSet<object>()
+const capturedObjects = new WeakSet<object>()
+const capturedPrimitives = new Set<string>()
 
 const toCaptureTarget = (error: unknown): Error | object =>
 	error instanceof Error || (typeof error === "object" && error !== null)
 		? error
 		: new Error(String(error))
+
+const primitiveCaptureKey = (error: unknown): string | null =>
+	typeof error === "object" && error !== null ? null : String(error)
+
+const isDuplicateCapture = (error: unknown): boolean => {
+	const primitiveKey = primitiveCaptureKey(error)
+	if (primitiveKey !== null) {
+		if (capturedPrimitives.has(primitiveKey)) return true
+		capturedPrimitives.add(primitiveKey)
+		return false
+	}
+
+	const objectError = error as object
+	if (capturedObjects.has(objectError)) return true
+	capturedObjects.add(objectError)
+	return false
+}
 
 export const captureAppRootError = ({
 	error,
@@ -22,13 +40,7 @@ export const captureAppRootError = ({
 	component?: string
 	info?: string
 }) => {
-	if (typeof error === "object" && error !== null) {
-		if (capturedErrors.has(error)) {
-			return
-		}
-
-		capturedErrors.add(error)
-	}
+	if (isDuplicateCapture(error)) return
 
 	Sentry.withScope((scope) => {
 		scope.setLevel("error")

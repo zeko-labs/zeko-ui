@@ -10,6 +10,10 @@ import { computed } from "vue"
 import type { ActorRefFromLogic } from "xstate"
 import { statusFromState } from "~/helpers"
 import {
+	bridgeOperationColumns,
+	type BridgeOperationRow
+} from "~/components/bridgeOperationsTable"
+import {
 	formatOperationDate,
 	sortOperationTimestampsDesc
 } from "~~/machines/operationTimestamps"
@@ -26,7 +30,7 @@ const { operations } = defineProps<{
 const bs = useBridgeStore()
 const loading = computed(() => !bs.bridge.snapshot.matches("READY"))
 
-const data = computed(() =>
+const data = computed<BridgeOperationRow[]>(() =>
 	operations
 		.map(({ id, operation }) => {
 			const state = useSelector(operation, (state) => state)
@@ -53,20 +57,12 @@ const data = computed(() =>
 		.toSorted((a, b) => {
 			const aIsDone = typeof a.status === "string" && a.status.includes("DONE")
 			const bIsDone = typeof b.status === "string" && b.status.includes("DONE")
-			if (aIsDone && !bIsDone) return 1 // If a is DONE and b is NOT DONE, a goes after b (return 1).
-			if (!aIsDone && bIsDone) return -1 // If a is NOT DONE and b is DONE, a goes before b (return -1).
+			if (aIsDone !== bIsDone) return aIsDone ? 1 : -1
 			return sortOperationTimestampsDesc(a.timestampMs, b.timestampMs)
 		})
 )
 
-// Column definitions
-const columns = [
-	{ accessorKey: "statusText", header: "Status" },
-	{ accessorKey: "source", header: "From" },
-	{ accessorKey: "destination", header: "To" },
-	{ accessorKey: "amount", header: "Amount" },
-	{ accessorKey: "date", header: "Date" }
-]
+const columns = bridgeOperationColumns
 
 // Pagination items per page
 const pageSize = 7
@@ -148,7 +144,7 @@ const visiblePages = computed(() => {
             <td>
               <Label
                 class="Table"
-                :title="row.original.status"
+                :title="String(row.original.status)"
                 :is="row.original.statusKind">
                 {{
                   {
@@ -173,7 +169,7 @@ const visiblePages = computed(() => {
               </div>
             </td>
             <!-- Date -->
-            <td>{{ row.original.dateLabel }}</td>
+            <td>{{ String(row.getValue("date")) }}</td>
           </tr>
           <tr v-if="!loading && table.getRowModel().rows.length === 0">
             <td :colspan="columns.length">No transactions.</td>

@@ -33,6 +33,9 @@ export const sentryIgnorePatterns: Array<string | RegExp> = [
 export const isAppOriginatedEvent = (event: SentryEvent): boolean =>
 	event.tags?.app_originated === "true"
 
+const isWalletRejectionObject = (obj: Record<string, unknown>): boolean =>
+	"code" in obj && "message" in obj && isWalletRejection(obj)
+
 const shouldDropThirdPartyOnlyEvent = (event: SentryEvent): boolean =>
 	Boolean(event.tags?.third_party_code) && !isAppOriginatedEvent(event)
 
@@ -47,10 +50,7 @@ export const beforeSendBridgeUiEvent: BeforeSend = (
 	if (exception && typeof exception === "object" && !(exception instanceof Error)) {
 		const obj = exception as Record<string, unknown>
 
-		if ("message" in obj && isWalletRejection(obj)) {
-			return null
-		}
-
+		if (isWalletRejectionObject(obj)) return null
 		if (Object.keys(obj).length === 0) {
 			return null
 		}
