@@ -3,8 +3,71 @@ import { assign, createActor, fromPromise, setup, waitFor } from "xstate"
 import { toUserFriendlyMessage } from "../../app/errors"
 import { bridgeOperationMachine } from "../../machines/bridgeOperation"
 
+vi.mock("../../app/service-worker/notificationList", () => ({
+	finalizeNotification: vi.fn(async () => {})
+}))
+
 const firstWithdrawalTooSmallMessage =
 	"First Zeko->Mina withdrawal amount is too small: recipient B62test does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot proceed as submitted."
+
+const createBridgeActor = (worker: object = {}) =>
+	createActor(
+		setup({
+			types: {
+				context: {} as {
+					activeOperation: string | null
+					events: Array<{ type: string; id?: string }>
+					worker: object
+				},
+				events: {} as { type: string; id?: string }
+			}
+		}).createMachine({
+			context: {
+				activeOperation: null,
+				events: [],
+				worker
+			},
+			on: {
+				TerminateOperation: {
+					actions: assign({
+						events: ({ context, event }) => [...context.events, event]
+					})
+				}
+			}
+		})
+	)
+
+const createWalletActor = (currentNetwork = "mina:testnet") =>
+	createActor(
+		setup({
+			types: {
+				context: {} as {
+					account: string
+					currentNetwork: string
+					events: Array<{ type: string; network?: string }>
+				},
+				events: {} as { type: string; network?: string }
+			}
+		}).createMachine({
+			context: {
+				account: "B62test",
+				currentNetwork,
+				events: []
+			},
+			on: {
+				RequestNetworkChange: {
+					actions: assign({
+						events: ({ context, event }) => [...context.events, event]
+					})
+				},
+				FetchBalance: {
+					actions: assign({
+						events: ({ context, event }) => [...context.events, event]
+					})
+				}
+			}
+		})
+	)
 
 describe("bridgeOperationMachine", () => {
 	beforeEach(() => {
@@ -21,61 +84,8 @@ describe("bridgeOperationMachine", () => {
 	})
 
 	it("stores the early withdrawal threshold SDK error from submitWithdrawal", async () => {
-		const bridge = createActor(
-			setup({
-				types: {
-					context: {} as {
-						activeOperation: string | null
-						events: Array<{ type: string; id?: string }>
-						worker: object
-					},
-					events: {} as { type: string; id?: string }
-				}
-			}).createMachine({
-				context: {
-					activeOperation: null,
-					events: [],
-					worker: {}
-				},
-				on: {
-					TerminateOperation: {
-						actions: assign({
-							events: ({ context, event }) => [...context.events, event]
-						})
-					}
-				}
-			})
-		)
-		const wallet = createActor(
-			setup({
-				types: {
-					context: {} as {
-						account: string
-						currentNetwork: string
-						events: Array<{ type: string; network?: string }>
-					},
-					events: {} as { type: string; network?: string }
-				}
-			}).createMachine({
-				context: {
-					account: "B62test",
-					currentNetwork: "zeko:testnet",
-					events: []
-				},
-				on: {
-					RequestNetworkChange: {
-						actions: assign({
-							events: ({ context, event }) => [...context.events, event]
-						})
-					},
-					FetchBalance: {
-						actions: assign({
-							events: ({ context, event }) => [...context.events, event]
-						})
-					}
-				}
-			})
-		)
+		const bridge = createBridgeActor()
+		const wallet = createWalletActor("zeko:testnet")
 		bridge.start()
 		wallet.start()
 
@@ -111,6 +121,69 @@ describe("bridgeOperationMachine", () => {
 		expect(
 			bridge.getSnapshot().context.events.some((event) => event.type === "TerminateOperation")
 		).toBe(true)
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("keeps a deposit pending when no finalize or cancel path is available yet", async () => {
+		const bridge = createBridgeActor({
+			canFinalizeDeposit: vi.fn(async () => ({ available: false, reason: "Older deposit blocks" })),
+			canCancelDeposit: vi.fn(async () => ({ available: false, reason: "Not timed out" }))
+		})
+		const wallet = createWalletActor()
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(bridgeOperationMachine, {
+			input: {
+				bridge: bridge as never,
+				wallet: wallet as never,
+				source: "mina:testnet",
+				destination: "zeko:testnet",
+				direction: "deposit",
+				amount: "1"
+			}
+		})
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+
+		await Promise.resolve()
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(actor.getSnapshot().matches("PENDING_DEPOSIT")).toBe(true)
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("keeps the main widget on finalization until queued cancellations have a separate UI", async () => {
+		const bridge = createBridgeActor({
+			canFinalizeDeposit: vi.fn(async () => ({ available: true, reason: null })),
+			canCancelDeposit: vi.fn(async () => ({ available: true, reason: null }))
+		})
+		const wallet = createWalletActor()
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(bridgeOperationMachine, {
+			input: {
+				bridge: bridge as never,
+				wallet: wallet as never,
+				source: "mina:testnet",
+				destination: "zeko:testnet",
+				direction: "deposit",
+				amount: "1"
+			}
+		})
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("TO_FINALIZE"))
 
 		actor.stop()
 		bridge.stop()

@@ -59,6 +59,49 @@ describe("bridge queue analysis", () => {
 		expect(result.targetIndex).toBe(5)
 		expect(result.claimableIndex).toBe(4)
 		expect(result.pendingAhead).toBe(1)
+		expect(result.blockingAhead).toBe(1)
+		expect(result.skippableAhead).toBe(0)
+		expect(result.shouldAdvanceQueuedClaims).toBe(true)
+	})
+
+	it("treats earlier cancellable deposits as skippable instead of hard blockers", () => {
+		const session = baseSession()
+		const result = analyzeDepositQueue({
+			session,
+			statuses: [
+				{
+					index: 4,
+					amount: "2",
+					recipient: "B62older",
+					cancelled: false,
+					cancellable: true,
+					synced: true,
+					accepted: false,
+					confirmed: false,
+					finalised: false,
+					hash: "submit-older",
+					timestamp: "2026-03-10T00:00:00.000Z"
+				},
+				{
+					index: 5,
+					amount: "1",
+					recipient: "B62test",
+					cancelled: false,
+					cancellable: false,
+					synced: true,
+					accepted: true,
+					confirmed: true,
+					finalised: false,
+					hash: "submit-current",
+					timestamp: "2026-03-10T00:01:00.000Z"
+				}
+			]
+		})
+
+		expect(result.pendingAhead).toBe(1)
+		expect(result.blockingAhead).toBe(0)
+		expect(result.skippableAhead).toBe(1)
+		expect(result.claimableIndex).toBe(5)
 		expect(result.shouldAdvanceQueuedClaims).toBe(true)
 	})
 

@@ -37,6 +37,11 @@
 		{
 			"binding": "FAUCET",
 			"service": "faucet"
+		},
+		{
+			"binding": "FAUCET_RPC",
+			"service": "faucet",
+			"entrypoint": "TurnstileClaimsEntrypoint"
 		}
 	]
 }

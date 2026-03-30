@@ -13,13 +13,15 @@ type FaucetTurnstileRpcResult = {
 }
 
 type FaucetTurnstileRpcBinding = {
-	getEntrypoint: (name: "TurnstileClaimsEntrypoint") => {
-		claimWithTurnstile: (input: {
-			address: string
-			chain: typeof FAUCET_CHAIN
-			clientIp: string
-		}) => Promise<FaucetTurnstileRpcResult>
-	}
+	claimWithTurnstile: (input: {
+		address: string
+		chain: typeof FAUCET_CHAIN
+		clientIp: string
+	}) => Promise<FaucetTurnstileRpcResult>
+}
+
+type FaucetRpcEnv = {
+	FAUCET_RPC: FaucetTurnstileRpcBinding
 }
 
 const jsonError = (status: number, code: string, message: string) =>
@@ -60,10 +62,7 @@ export default defineEventHandler(async (event) => {
 	// Turnstile is verified in the UI worker, then forwarded via internal Worker RPC only.
 	const faucetResult = await (async () => {
 		try {
-			const entrypoint = (env.FAUCET as unknown as FaucetTurnstileRpcBinding).getEntrypoint(
-				"TurnstileClaimsEntrypoint"
-			)
-			return await entrypoint.claimWithTurnstile({
+			return await (env as unknown as FaucetRpcEnv).FAUCET_RPC.claimWithTurnstile({
 				address: body.address,
 				chain: FAUCET_CHAIN,
 				clientIp
