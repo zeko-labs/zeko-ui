@@ -7,6 +7,7 @@ import { Bridge } from "@zeko-labs/bridge-sdk"
 import * as Comlink from "comlink"
 import { fetchTransactionStatus, PublicKey, Transaction, UInt32, UInt64 } from "o1js"
 import { getBridgeConfig } from "./helpers"
+import { normalizeOperationTimestamp } from "./operationTimestamps"
 
 function validatePublicKey(address: string): PublicKey {
 	try {
@@ -25,7 +26,7 @@ export type ActionState = {
 	cancellable?: boolean
 	finalised: boolean
 	transaction: {
-		date: Date
+		timestampMs: number | null
 		hash: string
 	}
 	source: Networks
@@ -98,7 +99,7 @@ async function findPendingOperations({
 		cancellable: "cancellable" in transfer ? transfer.cancellable : undefined,
 		finalised: transfer.finalised,
 		transaction: {
-			date: new Date(transfer.timestamp),
+			timestampMs: normalizeOperationTimestamp(transfer.timestamp),
 			hash: transfer.hash
 		},
 		source,

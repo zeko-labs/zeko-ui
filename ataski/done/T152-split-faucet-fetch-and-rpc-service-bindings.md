@@ -7,6 +7,7 @@ owner: codex
 created_at: 2026-03-26T11:42:31Z
 updated_at: 2026-03-26T11:43:42Z
 ---
+
 ## Requirements
 
 - Ensure `apps/faucet-ui` retains a default `FAUCET` service binding for `fetch()` calls used by `/api/healthcheck`.

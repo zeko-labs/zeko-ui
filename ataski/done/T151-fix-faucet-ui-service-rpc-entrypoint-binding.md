@@ -7,6 +7,7 @@ owner: codex
 created_at: 2026-03-26T11:34:25Z
 updated_at: 2026-03-26T11:38:48Z
 ---
+
 ## Requirements
 
 - Fix the faucet submission path in `apps/faucet-ui/server/api/faucet.post.ts` so turnstile-verified requests can call the faucet worker RPC without throwing `TypeError: The RPC receiver does not implement the method "getEntrypoint"`.
