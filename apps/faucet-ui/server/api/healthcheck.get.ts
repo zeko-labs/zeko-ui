@@ -3,9 +3,7 @@ const SEQUENCER_URL = "https://testnet.zeko.io/graphql"
 export default defineEventHandler(async (event) => {
 	if (import.meta.dev) return new Response("OK", { status: 200 })
 
-	// Same adapter typing gap as `faucet.post.ts`: `event.context.cloudflare.env` still comes
-	// through as unknown during Nuxt typecheck instead of the generated Worker `Env`.
-	const { env } = event.context.cloudflare as typeof event.context.cloudflare & { env: Env }
+	const { env } = event.context.cloudflare
 
 	const [faucet, sequencer] = await Promise.all([
 		env.FAUCET.fetch(new Request("https://faucet/healthcheck")),

@@ -152,3 +152,5 @@
 - T152 | done | split-faucet-fetch-and-rpc-service-bindings | done/T152-split-faucet-fetch-and-rpc-service-bindings.md
 - T156 | done | merge-main-and-reapply-faucet-type-refactor | done/T156-merge-main-and-reapply-faucet-type-refactor.md
 - T157 | done | replace-h3-cloudflare-casts-with-typed-augmentation | done/T157-replace-h3-cloudflare-casts-with-typed-augmentation.md
+- T158 | done | clarify-faucet-typing-comments | done/T158-clarify-faucet-typing-comments.md
+- T159 | done | replace-faucet-ui-h3-casts-with-local-adapter-types | done/T159-replace-faucet-ui-h3-casts-with-local-adapter-types.md

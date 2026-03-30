@@ -23,10 +23,12 @@ export type ClaimResult = {
 	payload: SuccessResponse | ErrorResponse
 }
 
-// Prefer generated Worker env types, but this worker source is also imported transitively by
-// faucet-ui's type generation. In that program, the ambient global `Env` resolves to the UI
-// worker bindings instead of the faucet worker bindings. Keep this local alias until the faucet
-// worker can consume a generated non-global env interface directly across both projects.
+// We would prefer to use Wrangler's generated env type directly, but this worker source is also
+// imported transitively by faucet-ui's generated `Service<typeof import("../faucet/worker")>`
+// binding types. In the faucet-ui typecheck program, the ambient global `Env` resolves to the UI
+// worker bindings, not the faucet worker bindings, so using bare generated `Env` here would bind
+// this file to the wrong project. Keep this alias until the faucet worker can consume its own
+// generated non-global env interface across both projects without colliding with faucet-ui's `Env`.
 export type FaucetWorkerEnv = {
 	FAUCET: DurableObjectNamespace<import("./faucet-container").Faucet>
 	CLAIM_MUTEX: DurableObjectNamespace<import("./mutex").ClaimMutex>
