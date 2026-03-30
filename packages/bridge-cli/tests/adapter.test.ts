@@ -1,6 +1,6 @@
 import type { PrivateKey } from "o1js"
 import { describe, expect, it } from "vitest"
-import { MAX_FEE_RETRIES, normalizeStatusTimestamp, sendWithFeeRetries } from "../src/core/adapter"
+import { MAX_FEE_RETRIES, sendWithFeeRetries } from "../src/core/adapter"
 
 describe("adapter fee retries", () => {
 	it("doubles the fee on low-fee send failures until the transaction succeeds", async () => {
@@ -82,10 +82,5 @@ describe("adapter fee retries", () => {
 
 		expect(seenFees).toHaveLength(MAX_FEE_RETRIES + 1)
 		expect(seenFees).toEqual([100n, 200n, 400n, 800n, 1600n, 3200n])
-	})
-
-	it("normalizes unknown status timestamps instead of exposing zero-like sentinels", () => {
-		expect(normalizeStatusTimestamp("0")).toBe("")
-		expect(normalizeStatusTimestamp("2026-03-25T00:00:00.000Z")).toBe("2026-03-25T00:00:00.000Z")
 	})
 })

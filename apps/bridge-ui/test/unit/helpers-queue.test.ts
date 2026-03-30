@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { formatQueueMetadata, queueTitleForDirection, sortByQueueOrder } from "../../app/helpers"
+import {
+	deriveBridgeQueues,
+	formatQueueMetadata,
+	queueTitleForDirection,
+	sortByQueueOrder
+} from "../../app/helpers"
 
 describe("formatQueueMetadata", () => {
 	it("includes submitted datetime and remaining timeout for recovered deposits", () => {
@@ -91,5 +96,74 @@ describe("formatQueueMetadata", () => {
 				{ id: "third", order: 3 }
 			]).map((item) => item.id)
 		).toEqual(["first", "second", "third"])
+	})
+
+	it("keeps cancellable deposits out of the main lane queues", () => {
+		const result = deriveBridgeQueues([
+			{
+				id: "deposit-active",
+				order: 0,
+				status: "started",
+				lane: "main",
+				direction: "deposit",
+				operation: "deposit-active"
+			},
+			{
+				id: "deposit-next",
+				order: 1,
+				status: "paused",
+				lane: "main",
+				direction: "deposit",
+				operation: "deposit-next"
+			},
+			{
+				id: "withdrawal-next",
+				order: 2,
+				status: "paused",
+				lane: "main",
+				direction: "withdrawal",
+				operation: "withdrawal-next"
+			},
+			{
+				id: "deposit-cancellable",
+				order: 0,
+				status: "paused",
+				lane: "cancellation",
+				direction: "deposit",
+				operation: "deposit-cancellable"
+			},
+			{
+				id: "deposit-complete",
+				order: 3,
+				status: "completed",
+				lane: "main",
+				direction: "deposit",
+				operation: "deposit-complete"
+			}
+		])
+
+		expect(result.currentMainOperation).toBe("deposit-active")
+		expect(result.depositQueue).toEqual(["deposit-next"])
+		expect(result.withdrawalQueue).toEqual(["withdrawal-next"])
+		expect(result.cancellableOperations).toEqual(["deposit-cancellable"])
+		expect(result.completed.map((item) => item.id)).toEqual(["deposit-complete"])
+	})
+
+	it("returns empty main-lane queues when only cancellable deposits remain", () => {
+		const result = deriveBridgeQueues([
+			{
+				id: "deposit-cancellable",
+				order: 0,
+				status: "started",
+				lane: "cancellation",
+				direction: "deposit",
+				operation: "deposit-cancellable"
+			}
+		])
+
+		expect(result.currentMainOperation).toBeNull()
+		expect(result.depositQueue).toEqual([])
+		expect(result.withdrawalQueue).toEqual([])
+		expect(result.cancellableOperations).toEqual(["deposit-cancellable"])
 	})
 })

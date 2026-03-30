@@ -1,11 +1,11 @@
 ---
 id: T145
 title: "Fix bridge Workers build failure on WEB-404 branch"
-status: in-progress
+status: done
 blockedBy: [T144]
 owner: codex
 created_at: 2026-03-24T14:21:07Z
-updated_at: 2026-03-24T14:27:44Z
+updated_at: 2026-03-30T16:07:51Z
 ---
 
 ## Requirements
@@ -28,4 +28,4 @@ updated_at: 2026-03-24T14:27:44Z
 
 - `moon run bridge-ui:build` now passes locally on the merged branch.
 - `moon run bridge-ui:typecheck` now passes locally on the merged branch.
-- Next verification step is pushing the merged branch so the remote Workers build reruns on the current commit.
+- `moon run bridge-ui:test` also passes on the final WEB-404 cleanup pass.

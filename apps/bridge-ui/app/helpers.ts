@@ -20,12 +20,46 @@ export const steps = ["Send", "Confirming", "Claim", "Finalizing"] as const
 
 type Direction = "deposit" | "withdrawal"
 const SLOT_DURATION_SECONDS = 180
+type QueueStatus = "started" | "paused" | "completed"
+type RecoveryLane = "main" | "cancellation"
 
 export const queueTitleForDirection = (direction: Direction) =>
 	direction === "deposit" ? "Deposit Queue" : "Withdrawal Queue"
 
 export const sortByQueueOrder = <T extends { order: number }>(items: T[]) =>
 	[...items].sort((left, right) => left.order - right.order)
+
+export type BridgeQueueItem<T> = {
+	id: string
+	order: number
+	status: QueueStatus
+	lane: RecoveryLane
+	direction: Direction
+	operation: T
+}
+
+export const deriveBridgeQueues = <T>(items: BridgeQueueItem<T>[]) => {
+	const completed = items.filter((item) => item.status === "completed")
+	const mainPending = sortByQueueOrder(
+		items.filter((item) => item.status !== "completed" && item.lane === "main")
+	)
+	const cancellationPending = sortByQueueOrder(
+		items.filter((item) => item.status !== "completed" && item.lane === "cancellation")
+	)
+	const queuedMainOperations = mainPending.filter((item) => item.status !== "started")
+
+	return {
+		completed,
+		currentMainOperation: mainPending.find((item) => item.status === "started")?.operation ?? null,
+		depositQueue: queuedMainOperations
+			.filter(({ direction }) => direction === "deposit")
+			.map(({ operation }) => operation),
+		withdrawalQueue: queuedMainOperations
+			.filter(({ direction }) => direction === "withdrawal")
+			.map(({ operation }) => operation),
+		cancellableOperations: cancellationPending.map(({ operation }) => operation)
+	}
+}
 
 type MachineStates = ReturnType<(typeof bridgeOperationMachine)["getInitialSnapshot"]>["value"]
 type UiProgress = {

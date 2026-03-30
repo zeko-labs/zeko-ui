@@ -144,9 +144,8 @@
 - T141 | done | fix-deposit-queue-ordering-across-bridge-stack | done/T141-fix-deposit-queue-ordering-across-bridge-stack.md
 - T142 | done | revert-terminal-ui-cancel-priority-until-split-widget | done/T142-revert-terminal-ui-cancel-priority-until-split-widget.md
 - T143 | done | merge-main-and-resolve-pr-conflicts | done/T143-merge-main-and-resolve-pr-conflicts.md
-  <<<<<<< HEAD
 - T144 | done | merge-main-and-resolve-web-404-conflicts | done/T144-merge-main-and-resolve-web-404-conflicts.md
-- T145 | in-progress | fix-bridge-workers-build-failure | in-progress/T145-fix-bridge-workers-build-failure.md
+- T145 | done | fix-bridge-workers-build-failure | done/T145-fix-bridge-workers-build-failure.md
 - T144 | done | rename-use-zeko-package-and-sync-to-zeko-skills | done/T144-rename-use-zeko-package-and-sync-to-zeko-skills.md
 - T145 | done | rewrite-public-readme-and-move-maintainer-docs | done/T145-rewrite-public-readme-and-move-maintainer-docs.md
 - T146 | done | add-docs-site-section-for-zeko-skills | done/T146-add-docs-site-section-for-zeko-skills.md
@@ -156,14 +155,9 @@
 - T150 | done | fix-docs-link-check-flake-for-github-5xx | done/T150-fix-docs-link-check-flake-for-github-5xx.md
 - T146 | done | refactor-recovery-classification-single-pass | done/T146-refactor-recovery-classification-single-pass.md
 - T147 | done | seed-short-timeout-deposits-and-run-bridge-ui-devserver | done/T147-seed-short-timeout-deposits-and-run-bridge-ui-devserver.md
-- T148 | done | make-direct-deposit-submit-retry-recoverable-mutation-errors | done/T148-make-direct-deposit-submit-retry-recoverable-mutation-errors.md
-- T149 | done | add-bridge-cli-changeset-for-timeout-submit-fix | done/T149-add-bridge-cli-changeset-for-timeout-submit-fix.md
 - T150 | done | fix-local-bridge-ui-loading-regression | done/T150-fix-local-bridge-ui-loading-regression.md
 - T151 | done | add-queue-metadata-and-verify-cancellable-lane-state | done/T151-add-queue-metadata-and-verify-cancellable-lane-state.md
-- T152 | in-progress | fix-bridge-sdk-live-deposit-cancellability-and-withdrawal-status | in-progress/T152-fix-bridge-sdk-live-deposit-cancellability-and-withdrawal-status.md
 - T153 | done | split-bridge-ui-queue-by-direction-and-match-cli-state | done/T153-split-bridge-ui-queue-by-direction-and-match-cli-state.md
-- T154 | todo | live-verify-bridge-ui-against-bridge-cli-state | todo/T154-live-verify-bridge-ui-against-bridge-cli-state.md
-- T155 | in-progress | fix-live-timeout-slot-submission-and-cancellability | in-progress/T155-fix-live-timeout-slot-submission-and-cancellability.md
 - T156 | done | fix-bridge-ui-queue-labels-and-ordering | done/T156-fix-bridge-ui-queue-labels-and-ordering.md
 - T157 | done | auto-refresh-cancellable-queue-and-show-remaining-timeout | done/T157-auto-refresh-cancellable-queue-and-show-remaining-timeout.md
 - T158 | done | prefer-cancel-for-started-timed-out-main-operation | done/T158-prefer-cancel-for-started-timed-out-main-operation.md
@@ -171,3 +165,7 @@
 - T160 | done | move-skippable-cancellable-deposits-out-of-main-lane | done/T160-move-skippable-cancellable-deposits-out-of-main-lane.md
 - T161 | done | hide-empty-queues-and-align-timeout-copy-with-cancellability | done/T161-hide-empty-queues-and-align-timeout-copy-with-cancellability.md
 - T162 | done | keep-completed-transactions-visible-during-background-refresh | done/T162-keep-completed-transactions-visible-during-background-refresh.md
+- T163 | done | consolidate-non-cancel-bridge-sdk-cli-fixes-into-t165 | done/T163-consolidate-non-cancel-bridge-sdk-cli-fixes-into-t165.md
+- T164 | done | prune-web-404-to-ui-scope | done/T164-prune-web-404-to-ui-scope.md
+- T165 | done | harden-bridge-ui-queue-render-validation | done/T165-harden-bridge-ui-queue-render-validation.md
+- T166 | done | final-code-only-validation-for-pr-159 | done/T166-final-code-only-validation-for-pr-159.md

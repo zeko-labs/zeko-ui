@@ -1,6 +1,5 @@
 import { defineCommand, type CommandDef } from "citty"
 import type { BridgeAdapter } from "../core/adapter"
-import { isRecoverableMutationError } from "../core/mutation-errors"
 import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
 import { color, icon, keyValue, section } from "../core/terminal"
@@ -56,12 +55,8 @@ type DirectCommandDeps = {
 	createAdapter?: (input: { from: ChainRef; to: ChainRef; verbose: boolean }) =>
 		| Promise<BridgeAdapter>
 		| BridgeAdapter
-	sleep?: (ms: number) => Promise<void>
-	retryDelayMs?: number
 	write?: (message: string) => void
 }
-
-const DIRECT_MUTATION_RETRY_DELAY_MS = 5_000
 
 const parseString = (value: unknown, flag: string): string => {
 	if (typeof value !== "string" || value.length === 0) {
@@ -77,11 +72,6 @@ const parseOptionalString = (value: unknown): string | undefined =>
 const parseOptionalNumber = (value: unknown): number | undefined =>
 	typeof value === "string" && value.length > 0 ? Number(value) : undefined
 
-const readOptionalStringArg = (args: Record<string, unknown>, key: string): string | undefined => {
-	const kebabKey = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)
-	return parseOptionalString(args[key] ?? args[kebabKey])
-}
-
 const parseBoolean = (value: unknown, fallback: boolean): boolean =>
 	typeof value === "boolean" ? value : fallback
 
@@ -96,7 +86,7 @@ const readDepositSubmitArgs = (args: Record<string, unknown>): DepositSubmitArgs
 	...readRouteArgs(args),
 	account: parseOptionalString(args.account),
 	amount: parseString(args.amount, "--amount"),
-	timeoutSlots: parseOptionalNumber(readOptionalStringArg(args, "timeoutSlots")),
+	timeoutSlots: parseOptionalNumber(args.timeoutSlots),
 	wait: parseBoolean(args.wait, true)
 })
 
@@ -147,50 +137,19 @@ const defaultCreateAdapter = async ({
 const selectLatest = <T extends { index: number }>(items: T[], latest: boolean): T[] =>
 	latest ? [...items].sort((left, right) => right.index - left.index).slice(0, 1) : items
 
-const retryRecoverableMutation = async <T>({
-	run,
-	sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-	retryDelayMs = DIRECT_MUTATION_RETRY_DELAY_MS
-}: {
-	run: () => Promise<T>
-	sleep?: (ms: number) => Promise<void>
-	retryDelayMs?: number
-}): Promise<T> => {
-	for (;;) {
-		try {
-			return await run()
-		} catch (error) {
-			if (!isRecoverableMutationError(error)) {
-				throw error
-			}
-
-			await sleep(retryDelayMs)
-		}
-	}
-}
-
 export const runDepositSubmit = async (
 	input: DepositSubmitArgs,
 	{
-		adapter,
-		sleep,
-		retryDelayMs
+		adapter
 	}: {
 		adapter: Pick<BridgeAdapter, "submitDeposit">
-		sleep?: (ms: number) => Promise<void>
-		retryDelayMs?: number
 	}
 ): Promise<TransactionResult> =>
-	retryRecoverableMutation({
-		run: () =>
-			adapter.submitDeposit({
-				account: input.account,
-				amount: input.amount,
-				timeoutSlots: resolveDepositTimeoutSlots(input.timeoutSlots),
-				wait: input.wait
-			}),
-		sleep,
-		retryDelayMs
+	adapter.submitDeposit({
+		account: input.account,
+		amount: input.amount,
+		timeoutSlots: resolveDepositTimeoutSlots(input.timeoutSlots),
+		wait: input.wait
 	})
 
 export const runDepositFinalize = async (
@@ -367,7 +326,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					...routeArgs({ from: "mina:testnet", to: "zeko:testnet" }),
 					account: { type: "string", required: false },
 					amount: { type: "string", required: true },
-					timeoutSlots: { type: "string", required: false, alias: ["timeout-slots"] },
+					timeoutSlots: { type: "string", required: false },
 					wait: { type: "boolean", default: true }
 				},
 				async run({ args }) {
@@ -377,11 +336,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 						to: commandArgs.to,
 						verbose: commandArgs.verbose ?? false
 					})
-					const result = await runDepositSubmit(commandArgs, {
-						adapter,
-						sleep: deps.sleep,
-						retryDelayMs: deps.retryDelayMs
-					})
+					const result = await runDepositSubmit(commandArgs, { adapter })
 					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
 				}
 			}),

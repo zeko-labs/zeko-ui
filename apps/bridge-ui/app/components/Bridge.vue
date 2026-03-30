@@ -1,20 +1,16 @@
 <script lang="ts" setup>
 import { Settings } from "lucide-vue-next"
 import type { ActorRefFromLogic } from "xstate"
-import { sortByQueueOrder } from "~/helpers"
+import { deriveBridgeQueues, type BridgeQueueItem } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
 const bs = useBridgeStore()
 const isSettingsOpen = ref(false)
 
-type OperationCard = {
-	id: string
-	order: number
-	status: "started" | "paused" | "completed"
-	lane: "main" | "cancellation"
-	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
-}
+type OperationCard = BridgeQueueItem<
+	ActorRefFromLogic<typeof bridgeOperationMachine>
+>
 
 const allOperations = useSelector(bs.bridge.actorRef, (state) => {
 	const items: OperationCard[] = [...state.context.operations.values()].map(
@@ -23,43 +19,13 @@ const allOperations = useSelector(bs.bridge.actorRef, (state) => {
 			order,
 			status,
 			lane,
+			direction: operation.getSnapshot().context.direction,
 			operation
 		})
 	)
 
-	const completed = items.filter((item) => item.status === "completed")
-	const mainPending = sortByQueueOrder(
-		items.filter((item) => item.status !== "completed" && item.lane === "main")
-	)
-	const cancellationPending = sortByQueueOrder(
-		items.filter(
-			(item) => item.status !== "completed" && item.lane === "cancellation"
-		)
-	)
-	const queuedMainOperations = mainPending.filter(
-		(item) => item.status !== "started"
-	)
-	const depositQueue = queuedMainOperations
-		.filter(
-			({ operation }) => operation.getSnapshot().context.direction === "deposit"
-		)
-		.map(({ operation }) => operation)
-	const withdrawalQueue = queuedMainOperations
-		.filter(
-			({ operation }) =>
-				operation.getSnapshot().context.direction === "withdrawal"
-		)
-		.map(({ operation }) => operation)
-
 	return {
-		completed,
-		currentMainOperation:
-			mainPending.find((item) => item.status === "started")?.operation ?? null,
-		depositQueue,
-		withdrawalQueue,
-		cancellableOperations: cancellationPending.map(
-			({ operation }) => operation
-		),
+		...deriveBridgeQueues(items),
 		activeCancellationOperation: state.context.activeCancellationOperation,
 		currentSlot: state.context.currentSlot
 	}

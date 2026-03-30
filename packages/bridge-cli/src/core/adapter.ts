@@ -41,8 +41,6 @@ const bridges = new Map<string, Promise<Bridge>>()
 const BRIDGE_FEE_NANOMINA = 100_000_000n
 const WITHDRAWAL_SUBMIT_FEE_NANOMINA = 500_000_000n
 export const MAX_FEE_RETRIES = 5
-export const normalizeStatusTimestamp = (timestamp: string): string =>
-	timestamp === "0" ? "" : timestamp
 
 type SignedTransactionResult = {
 	hash?: string
@@ -246,7 +244,7 @@ export const createBridgeAdapter = ({
 					confirmed: item.confirmed,
 					finalised: item.finalised,
 					hash: item.hash,
-					timestamp: normalizeStatusTimestamp(item.timestamp)
+					timestamp: item.timestamp
 				})
 			)
 		},
@@ -261,7 +259,7 @@ export const createBridgeAdapter = ({
 					committed: item.committed,
 					finalised: item.finalised,
 					hash: item.hash,
-					timestamp: normalizeStatusTimestamp(item.timestamp)
+					timestamp: item.timestamp
 				})
 			)
 		},
