@@ -1219,7 +1219,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 						blockingAhead,
 						skippableAhead,
 						targetIndex,
-						claimIndex: claimableIndex,
+						claimIndex: effectiveClaimableIndex,
 						finalizeAvailable: canFinalizeDepositResult.value.available,
 						finalizeReason: canFinalizeDepositResult.value.reason,
 						cancelAvailable: canCancelResult.value.available,
@@ -1229,7 +1229,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 					? {
 							waiting: "finalization",
 							targetIndex: target.index,
-							claimIndex: claimableIndex,
+							claimIndex: effectiveClaimableIndex,
 							finalizeAvailable: canFinalizeDepositResult.value.available,
 							finalizeReason: canFinalizeDepositResult.value.reason,
 							cancelAvailable: canCancelResult.value.available,

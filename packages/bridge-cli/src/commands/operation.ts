@@ -8,6 +8,7 @@ import type { BridgeAdapter } from "../core/adapter"
 import {
 	analyzeDepositQueue,
 	analyzeWithdrawalQueue,
+	resolveEffectiveDepositClaimableIndex,
 	getSubmitHash,
 	sortByIndex
 } from "../core/bridge-queue"
@@ -53,7 +54,7 @@ type OperationCommandDeps = {
 	now?: () => string
 }
 
-type ResumeUserQueueItem =
+type ResumeAllQueueItem =
 	| {
 			direction: "deposit"
 			from: ChainRef
@@ -69,7 +70,7 @@ type ResumeUserQueueItem =
 			session?: OperationSession
 	  }
 
-type ResumeUserResult = {
+type ResumeAllResult = {
 	success: boolean
 	account: string
 	operationsFound: number
@@ -77,7 +78,7 @@ type ResumeUserResult = {
 	results: OperationSession[]
 }
 
-type ResumeUserJsonResult = {
+type ResumeAllJsonResult = {
 	success: boolean
 	account: string
 	operations_found: number
@@ -148,7 +149,7 @@ const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
 }
 
-const toResumeUserJsonResult = (result: ResumeUserResult): ResumeUserJsonResult => ({
+const toResumeAllJsonResult = (result: ResumeAllResult): ResumeAllJsonResult => ({
 	success: result.success,
 	account: result.account,
 	operations_found: result.operationsFound,
@@ -159,7 +160,7 @@ const toResumeUserJsonResult = (result: ResumeUserResult): ResumeUserJsonResult 
 	}))
 })
 
-const renderResumeUserResult = (result: ResumeUserResult): string => {
+const renderResumeAllResult = (result: ResumeAllResult): string => {
 	const lines = [
 		`${result.success ? "Success" : "Failed"}: resumed ${result.operationsResolved}/${result.operationsFound} pending operation${result.operationsFound === 1 ? "" : "s"}`,
 		`Account: ${result.account}`
@@ -350,7 +351,7 @@ const createResumedSession = ({
 	appPaths,
 	generateId
 }: {
-	item: ResumeUserQueueItem
+	item: ResumeAllQueueItem
 	account: string
 	now: () => string
 	appPaths: ReturnType<typeof resolveAppPaths>
@@ -463,10 +464,16 @@ const refreshDepositSession = async ({
 	])
 	const canFinalize = normalizeCapabilityResult(canFinalizeResult).available
 	const canCancel = normalizeCapabilityResult(canCancelResult).available
+	const effectiveClaimableIndex = resolveEffectiveDepositClaimableIndex({
+		claimableIndex: analysis.claimableIndex,
+		target: analysis.target,
+		pendingAhead: analysis.pendingAhead,
+		canFinalize
+	})
 	const liveBase = {
 		refreshedAt: now(),
 		targetIndex: analysis.targetIndex,
-		claimableIndex: analysis.claimableIndex,
+		claimableIndex: effectiveClaimableIndex,
 		pendingAhead: analysis.pendingAhead,
 		canFinalize,
 		canCancel,
@@ -529,11 +536,11 @@ const refreshDepositSession = async ({
 
 	const shouldFinalize =
 		canFinalize &&
-		analysis.claimableIndex !== undefined &&
+		effectiveClaimableIndex !== undefined &&
 		analysis.skippableAhead === 0 &&
 		(analysis.target === undefined ||
 			analysis.blockingAhead > 0 ||
-			analysis.claimableIndex === analysis.target.index)
+			effectiveClaimableIndex === analysis.target.index)
 	const shouldCancel =
 		canCancel &&
 		(analysis.skippableAhead > 0 ||
@@ -924,10 +931,10 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					)
 				}
 			}),
-			"resume-user": defineCommand({
+			"resume-all": defineCommand({
 				meta: {
-					name: "resume-user",
-					description: "Discover and sequentially resume pending bridge operations for a user."
+					name: "resume-all",
+					description: "Discover and sequentially resume pending bridge operations for an account."
 				},
 				args: {
 					from: { type: "string", default: "mina:testnet" },
@@ -1000,7 +1007,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						depositAdapter.getDepositStatuses(account),
 						withdrawalAdapter.getWithdrawalStatuses(account)
 					])
-					const depositQueue: ResumeUserQueueItem[] = sortByIndex(depositStatuses)
+					const depositQueue: ResumeAllQueueItem[] = sortByIndex(depositStatuses)
 						.filter((status) => !status.finalised && !status.cancelled)
 						.map((target) => ({
 							direction: "deposit" as const,
@@ -1017,7 +1024,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 								})
 							)
 						}))
-					const withdrawalQueue: ResumeUserQueueItem[] = sortByIndex(withdrawalStatuses)
+					const withdrawalQueue: ResumeAllQueueItem[] = sortByIndex(withdrawalStatuses)
 						.filter((status) => !status.finalised)
 						.map((target) => ({
 							direction: "withdrawal" as const,
@@ -1041,7 +1048,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					const queue = prioritizedQueues.flat()
 
 					if (queue.length === 0) {
-						const result: ResumeUserResult = {
+						const result: ResumeAllResult = {
 							success: true,
 							account,
 							operationsFound: 0,
@@ -1050,8 +1057,8 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						}
 						;(deps.write ?? console.log)(
 							json
-								? JSON.stringify(toResumeUserJsonResult(result), null, 2)
-								: renderResumeUserResult(result)
+								? JSON.stringify(toResumeAllJsonResult(result), null, 2)
+								: renderResumeAllResult(result)
 						)
 						return
 					}
@@ -1137,7 +1144,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					const operationsResolved = results.filter(
 						(session) => session.status === "completed" || session.status === "cancelled"
 					).length
-					const result: ResumeUserResult = {
+					const result: ResumeAllResult = {
 						success:
 							results.length === queue.length &&
 							results.every(
@@ -1150,8 +1157,8 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					}
 					;(deps.write ?? console.log)(
 						json
-							? JSON.stringify(toResumeUserJsonResult(result), null, 2)
-							: renderResumeUserResult(result)
+							? JSON.stringify(toResumeAllJsonResult(result), null, 2)
+							: renderResumeAllResult(result)
 					)
 				}
 			})

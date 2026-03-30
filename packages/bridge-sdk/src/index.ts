@@ -558,7 +558,10 @@ export class Bridge {
 				}
 			}
 
-			return { ok: false, msg: "Earlier deposit must be resolved first" }
+			return {
+				ok: false,
+				msg: "Deposit is not finalizable yet; bridge state has not advanced far enough"
+			}
 		}
 
 		return { ok: false, msg: "No finalizable deposit found" }

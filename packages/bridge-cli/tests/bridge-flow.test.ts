@@ -1676,7 +1676,7 @@ describe("bridge flow", () => {
 									cancelled: false,
 									synced: true,
 									accepted: true,
-									confirmed: true,
+									confirmed: false,
 									finalised: false,
 									hash: "submit-hash",
 									timestamp: "2026-03-09T19:00:00.000Z"

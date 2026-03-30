@@ -123,6 +123,28 @@ export type DepositQueueState = {
 	shouldAdvanceQueuedClaims: boolean
 }
 
+export const resolveEffectiveDepositClaimableIndex = ({
+	claimableIndex,
+	target,
+	pendingAhead,
+	canFinalize
+}: {
+	claimableIndex?: number
+	target?: DepositStatus
+	pendingAhead: number
+	canFinalize: boolean
+}): number | undefined => {
+	if (claimableIndex !== undefined) {
+		return claimableIndex
+	}
+
+	if (canFinalize && pendingAhead === 0 && target) {
+		return target.index
+	}
+
+	return undefined
+}
+
 export const analyzeDepositQueue = ({
 	session,
 	statuses
