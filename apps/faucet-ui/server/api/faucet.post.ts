@@ -21,6 +21,8 @@ export default defineEventHandler(async (event) => {
 		return jsonError(400, "missing_client_ip", "X-Client-IP is required for turnstile requests.")
 
 	console.log(`Faucet request: IP[${clientIp}], Address[${body.address}]`)
+	// Required until nitro-cloudflare-dev narrows `event.context.cloudflare.env` to the generated
+	// Worker `Env` during `nuxi typecheck`. The local h3 augmentation is not enough on its own today.
 	const { env } = event.context.cloudflare as typeof event.context.cloudflare & { env: Env }
 
 	const isVerified = await verifyTurnstile({

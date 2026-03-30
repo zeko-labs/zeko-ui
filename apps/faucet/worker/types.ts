@@ -23,6 +23,10 @@ export type ClaimResult = {
 	payload: SuccessResponse | ErrorResponse
 }
 
+// Prefer generated Worker env types, but this worker source is also imported transitively by
+// faucet-ui's type generation. In that program, the ambient global `Env` resolves to the UI
+// worker bindings instead of the faucet worker bindings. Keep this local alias until the faucet
+// worker can consume a generated non-global env interface directly across both projects.
 export type FaucetWorkerEnv = {
 	FAUCET: DurableObjectNamespace<import("./faucet-container").Faucet>
 	CLAIM_MUTEX: DurableObjectNamespace<import("./mutex").ClaimMutex>

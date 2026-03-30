@@ -151,3 +151,4 @@
 - T151 | done | fix-faucet-ui-service-rpc-entrypoint-binding | done/T151-fix-faucet-ui-service-rpc-entrypoint-binding.md
 - T152 | done | split-faucet-fetch-and-rpc-service-bindings | done/T152-split-faucet-fetch-and-rpc-service-bindings.md
 - T156 | done | merge-main-and-reapply-faucet-type-refactor | done/T156-merge-main-and-reapply-faucet-type-refactor.md
+- T157 | done | replace-h3-cloudflare-casts-with-typed-augmentation | done/T157-replace-h3-cloudflare-casts-with-typed-augmentation.md
