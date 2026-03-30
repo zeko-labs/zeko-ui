@@ -13,7 +13,7 @@ import type {
 	ClaimMutexHandle,
 	ClaimResult,
 	FaucetContainerResponse,
-	FaucetRuntimeEnv,
+	FaucetWorkerEnv,
 	GitHubUser,
 	ParsedClaimRequest,
 	TurnstileClaimInput,
@@ -89,7 +89,7 @@ export const parseTurnstileClaimInput = (
 	}
 }
 
-const getSpamState = async (ip: string, env: FaucetRuntimeEnv) => {
+const getSpamState = async (ip: string, env: FaucetWorkerEnv) => {
 	const spamKey = getSpamKey(ip)
 	const spamCount = Number.parseInt((await env.FAUCET_IP_SPAM.get(spamKey)) ?? "0", 10) || 0
 	const spam = spamCount + 1
@@ -103,7 +103,7 @@ const getSpamState = async (ip: string, env: FaucetRuntimeEnv) => {
 	return { spam, spamWindow, spamThreshold }
 }
 
-export const enforceIpPolicies = async (ip: string, env: FaucetRuntimeEnv) => {
+export const enforceIpPolicies = async (ip: string, env: FaucetWorkerEnv) => {
 	const banned = await env.FAUCET_BANNED_IPS.get(ip)
 	if (banned)
 		return toClaimError(
@@ -253,7 +253,7 @@ const parseFaucetContainerResponse = async (
 	}
 }
 
-const invokeFaucetContainer = async (env: FaucetRuntimeEnv, address: string) => {
+const invokeFaucetContainer = async (env: FaucetWorkerEnv, address: string) => {
 	const containerInstance = await getRandom(env.FAUCET, INSTANCE_COUNT)
 	const containerResponse = await containerInstance.fetch("https://faucet.internal/", {
 		method: "POST",
@@ -295,7 +295,7 @@ export const executeClaim = async ({
 	claimContext
 }: {
 	body: ParsedClaimRequest
-	env: FaucetRuntimeEnv
+	env: FaucetWorkerEnv
 	claimContext: ClaimContext
 }): Promise<ClaimResult> => {
 	const locks: ClaimMutexHandle[] = []

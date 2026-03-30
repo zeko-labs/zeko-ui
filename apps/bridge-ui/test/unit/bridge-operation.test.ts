@@ -262,6 +262,56 @@ describe("bridgeOperationMachine", () => {
 		wallet.stop()
 	})
 
+	it("ignores duplicate cancel clicks once cancellation has started", async () => {
+		const bridge = createBridgeActor({
+			cancelDeposit: vi.fn(async () => JSON.stringify({ feePayer: {}, accountUpdates: [] }))
+		})
+		const wallet = createWalletActor("mina:devnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(
+			bridgeOperationMachine.provide({
+				actors: {
+					transactionMachine: fromPromise(async () => ({
+						result: { hash: "HASH", explorer: "https://example.com" }
+					}))
+				}
+			}),
+			{
+				input: {
+					bridge: bridge as never,
+					wallet: wallet as never,
+					source: "mina:devnet",
+					destination: "zeko:testnet",
+					direction: "deposit",
+					amount: "1",
+					transaction: { date: new Date("2026-03-24T00:00:00Z"), hash: "RECOVERED" },
+					cancellable: true
+				}
+			}
+		)
+
+		actor.start()
+		actor.send({ type: "Resume", paused: true })
+		expect(actor.getSnapshot().matches("PAUSED")).toBe(true)
+
+		actor.send({ type: "Cancel" })
+		actor.send({ type: "Cancel" })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("CANCEL_DEPOSIT"))
+
+		expect(
+			bridge
+				.getSnapshot()
+				.context.events.filter((event) => event.type === "ActivateCancellationOperation")
+		).toHaveLength(1)
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
 	it("blocks a second cancellation when another cancellation lane operation is active", async () => {
 		const bridge = createBridgeActor({}, { activeCancellationOperation: "other-operation" })
 		const wallet = createWalletActor()

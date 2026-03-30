@@ -3,6 +3,7 @@
 	"extends": "./.nuxt/tsconfig.json",
 	"compilerOptions": {
 		"noUncheckedIndexedAccess": false,
-		"types": ["./worker-configuration.d.ts"]
+		"typeRoots": ["./types", "../../node_modules/@types"],
+		"types": ["nitro-cloudflare-dev"]
 	}
 }

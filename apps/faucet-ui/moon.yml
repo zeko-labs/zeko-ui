@@ -12,6 +12,21 @@ fileGroups:
     - tsconfig.json
     - package.json
 tasks:
+  typecheck:
+    command: nuxi typecheck
+    inputs:
+      - "@globs(sources)"
+      - worker-configuration.d.ts
+      - wrangler.jsonc
+  test:
+    command: vitest run
+    inputs:
+      - server/**
+      - test/**/*.ts
+      - helpers/**
+      - wrangler.jsonc
+      - worker-configuration.d.ts
+      - package.json
   format:
     inputs:
       - "@group(sources)"
@@ -30,13 +45,17 @@ tasks:
     command: nuxt dev
   build:
     command: nuxt build
+    deps:
+      - typecheck
     inputs:
       - "@globs(sources)"
     outputs:
       - .nuxt/
       - .output/
   type-cf:
-    command: wrangler types
+    script: wrangler types -c ./wrangler.jsonc -c ../faucet/wrangler.jsonc
+    deps:
+      - faucet:typecheck
     inputs:
       - wrangler.jsonc
     outputs:

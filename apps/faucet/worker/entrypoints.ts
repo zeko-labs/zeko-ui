@@ -9,10 +9,10 @@ import {
 	verifyGitHubUser
 } from "./claim-service"
 import { claimResultToResponse, isClaimResult, jsonError } from "./responses"
-import type { ClaimResult, FaucetRuntimeEnv, TurnstileClaimInput } from "./types"
+import type { ClaimResult, FaucetWorkerEnv, TurnstileClaimInput } from "./types"
 
 // Turnstile claims are intentionally internal-only and must come through a service binding RPC call.
-export class TurnstileClaimsEntrypoint extends WorkerEntrypoint<FaucetRuntimeEnv> {
+export class TurnstileClaimsEntrypoint extends WorkerEntrypoint<FaucetWorkerEnv> {
 	async claimWithTurnstile(input: TurnstileClaimInput): Promise<ClaimResult> {
 		const parsed = parseTurnstileClaimInput(input)
 		if (isClaimResult(parsed)) return parsed
@@ -32,8 +32,7 @@ export class TurnstileClaimsEntrypoint extends WorkerEntrypoint<FaucetRuntimeEnv
 }
 
 export default {
-	async fetch(request, rawEnv, _ctx): Promise<Response> {
-		const env = rawEnv as FaucetRuntimeEnv
+	async fetch(request, env, _ctx): Promise<Response> {
 		const url = new URL(request.url)
 
 		if (url.pathname === "/healthcheck" || url.pathname === "/healthcheck/")
@@ -80,4 +79,4 @@ export default {
 			})
 		)
 	}
-} satisfies ExportedHandler<Env>
+} satisfies ExportedHandler<FaucetWorkerEnv>

@@ -89,7 +89,7 @@ export const formatQueueMetadata = (
 		currentSlot?: string
 		timeoutSlot?: string
 		timeoutSlots?: number
-		transaction?: { date?: Date }
+		transaction?: { date?: Date; timestampMs?: number | null }
 	},
 	options: {
 		locale?: string
@@ -113,13 +113,16 @@ export const formatQueueMetadata = (
 		return `Times out in ${hours} hr ${minutes} min`
 	}
 
-	if (transaction?.date) {
+	const submittedAt =
+		transaction?.timestampMs != null ? new Date(transaction.timestampMs) : transaction?.date
+
+	if (submittedAt && !Number.isNaN(submittedAt.getTime())) {
 		metadata.push(
 			`Submitted ${new Intl.DateTimeFormat(options.locale ?? "en-US", {
 				dateStyle: "medium",
 				timeStyle: "short",
 				...(options.timeZone ? { timeZone: options.timeZone } : {})
-			}).format(transaction.date)}`
+			}).format(submittedAt)}`
 		)
 	}
 

@@ -1,11 +1,11 @@
 ---
 id: T167
 title: "Merge origin/main and resolve WEB-404 conflicts"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-03-30T17:35:11Z
-updated_at: 2026-03-30T17:35:11Z
+updated_at: 2026-03-30T17:47:56Z
 ---
 
 ## Requirements
@@ -22,4 +22,11 @@ updated_at: 2026-03-30T17:35:11Z
 
 ## RED Evidence
 
+- `git merge origin/main` initially failed because `ataski/tasks.md` had local changes that would be overwritten.
+- After committing the planning-only Ataski update, the merge reported conflicts in `apps/bridge-ui/app/components/BridgeOperations.vue`, `apps/bridge-ui/machines/operations.worker.ts`, and `ataski/tasks.md`.
+
 ## GREEN Evidence
+
+- Resolved the bridge-ui conflicts by keeping the timestamp-normalization/history-table changes from `origin/main` and the WEB-404 completed-loading behavior from this branch.
+- `moon run bridge-ui:test -f`
+- `moon run bridge-ui:typecheck -f`

@@ -434,9 +434,7 @@ export const bridgeMachine = setup({
 				operationsToUnpause: lane === "main" ? remainingToUnpause : context.operationsToUnpause,
 				activeOperation: lane === "main" ? idToResume : context.activeOperation,
 				activeCancellationOperation:
-					lane === "cancellation" && context.activeCancellationOperation === id
-						? null
-						: context.activeCancellationOperation
+					context.activeCancellationOperation === id ? null : context.activeCancellationOperation
 			}
 		}),
 		activateCancellationOperation: assign(({ context }, params: { id: string }) => ({

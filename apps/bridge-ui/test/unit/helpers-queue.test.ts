@@ -83,6 +83,18 @@ describe("formatQueueMetadata", () => {
 		).toEqual([])
 	})
 
+	it("renders submitted metadata from normalized timestamps", () => {
+		expect(
+			formatQueueMetadata(
+				{
+					direction: "withdrawal",
+					transaction: { timestampMs: Date.parse("2026-03-24T15:15:00Z") }
+				},
+				{ timeZone: "UTC" }
+			)
+		).toEqual(["Submitted Mar 24, 2026, 3:15 PM"])
+	})
+
 	it("uses explicit route-specific queue titles", () => {
 		expect(queueTitleForDirection("deposit")).toBe("Deposit Queue")
 		expect(queueTitleForDirection("withdrawal")).toBe("Withdrawal Queue")

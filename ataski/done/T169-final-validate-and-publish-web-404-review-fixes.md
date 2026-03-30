@@ -1,11 +1,11 @@
 ---
 id: T169
 title: "Final validate and publish WEB-404 review fixes"
-status: todo
+status: done
 blockedBy: [T167, T168]
-owner: unassigned
+owner: codex
 created_at: 2026-03-30T17:35:11Z
-updated_at: 2026-03-30T17:35:11Z
+updated_at: 2026-03-30T17:47:56Z
 ---
 
 ## Requirements
@@ -21,4 +21,10 @@ updated_at: 2026-03-30T17:35:11Z
 
 ## RED Evidence
 
+- The final publication step was blocked until the merge conflicts were resolved and the review-fix regression tests were green.
+
 ## GREEN Evidence
+
+- `moon run bridge-ui:test -f`
+- `moon run bridge-ui:typecheck -f`
+- Branch will be committed with Lefthook enabled and pushed back to `branch/web-404-cancellation-queue` as the completion gate for this task.

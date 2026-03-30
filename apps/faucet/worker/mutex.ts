@@ -4,8 +4,7 @@ import type {
 	ClaimMutexAcquireResult,
 	ClaimMutexHandle,
 	ClaimMutexLease,
-	ClaimMutexStub,
-	FaucetRuntimeEnv
+	FaucetWorkerEnv
 } from "./types"
 
 // ClaimMutex instances are short-lived mutexes only. Durable claim policy stays in KV.
@@ -46,20 +45,18 @@ export class ClaimMutex extends DurableObject<Env> {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const acquireMutex = async (
-	env: FaucetRuntimeEnv,
+	env: FaucetWorkerEnv,
 	resource: string
 ): Promise<ClaimMutexHandle | null> => {
-	const stub = env.CLAIM_MUTEX.get(
-		env.CLAIM_MUTEX.idFromName(resource)
-	) as unknown as ClaimMutexStub
+	const stub = env.CLAIM_MUTEX.get(env.CLAIM_MUTEX.idFromName(resource))
 
 	for (let attempt = 0; attempt < MUTEX_ACQUIRE_ATTEMPTS; attempt += 1) {
 		const leaseId = crypto.randomUUID()
-		const result = (await stub.acquire({
+		const result: ClaimMutexAcquireResult = await stub.acquire({
 			leaseId,
 			now: Date.now(),
 			ttlMs: MUTEX_LEASE_MS
-		})) as ClaimMutexAcquireResult
+		})
 
 		if (result.ok) {
 			return {
