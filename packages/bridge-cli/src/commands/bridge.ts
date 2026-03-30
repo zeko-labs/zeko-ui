@@ -6,6 +6,7 @@ import { PrivateKey } from "o1js"
 import { assign, createActor, fromPromise, setup, toPromise } from "xstate"
 import type { BridgeAdapter } from "../core/adapter"
 import { createOperationLogger } from "../core/logger"
+import { isRecoverableMutationError } from "../core/mutation-errors"
 import { createOperationStateController } from "../core/operation-machine"
 import { resolveAppPaths } from "../core/paths"
 import {
@@ -13,6 +14,7 @@ import {
 	analyzeWithdrawalQueue,
 	type DepositQueueState,
 	getSubmitHash,
+	resolveEffectiveDepositClaimableIndex,
 	sortByIndex
 } from "../core/bridge-queue"
 import type { WithdrawalQueueState } from "../core/bridge-queue"
@@ -491,11 +493,6 @@ const withPhaseTiming = ({
 	}
 }
 
-const RECOVERABLE_MUTATION_ERROR_PATTERNS = [
-	/Failed to fetch proved forest/i,
-	/No key returned from mutation/i
-]
-
 const TRANSIENT_CLAIM_UNAVAILABLE_ERROR_PATTERNS = [
 	/Did not find any (deposit|withdrawal) to finalize/i,
 	/No (deposit|withdrawal) witnesses found/i,
@@ -504,11 +501,6 @@ const TRANSIENT_CLAIM_UNAVAILABLE_ERROR_PATTERNS = [
 	/No next commit index found/i,
 	/No synced outer action state index found/i
 ]
-
-const isRecoverableMutationError = (error: unknown): boolean => {
-	const message = formatErrorMessage(error)
-	return RECOVERABLE_MUTATION_ERROR_PATTERNS.some((pattern) => pattern.test(message))
-}
 
 const isTransientClaimUnavailableError = (error: unknown): boolean => {
 	const message = formatErrorMessage(error)
@@ -1153,6 +1145,12 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			claimableIndex: claimableIndex ?? targetIndex,
 			now
 		})
+		const effectiveClaimableIndex = resolveEffectiveDepositClaimableIndex({
+			claimableIndex,
+			target,
+			pendingAhead,
+			canFinalize: canFinalizeDepositResult.value.available
+		})
 		const currentTargetCancelMarker = toPendingCancelMarker({
 			currentTargetIndex: target?.index,
 			claimableIndex,
@@ -1478,6 +1476,13 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 		}
 	}
 
+	const effectiveClaimableIndex = resolveEffectiveDepositClaimableIndex({
+		claimableIndex: depositAnalysis.claimableIndex,
+		target: depositAnalysis.target,
+		pendingAhead: depositAnalysis.pendingAhead,
+		canFinalize: true
+	})
+
 	try {
 		const finalizeDepositResult = await withRetry({
 			session,
@@ -1511,14 +1516,14 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 					hash: finalizeResult.hash
 				}),
 				finalTransaction:
-					depositAnalysis.target && depositAnalysis.claimableIndex === depositAnalysis.target.index
+					depositAnalysis.target && effectiveClaimableIndex === depositAnalysis.target.index
 						? {
 								action: "finalize",
 								hash: finalizeResult.hash,
 								explorerUrl: finalizeResult.explorerUrl
 							}
 						: session.finalTransaction,
-				pendingFinalizeIndex: depositAnalysis.claimableIndex ?? depositAnalysis.targetIndex,
+				pendingFinalizeIndex: effectiveClaimableIndex,
 				pendingFinalizeSubmittedAt: now(),
 				queueAdvances: depositAnalysis.shouldAdvanceQueuedClaims
 					? (session.queueAdvances ?? 0) + 1
@@ -1534,7 +1539,7 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 			event: "finalized",
 			details: {
 				hash: finalizeResult.hash,
-				claimIndex: depositAnalysis.claimableIndex,
+				claimIndex: effectiveClaimableIndex,
 				advancedPriorClaim: depositAnalysis.shouldAdvanceQueuedClaims
 			}
 		})
@@ -1562,7 +1567,7 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 			event: "claim-pending",
 			phase: session.phase,
 			details: {
-				claimIndex: depositAnalysis.claimableIndex,
+				claimIndex: effectiveClaimableIndex,
 				message: formatErrorMessage(error)
 			}
 		})

@@ -560,7 +560,7 @@ export class Bridge {
 
 			return {
 				ok: false,
-				msg: "Deposit is not finalizable yet; bridge state has not advanced far enough"
+				msg: "Deposit is not finalizable yet; an earlier deposit must be resolved first"
 			}
 		}
 

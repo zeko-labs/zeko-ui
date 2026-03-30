@@ -7,4 +7,4 @@ Unblock deposit resume/finalize flows when finalization is already available but
 
 The CLI now uses that effective claimable index consistently in both the long-running `bridge` flow and `operation resume-all`, and the account-wide resume command has been renamed from `resume-user` to `resume-all` to match its actual behavior.
 
-The SDK now reports a more accurate reason when a deposit is not finalizable yet because bridge state has not advanced far enough.
+The SDK now reports a more accurate reason when a deposit is not finalizable yet because an earlier deposit still has to be resolved first.
