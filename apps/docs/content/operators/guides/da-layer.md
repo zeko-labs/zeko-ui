@@ -1,22 +1,13 @@
-# Running Zeko's Data Availability Layer
+# Running Zeko's DA Node
 
 A critical component of any rollup system is the data availability layer. This layer is responsible for storing all the transaction data that occurs on the rollup.
 
-In this guide we will create a `da-layer` that will receive transaction data from L2 Zeko rollup. Additionally we will add zeko-archive stack to be able to query it.
-
-> **Note:** To have a functioning da-layer you only need `da-layer` service. The rest of the components are for querying the data.
-
-You will need the following Zeko components:
-
-- `DA Layer`
-- `Zeko Archive relay`
-- `Mina Archive`
-- `Postgresql database`
+In this guide we will create a `da-layer` node that receives transaction data from the Zeko L2 rollup.
 
 Not covered in this guide:
 
-- installing `mina-node-api` to view transactions
-- Exposing da-layer/archive to the internet
+- Running the archive stack used to query historical data. See [Running Zeko's Archive Node](./archive-node.md).
+- Exposing your `da-layer` to the internet
 
 We will use [docker compose](https://docs.docker.com/reference/cli/docker/compose/) to define the whole stack in a single file.
 
@@ -42,9 +33,7 @@ TL;DR skip to the [Bootstrap process](#bootstrap-process)
 In the diagram above you see:
 
 - Zeko's sequencer sending transactions to `da-layer`
-- `archive-relay` pulls data from Zeko's sequencer and `da-layer` and sends it to `mina-archive`
-- `mina-archive` is inserting transactions to `postgresql`
-- `archive-node-api` provides graphql endpoint to query da-layer data.
+- the optional archive stack that can index and serve historical data from your DA node
 
 ### Project Structure
 
@@ -65,27 +54,22 @@ To run a da-layer you will need:
 
 ### Volumes/files
 
-| Volumes           | Files        | Purpose                                       |
-| ----------------- | ------------ | --------------------------------------------- |
-| `keys_data`       | `da-node-sk` | Private key of the DA node                    |
-| `keys_data`       | `da-node-pk` | Public key of the DA node (used by sequencer) |
-| `initdb_data`     |              | Schema file(s) to bootstrap postgresql        |
-| `postgresql_data` |              | Persistent storage for postgresql             |
-| `da-layer_data`   |              | Persistent storage for da-layer               |
+| Volumes         | Files        | Purpose                                       |
+| --------------- | ------------ | --------------------------------------------- |
+| `keys_data`     | `da-node-sk` | Private key of the DA node                    |
+| `keys_data`     | `da-node-pk` | Public key of the DA node (used by sequencer) |
+| `da-layer_data` |              | Persistent storage for da-layer               |
 
 ### Service Overview
 
-- `postgresql`
+- `init-config`
 - `da-layer`
-- `archive-relay`
-- `mina-archive`
 
 ### Ports Exposed
 
 | Service  | Port   | Description      |
 | -------- | ------ | ---------------- |
 | da-layer | `1924` | da-layer rpc API |
-| postgres | `5432` | Database         |
 
 ---
 
@@ -97,19 +81,6 @@ To run a da-layer you will need:
   ::: details Click to expand `docker-compose.yaml`
   ```yaml
   services:
-    init-db:
-      image: docker.io/zekolabs/zeko:latest
-      container_name: init-db
-      volumes:
-        - initdb_data:/data/initdb
-      entrypoint:
-        - sh
-        - -c
-      command: >
-        "curl -o /data/initdb/create_schema.sql 'https://raw.githubusercontent.com/zeko-labs/zeko/compatible/src/app/archive/create_schema.sql' &&
-         echo 'ALTER DATABASE archive OWNER TO archive;' > /data/initdb/init.sql &&
-         echo 'Archive database bootstrap complete' &&
-         exit 0"
     init-config:
       image: docker.io/zekolabs/zeko:latest
       container_name: init-config
@@ -124,22 +95,6 @@ To run a da-layer you will need:
         "while [ ! -f /data/keys/.keys_created ];
           do sleep 2;
         done; exit 0"
-    postgres:
-      depends_on:
-        init-db:
-          condition: service_completed_successfully
-      image: postgres:16
-      container_name: postgres
-      environment:
-        POSTGRES_DB: archive
-        POSTGRES_USER: archive
-        POSTGRES_PASSWORD: archive
-      volumes:
-        - postgresql_data:/var/lib/postgresql/data
-        - initdb_data:/docker-entrypoint-initdb.d
-      ports:
-        - "5432:5432"
-      restart: unless-stopped
     da-layer:
       depends_on:
         init-config:
@@ -162,49 +117,10 @@ To run a da-layer you will need:
         - da-layer_data:/data
         - keys_data:/keys:ro
       restart: always
-    archive:
-      depends_on:
-        postgres:
-          condition: service_started
-      image: zekolabs/zeko-archive-relay:latest
-      container_name: archive
-      entrypoint: bash -c
-      command: |
-        "exec zeko-archive run \\
-        --postgres-uri postgres://archive:archive@postgres:5432/archive"
-      restart: always
-      volumes:
-        - archive_data:/data
-    archive-relay:
-      depends_on:
-        archive:
-          condition: service_started
-        da-layer:
-          condition: service_started
-      image: zekolabs/zeko-archive-relay:latest
-      container_name: archive-relay
-      entrypoint: bash -c
-      command: |
-        "exec zeko-archive-relay \\
-        --zeko-uri \"https://testnet.zeko.io/graphql\" \\
-        --da-node da-layer:1924 \\
-        --network-id testnet \\
-        --db-dir /data \\
-        --sync-period 30 \\
-        --log-level Info \\
-        --archive-host archive \\
-        --archive-port 3086"
-      volumes:
-        - archive-relay_data:/data
-      restart: always
 
   volumes:
-    initdb_data:
-    postgresql_data:
     da-layer_data:
     keys_data:
-    archive_data:
-    archive-relay_data:
   ```
 
 - Start all services
@@ -241,9 +157,6 @@ To run a da-layer you will need:
 ### If all the steps were performed correctly you have the following:
 
 - `da-layer` getting data from Zeko's L2
-- `archive-relay` pulling data from da-layer and sending to `archive`
-- `archive` storing transactions in `postgresql`
-- `postgres`
 
 ### Let Zeko know about your DA Layer
 
@@ -256,9 +169,6 @@ In order for you to start receiving transactions from Zeko L2 sequencer you need
 
 ### Synchronizing the data
 
-Synchronizing will take a long time. At the time of writing Zeko L2 testnet has 1 million transactions and would take at least a week to get it synced.
-Alternatively you can reach out to Zeko for latest database/checkpoints archive that you can import in your setup and have a fully synced da-layer+archive in no time.
+Once your DA node will be added to Zeko's Sequencer, your node will start receiving transactions. Synchronizing might take some time. It depends when did the sequencer receive a hard reset.
 
-### Access your data
-
-You can access the data by running [archive-node-api](https://github.com/o1-labs/Archive-Node-API/) graphql server. Configure it to connect to your `archive` postgresql database.
+If you want to index that data and query it through an archive API, continue with [Running Zeko's Archive Node](./archive-node.md).
