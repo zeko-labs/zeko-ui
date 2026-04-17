@@ -20,8 +20,6 @@ TL;DR skip to the [Bootstrap process](#bootstrap-process)
 - Linux or macOS (Windows WSL2 works too)
 - **1 CPU core**, **2GB RAM**
 
-> **Note:** Running da-layer node does not need much ram. However to sync the full history without using snapshots and database backups, more RAM will allow quicker initial sync.
-
 ### Installed Software
 
 - `Docker`
@@ -50,6 +48,7 @@ project-root/
 
 To run a da-layer you will need:
 
+- `da-signer` - Holds the wallet credentials that is used by `da-layer`.
 - `da-layer` - Each `da-layer` node is started with its wallet.
 
 ### Volumes/files
@@ -63,13 +62,15 @@ To run a da-layer you will need:
 ### Service Overview
 
 - `init-config`
+- `da-signer`
 - `da-layer`
 
 ### Ports Exposed
 
-| Service  | Port   | Description      |
-| -------- | ------ | ---------------- |
-| da-layer | `1924` | da-layer rpc API |
+| Service   | Port   | Description      |
+| --------- | ------ | ---------------- |
+| da-layer  | `1924` | da-layer rpc API |
+| da-signer | `9001` | da-layer signer  |
 
 ---
 
@@ -95,10 +96,28 @@ To run a da-layer you will need:
         "while [ ! -f /data/keys/.keys_created ];
           do sleep 2;
         done; exit 0"
-    da-layer:
+    da-signer:
       depends_on:
         init-config:
           condition: service_completed_successfully
+      image: docker.io/zekolabs/zeko-da:latest
+      container_name: da-signer
+      ports:
+        - "9001:9001"
+      entrypoint: bash -c
+      command: |
+        "export MINA_PRIVATE_KEY=$(cat /keys/da-layer-sk) && \\
+        exec zeko-signer \\
+        run \\
+        --port 9001 \\
+        --allow-field-signing"
+      volumes:
+        - keys_data:/keys:ro
+      restart: always
+    da-layer:
+      depends_on:
+        da-signer:
+          condition: service_started
       image: docker.io/zekolabs/zeko-da:latest
       container_name: da-layer
       ports:
@@ -107,15 +126,14 @@ To run a da-layer you will need:
         ZEKO_SIGNATURE_KIND: "testnet"
       entrypoint: bash -c
       command: |
-        "export MINA_PRIVATE_KEY=$(cat /keys/da-layer-sk) && \\
-        exec zeko-da \\
+        "exec zeko-da \\
         run-node \\
         --port 1924 \\
         --db-dir /data/db \\
+        --signer da-signer:9001 \\
         --network-id testnet"
       volumes:
         - da-layer_data:/data
-        - keys_data:/keys:ro
       restart: always
 
   volumes:

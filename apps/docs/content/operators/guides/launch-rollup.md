@@ -5,7 +5,9 @@ In this guide we will create a `betternet` - an L2 Zeko Rollup for Mina Devnet.
 At a minimum, you need to run the following Zeko components:
 
 - `Sequencer`
+- `Sequencer signer`
 - `DA Layer`
+- `DA Layer signer`
 - `Prover`
 
 We will use [docker compose](https://docs.docker.com/reference/cli/docker/compose/) to define the whole stack in a single file.
@@ -81,18 +83,22 @@ project-root/
 
 - `postgresql` - Used by sequencer.
 - `rabbitmq` - Messaging layer used between the sequencer and the prover(s).
+- `da-signer` - DA signer service that holds `da-layer` key.
 - `da-layer` - Data Availability layer for the `betternet`.
 - `prover` - Generates zk-proofs for work submitted by the sequencer.
+- `sequencer-signer` - Sequencer signer service that holds `sequencer` key.
 - `sequencer` - Runs the rollup logic, batches transactions, interacts with DA layer, and posts proofs to L1.
 
 ### Ports Exposed
 
-| Service   | Port   | Description           |
-| --------- | ------ | --------------------- |
-| sequencer | `1923` | sequencer Graphql API |
-| da-layer  | `1924` | da-layer rpc API      |
-| postgres  | `5432` | Database              |
-| rabbitmq  | `5672` | Messaging queue       |
+| Service          | Port   | Description              |
+| ---------------- | ------ | ------------------------ |
+| sequencer-signer | `9000` | Sequencer signer service |
+| sequencer        | `1923` | sequencer Graphql API    |
+| da-signer        | `9001` | da-layer signer service  |
+| da-layer         | `1924` | da-layer rpc API         |
+| postgres         | `5432` | Database                 |
+| rabbitmq         | `5672` | Messaging queue          |
 
 ---
 
@@ -175,10 +181,48 @@ project-root/
       ports:
         - "5672:5672"
       restart: unless-stopped
-    da-layer:
+    sequencer-signer:
       depends_on:
         init-config:
           condition: service_completed_successfully
+      image: docker.io/zekolabs/zeko:latest
+      container_name: sequencer-signer
+      ports:
+        - "9000:9000"
+      entrypoint: bash -c
+      command: |
+        "export MINA_PRIVATE_KEY=$(cat /keys/sequencer-sk) && \\
+        exec zeko-signer \\
+        run \\
+        --port 9000 \\
+        --allow-zkapp-signing \\
+        --max-fee 1 \\
+        --max-balance-change 0"
+      volumes:
+        - keys_data:/keys:ro
+      restart: always
+    da-signer:
+      depends_on:
+        init-config:
+          condition: service_completed_successfully
+      image: docker.io/zekolabs/zeko-da:latest
+      container_name: da-signer
+      ports:
+        - "9001:9001"
+      entrypoint: bash -c
+      command: |
+        "export MINA_PRIVATE_KEY=$(cat /keys/da-layer-sk) && \\
+        exec zeko-signer \\
+        run \\
+        --port 9001 \\
+        --allow-field-signing"
+      volumes:
+        - keys_data:/keys:ro
+      restart: always
+    da-layer:
+      depends_on:
+        da-signer:
+          condition: service_started
       image: docker.io/zekolabs/zeko-da:latest
       container_name: da-layer
       ports:
@@ -187,15 +231,14 @@ project-root/
         ZEKO_SIGNATURE_KIND: "testnet"
       entrypoint: bash -c
       command: |
-        "export MINA_PRIVATE_KEY=$(cat /keys/da-layer-sk) && \\
-        exec zeko-da \\
+        "exec zeko-da \\
         run-node \\
         --port 1924 \\
         --db-dir /data/db \\
+        --signer da-signer:9001 \\
         --network-id testnet"
       volumes:
         - da-layer_data:/data
-        - keys_data:/keys:ro
       restart: always
     prover:
       image: docker.io/zekolabs/zeko:latest
@@ -224,6 +267,8 @@ project-root/
       depends_on:
         init-deploy:
           condition: service_completed_successfully
+        sequencer-signer:
+          condition: service_started
         rabbitmq:
           condition: service_started
         prover:
@@ -249,14 +294,14 @@ project-root/
         - bash
         - -c
       command: |
-        "export MINA_PRIVATE_KEY=$(cat /keys/sequencer-sk) && \\
-        export DA_LAYER_KEY=$(cat /keys/da-layer-pk) && \\
+        "export DA_LAYER_KEY=$(cat /keys/da-layer-pk) && \\
         exec zeko-run \\
         -p 1923 \\
         --l1-uri https://gateway.mina.devnet.zeko.io \\
         --archive-uri https://gateway.mina.archive.devnet.zeko.io \\
         --max-pool-size 10 \\
         --commitment-period 300 \\
+        --signer sequencer-signer:9000 \\
         --da-node da-layer:1924 \\
         --da-quorum 1 \\
         --da-key $$DA_LAYER_KEY \\
@@ -382,7 +427,9 @@ See example zkApp transaction status [here](https://minascan.io/devnet/account/B
 
 ### If all the steps were performed correctly you have the following:
 
+- Sequencer signer that holds sequencer key
 - Sequencer exposing graphql endpoint under `http://localhost:1923/graphql`
+- DA signer that holds DA layer key
 - DA layer
 - Prover accepting work from the sequencer.
 - `rabbitmq` service used by sequencer/prover.
