@@ -19,9 +19,9 @@ import {
 	Mina,
 	PublicKey,
 	TokenId,
-	type Transaction,
 	UInt32,
-	UInt64
+	UInt64,
+	type Transaction
 } from "o1js"
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
@@ -367,9 +367,10 @@ export class Bridge {
 	): Promise<string> {
 		this.setL1()
 
+		await refreshCache(recipient)
 		await refreshCache(feePayer)
+		await refreshCache(this.outerPk)
 
-		let transferrerRef: AccountUpdate | null = null
 		const txn = await Mina.transaction(feePayer, async () => {
 			const transferrer = AccountUpdate.createSigned(recipient)
 			transferrer.balance.subInPlace(amount.add(this.bridgeProofFee))
@@ -383,37 +384,6 @@ export class Bridge {
 			transferrer.body.incrementNonce = Bool(true)
 			transferrer.account.nonce.getAndRequireEquals()
 			transferrer.body.useFullCommitment = Bool(false)
-			transferrerRef = transferrer
-
-			const actionWitness = AccountUpdate.create(this.outerPk)
-			actionWitness.body.actions = pushAction(actionWitness.body.actions, [
-				Field(1), // tag
-				depositAux({
-					recipient,
-					amount,
-					timeout,
-					holderAccountL1
-				}), // aux
-				Field(0x3796868b82a7e16ea871be518582f53c7fa221084d1c90739ea195470a470318), // hash of empty children
-				Field(0), // lower validWhile
-				...timeout.toFields() // upper validWhile
-			])
-			actionWitness.body.useFullCommitment = Bool(true)
-			transferrer.body.implicitAccountCreationFee = Bool(true)
-			transferrer.body.mayUseToken = {
-				parentsOwnToken: Bool(false),
-				inheritFromParent: Bool(false)
-			}
-			actionWitness.body.preconditions.account.state[1] = { isSome: Bool(true), value: Field(0) }
-			actionWitness.body.preconditions.validWhile = {
-				isSome: Bool(true),
-				value: { lower: UInt32.from(0), upper: timeout }
-			}
-			transferrer.body.authorizationKind = {
-				isSigned: Bool(false),
-				isProved: Bool(false),
-				verificationKeyHash: Field(0)
-			}
 
 			const receiver = AccountUpdate.create(holderAccountL1)
 			receiver.balance.addInPlace(amount)
@@ -432,9 +402,46 @@ export class Bridge {
 				parentsOwnToken: Bool(false),
 				inheritFromParent: Bool(false)
 			}
+
+			const actionWitness = AccountUpdate.create(this.outerPk)
+			actionWitness.approve(receiver)
+			actionWitness.approve(feePayout)
+			actionWitness.body.actions = pushAction(actionWitness.body.actions, [
+				Field(1), // tag
+				depositAux({
+					recipient,
+					amount,
+					timeout,
+					holderAccountL1
+				}), // aux
+				actionWitness.extractTree().children.hash, // children hash
+				Field(0), // lower validWhile
+				...timeout.toFields() // upper validWhile
+			])
+			actionWitness.body.useFullCommitment = Bool(true)
+			transferrer.body.implicitAccountCreationFee = Bool(true)
+			transferrer.body.mayUseToken = {
+				parentsOwnToken: Bool(false),
+				inheritFromParent: Bool(false)
+			}
+			actionWitness.body.preconditions.account.state[1] = { isSome: Bool(true), value: Field(0) }
+			actionWitness.body.preconditions.validWhile = {
+				isSome: Bool(true),
+				value: { lower: UInt32.from(0), upper: timeout }
+			}
+			transferrer.body.authorizationKind = {
+				isSigned: Bool(false),
+				isProved: Bool(true),
+				verificationKeyHash: Mina.getAccount(this.outerPk).zkapp?.verificationKey?.hash!
+			}
 		})
 
-		await signsTxn(txn)
+		const signed = await signsTxn(txn)
+
+		const transferrer = signed.transaction.accountUpdates.find(({ publicKey }) =>
+			publicKey.equals(recipient).toBoolean()
+		)
+		if (!transferrer) throw new Error("Transferrer not found")
 
 		const { data } = await this.l2Client().mutation(submitDepositMutation, {
 			depositParams: {
@@ -444,13 +451,11 @@ export class Bridge {
 				holderAccountL1: holderAccountL1.toBase58(),
 				children: "[]"
 			},
-			transferrer: AccountUpdate.toJSON(transferrerRef!)
+			transferrer: AccountUpdate.toJSON(transferrer)
 		})
 		if (!data?.request?.key) throw new Error("No key returned from mutation")
 
-		const txnHash = await this.pollQuery(data.request.key)
-
-		return txnHash
+		return await this.pollQuery(data.request.key)
 	}
 
 	public async fetchSyncedOuterActionState(): Promise<{ state: Field; length: UInt32 }> {
@@ -1020,8 +1025,9 @@ export class Bridge {
 		}: {
 			recipient: PublicKey
 			amount: UInt64
-		}
-	): Promise<Mina.Transaction<false, false>> {
+		},
+		signsTxn: (txn: Transaction<any, false>) => Promise<Transaction<any, true>>
+	): Promise<string> {
 		this.setL2()
 
 		await ensureFirstWithdrawalAmountCanCreateHelper({
@@ -1036,31 +1042,86 @@ export class Bridge {
 				)) !== null
 		})
 
+		await refreshCache(recipient)
 		await refreshCache(feePayer)
+		await refreshCache(this.innerHolder)
+		await refreshCache(this.outerPk)
 
 		const txn = await Mina.transaction(feePayer, async () => {
 			const transferrer = AccountUpdate.createSigned(recipient)
-			transferrer.balance.subInPlace(amount)
+			transferrer.balance.subInPlace(amount.add(this.bridgeProofFee))
 			transferrer.body.actions = pushAction(transferrer.body.actions, [
 				...recipient.toFields(),
 				...amount.toFields()
 			])
+			transferrer.body.incrementNonce = Bool(true)
+			transferrer.account.nonce.getAndRequireEquals()
+			transferrer.body.useFullCommitment = Bool(false)
+
+			const receiver = AccountUpdate.create(this.innerHolder)
+			receiver.balance.addInPlace(amount)
+			receiver.body.useFullCommitment = Bool(true)
+			receiver.body.implicitAccountCreationFee = Bool(true)
+			receiver.body.mayUseToken = {
+				parentsOwnToken: Bool(true),
+				inheritFromParent: Bool(false)
+			}
+			receiver.body.authorizationKind = {
+				isSigned: Bool(false),
+				isProved: Bool(true),
+				verificationKeyHash: Mina.getAccount(this.innerHolder).zkapp?.verificationKey?.hash!
+			}
+
+			const feePayout = AccountUpdate.create(this.bridgeFeeRecipientL1)
+			feePayout.balance.addInPlace(this.bridgeProofFee)
+			feePayout.body.useFullCommitment = Bool(false)
+			feePayout.body.implicitAccountCreationFee = Bool(true)
+			feePayout.body.mayUseToken = {
+				parentsOwnToken: Bool(false),
+				inheritFromParent: Bool(false)
+			}
+
+			const actionWitness = AccountUpdate.create(this.outerPk)
+			actionWitness.approve(receiver)
+			actionWitness.approve(feePayout)
+			actionWitness.body.actions = pushAction(actionWitness.body.actions, [
+				Field(0), // tag
+				withdrawalAux({
+					recipient,
+					amount
+				}), // aux
+				actionWitness.extractTree().children.hash // children hash
+			])
+			actionWitness.body.useFullCommitment = Bool(true)
+			transferrer.body.implicitAccountCreationFee = Bool(true)
+			transferrer.body.mayUseToken = {
+				parentsOwnToken: Bool(false),
+				inheritFromParent: Bool(false)
+			}
+			transferrer.body.authorizationKind = {
+				isSigned: Bool(false),
+				isProved: Bool(true),
+				verificationKeyHash: Mina.getAccount(this.innerPk).zkapp?.verificationKey?.hash!
+			}
 		})
+
+		const signed = await signsTxn(txn)
+		const transferrer = signed.transaction.accountUpdates.find(({ publicKey }) =>
+			publicKey.equals(recipient).toBoolean()
+		)
+		if (!transferrer) throw new Error("Transferrer not found")
 
 		const { data } = await this.l2Client().mutation(submitWithdrawalMutation, {
 			input: {
 				recipient: recipient.toBase58(),
 				amount: amount.toString(),
 				children: "[]"
-			}
+			},
+			transferrer: AccountUpdate.toJSON(transferrer)
 		})
 		if (!data?.request?.key) throw new Error("No key returned from mutation")
 
-		const withdrawalForest = await this.pollQuery(data.request.key)
-
-		txn.transaction.accountUpdates.push(...withdrawalForest)
-
-		return txn
+		return await this.pollQuery(data.request.key)
 	}
 
 	private async fetchWithdrawalFinalizationWitnesses(
