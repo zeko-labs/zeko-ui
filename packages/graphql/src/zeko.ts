@@ -11,6 +11,9 @@ export const fetchConfigQuery = graphql(`
       chainL1
       chainL2
       withdrawalDelay
+      bridgeFeeRecipientL1
+      bridgeFeeRecipientL2
+      bridgeProofFee
     }
   }
 `)
@@ -90,8 +93,8 @@ export const cancelDepositMutation = graphql(`
   }
 `)
 
-export const provedForestQuery = graphql(`
-  query provedForest($key: String!) {
-    provedForest(key: $key)
+export const provedResultQuery = graphql(`
+  query provingResult($key: String!) {
+    provingResult(key: $key)
   }
 `)

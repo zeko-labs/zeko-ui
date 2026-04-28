@@ -6,13 +6,23 @@ import {
 	finalizeWithdrawalMutation,
 	genesisConstantsQueryL1,
 	genesisConstantsQueryL2,
-	provedForestQuery,
+	provedResultQuery,
 	runtimeConfigQuery,
 	sequencerPkQuery,
 	submitDepositMutation,
 	submitWithdrawalMutation
 } from "@zeko-labs/graphql"
-import { AccountUpdate, Field, Mina, PublicKey, TokenId, type Types, UInt32, UInt64 } from "o1js"
+import {
+	AccountUpdate,
+	Bool,
+	Field,
+	Mina,
+	PublicKey,
+	TokenId,
+	type Transaction,
+	UInt32,
+	UInt64
+} from "o1js"
 import * as v from "valibot"
 import { fromList, pushAction } from "./actions"
 import {
@@ -116,7 +126,11 @@ export class Bridge {
 		public readonly innerHolder: PublicKey,
 		public readonly outerTokenOwner: PublicKey,
 		public readonly sequencerPk: PublicKey,
-		public readonly withdrawalDelay: UInt32
+		public readonly withdrawalDelay: UInt32,
+
+		public readonly bridgeFeeRecipientL1: PublicKey,
+		public readonly bridgeFeeRecipientL2: PublicKey,
+		public readonly bridgeProofFee: UInt64
 	) {}
 
 	static async init(config: Config): Promise<Bridge> {
@@ -161,7 +175,10 @@ export class Bridge {
 			PublicKey.fromBase58(circuitsConfig.holderAccountL2), // innerHolder
 			PublicKey.fromBase58(circuitsConfig.helperTokenOwnerL1), // outerTokenOwner
 			PublicKey.fromBase58(sequencerPk),
-			UInt32.from(circuitsConfig.withdrawalDelay)
+			UInt32.from(circuitsConfig.withdrawalDelay),
+			PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL1),
+			PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL2),
+			UInt64.from(circuitsConfig.bridgeProofFee)
 		)
 	}
 
@@ -301,10 +318,10 @@ export class Bridge {
 	}
 
 	private async pollQuery(key: string, pollPeriod = 5_000) {
-		let provedForest: string | null = null
+		let result: string | null = null
 		let attempts = 0
 
-		while (!provedForest) {
+		while (!result) {
 			if (
 				typeof this.config.pollTimeout === "number" &&
 				this.config.pollTimeout >= 0 &&
@@ -317,12 +334,20 @@ export class Bridge {
 			attempts++
 			this.debug("pollQuery waiting", { key, attempts, pollPeriod })
 
-			const resultResponse = await this.l2Client().query(provedForestQuery, { key })
+			const resultResponse = await this.l2Client().query(provedResultQuery, { key })
 			if (resultResponse.error) throw resultResponse.error
-			provedForest = resultResponse.data?.provedForest ?? null
+			result = resultResponse.data?.provingResult ?? null
 		}
 
-		return (JSON.parse(provedForest) as Types.Json.AccountUpdate[]).map(AccountUpdate.fromJSON)
+		const resultObject: { proved?: unknown; executed?: string } = JSON.parse(result)
+
+		if (resultObject.proved) {
+			throw new Error("Proved result no longer available")
+		} else if (resultObject.executed) {
+			return resultObject.executed
+		} else {
+			throw new Error("Should not be reachable")
+		}
 	}
 
 	public async submitDeposit(
@@ -337,15 +362,17 @@ export class Bridge {
 			amount: UInt64
 			timeout: UInt32
 			holderAccountL1?: PublicKey
-		}
-	): Promise<Mina.Transaction<false, false>> {
+		},
+		signsTxn: (txn: Transaction<any, false>) => Promise<Transaction<any, true>>
+	): Promise<string> {
 		this.setL1()
 
 		await refreshCache(feePayer)
 
+		let transferrerRef: AccountUpdate | null = null
 		const txn = await Mina.transaction(feePayer, async () => {
 			const transferrer = AccountUpdate.createSigned(recipient)
-			transferrer.balance.subInPlace(amount)
+			transferrer.balance.subInPlace(amount.add(this.bridgeProofFee))
 			transferrer.body.actions = pushAction(transferrer.body.actions, [
 				...recipient.toFields(),
 				...amount.toFields(),
@@ -353,7 +380,61 @@ export class Bridge {
 				...holderAccountL1.toFields(),
 				...this.outerPk.toFields()
 			])
+			transferrer.body.incrementNonce = Bool(true)
+			transferrer.account.nonce.getAndRequireEquals()
+			transferrer.body.useFullCommitment = Bool(false)
+			transferrerRef = transferrer
+
+			const actionWitness = AccountUpdate.create(this.outerPk)
+			actionWitness.body.actions = pushAction(actionWitness.body.actions, [
+				Field(1), // tag
+				depositAux({
+					recipient,
+					amount,
+					timeout,
+					holderAccountL1
+				}), // aux
+				Field(0x3796868b82a7e16ea871be518582f53c7fa221084d1c90739ea195470a470318), // hash of empty children
+				Field(0), // lower validWhile
+				...timeout.toFields() // upper validWhile
+			])
+			actionWitness.body.useFullCommitment = Bool(true)
+			transferrer.body.implicitAccountCreationFee = Bool(true)
+			transferrer.body.mayUseToken = {
+				parentsOwnToken: Bool(false),
+				inheritFromParent: Bool(false)
+			}
+			actionWitness.body.preconditions.account.state[1] = { isSome: Bool(true), value: Field(0) }
+			actionWitness.body.preconditions.validWhile = {
+				isSome: Bool(true),
+				value: { lower: UInt32.from(0), upper: timeout }
+			}
+			transferrer.body.authorizationKind = {
+				isSigned: Bool(false),
+				isProved: Bool(false),
+				verificationKeyHash: Field(0)
+			}
+
+			const receiver = AccountUpdate.create(holderAccountL1)
+			receiver.balance.addInPlace(amount)
+			receiver.body.useFullCommitment = Bool(true)
+			receiver.body.implicitAccountCreationFee = Bool(true)
+			receiver.body.mayUseToken = {
+				parentsOwnToken: Bool(true),
+				inheritFromParent: Bool(false)
+			}
+
+			const feePayout = AccountUpdate.create(this.bridgeFeeRecipientL1)
+			feePayout.balance.addInPlace(this.bridgeProofFee)
+			feePayout.body.useFullCommitment = Bool(false)
+			feePayout.body.implicitAccountCreationFee = Bool(true)
+			feePayout.body.mayUseToken = {
+				parentsOwnToken: Bool(false),
+				inheritFromParent: Bool(false)
+			}
 		})
+
+		await signsTxn(txn)
 
 		const { data } = await this.l2Client().mutation(submitDepositMutation, {
 			depositParams: {
@@ -362,15 +443,14 @@ export class Bridge {
 				timeout: +timeout.toString(),
 				holderAccountL1: holderAccountL1.toBase58(),
 				children: "[]"
-			}
+			},
+			transferrer: AccountUpdate.toJSON(transferrerRef!)
 		})
 		if (!data?.request?.key) throw new Error("No key returned from mutation")
 
-		const depositForest = await this.pollQuery(data.request.key)
+		const txnHash = await this.pollQuery(data.request.key)
 
-		txn.transaction.accountUpdates.push(...depositForest)
-
-		return txn
+		return txnHash
 	}
 
 	public async fetchSyncedOuterActionState(): Promise<{ state: Field; length: UInt32 }> {
