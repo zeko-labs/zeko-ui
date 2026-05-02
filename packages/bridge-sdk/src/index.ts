@@ -1,6 +1,5 @@
 import {
 	accountQuery,
-	type cancelDepositMutation,
 	fetchConfigQuery,
 	finalizeDepositMutation,
 	genesisConstantsQueryL1,
@@ -9,7 +8,8 @@ import {
 	runtimeConfigQuery,
 	sequencerPkQuery,
 	submitDepositMutation,
-	submitWithdrawalMutation
+	submitWithdrawalMutation,
+	type cancelDepositMutation
 } from "@zeko-labs/graphql"
 import {
 	AccountUpdate,
@@ -336,7 +336,6 @@ export class Bridge {
 			} else if (resultObject.executed) {
 				return resultObject.executed
 			}
-			throw new Error("Should not be reachable")
 		}
 		throw new Error("Should not be reachable")
 	}
@@ -1038,7 +1037,8 @@ export class Bridge {
 		await refreshCache(recipient)
 		await refreshCache(feePayer)
 		await refreshCache(this.innerHolder)
-		await refreshCache(this.outerPk)
+		await refreshCache(this.innerPk)
+		await refreshCache(this.bridgeFeeRecipientL2)
 
 		const txn = await Mina.transaction(feePayer, async () => {
 			const transferrer = AccountUpdate.createSigned(recipient)
@@ -1065,16 +1065,18 @@ export class Bridge {
 				verificationKeyHash: Mina.getAccount(this.innerHolder).zkapp?.verificationKey?.hash!
 			}
 
-			const feePayout = AccountUpdate.create(this.bridgeFeeRecipientL1)
+			const feePayout = AccountUpdate.create(this.bridgeFeeRecipientL2)
 			feePayout.balance.addInPlace(this.bridgeProofFee)
-			feePayout.body.useFullCommitment = Bool(false)
+			feePayout.body.useFullCommitment = Bool(true)
 			feePayout.body.implicitAccountCreationFee = Bool(true)
 			feePayout.body.mayUseToken = {
-				parentsOwnToken: Bool(false),
+				parentsOwnToken: Bool(true),
 				inheritFromParent: Bool(false)
 			}
 
-			const actionWitness = AccountUpdate.create(this.outerPk)
+			const childrenHash = AccountUpdateForest.fromFlatArray([receiver, feePayout]).hash
+
+			const actionWitness = AccountUpdate.create(this.innerPk)
 			actionWitness.approve(receiver)
 			actionWitness.approve(feePayout)
 			actionWitness.body.actions = pushAction(actionWitness.body.actions, [
@@ -1083,7 +1085,7 @@ export class Bridge {
 					recipient,
 					amount
 				}), // aux
-				actionWitness.extractTree().children.hash // children hash
+				childrenHash // children hash
 			])
 			actionWitness.body.useFullCommitment = Bool(true)
 			actionWitness.body.implicitAccountCreationFee = Bool(true)
@@ -1096,6 +1098,8 @@ export class Bridge {
 				isProved: Bool(true),
 				verificationKeyHash: Mina.getAccount(this.innerPk).zkapp?.verificationKey?.hash!
 			}
+
+			AccountUpdate.attachToTransaction(actionWitness)
 		})
 
 		const signed = await signsTxn(txn)
