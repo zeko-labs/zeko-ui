@@ -426,12 +426,13 @@ export function filterNulls<T>(arr: (T | null)[]): T[] {
 	})
 }
 
-export async function refreshCache(feePayer: Mina.FeePayerSpec) {
+export async function refreshCache(feePayer: Mina.FeePayerSpec, tokenId?: Field) {
 	if (feePayer instanceof PublicKey) {
-		await fetchAccount({ publicKey: feePayer })
+		await fetchAccount({ publicKey: feePayer, tokenId })
 	} else if (feePayer) {
 		await fetchAccount({
-			publicKey: feePayer.sender
+			publicKey: feePayer.sender,
+			tokenId
 		})
 	}
 }

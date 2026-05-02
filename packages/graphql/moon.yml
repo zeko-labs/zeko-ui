@@ -26,7 +26,7 @@ tasks:
     inputs:
       - "@globs(src)"
   schema-get-zeko:
-    command: gql-tada generate schema 'https://testnet.zeko.io/graphql' --output './src/generated/zeko.graphql'
+    command: gql-tada generate schema 'https://alphanet.zeko.io/graphql' --output './src/generated/zeko.graphql'
     options:
       cache: false
     outputs:

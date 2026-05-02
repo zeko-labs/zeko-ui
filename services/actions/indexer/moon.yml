@@ -43,6 +43,8 @@ tasks:
       - build
     command: node dist/index.js
     preset: server
+    options:
+      envFile: true
   cli:
     deps:
       - build

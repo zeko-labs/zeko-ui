@@ -1,0 +1,471 @@
+{
+	"id": "5e2d92c0-d0ff-4997-96dd-0c5126f9bb98",
+	"prevIds": ["90f846e8-f4dc-4fc9-80d9-2a8c9d8e395d"],
+	"version": "8",
+	"dialect": "postgres",
+	"ddl": [
+		{
+			"isRlsEnabled": false,
+			"name": "commit_actions",
+			"schema": "public",
+			"entityType": "tables"
+		},
+		{
+			"columns": ["after_state"],
+			"nameExplicit": false,
+			"name": "commit_actions_pkey",
+			"schema": "public",
+			"table": "commit_actions",
+			"entityType": "pks"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "after_state",
+			"schema": "public",
+			"table": "commit_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "ledger",
+			"schema": "public",
+			"table": "commit_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "inner_action_state",
+			"schema": "public",
+			"table": "commit_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "integer",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "inner_action_state_length",
+			"schema": "public",
+			"table": "commit_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "synchronized_outer_action_state",
+			"schema": "public",
+			"table": "commit_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "integer",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "synchronized_outer_action_state_length",
+			"schema": "public",
+			"table": "commit_actions",
+			"entityType": "columns"
+		},
+		{
+			"nameExplicit": false,
+			"columns": ["after_state"],
+			"schemaTo": "public",
+			"tableTo": "outer_actions",
+			"columnsTo": ["after_state"],
+			"onUpdate": "NO ACTION",
+			"onDelete": "CASCADE",
+			"name": "commit_actions_after_state_outer_actions_after_state_fk",
+			"schema": "public",
+			"table": "commit_actions",
+			"entityType": "fks"
+		},
+		{
+			"isRlsEnabled": false,
+			"name": "outer_actions",
+			"schema": "public",
+			"entityType": "tables"
+		},
+		{
+			"columns": ["after_state"],
+			"nameExplicit": false,
+			"name": "outer_actions_pkey",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "pks"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "after_state",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "kind",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": false,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "before_state",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "integer",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "index",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "integer",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "block_height",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "timestamp with time zone",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "timestamp",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "txn_hash",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "jsonb",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "fields",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "bigint",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "slot_range_lower",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "bigint",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "slot_range_upper",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "timestamp with time zone",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": "now()",
+			"generated": null,
+			"identity": null,
+			"name": "created_at",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "timestamp with time zone",
+			"typeSchema": null,
+			"notNull": false,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "marked_as_canonical_at",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "columns"
+		},
+		{
+			"nameExplicit": false,
+			"columns": ["index"],
+			"nullsNotDistinct": false,
+			"name": "outer_actions_index_unique",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "uniques"
+		},
+		{
+			"value": "\"outer_actions\".\"before_state\" IS NULL OR \"outer_actions\".\"before_state\" <> \"outer_actions\".\"after_state\"",
+			"name": "actions_before_not_after|check",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "checks"
+		},
+		{
+			"nameExplicit": true,
+			"columns": [
+				{
+					"value": "before_state",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				}
+			],
+			"isUnique": false,
+			"where": null,
+			"with": "",
+			"method": "btree",
+			"concurrently": false,
+			"name": "before_state|index",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "indexes"
+		},
+		{
+			"nameExplicit": true,
+			"columns": [
+				{
+					"value": "after_state",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				}
+			],
+			"isUnique": false,
+			"where": null,
+			"with": "",
+			"method": "btree",
+			"concurrently": false,
+			"name": "after_state|index",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "indexes"
+		},
+		{
+			"nameExplicit": true,
+			"columns": [
+				{
+					"value": "index",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				}
+			],
+			"isUnique": false,
+			"where": null,
+			"with": "",
+			"method": "btree",
+			"concurrently": false,
+			"name": "index|index",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "indexes"
+		},
+		{
+			"nameExplicit": true,
+			"columns": [
+				{
+					"value": "marked_as_canonical_at",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				}
+			],
+			"isUnique": false,
+			"where": null,
+			"with": "",
+			"method": "btree",
+			"concurrently": false,
+			"name": "marked_as_canonical_at|index",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "indexes"
+		},
+		{
+			"nameExplicit": false,
+			"columns": ["before_state"],
+			"schemaTo": "public",
+			"tableTo": "outer_actions",
+			"columnsTo": ["after_state"],
+			"onUpdate": "NO ACTION",
+			"onDelete": "RESTRICT",
+			"name": "outer_actions_before_state_outer_actions_after_state_fk",
+			"schema": "public",
+			"table": "outer_actions",
+			"entityType": "fks"
+		},
+		{
+			"isRlsEnabled": false,
+			"name": "witness_actions",
+			"schema": "public",
+			"entityType": "tables"
+		},
+		{
+			"columns": ["after_state"],
+			"nameExplicit": false,
+			"name": "witness_actions_pkey",
+			"schema": "public",
+			"table": "witness_actions",
+			"entityType": "pks"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "after_state",
+			"schema": "public",
+			"table": "witness_actions",
+			"entityType": "columns"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": null,
+			"generated": null,
+			"identity": null,
+			"name": "aux",
+			"schema": "public",
+			"table": "witness_actions",
+			"entityType": "columns"
+		},
+		{
+			"nameExplicit": true,
+			"columns": [
+				{
+					"value": "aux",
+					"isExpression": false,
+					"asc": true,
+					"nullsFirst": false,
+					"opclass": null
+				}
+			],
+			"isUnique": false,
+			"where": null,
+			"with": "",
+			"method": "btree",
+			"concurrently": false,
+			"name": "aux|index",
+			"schema": "public",
+			"table": "witness_actions",
+			"entityType": "indexes"
+		},
+		{
+			"nameExplicit": false,
+			"columns": ["after_state"],
+			"schemaTo": "public",
+			"tableTo": "outer_actions",
+			"columnsTo": ["after_state"],
+			"onUpdate": "NO ACTION",
+			"onDelete": "CASCADE",
+			"name": "witness_actions_after_state_outer_actions_after_state_fk",
+			"schema": "public",
+			"table": "witness_actions",
+			"entityType": "fks"
+		}
+	],
+	"renames": []
+}
