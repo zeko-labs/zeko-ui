@@ -39,7 +39,7 @@ jobs:
 
       - name: Validate public skills install
         env:
-          ZEKO_SKILLS_PUBLIC_SOURCE: https://github.com/zeko-labs/zeko-skills
+          ZEKO_SKILLS_PUBLIC_SOURCE: zeko-labs/zeko-skills
         run: moon exec --ignore-ci-checks zeko-skills:validate-public-install
 
   publish-clawhub:

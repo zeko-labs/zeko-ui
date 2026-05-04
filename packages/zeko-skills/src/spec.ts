@@ -88,7 +88,12 @@ export const endpointChecks: EndpointCheck[] = [
 	{
 		name: "minascan backup archive",
 		expected: "https://api.minascan.io/archive/devnet/v1/graphql",
-		sources: ["packages/graphql/moon.yml", "services/mina-archive-proxy/worker.ts"]
+		sources: ["packages/graphql/moon.yml"]
+	},
+	{
+		name: "mina archive proxy upstream",
+		expected: "https://devnet-archive-node-api.gcp.o1test.net",
+		sources: ["services/mina-archive-proxy/worker.ts"]
 	},
 	{
 		name: "actions api",
