@@ -13,19 +13,34 @@ export function hash(action: Field[]): Field {
 	return Poseidon.hashWithPrefix("MinaZkappEvent******", action)
 }
 
-export function pushHash(actionState: Field, hash: Field): Field {
-	return Poseidon.hashWithPrefix("MinaZkappSeqEvents**", [actionState, hash])
+export const Actions = {
+	pushHash(actionState: Field, hash: Field): Field {
+		return Poseidon.hashWithPrefix("MinaZkappSeqEvents**", [actionState, hash])
+	},
+
+	pushAction(actions: Types.Events, action: Field[]): Types.Events {
+		return {
+			hash: Actions.pushHash(actions.hash, hash(action)),
+			data: [action, ...actions.data]
+		}
+	}
 }
 
-export function pushAction(actions: Types.Events, action: Field[]): Types.Events {
-	return {
-		hash: pushHash(actions.hash, hash(action)),
-		data: [action, ...actions.data]
+export const Events = {
+	pushHash(state: Field, hash: Field): Field {
+		return Poseidon.hashWithPrefix("MinaZkappEvents*****", [state, hash])
+	},
+
+	pushEvent(events: Types.Events, event: Field[]): Types.Events {
+		return {
+			hash: Events.pushHash(events.hash, hash(event)),
+			data: [event, ...events.data]
+		}
 	}
 }
 
 export function fromList(events: Field[][]): Types.Events {
-	return [...events].reverse().reduce(pushAction, empty())
+	return [...events].reverse().reduce(Actions.pushAction, empty())
 }
 
 export const emptyActionsList: Field = Field.from(

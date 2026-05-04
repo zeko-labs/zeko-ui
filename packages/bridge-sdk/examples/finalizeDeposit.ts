@@ -1,7 +1,6 @@
 import { env } from "node:process"
 import { PrivateKey } from "o1js"
 import { Bridge } from "../src/index"
-import { writeLog } from "./write-log"
 
 if (!env.MINA_PRIVATE_KEY) {
 	throw new Error("MINA_PRIVATE_KEY is not set")
@@ -13,24 +12,20 @@ const recipient = signer.toPublicKey()
 async function main() {
 	const bridge = await Bridge.init({
 		l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
-		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
-		actionsApi: "http://api.actions.zeko.io/graphql",
-		zekoUrl: "https://testnet.zeko.io/graphql",
-		zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql",
+		l1ArchiveUrl: "https://devnet-archive-node-api.gcp.o1test.net/",
+		actionsApi: "http://localhost:9100/graphql",
+		zekoUrl: "https://alphanet.zeko.io/graphql",
+		zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql",
 		l1Network: "testnet",
-		l2Network: "testnet",
-		pollTimeout: 1_200_000
+		l2Network: "testnet"
 	})
 
-	const txn = await bridge.finalizeDeposit(recipient)
+	const txnHash = await bridge.finalizeDeposit(recipient, async (txn) => {
+		console.log(txn.toJSON())
+		return txn.sign([signer])
+	})
 
-	const signed = txn.sign([signer])
-	console.log(signed.toJSON())
-	writeLog({ log: signed, name: "finalize-deposit" })
-
-	const result = await signed.send()
-
-	console.log(result.hash)
+	console.log(txnHash)
 }
 
 main().catch(console.error)

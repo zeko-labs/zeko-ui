@@ -23,7 +23,7 @@ async function main() {
 	const depositParams = {
 		recipient,
 		amount: UInt64.from(72 * 10e8),
-		timeout: UInt32.from(10),
+		timeout: UInt32.from(1_000_000),
 		holderAccountL1: bridge.outerHolders[0]
 	}
 

@@ -10,7 +10,7 @@ import {
 } from "@zeko-labs/graphql"
 import { Field, Poseidon, PublicKey, UInt32, fetchAccount, type Mina } from "o1js"
 import * as v from "valibot"
-import { empty, fromList, pushHash } from "./actions"
+import { Actions, empty, fromList } from "./actions"
 import type { GqlClient } from "./graphql"
 import type {
 	Account,
@@ -355,7 +355,7 @@ const mapParsedActions = (output: v.InferOutput<typeof ActionOutputsSchema>): Ac
 			const correctActions = []
 			for (let i = 0; i < actions.length; i++) {
 				const action = actions[i]
-				const afterActionState = pushHash(actionState, fromList([action.data]).hash)
+				const afterActionState = Actions.pushHash(actionState, fromList([action.data]).hash)
 				correctActions.push({
 					index: index + i,
 					action: action.data,
