@@ -2,6 +2,7 @@ import {
 	accountQuery,
 	fetchConfigQuery,
 	finalizeDepositMutation,
+	finalizeWithdrawalMutation,
 	genesisConstantsQueryL1,
 	genesisConstantsQueryL2,
 	provedResultQuery,
@@ -21,13 +22,17 @@ import {
 	PublicKey,
 	Signature,
 	TokenId,
-	type Transaction,
 	UInt32,
-	UInt64
+	UInt64,
+	type Transaction
 } from "o1js"
 import * as v from "valibot"
 import { Actions, Events, fromList } from "./actions"
-import { ensureFirstWithdrawalAmountCanCreateHelper } from "./errors"
+import {
+	assertFirstWithdrawalAmountCanCreateHelper,
+	ensureFirstWithdrawalAmountCanCreateHelper,
+	InsufficientFirstWithdrawalAmountError
+} from "./errors"
 import { createGraphqlClient, type GqlClient } from "./graphql"
 import type {
 	Account,
@@ -36,6 +41,7 @@ import type {
 	Deposit,
 	DepositWithState,
 	ExtractInput,
+	InnerWitness,
 	OuterAction,
 	OuterCommit,
 	OuterWitness,
@@ -49,6 +55,7 @@ import {
 	depositAux,
 	fetchActions,
 	fetchCommitAsePastSlot,
+	fetchInnerActionsFromIndexer,
 	fetchInnerWitnessesFromAuxes,
 	fetchOuterActionsFromIndexer,
 	fetchOuterWitnessesFromAuxes,
@@ -57,6 +64,7 @@ import {
 	getNextCancelledDepositIndex,
 	getNextDepositIndex,
 	getNextWithdrawalIndex,
+	getVkHash,
 	refreshCache,
 	safeDecrement,
 	withdrawalAux
@@ -306,8 +314,15 @@ export class Bridge {
 		)
 	}
 
+	private async fetchUserWithdrawals(pk: PublicKey): Promise<Withdrawal[]> {
+		return (await this.fetchUserWithdrawalActions(pk)).map(({ recipient, amount }) => ({
+			recipient,
+			amount
+		}))
+	}
+
 	private async pollQuery(key: string, pollPeriod = 5_000): Promise<string> {
-		console.log("pollQuery", key)
+		console.debug("pollQuery", key)
 
 		let result: string | null = null
 		let attempts = 0
@@ -355,7 +370,7 @@ export class Bridge {
 			timeout: UInt32
 			holderAccountL1?: PublicKey
 		},
-		signTxn: (txn: Transaction<any, false>) => Promise<Transaction<any, true>>
+		signTxn: (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>
 	): Promise<string> {
 		this.setL1()
 
@@ -426,7 +441,7 @@ export class Bridge {
 			actionWitness.body.authorizationKind = {
 				isSigned: Bool(false),
 				isProved: Bool(true),
-				verificationKeyHash: Mina.getAccount(this.outerPk).zkapp?.verificationKey?.hash!
+				verificationKeyHash: await getVkHash(this.outerPk)
 			}
 
 			AccountUpdate.attachToTransaction(actionWitness)
@@ -522,8 +537,7 @@ export class Bridge {
 
 	public async finalizeDeposit(
 		pk: PublicKey,
-		signTxn: (txn: Transaction<any, false>) => Promise<Transaction<any, true>>,
-		fee: UInt64 = UInt64.zero,
+		signTxn: (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>,
 		attempts = 5
 	): Promise<string> {
 		const prove = async (attempts: number) => {
@@ -540,11 +554,11 @@ export class Bridge {
 			await refreshCache(depositParams.deposit.recipient, TokenId.derive(this.innerHolder))
 			await refreshCache(this.innerHolder)
 
-			let isHelperAccountNew
+			let isHelperAccountNew = false
 			const txn = await Mina.transaction(
 				{
 					sender: this.sequencerPk,
-					fee
+					fee: UInt64.from(1 * 10e8)
 				},
 				async () => {
 					const helperAccount = AccountUpdate.createSigned(
@@ -595,7 +609,10 @@ export class Bridge {
 						parentsOwnToken: Bool(true),
 						inheritFromParent: Bool(false)
 					}
-					recipientPayout.balance.addInPlace(depositParams.deposit.amount.sub(this.bridgeProofFee))
+					let payout = depositParams.deposit.amount
+					payout = payout.sub(this.bridgeProofFee)
+					if (isHelperAccountNew) payout = payout.sub(this.l2AccountCreationFee)
+					recipientPayout.balance.addInPlace(payout)
 
 					const feePayout = AccountUpdate.create(this.bridgeFeeRecipientL2)
 					feePayout.body.useFullCommitment = Bool(true)
@@ -629,7 +646,7 @@ export class Bridge {
 					finalizeDeposit.body.authorizationKind = {
 						isSigned: Bool(false),
 						isProved: Bool(true),
-						verificationKeyHash: Mina.getAccount(this.innerHolder).zkapp?.verificationKey?.hash!
+						verificationKeyHash: await getVkHash(this.innerHolder)
 					}
 					AccountUpdate.attachToTransaction(finalizeDeposit)
 				}
@@ -1069,7 +1086,7 @@ export class Bridge {
 			recipient: PublicKey
 			amount: UInt64
 		},
-		signTxn: (txn: Transaction<any, false>) => Promise<Transaction<any, true>>
+		signTxn: (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>
 	): Promise<string> {
 		this.setL2()
 
@@ -1113,7 +1130,7 @@ export class Bridge {
 			receiver.body.authorizationKind = {
 				isSigned: Bool(false),
 				isProved: Bool(true),
-				verificationKeyHash: Mina.getAccount(this.innerHolder).zkapp?.verificationKey?.hash!
+				verificationKeyHash: await getVkHash(this.innerHolder)
 			}
 
 			const feePayout = AccountUpdate.create(this.bridgeFeeRecipientL2)
@@ -1147,7 +1164,7 @@ export class Bridge {
 			actionWitness.body.authorizationKind = {
 				isSigned: Bool(false),
 				isProved: Bool(true),
-				verificationKeyHash: Mina.getAccount(this.innerPk).zkapp?.verificationKey?.hash!
+				verificationKeyHash: await getVkHash(this.innerPk)
 			}
 
 			AccountUpdate.attachToTransaction(actionWitness)
@@ -1172,57 +1189,386 @@ export class Bridge {
 		return await this.pollQuery(data.request.key)
 	}
 
-	// public async finalizeWithdrawal(
-	// 	pk: PublicKey,
-	// 	feePayer: Mina.FeePayerSpec,
-	// 	_outerHolder?: PublicKey
-	// ): Promise<Mina.Transaction<false, false>> {
-	// 	const outerHolder = _outerHolder ?? this.outerHolders[0]
-	// 	const witnesses = await this.fetchWithdrawalFinalizationWitnesses(pk, outerHolder)
+	private async fetchWithdrawalFinalizationWitnesses(
+		pk: PublicKey,
+		outerHolder: PublicKey
+	): Promise<
+		WitnessFetchResult<{
+			commitAseTarget: Field
+			commitSlotRange: {
+				lower: UInt32
+				upper: UInt32
+			}
+			withdrawalParams: {
+				withdrawal: Withdrawal
+				aux: Field
+			}
+			helperAccount: Account | null
+			witness: ExtractInput<typeof finalizeWithdrawalMutation>
+		}>
+	> {
+		const helperAccount = await this.fetchAccount(
+			this.l1Client,
+			pk,
+			TokenId.derive(this.outerTokenOwner)
+		)
+		this.debug("fetchWithdrawalFinalizationWitnesses helperAccount", {
+			pk: pk.toBase58(),
+			hasHelperAccount: helperAccount !== null
+		})
 
-	// 	if (!witnesses.ok) throw new Error("Did not find any withdrawal to finalize")
+		const prevNextWithdrawal = helperAccount ? getNextWithdrawalIndex(helperAccount) : UInt32.zero
+		this.debug("fetchWithdrawalFinalizationWitnesses prevNextWithdrawal", {
+			prevNextWithdrawal: prevNextWithdrawal.toString()
+		})
 
-	// 	const { witness, withdrawalParams, helperAccount } = witnesses.value
+		const withdrawals = (await this.fetchUserWithdrawals(pk)).map((withdrawal) => ({
+			withdrawal,
+			aux: withdrawalAux(withdrawal)
+		}))
+		this.debug("fetchWithdrawalFinalizationWitnesses withdrawals", {
+			count: withdrawals.length,
+			recipients: withdrawals.map(({ withdrawal }) => withdrawal.recipient.toBase58()),
+			amounts: withdrawals.map(({ withdrawal }) => withdrawal.amount.toString())
+		})
 
-	// 	const { data } = await this.l2Client().mutation(finalizeWithdrawalMutation, {
-	// 		input: witness
-	// 	})
-	// 	if (!data?.request?.key) throw new Error("No key returned from mutation")
-	// 	const withdrawalForest = await this.pollQuery(data.request.key)
+		if (withdrawals.length === 0) {
+			this.debug("fetchWithdrawalFinalizationWitnesses no-withdrawals", {
+				pk: pk.toBase58()
+			})
+			return { ok: false, msg: "No withdrawals found" }
+		}
 
-	// 	for (let i = 0; i < withdrawalForest.length; i++) {
-	// 		if (!withdrawalForest[i].publicKey.equals(pk).toBoolean()) continue
+		const withdrawalWitnesses = await fetchInnerWitnessesFromAuxes(
+			this.actionsApiClient,
+			withdrawals.map(({ aux }) => aux.toString())
+		)
+		this.debug("fetchWithdrawalFinalizationWitnesses witnessFetch", {
+			requestedAuxes: withdrawals.length,
+			witnessCount: withdrawalWitnesses.length,
+			witnessIndices: withdrawalWitnesses.map((witness) => witness.index)
+		})
 
-	// 		withdrawalForest[i].lazyAuthorization = { kind: "lazy-signature" }
-	// 	}
+		if (withdrawalWitnesses.length === 0) {
+			this.debug("fetchWithdrawalFinalizationWitnesses no-witnesses", {
+				pk: pk.toBase58(),
+				withdrawalCount: withdrawals.length
+			})
+			return { ok: false, msg: "No withdrawal witnesses found" }
+		}
 
-	// 	this.setL1()
+		const earliestBeforeState = withdrawalWitnesses
+			.sort((a, b) => a.index - b.index)
+			.at(0)?.beforeActionState
+		this.debug("fetchWithdrawalFinalizationWitnesses earliestBeforeState", {
+			earliestBeforeState: earliestBeforeState?.toString() ?? null
+		})
 
-	// 	const accountCreationFee = helperAccount ? UInt64.zero : this.l1AccountCreationFee
+		if (earliestBeforeState === undefined) {
+			return { ok: false, msg: "No earliest before state found" }
+		}
 
-	// 	await refreshCache(feePayer)
+		const currentSlot = await this.fetchCurrentSlot()
+		this.debug("fetchWithdrawalFinalizationWitnesses currentSlot", {
+			currentSlot: currentSlot.toString(),
+			withdrawalDelay: this.withdrawalDelay.toString(),
+			targetSlot: currentSlot.sub(this.withdrawalDelay).toString()
+		})
 
-	// 	const txn = await Mina.transaction(feePayer, async () => {
-	// 		const transferrer = AccountUpdate.create(withdrawalParams.withdrawal.recipient)
-	// 		transferrer.balance.addInPlace(withdrawalParams.withdrawal.amount.sub(accountCreationFee))
-	// 	})
+		const { commit: lastCommit, ase } = await fetchCommitAsePastSlot(
+			this.actionsApiClient,
+			+currentSlot.sub(this.withdrawalDelay)
+		)
+		this.debug("fetchWithdrawalFinalizationWitnesses commitAsePastSlot", {
+			aseCount: ase.length,
+			innerActionState: lastCommit.innerActionState.toString(),
+			innerActionStateLength: lastCommit.innerActionStateLength.toString(),
+			afterActionState: lastCommit.afterActionState.toString()
+		})
 
-	// 	txn.transaction.accountUpdates.push(...withdrawalForest)
+		const lastCommitAse = ase.map(({ action }) => fromList([action]).hash)
+		const commitAseTarget = ase.at(-1)?.afterActionState ?? lastCommit.afterActionState
 
-	// 	return txn
-	// }
+		const innerActions = await fetchInnerActionsFromIndexer(this.actionsApiClient, {
+			fromState: earliestBeforeState.toString(),
+			afterState: lastCommit.innerActionState.toString()
+		})
+		this.debug("fetchWithdrawalFinalizationWitnesses innerActions", {
+			count: innerActions.length,
+			indices: innerActions.map((action) => action.index)
+		})
 
-	// public async canFinalizeWithdrawal(
-	// 	pk: PublicKey
-	// ): Promise<{ available: boolean; reason: string | null }> {
-	// 	this.debug("canFinalizeWithdrawal start", { pk: pk.toBase58() })
-	// 	const result = await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner)
-	// 	this.debug("canFinalizeWithdrawal result", result)
-	// 	return {
-	// 		available: result.ok,
-	// 		reason: result.ok ? null : result.msg
-	// 	}
-	// }
+		const findMatchingWithdrawal = (action: InnerWitness) =>
+			withdrawals.find(({ aux }) => aux.equals(action.aux).toBoolean())
+
+		const myWithdrawalIndex = innerActions.findIndex((action) => {
+			const matchingWithdrawal = findMatchingWithdrawal(action)
+
+			if (!matchingWithdrawal) return false
+
+			if (prevNextWithdrawal.greaterThan(UInt32.from(action.index)).toBoolean()) return false
+
+			if (action.index === 3) return false
+
+			return true
+		})
+		this.debug("fetchWithdrawalFinalizationWitnesses myWithdrawalIndex", {
+			myWithdrawalIndex,
+			prevNextWithdrawal: prevNextWithdrawal.toString()
+		})
+
+		if (myWithdrawalIndex === -1) {
+			this.debug("fetchWithdrawalFinalizationWitnesses no-my-withdrawal", {
+				prevNextWithdrawal: prevNextWithdrawal.toString(),
+				innerActionIndices: innerActions.map((action) => action.index)
+			})
+			return { ok: false, msg: "No my withdrawal index found" }
+		}
+
+		const myWithdrawal = innerActions[myWithdrawalIndex]
+		const withdrawalParams = findMatchingWithdrawal(myWithdrawal)
+		if (!withdrawalParams) throw new Error("Unreachable: Did not find withdrawal parameters")
+		this.debug("fetchWithdrawalFinalizationWitnesses selectedWithdrawal", {
+			index: myWithdrawal.index,
+			actionHash: myWithdrawal.hash,
+			recipient: withdrawalParams.withdrawal.recipient.toBase58(),
+			amount: withdrawalParams.withdrawal.amount.toString()
+		})
+		try {
+			assertFirstWithdrawalAmountCanCreateHelper({
+				helperAccountExists: helperAccount !== null,
+				amount: withdrawalParams.withdrawal.amount,
+				recipient: withdrawalParams.withdrawal.recipient,
+				accountCreationFee: this.l1AccountCreationFee
+			})
+		} catch (e) {
+			if (e instanceof InsufficientFirstWithdrawalAmountError) {
+				return { ok: false, msg: e.message }
+			}
+			throw e
+		}
+
+		const withdrawalAse = innerActions
+			.slice(myWithdrawalIndex + 1)
+			.map(({ action }) => fromList([action]).hash)
+
+		return {
+			ok: true,
+			value: {
+				commitAseTarget,
+				commitSlotRange: lastCommit.slotRange,
+				withdrawalParams,
+				helperAccount,
+				witness: {
+					withdrawalParams: {
+						amount: withdrawalParams.withdrawal.amount.toString(),
+						recipient: withdrawalParams.withdrawal.recipient.toBase58(),
+						children: "[]"
+					},
+					prevNextWithdrawal: prevNextWithdrawal.toString(),
+					withdrawalAse: {
+						fields: withdrawalAse.map((elem) => elem.toString()),
+						stmt: {
+							length: lastCommit.innerActionStateLength.sub(withdrawalAse.length).toString(),
+							actionState: myWithdrawal.afterActionState.toString()
+						}
+					},
+					beforeWithdrawal: {
+						actionState: myWithdrawal.beforeActionState.toString()
+					},
+					commitAse: {
+						fields: lastCommitAse.map((elem) => elem.toString()),
+						stmt: { actionState: lastCommit.afterActionState.toString() }
+					},
+					commit: {
+						actions: lastCommit.action.map((a) => a.toString())
+					},
+					beforeCommit: { actionState: lastCommit.beforeActionState.toString() },
+					publicKey: outerHolder.toBase58()
+				}
+			}
+		}
+	}
+
+	public async finalizeWithdrawal(
+		pk: PublicKey,
+		signTxn: (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>,
+		_outerHolder?: PublicKey
+	): Promise<string> {
+		const outerHolder = _outerHolder ?? this.outerHolders[0]
+		const witnesses = await this.fetchWithdrawalFinalizationWitnesses(pk, outerHolder)
+
+		if (!witnesses.ok) throw new Error("Did not find any withdrawal to finalize")
+
+		const { witness, withdrawalParams, commitAseTarget, commitSlotRange } = witnesses.value
+
+		this.setL1()
+		await refreshCache(withdrawalParams.withdrawal.recipient)
+		await refreshCache(withdrawalParams.withdrawal.recipient, TokenId.derive(outerHolder))
+		await refreshCache(this.outerTokenOwner)
+		await refreshCache(outerHolder)
+
+		const withdrawalIndex = Field(witness.withdrawalAse.stmt.length).sub(1)
+
+		let isHelperAccountNew = false
+		const txn = await Mina.transaction(
+			{
+				sender: this.sequencerPk,
+				fee: UInt64.from(1 * 10e8)
+			},
+			async () => {
+				const helperAccount = AccountUpdate.createSigned(
+					withdrawalParams.withdrawal.recipient,
+					TokenId.derive(this.outerTokenOwner)
+				)
+				helperAccount.body.useFullCommitment = Bool(false)
+				helperAccount.body.incrementNonce = Bool(true)
+				helperAccount.body.implicitAccountCreationFee = Bool(false)
+				helperAccount.body.mayUseToken = {
+					parentsOwnToken: Bool(true),
+					inheritFromParent: Bool(false)
+				}
+				helperAccount.body.update.appState[1] = {
+					isSome: Bool(true),
+					value: withdrawalIndex.add(1) // next withdrawal
+				}
+				helperAccount.account.isNew.getAndRequireEquals()
+				Provable.asProver(() => {
+					isHelperAccountNew = helperAccount.body.preconditions.account.isNew.value.toBoolean()
+				})
+				helperAccount.body.preconditions.account.state[1] = {
+					isSome: Bool(true),
+					value: Field(witness.prevNextWithdrawal)
+				}
+				helperAccount.account.nonce.getAndRequireEquals()
+
+				const tokenOwner = AccountUpdate.create(this.outerTokenOwner)
+				tokenOwner.approve(helperAccount)
+				tokenOwner.body.useFullCommitment = Bool(true)
+				tokenOwner.body.implicitAccountCreationFee = Bool(true)
+				tokenOwner.body.mayUseToken = {
+					parentsOwnToken: Bool(false),
+					inheritFromParent: Bool(false)
+				}
+				tokenOwner.body.authorizationKind = {
+					isSigned: Bool(false),
+					isProved: Bool(true),
+					verificationKeyHash: await getVkHash(this.outerTokenOwner)
+				}
+
+				const outerWitness = AccountUpdate.create(this.outerPk)
+				outerWitness.body.useFullCommitment = Bool(true)
+				outerWitness.body.implicitAccountCreationFee = Bool(true)
+				outerWitness.body.mayUseToken = {
+					parentsOwnToken: Bool(false),
+					inheritFromParent: Bool(false)
+				}
+				outerWitness.body.preconditions.account.state[1] = {
+					isSome: Bool(true),
+					value: Field(0) // status flags
+				}
+				outerWitness.body.preconditions.account.actionState = {
+					isSome: Bool(true),
+					value: commitAseTarget
+				}
+				outerWitness.body.preconditions.validWhile = {
+					isSome: Bool(true),
+					value: {
+						lower: commitSlotRange.upper.add(this.withdrawalDelay),
+						upper: UInt32.from(4294967295)
+					}
+				}
+
+				const recipientPayout = AccountUpdate.create(withdrawalParams.withdrawal.recipient)
+				recipientPayout.body.useFullCommitment = Bool(true)
+				recipientPayout.body.implicitAccountCreationFee = Bool(true)
+				recipientPayout.body.mayUseToken = {
+					parentsOwnToken: Bool(true),
+					inheritFromParent: Bool(false)
+				}
+				let payout = withdrawalParams.withdrawal.amount
+				payout = payout.sub(this.bridgeProofFee)
+				if (isHelperAccountNew) payout = payout.sub(this.l1AccountCreationFee)
+				recipientPayout.balance.addInPlace(payout)
+
+				const feePayout = AccountUpdate.create(this.bridgeFeeRecipientL1)
+				feePayout.body.useFullCommitment = Bool(true)
+				feePayout.body.implicitAccountCreationFee = Bool(true)
+				feePayout.body.mayUseToken = {
+					parentsOwnToken: Bool(true),
+					inheritFromParent: Bool(false)
+				}
+				feePayout.balance.addInPlace(this.bridgeProofFee)
+
+				const finalizeDeposit = AccountUpdate.create(outerHolder)
+				finalizeDeposit.approve(tokenOwner)
+				finalizeDeposit.approve(outerWitness)
+				finalizeDeposit.approve(recipientPayout)
+				finalizeDeposit.approve(feePayout)
+				finalizeDeposit.body.useFullCommitment = Bool(true)
+				finalizeDeposit.body.implicitAccountCreationFee = Bool(true)
+				finalizeDeposit.body.mayUseToken = {
+					parentsOwnToken: Bool(false),
+					inheritFromParent: Bool(false)
+				}
+				finalizeDeposit.balance.subInPlace(withdrawalParams.withdrawal.amount)
+				finalizeDeposit.body.events = Events.pushEvent(finalizeDeposit.body.events, [
+					withdrawalIndex,
+					Field(0), // empty children
+					...UInt64.from(withdrawalParams.withdrawal.amount).toFields(),
+					...withdrawalParams.withdrawal.recipient.toFields()
+				])
+				finalizeDeposit.body.authorizationKind = {
+					isSigned: Bool(false),
+					isProved: Bool(true),
+					verificationKeyHash: await getVkHash(outerHolder)
+				}
+				AccountUpdate.attachToTransaction(finalizeDeposit)
+			}
+		)
+
+		const signed = await signTxn(txn)
+		const helperAccountUpdate = signed.transaction.accountUpdates.find(
+			({ publicKey, tokenId }) =>
+				publicKey.equals(withdrawalParams.withdrawal.recipient).toBoolean() &&
+				tokenId.equals(TokenId.derive(this.outerTokenOwner)).toBoolean()
+		)
+		if (!helperAccountUpdate) throw new Error("Helper account update not found")
+
+		const helperAccountNonce =
+			helperAccountUpdate.body.preconditions.account.nonce.value.lower.toString()
+
+		const helperAccountSignatureString = helperAccountUpdate.authorization.signature
+		if (!helperAccountSignatureString) throw new Error("Helper account update not signed")
+		const helperAccountSignature = Signature.fromBase58(helperAccountSignatureString)
+
+		const { data, error } = await this.l2Client().mutation(finalizeWithdrawalMutation, {
+			input: {
+				...witness,
+				prevNonce: helperAccountNonce,
+				helperAccountSignature: {
+					scalar: helperAccountSignature.s.toBigInt().toString(),
+					field: helperAccountSignature.r.toBigInt().toString()
+				},
+				helperAccountNew: isHelperAccountNew
+			}
+		})
+		if (!data?.request?.key) throw new Error(error?.message ?? "No key returned from mutation")
+
+		return await this.pollQuery(data.request.key)
+	}
+
+	public async canFinalizeWithdrawal(
+		pk: PublicKey
+	): Promise<{ available: boolean; reason: string | null }> {
+		this.debug("canFinalizeWithdrawal start", { pk: pk.toBase58() })
+		const result = await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner)
+		this.debug("canFinalizeWithdrawal result", result)
+		return {
+			available: result.ok,
+			reason: result.ok ? null : result.msg
+		}
+	}
 
 	public async fetchDepositsWithStates(pk: PublicKey): Promise<{
 		deposits: DepositWithState[]

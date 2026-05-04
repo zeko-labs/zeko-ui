@@ -20,10 +20,7 @@ async function main() {
 		l2Network: "testnet"
 	})
 
-	const txnHash = await bridge.finalizeDeposit(recipient, async (txn) => {
-		console.log(txn.toJSON())
-		return txn.sign([signer])
-	})
+	const txnHash = await bridge.finalizeDeposit(recipient, async (txn) => txn.sign([signer]))
 
 	console.log(txnHash)
 }

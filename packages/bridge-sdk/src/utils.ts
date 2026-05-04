@@ -8,7 +8,7 @@ import {
 	fetchOuterWitnessesFromAuxesQuery,
 	networkStateQuery
 } from "@zeko-labs/graphql"
-import { Field, Poseidon, PublicKey, UInt32, fetchAccount, type Mina } from "o1js"
+import { fetchAccount, Field, Mina, Poseidon, PublicKey, UInt32 } from "o1js"
 import * as v from "valibot"
 import { Actions, empty, fromList } from "./actions"
 import type { GqlClient } from "./graphql"
@@ -471,4 +471,11 @@ export function checkAccepted(
 	}
 
 	return { isRejected, isAccepted }
+}
+
+export async function getVkHash(publicKey: PublicKey): Promise<Field> {
+	await refreshCache(publicKey)
+	const vk = Mina.getAccount(publicKey).zkapp?.verificationKey?.hash
+	if (!vk) throw new Error("Verification key not found")
+	return Field(vk)
 }
