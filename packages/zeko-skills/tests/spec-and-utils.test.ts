@@ -1,6 +1,6 @@
 import path from "node:path"
 import { describe, expect, it } from "vitest"
-import { forbiddenMarkdownPatterns } from "../src/spec.js"
+import { endpointChecks, forbiddenMarkdownPatterns } from "../src/spec.js"
 import { endsWithPathSegment, normalizePath } from "../src/utils.js"
 
 describe("zeko-skills spec and utils", () => {
@@ -49,5 +49,17 @@ describe("zeko-skills spec and utils", () => {
 				path.join("references", "20-user-flows.md")
 			)
 		).toBe(false)
+	})
+
+	it("tracks the archive proxy upstream separately from the public backup archive", () => {
+		const backupArchive = endpointChecks.find((check) => check.name === "minascan backup archive")
+		const archiveProxy = endpointChecks.find(
+			(check) => check.name === "mina archive proxy upstream"
+		)
+
+		expect(backupArchive?.expected).toBe("https://api.minascan.io/archive/devnet/v1/graphql")
+		expect(backupArchive?.sources).toEqual(["packages/graphql/moon.yml"])
+		expect(archiveProxy?.expected).toBe("https://devnet-archive-node-api.gcp.o1test.net")
+		expect(archiveProxy?.sources).toEqual(["services/mina-archive-proxy/worker.ts"])
 	})
 })
