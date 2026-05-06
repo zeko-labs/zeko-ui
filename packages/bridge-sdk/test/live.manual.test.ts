@@ -3,14 +3,15 @@ import { PublicKey } from "o1js"
 import { Bridge, type Config } from "../src/index"
 
 const liveConfig: Config = {
-	l1Url: process.env.BRIDGE_SDK_L1_URL?.trim() || "https://gateway.mina.devnet.zeko.io",
+	l1Url: process.env.BRIDGE_SDK_L1_URL?.trim() || "https://api.minascan.io/node/devnet/v1/graphql",
 	l1ArchiveUrl:
-		process.env.BRIDGE_SDK_L1_ARCHIVE_URL?.trim() || "https://gateway.mina.archive.devnet.zeko.io",
-	zekoUrl: process.env.BRIDGE_SDK_L2_URL?.trim() || "https://testnet.zeko.io/graphql",
+		process.env.BRIDGE_SDK_L1_ARCHIVE_URL?.trim() ||
+		"https://devnet-archive-node-api.gcp.o1test.net/",
+	zekoUrl: process.env.BRIDGE_SDK_L2_URL?.trim() || "https://alphanet.zeko.io/graphql",
 	zekoArchiveUrl:
-		process.env.BRIDGE_SDK_L2_ARCHIVE_URL?.trim() || "https://archive.testnet.zeko.io/graphql",
+		process.env.BRIDGE_SDK_L2_ARCHIVE_URL?.trim() || "https://archive.alphanet.zeko.io/graphql",
 	actionsApi:
-		process.env.BRIDGE_SDK_ACTIONS_API_URL?.trim() || "https://api.actions.zeko.io/graphql",
+		process.env.BRIDGE_SDK_ACTIONS_API_URL?.trim() || "http://api.actions.zeko.io/graphql",
 	l1Network: "testnet",
 	l2Network: "testnet"
 }
