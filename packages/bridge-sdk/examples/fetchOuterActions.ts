@@ -37,6 +37,7 @@ async function main() {
 		accepted: deposit.accepted,
 		confirmed: deposit.confirmed,
 		finalised: deposit.finalised,
+		cancelled: deposit.cancelled,
 		cancellable: deposit.cancellable
 	}))
 
