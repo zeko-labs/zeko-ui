@@ -11,14 +11,26 @@ const DUMMY_FEE_PAYER_AUTHORIZATION =
 type SignMachineInput = {
 	transaction: string
 	user: string
+	complete?: {
+		requestId: string
+		completeSignedTransaction: ({
+			requestId,
+			signedTransaction
+		}: {
+			requestId: string
+			signedTransaction: ZkappCommand
+		}) => Promise<string>
+	}
 }
 
 type SignMachineContext = SignMachineInput & {
 	signedTransaction: ZkappCommand | null
+	transactionResult: string | null
 }
 
 type SignMachineOutput = {
 	signedTransaction: ZkappCommand
+	transaction?: string
 }
 
 const signZkappTransaction = async ({
@@ -79,6 +91,15 @@ export const signMachine = setup({
 				},
 				input.user
 			)
+		}),
+		completeSignature: fromPromise<
+			string,
+			NonNullable<SignMachineInput["complete"]> & { signedTransaction: ZkappCommand }
+		>(({ input }) => {
+			return input.completeSignedTransaction({
+				requestId: input.requestId,
+				signedTransaction: input.signedTransaction
+			})
 		})
 	}
 }).createMachine({
@@ -86,11 +107,15 @@ export const signMachine = setup({
 	initial: "SIGNING",
 	context: ({ input }) => ({
 		...input,
-		signedTransaction: null
+		signedTransaction: null,
+		transactionResult: null
 	}),
 	output: ({ context }) => {
 		if (!context.signedTransaction) throw new Error("Transaction signing failed")
-		return { signedTransaction: context.signedTransaction }
+		return {
+			signedTransaction: context.signedTransaction,
+			...(context.transactionResult ? { transaction: context.transactionResult } : {})
+		}
 	},
 	states: {
 		SIGNING: {
@@ -98,8 +123,34 @@ export const signMachine = setup({
 				src: "signTransaction",
 				input: ({ context: { transaction, user } }) => ({ transaction, user }),
 				onDone: {
-					target: "DONE",
+					target: "ROUTING",
 					actions: assign({ signedTransaction: ({ event }) => event.output })
+				}
+			}
+		},
+		ROUTING: {
+			always: [
+				{
+					target: "COMPLETING",
+					guard: ({ context }) => context.complete !== undefined
+				},
+				{ target: "DONE" }
+			]
+		},
+		COMPLETING: {
+			invoke: {
+				src: "completeSignature",
+				input: ({ context }) => {
+					if (!context.complete) throw new Error("No signature completion found")
+					if (!context.signedTransaction) throw new Error("No signed transaction found")
+					return {
+						...context.complete,
+						signedTransaction: context.signedTransaction
+					}
+				},
+				onDone: {
+					target: "DONE",
+					actions: assign({ transactionResult: ({ event }) => event.output })
 				}
 			}
 		},

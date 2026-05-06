@@ -49,4 +49,55 @@ describe("signMachine", () => {
 		actor.stop()
 		vi.unstubAllGlobals()
 	})
+
+	it("can complete an SDK signature request after signing", async () => {
+		const user = "B62qtest-user"
+		const signedCommand = {
+			accountUpdates: [],
+			feePayer: {
+				authorization: "",
+				body: {
+					fee: "1",
+					publicKey: user
+				}
+			},
+			memo: ""
+		} as unknown as ZkappCommand
+		const completeSignedTransaction = vi.fn(async () => "wallet-transaction-json")
+		vi.stubGlobal("mina", {
+			sendTransaction: vi.fn(async () => ({
+				signedData: JSON.stringify({ zkappCommand: signedCommand })
+			}))
+		})
+
+		const actor = createActor(signMachine, {
+			input: {
+				transaction: JSON.stringify({
+					accountUpdates: [],
+					feePayer: { authorization: "", body: { fee: "1", publicKey: user } },
+					memo: ""
+				}),
+				user,
+				complete: {
+					requestId: "sdk-signature-request-1",
+					completeSignedTransaction
+				}
+			}
+		})
+
+		actor.start()
+		const output = await toPromise(actor)
+
+		expect(completeSignedTransaction).toHaveBeenCalledWith({
+			requestId: "sdk-signature-request-1",
+			signedTransaction: signedCommand
+		})
+		expect(output).toEqual({
+			signedTransaction: signedCommand,
+			transaction: "wallet-transaction-json"
+		})
+
+		actor.stop()
+		vi.unstubAllGlobals()
+	})
 })

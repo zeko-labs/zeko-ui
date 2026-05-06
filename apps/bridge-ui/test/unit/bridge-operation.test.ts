@@ -138,7 +138,6 @@ describe("bridgeOperationMachine", () => {
 			requestId: "sdk-signature-request-1",
 			transaction: "sdk-unsigned-transaction"
 		}))
-		const completeSdkSignature = vi.fn(async () => "wallet-transaction-json")
 		const transactionMachine = vi.fn(async () => ({
 			result: { hash: "HASH", url: "https://zekoscan.io/testnet/tx/HASH" }
 		}))
@@ -152,13 +151,13 @@ describe("bridgeOperationMachine", () => {
 				actors: {
 					submitDeposit: fromPromise(submitDeposit),
 					signMachine: fromPromise(async ({ input }) => {
-						expect(input).toEqual({
+						expect(input).toMatchObject({
 							transaction: "sdk-unsigned-transaction",
-							user: "B62test"
+							user: "B62test",
+							complete: { requestId: "sdk-signature-request-1" }
 						})
-						return { signedTransaction }
+						return { signedTransaction, transaction: "wallet-transaction-json" }
 					}),
-					completeSdkSignature: fromPromise(completeSdkSignature),
 					transactionMachine: fromPromise(transactionMachine),
 					pendingDeposit: fromPromise(async () => undefined)
 				}
@@ -181,15 +180,6 @@ describe("bridgeOperationMachine", () => {
 		await waitFor(actor, (snapshot) => snapshot.matches("PENDING_DEPOSIT"))
 
 		expect(submitDeposit).toHaveBeenCalledOnce()
-		expect(completeSdkSignature).toHaveBeenCalledWith(
-			expect.objectContaining({
-				input: {
-					bridge,
-					requestId: "sdk-signature-request-1",
-					signedTransaction
-				}
-			})
-		)
 		expect(transactionMachine).toHaveBeenCalledWith(
 			expect.objectContaining({
 				input: expect.objectContaining({ transaction: "wallet-transaction-json" })

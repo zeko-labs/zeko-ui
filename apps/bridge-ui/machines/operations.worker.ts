@@ -66,46 +66,49 @@ const pendingSdkSignatures = new Map<string, PendingSdkSignature>()
 const normalizeError = (error: unknown) =>
 	error instanceof Error ? error : new Error(String(error))
 
+const deferred = <T>() => {
+	let resolve = (_value: T) => {}
+	let reject = (_error: Error) => {}
+	const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+		resolve = resolvePromise
+		reject = rejectPromise
+	})
+	return { promise, resolve, reject }
+}
+
 const requestSdkSignature = (
 	run: (signTransaction: SignSdkTransaction) => Promise<string>
 ): Promise<SdkSignatureRequest> => {
 	const requestId = crypto.randomUUID()
-	let signatureRequested = false
-	let resolveRequest = (_request: SdkSignatureRequest) => {}
-	let rejectRequest = (_error: Error) => {}
-	const request = new Promise<SdkSignatureRequest>((resolve, reject) => {
-		resolveRequest = resolve
-		rejectRequest = reject
-	})
-	let resolveSignedTransaction = (_transaction: MinaTransaction<boolean, true>) => {}
-	let rejectSignedTransaction = (_error: Error) => {}
-	const signedTransaction = new Promise<MinaTransaction<boolean, true>>((resolve, reject) => {
-		resolveSignedTransaction = resolve
-		rejectSignedTransaction = reject
-	})
+	const request = deferred<SdkSignatureRequest>()
+	const signedTransaction = deferred<MinaTransaction<boolean, true>>()
 
-	const result = run(async (transaction) => {
-		signatureRequested = true
-		resolveRequest({
-			requestId,
-			transaction: transaction.toJSON()
+	const result = Promise.resolve().then(() =>
+		run(async (transaction) => {
+			request.resolve({
+				requestId,
+				transaction: transaction.toJSON()
+			})
+			return signedTransaction.promise
 		})
-		return signedTransaction
-	})
+	)
 
 	pendingSdkSignatures.set(requestId, {
-		resolveSignedTransaction,
-		rejectSignedTransaction,
+		resolveSignedTransaction: signedTransaction.resolve,
+		rejectSignedTransaction: signedTransaction.reject,
 		result
 	})
 
 	result.catch((error) => {
-		if (!signatureRequested) rejectRequest(normalizeError(error))
+		request.reject(normalizeError(error))
 		pendingSdkSignatures.delete(requestId)
 	})
 
-	return request
+	return request.promise
 }
+
+const signedTransactionFromJson = (signedTransaction: ZkappCommand) =>
+	Transaction.fromJSON(signedTransaction) as MinaTransaction<boolean, true>
 
 async function completeSdkSignature({
 	requestId,
@@ -118,15 +121,12 @@ async function completeSdkSignature({
 	if (!pending) throw new Error(`No SDK signature request found for ${requestId}`)
 
 	try {
-		pending.resolveSignedTransaction(
-			Transaction.fromJSON(signedTransaction) as MinaTransaction<boolean, true>
-		)
+		pending.resolveSignedTransaction(signedTransactionFromJson(signedTransaction))
 		return await pending.result
 	} finally {
 		pendingSdkSignatures.delete(requestId)
 	}
 }
-
 async function rejectSdkSignature({
 	requestId,
 	message

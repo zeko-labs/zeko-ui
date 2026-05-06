@@ -167,3 +167,4 @@
 - T167 | done | fix-bridge-sdk-shape-integration | done/T167-fix-bridge-sdk-shape-integration.md
 - T168 | done | route-sdk-signing-through-transaction-machine | done/T168-route-sdk-signing-through-transaction-machine.md
 - T169 | done | use-dedicated-sign-machine-for-sdk-signing | done/T169-use-dedicated-sign-machine-for-sdk-signing.md
+- T170 | done | collapse-sdk-sign-completion | done/T170-collapse-sdk-sign-completion.md
