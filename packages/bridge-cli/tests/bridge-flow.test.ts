@@ -2,6 +2,87 @@ import { describe, expect, it } from "vitest"
 import { runBridgeOperation } from "../src/commands/bridge"
 
 describe("bridge flow", () => {
+	it("lets the SDK finalize the next available deposit even when status flags lag", async () => {
+		let depositStatusCalls = 0
+		const finalizeCalls: string[] = []
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-sdk-driven-finalize",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "2",
+				account: "B62test",
+				timeoutSlots: 10
+			},
+			{
+				adapter: {
+					async submitDeposit() {
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko:testnet",
+							hash: "submit-current",
+							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
+							included: true
+						}
+					},
+					async getDepositStatuses() {
+						depositStatusCalls += 1
+
+						return [
+							{
+								index: 5,
+								amount: "2",
+								recipient: "B62test",
+								cancelled: false,
+								synced: true,
+								accepted: depositStatusCalls > 1,
+								confirmed: depositStatusCalls > 1,
+								finalised: finalizeCalls.length > 0,
+								hash:
+									depositStatusCalls > 1 && finalizeCalls.length > 0
+										? "finalize-current"
+										: "submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeDeposit() {
+						return { available: true, reason: null }
+					},
+					async canCancelDeposit() {
+						return { available: false, reason: "No cancellable deposit found" }
+					},
+					async finalizeDeposit() {
+						finalizeCalls.push("finalize-current")
+						return {
+							success: true,
+							direction: "deposit",
+							action: "finalize",
+							route: "mina:testnet->zeko:testnet",
+							hash: "finalize-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/finalize-current",
+							included: true
+						}
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					throw new Error("the CLI should not wait when the SDK reports finalization available")
+				},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(finalizeCalls).toEqual(["finalize-current"])
+		expect(result.status).toBe("completed")
+	})
+
 	it("drains older queued deposits before the new submission appears in status", async () => {
 		let depositStatusCalls = 0
 		let nowCalls = 0

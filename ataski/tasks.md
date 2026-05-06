@@ -172,3 +172,4 @@
 - T172 | done | fix-bridge-ui-dev-console-errors | done/T172-fix-bridge-ui-dev-console-errors.md
 - T173 | done | normalize-sdk-executable-transactions | done/T173-normalize-sdk-executable-transactions.md
 - T174 | in-progress | validate-cli-deposit-on-alphanet | in-progress/T174-validate-cli-deposit-on-alphanet.md
+- T175 | done | let-sdk-drive-cli-deposit-resolution | done/T175-let-sdk-drive-cli-deposit-resolution.md

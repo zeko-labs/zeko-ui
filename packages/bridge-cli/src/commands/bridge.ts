@@ -1156,7 +1156,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 		})
 		const pendingFinalizeState = getPendingFinalizeRetryState({
 			session,
-			claimableIndex,
+			claimableIndex: claimableIndex ?? targetIndex,
 			now
 		})
 		const currentTargetCancelMarker = toPendingCancelMarker({
@@ -1181,10 +1181,8 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 
 		const shouldAdvanceClaim =
 			canFinalizeDepositResult.value.available &&
-			claimableIndex !== undefined &&
 			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 			skippableAhead === 0 &&
-			(target === undefined || blockingAhead > 0 || claimableIndex === target.index) &&
 			!shouldCancelCurrentTarget
 
 		if (shouldAdvanceClaim) {
@@ -1526,7 +1524,7 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 								explorerUrl: finalizeResult.explorerUrl
 							}
 						: session.finalTransaction,
-				pendingFinalizeIndex: depositAnalysis.claimableIndex,
+				pendingFinalizeIndex: depositAnalysis.claimableIndex ?? depositAnalysis.targetIndex,
 				pendingFinalizeSubmittedAt: now(),
 				queueAdvances: depositAnalysis.shouldAdvanceQueuedClaims
 					? (session.queueAdvances ?? 0) + 1
