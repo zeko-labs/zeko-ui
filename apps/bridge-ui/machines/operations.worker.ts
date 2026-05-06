@@ -5,7 +5,14 @@ import * as Sentry from "@sentry/nuxt"
 import type { DepositWithState, WithdrawalWithState } from "@zeko-labs/bridge-sdk"
 import { Bridge } from "@zeko-labs/bridge-sdk"
 import * as Comlink from "comlink"
-import { fetchTransactionStatus, PublicKey, Transaction, UInt32, UInt64 } from "o1js"
+import {
+	fetchTransactionStatus,
+	PublicKey,
+	Transaction,
+	type Transaction as MinaTransaction,
+	UInt32,
+	UInt64
+} from "o1js"
 import { getBridgeConfig } from "./helpers"
 import { normalizeOperationTimestamp } from "./operationTimestamps"
 
@@ -38,8 +45,16 @@ export type PendingOperations = {
 	withdrawals: ActionState[]
 }
 type L1L2 = { l1: Networks; l2: Networks }
+type SignTransaction = (transaction: string) => Promise<ZkappCommand>
 
 const bridges = new Map<string, Bridge>()
+
+const signSdkTransaction =
+	(signTransaction: SignTransaction) =>
+	async (transaction: MinaTransaction<boolean, false>): Promise<MinaTransaction<boolean, true>> => {
+		const signedTransaction = await signTransaction(transaction.toJSON())
+		return Transaction.fromJSON(signedTransaction) as MinaTransaction<boolean, true>
+	}
 
 async function initBridge({ l1, l2 }: L1L2) {
 	let bridge = bridges.get(`${l1}_${l2}`)
@@ -131,8 +146,14 @@ async function submitDeposit({
 	l2,
 	user,
 	amount,
-	timeoutSlots
-}: L1L2 & { user: string; amount: string; timeoutSlots?: number }): Promise<string> {
+	timeoutSlots,
+	signTransaction
+}: L1L2 & {
+	user: string
+	amount: string
+	timeoutSlots?: number
+	signTransaction: SignTransaction
+}): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
 	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
@@ -144,16 +165,16 @@ async function submitDeposit({
 		timeout
 	}
 	console.log("Submit Deposit:", { timeoutSlots, submitDeposit })
-	const transaction = await bridge.submitDeposit(feePayer, submitDeposit)
-	return transaction.toJSON()
+	return bridge.submitDeposit(feePayer, submitDeposit, signSdkTransaction(signTransaction))
 }
 
 async function submitWithdrawal({
 	l1,
 	l2,
 	user,
-	amount
-}: L1L2 & { user: string; amount: string }): Promise<string> {
+	amount,
+	signTransaction
+}: L1L2 & { user: string; amount: string; signTransaction: SignTransaction }): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
 	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
@@ -161,8 +182,7 @@ async function submitWithdrawal({
 		recipient,
 		amount: UInt64.from(Number(amount) * 10e8)
 	}
-	const transaction = await bridge.submitWithdrawal(feePayer, submitWithdrawal)
-	return transaction.toJSON()
+	return bridge.submitWithdrawal(feePayer, submitWithdrawal, signSdkTransaction(signTransaction))
 }
 
 async function canFinalizeDeposit({
@@ -195,27 +215,37 @@ async function canCancelDeposit({
 	return bridge.canCancelDeposit(recipient)
 }
 
-async function cancelDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
+async function cancelDeposit({
+	l1,
+	l2,
+	user,
+	signTransaction
+}: L1L2 & { user: string; signTransaction: SignTransaction }): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
-	const transaction = await bridge.cancelDeposit(recipient, feePayer)
-	return transaction.toJSON()
+	return bridge.cancelDeposit(recipient, signSdkTransaction(signTransaction))
 }
 
-async function finalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
+async function finalizeDeposit({
+	l1,
+	l2,
+	user,
+	signTransaction
+}: L1L2 & { user: string; signTransaction: SignTransaction }): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	const transaction = await bridge.finalizeDeposit(recipient)
-	return transaction.toJSON()
+	return bridge.finalizeDeposit(recipient, signSdkTransaction(signTransaction))
 }
 
-async function finalizeWithdrawal({ l1, l2, user }: L1L2 & { user: string }): Promise<string> {
+async function finalizeWithdrawal({
+	l1,
+	l2,
+	user,
+	signTransaction
+}: L1L2 & { user: string; signTransaction: SignTransaction }): Promise<string> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
-	const transaction = await bridge.finalizeWithdrawal(recipient, feePayer)
-	return transaction.toJSON()
+	return bridge.finalizeWithdrawal(recipient, signSdkTransaction(signTransaction))
 }
 
 async function transactionStatus({ zkAppId, url }: { zkAppId: string; url?: string }) {

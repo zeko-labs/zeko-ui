@@ -1,4 +1,5 @@
 import type { Networks, walletMachine } from "@lumina-dex/sdk"
+import * as Comlink from "comlink"
 import { produce } from "immer"
 import {
 	type ActorRef,
@@ -19,7 +20,7 @@ import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
 import type { ActionState } from "./operations.worker"
-import { type Result, transactionMachine } from "./transaction"
+import { type Result, signZkappTransaction, transactionMachine } from "./transaction"
 
 const { act, logger, measure } = createLogger("[BRIDGE OPERATION]", { metrics: true })
 
@@ -70,6 +71,9 @@ const addToContext = ({
 	})
 
 const worker = (bridge: Bridge) => bridge.getSnapshot().context.worker
+
+const sdkSignTransaction = ({ user }: BridgeWorker) =>
+	Comlink.proxy((transaction: string) => signZkappTransaction({ transaction, user }))
 
 const sendAndConfirm = (
 	context: BridgeOperationContext,
@@ -189,7 +193,14 @@ export const bridgeOperationMachine = setup({
 					"submitDeposit",
 					async () => {
 						const { bridge, l1, l2, amount, user, timeoutSlots } = input
-						const tx = await worker(bridge).submitDeposit({ l1, l2, user, amount, timeoutSlots })
+						const tx = await worker(bridge).submitDeposit({
+							l1,
+							l2,
+							user,
+							amount,
+							timeoutSlots,
+							signTransaction: sdkSignTransaction(input)
+						})
 						return tx
 					},
 					input.user,
@@ -240,7 +251,12 @@ export const bridgeOperationMachine = setup({
 				"finalizeDeposit",
 				async () => {
 					const { bridge, l1, l2, user } = input
-					const tx = await worker(bridge).finalizeDeposit({ l1, l2, user })
+					const tx = await worker(bridge).finalizeDeposit({
+						l1,
+						l2,
+						user,
+						signTransaction: sdkSignTransaction(input)
+					})
 					return tx
 				},
 				input.user,
@@ -256,7 +272,13 @@ export const bridgeOperationMachine = setup({
 				"submitWithdrawal",
 				async () => {
 					const { bridge, l1, l2, amount, user } = input
-					const tx = await worker(bridge).submitWithdrawal({ l1, l2, user, amount })
+					const tx = await worker(bridge).submitWithdrawal({
+						l1,
+						l2,
+						user,
+						amount,
+						signTransaction: sdkSignTransaction(input)
+					})
 					return tx
 				},
 				input.user,
@@ -304,7 +326,12 @@ export const bridgeOperationMachine = setup({
 				"finalizeWithdrawal",
 				async () => {
 					const { bridge, l1, l2, user } = input
-					const tx = await worker(bridge).finalizeWithdrawal({ l1, l2, user })
+					const tx = await worker(bridge).finalizeWithdrawal({
+						l1,
+						l2,
+						user,
+						signTransaction: sdkSignTransaction(input)
+					})
 					return tx
 				},
 				input.user,
@@ -320,7 +347,12 @@ export const bridgeOperationMachine = setup({
 				"cancelDeposit",
 				async () => {
 					const { bridge, l1, l2, user } = input
-					const tx = await worker(bridge).cancelDeposit({ l1, l2, user })
+					const tx = await worker(bridge).cancelDeposit({
+						l1,
+						l2,
+						user,
+						signTransaction: sdkSignTransaction(input)
+					})
 					return tx
 				},
 				input.user,

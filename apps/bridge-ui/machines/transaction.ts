@@ -59,6 +59,49 @@ type WaitForTxInput = SentTransaction & {
 	user: string
 }
 
+export const signZkappTransaction = async ({
+	transaction,
+	user
+}: {
+	transaction: string
+	user: string
+}): Promise<ZkappCommand> => {
+	const originalTransaction = JSON.parse(transaction) as ZkappCommand
+	logger.info({ originalTransaction })
+	// If the fee is 0, set it to 1 to avoid auro wallet error
+	if (originalTransaction.feePayer.body.fee === "0") {
+		originalTransaction.feePayer.body.fee = "1"
+	}
+	let result: Awaited<ReturnType<typeof window.mina.sendTransaction>>
+	try {
+		result = await window.mina.sendTransaction({
+			onlySign: true,
+			transaction: JSON.stringify(originalTransaction)
+		})
+	} catch (error) {
+		const msg = error instanceof Error ? error.message : String(error)
+		if (/Method not found/i.test(msg)) {
+			throw new Error(
+				"Your wallet does not support this operation. Please update your Auro Wallet extension to the latest version."
+			)
+		}
+		throw toQuietIfWalletRejection(error)
+	}
+	if (result instanceof Error) throw toQuietIfWalletRejection(result)
+	if ("signedData" in result) {
+		// biome-ignore lint/suspicious/noExplicitAny: Parsing without validating
+		const zkappCommand = (JSON.parse(result.signedData) as any).zkappCommand as ZkappCommand
+		// If the feePayer is not the user, we need to set the authorization to a dummy value
+		if (zkappCommand.feePayer.body.publicKey !== user) {
+			zkappCommand.feePayer.authorization =
+				"7mWxjLYgbJUkZNcGouvhVj5tJ8yu9hoexb9ntvPK8t5LHqzmrL6QJjjKtf5SgmxB4QWkDw7qoMMbbNGtHVpsbJHPyTy2EzRQ"
+		}
+		logger.success({ zkappCommand })
+		return zkappCommand
+	}
+	throw new Error("Couldn't find signedData")
+}
+
 export const transactionMachine = setup({
 	types: {
 		context: {} as TransactionMachineContext,
@@ -85,42 +128,7 @@ export const transactionMachine = setup({
 				return act(
 					"signTransaction",
 					async () => {
-						const { transaction, user } = input
-						const originalTransaction = JSON.parse(transaction) as ZkappCommand
-						logger.info({ originalTransaction })
-						// If the fee is 0, set it to 1 to avoid auro wallet error
-						if (originalTransaction.feePayer.body.fee === "0") {
-							originalTransaction.feePayer.body.fee = "1"
-						}
-						let result: Awaited<ReturnType<typeof window.mina.sendTransaction>>
-						try {
-							result = await window.mina.sendTransaction({
-								onlySign: true,
-								transaction: JSON.stringify(originalTransaction)
-							})
-						} catch (error) {
-							const msg = error instanceof Error ? error.message : String(error)
-							if (/Method not found/i.test(msg)) {
-								throw new Error(
-									"Your wallet does not support this operation. Please update your Auro Wallet extension to the latest version."
-								)
-							}
-							throw toQuietIfWalletRejection(error)
-						}
-						if (result instanceof Error) throw toQuietIfWalletRejection(result)
-						if ("signedData" in result) {
-							// biome-ignore lint/suspicious/noExplicitAny: Parsing without validating
-							const zkappCommand = (JSON.parse(result.signedData) as any)
-								.zkappCommand as ZkappCommand
-							// If the feePayer is not the user, we need to set the authorization to a dummy value
-							if (zkappCommand.feePayer.body.publicKey !== user) {
-								zkappCommand.feePayer.authorization =
-									"7mWxjLYgbJUkZNcGouvhVj5tJ8yu9hoexb9ntvPK8t5LHqzmrL6QJjjKtf5SgmxB4QWkDw7qoMMbbNGtHVpsbJHPyTy2EzRQ"
-							}
-							logger.success({ zkappCommand })
-							return zkappCommand
-						}
-						throw new Error("Couldn't find signedData")
+						return signZkappTransaction(input)
 					},
 					input.user
 				)

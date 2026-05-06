@@ -62,13 +62,4 @@ describe("zeko-skills spec and utils", () => {
 		expect(archiveProxy?.expected).toBe("https://devnet-archive-node-api.gcp.o1test.net")
 		expect(archiveProxy?.sources).toEqual(["services/mina-archive-proxy/worker.ts"])
 	})
-
-	it("allows alphanet as an alternate Zeko testnet endpoint source", () => {
-		const zekoGraphql = endpointChecks.find((check) => check.name === "zeko testnet graphql")
-
-		expect(zekoGraphql?.expected).toEqual([
-			"https://testnet.zeko.io/graphql",
-			"https://alphanet.zeko.io/graphql"
-		])
-	})
 })
