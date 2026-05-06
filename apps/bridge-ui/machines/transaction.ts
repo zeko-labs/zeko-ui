@@ -19,11 +19,14 @@ export type Result = ReturnType<HashDb["createResult"]>
 
 type SentTransaction = { hash: string; zkAppId: string }
 
+type TransactionMachineMode = "send" | "sign"
+
 export type TransactionMachineContext = {
 	id: string
 	transaction: string
 	wallet: Wallet
 	worker: OperationsWorker
+	mode: TransactionMachineMode
 	user: string
 	savedTransaction: SavedTransaction | null
 	signedTransaction: ZkappCommand | null
@@ -40,9 +43,10 @@ type TransactionMachineInput = {
 	transaction: Mina.Transaction<false, false> | string
 	wallet: Wallet
 	worker: OperationsWorker
+	mode?: TransactionMachineMode
 }
 
-type TransactionMachineOutput = { result: Result }
+type TransactionMachineOutput = { result: Result } | { signedTransaction: ZkappCommand }
 
 type SendSignedTxInput = {
 	zeko: boolean
@@ -59,7 +63,7 @@ type WaitForTxInput = SentTransaction & {
 	user: string
 }
 
-export const signZkappTransaction = async ({
+const signZkappTransaction = async ({
 	transaction,
 	user
 }: {
@@ -101,6 +105,10 @@ export const signZkappTransaction = async ({
 	}
 	throw new Error("Couldn't find signedData")
 }
+
+const hasSignedTransaction = (
+	signedTransaction: ZkappCommand | null
+): signedTransaction is ZkappCommand => signedTransaction !== null
 
 export const transactionMachine = setup({
 	types: {
@@ -181,8 +189,8 @@ export const transactionMachine = setup({
 	}
 }).createMachine({
 	id: "transaction",
-	initial: "RESUMING",
-	context: ({ input: { id, transaction: tx, wallet, worker } }) => {
+	initial: "ROUTING",
+	context: ({ input: { id, transaction: tx, wallet, worker, mode = "send" } }) => {
 		const transaction = typeof tx === "string" ? tx : tx.toJSON()
 		const { account, currentNetwork: network } = wallet.getSnapshot().context
 		return {
@@ -190,6 +198,7 @@ export const transactionMachine = setup({
 			transaction,
 			wallet,
 			worker,
+			mode,
 			user: account,
 			savedTransaction: null,
 			signedTransaction: null,
@@ -201,11 +210,21 @@ export const transactionMachine = setup({
 			feeMultiplier: 1
 		}
 	},
-	output: ({ context: { result } }) => {
+	output: ({ context: { mode, result, signedTransaction } }) => {
+		if (mode === "sign") {
+			if (hasSignedTransaction(signedTransaction)) return { signedTransaction }
+			throw new Error("Transaction signing failed")
+		}
 		if (result instanceof Error) throw result
 		return { result }
 	},
 	states: {
+		ROUTING: {
+			always: [
+				{ target: "SIGNING", guard: ({ context }) => context.mode === "sign" },
+				{ target: "RESUMING" }
+			]
+		},
 		RESUMING: {
 			description: "Attempt to resume an unconfirmed transaction.",
 			invoke: {
@@ -232,10 +251,17 @@ export const transactionMachine = setup({
 			invoke: {
 				src: "signTransaction",
 				input: ({ context: { transaction, user } }) => ({ transaction, user }),
-				onDone: {
-					target: "SENDING",
-					actions: assign({ signedTransaction: ({ event }) => event.output })
-				}
+				onDone: [
+					{
+						target: "DONE",
+						guard: ({ context }) => context.mode === "sign",
+						actions: assign({ signedTransaction: ({ event }) => event.output })
+					},
+					{
+						target: "SENDING",
+						actions: assign({ signedTransaction: ({ event }) => event.output })
+					}
+				]
 			}
 		},
 		SENDING: {

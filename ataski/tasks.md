@@ -165,3 +165,4 @@
 - T165 | done | fix-zeko-skills-ci-url-and-formatting | done/T165-fix-zeko-skills-ci-url-and-formatting.md
 - T166 | done | fix-zeko-skills-archive-endpoint-check | done/T166-fix-zeko-skills-archive-endpoint-check.md
 - T167 | done | fix-bridge-sdk-shape-integration | done/T167-fix-bridge-sdk-shape-integration.md
+- T168 | done | route-sdk-signing-through-transaction-machine | done/T168-route-sdk-signing-through-transaction-machine.md

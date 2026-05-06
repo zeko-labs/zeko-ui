@@ -6,13 +6,15 @@ import {
 	type ActorRefFromLogic,
 	and,
 	assign,
+	createActor,
 	type EventObject,
 	enqueueActions,
 	fromCallback,
 	fromPromise,
 	type Snapshot,
 	sendTo,
-	setup
+	setup,
+	toPromise
 } from "xstate"
 import { finalizeNotification } from "../app/service-worker/notificationList"
 import { isTerminalBridgeError } from "../app/errors"
@@ -20,12 +22,14 @@ import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
 import type { ActionState } from "./operations.worker"
-import { type Result, signZkappTransaction, transactionMachine } from "./transaction"
+import { type Result, transactionMachine } from "./transaction"
 
 const { act, logger, measure } = createLogger("[BRIDGE OPERATION]", { metrics: true })
 
 const bridgeParameters = ({
+	id,
 	bridge,
+	wallet,
 	user,
 	l1,
 	l2,
@@ -33,7 +37,7 @@ const bridgeParameters = ({
 	destination,
 	direction
 }: BridgeOperationContext) => {
-	return { bridge, user, l1, l2, source, destination, direction }
+	return { id, bridge, wallet, user, l1, l2, source, destination, direction }
 }
 
 const addError =
@@ -70,10 +74,38 @@ const addToContext = ({
 		}
 	})
 
+const getTransactionResult = (
+	output: { result: Result } | { signedTransaction: unknown }
+): Result => {
+	if ("result" in output) return output.result
+	throw new Error("Transaction machine did not return a transaction result")
+}
+
 const worker = (bridge: Bridge) => bridge.getSnapshot().context.worker
 
-const sdkSignTransaction = ({ user }: BridgeWorker) =>
-	Comlink.proxy((transaction: string) => signZkappTransaction({ transaction, user }))
+const sdkSignTransaction = ({ bridge, id, wallet }: BridgeWorker) =>
+	Comlink.proxy(async (transaction: string) => {
+		const signingActor = createActor(transactionMachine, {
+			input: {
+				id: `${id}:sdk-sign`,
+				transaction,
+				wallet,
+				worker: worker(bridge),
+				mode: "sign"
+			}
+		})
+
+		try {
+			signingActor.start()
+			const output = await toPromise(signingActor)
+			if (!("signedTransaction" in output)) {
+				throw new Error("Transaction machine did not return a signed transaction")
+			}
+			return output.signedTransaction
+		} finally {
+			signingActor.stop()
+		}
+	})
 
 const sendAndConfirm = (
 	context: BridgeOperationContext,
@@ -159,6 +191,8 @@ const POLL_INTERVAL = 20_000
 
 type BridgeWorker = {
 	bridge: Bridge
+	id: string
+	wallet: Wallet
 	l1: Networks
 	l2: Networks
 	user: string
@@ -601,7 +635,11 @@ export const bridgeOperationMachine = setup({
 						onDone: {
 							target: "done",
 							actions: assign(({ context, event }) =>
-								addToContext({ context, key: "submitDeposit", result: event.output.result })
+								addToContext({
+									context,
+									key: "submitDeposit",
+									result: getTransactionResult(event.output)
+								})
 							)
 						},
 						onError: {
@@ -718,7 +756,11 @@ export const bridgeOperationMachine = setup({
 						onDone: {
 							target: "done",
 							actions: assign(({ context, event }) =>
-								addToContext({ context, key: "finalizeDeposit", result: event.output.result })
+								addToContext({
+									context,
+									key: "finalizeDeposit",
+									result: getTransactionResult(event.output)
+								})
 							)
 						},
 						onError: {
@@ -772,7 +814,11 @@ export const bridgeOperationMachine = setup({
 						onDone: {
 							target: "done",
 							actions: assign(({ context, event }) =>
-								addToContext({ context, key: "cancelDeposit", result: event.output.result })
+								addToContext({
+									context,
+									key: "cancelDeposit",
+									result: getTransactionResult(event.output)
+								})
 							)
 						},
 						onError: {
@@ -833,7 +879,11 @@ export const bridgeOperationMachine = setup({
 						onDone: {
 							target: "done",
 							actions: assign(({ context, event }) =>
-								addToContext({ context, key: "submitWithdrawal", result: event.output.result })
+								addToContext({
+									context,
+									key: "submitWithdrawal",
+									result: getTransactionResult(event.output)
+								})
 							)
 						},
 						onError: {
@@ -938,7 +988,11 @@ export const bridgeOperationMachine = setup({
 						onDone: {
 							target: "done",
 							actions: assign(({ context, event }) =>
-								addToContext({ context, key: "finalizeWithdrawal", result: event.output.result })
+								addToContext({
+									context,
+									key: "finalizeWithdrawal",
+									result: getTransactionResult(event.output)
+								})
 							)
 						},
 						onError: {
