@@ -50,23 +50,10 @@ describe("signMachine", () => {
 		vi.unstubAllGlobals()
 	})
 
-	it("passes opaque executable transaction strings to the wallet unchanged", async () => {
+	it("does not pass opaque transaction hashes to the wallet", async () => {
 		const user = "B62qtest-user"
 		const transaction = "7mX8vFnToS4pXmBkyDWPwiDUAJHAbaeB1jnNfBAPMAKuKvamaE3kpG6ekiy8ZP6"
-		const signedCommand = {
-			accountUpdates: [],
-			feePayer: {
-				authorization: "",
-				body: {
-					fee: "1",
-					publicKey: user
-				}
-			},
-			memo: ""
-		} as unknown as ZkappCommand
-		const sendTransaction = vi.fn(async () => ({
-			signedData: JSON.stringify({ zkappCommand: signedCommand })
-		}))
+		const sendTransaction = vi.fn()
 		vi.stubGlobal("mina", { sendTransaction })
 
 		const actor = createActor(signMachine, {
@@ -77,13 +64,11 @@ describe("signMachine", () => {
 		})
 
 		actor.start()
-		const output = await toPromise(actor)
+		await expect(toPromise(actor)).rejects.toThrow(
+			"Wallet signing requires a JSON zkApp transaction payload"
+		)
 
-		expect(output).toEqual({ signedTransaction: signedCommand })
-		expect(sendTransaction).toHaveBeenCalledWith({
-			onlySign: true,
-			transaction
-		})
+		expect(sendTransaction).not.toHaveBeenCalled()
 
 		actor.stop()
 		vi.unstubAllGlobals()

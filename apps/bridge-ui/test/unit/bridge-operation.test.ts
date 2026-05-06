@@ -38,7 +38,7 @@ const createBridgeActor = (worker: object = {}) =>
 		})
 	)
 
-const createWalletActor = (currentNetwork = "mina:testnet") =>
+const createWalletActor = (currentNetwork = "mina:devnet") =>
 	createActor(
 		setup({
 			types: {
@@ -142,7 +142,7 @@ describe("bridgeOperationMachine", () => {
 			result: { hash: "HASH", url: "https://zekoscan.io/testnet/tx/HASH" }
 		}))
 		const bridge = createBridgeActor()
-		const wallet = createWalletActor("mina:testnet")
+		const wallet = createWalletActor("mina:devnet")
 		bridge.start()
 		wallet.start()
 
@@ -156,7 +156,10 @@ describe("bridgeOperationMachine", () => {
 							user: "B62test",
 							complete: { requestId: "sdk-signature-request-1" }
 						})
-						return { signedTransaction, transaction: "wallet-transaction-json" }
+						return {
+							signedTransaction,
+							transaction: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
+						}
 					}),
 					transactionMachine: fromPromise(transactionMachine),
 					pendingDeposit: fromPromise(async () => undefined)
@@ -166,7 +169,7 @@ describe("bridgeOperationMachine", () => {
 				input: {
 					bridge: bridge as never,
 					wallet: wallet as never,
-					source: "mina:testnet",
+					source: "mina:devnet",
 					destination: "zeko:testnet",
 					direction: "deposit",
 					amount: "1"
@@ -180,14 +183,10 @@ describe("bridgeOperationMachine", () => {
 		await waitFor(actor, (snapshot) => snapshot.matches("PENDING_DEPOSIT"))
 
 		expect(submitDeposit).toHaveBeenCalledOnce()
-		expect(transactionMachine).toHaveBeenCalledWith(
-			expect.objectContaining({
-				input: expect.objectContaining({ transaction: "wallet-transaction-json" })
-			})
-		)
+		expect(transactionMachine).not.toHaveBeenCalled()
 		expect(actor.getSnapshot().context.transactions.submitDeposit?.result).toEqual({
-			hash: "HASH",
-			url: "https://zekoscan.io/testnet/tx/HASH"
+			hash: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc",
+			url: "https://minascan.io/devnet/tx/5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
 		})
 
 		actor.stop()

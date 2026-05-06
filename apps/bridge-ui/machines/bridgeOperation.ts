@@ -18,6 +18,7 @@ import { finalizeNotification } from "../app/service-worker/notificationList"
 import { isTerminalBridgeError } from "../app/errors"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
+import { createExplorerUrl } from "./helpers"
 import { sendMetric } from "./metrics"
 import type { ActionState, SdkSignatureRequest } from "./operations.worker"
 import { signMachine } from "./sign"
@@ -88,6 +89,11 @@ const addSdkSignatureToContext = ({
 
 const worker = (bridge: Bridge) => bridge.getSnapshot().context.worker
 
+const resultFromHash = (context: BridgeOperationContext, hash: string): Result => ({
+	hash,
+	url: createExplorerUrl({ network: currentNetwork(context), hash })
+})
+
 const sendAndConfirm = (context: BridgeOperationContext, key: TransactionKey) => {
 	if (!context.transactions[key]) throw new Error(`No ${key} transaction found`)
 	return {
@@ -126,17 +132,22 @@ const signSdkTransactionInput = (context: BridgeOperationContext, key: Transacti
 	}
 }
 
-const addCompletedSdkTransaction = ({
+const addCompletedSdkResult = ({
 	context,
 	key,
-	transaction
+	transactionHash
 }: {
 	context: BridgeOperationContext
 	key: TransactionKey
-	transaction?: string
+	transactionHash?: string
 }) => {
-	if (!transaction) throw new Error(`No completed ${key} SDK transaction found`)
-	return addToContext({ context, key, transaction })
+	if (!transactionHash) throw new Error(`No completed ${key} SDK transaction hash found`)
+	return produce(context, (draft) => {
+		draft.transactions[key] = {
+			transaction: transactionHash,
+			result: resultFromHash(context, transactionHash)
+		}
+	})
 }
 
 const rejectSdkSignature =
@@ -678,12 +689,12 @@ export const bridgeOperationMachine = setup({
 						src: "signMachine",
 						input: ({ context }) => signSdkTransactionInput(context, "submitDeposit"),
 						onDone: {
-							target: "send_and_confirm",
+							target: "done",
 							actions: assign(({ context, event }) =>
-								addCompletedSdkTransaction({
+								addCompletedSdkResult({
 									context,
 									key: "submitDeposit",
-									transaction: event.output.transaction
+									transactionHash: event.output.transaction
 								})
 							)
 						},
@@ -831,12 +842,12 @@ export const bridgeOperationMachine = setup({
 						src: "signMachine",
 						input: ({ context }) => signSdkTransactionInput(context, "finalizeDeposit"),
 						onDone: {
-							target: "send_and_confirm",
+							target: "done",
 							actions: assign(({ context, event }) =>
-								addCompletedSdkTransaction({
+								addCompletedSdkResult({
 									context,
 									key: "finalizeDeposit",
-									transaction: event.output.transaction
+									transactionHash: event.output.transaction
 								})
 							)
 						},
@@ -928,12 +939,12 @@ export const bridgeOperationMachine = setup({
 						src: "signMachine",
 						input: ({ context }) => signSdkTransactionInput(context, "cancelDeposit"),
 						onDone: {
-							target: "send_and_confirm",
+							target: "done",
 							actions: assign(({ context, event }) =>
-								addCompletedSdkTransaction({
+								addCompletedSdkResult({
 									context,
 									key: "cancelDeposit",
-									transaction: event.output.transaction
+									transactionHash: event.output.transaction
 								})
 							)
 						},
@@ -1032,12 +1043,12 @@ export const bridgeOperationMachine = setup({
 						src: "signMachine",
 						input: ({ context }) => signSdkTransactionInput(context, "submitWithdrawal"),
 						onDone: {
-							target: "send_and_confirm",
+							target: "done",
 							actions: assign(({ context, event }) =>
-								addCompletedSdkTransaction({
+								addCompletedSdkResult({
 									context,
 									key: "submitWithdrawal",
-									transaction: event.output.transaction
+									transactionHash: event.output.transaction
 								})
 							)
 						},
@@ -1174,12 +1185,12 @@ export const bridgeOperationMachine = setup({
 						src: "signMachine",
 						input: ({ context }) => signSdkTransactionInput(context, "finalizeWithdrawal"),
 						onDone: {
-							target: "send_and_confirm",
+							target: "done",
 							actions: assign(({ context, event }) =>
-								addCompletedSdkTransaction({
+								addCompletedSdkResult({
 									context,
 									key: "finalizeWithdrawal",
-									transaction: event.output.transaction
+									transactionHash: event.output.transaction
 								})
 							)
 						},

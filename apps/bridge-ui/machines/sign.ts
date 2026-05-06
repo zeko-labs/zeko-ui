@@ -31,7 +31,9 @@ const parseZkappCommand = (transaction: string): ZkappCommand | null => {
 
 const normalizeWalletTransaction = (transaction: string): string => {
 	const originalTransaction = parseZkappCommand(transaction)
-	if (!originalTransaction) return transaction
+	if (!originalTransaction) {
+		throw new Error("Wallet signing requires a JSON zkApp transaction payload")
+	}
 
 	logger.info({ originalTransaction })
 
