@@ -168,3 +168,4 @@
 - T168 | done | route-sdk-signing-through-transaction-machine | done/T168-route-sdk-signing-through-transaction-machine.md
 - T169 | done | use-dedicated-sign-machine-for-sdk-signing | done/T169-use-dedicated-sign-machine-for-sdk-signing.md
 - T170 | done | collapse-sdk-sign-completion | done/T170-collapse-sdk-sign-completion.md
+- T171 | done | sdk-changeset-and-sign-machine-cleanup | done/T171-sdk-changeset-and-sign-machine-cleanup.md

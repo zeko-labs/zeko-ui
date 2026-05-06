@@ -122,20 +122,18 @@ export const signMachine = setup({
 			invoke: {
 				src: "signTransaction",
 				input: ({ context: { transaction, user } }) => ({ transaction, user }),
-				onDone: {
-					target: "ROUTING",
-					actions: assign({ signedTransaction: ({ event }) => event.output })
-				}
+				onDone: [
+					{
+						target: "COMPLETING",
+						guard: ({ context }) => context.complete !== undefined,
+						actions: assign({ signedTransaction: ({ event }) => event.output })
+					},
+					{
+						target: "DONE",
+						actions: assign({ signedTransaction: ({ event }) => event.output })
+					}
+				]
 			}
-		},
-		ROUTING: {
-			always: [
-				{
-					target: "COMPLETING",
-					guard: ({ context }) => context.complete !== undefined
-				},
-				{ target: "DONE" }
-			]
 		},
 		COMPLETING: {
 			invoke: {
