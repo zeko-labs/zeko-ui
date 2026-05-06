@@ -1,3 +1,4 @@
+import type { ZkappCommand } from "@aurowallet/mina-provider"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { assign, createActor, fromPromise, setup, waitFor } from "xstate"
 import { toUserFriendlyMessage } from "../../app/errors"
@@ -121,6 +122,83 @@ describe("bridgeOperationMachine", () => {
 		expect(
 			bridge.getSnapshot().context.events.some((event) => event.type === "TerminateOperation")
 		).toBe(true)
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("signs and completes an SDK deposit request before send-and-confirm", async () => {
+		const signedTransaction = {
+			accountUpdates: [],
+			feePayer: { authorization: "", body: { fee: "1", publicKey: "B62test" } },
+			memo: ""
+		} as unknown as ZkappCommand
+		const submitDeposit = vi.fn(async () => ({
+			requestId: "sdk-signature-request-1",
+			transaction: "sdk-unsigned-transaction"
+		}))
+		const completeSdkSignature = vi.fn(async () => "wallet-transaction-json")
+		const transactionMachine = vi.fn(async () => ({
+			result: { hash: "HASH", url: "https://zekoscan.io/testnet/tx/HASH" }
+		}))
+		const bridge = createBridgeActor()
+		const wallet = createWalletActor("mina:testnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(
+			bridgeOperationMachine.provide({
+				actors: {
+					submitDeposit: fromPromise(submitDeposit),
+					signMachine: fromPromise(async ({ input }) => {
+						expect(input).toEqual({
+							transaction: "sdk-unsigned-transaction",
+							user: "B62test"
+						})
+						return { signedTransaction }
+					}),
+					completeSdkSignature: fromPromise(completeSdkSignature),
+					transactionMachine: fromPromise(transactionMachine),
+					pendingDeposit: fromPromise(async () => undefined)
+				}
+			}),
+			{
+				input: {
+					bridge: bridge as never,
+					wallet: wallet as never,
+					source: "mina:testnet",
+					destination: "zeko:testnet",
+					direction: "deposit",
+					amount: "1"
+				}
+			}
+		)
+
+		actor.start()
+		actor.send({ type: "StartBridgeOperation" })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("PENDING_DEPOSIT"))
+
+		expect(submitDeposit).toHaveBeenCalledOnce()
+		expect(completeSdkSignature).toHaveBeenCalledWith(
+			expect.objectContaining({
+				input: {
+					bridge,
+					requestId: "sdk-signature-request-1",
+					signedTransaction
+				}
+			})
+		)
+		expect(transactionMachine).toHaveBeenCalledWith(
+			expect.objectContaining({
+				input: expect.objectContaining({ transaction: "wallet-transaction-json" })
+			})
+		)
+		expect(actor.getSnapshot().context.transactions.submitDeposit?.result).toEqual({
+			hash: "HASH",
+			url: "https://zekoscan.io/testnet/tx/HASH"
+		})
 
 		actor.stop()
 		bridge.stop()

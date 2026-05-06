@@ -3,11 +3,11 @@ import { type Networks, urls, type walletMachine } from "@lumina-dex/sdk"
 import type { Mina } from "o1js"
 import type { ActorRefFromLogic } from "xstate"
 import { assign, enqueueActions, fromPromise, setup } from "xstate"
-import { toQuietIfWalletRejection } from "~/errors"
 import { createLogger } from "./debug"
 import { type HashDb, hashDb, type SavedTransaction } from "./helpers"
 import { sendMetric } from "./metrics"
 import type { OperationsWorker } from "./operations.worker"
+import { signMachine } from "./sign"
 
 const { act, logger } = createLogger("[TRANSACTION]", { metrics: true })
 
@@ -19,14 +19,11 @@ export type Result = ReturnType<HashDb["createResult"]>
 
 type SentTransaction = { hash: string; zkAppId: string }
 
-type TransactionMachineMode = "send" | "sign"
-
 export type TransactionMachineContext = {
 	id: string
 	transaction: string
 	wallet: Wallet
 	worker: OperationsWorker
-	mode: TransactionMachineMode
 	user: string
 	savedTransaction: SavedTransaction | null
 	signedTransaction: ZkappCommand | null
@@ -43,10 +40,9 @@ type TransactionMachineInput = {
 	transaction: Mina.Transaction<false, false> | string
 	wallet: Wallet
 	worker: OperationsWorker
-	mode?: TransactionMachineMode
 }
 
-type TransactionMachineOutput = { result: Result } | { signedTransaction: ZkappCommand }
+type TransactionMachineOutput = { result: Result }
 
 type SendSignedTxInput = {
 	zeko: boolean
@@ -62,53 +58,6 @@ type WaitForTxInput = SentTransaction & {
 	worker: OperationsWorker
 	user: string
 }
-
-const signZkappTransaction = async ({
-	transaction,
-	user
-}: {
-	transaction: string
-	user: string
-}): Promise<ZkappCommand> => {
-	const originalTransaction = JSON.parse(transaction) as ZkappCommand
-	logger.info({ originalTransaction })
-	// If the fee is 0, set it to 1 to avoid auro wallet error
-	if (originalTransaction.feePayer.body.fee === "0") {
-		originalTransaction.feePayer.body.fee = "1"
-	}
-	let result: Awaited<ReturnType<typeof window.mina.sendTransaction>>
-	try {
-		result = await window.mina.sendTransaction({
-			onlySign: true,
-			transaction: JSON.stringify(originalTransaction)
-		})
-	} catch (error) {
-		const msg = error instanceof Error ? error.message : String(error)
-		if (/Method not found/i.test(msg)) {
-			throw new Error(
-				"Your wallet does not support this operation. Please update your Auro Wallet extension to the latest version."
-			)
-		}
-		throw toQuietIfWalletRejection(error)
-	}
-	if (result instanceof Error) throw toQuietIfWalletRejection(result)
-	if ("signedData" in result) {
-		// biome-ignore lint/suspicious/noExplicitAny: Parsing without validating
-		const zkappCommand = (JSON.parse(result.signedData) as any).zkappCommand as ZkappCommand
-		// If the feePayer is not the user, we need to set the authorization to a dummy value
-		if (zkappCommand.feePayer.body.publicKey !== user) {
-			zkappCommand.feePayer.authorization =
-				"7mWxjLYgbJUkZNcGouvhVj5tJ8yu9hoexb9ntvPK8t5LHqzmrL6QJjjKtf5SgmxB4QWkDw7qoMMbbNGtHVpsbJHPyTy2EzRQ"
-		}
-		logger.success({ zkappCommand })
-		return zkappCommand
-	}
-	throw new Error("Couldn't find signedData")
-}
-
-const hasSignedTransaction = (
-	signedTransaction: ZkappCommand | null
-): signedTransaction is ZkappCommand => signedTransaction !== null
 
 export const transactionMachine = setup({
 	types: {
@@ -131,17 +80,7 @@ export const transactionMachine = setup({
 				input.user
 			)
 		}),
-		signTransaction: fromPromise<ZkappCommand, { transaction: string; user: string }>(
-			({ input }) => {
-				return act(
-					"signTransaction",
-					async () => {
-						return signZkappTransaction(input)
-					},
-					input.user
-				)
-			}
-		),
+		signMachine,
 		sendSignedTransaction: fromPromise<SentTransaction, SendSignedTxInput>(({ input }) => {
 			return act(
 				"sendSignedTransaction",
@@ -189,8 +128,8 @@ export const transactionMachine = setup({
 	}
 }).createMachine({
 	id: "transaction",
-	initial: "ROUTING",
-	context: ({ input: { id, transaction: tx, wallet, worker, mode = "send" } }) => {
+	initial: "RESUMING",
+	context: ({ input: { id, transaction: tx, wallet, worker } }) => {
 		const transaction = typeof tx === "string" ? tx : tx.toJSON()
 		const { account, currentNetwork: network } = wallet.getSnapshot().context
 		return {
@@ -198,7 +137,6 @@ export const transactionMachine = setup({
 			transaction,
 			wallet,
 			worker,
-			mode,
 			user: account,
 			savedTransaction: null,
 			signedTransaction: null,
@@ -210,21 +148,11 @@ export const transactionMachine = setup({
 			feeMultiplier: 1
 		}
 	},
-	output: ({ context: { mode, result, signedTransaction } }) => {
-		if (mode === "sign") {
-			if (hasSignedTransaction(signedTransaction)) return { signedTransaction }
-			throw new Error("Transaction signing failed")
-		}
+	output: ({ context: { result } }) => {
 		if (result instanceof Error) throw result
 		return { result }
 	},
 	states: {
-		ROUTING: {
-			always: [
-				{ target: "SIGNING", guard: ({ context }) => context.mode === "sign" },
-				{ target: "RESUMING" }
-			]
-		},
 		RESUMING: {
 			description: "Attempt to resume an unconfirmed transaction.",
 			invoke: {
@@ -249,19 +177,12 @@ export const transactionMachine = setup({
 		SIGNING: {
 			description: "Sign a transaction and return the signed zkappCommand.",
 			invoke: {
-				src: "signTransaction",
+				src: "signMachine",
 				input: ({ context: { transaction, user } }) => ({ transaction, user }),
-				onDone: [
-					{
-						target: "DONE",
-						guard: ({ context }) => context.mode === "sign",
-						actions: assign({ signedTransaction: ({ event }) => event.output })
-					},
-					{
-						target: "SENDING",
-						actions: assign({ signedTransaction: ({ event }) => event.output })
-					}
-				]
+				onDone: {
+					target: "SENDING",
+					actions: assign({ signedTransaction: ({ event }) => event.output.signedTransaction })
+				}
 			}
 		},
 		SENDING: {

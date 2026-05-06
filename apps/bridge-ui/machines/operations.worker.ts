@@ -45,16 +45,106 @@ export type PendingOperations = {
 	withdrawals: ActionState[]
 }
 type L1L2 = { l1: Networks; l2: Networks }
-type SignTransaction = (transaction: string) => Promise<ZkappCommand>
+type SignSdkTransaction = (
+	transaction: MinaTransaction<boolean, false>
+) => Promise<MinaTransaction<boolean, true>>
+
+export type SdkSignatureRequest = {
+	requestId: string
+	transaction: string
+}
+
+type PendingSdkSignature = {
+	resolveSignedTransaction: (transaction: MinaTransaction<boolean, true>) => void
+	rejectSignedTransaction: (error: Error) => void
+	result: Promise<string>
+}
 
 const bridges = new Map<string, Bridge>()
+const pendingSdkSignatures = new Map<string, PendingSdkSignature>()
 
-const signSdkTransaction =
-	(signTransaction: SignTransaction) =>
-	async (transaction: MinaTransaction<boolean, false>): Promise<MinaTransaction<boolean, true>> => {
-		const signedTransaction = await signTransaction(transaction.toJSON())
-		return Transaction.fromJSON(signedTransaction) as MinaTransaction<boolean, true>
+const normalizeError = (error: unknown) =>
+	error instanceof Error ? error : new Error(String(error))
+
+const requestSdkSignature = (
+	run: (signTransaction: SignSdkTransaction) => Promise<string>
+): Promise<SdkSignatureRequest> => {
+	const requestId = crypto.randomUUID()
+	let signatureRequested = false
+	let resolveRequest = (_request: SdkSignatureRequest) => {}
+	let rejectRequest = (_error: Error) => {}
+	const request = new Promise<SdkSignatureRequest>((resolve, reject) => {
+		resolveRequest = resolve
+		rejectRequest = reject
+	})
+	let resolveSignedTransaction = (_transaction: MinaTransaction<boolean, true>) => {}
+	let rejectSignedTransaction = (_error: Error) => {}
+	const signedTransaction = new Promise<MinaTransaction<boolean, true>>((resolve, reject) => {
+		resolveSignedTransaction = resolve
+		rejectSignedTransaction = reject
+	})
+
+	const result = run(async (transaction) => {
+		signatureRequested = true
+		resolveRequest({
+			requestId,
+			transaction: transaction.toJSON()
+		})
+		return signedTransaction
+	})
+
+	pendingSdkSignatures.set(requestId, {
+		resolveSignedTransaction,
+		rejectSignedTransaction,
+		result
+	})
+
+	result.catch((error) => {
+		if (!signatureRequested) rejectRequest(normalizeError(error))
+		pendingSdkSignatures.delete(requestId)
+	})
+
+	return request
+}
+
+async function completeSdkSignature({
+	requestId,
+	signedTransaction
+}: {
+	requestId: string
+	signedTransaction: ZkappCommand
+}): Promise<string> {
+	const pending = pendingSdkSignatures.get(requestId)
+	if (!pending) throw new Error(`No SDK signature request found for ${requestId}`)
+
+	try {
+		pending.resolveSignedTransaction(
+			Transaction.fromJSON(signedTransaction) as MinaTransaction<boolean, true>
+		)
+		return await pending.result
+	} finally {
+		pendingSdkSignatures.delete(requestId)
 	}
+}
+
+async function rejectSdkSignature({
+	requestId,
+	message
+}: {
+	requestId: string
+	message?: string
+}): Promise<void> {
+	const pending = pendingSdkSignatures.get(requestId)
+	if (!pending) return
+
+	pending.rejectSignedTransaction(new Error(message ?? "Transaction signing failed"))
+	pendingSdkSignatures.delete(requestId)
+	try {
+		await pending.result
+	} catch {
+		// Rejection is intentionally surfaced through the UI signing state.
+	}
+}
 
 async function initBridge({ l1, l2 }: L1L2) {
 	let bridge = bridges.get(`${l1}_${l2}`)
@@ -146,14 +236,12 @@ async function submitDeposit({
 	l2,
 	user,
 	amount,
-	timeoutSlots,
-	signTransaction
+	timeoutSlots
 }: L1L2 & {
 	user: string
 	amount: string
 	timeoutSlots?: number
-	signTransaction: SignTransaction
-}): Promise<string> {
+}): Promise<SdkSignatureRequest> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
 	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
@@ -165,16 +253,17 @@ async function submitDeposit({
 		timeout
 	}
 	console.log("Submit Deposit:", { timeoutSlots, submitDeposit })
-	return bridge.submitDeposit(feePayer, submitDeposit, signSdkTransaction(signTransaction))
+	return requestSdkSignature((signTransaction) =>
+		bridge.submitDeposit(feePayer, submitDeposit, signTransaction)
+	)
 }
 
 async function submitWithdrawal({
 	l1,
 	l2,
 	user,
-	amount,
-	signTransaction
-}: L1L2 & { user: string; amount: string; signTransaction: SignTransaction }): Promise<string> {
+	amount
+}: L1L2 & { user: string; amount: string }): Promise<SdkSignatureRequest> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
 	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
@@ -182,7 +271,9 @@ async function submitWithdrawal({
 		recipient,
 		amount: UInt64.from(Number(amount) * 10e8)
 	}
-	return bridge.submitWithdrawal(feePayer, submitWithdrawal, signSdkTransaction(signTransaction))
+	return requestSdkSignature((signTransaction) =>
+		bridge.submitWithdrawal(feePayer, submitWithdrawal, signTransaction)
+	)
 }
 
 async function canFinalizeDeposit({
@@ -218,34 +309,35 @@ async function canCancelDeposit({
 async function cancelDeposit({
 	l1,
 	l2,
-	user,
-	signTransaction
-}: L1L2 & { user: string; signTransaction: SignTransaction }): Promise<string> {
+	user
+}: L1L2 & { user: string }): Promise<SdkSignatureRequest> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	return bridge.cancelDeposit(recipient, signSdkTransaction(signTransaction))
+	return requestSdkSignature((signTransaction) => bridge.cancelDeposit(recipient, signTransaction))
 }
 
 async function finalizeDeposit({
 	l1,
 	l2,
-	user,
-	signTransaction
-}: L1L2 & { user: string; signTransaction: SignTransaction }): Promise<string> {
+	user
+}: L1L2 & { user: string }): Promise<SdkSignatureRequest> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	return bridge.finalizeDeposit(recipient, signSdkTransaction(signTransaction))
+	return requestSdkSignature((signTransaction) =>
+		bridge.finalizeDeposit(recipient, signTransaction)
+	)
 }
 
 async function finalizeWithdrawal({
 	l1,
 	l2,
-	user,
-	signTransaction
-}: L1L2 & { user: string; signTransaction: SignTransaction }): Promise<string> {
+	user
+}: L1L2 & { user: string }): Promise<SdkSignatureRequest> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	return bridge.finalizeWithdrawal(recipient, signSdkTransaction(signTransaction))
+	return requestSdkSignature((signTransaction) =>
+		bridge.finalizeWithdrawal(recipient, signTransaction)
+	)
 }
 
 async function transactionStatus({ zkAppId, url }: { zkAppId: string; url?: string }) {
@@ -272,6 +364,8 @@ export const operations = {
 	submitWithdrawal,
 	canFinalizeWithdrawal,
 	finalizeWithdrawal,
+	completeSdkSignature,
+	rejectSdkSignature,
 	transactionStatus,
 	sendZkAppCommand
 }

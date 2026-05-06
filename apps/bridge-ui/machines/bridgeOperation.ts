@@ -1,27 +1,26 @@
+import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks, walletMachine } from "@lumina-dex/sdk"
-import * as Comlink from "comlink"
 import { produce } from "immer"
 import {
 	type ActorRef,
 	type ActorRefFromLogic,
 	and,
 	assign,
-	createActor,
 	type EventObject,
 	enqueueActions,
 	fromCallback,
 	fromPromise,
 	type Snapshot,
 	sendTo,
-	setup,
-	toPromise
+	setup
 } from "xstate"
 import { finalizeNotification } from "../app/service-worker/notificationList"
 import { isTerminalBridgeError } from "../app/errors"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
-import type { ActionState } from "./operations.worker"
+import type { ActionState, SdkSignatureRequest } from "./operations.worker"
+import { signMachine } from "./sign"
 import { type Result, transactionMachine } from "./transaction"
 
 const { act, logger, measure } = createLogger("[BRIDGE OPERATION]", { metrics: true })
@@ -74,43 +73,37 @@ const addToContext = ({
 		}
 	})
 
-const getTransactionResult = (
-	output: { result: Result } | { signedTransaction: unknown }
-): Result => {
-	if ("result" in output) return output.result
-	throw new Error("Transaction machine did not return a transaction result")
-}
+const addSdkSignatureToContext = ({
+	context,
+	key,
+	request
+}: {
+	context: BridgeOperationContext
+	key: TransactionKey
+	request: SdkSignatureRequest
+}) =>
+	produce(context, (draft) => {
+		draft.sdkSignatures[key] = { ...request, signedTransaction: null }
+	})
+
+const addSignedSdkSignatureToContext = ({
+	context,
+	key,
+	signedTransaction
+}: {
+	context: BridgeOperationContext
+	key: TransactionKey
+	signedTransaction: ZkappCommand
+}) =>
+	produce(context, (draft) => {
+		const signature = draft.sdkSignatures[key]
+		if (!signature) throw new Error(`No ${key} SDK signature request found`)
+		signature.signedTransaction = signedTransaction
+	})
 
 const worker = (bridge: Bridge) => bridge.getSnapshot().context.worker
 
-const sdkSignTransaction = ({ bridge, id, wallet }: BridgeWorker) =>
-	Comlink.proxy(async (transaction: string) => {
-		const signingActor = createActor(transactionMachine, {
-			input: {
-				id: `${id}:sdk-sign`,
-				transaction,
-				wallet,
-				worker: worker(bridge),
-				mode: "sign"
-			}
-		})
-
-		try {
-			signingActor.start()
-			const output = await toPromise(signingActor)
-			if (!("signedTransaction" in output)) {
-				throw new Error("Transaction machine did not return a signed transaction")
-			}
-			return output.signedTransaction
-		} finally {
-			signingActor.stop()
-		}
-	})
-
-const sendAndConfirm = (
-	context: BridgeOperationContext,
-	key: keyof BridgeOperationContext["transactions"]
-) => {
+const sendAndConfirm = (context: BridgeOperationContext, key: TransactionKey) => {
 	if (!context.transactions[key]) throw new Error(`No ${key} transaction found`)
 	return {
 		id: context.id,
@@ -119,6 +112,48 @@ const sendAndConfirm = (
 		worker: worker(context.bridge)
 	}
 }
+
+const getSdkSignature = (context: BridgeOperationContext, key: TransactionKey) => {
+	const signature = context.sdkSignatures[key]
+	if (!signature) throw new Error(`No ${key} SDK signature request found`)
+	return signature
+}
+
+const signSdkTransactionInput = (context: BridgeOperationContext, key: TransactionKey) => {
+	const signature = getSdkSignature(context, key)
+	return {
+		transaction: signature.transaction,
+		user: context.user
+	}
+}
+
+const completeSdkSignatureInput = (context: BridgeOperationContext, key: TransactionKey) => {
+	const signature = getSdkSignature(context, key)
+	if (!signature.signedTransaction) throw new Error(`No signed ${key} SDK transaction found`)
+	return {
+		bridge: context.bridge,
+		requestId: signature.requestId,
+		signedTransaction: signature.signedTransaction
+	}
+}
+
+const rejectSdkSignature =
+	(key: TransactionKey) =>
+	({
+		context,
+		event
+	}: {
+		context: BridgeOperationContext
+		event: EventObject & { error?: unknown }
+	}) => {
+		const signature = context.sdkSignatures[key]
+		if (!signature) return
+		const error = event.error instanceof Error ? event.error : new Error(String(event.error))
+		void worker(context.bridge).rejectSdkSignature({
+			requestId: signature.requestId,
+			message: error.message
+		})
+	}
 
 //To avoid circular dependencies
 type Bridge = ActorRef<Snapshot<unknown> & { context: BridgeContext }, BridgeEvents>
@@ -135,6 +170,10 @@ export type ReturnTo =
 type Direction = "deposit" | "withdrawal"
 
 type WalletTransaction = { transaction: string; result: Result | null } | null
+type TransactionKey = keyof BridgeOperationContext["transactions"]
+type PendingSdkSignature = SdkSignatureRequest & {
+	signedTransaction: ZkappCommand | null
+}
 
 type BridgeOperationEvents =
 	| { type: "SetCurrentNetwork"; network: Networks }
@@ -173,6 +212,7 @@ export interface BridgeOperationContext {
 		submitWithdrawal: WalletTransaction
 		finalizeWithdrawal: WalletTransaction
 	}
+	sdkSignatures: Record<TransactionKey, PendingSdkSignature | null>
 	returnTo: ReturnTo
 	changeNetworkTo: Networks
 	canCancel: boolean
@@ -221,31 +261,40 @@ export const bridgeOperationMachine = setup({
 	},
 	actors: {
 		transactionMachine,
-		submitDeposit: fromPromise<string, BridgeWorker & { amount: string; timeoutSlots?: number }>(
-			({ input }) => {
-				return act(
-					"submitDeposit",
-					async () => {
-						const { bridge, l1, l2, amount, user, timeoutSlots } = input
-						const tx = await worker(bridge).submitDeposit({
-							l1,
-							l2,
-							user,
-							amount,
-							timeoutSlots,
-							signTransaction: sdkSignTransaction(input)
-						})
-						return tx
-					},
-					input.user,
-					{
-						source: input.source,
-						destination: input.destination,
-						direction: input.direction
-					}
-				)
-			}
+		signMachine,
+		completeSdkSignature: fromPromise<
+			string,
+			{ bridge: Bridge; requestId: string; signedTransaction: ZkappCommand }
+		>(({ input }) =>
+			worker(input.bridge).completeSdkSignature({
+				requestId: input.requestId,
+				signedTransaction: input.signedTransaction
+			})
 		),
+		submitDeposit: fromPromise<
+			SdkSignatureRequest,
+			BridgeWorker & { amount: string; timeoutSlots?: number }
+		>(({ input }) => {
+			return act(
+				"submitDeposit",
+				async () => {
+					const { bridge, l1, l2, amount, user, timeoutSlots } = input
+					return worker(bridge).submitDeposit({
+						l1,
+						l2,
+						user,
+						amount,
+						timeoutSlots
+					})
+				},
+				input.user,
+				{
+					source: input.source,
+					destination: input.destination,
+					direction: input.direction
+				}
+			)
+		}),
 		pendingDeposit: fromCallback<EventObject, BridgeWorker & { depositTimestamp?: Date }>(
 			({ sendBack, input }) => {
 				const label = "pendingDeposit"
@@ -280,18 +329,16 @@ export const bridgeOperationMachine = setup({
 				}
 			}
 		),
-		finalizeDeposit: fromPromise<string, BridgeWorker>(({ input }) => {
+		finalizeDeposit: fromPromise<SdkSignatureRequest, BridgeWorker>(({ input }) => {
 			return act(
 				"finalizeDeposit",
 				async () => {
 					const { bridge, l1, l2, user } = input
-					const tx = await worker(bridge).finalizeDeposit({
+					return worker(bridge).finalizeDeposit({
 						l1,
 						l2,
-						user,
-						signTransaction: sdkSignTransaction(input)
+						user
 					})
-					return tx
 				},
 				input.user,
 				{
@@ -301,28 +348,28 @@ export const bridgeOperationMachine = setup({
 				}
 			)
 		}),
-		submitWithdrawal: fromPromise<string, BridgeWorker & { amount: string }>(({ input }) => {
-			return act(
-				"submitWithdrawal",
-				async () => {
-					const { bridge, l1, l2, amount, user } = input
-					const tx = await worker(bridge).submitWithdrawal({
-						l1,
-						l2,
-						user,
-						amount,
-						signTransaction: sdkSignTransaction(input)
-					})
-					return tx
-				},
-				input.user,
-				{
-					source: input.source,
-					destination: input.destination,
-					direction: input.direction
-				}
-			)
-		}),
+		submitWithdrawal: fromPromise<SdkSignatureRequest, BridgeWorker & { amount: string }>(
+			({ input }) => {
+				return act(
+					"submitWithdrawal",
+					async () => {
+						const { bridge, l1, l2, amount, user } = input
+						return worker(bridge).submitWithdrawal({
+							l1,
+							l2,
+							user,
+							amount
+						})
+					},
+					input.user,
+					{
+						source: input.source,
+						destination: input.destination,
+						direction: input.direction
+					}
+				)
+			}
+		),
 		pendingWithdrawal: fromCallback<EventObject, BridgeWorker>(({ sendBack, input }) => {
 			const label = "pendingWithdrawal"
 			const stop = measure(label)
@@ -355,18 +402,16 @@ export const bridgeOperationMachine = setup({
 				stop()
 			}
 		}),
-		finalizeWithdrawal: fromPromise<string, BridgeWorker>(({ input }) => {
+		finalizeWithdrawal: fromPromise<SdkSignatureRequest, BridgeWorker>(({ input }) => {
 			return act(
 				"finalizeWithdrawal",
 				async () => {
 					const { bridge, l1, l2, user } = input
-					const tx = await worker(bridge).finalizeWithdrawal({
+					return worker(bridge).finalizeWithdrawal({
 						l1,
 						l2,
-						user,
-						signTransaction: sdkSignTransaction(input)
+						user
 					})
-					return tx
 				},
 				input.user,
 				{
@@ -376,18 +421,16 @@ export const bridgeOperationMachine = setup({
 				}
 			)
 		}),
-		cancelDeposit: fromPromise<string, BridgeWorker>(({ input }) => {
+		cancelDeposit: fromPromise<SdkSignatureRequest, BridgeWorker>(({ input }) => {
 			return act(
 				"cancelDeposit",
 				async () => {
 					const { bridge, l1, l2, user } = input
-					const tx = await worker(bridge).cancelDeposit({
+					return worker(bridge).cancelDeposit({
 						l1,
 						l2,
-						user,
-						signTransaction: sdkSignTransaction(input)
+						user
 					})
-					return tx
 				},
 				input.user,
 				{
@@ -438,6 +481,13 @@ export const bridgeOperationMachine = setup({
 		transaction,
 		errors: [],
 		transactions: {
+			submitDeposit: null,
+			finalizeDeposit: null,
+			cancelDeposit: null,
+			submitWithdrawal: null,
+			finalizeWithdrawal: null
+		},
+		sdkSignatures: {
 			submitDeposit: null,
 			finalizeDeposit: null,
 			cancelDeposit: null,
@@ -612,6 +662,59 @@ export const bridgeOperationMachine = setup({
 							timeoutSlots: context.timeoutSlots
 						}),
 						onDone: {
+							target: "sign",
+							actions: assign(({ context, event }) =>
+								addSdkSignatureToContext({
+									context,
+									key: "submitDeposit",
+									request: event.output
+								})
+							)
+						},
+						onError: {
+							target: "#bridgeOperation.FAILED",
+							actions: sendTo(
+								({ context }) => context.bridge,
+								({ self }) => ({ type: "TerminateOperation", id: self.id })
+							)
+						}
+					}
+				},
+				sign: {
+					tags: ["loading"],
+					meta: { step: 0 },
+					invoke: {
+						src: "signMachine",
+						input: ({ context }) => signSdkTransactionInput(context, "submitDeposit"),
+						onDone: {
+							target: "complete",
+							actions: assign(({ context, event }) =>
+								addSignedSdkSignatureToContext({
+									context,
+									key: "submitDeposit",
+									signedTransaction: event.output.signedTransaction
+								})
+							)
+						},
+						onError: {
+							target: "#bridgeOperation.FAILED",
+							actions: [
+								rejectSdkSignature("submitDeposit"),
+								sendTo(
+									({ context }) => context.bridge,
+									({ self }) => ({ type: "TerminateOperation", id: self.id })
+								)
+							]
+						}
+					}
+				},
+				complete: {
+					tags: ["loading"],
+					meta: { step: 0 },
+					invoke: {
+						src: "completeSdkSignature",
+						input: ({ context }) => completeSdkSignatureInput(context, "submitDeposit"),
+						onDone: {
 							target: "send_and_confirm",
 							actions: assign(({ context, event }) =>
 								addToContext({ context, key: "submitDeposit", transaction: event.output })
@@ -638,7 +741,7 @@ export const bridgeOperationMachine = setup({
 								addToContext({
 									context,
 									key: "submitDeposit",
-									result: getTransactionResult(event.output)
+									result: event.output.result
 								})
 							)
 						},
@@ -729,6 +832,70 @@ export const bridgeOperationMachine = setup({
 						src: "finalizeDeposit",
 						input: ({ context }) => ({ ...bridgeParameters(context) }),
 						onDone: {
+							target: "sign",
+							actions: assign(({ context, event }) =>
+								addSdkSignatureToContext({
+									context,
+									key: "finalizeDeposit",
+									request: event.output
+								})
+							)
+						},
+						onError: [
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ context }) => context.errors.length >= 3,
+								actions: assign(addError(new Error("Failed to finalize deposit")))
+							},
+							{
+								target: "#bridgeOperation.FINALIZE_DEPOSIT",
+								actions: assign(addError(new Error("Failed to finalize deposit")))
+							}
+						]
+					}
+				},
+				sign: {
+					tags: ["loading"],
+					meta: { step: 2 },
+					invoke: {
+						src: "signMachine",
+						input: ({ context }) => signSdkTransactionInput(context, "finalizeDeposit"),
+						onDone: {
+							target: "complete",
+							actions: assign(({ context, event }) =>
+								addSignedSdkSignatureToContext({
+									context,
+									key: "finalizeDeposit",
+									signedTransaction: event.output.signedTransaction
+								})
+							)
+						},
+						onError: [
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ context }) => context.errors.length >= 3,
+								actions: [
+									rejectSdkSignature("finalizeDeposit"),
+									assign(addError(new Error("Failed to finalize deposit")))
+								]
+							},
+							{
+								target: "#bridgeOperation.FINALIZE_DEPOSIT",
+								actions: [
+									rejectSdkSignature("finalizeDeposit"),
+									assign(addError(new Error("Failed to finalize deposit")))
+								]
+							}
+						]
+					}
+				},
+				complete: {
+					tags: ["loading"],
+					meta: { step: 2 },
+					invoke: {
+						src: "completeSdkSignature",
+						input: ({ context }) => completeSdkSignatureInput(context, "finalizeDeposit"),
+						onDone: {
 							target: "send_and_confirm",
 							actions: assign(({ context, event }) =>
 								addToContext({ context, key: "finalizeDeposit", transaction: event.output })
@@ -759,7 +926,7 @@ export const bridgeOperationMachine = setup({
 								addToContext({
 									context,
 									key: "finalizeDeposit",
-									result: getTransactionResult(event.output)
+									result: event.output.result
 								})
 							)
 						},
@@ -786,6 +953,70 @@ export const bridgeOperationMachine = setup({
 					invoke: {
 						src: "cancelDeposit",
 						input: ({ context }) => ({ ...bridgeParameters(context) }),
+						onDone: {
+							target: "sign",
+							actions: assign(({ context, event }) =>
+								addSdkSignatureToContext({
+									context,
+									key: "cancelDeposit",
+									request: event.output
+								})
+							)
+						},
+						onError: [
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ context }) => context.errors.length >= 3,
+								actions: assign(addError(new Error("Failed to cancel deposit")))
+							},
+							{
+								target: "#bridgeOperation.CANCEL_DEPOSIT",
+								actions: assign(addError(new Error("Failed to cancel deposit")))
+							}
+						]
+					}
+				},
+				sign: {
+					tags: ["loading"],
+					meta: { step: 1 },
+					invoke: {
+						src: "signMachine",
+						input: ({ context }) => signSdkTransactionInput(context, "cancelDeposit"),
+						onDone: {
+							target: "complete",
+							actions: assign(({ context, event }) =>
+								addSignedSdkSignatureToContext({
+									context,
+									key: "cancelDeposit",
+									signedTransaction: event.output.signedTransaction
+								})
+							)
+						},
+						onError: [
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ context }) => context.errors.length >= 3,
+								actions: [
+									rejectSdkSignature("cancelDeposit"),
+									assign(addError(new Error("Failed to cancel deposit")))
+								]
+							},
+							{
+								target: "#bridgeOperation.CANCEL_DEPOSIT",
+								actions: [
+									rejectSdkSignature("cancelDeposit"),
+									assign(addError(new Error("Failed to cancel deposit")))
+								]
+							}
+						]
+					}
+				},
+				complete: {
+					tags: ["loading"],
+					meta: { step: 1 },
+					invoke: {
+						src: "completeSdkSignature",
+						input: ({ context }) => completeSdkSignatureInput(context, "cancelDeposit"),
 						onDone: {
 							target: "send_and_confirm",
 							actions: assign(({ context, event }) =>
@@ -817,7 +1048,7 @@ export const bridgeOperationMachine = setup({
 								addToContext({
 									context,
 									key: "cancelDeposit",
-									result: getTransactionResult(event.output)
+									result: event.output.result
 								})
 							)
 						},
@@ -853,6 +1084,63 @@ export const bridgeOperationMachine = setup({
 						src: "submitWithdrawal",
 						input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount }),
 						onDone: {
+							target: "sign",
+							actions: assign(({ context, event }) =>
+								addSdkSignatureToContext({
+									context,
+									key: "submitWithdrawal",
+									request: event.output
+								})
+							)
+						},
+						onError: {
+							target: "#bridgeOperation.FAILED",
+							actions: [
+								assign(addError(new Error("Failed to submit withdrawal"))),
+								sendTo(
+									({ context }) => context.bridge,
+									({ self }) => ({ type: "TerminateOperation", id: self.id })
+								)
+							]
+						}
+					}
+				},
+				sign: {
+					tags: ["loading"],
+					meta: { step: 0 },
+					invoke: {
+						src: "signMachine",
+						input: ({ context }) => signSdkTransactionInput(context, "submitWithdrawal"),
+						onDone: {
+							target: "complete",
+							actions: assign(({ context, event }) =>
+								addSignedSdkSignatureToContext({
+									context,
+									key: "submitWithdrawal",
+									signedTransaction: event.output.signedTransaction
+								})
+							)
+						},
+						onError: {
+							target: "#bridgeOperation.FAILED",
+							actions: [
+								rejectSdkSignature("submitWithdrawal"),
+								assign(addError(new Error("Failed to submit withdrawal"))),
+								sendTo(
+									({ context }) => context.bridge,
+									({ self }) => ({ type: "TerminateOperation", id: self.id })
+								)
+							]
+						}
+					}
+				},
+				complete: {
+					tags: ["loading"],
+					meta: { step: 0 },
+					invoke: {
+						src: "completeSdkSignature",
+						input: ({ context }) => completeSdkSignatureInput(context, "submitWithdrawal"),
+						onDone: {
 							target: "send_and_confirm",
 							actions: assign(({ context, event }) =>
 								addToContext({ context, key: "submitWithdrawal", transaction: event.output })
@@ -882,7 +1170,7 @@ export const bridgeOperationMachine = setup({
 								addToContext({
 									context,
 									key: "submitWithdrawal",
-									result: getTransactionResult(event.output)
+									result: event.output.result
 								})
 							)
 						},
@@ -950,6 +1238,93 @@ export const bridgeOperationMachine = setup({
 						src: "finalizeWithdrawal",
 						input: ({ context }) => ({ ...bridgeParameters(context) }),
 						onDone: {
+							target: "sign",
+							actions: assign(({ context, event }) =>
+								addSdkSignatureToContext({
+									context,
+									key: "finalizeWithdrawal",
+									request: event.output
+								})
+							)
+						},
+						onError: [
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ event }) => isTerminalBridgeError(event.error),
+								actions: [
+									assign(addError(new Error("Failed to finalize withdrawal"))),
+									sendTo(
+										({ context }) => context.bridge,
+										({ self }) => ({ type: "TerminateOperation", id: self.id })
+									)
+								]
+							},
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ context }) => context.errors.length >= 3,
+								actions: assign(addError(new Error("Failed to finalize withdrawal")))
+							},
+							{
+								target: "#bridgeOperation.PENDING_WITHDRAWAL",
+								actions: assign(addError(new Error("Failed to finalize withdrawal")))
+							}
+						]
+					}
+				},
+				sign: {
+					tags: ["loading"],
+					meta: { step: 2 },
+					invoke: {
+						src: "signMachine",
+						input: ({ context }) => signSdkTransactionInput(context, "finalizeWithdrawal"),
+						onDone: {
+							target: "complete",
+							actions: assign(({ context, event }) =>
+								addSignedSdkSignatureToContext({
+									context,
+									key: "finalizeWithdrawal",
+									signedTransaction: event.output.signedTransaction
+								})
+							)
+						},
+						onError: [
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ event }) => isTerminalBridgeError(event.error),
+								actions: [
+									rejectSdkSignature("finalizeWithdrawal"),
+									assign(addError(new Error("Failed to finalize withdrawal"))),
+									sendTo(
+										({ context }) => context.bridge,
+										({ self }) => ({ type: "TerminateOperation", id: self.id })
+									)
+								]
+							},
+							{
+								target: "#bridgeOperation.FAILED",
+								guard: ({ context }) => context.errors.length >= 3,
+								actions: [
+									rejectSdkSignature("finalizeWithdrawal"),
+									assign(addError(new Error("Failed to finalize withdrawal")))
+								]
+							},
+							{
+								target: "#bridgeOperation.PENDING_WITHDRAWAL",
+								actions: [
+									rejectSdkSignature("finalizeWithdrawal"),
+									assign(addError(new Error("Failed to finalize withdrawal")))
+								]
+							}
+						]
+					}
+				},
+				complete: {
+					tags: ["loading"],
+					meta: { step: 2 },
+					invoke: {
+						src: "completeSdkSignature",
+						input: ({ context }) => completeSdkSignatureInput(context, "finalizeWithdrawal"),
+						onDone: {
 							target: "send_and_confirm",
 							actions: assign(({ context, event }) =>
 								addToContext({ context, key: "finalizeWithdrawal", transaction: event.output })
@@ -991,7 +1366,7 @@ export const bridgeOperationMachine = setup({
 								addToContext({
 									context,
 									key: "finalizeWithdrawal",
-									result: getTransactionResult(event.output)
+									result: event.output.result
 								})
 							)
 						},
