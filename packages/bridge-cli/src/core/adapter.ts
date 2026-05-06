@@ -2,7 +2,6 @@ import { Bridge } from "@zeko-labs/bridge-sdk"
 import {
 	PrivateKey,
 	PublicKey,
-	Transaction,
 	type Transaction as MinaTransaction,
 	UInt32,
 	UInt64,
@@ -127,14 +126,14 @@ const waitForTransactionInclusion = async ({
 
 const isFeeTooLowError = (error: unknown): boolean => String(error).includes("Fee is too low")
 
-export const sendWithFeeRetries = async <TResult>({
+export const sendWithFeeRetries = async <TTransaction, TResult>({
 	createTransaction,
 	initialFeeNanomina,
 	sendTransaction
 }: {
-	createTransaction: (feeNanomina: bigint) => Promise<string>
+	createTransaction: (feeNanomina: bigint) => Promise<TTransaction>
 	initialFeeNanomina: bigint
-	sendTransaction: (transaction: string) => Promise<TResult>
+	sendTransaction: (transaction: TTransaction) => Promise<TResult>
 }): Promise<TResult> => {
 	let feeNanomina = initialFeeNanomina
 	let retryCount = 0
@@ -159,10 +158,11 @@ const signSdkTransaction =
 	async (transaction: MinaTransaction<boolean, false>): Promise<MinaTransaction<boolean, true>> =>
 		transaction.sign([signer]) as MinaTransaction<boolean, true>
 
-const sendSerializedTransaction = async (
-	serializedTransaction: string
-): Promise<SignedTransactionResult> =>
-	Transaction.fromJSON(JSON.parse(serializedTransaction)).send()
+const toCompletedSdkTransaction = (hash: string): SignedTransactionResult => ({ hash })
+
+const useCompletedSdkTransaction = async (
+	transaction: SignedTransactionResult
+): Promise<SignedTransactionResult> => transaction
 
 const mapDirectionNetwork = ({
 	action,
@@ -285,18 +285,20 @@ export const createBridgeAdapter = ({
 			})
 			const currentSlot = await bridge.fetchCurrentSlot()
 			const timeout = currentSlot.add(UInt32.from(resolveDepositTimeoutSlots(timeoutSlots)))
-			const result = await sendWithFeeRetries<SignedTransactionResult>({
+			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
-				sendTransaction: sendSerializedTransaction,
-				createTransaction: (feeNanomina) =>
-					bridge.submitDeposit(
-						{ sender: publicKey, fee: Number(feeNanomina) },
-						{
-							recipient: recipientPublicKey,
-							amount: UInt64.from(minaStringToNanomina(amount)),
-							timeout
-						},
-						signSdkTransaction(signer)
+				sendTransaction: useCompletedSdkTransaction,
+				createTransaction: async (feeNanomina) =>
+					toCompletedSdkTransaction(
+						await bridge.submitDeposit(
+							{ sender: publicKey, fee: Number(feeNanomina) },
+							{
+								recipient: recipientPublicKey,
+								amount: UInt64.from(minaStringToNanomina(amount)),
+								timeout
+							},
+							signSdkTransaction(signer)
+						)
 					)
 			})
 			return normalizeTxResult({ action: "submit", direction: "deposit", route, result, wait })
@@ -314,20 +316,26 @@ export const createBridgeAdapter = ({
 		async finalizeDeposit({ account, wait }) {
 			const bridge = await getBridge(route, verbose)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
-			const result = await sendWithFeeRetries<SignedTransactionResult>({
+			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
-				sendTransaction: sendSerializedTransaction,
-				createTransaction: () => bridge.finalizeDeposit(publicKey, signSdkTransaction(signer))
+				sendTransaction: useCompletedSdkTransaction,
+				createTransaction: async () =>
+					toCompletedSdkTransaction(
+						await bridge.finalizeDeposit(publicKey, signSdkTransaction(signer))
+					)
 			})
 			return normalizeTxResult({ action: "finalize", direction: "deposit", route, result, wait })
 		},
 		async cancelDeposit({ account, wait }) {
 			const bridge = await getBridge(route, verbose)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
-			const result = await sendWithFeeRetries<SignedTransactionResult>({
+			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
-				sendTransaction: sendSerializedTransaction,
-				createTransaction: () => bridge.cancelDeposit(publicKey, signSdkTransaction(signer))
+				sendTransaction: useCompletedSdkTransaction,
+				createTransaction: async () =>
+					toCompletedSdkTransaction(
+						await bridge.cancelDeposit(publicKey, signSdkTransaction(signer))
+					)
 			})
 			return normalizeTxResult({ action: "cancel", direction: "deposit", route, result, wait })
 		},
@@ -339,17 +347,19 @@ export const createBridgeAdapter = ({
 				keys,
 				network: route.to
 			})
-			const result = await sendWithFeeRetries<SignedTransactionResult>({
+			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: WITHDRAWAL_SUBMIT_FEE_NANOMINA,
-				sendTransaction: sendSerializedTransaction,
-				createTransaction: (feeNanomina) =>
-					bridge.submitWithdrawal(
-						{ sender: publicKey, fee: Number(feeNanomina) },
-						{
-							recipient: recipientPublicKey,
-							amount: UInt64.from(minaStringToNanomina(amount))
-						},
-						signSdkTransaction(signer)
+				sendTransaction: useCompletedSdkTransaction,
+				createTransaction: async (feeNanomina) =>
+					toCompletedSdkTransaction(
+						await bridge.submitWithdrawal(
+							{ sender: publicKey, fee: Number(feeNanomina) },
+							{
+								recipient: recipientPublicKey,
+								amount: UInt64.from(minaStringToNanomina(amount))
+							},
+							signSdkTransaction(signer)
+						)
 					)
 			})
 			return normalizeTxResult({ action: "submit", direction: "withdrawal", route, result, wait })
@@ -362,10 +372,13 @@ export const createBridgeAdapter = ({
 		async finalizeWithdrawal({ account, wait }) {
 			const bridge = await getBridge(route, verbose)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
-			const result = await sendWithFeeRetries<SignedTransactionResult>({
+			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
-				sendTransaction: sendSerializedTransaction,
-				createTransaction: () => bridge.finalizeWithdrawal(publicKey, signSdkTransaction(signer))
+				sendTransaction: useCompletedSdkTransaction,
+				createTransaction: async () =>
+					toCompletedSdkTransaction(
+						await bridge.finalizeWithdrawal(publicKey, signSdkTransaction(signer))
+					)
 			})
 			return normalizeTxResult({
 				action: "finalize",

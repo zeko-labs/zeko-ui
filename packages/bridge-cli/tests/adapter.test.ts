@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest"
 import { MAX_FEE_RETRIES, sendWithFeeRetries } from "../src/core/adapter"
 
 describe("adapter fee retries", () => {
+	it("accepts SDK operations that already executed and returned a hash", async () => {
+		const result = await sendWithFeeRetries({
+			initialFeeNanomina: 100n,
+			createTransaction: async () => ({ hash: "5Jexecuted" }),
+			sendTransaction: async (transaction) => transaction
+		})
+
+		expect(result).toEqual({ hash: "5Jexecuted" })
+	})
+
 	it("doubles the fee on low-fee send failures until the transaction succeeds", async () => {
 		const seenFees: bigint[] = []
 		let attempts = 0

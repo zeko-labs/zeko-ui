@@ -171,3 +171,4 @@
 - T171 | done | sdk-changeset-and-sign-machine-cleanup | done/T171-sdk-changeset-and-sign-machine-cleanup.md
 - T172 | done | fix-bridge-ui-dev-console-errors | done/T172-fix-bridge-ui-dev-console-errors.md
 - T173 | done | normalize-sdk-executable-transactions | done/T173-normalize-sdk-executable-transactions.md
+- T174 | in-progress | validate-cli-deposit-on-alphanet | in-progress/T174-validate-cli-deposit-on-alphanet.md
