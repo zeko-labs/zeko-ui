@@ -8,6 +8,49 @@ const { act, logger } = createLogger("[SIGN]", { metrics: true })
 const DUMMY_FEE_PAYER_AUTHORIZATION =
 	"7mWxjLYgbJUkZNcGouvhVj5tJ8yu9hoexb9ntvPK8t5LHqzmrL6QJjjKtf5SgmxB4QWkDw7qoMMbbNGtHVpsbJHPyTy2EzRQ"
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null
+
+const isZkappCommand = (value: unknown): value is ZkappCommand => {
+	if (!isRecord(value)) return false
+	const feePayer = value.feePayer
+	if (!isRecord(feePayer)) return false
+	const body = feePayer.body
+	if (!isRecord(body)) return false
+	return typeof body.fee === "string" && typeof body.publicKey === "string"
+}
+
+const parseZkappCommand = (transaction: string): ZkappCommand | null => {
+	try {
+		const parsed = JSON.parse(transaction) as unknown
+		return isZkappCommand(parsed) ? parsed : null
+	} catch {
+		return null
+	}
+}
+
+const normalizeWalletTransaction = (transaction: string): string => {
+	const originalTransaction = parseZkappCommand(transaction)
+	if (!originalTransaction) return transaction
+
+	logger.info({ originalTransaction })
+
+	if (originalTransaction.feePayer.body.fee !== "0") {
+		return transaction
+	}
+
+	return JSON.stringify({
+		...originalTransaction,
+		feePayer: {
+			...originalTransaction.feePayer,
+			body: {
+				...originalTransaction.feePayer.body,
+				fee: "1"
+			}
+		}
+	})
+}
+
 type SignMachineInput = {
 	transaction: string
 	user: string
@@ -37,18 +80,13 @@ const signZkappTransaction = async ({
 	transaction,
 	user
 }: SignMachineInput): Promise<ZkappCommand> => {
-	const originalTransaction = JSON.parse(transaction) as ZkappCommand
-	logger.info({ originalTransaction })
-
-	if (originalTransaction.feePayer.body.fee === "0") {
-		originalTransaction.feePayer.body.fee = "1"
-	}
+	const walletTransaction = normalizeWalletTransaction(transaction)
 
 	let result: Awaited<ReturnType<typeof window.mina.sendTransaction>>
 	try {
 		result = await window.mina.sendTransaction({
 			onlySign: true,
-			transaction: JSON.stringify(originalTransaction)
+			transaction: walletTransaction
 		})
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error)

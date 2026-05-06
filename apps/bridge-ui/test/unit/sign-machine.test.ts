@@ -50,6 +50,45 @@ describe("signMachine", () => {
 		vi.unstubAllGlobals()
 	})
 
+	it("passes opaque executable transaction strings to the wallet unchanged", async () => {
+		const user = "B62qtest-user"
+		const transaction = "7mX8vFnToS4pXmBkyDWPwiDUAJHAbaeB1jnNfBAPMAKuKvamaE3kpG6ekiy8ZP6"
+		const signedCommand = {
+			accountUpdates: [],
+			feePayer: {
+				authorization: "",
+				body: {
+					fee: "1",
+					publicKey: user
+				}
+			},
+			memo: ""
+		} as unknown as ZkappCommand
+		const sendTransaction = vi.fn(async () => ({
+			signedData: JSON.stringify({ zkappCommand: signedCommand })
+		}))
+		vi.stubGlobal("mina", { sendTransaction })
+
+		const actor = createActor(signMachine, {
+			input: {
+				transaction,
+				user
+			}
+		})
+
+		actor.start()
+		const output = await toPromise(actor)
+
+		expect(output).toEqual({ signedTransaction: signedCommand })
+		expect(sendTransaction).toHaveBeenCalledWith({
+			onlySign: true,
+			transaction
+		})
+
+		actor.stop()
+		vi.unstubAllGlobals()
+	})
+
 	it("can complete an SDK signature request after signing", async () => {
 		const user = "B62qtest-user"
 		const signedCommand = {
