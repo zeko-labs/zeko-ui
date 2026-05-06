@@ -1086,7 +1086,7 @@ export class Bridge {
 
 		this.setL1()
 		await refreshCache(depositParams.deposit.recipient)
-		await refreshCache(depositParams.deposit.recipient, TokenId.derive(outerHolder))
+		await refreshCache(depositParams.deposit.recipient, TokenId.derive(this.outerTokenOwner))
 		await refreshCache(this.outerTokenOwner)
 		await refreshCache(outerHolder)
 
@@ -1569,7 +1569,7 @@ export class Bridge {
 
 		this.setL1()
 		await refreshCache(withdrawalParams.withdrawal.recipient)
-		await refreshCache(withdrawalParams.withdrawal.recipient, TokenId.derive(outerHolder))
+		await refreshCache(withdrawalParams.withdrawal.recipient, TokenId.derive(this.outerTokenOwner))
 		await refreshCache(this.outerTokenOwner)
 		await refreshCache(outerHolder)
 
