@@ -3,6 +3,13 @@ import { assign, createActor, fromPromise, setup, waitFor } from "xstate"
 import { toUserFriendlyMessage } from "../../app/errors"
 import { bridgeOperationMachine } from "../../machines/bridgeOperation"
 
+const unsignedTransaction = ({ fee, user }: { fee: number; user: string }) =>
+	JSON.stringify({
+		accountUpdates: [],
+		feePayer: { authorization: "", body: { fee: String(fee), publicKey: user } },
+		memo: ""
+	})
+
 vi.mock("../../app/service-worker/notificationList", () => ({
 	finalizeNotification: vi.fn(async () => {})
 }))
@@ -291,6 +298,66 @@ describe("bridgeOperationMachine", () => {
 		expect(bridge.getSnapshot().context.events).toContainEqual({
 			type: "CompleteOperation",
 			id: actor.id
+		})
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("passes cloneable worker payloads when finalizing a deposit", async () => {
+		const user = "B62test"
+		const signedCommand = {
+			accountUpdates: [],
+			feePayer: { authorization: "", body: { fee: "1000000000", publicKey: user } },
+			memo: ""
+		}
+		vi.stubGlobal("mina", {
+			sendTransaction: vi.fn(async () => ({
+				signedData: JSON.stringify({ zkappCommand: signedCommand })
+			}))
+		})
+
+		const finalizeDeposit = vi.fn(async (input) => {
+			expect(() => structuredClone(input)).not.toThrow()
+			expect(input).not.toHaveProperty("bridge")
+			expect(input).not.toHaveProperty("wallet")
+			return {
+				requestId: "request-finalize-deposit",
+				transaction: unsignedTransaction({ fee: 1000000000, user })
+			}
+		})
+		const bridge = createBridgeActor({
+			finalizeDeposit,
+			completeSdkSignature: vi.fn(async () => "5JfinalizeDepositHash")
+		})
+		const wallet = createWalletActor("zeko:testnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(bridgeOperationMachine, {
+			input: {
+				bridge: bridge as never,
+				wallet: wallet as never,
+				source: "mina:devnet",
+				destination: "zeko:testnet",
+				direction: "deposit",
+				amount: "1"
+			}
+		})
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+		actor.send({ type: "CanFinalize" })
+		actor.send({ type: "Finalize" })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("BRIDGE_OPERATION_COMPLETED"))
+
+		expect(finalizeDeposit).toHaveBeenCalledWith({
+			l1: "mina:devnet",
+			l2: "zeko:testnet",
+			user,
+			feeNanomina: 1 * 10e8
 		})
 
 		actor.stop()

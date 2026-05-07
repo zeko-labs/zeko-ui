@@ -41,6 +41,10 @@ const bridgeParameters = ({
 	return { id, bridge, wallet, user, l1, l2, source, destination, direction }
 }
 
+const workerParameters = ({ user, l1, l2 }: BridgeOperationContext) => {
+	return { user, l1, l2 }
+}
+
 const addError =
 	(error: Error) =>
 	({
@@ -170,7 +174,7 @@ const createSdkSignature = (
 	key: TransactionKey,
 	feeNanomina: number
 ) => {
-	const params = bridgeParameters(context)
+	const params = workerParameters(context)
 	switch (key) {
 		case "submitDeposit":
 			return worker(context.bridge).submitDeposit({
