@@ -109,12 +109,15 @@ const signZkappTransaction = async ({
 }
 
 export type Result = { hash: string; url: ReturnType<typeof createExplorerUrl> }
+export type TransactionStage = "create" | "sign" | "complete"
 
 export type TransactionMachineInput = {
 	id: string
+	key: string
 	user: string
 	network: Networks
 	initialFeeNanomina?: number
+	reportStage?: (stage: TransactionStage) => void
 	createSdkSignature: (input: { feeNanomina: number }) => Promise<SdkSignatureRequest>
 	completeSdkSignature: (input: {
 		requestId: string
@@ -148,6 +151,12 @@ const rejectCurrentSdkSignature = ({
 	const error = event.error instanceof Error ? event.error : new Error(String(event.error))
 	void context.rejectSdkSignature({ requestId: context.request.requestId, message: error.message })
 }
+
+const reportTransactionStage =
+	(stage: TransactionStage) =>
+	({ context }: { context: TransactionMachineContext }) => {
+		context.reportStage?.(stage)
+	}
 
 export const transactionMachine = setup({
 	types: {
@@ -206,6 +215,7 @@ export const transactionMachine = setup({
 	},
 	states: {
 		CREATE_REQUEST: {
+			entry: reportTransactionStage("create"),
 			invoke: {
 				src: "createSdkSignature",
 				input: ({ context }) => ({
@@ -224,6 +234,7 @@ export const transactionMachine = setup({
 			}
 		},
 		SIGN: {
+			entry: reportTransactionStage("sign"),
 			invoke: {
 				src: "signTransaction",
 				input: ({ context }) => {
@@ -241,6 +252,7 @@ export const transactionMachine = setup({
 			}
 		},
 		COMPLETE: {
+			entry: reportTransactionStage("complete"),
 			invoke: {
 				src: "completeSdkSignature",
 				input: ({ context }) => {

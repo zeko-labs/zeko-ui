@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { assign, createActor, fromPromise, setup, waitFor } from "xstate"
+import { assign, createActor, fromCallback, fromPromise, setup, waitFor } from "xstate"
 import { toUserFriendlyMessage } from "../../app/errors"
 import { bridgeOperationMachine } from "../../machines/bridgeOperation"
 
@@ -139,6 +139,8 @@ describe("bridgeOperationMachine", () => {
 				user: "B62test",
 				network: "mina:devnet"
 			})
+			expect(input.reportStage).toEqual(expect.any(Function))
+			input.reportStage("complete")
 			return {
 				result: {
 					hash: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc",
@@ -179,6 +181,10 @@ describe("bridgeOperationMachine", () => {
 		expect(actor.getSnapshot().context.transactions.submitDeposit?.result).toEqual({
 			hash: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc",
 			url: "https://minascan.io/devnet/tx/5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
+		})
+		expect(actor.getSnapshot().context.transactionStage).toEqual({
+			key: "submitDeposit",
+			stage: "complete"
 		})
 
 		actor.stop()
@@ -291,6 +297,57 @@ describe("bridgeOperationMachine", () => {
 		expect(bridge.getSnapshot().context.events).toContainEqual({
 			type: "CompleteOperation",
 			id: actor.id
+		})
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("tracks the active child transaction stage for operation messages", async () => {
+		const bridge = createBridgeActor()
+		const wallet = createWalletActor("zeko:testnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(
+			bridgeOperationMachine.provide({
+				actors: {
+					transactionMachine: fromCallback(({ sendBack }) => {
+						sendBack({
+							type: "TransactionStage",
+							key: "finalizeDeposit",
+							stage: "complete"
+						})
+						return () => {}
+					})
+				}
+			}),
+			{
+				input: {
+					bridge: bridge as never,
+					wallet: wallet as never,
+					source: "mina:devnet",
+					destination: "zeko:testnet",
+					direction: "deposit",
+					amount: "1"
+				}
+			}
+		)
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+		actor.send({ type: "CanFinalize" })
+		actor.send({ type: "Finalize" })
+
+		await waitFor(actor, (snapshot) => snapshot.matches({ FINALIZE_DEPOSIT: "transaction" }))
+		await Promise.resolve()
+
+		expect(
+			(actor.getSnapshot().context as { transactionStage?: unknown }).transactionStage
+		).toEqual({
+			key: "finalizeDeposit",
+			stage: "complete"
 		})
 
 		actor.stop()

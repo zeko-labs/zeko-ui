@@ -30,14 +30,17 @@ describe("transactionMachine", () => {
 			transaction: unsignedTransaction({ fee: feeNanomina, user })
 		}))
 		const completeSdkSignature = vi.fn(async () => "5JtransactionHash")
+		const reportStage = vi.fn()
 		vi.stubGlobal("mina", { sendTransaction })
 
 		const actor = createActor(transactionMachine, {
 			input: {
 				id: "operation-1",
+				key: "submitDeposit",
 				user,
 				network: "mina:devnet",
 				initialFeeNanomina: 100,
+				reportStage,
 				createSdkSignature,
 				completeSdkSignature
 			}
@@ -55,6 +58,9 @@ describe("transactionMachine", () => {
 			requestId: "request-100",
 			signedTransaction: signedCommand
 		})
+		expect(reportStage).toHaveBeenNthCalledWith(1, "create")
+		expect(reportStage).toHaveBeenNthCalledWith(2, "sign")
+		expect(reportStage).toHaveBeenNthCalledWith(3, "complete")
 		expect(output.result).toEqual({
 			hash: "5JtransactionHash",
 			url: "https://minascan.io/devnet/tx/5JtransactionHash"
@@ -81,6 +87,7 @@ describe("transactionMachine", () => {
 		const actor = createActor(transactionMachine, {
 			input: {
 				id: "operation-1",
+				key: "submitDeposit",
 				user,
 				network: "mina:devnet",
 				initialFeeNanomina: 100,
@@ -106,6 +113,7 @@ describe("transactionMachine", () => {
 		const actor = createActor(transactionMachine, {
 			input: {
 				id: "operation-1",
+				key: "submitDeposit",
 				user,
 				network: "mina:devnet",
 				createSdkSignature: async () => ({
