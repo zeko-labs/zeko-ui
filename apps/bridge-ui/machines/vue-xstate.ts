@@ -1,5 +1,13 @@
 //TODO: Move this to the SDK or xstate https://github.com/statelyai/xstate/pull/5382
-import { effectScope, getCurrentScope, isRef, onScopeDispose, type Ref, shallowRef } from "vue"
+import {
+	effectScope,
+	getCurrentScope,
+	isRef,
+	onScopeDispose,
+	type Ref,
+	shallowRef,
+	watch
+} from "vue"
 import type {
 	Actor,
 	ActorOptions,
@@ -82,8 +90,12 @@ export function useSelector<
 		}
 	}
 
-	if (actorRefRef.value) {
-		sub = actorRefRef.value.subscribe({
+	const subscribe = (actorRef: TActor) => {
+		sub?.unsubscribe()
+		updateSelectedIfChanged(selector(actorRef?.getSnapshot()))
+
+		if (!actorRef) return
+		sub = actorRef.subscribe({
 			next: (emitted) => {
 				updateSelectedIfChanged(selector(emitted))
 			},
@@ -92,8 +104,11 @@ export function useSelector<
 		})
 	}
 
+	const stopWatchingActorRef = watch(actorRefRef, subscribe, { immediate: true })
+
 	if (getCurrentScope()) {
 		onScopeDispose(() => {
+			stopWatchingActorRef()
 			sub?.unsubscribe()
 		})
 	}

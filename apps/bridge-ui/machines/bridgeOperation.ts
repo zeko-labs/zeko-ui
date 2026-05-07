@@ -22,8 +22,7 @@ import {
 	DEFAULT_TRANSACTION_FEE_NANOMINA,
 	type Result,
 	transactionMachine,
-	type TransactionMachineInput,
-	type TransactionStage
+	type TransactionMachineInput
 } from "./transaction"
 
 const { act, logger, measure } = createLogger("[BRIDGE OPERATION]", { metrics: true })
@@ -93,7 +92,6 @@ type Direction = "deposit" | "withdrawal"
 
 type WalletTransaction = { transaction: string; result: Result | null } | null
 type TransactionKey = keyof BridgeOperationContext["transactions"]
-type ActiveTransactionStage = { key: TransactionKey; stage: TransactionStage }
 
 type BridgeOperationEvents =
 	| { type: "SetCurrentNetwork"; network: Networks }
@@ -108,7 +106,6 @@ type BridgeOperationEvents =
 	| { type: "TerminalError"; error: Error }
 	| { type: "Finalize" }
 	| { type: "Cancel" }
-	| { type: "TransactionStage"; key: TransactionKey; stage: TransactionStage }
 	| { type: "Destroy" }
 
 export interface BridgeOperationContext {
@@ -133,7 +130,6 @@ export interface BridgeOperationContext {
 		submitWithdrawal: WalletTransaction
 		finalizeWithdrawal: WalletTransaction
 	}
-	transactionStage: ActiveTransactionStage | null
 	returnTo: ReturnTo
 	changeNetworkTo: Networks
 	canCancel: boolean
@@ -200,15 +196,13 @@ const createSdkSignature = (
 
 const transactionInput = (
 	context: BridgeOperationContext,
-	key: TransactionKey,
-	self: ActorRef<Snapshot<unknown>, BridgeOperationEvents>
+	key: TransactionKey
 ): TransactionMachineInput => ({
 	id: context.id,
 	key,
 	user: context.user,
 	network: currentNetwork(context),
 	initialFeeNanomina: initialTransactionFeeNanomina(key),
-	reportStage: (stage) => self.send({ type: "TransactionStage", key, stage }),
 	createSdkSignature: ({ feeNanomina }) => createSdkSignature(context, key, feeNanomina),
 	completeSdkSignature: ({ requestId, signedTransaction }) =>
 		worker(context.bridge).completeSdkSignature({
@@ -352,7 +346,6 @@ export const bridgeOperationMachine = setup({
 			submitWithdrawal: null,
 			finalizeWithdrawal: null
 		},
-		transactionStage: null,
 		canCancel: false,
 		l1: source.includes("mina") ? source : destination,
 		l2: source.includes("zeko") ? source : destination
@@ -376,14 +369,6 @@ export const bridgeOperationMachine = setup({
 						)
 					}
 				}
-			})
-		},
-		TransactionStage: {
-			actions: assign({
-				transactionStage: ({ event }) => ({
-					key: event.key,
-					stage: event.stage
-				})
 			})
 		}
 	},
@@ -522,8 +507,9 @@ export const bridgeOperationMachine = setup({
 					tags: ["loading"],
 					meta: { step: 0 },
 					invoke: {
+						id: "transaction",
 						src: "transactionMachine",
-						input: ({ context, self }) => transactionInput(context, "submitDeposit", self),
+						input: ({ context }) => transactionInput(context, "submitDeposit"),
 						onDone: {
 							target: "done",
 							actions: assign(({ context, event }) =>
@@ -618,8 +604,9 @@ export const bridgeOperationMachine = setup({
 					tags: ["loading"],
 					meta: { step: 2 },
 					invoke: {
+						id: "transaction",
 						src: "transactionMachine",
-						input: ({ context, self }) => transactionInput(context, "finalizeDeposit", self),
+						input: ({ context }) => transactionInput(context, "finalizeDeposit"),
 						onDone: {
 							target: "done",
 							actions: assign(({ context, event }) =>
@@ -654,8 +641,9 @@ export const bridgeOperationMachine = setup({
 					tags: ["loading"],
 					meta: { step: 1 },
 					invoke: {
+						id: "transaction",
 						src: "transactionMachine",
-						input: ({ context, self }) => transactionInput(context, "cancelDeposit", self),
+						input: ({ context }) => transactionInput(context, "cancelDeposit"),
 						onDone: {
 							target: "done",
 							actions: assign(({ context, event }) =>
@@ -700,8 +688,9 @@ export const bridgeOperationMachine = setup({
 					tags: ["loading"],
 					meta: { step: 0 },
 					invoke: {
+						id: "transaction",
 						src: "transactionMachine",
-						input: ({ context, self }) => transactionInput(context, "submitWithdrawal", self),
+						input: ({ context }) => transactionInput(context, "submitWithdrawal"),
 						onDone: {
 							target: "done",
 							actions: assign(({ context, event }) =>
@@ -776,8 +765,9 @@ export const bridgeOperationMachine = setup({
 					tags: ["loading"],
 					meta: { step: 2 },
 					invoke: {
+						id: "transaction",
 						src: "transactionMachine",
-						input: ({ context, self }) => transactionInput(context, "finalizeWithdrawal", self),
+						input: ({ context }) => transactionInput(context, "finalizeWithdrawal"),
 						onDone: {
 							target: "done",
 							actions: assign(({ context, event }) =>

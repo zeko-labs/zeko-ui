@@ -8,12 +8,20 @@ import {
 	statusFromState
 } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import type { transactionMachine } from "~~/machines/transaction"
 import { useSelector } from "~~/machines/vue-xstate"
 
 const { operation } = defineProps<{
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 }>()
 const machine = useSelector(operation, (state) => state)
+const transactionActor = computed(
+	() =>
+		machine.value.children.transaction as
+			| ActorRefFromLogic<typeof transactionMachine>
+			| undefined
+)
+const transaction = useSelector(transactionActor, (state) => state)
 
 const machineStep = computed(() => {
 	// Special case for `WAITING_FOR_NETWORK` state
@@ -51,8 +59,8 @@ const cancelling = computed(
 const transactionIsComplete = (
 	key: keyof typeof machine.value.context.transactions
 ) =>
-	machine.value.context.transactionStage?.key === key &&
-	machine.value.context.transactionStage.stage === "complete"
+	transactionActor.value?.getSnapshot().context.key === key &&
+	transaction.value?.matches("COMPLETE") === true
 const isLoading = computed(() => machine.value.hasTag("loading"))
 const hasCTA = computed(() => machine.value.hasTag("cta"))
 
