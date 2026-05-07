@@ -63,4 +63,3 @@ intentional before changing instrumentation.
 - `apps/bridge-ui/app/plugins/sentry.client.ts`
 - `apps/bridge-ui/machines/bridge.ts`
 - `apps/bridge-ui/machines/bridgeOperation.ts`
-- `apps/bridge-ui/machines/transaction.ts`

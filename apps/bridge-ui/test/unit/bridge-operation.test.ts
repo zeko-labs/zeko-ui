@@ -133,7 +133,7 @@ describe("bridgeOperationMachine", () => {
 		wallet.stop()
 	})
 
-	it("signs and completes an SDK deposit request before send-and-confirm", async () => {
+	it("signs and completes an SDK deposit request without the legacy send path", async () => {
 		const signedTransaction = {
 			accountUpdates: [],
 			feePayer: { authorization: "", body: { fee: "1", publicKey: "B62test" } },
@@ -142,9 +142,6 @@ describe("bridgeOperationMachine", () => {
 		const submitDeposit = vi.fn(async () => ({
 			requestId: "sdk-signature-request-1",
 			transaction: "sdk-unsigned-transaction"
-		}))
-		const transactionMachine = vi.fn(async () => ({
-			result: { hash: "HASH", url: "https://zekoscan.io/testnet/tx/HASH" }
 		}))
 		const bridge = createBridgeActor()
 		const wallet = createWalletActor("mina:devnet")
@@ -166,7 +163,6 @@ describe("bridgeOperationMachine", () => {
 							transaction: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
 						}
 					}),
-					transactionMachine: fromPromise(transactionMachine),
 					pendingDeposit: fromPromise(async () => undefined)
 				}
 			}),
@@ -188,7 +184,6 @@ describe("bridgeOperationMachine", () => {
 		await waitFor(actor, (snapshot) => snapshot.matches("PENDING_DEPOSIT"))
 
 		expect(submitDeposit).toHaveBeenCalledOnce()
-		expect(transactionMachine).not.toHaveBeenCalled()
 		expect(actor.getSnapshot().context.transactions.submitDeposit?.result).toEqual({
 			hash: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc",
 			url: "https://minascan.io/devnet/tx/5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"

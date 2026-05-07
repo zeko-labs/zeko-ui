@@ -22,7 +22,6 @@ import { createExplorerUrl } from "./helpers"
 import { sendMetric } from "./metrics"
 import type { ActionState, SdkSignatureRequest } from "./operations.worker"
 import { signMachine } from "./sign"
-import { type Result, transactionMachine } from "./transaction"
 
 const { act, logger, measure } = createLogger("[BRIDGE OPERATION]", { metrics: true })
 
@@ -56,24 +55,6 @@ const addError =
 		return { errors: [...context.errors, e] }
 	}
 
-const addToContext = ({
-	context,
-	key,
-	transaction,
-	result
-}: {
-	context: BridgeOperationContext
-	key: keyof BridgeOperationContext["transactions"]
-	transaction?: string
-	result?: Result
-}) =>
-	produce(context, (draft) => {
-		if (transaction) draft.transactions[key] = { transaction, result: null }
-		if (result && draft.transactions[key]) {
-			draft.transactions[key].result = result
-		}
-	})
-
 const addSdkSignatureToContext = ({
 	context,
 	key,
@@ -93,16 +74,6 @@ const resultFromHash = (context: BridgeOperationContext, hash: string): Result =
 	hash,
 	url: createExplorerUrl({ network: currentNetwork(context), hash })
 })
-
-const sendAndConfirm = (context: BridgeOperationContext, key: TransactionKey) => {
-	if (!context.transactions[key]) throw new Error(`No ${key} transaction found`)
-	return {
-		id: context.id,
-		transaction: context.transactions[key].transaction,
-		wallet: context.wallet,
-		worker: worker(context.bridge)
-	}
-}
 
 const getSdkSignature = (context: BridgeOperationContext, key: TransactionKey) => {
 	const signature = context.sdkSignatures[key]
@@ -182,6 +153,7 @@ export type ReturnTo =
 
 type Direction = "deposit" | "withdrawal"
 
+type Result = { hash: string; url: ReturnType<typeof createExplorerUrl> }
 type WalletTransaction = { transaction: string; result: Result | null } | null
 type TransactionKey = keyof BridgeOperationContext["transactions"]
 type PendingSdkSignature = SdkSignatureRequest
@@ -271,7 +243,6 @@ export const bridgeOperationMachine = setup({
 		meta: {} as { step: number }
 	},
 	actors: {
-		transactionMachine,
 		signMachine,
 		submitDeposit: fromPromise<
 			SdkSignatureRequest,
@@ -710,31 +681,6 @@ export const bridgeOperationMachine = setup({
 						}
 					}
 				},
-				send_and_confirm: {
-					tags: ["loading"],
-					meta: { step: 0 },
-					invoke: {
-						src: "transactionMachine",
-						input: ({ context }) => ({ ...sendAndConfirm(context, "submitDeposit") }),
-						onDone: {
-							target: "done",
-							actions: assign(({ context, event }) =>
-								addToContext({
-									context,
-									key: "submitDeposit",
-									result: event.output.result
-								})
-							)
-						},
-						onError: {
-							target: "#bridgeOperation.FAILED",
-							actions: sendTo(
-								({ context }) => context.bridge,
-								({ self }) => ({ type: "TerminateOperation", id: self.id })
-							)
-						}
-					}
-				},
 				done: {
 					type: "final",
 					meta: { step: 1 },
@@ -870,32 +816,6 @@ export const bridgeOperationMachine = setup({
 						]
 					}
 				},
-				send_and_confirm: {
-					tags: ["loading"],
-					meta: { step: 3 },
-					invoke: {
-						src: "transactionMachine",
-						input: ({ context }) => ({ ...sendAndConfirm(context, "finalizeDeposit") }),
-						onDone: {
-							target: "done",
-							actions: assign(({ context, event }) =>
-								addToContext({
-									context,
-									key: "finalizeDeposit",
-									result: event.output.result
-								})
-							)
-						},
-						onError: {
-							target: "#bridgeOperation.FAILED",
-							// target: "send_and_confirm",
-							// reenter: true,
-							actions: assign(({ context, event }) => ({
-								errors: [...context.errors, event.error as Error]
-							}))
-						}
-					}
-				},
 				done: { type: "final" }
 			},
 			onDone: { target: "BRIDGE_OPERATION_COMPLETED" }
@@ -965,30 +885,6 @@ export const bridgeOperationMachine = setup({
 								]
 							}
 						]
-					}
-				},
-				send_and_confirm: {
-					tags: ["loading"],
-					meta: { step: 1 },
-					invoke: {
-						src: "transactionMachine",
-						input: ({ context }) => ({ ...sendAndConfirm(context, "cancelDeposit") }),
-						onDone: {
-							target: "done",
-							actions: assign(({ context, event }) =>
-								addToContext({
-									context,
-									key: "cancelDeposit",
-									result: event.output.result
-								})
-							)
-						},
-						onError: {
-							target: "#bridgeOperation.FAILED",
-							actions: assign(({ context, event }) => ({
-								errors: [...context.errors, event.error as Error]
-							}))
-						}
 					}
 				},
 				done: {
@@ -1062,31 +958,6 @@ export const bridgeOperationMachine = setup({
 									({ self }) => ({ type: "TerminateOperation", id: self.id })
 								)
 							]
-						}
-					}
-				},
-				send_and_confirm: {
-					tags: ["loading"],
-					meta: { step: 1 },
-					invoke: {
-						src: "transactionMachine",
-						input: ({ context }) => ({ ...sendAndConfirm(context, "submitWithdrawal") }),
-						onDone: {
-							target: "done",
-							actions: assign(({ context, event }) =>
-								addToContext({
-									context,
-									key: "submitWithdrawal",
-									result: event.output.result
-								})
-							)
-						},
-						onError: {
-							target: "#bridgeOperation.FAILED",
-							actions: sendTo(
-								({ context }) => context.bridge,
-								({ self }) => ({ type: "TerminateOperation", id: self.id })
-							)
 						}
 					}
 				},
@@ -1223,30 +1094,6 @@ export const bridgeOperationMachine = setup({
 								]
 							}
 						]
-					}
-				},
-				send_and_confirm: {
-					tags: ["loading"],
-					meta: { step: 3 },
-					invoke: {
-						src: "transactionMachine",
-						input: ({ context }) => ({ ...sendAndConfirm(context, "finalizeWithdrawal") }),
-						onDone: {
-							target: "done",
-							actions: assign(({ context, event }) =>
-								addToContext({
-									context,
-									key: "finalizeWithdrawal",
-									result: event.output.result
-								})
-							)
-						},
-						onError: {
-							target: "#bridgeOperation.FAILED",
-							actions: assign(({ context, event }) => ({
-								errors: [...context.errors, event.error as Error]
-							}))
-						}
 					}
 				},
 				done: {

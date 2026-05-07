@@ -32,10 +32,9 @@ await act("operationName", async ({ stop }) => {
 
 Used for specific events not wrapped by `act()`:
 
-| Location             | Action     | Purpose                                  |
-| -------------------- | ---------- | ---------------------------------------- |
-| `bridgeOperation.ts` | `started`  | Tracks when user starts bridge operation |
-| `transaction.ts`     | `feeRetry` | Tracks fee-too-low retry attempts        |
+| Location             | Action    | Purpose                                  |
+| -------------------- | --------- | ---------------------------------------- |
+| `bridgeOperation.ts` | `started` | Tracks when user starts bridge operation |
 
 ## Categories
 
@@ -43,7 +42,7 @@ Used for specific events not wrapped by `act()`:
 | ------------------ | --------------------------- | --------------------------------- |
 | `bridge`           | `[BRIDGE]` logger           | Bridge machine operations         |
 | `bridge_operation` | `[BRIDGE_OPERATION]` logger | Individual bridge operation steps |
-| `transaction`      | `[TRANSACTION]` logger      | Transaction signing/sending       |
+| `sign`             | `[SIGN]` logger             | Wallet signing                    |
 
 ## Tracked Operations
 
@@ -59,13 +58,9 @@ Used for specific events not wrapped by `act()`:
 - `finalizeWithdrawal` — Finalizes withdrawal on L1
 - `cancelDeposit` — Cancels a pending deposit
 
-### Transaction (`transaction`)
+### Sign (`sign`)
 
-- `findUnconfirmedTransaction` — Checks for resumable transactions
 - `signTransaction` — Wallet signature request
-- `sendSignedTransaction` — Broadcasts to network
-- `waitForTransaction` — Waits for confirmation
-- `feeRetry` — Fee-too-low retry (includes retry count and multiplier)
 
 ## Schema
 
@@ -73,7 +68,7 @@ Defined in `metrics.schema.ts`:
 
 ```ts
 {
-  category: "bridge" | "bridge_operation" | "transaction"
+  category: "bridge" | "bridge_operation" | "sign"
   action: string (max 100 chars)
   label?: string (max 500 chars) — error messages or metadata
   durationMs?: number — operation duration
