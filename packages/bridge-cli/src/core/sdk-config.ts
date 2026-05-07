@@ -6,7 +6,8 @@ const TESTNET_CONFIG = {
 	l1ArchiveUrl: "https://devnet-archive-node-api.gcp.o1test.net/",
 	zekoUrl: "https://alphanet.zeko.io/graphql",
 	zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql",
-	actionsApi: "http://api.actions.zeko.io/graphql",
+	// actionsApi: "http://api.actions.zeko.io/graphql",
+	actionsApi: "http://localhost:9100/graphql",
 	l1Network: "testnet",
 	l2Network: "testnet"
 } as const satisfies Config

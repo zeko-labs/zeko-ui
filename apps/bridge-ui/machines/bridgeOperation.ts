@@ -108,6 +108,7 @@ type BridgeOperationEvents =
 	| { type: "CanFinalize" }
 	| { type: "CanCancel" }
 	| { type: "TerminalError"; error: Error }
+	| { type: "AlreadyFinalised" }
 	| { type: "Finalize" }
 	| { type: "Cancel" }
 	| { type: "Destroy" }
@@ -126,6 +127,7 @@ export interface BridgeOperationContext {
 	timeoutSlots?: number
 	paused: boolean
 	transaction?: ActionState["transaction"]
+	completedAtMs?: number
 	errors: Error[]
 	transactions: {
 		submitDeposit: WalletTransaction
@@ -283,6 +285,7 @@ export const bridgeOperationMachine = setup({
 					logger.info("Checking withdrawal status...")
 					const result = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
 					if (result.available) sendBack({ type: "CanFinalize" })
+					else if (result.status === "alreadyFinalised") sendBack({ type: "AlreadyFinalised" })
 					else if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
 				} catch (error) {
 					logger.error(error instanceof Error ? error : new Error(String(error)))
@@ -342,6 +345,7 @@ export const bridgeOperationMachine = setup({
 		returnTo: false,
 		paused: false,
 		transaction,
+		completedAtMs: undefined,
 		errors: [],
 		transactions: {
 			submitDeposit: null,
@@ -750,6 +754,7 @@ export const bridgeOperationMachine = setup({
 			},
 			on: {
 				CanFinalize: { target: "TO_FINALIZE" },
+				AlreadyFinalised: { target: "BRIDGE_OPERATION_COMPLETED" },
 				TerminalError: {
 					target: "FAILED",
 					actions: [
@@ -820,6 +825,9 @@ export const bridgeOperationMachine = setup({
 		BRIDGE_OPERATION_COMPLETED: {
 			meta: { step: 4 },
 			entry: [
+				assign({
+					completedAtMs: ({ context }) => context.completedAtMs ?? Date.now()
+				}),
 				({ context }) => {
 					sendMetric(
 						{

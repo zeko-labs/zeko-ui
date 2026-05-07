@@ -10,8 +10,10 @@ const urls = {
 			l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql"
 		},
 		testnet: {
-			l1Url: "https://gateway.mina.devnet.zeko.io",
-			l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io"
+			l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
+			l1ArchiveUrl: "https://devnet-archive-node-api.gcp.o1test.net/"
+			// l1Url: "https://gateway.mina.devnet.zeko.io",
+			// l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io"
 		}
 	},
 	l2: {
@@ -24,14 +26,17 @@ const urls = {
 			zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql"
 		},
 		testnet: {
-			zekoUrl: "https://testnet.zeko.io/graphql",
-			zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql"
+			zekoUrl: "https://alphanet.zeko.io/graphql",
+			zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql"
+			// zekoUrl: "https://testnet.zeko.io/graphql",
+			// zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql"
 		}
 	},
 	actions: {
 		//TODO: Configure for mainnet
 		mainnet: "https://api.actions.zeko.io/graphql",
-		testnet: "https://api.actions.zeko.io/graphql"
+		testnet: "http://localhost:9100/graphql"
+		// testnet: "https://api.actions.zeko.io/graphql"
 	}
 } as const
 

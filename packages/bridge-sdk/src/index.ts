@@ -46,6 +46,7 @@ import type {
 	OuterCommit,
 	OuterWitness,
 	Withdrawal,
+	WithdrawalFinalizationResult,
 	WithdrawalWithState,
 	WitnessFetchResult
 } from "./types"
@@ -1506,13 +1507,27 @@ export class Bridge {
 		const findMatchingWithdrawal = (action: InnerWitness) =>
 			withdrawals.find(({ aux }) => aux.equals(action.aux).toBoolean())
 
+		const matchingWitnesses = withdrawalWitnesses.filter((witness) =>
+			Boolean(findMatchingWithdrawal(witness))
+		)
+		const alreadyFinalisedWitnessCount = matchingWitnesses.filter((witness) =>
+			prevNextWithdrawal.greaterThan(UInt32.from(witness.index)).toBoolean()
+		).length
+		const unfinalisedWitnessCount = matchingWitnesses.length - alreadyFinalisedWitnessCount
 		let insufficientFirstWithdrawalReason: string | null = null
+		let alreadyFinalisedCount = 0
+		let unfinalisedMatchCount = 0
 		const myWithdrawalIndex = innerActions.findIndex((action) => {
 			const matchingWithdrawal = findMatchingWithdrawal(action)
 
 			if (!matchingWithdrawal) return false
 
-			if (prevNextWithdrawal.greaterThan(UInt32.from(action.index)).toBoolean()) return false
+			if (prevNextWithdrawal.greaterThan(UInt32.from(action.index)).toBoolean()) {
+				alreadyFinalisedCount++
+				return false
+			}
+
+			unfinalisedMatchCount++
 
 			if (action.index === 3) return false
 
@@ -1544,9 +1559,19 @@ export class Bridge {
 				innerActionIndices: innerActions.map((action) => action.index)
 			})
 			if (insufficientFirstWithdrawalReason) {
-				return { ok: false, msg: insufficientFirstWithdrawalReason }
+				return { ok: false, msg: insufficientFirstWithdrawalReason, status: "blocked" }
 			}
-			return { ok: false, msg: "No my withdrawal index found" }
+			if (
+				(alreadyFinalisedCount > 0 && unfinalisedMatchCount === 0) ||
+				(alreadyFinalisedWitnessCount > 0 && unfinalisedWitnessCount === 0)
+			) {
+				return {
+					ok: false,
+					msg: "Withdrawal already finalised",
+					status: "alreadyFinalised"
+				}
+			}
+			return { ok: false, msg: "No my withdrawal index found", status: "waiting" }
 		}
 
 		const myWithdrawal = innerActions[myWithdrawalIndex]
@@ -1784,15 +1809,14 @@ export class Bridge {
 		return await this.pollQuery(data.request.key)
 	}
 
-	public async canFinalizeWithdrawal(
-		pk: PublicKey
-	): Promise<{ available: boolean; reason: string | null }> {
+	public async canFinalizeWithdrawal(pk: PublicKey): Promise<WithdrawalFinalizationResult> {
 		this.debug("canFinalizeWithdrawal start", { pk: pk.toBase58() })
 		const result = await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner)
 		this.debug("canFinalizeWithdrawal result", result)
 		return {
 			available: result.ok,
-			reason: result.ok ? null : result.msg
+			reason: result.ok ? null : result.msg,
+			status: result.ok ? "available" : result.status ?? "waiting"
 		}
 	}
 

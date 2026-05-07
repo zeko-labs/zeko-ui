@@ -2,7 +2,11 @@ import "reflect-metadata"
 import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
-import type { DepositWithState, WithdrawalWithState } from "@zeko-labs/bridge-sdk"
+import type {
+	DepositWithState,
+	WithdrawalFinalizationResult,
+	WithdrawalWithState
+} from "@zeko-labs/bridge-sdk"
 import { Bridge } from "@zeko-labs/bridge-sdk"
 import * as Comlink from "comlink"
 import { PublicKey, Transaction, type Transaction as MinaTransaction, UInt32, UInt64 } from "o1js"
@@ -287,7 +291,7 @@ async function canFinalizeWithdrawal({
 	l1,
 	l2,
 	user
-}: L1L2 & { user: string }): Promise<{ available: boolean; reason: string | null }> {
+}: L1L2 & { user: string }): Promise<WithdrawalFinalizationResult> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
 	return bridge.canFinalizeWithdrawal(recipient)

@@ -364,4 +364,89 @@ describe("bridgeOperationMachine", () => {
 		bridge.stop()
 		wallet.stop()
 	})
+
+	it("completes a pending withdrawal when the SDK reports it is already finalised", async () => {
+		const bridge = createBridgeActor({
+			canFinalizeWithdrawal: vi.fn(async () => ({
+				available: false,
+				reason: "Withdrawal already finalised",
+				status: "alreadyFinalised"
+			}))
+		})
+		const wallet = createWalletActor("zeko:testnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(bridgeOperationMachine, {
+			input: {
+				bridge: bridge as never,
+				wallet: wallet as never,
+				source: "zeko:testnet",
+				destination: "mina:devnet",
+				direction: "withdrawal",
+				amount: "1"
+			}
+		})
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("BRIDGE_OPERATION_COMPLETED"))
+
+		expect(bridge.getSnapshot().context.events).toContainEqual({
+			type: "CompleteOperation",
+			id: actor.id
+		})
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("records a local completion timestamp when withdrawal finalization completes", async () => {
+		vi.useFakeTimers()
+		vi.setSystemTime(new Date("2026-05-07T18:30:00.000Z"))
+
+		const bridge = createBridgeActor()
+		const wallet = createWalletActor("mina:devnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(
+			bridgeOperationMachine.provide({
+				actors: {
+					transactionMachine: fromPromise(async () => ({
+						result: {
+							hash: "5JfinalizeWithdrawalHash",
+							url: "https://minascan.io/devnet/tx/5JfinalizeWithdrawalHash"
+						}
+					}))
+				}
+			}),
+			{
+				input: {
+					bridge: bridge as never,
+					wallet: wallet as never,
+					source: "zeko:testnet",
+					destination: "mina:devnet",
+					direction: "withdrawal",
+					amount: "1"
+				}
+			}
+		)
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+		actor.send({ type: "CanFinalize" })
+		actor.send({ type: "Finalize" })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("BRIDGE_OPERATION_COMPLETED"))
+
+		expect(actor.getSnapshot().context.completedAtMs).toBe(1778178600000)
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+		vi.useRealTimers()
+	})
 })
