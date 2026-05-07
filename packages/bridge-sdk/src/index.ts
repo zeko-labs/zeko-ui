@@ -345,6 +345,10 @@ export class Bridge {
 		}))
 	}
 
+	private minimumFirstWithdrawalAmount(): UInt64 {
+		return this.l1AccountCreationFee.add(this.bridgeProofFee)
+	}
+
 	private async pollQuery(key: string, pollPeriod = 5_000): Promise<string> {
 		console.debug("pollQuery", key)
 
@@ -1294,7 +1298,7 @@ export class Bridge {
 		await ensureFirstWithdrawalAmountCanCreateHelper({
 			amount,
 			recipient,
-			accountCreationFee: this.l1AccountCreationFee,
+			accountCreationFee: this.minimumFirstWithdrawalAmount(),
 			helperAccountExists: async () =>
 				(await this.fetchAccount(
 					this.l1Client,
@@ -1502,6 +1506,7 @@ export class Bridge {
 		const findMatchingWithdrawal = (action: InnerWitness) =>
 			withdrawals.find(({ aux }) => aux.equals(action.aux).toBoolean())
 
+		let insufficientFirstWithdrawalReason: string | null = null
 		const myWithdrawalIndex = innerActions.findIndex((action) => {
 			const matchingWithdrawal = findMatchingWithdrawal(action)
 
@@ -1510,6 +1515,21 @@ export class Bridge {
 			if (prevNextWithdrawal.greaterThan(UInt32.from(action.index)).toBoolean()) return false
 
 			if (action.index === 3) return false
+
+			try {
+				assertFirstWithdrawalAmountCanCreateHelper({
+					helperAccountExists: helperAccount !== null,
+					amount: matchingWithdrawal.withdrawal.amount,
+					recipient: matchingWithdrawal.withdrawal.recipient,
+					accountCreationFee: this.minimumFirstWithdrawalAmount()
+				})
+			} catch (e) {
+				if (e instanceof InsufficientFirstWithdrawalAmountError) {
+					insufficientFirstWithdrawalReason ??= e.message
+					return false
+				}
+				throw e
+			}
 
 			return true
 		})
@@ -1523,6 +1543,9 @@ export class Bridge {
 				prevNextWithdrawal: prevNextWithdrawal.toString(),
 				innerActionIndices: innerActions.map((action) => action.index)
 			})
+			if (insufficientFirstWithdrawalReason) {
+				return { ok: false, msg: insufficientFirstWithdrawalReason }
+			}
 			return { ok: false, msg: "No my withdrawal index found" }
 		}
 
@@ -1540,7 +1563,7 @@ export class Bridge {
 				helperAccountExists: helperAccount !== null,
 				amount: withdrawalParams.withdrawal.amount,
 				recipient: withdrawalParams.withdrawal.recipient,
-				accountCreationFee: this.l1AccountCreationFee
+				accountCreationFee: this.minimumFirstWithdrawalAmount()
 			})
 		} catch (e) {
 			if (e instanceof InsufficientFirstWithdrawalAmountError) {

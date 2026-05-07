@@ -177,5 +177,6 @@
 - T177 | done | fix-visible-bridge-ui-completed-current-card | done/T177-fix-visible-bridge-ui-completed-current-card.md
 - T178 | done | fix-sdk-deposit-status-finalised-state | done/T178-fix-sdk-deposit-status-finalised-state.md
 - T179 | done | show-queued-bridge-operation-hash | done/T179-show-queued-bridge-operation-hash.md
+- T180 | done | fix-withdrawal-cli-finalization | done/T180-fix-withdrawal-cli-finalization.md
 - T181 | done | remove-obsolete-bridge-transaction-machine | done/T181-remove-obsolete-bridge-transaction-machine.md
 - T182 | done | rebuild-sdk-transaction-machine | done/T182-rebuild-sdk-transaction-machine.md

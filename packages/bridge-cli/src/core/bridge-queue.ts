@@ -60,6 +60,10 @@ export const findDepositTarget = ({
 		return statuses.find((status) => status.index === targetIndex)
 	}
 
+	if (getSubmitHash(session) !== undefined) {
+		return undefined
+	}
+
 	const matchingRecipientStatuses = statuses.filter(
 		(status) =>
 			status.amount === session.amount &&
@@ -68,10 +72,6 @@ export const findDepositTarget = ({
 
 	if (matchingRecipientStatuses.length === 1) {
 		return matchingRecipientStatuses[0]
-	}
-
-	if (getSubmitHash(session) !== undefined) {
-		return undefined
 	}
 
 	return statuses.length === 1 ? statuses[0] : undefined
@@ -89,6 +89,10 @@ export const findWithdrawalTarget = ({
 		return statuses.find((status) => status.index === targetIndex)
 	}
 
+	if (getSubmitHash(session) !== undefined) {
+		return undefined
+	}
+
 	const matchingRecipientStatuses = statuses.filter(
 		(status) =>
 			status.amount === session.amount &&
@@ -97,10 +101,6 @@ export const findWithdrawalTarget = ({
 
 	if (matchingRecipientStatuses.length === 1) {
 		return matchingRecipientStatuses[0]
-	}
-
-	if (getSubmitHash(session) !== undefined) {
-		return undefined
 	}
 
 	return statuses.length === 1 ? statuses[0] : undefined
