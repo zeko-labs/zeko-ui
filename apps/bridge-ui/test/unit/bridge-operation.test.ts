@@ -33,6 +33,11 @@ const createBridgeActor = (worker: object = {}) =>
 					actions: assign({
 						events: ({ context, event }) => [...context.events, event]
 					})
+				},
+				CompleteOperation: {
+					actions: assign({
+						events: ({ context, event }) => [...context.events, event]
+					})
 				}
 			}
 		})
@@ -251,6 +256,65 @@ describe("bridgeOperationMachine", () => {
 		actor.send({ type: "Resume", paused: false })
 
 		await waitFor(actor, (snapshot) => snapshot.matches("TO_FINALIZE"))
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("notifies the parent immediately when SDK deposit finalization completes", async () => {
+		const bridge = createBridgeActor()
+		const wallet = createWalletActor("zeko:testnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(
+			bridgeOperationMachine.provide({
+				actors: {
+					finalizeDeposit: fromPromise(async () => ({
+						requestId: "finalize-request",
+						transaction: JSON.stringify({
+							accountUpdates: [],
+							feePayer: { authorization: "", body: { fee: "1", publicKey: "B62test" } },
+							memo: ""
+						})
+					})),
+					signMachine: fromPromise(async () => ({
+						signedTransaction: {
+							accountUpdates: [],
+							feePayer: { authorization: "", body: { fee: "1", publicKey: "B62test" } },
+							memo: ""
+						} as unknown as ZkappCommand,
+						transaction: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
+					}))
+				}
+			}),
+			{
+				input: {
+					bridge: bridge as never,
+					wallet: wallet as never,
+					source: "mina:devnet",
+					destination: "zeko:testnet",
+					direction: "deposit",
+					amount: "1"
+				}
+			}
+		)
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+		actor.send({ type: "CanFinalize" })
+		actor.send({ type: "Finalize" })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("BRIDGE_OPERATION_COMPLETED"))
+
+		expect(
+			bridge.getSnapshot().context.events.some((event) => event.type === "CompleteOperation")
+		).toBe(true)
+		expect(bridge.getSnapshot().context.events).toContainEqual({
+			type: "CompleteOperation",
+			id: actor.id
+		})
 
 		actor.stop()
 		bridge.stop()

@@ -333,6 +333,28 @@ describe("deposit cancellation state", () => {
 		expect(result.deposits[0]?.cancellable).toBe(false)
 	})
 
+	it("marks finalised deposits by local action position when outer indices are absolute", async () => {
+		const bridge = buildBridge()
+		const deposit = buildDeposit({ amount: 20, timeout: 8 })
+		const depositWitness = buildDepositWitness(deposit, 8951, { lower: 0, upper: 1 })
+		const lastCommit = buildCommit({ index: 8952, lower: 7, upper: 7, synchronizedLength: 8952 })
+
+		mockDepositState({
+			bridge,
+			deposits: [deposit],
+			depositWitnesses: [depositWitness],
+			outerActions: [depositWitness, lastCommit],
+			lastCommit,
+			nextDeposit: 8952,
+			syncedLength: 8952
+		})
+
+		const result = await bridge.fetchDepositsWithStates(recipient)
+
+		expect(result.deposits[0]?.finalised).toBe(true)
+		expect(result.deposits[0]?.cancellable).toBe(false)
+	})
+
 	it("keeps the older required deposit as the finalization target", async () => {
 		const bridge = buildBridge()
 		const bridgeInternals = bridge as unknown as {

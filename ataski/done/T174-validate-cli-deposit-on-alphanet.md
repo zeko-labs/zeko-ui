@@ -1,11 +1,11 @@
 ---
 id: T174
 title: "Validate CLI deposit on alphanet"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-05-06T22:08:11Z
-updated_at: 2026-05-06T22:49:00Z
+updated_at: 2026-05-07T00:35:00Z
 ---
 
 ## Requirements
@@ -41,4 +41,9 @@ updated_at: 2026-05-06T22:49:00Z
   - Submit hash: `5JtkFvSKHBecRJaSezyRERSB6j9wHqVDkgdMu7AmjLP5hS6R7cJR`.
   - The CLI no longer attempts to parse the SDK result hash as JSON.
   - The deposit is visible through the local actions API at outer index `8951`.
-  - Resume is currently waiting on protocol finalization state. At L1 slot `809255`, the local indexed commits that can synchronize the deposit have upper slot ranges `809267` through `809274`, so `canFinalizeDeposit` still reports `Earlier deposit must be resolved first`.
+  - `moon run bridge-sdk:finalizeDeposit -f` finalized the deposit through the SDK example with hash `5Ju3XCjemWhkAt6q3nLHa7rT4edRSNgqLawL6WyNivcd9TX5rz6T`.
+- Live CLI end-to-end validation with `HOME=/tmp/zeko-bridge-cli-home-pr167-cli-proof` and the local actions API:
+  - Operation `3e5d0824-24c1-4642-9ea5-8a14e2be1226` submitted a fresh 1 MINA deposit with hash `5JuJxEo9pnepuYJaLPQrZ2myb443YzFjkQY6AyrCwm4ygRR8MnJ8`.
+  - The CLI resumed the operation after rebuild, waited through protocol finality, and finalized with hash `5Ju1uxanDuuZH7VpzvHYw6VCk2jEhYFvbDFt2ZZdSnzy265Nh87w`.
+  - Final JSON status returned `status: "completed"`, `phase: "completed"`, `target_index: 8959`, `pending_ahead: 0`, and `next_action: "completed"`.
+  - `moon run bridge-sdk:fetchOuterActions -f` confirmed both live deposits report `finalised: true`; `moon run bridge-sdk:canFinalizeDeposit -f` returned `available: false` / `No finalizable deposit found`.

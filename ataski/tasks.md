@@ -171,5 +171,9 @@
 - T171 | done | sdk-changeset-and-sign-machine-cleanup | done/T171-sdk-changeset-and-sign-machine-cleanup.md
 - T172 | done | fix-bridge-ui-dev-console-errors | done/T172-fix-bridge-ui-dev-console-errors.md
 - T173 | done | normalize-sdk-executable-transactions | done/T173-normalize-sdk-executable-transactions.md
-- T174 | in-progress | validate-cli-deposit-on-alphanet | in-progress/T174-validate-cli-deposit-on-alphanet.md
+- T174 | done | validate-cli-deposit-on-alphanet | done/T174-validate-cli-deposit-on-alphanet.md
 - T175 | done | let-sdk-drive-cli-deposit-resolution | done/T175-let-sdk-drive-cli-deposit-resolution.md
+- T176 | done | fix-bridge-ui-post-finalize-transition | done/T176-fix-bridge-ui-post-finalize-transition.md
+- T177 | done | fix-visible-bridge-ui-completed-current-card | done/T177-fix-visible-bridge-ui-completed-current-card.md
+- T178 | done | fix-sdk-deposit-status-finalised-state | done/T178-fix-sdk-deposit-status-finalised-state.md
+- T179 | done | show-queued-bridge-operation-hash | done/T179-show-queued-bridge-operation-hash.md

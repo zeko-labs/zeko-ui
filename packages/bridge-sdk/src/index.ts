@@ -908,9 +908,19 @@ export class Bridge {
 		witness: OuterWitness
 	): DepositWithState {
 		const depositParams = this.getDepositParamsForWitness(context, witness)
+		const depositActionIndex = context.outerActions.findIndex(
+			(action) =>
+				action.type === "witness" &&
+				action.index === witness.index &&
+				action.aux.equals(witness.aux).toBoolean()
+		)
+		const acceptanceActions =
+			depositActionIndex === -1
+				? context.outerActions
+				: context.outerActions.slice(depositActionIndex + 1)
 
 		const { isRejected, isAccepted } = checkAccepted(
-			context.outerActions.slice(witness.index + 1),
+			acceptanceActions,
 			UInt32.from(witness.index),
 			depositParams.deposit
 		)

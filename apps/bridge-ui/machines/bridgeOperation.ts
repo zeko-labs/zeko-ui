@@ -1262,34 +1262,36 @@ export const bridgeOperationMachine = setup({
 		},
 		BRIDGE_OPERATION_COMPLETED: {
 			meta: { step: 4 },
-			entry: ({ context }) => {
-				sendMetric(
-					{
-						category: "bridge_operation",
-						action: "completed",
-						source: context.source,
-						destination: context.destination,
-						label: context.direction
-					},
-					context.user
+			entry: [
+				({ context }) => {
+					sendMetric(
+						{
+							category: "bridge_operation",
+							action: "completed",
+							source: context.source,
+							destination: context.destination,
+							label: context.direction
+						},
+						context.user
+					)
+				},
+				sendTo(
+					({ context }) => context.bridge,
+					({ context }) => ({ type: "CompleteOperation", id: context.id })
 				)
-			},
+			],
 			after: { exitTimeout: "BRIDGE_OPERATION_DONE" }
 		},
 		BRIDGE_OPERATION_DONE: {
 			meta: { step: 4 },
-			type: "final",
-			entry: sendTo(
-				({ context }) => context.bridge,
-				({ self }) => ({ type: "CompleteOperation", id: self.id })
-			)
+			type: "final"
 		},
 		BRIDGE_OPERATION_CANCELLED_DONE: {
 			meta: { step: 1 },
 			type: "final",
 			entry: sendTo(
 				({ context }) => context.bridge,
-				({ self }) => ({ type: "CompleteOperation", id: self.id })
+				({ context }) => ({ type: "CompleteOperation", id: context.id })
 			)
 		},
 		BRIDGE_OPERATION_DONE_NOOP: {
