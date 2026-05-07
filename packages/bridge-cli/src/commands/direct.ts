@@ -1,6 +1,8 @@
 import { defineCommand, type CommandDef } from "citty"
+import { PrivateKey } from "o1js"
 import type { BridgeAdapter } from "../core/adapter"
 import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
+import { resolveSignerKeys } from "../core/signer"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
 import { color, icon, keyValue, section } from "../core/terminal"
 import type {
@@ -69,6 +71,14 @@ const parseString = (value: unknown, flag: string): string => {
 const parseOptionalString = (value: unknown): string | undefined =>
 	typeof value === "string" && value.length > 0 ? value : undefined
 
+const deriveAccount = (from: ChainRef, explicit?: string): string => {
+	if (explicit) return explicit
+
+	const keys = resolveSignerKeys()
+	const secret = from.startsWith("zeko:") ? keys.zeko : keys.mina
+	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
+}
+
 const parseOptionalNumber = (value: unknown): number | undefined =>
 	typeof value === "string" && value.length > 0 ? Number(value) : undefined
 
@@ -96,11 +106,14 @@ const readDepositActionArgs = (args: Record<string, unknown>): DepositActionArgs
 	wait: parseBoolean(args.wait, true)
 })
 
-const readDepositStatusArgs = (args: Record<string, unknown>): DepositStatusArgs => ({
-	...readRouteArgs(args),
-	account: parseString(args.account, "--account"),
-	latest: parseBoolean(args.latest, true)
-})
+const readDepositStatusArgs = (args: Record<string, unknown>): DepositStatusArgs => {
+	const routeArgs = readRouteArgs(args)
+	return {
+		...routeArgs,
+		account: deriveAccount(routeArgs.from, parseOptionalString(args.account)),
+		latest: parseBoolean(args.latest, true)
+	}
+}
 
 const readWithdrawalSubmitArgs = (args: Record<string, unknown>): WithdrawalSubmitArgs => ({
 	...readRouteArgs(args),
@@ -115,11 +128,14 @@ const readWithdrawalActionArgs = (args: Record<string, unknown>): WithdrawalActi
 	wait: parseBoolean(args.wait, true)
 })
 
-const readWithdrawalStatusArgs = (args: Record<string, unknown>): WithdrawalStatusArgs => ({
-	...readRouteArgs(args),
-	account: parseString(args.account, "--account"),
-	latest: parseBoolean(args.latest, true)
-})
+const readWithdrawalStatusArgs = (args: Record<string, unknown>): WithdrawalStatusArgs => {
+	const routeArgs = readRouteArgs(args)
+	return {
+		...routeArgs,
+		account: deriveAccount(routeArgs.from, parseOptionalString(args.account)),
+		latest: parseBoolean(args.latest, true)
+	}
+}
 
 const defaultCreateAdapter = async ({
 	from,
@@ -389,7 +405,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 				},
 				args: {
 					...routeArgs({ from: "mina:testnet", to: "zeko:testnet" }),
-					account: { type: "string", required: true },
+					account: { type: "string", required: false },
 					latest: { type: "boolean", default: true }
 				},
 				async run({ args }) {
@@ -463,7 +479,7 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 				},
 				args: {
 					...routeArgs({ from: "zeko:testnet", to: "mina:testnet" }),
-					account: { type: "string", required: true },
+					account: { type: "string", required: false },
 					latest: { type: "boolean", default: true }
 				},
 				async run({ args }) {
