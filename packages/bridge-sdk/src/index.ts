@@ -101,6 +101,29 @@ type DepositStateContext = {
 	outerActions: OuterAction[]
 }
 
+type RetryableTransactionOptions = {
+	attempts?: number
+	feeNanomina?: number | bigint
+}
+
+const DEFAULT_BRIDGE_FEE_NANOMINA = 1 * 10e8
+
+const normalizeRetryableTransactionOptions = (
+	options: number | RetryableTransactionOptions | undefined
+) => {
+	if (typeof options === "number") {
+		return {
+			attempts: options,
+			fee: UInt64.from(DEFAULT_BRIDGE_FEE_NANOMINA)
+		}
+	}
+
+	return {
+		attempts: options?.attempts ?? 5,
+		fee: UInt64.from(options?.feeNanomina ?? DEFAULT_BRIDGE_FEE_NANOMINA)
+	}
+}
+
 export class Bridge {
 	private debug(message: string, details?: unknown): void {
 		if (!this.config.verbose) return
@@ -539,8 +562,9 @@ export class Bridge {
 	public async finalizeDeposit(
 		pk: PublicKey,
 		signTxn: (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>,
-		attempts = 5
+		options?: number | RetryableTransactionOptions
 	): Promise<string> {
+		const { attempts, fee } = normalizeRetryableTransactionOptions(options)
 		const prove = async (attempts: number) => {
 			if (attempts === 0) throw new Error("Failed to prove deposit finalization")
 
@@ -559,7 +583,7 @@ export class Bridge {
 			const txn = await Mina.transaction(
 				{
 					sender: this.sequencerPk,
-					fee: UInt64.from(1 * 10e8)
+					fee
 				},
 				async () => {
 					const helperAccount = AccountUpdate.createSigned(
@@ -1083,8 +1107,10 @@ export class Bridge {
 	public async cancelDeposit(
 		pk: PublicKey,
 		signTxn: (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>,
-		_outerHolder?: PublicKey
+		_outerHolder?: PublicKey,
+		options?: RetryableTransactionOptions
 	): Promise<string> {
+		const { fee } = normalizeRetryableTransactionOptions(options)
 		this.debug("cancelDeposit start", { pk: pk.toBase58() })
 		const outerHolder = _outerHolder ?? this.outerHolders[0]
 		const witnesses = await this.fetchDepositCancellationWitnesses(pk, outerHolder)
@@ -1104,7 +1130,7 @@ export class Bridge {
 		const txn = await Mina.transaction(
 			{
 				sender: this.sequencerPk,
-				fee: UInt64.from(1 * 10e8)
+				fee
 			},
 			async () => {
 				const helperAccount = AccountUpdate.createSigned(
@@ -1568,8 +1594,10 @@ export class Bridge {
 	public async finalizeWithdrawal(
 		pk: PublicKey,
 		signTxn: (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>,
-		_outerHolder?: PublicKey
+		_outerHolder?: PublicKey,
+		options?: RetryableTransactionOptions
 	): Promise<string> {
+		const { fee } = normalizeRetryableTransactionOptions(options)
 		const outerHolder = _outerHolder ?? this.outerHolders[0]
 		const witnesses = await this.fetchWithdrawalFinalizationWitnesses(pk, outerHolder)
 
@@ -1589,7 +1617,7 @@ export class Bridge {
 		const txn = await Mina.transaction(
 			{
 				sender: this.sequencerPk,
-				fee: UInt64.from(1 * 10e8)
+				fee
 			},
 			async () => {
 				const helperAccount = AccountUpdate.createSigned(

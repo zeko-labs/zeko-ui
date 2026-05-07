@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest"
 import { MetricEventSchema } from "../../machines/metrics.schema"
 
 describe("MetricEventSchema", () => {
-	it("accepts sign machine metrics", () => {
+	it("accepts transaction machine metrics", () => {
 		const result = v.safeParse(MetricEventSchema, {
-			category: "sign",
+			category: "transaction",
 			action: "signTransaction",
 			durationMs: 10,
 			success: true,

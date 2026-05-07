@@ -1,4 +1,3 @@
-import type { ZkappCommand } from "@aurowallet/mina-provider"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { assign, createActor, fromPromise, setup, waitFor } from "xstate"
 import { toUserFriendlyMessage } from "../../app/errors"
@@ -98,7 +97,7 @@ describe("bridgeOperationMachine", () => {
 		const actor = createActor(
 			bridgeOperationMachine.provide({
 				actors: {
-					submitWithdrawal: fromPromise(async () => {
+					transactionMachine: fromPromise(async () => {
 						throw new Error(firstWithdrawalTooSmallMessage)
 					})
 				}
@@ -134,15 +133,19 @@ describe("bridgeOperationMachine", () => {
 	})
 
 	it("signs and completes an SDK deposit request without the legacy send path", async () => {
-		const signedTransaction = {
-			accountUpdates: [],
-			feePayer: { authorization: "", body: { fee: "1", publicKey: "B62test" } },
-			memo: ""
-		} as unknown as ZkappCommand
-		const submitDeposit = vi.fn(async () => ({
-			requestId: "sdk-signature-request-1",
-			transaction: "sdk-unsigned-transaction"
-		}))
+		const transactionMachine = vi.fn(async ({ input }) => {
+			expect(input).toMatchObject({
+				id: expect.any(String),
+				user: "B62test",
+				network: "mina:devnet"
+			})
+			return {
+				result: {
+					hash: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc",
+					url: "https://minascan.io/devnet/tx/5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
+				}
+			}
+		})
 		const bridge = createBridgeActor()
 		const wallet = createWalletActor("mina:devnet")
 		bridge.start()
@@ -151,18 +154,7 @@ describe("bridgeOperationMachine", () => {
 		const actor = createActor(
 			bridgeOperationMachine.provide({
 				actors: {
-					submitDeposit: fromPromise(submitDeposit),
-					signMachine: fromPromise(async ({ input }) => {
-						expect(input).toMatchObject({
-							transaction: "sdk-unsigned-transaction",
-							user: "B62test",
-							complete: { requestId: "sdk-signature-request-1" }
-						})
-						return {
-							signedTransaction,
-							transaction: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
-						}
-					}),
+					transactionMachine: fromPromise(transactionMachine),
 					pendingDeposit: fromPromise(async () => undefined)
 				}
 			}),
@@ -183,7 +175,7 @@ describe("bridgeOperationMachine", () => {
 
 		await waitFor(actor, (snapshot) => snapshot.matches("PENDING_DEPOSIT"))
 
-		expect(submitDeposit).toHaveBeenCalledOnce()
+		expect(transactionMachine).toHaveBeenCalledOnce()
 		expect(actor.getSnapshot().context.transactions.submitDeposit?.result).toEqual({
 			hash: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc",
 			url: "https://minascan.io/devnet/tx/5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
@@ -266,21 +258,11 @@ describe("bridgeOperationMachine", () => {
 		const actor = createActor(
 			bridgeOperationMachine.provide({
 				actors: {
-					finalizeDeposit: fromPromise(async () => ({
-						requestId: "finalize-request",
-						transaction: JSON.stringify({
-							accountUpdates: [],
-							feePayer: { authorization: "", body: { fee: "1", publicKey: "B62test" } },
-							memo: ""
-						})
-					})),
-					signMachine: fromPromise(async () => ({
-						signedTransaction: {
-							accountUpdates: [],
-							feePayer: { authorization: "", body: { fee: "1", publicKey: "B62test" } },
-							memo: ""
-						} as unknown as ZkappCommand,
-						transaction: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
+					transactionMachine: fromPromise(async () => ({
+						result: {
+							hash: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc",
+							url: "https://minascan.io/devnet/tx/5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
+						}
 					}))
 				}
 			}),

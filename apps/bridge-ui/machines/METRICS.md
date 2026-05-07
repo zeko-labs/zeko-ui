@@ -32,9 +32,10 @@ await act("operationName", async ({ stop }) => {
 
 Used for specific events not wrapped by `act()`:
 
-| Location             | Action    | Purpose                                  |
-| -------------------- | --------- | ---------------------------------------- |
-| `bridgeOperation.ts` | `started` | Tracks when user starts bridge operation |
+| Location             | Action     | Purpose                                  |
+| -------------------- | ---------- | ---------------------------------------- |
+| `bridgeOperation.ts` | `started`  | Tracks when user starts bridge operation |
+| `transaction.ts`     | `feeRetry` | Tracks low-fee retry attempts            |
 
 ## Categories
 
@@ -42,7 +43,7 @@ Used for specific events not wrapped by `act()`:
 | ------------------ | --------------------------- | --------------------------------- |
 | `bridge`           | `[BRIDGE]` logger           | Bridge machine operations         |
 | `bridge_operation` | `[BRIDGE_OPERATION]` logger | Individual bridge operation steps |
-| `sign`             | `[SIGN]` logger             | Wallet signing                    |
+| `transaction`      | `[TRANSACTION]` logger      | SDK transaction lifecycle         |
 
 ## Tracked Operations
 
@@ -58,9 +59,12 @@ Used for specific events not wrapped by `act()`:
 - `finalizeWithdrawal` — Finalizes withdrawal on L1
 - `cancelDeposit` — Cancels a pending deposit
 
-### Sign (`sign`)
+### Transaction (`transaction`)
 
+- `createSdkSignature` — Creates an SDK signature request
 - `signTransaction` — Wallet signature request
+- `completeSdkSignature` — Completes the SDK request with the signed transaction
+- `feeRetry` — Fee-too-low retry (includes retry count and fee)
 
 ## Schema
 
@@ -68,7 +72,7 @@ Defined in `metrics.schema.ts`:
 
 ```ts
 {
-  category: "bridge" | "bridge_operation" | "sign"
+  category: "bridge" | "bridge_operation" | "transaction"
   action: string (max 100 chars)
   label?: string (max 500 chars) — error messages or metadata
   durationMs?: number — operation duration

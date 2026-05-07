@@ -74,7 +74,7 @@ type CreateLoggerOptions = { metrics?: boolean }
 /**
  * Creates a prefixed logger with optional metric tracking.
  *
- * @param prefix - Logger prefix (e.g., "[BRIDGE]", "[SIGN]")
+ * @param prefix - Logger prefix (e.g., "[BRIDGE]", "[TRANSACTION]")
  * @param options.metrics - Enable automatic metric tracking via sendMetric()
  *
  * When metrics are enabled, the act() function automatically sends:

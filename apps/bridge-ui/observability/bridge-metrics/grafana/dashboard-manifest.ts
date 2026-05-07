@@ -73,6 +73,15 @@ export const dashboardPanels: DashboardPanel[] = [
 		gridPos: { h: 10, w: 12, x: 12, y: 26 }
 	},
 	{
+		id: 8,
+		title: "Fee retry trend",
+		description: "Hourly weighted fee retry events emitted by the transaction machine.",
+		panelType: "timeseries",
+		queryType: "timeSeriesQuery",
+		queryFile: "08_fee_retry_timeseries.sql",
+		gridPos: { h: 8, w: 12, x: 0, y: 36 }
+	},
+	{
 		id: 9,
 		title: "Routes by started events",
 		description: "Most frequently started bridge routes in the selected range.",
@@ -80,5 +89,14 @@ export const dashboardPanels: DashboardPanel[] = [
 		queryType: "table",
 		queryFile: "09_routes_by_started.sql",
 		gridPos: { h: 8, w: 12, x: 12, y: 36 }
+	},
+	{
+		id: 10,
+		title: "Transaction step health",
+		description: "Outcome and latency summary for transaction-machine steps.",
+		panelType: "table",
+		queryType: "table",
+		queryFile: "10_transaction_step_health.sql",
+		gridPos: { h: 10, w: 24, x: 0, y: 44 }
 	}
 ]

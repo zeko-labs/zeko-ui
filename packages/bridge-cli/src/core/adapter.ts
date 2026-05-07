@@ -319,9 +319,9 @@ export const createBridgeAdapter = ({
 			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
 				sendTransaction: useCompletedSdkTransaction,
-				createTransaction: async () =>
+				createTransaction: async (feeNanomina) =>
 					toCompletedSdkTransaction(
-						await bridge.finalizeDeposit(publicKey, signSdkTransaction(signer))
+						await bridge.finalizeDeposit(publicKey, signSdkTransaction(signer), { feeNanomina })
 					)
 			})
 			return normalizeTxResult({ action: "finalize", direction: "deposit", route, result, wait })
@@ -332,9 +332,11 @@ export const createBridgeAdapter = ({
 			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
 				sendTransaction: useCompletedSdkTransaction,
-				createTransaction: async () =>
+				createTransaction: async (feeNanomina) =>
 					toCompletedSdkTransaction(
-						await bridge.cancelDeposit(publicKey, signSdkTransaction(signer))
+						await bridge.cancelDeposit(publicKey, signSdkTransaction(signer), undefined, {
+							feeNanomina
+						})
 					)
 			})
 			return normalizeTxResult({ action: "cancel", direction: "deposit", route, result, wait })
@@ -375,9 +377,11 @@ export const createBridgeAdapter = ({
 			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
 				sendTransaction: useCompletedSdkTransaction,
-				createTransaction: async () =>
+				createTransaction: async (feeNanomina) =>
 					toCompletedSdkTransaction(
-						await bridge.finalizeWithdrawal(publicKey, signSdkTransaction(signer))
+						await bridge.finalizeWithdrawal(publicKey, signSdkTransaction(signer), undefined, {
+							feeNanomina
+						})
 					)
 			})
 			return normalizeTxResult({

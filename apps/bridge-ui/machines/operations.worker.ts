@@ -5,14 +5,7 @@ import * as Sentry from "@sentry/nuxt"
 import type { DepositWithState, WithdrawalWithState } from "@zeko-labs/bridge-sdk"
 import { Bridge } from "@zeko-labs/bridge-sdk"
 import * as Comlink from "comlink"
-import {
-	fetchTransactionStatus,
-	PublicKey,
-	Transaction,
-	type Transaction as MinaTransaction,
-	UInt32,
-	UInt64
-} from "o1js"
+import { PublicKey, Transaction, type Transaction as MinaTransaction, UInt32, UInt64 } from "o1js"
 import { getBridgeConfig } from "./helpers"
 import { normalizeOperationTimestamp } from "./operationTimestamps"
 
@@ -45,6 +38,7 @@ export type PendingOperations = {
 	withdrawals: ActionState[]
 }
 type L1L2 = { l1: Networks; l2: Networks }
+type FeeInput = { feeNanomina?: number }
 type SignSdkTransaction = (
 	transaction: MinaTransaction<boolean, false>
 ) => Promise<MinaTransaction<boolean, true>>
@@ -236,15 +230,17 @@ async function submitDeposit({
 	l2,
 	user,
 	amount,
-	timeoutSlots
+	timeoutSlots,
+	feeNanomina
 }: L1L2 & {
 	user: string
 	amount: string
 	timeoutSlots?: number
+	feeNanomina?: number
 }): Promise<SdkSignatureRequest> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
+	const feePayer = { sender: recipient, fee: feeNanomina ?? 0.1 * 10e8 }
 	const currentSlot = await bridge.fetchCurrentSlot()
 	const timeout = timeoutSlots ? currentSlot.add(UInt32.from(timeoutSlots)) : UInt32.MAXINT()
 	const submitDeposit = {
@@ -262,11 +258,12 @@ async function submitWithdrawal({
 	l1,
 	l2,
 	user,
-	amount
-}: L1L2 & { user: string; amount: string }): Promise<SdkSignatureRequest> {
+	amount,
+	feeNanomina
+}: L1L2 & { user: string; amount: string } & FeeInput): Promise<SdkSignatureRequest> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	const feePayer = { sender: recipient, fee: 0.1 * 10e8 }
+	const feePayer = { sender: recipient, fee: feeNanomina ?? 0.1 * 10e8 }
 	const submitWithdrawal = {
 		recipient,
 		amount: UInt64.from(Number(amount) * 10e8)
@@ -309,49 +306,40 @@ async function canCancelDeposit({
 async function cancelDeposit({
 	l1,
 	l2,
-	user
-}: L1L2 & { user: string }): Promise<SdkSignatureRequest> {
+	user,
+	feeNanomina
+}: L1L2 & { user: string } & FeeInput): Promise<SdkSignatureRequest> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
-	return requestSdkSignature((signTransaction) => bridge.cancelDeposit(recipient, signTransaction))
+	return requestSdkSignature((signTransaction) =>
+		bridge.cancelDeposit(recipient, signTransaction, undefined, { feeNanomina })
+	)
 }
 
 async function finalizeDeposit({
 	l1,
 	l2,
-	user
-}: L1L2 & { user: string }): Promise<SdkSignatureRequest> {
+	user,
+	feeNanomina
+}: L1L2 & { user: string } & FeeInput): Promise<SdkSignatureRequest> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
 	return requestSdkSignature((signTransaction) =>
-		bridge.finalizeDeposit(recipient, signTransaction)
+		bridge.finalizeDeposit(recipient, signTransaction, { feeNanomina })
 	)
 }
 
 async function finalizeWithdrawal({
 	l1,
 	l2,
-	user
-}: L1L2 & { user: string }): Promise<SdkSignatureRequest> {
+	user,
+	feeNanomina
+}: L1L2 & { user: string } & FeeInput): Promise<SdkSignatureRequest> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
 	return requestSdkSignature((signTransaction) =>
-		bridge.finalizeWithdrawal(recipient, signTransaction)
+		bridge.finalizeWithdrawal(recipient, signTransaction, undefined, { feeNanomina })
 	)
-}
-
-async function transactionStatus({ zkAppId, url }: { zkAppId: string; url?: string }) {
-	const result = await fetchTransactionStatus(zkAppId, url)
-	return result
-}
-
-async function sendZkAppCommand(zkappCommand: ZkappCommand) {
-	const sentTransaction = await Transaction.fromJSON(zkappCommand).send()
-	if (!sentTransaction.data)
-		throw new Error(
-			JSON.stringify({ message: "Transaction failed", errors: sentTransaction.errors })
-		)
-	return { hash: sentTransaction.hash, zkAppId: sentTransaction.data.sendZkapp.zkapp.id }
 }
 
 export const operations = {
@@ -365,9 +353,7 @@ export const operations = {
 	canFinalizeWithdrawal,
 	finalizeWithdrawal,
 	completeSdkSignature,
-	rejectSdkSignature,
-	transactionStatus,
-	sendZkAppCommand
+	rejectSdkSignature
 }
 
 console.info("Initializing Operation Worker: Sentry")

@@ -13,7 +13,7 @@ Use this as an investigation guide, not as a frozen list of known tuples.
   - `bridge / findPendingOperation / ...`
   - `bridge_operation / finalizeWithdrawal / ...`
   - `bridge_operation / submitDeposit / ...`
-  - `transaction / sendSignedTransaction / ...`
+  - `transaction / completeSdkSignature / ...`
   - `transaction / signTransaction / ...`
   - `app_root / vue-render / ...`
   - `app_root / window-error / ...`

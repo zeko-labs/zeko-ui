@@ -478,6 +478,87 @@
 			]
 		},
 		{
+			"id": 8,
+			"title": "Fee retry trend",
+			"description": "Hourly weighted fee retry events emitted by the transaction machine.",
+			"type": "timeseries",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 36
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"lineInterpolation": "linear",
+						"lineWidth": 2,
+						"pointSize": 3,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": true,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						}
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"calcs": ["lastNotNull"],
+					"displayMode": "table",
+					"placement": "bottom"
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Fee retry trend\n-- description: Hourly weighted volume of transaction fee retry events.\n-- default_window: 14d\nSELECT\n  toDateTime(intDiv(toUInt32(timestamp), 3600) * 3600) AS time,\n  SUM(_sample_interval) AS fee_retry_events\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\n  AND blob1 = 'transaction'\n  AND blob2 = 'feeRetry'\nGROUP BY time\nORDER BY time",
+					"format": "time_series",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
 			"id": 9,
 			"title": "Routes by started events",
 			"description": "Most frequently started bridge routes in the selected range.",
@@ -508,6 +589,60 @@
 					},
 					"refId": "A",
 					"query": "-- title: Routes by started events\n-- description: Weighted start volume by source, destination, and direction to identify the most-used bridge routes.\n-- default_window: 30d\nSELECT\n  blob4 AS source,\n  blob5 AS destination,\n  blob3 AS direction,\n  SUM(_sample_interval) AS started_events\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\n  AND blob1 = 'bridge_operation'\n  AND blob2 = 'started'\nGROUP BY source, destination, direction\nORDER BY started_events DESC",
+					"format": "table",
+					"editorMode": "sql",
+					"datasourceMode": "Datasource",
+					"extrapolate": false,
+					"rawQuery": "",
+					"adHocFilters": [],
+					"showHelp": false,
+					"showFormattedSQL": false,
+					"nullifySparse": false,
+					"dateTimeType": "DATETIME",
+					"dateTimeColDataType": "timestamp",
+					"dateColDataType": "",
+					"round": "0s",
+					"intervalFactor": 1,
+					"interval": "1m",
+					"database": "default",
+					"table": "",
+					"skip_comments": false,
+					"add_metadata": false,
+					"useWindowFuncForMacros": false
+				}
+			]
+		},
+		{
+			"id": 10,
+			"title": "Transaction step health",
+			"description": "Outcome and latency summary for transaction-machine steps.",
+			"type": "table",
+			"datasource": {
+				"type": "vertamedia-clickhouse-datasource",
+				"uid": "dfftad89t7pxcc"
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 24,
+				"x": 0,
+				"y": 44
+			},
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"options": {
+				"cellHeight": "sm",
+				"showHeader": true
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "vertamedia-clickhouse-datasource",
+						"uid": "dfftad89t7pxcc"
+					},
+					"refId": "A",
+					"query": "-- title: Transaction step health\n-- description: Weighted counts, success/failure totals, and average latency for transaction-machine steps.\n-- default_window: 7d\nSELECT\n  blob2 AS action,\n  SUM(_sample_interval) AS events,\n  sumIf(_sample_interval, double3 = 1.0) AS succeeded,\n  sumIf(_sample_interval, double3 = 0.0) AS failed,\n  if(\n    SUM(_sample_interval) = 0,\n    0.0,\n    SUM(double1 * _sample_interval) / SUM(_sample_interval)\n  ) AS avg_duration_ms\nFROM bridge_metrics\nWHERE $timeFilterByColumn(timestamp)\n  AND blob1 = 'transaction'\nGROUP BY action\nORDER BY events DESC",
 					"format": "table",
 					"editorMode": "sql",
 					"datasourceMode": "Datasource",
