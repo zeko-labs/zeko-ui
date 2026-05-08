@@ -10,4 +10,3 @@ WHERE {{time_filter:14d}}
   AND blob2 = 'feeRetry'
 GROUP BY time
 ORDER BY time
-

@@ -24,6 +24,9 @@ input AseWithoutLengthStmtInput {
 }
 
 input FinalizeWithdrawalInput {
+  helperAccountSignature: SignatureInput!
+  helperAccountNew: Boolean!
+  prevNonce: UInt32!
   withdrawalParams: WithdrawalParamsInput!
   prevNextWithdrawal: UInt32!
   withdrawalAse: AseWithLengthInput!
@@ -60,6 +63,9 @@ input AseWithLengthInput {
 }
 
 input FinalizeDepositInput {
+  helperAccountSignature: SignatureInput!
+  helperAccountNew: Boolean!
+  prevNonce: UInt32!
   prevNextDeposit: UInt32!
   checkAccepted: CheckAcceptedMinaInput!
   ase: AseWithLengthInput!
@@ -71,6 +77,14 @@ input WithdrawalParamsInput {
   children: String!
 }
 
+input WithdrawalRequestInput {
+  transferrer: BridgeTransferrerInput!
+  withdrawalParams: WithdrawalParamsInput!
+}
+
+"""A single pre-signed account update encoded as accountUpdates JSON"""
+scalar BridgeTransferrerInput
+
 input DepositParamsInput {
   timeout: Int!
   recipient: PublicKey!
@@ -80,6 +94,7 @@ input DepositParamsInput {
 }
 
 input DepositRequestInput {
+  transferrer: BridgeTransferrerInput!
   depositParams: DepositParamsInput!
 }
 
@@ -685,7 +700,7 @@ type mutation {
   proveDepositRequest(input: DepositRequestInput!): ProofKeyPayload!
 
   """Prove withdrawal request"""
-  proveWithdrawalRequest(input: WithdrawalParamsInput!): ProofKeyPayload!
+  proveWithdrawalRequest(input: WithdrawalRequestInput!): ProofKeyPayload!
 
   """Finalize a deposit"""
   finalizeDeposit(input: FinalizeDepositInput!): ProofKeyPayload!
@@ -770,10 +785,14 @@ type ZekoCircuitsConfig {
   holderAccountsL1: [PublicKey!]!
   holderAccountL2: PublicKey!
   helperTokenOwnerL1: PublicKey!
+  emergencyDaPublicKey: PublicKey!
   chainL1: String!
   chainL2: String!
   withdrawalDelay: Int!
   outerActionDelay: Int!
+  bridgeFeeRecipientL1: PublicKey!
+  bridgeFeeRecipientL2: PublicKey!
+  bridgeProofFee: Amount!
 }
 
 type StateHashes {
@@ -1136,8 +1155,8 @@ type query {
 """
   genesisConstants: GenesisConstants!
 
-  """Query proved forest in a JSON format"""
-  provedForest(key: String!): String
+  """Query proving result in a JSON format"""
+  provingResult(key: String!): String
 
   """Get current state of the rollup"""
   stateHashes: StateHashes

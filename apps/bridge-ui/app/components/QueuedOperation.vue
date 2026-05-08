@@ -32,10 +32,21 @@ const metadata = computed(() =>
 		transaction: machine.value.context.transaction
 	})
 )
+const transactionHash = computed(
+	() => machine.value.context.transaction?.hash ?? ""
+)
+const shortTransactionHash = computed(() => {
+	const hash = transactionHash.value
+	if (hash.length <= 18) return hash
+	return `${hash.slice(0, 10)}...${hash.slice(-6)}`
+})
 </script>
 <template>
   <div class="Wrapper">
     <div class="Top">
+      <div v-if="transactionHash" class="Hash" :title="transactionHash">
+        {{ shortTransactionHash }}
+      </div>
       <div class="Index">#{{ index + 1 }}</div>
     </div>
     <div class="Middle">
@@ -73,7 +84,19 @@ const metadata = computed(() =>
   }
   .Top {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    min-width: 15rem;
+    .Hash {
+      max-width: 12rem;
+      overflow: hidden;
+      color: var(--palette-gray-600);
+      font-family: monospace;
+      font-size: var(--typography_fluid-lexend-xs);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .Index {
       --size: 3ch;
       border-radius: 4rem;

@@ -47,6 +47,10 @@ const data = computed<BridgeOperationRow[]>(() =>
 				state.value.context.direction,
 				{ canCancel: state.value.context.canCancel }
 			)
+			const timestampMs =
+				state.value.context.transaction?.timestampMs ??
+				state.value.context.completedAtMs ??
+				null
 			return {
 				id,
 				operation,
@@ -57,10 +61,8 @@ const data = computed<BridgeOperationRow[]>(() =>
 				destination: state.value.context.destination,
 				amount: state.value.context.amount,
 				hash: state.value.context.transaction?.hash ?? "",
-				timestampMs: state.value.context.transaction?.timestampMs ?? null,
-				dateLabel: formatOperationDate(
-					state.value.context.transaction?.timestampMs ?? null
-				)
+				timestampMs,
+				dateLabel: formatOperationDate(timestampMs)
 			}
 		})
 		.toSorted((a, b) => {

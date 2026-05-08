@@ -1,62 +1,153 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
-import { type Networks, urls, type walletMachine } from "@lumina-dex/sdk"
-import type { Mina } from "o1js"
-import type { ActorRefFromLogic } from "xstate"
-import { assign, enqueueActions, fromPromise, setup } from "xstate"
+import type { Networks } from "@lumina-dex/sdk"
+import { assign, fromPromise, setup } from "xstate"
 import { toQuietIfWalletRejection } from "~/errors"
 import { createLogger } from "./debug"
-import { type HashDb, hashDb, type SavedTransaction } from "./helpers"
+import { createExplorerUrl } from "./helpers"
 import { sendMetric } from "./metrics"
-import type { OperationsWorker } from "./operations.worker"
+import type { SdkSignatureRequest } from "./operations.worker"
 
 const { act, logger } = createLogger("[TRANSACTION]", { metrics: true })
 
-const MAX_RETRIES = 5
+const DUMMY_FEE_PAYER_AUTHORIZATION =
+	"7mWxjLYgbJUkZNcGouvhVj5tJ8yu9hoexb9ntvPK8t5LHqzmrL6QJjjKtf5SgmxB4QWkDw7qoMMbbNGtHVpsbJHPyTy2EzRQ"
 
-type Wallet = ActorRefFromLogic<typeof walletMachine>
+export const DEFAULT_TRANSACTION_FEE_NANOMINA = 0.1 * 10e8
+export const MAX_FEE_RETRIES = 5
 
-export type Result = ReturnType<HashDb["createResult"]>
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null
 
-type SentTransaction = { hash: string; zkAppId: string }
+const isZkappCommand = (value: unknown): value is ZkappCommand => {
+	if (!isRecord(value)) return false
+	const feePayer = value.feePayer
+	if (!isRecord(feePayer)) return false
+	const body = feePayer.body
+	if (!isRecord(body)) return false
+	return typeof body.fee === "string" && typeof body.publicKey === "string"
+}
 
-export type TransactionMachineContext = {
-	id: string
+const parseZkappCommand = (transaction: string): ZkappCommand | null => {
+	try {
+		const parsed = JSON.parse(transaction) as unknown
+		return isZkappCommand(parsed) ? parsed : null
+	} catch {
+		return null
+	}
+}
+
+const normalizeWalletTransaction = (transaction: string): string => {
+	const originalTransaction = parseZkappCommand(transaction)
+	if (!originalTransaction) {
+		throw new Error("Wallet signing requires a JSON zkApp transaction payload")
+	}
+
+	logger.info({ originalTransaction })
+
+	if (originalTransaction.feePayer.body.fee !== "0") {
+		return transaction
+	}
+
+	return JSON.stringify({
+		...originalTransaction,
+		feePayer: {
+			...originalTransaction.feePayer,
+			body: {
+				...originalTransaction.feePayer.body,
+				fee: "1"
+			}
+		}
+	})
+}
+
+const isFeeTooLowError = (error: unknown): boolean => String(error).includes("Fee is too low")
+
+const resultFromHash = ({ network, hash }: { network: Networks; hash: string }): Result => ({
+	hash,
+	url: createExplorerUrl({ network, hash })
+})
+
+const signZkappTransaction = async ({
+	transaction,
+	user
+}: {
 	transaction: string
-	wallet: Wallet
-	worker: OperationsWorker
 	user: string
-	savedTransaction: SavedTransaction | null
-	signedTransaction: ZkappCommand | null
-	sentTransaction: SentTransaction | null
-	result: Result | Error
-	db: HashDb
-	network: Networks
-	retryCount: number
-	feeMultiplier: number
+}): Promise<ZkappCommand> => {
+	const walletTransaction = normalizeWalletTransaction(transaction)
+
+	let result: Awaited<ReturnType<typeof window.mina.sendTransaction>>
+	try {
+		result = await window.mina.sendTransaction({
+			onlySign: true,
+			transaction: walletTransaction
+		})
+	} catch (error) {
+		const msg = error instanceof Error ? error.message : String(error)
+		if (/Method not found/i.test(msg)) {
+			throw new Error(
+				"Your wallet does not support this operation. Please update your Auro Wallet extension to the latest version."
+			)
+		}
+		throw toQuietIfWalletRejection(error)
+	}
+
+	if (result instanceof Error) throw toQuietIfWalletRejection(result)
+	if ("signedData" in result) {
+		const parsedSignedData = JSON.parse(result.signedData) as { zkappCommand: ZkappCommand }
+		const zkappCommand = parsedSignedData.zkappCommand
+
+		if (zkappCommand.feePayer.body.publicKey !== user) {
+			zkappCommand.feePayer.authorization = DUMMY_FEE_PAYER_AUTHORIZATION
+		}
+
+		logger.success({ zkappCommand })
+		return zkappCommand
+	}
+
+	throw new Error("Couldn't find signedData")
 }
 
-type TransactionMachineInput = {
+export type Result = { hash: string; url: ReturnType<typeof createExplorerUrl> }
+
+export type TransactionMachineInput = {
 	id: string
-	transaction: Mina.Transaction<false, false> | string
-	wallet: Wallet
-	worker: OperationsWorker
-}
-
-type TransactionMachineOutput = { result: Result }
-
-type SendSignedTxInput = {
-	zeko: boolean
-	signedTransaction: ZkappCommand
-	db: HashDb
-	worker: OperationsWorker
-	feeMultiplier: number
+	key: string
 	user: string
-}
-
-type WaitForTxInput = SentTransaction & {
 	network: Networks
-	worker: OperationsWorker
-	user: string
+	initialFeeNanomina?: number
+	createSdkSignature: (input: { feeNanomina: number }) => Promise<SdkSignatureRequest>
+	completeSdkSignature: (input: {
+		requestId: string
+		signedTransaction: ZkappCommand
+	}) => Promise<string>
+	rejectSdkSignature?: (input: { requestId: string; message?: string }) => Promise<void> | void
+}
+
+type TransactionMachineContext = TransactionMachineInput & {
+	feeNanomina: number
+	retryCount: number
+	request: SdkSignatureRequest | null
+	signedTransaction: ZkappCommand | null
+	result: Result | Error | null
+}
+
+type TransactionMachineOutput = { result: Result; signedTransaction: ZkappCommand }
+
+const assignError = (error: unknown) => ({
+	result: error instanceof Error ? error : new Error(String(error))
+})
+
+const rejectCurrentSdkSignature = ({
+	context,
+	event
+}: {
+	context: TransactionMachineContext
+	event: { error?: unknown }
+}) => {
+	if (!context.request || !context.rejectSdkSignature) return
+	const error = event.error instanceof Error ? event.error : new Error(String(event.error))
+	void context.rejectSdkSignature({ requestId: context.request.requestId, message: error.message })
 }
 
 export const transactionMachine = setup({
@@ -66,254 +157,147 @@ export const transactionMachine = setup({
 		output: {} as TransactionMachineOutput
 	},
 	actors: {
-		findUnconfirmedTransaction: fromPromise<
-			SavedTransaction | undefined,
-			{ db: HashDb; user: string }
-		>(({ input }) => {
-			return act(
-				"findUnconfirmedTransaction",
-				async () => {
-					const { db } = input
-					const transaction = await db.findUnconfirmed()
-					return transaction
-				},
+		createSdkSignature: fromPromise<
+			SdkSignatureRequest,
+			Pick<TransactionMachineInput, "createSdkSignature" | "user"> & { feeNanomina: number }
+		>(({ input }) =>
+			act(
+				"createSdkSignature",
+				async () => input.createSdkSignature({ feeNanomina: input.feeNanomina }),
 				input.user
 			)
-		}),
-		signTransaction: fromPromise<ZkappCommand, { transaction: string; user: string }>(
-			({ input }) => {
-				return act(
-					"signTransaction",
-					async () => {
-						const { transaction, user } = input
-						const originalTransaction = JSON.parse(transaction) as ZkappCommand
-						logger.info({ originalTransaction })
-						// If the fee is 0, set it to 1 to avoid auro wallet error
-						if (originalTransaction.feePayer.body.fee === "0") {
-							originalTransaction.feePayer.body.fee = "1"
-						}
-						let result: Awaited<ReturnType<typeof window.mina.sendTransaction>>
-						try {
-							result = await window.mina.sendTransaction({
-								onlySign: true,
-								transaction: JSON.stringify(originalTransaction)
-							})
-						} catch (error) {
-							const msg = error instanceof Error ? error.message : String(error)
-							if (/Method not found/i.test(msg)) {
-								throw new Error(
-									"Your wallet does not support this operation. Please update your Auro Wallet extension to the latest version."
-								)
-							}
-							throw toQuietIfWalletRejection(error)
-						}
-						if (result instanceof Error) throw toQuietIfWalletRejection(result)
-						if ("signedData" in result) {
-							// biome-ignore lint/suspicious/noExplicitAny: Parsing without validating
-							const zkappCommand = (JSON.parse(result.signedData) as any)
-								.zkappCommand as ZkappCommand
-							// If the feePayer is not the user, we need to set the authorization to a dummy value
-							if (zkappCommand.feePayer.body.publicKey !== user) {
-								zkappCommand.feePayer.authorization =
-									"7mWxjLYgbJUkZNcGouvhVj5tJ8yu9hoexb9ntvPK8t5LHqzmrL6QJjjKtf5SgmxB4QWkDw7qoMMbbNGtHVpsbJHPyTy2EzRQ"
-							}
-							logger.success({ zkappCommand })
-							return zkappCommand
-						}
-						throw new Error("Couldn't find signedData")
-					},
-					input.user
-				)
-			}
 		),
-		sendSignedTransaction: fromPromise<SentTransaction, SendSignedTxInput>(({ input }) => {
-			return act(
-				"sendSignedTransaction",
-				async () => {
-					const { signedTransaction, db, zeko, worker, feeMultiplier } = input
-					const zkappCommand = structuredClone(signedTransaction)
-
-					if (feeMultiplier > 1) {
-						const currentFee = BigInt(zkappCommand.feePayer.body.fee)
-						const newFee = currentFee * BigInt(feeMultiplier)
-						zkappCommand.feePayer.body.fee = newFee.toString()
-						logger.info(`Adjusted fee by ${feeMultiplier}x: ${currentFee} -> ${newFee}`)
-					}
-
-					const { hash, zkAppId } = await worker.sendZkAppCommand(zkappCommand)
-					logger.success("Transaction sent", hash)
-					await db.saveSigned({ hash, zkAppId, confirmed: zeko, zkappCommand })
-					return { hash, zkAppId }
-				},
+		signTransaction: fromPromise<ZkappCommand, { transaction: string; user: string }>(({ input }) =>
+			act("signTransaction", async () => signZkappTransaction(input), input.user)
+		),
+		completeSdkSignature: fromPromise<
+			string,
+			Pick<TransactionMachineInput, "completeSdkSignature" | "user"> & {
+				requestId: string
+				signedTransaction: ZkappCommand
+			}
+		>(({ input }) =>
+			act(
+				"completeSdkSignature",
+				async () =>
+					input.completeSdkSignature({
+						requestId: input.requestId,
+						signedTransaction: input.signedTransaction
+					}),
 				input.user
 			)
-		}),
-		waitForTransaction: fromPromise<string, WaitForTxInput>(({ input }) => {
-			return act(
-				"waitForTransaction",
-				async () => {
-					const { zkAppId, hash, worker, network } = input
-					const transactionStatus = async (delay = 2000) => {
-						const url = urls[network]
-						const result = await worker.transactionStatus({ zkAppId, url })
-						if (result === "PENDING") {
-							await new Promise((r) => setTimeout(r, delay))
-							return transactionStatus(delay)
-						}
-						if (result === "INCLUDED") return true
-						throw new Error("Transactions status is unknown.")
-					}
-					await transactionStatus()
-					logger.success("Transaction included:", hash)
-					return hash
-				},
-				input.user
-			)
-		})
+		)
 	}
 }).createMachine({
 	id: "transaction",
-	initial: "RESUMING",
-	context: ({ input: { id, transaction: tx, wallet, worker } }) => {
-		const transaction = typeof tx === "string" ? tx : tx.toJSON()
-		const { account, currentNetwork: network } = wallet.getSnapshot().context
-		return {
-			id,
-			transaction,
-			wallet,
-			worker,
-			user: account,
-			savedTransaction: null,
-			signedTransaction: null,
-			sentTransaction: null,
-			result: new Error("Transaction failed"),
-			db: hashDb({ network, account, transaction }),
-			network,
-			retryCount: 0,
-			feeMultiplier: 1
-		}
-	},
-	output: ({ context: { result } }) => {
-		if (result instanceof Error) throw result
-		return { result }
+	initial: "CREATE_REQUEST",
+	context: ({ input }) => ({
+		...input,
+		feeNanomina: input.initialFeeNanomina ?? DEFAULT_TRANSACTION_FEE_NANOMINA,
+		retryCount: 0,
+		request: null,
+		signedTransaction: null,
+		result: null
+	}),
+	output: ({ context }) => {
+		if (context.result instanceof Error) throw context.result
+		if (!context.result) throw new Error("Transaction failed")
+		if (!context.signedTransaction) throw new Error("Transaction signing failed")
+		return { result: context.result, signedTransaction: context.signedTransaction }
 	},
 	states: {
-		RESUMING: {
-			description: "Attempt to resume an unconfirmed transaction.",
+		CREATE_REQUEST: {
 			invoke: {
-				src: "findUnconfirmedTransaction",
-				input: ({ context: { db, user } }) => ({ db, user }),
-				onDone: [
-					{
-						target: "SIGNING",
-						guard: ({ event }) => event.output === undefined
-					},
-					{
-						target: "WAITING",
-						guard: ({ event }) => event.output !== undefined,
-						actions: enqueueActions(({ enqueue, event }) => {
-							if (!event.output) throw new Error("No output transaction found")
-							enqueue.assign({ savedTransaction: event.output })
-						})
-					}
-				]
-			}
-		},
-		SIGNING: {
-			description: "Sign a transaction and return the signed zkappCommand.",
-			invoke: {
-				src: "signTransaction",
-				input: ({ context: { transaction, user } }) => ({ transaction, user }),
+				src: "createSdkSignature",
+				input: ({ context }) => ({
+					createSdkSignature: context.createSdkSignature,
+					feeNanomina: context.feeNanomina,
+					user: context.user
+				}),
 				onDone: {
-					target: "SENDING",
-					actions: assign({ signedTransaction: ({ event }) => event.output })
+					target: "SIGN",
+					actions: assign({ request: ({ event }) => event.output })
+				},
+				onError: {
+					target: "FAILED",
+					actions: assign(({ event }) => assignError(event.error))
 				}
 			}
 		},
-		SENDING: {
-			description: "Send a signed transaction with o1js, and save it to idb.",
+		SIGN: {
 			invoke: {
-				src: "sendSignedTransaction",
-				input: ({ context: { signedTransaction, db, network, worker, feeMultiplier, user } }) => {
-					if (!signedTransaction) throw new Error("No signed transaction to send")
+				src: "signTransaction",
+				input: ({ context }) => {
+					if (!context.request) throw new Error("No SDK signature request found")
+					return { transaction: context.request.transaction, user: context.user }
+				},
+				onDone: {
+					target: "COMPLETE",
+					actions: assign({ signedTransaction: ({ event }) => event.output })
+				},
+				onError: {
+					target: "FAILED",
+					actions: [rejectCurrentSdkSignature, assign(({ event }) => assignError(event.error))]
+				}
+			}
+		},
+		COMPLETE: {
+			invoke: {
+				src: "completeSdkSignature",
+				input: ({ context }) => {
+					if (!context.request) throw new Error("No SDK signature request found")
+					if (!context.signedTransaction) throw new Error("No signed transaction found")
 					return {
-						signedTransaction,
-						db,
-						worker,
-						zeko: network.includes("zeko"),
-						feeMultiplier,
-						user
+						completeSdkSignature: context.completeSdkSignature,
+						requestId: context.request.requestId,
+						signedTransaction: context.signedTransaction,
+						user: context.user
 					}
 				},
-				onDone: [
-					{
-						target: "WAITING",
-						guard: ({ context }) =>
-							context.wallet.getSnapshot().context.currentNetwork.includes("mina"),
-						actions: assign({ sentTransaction: ({ event }) => event.output })
-					},
-					{
-						guard: ({ context }) =>
-							context.wallet.getSnapshot().context.currentNetwork.includes("zeko"),
-						target: "DONE",
-						actions: assign(({ context, event }) => ({
-							sentTransaction: event.output,
-							result: context.db.createResult({ hash: event.output.hash })
-						}))
-					}
-				],
+				onDone: {
+					target: "DONE",
+					actions: assign(({ context, event }) => ({
+						result: resultFromHash({ network: context.network, hash: event.output })
+					}))
+				},
 				onError: [
 					{
-						target: "SENDING",
-						guard: ({ context, event }) => {
-							const isFeeError = String(event.error).includes("Fee is too low")
-							return isFeeError && context.retryCount < MAX_RETRIES
-						},
+						target: "CREATE_REQUEST",
+						guard: ({ context, event }) =>
+							isFeeTooLowError(event.error) && context.retryCount < MAX_FEE_RETRIES,
 						actions: assign(({ context }) => {
 							const retryCount = context.retryCount + 1
-							const feeMultiplier = context.feeMultiplier * 2
+							const feeNanomina = context.feeNanomina * 2
 							sendMetric(
 								{
 									category: "transaction",
 									action: "feeRetry",
-									label: `retry:${retryCount},multiplier:${feeMultiplier}`
+									label: `retry:${retryCount},fee:${feeNanomina}`
 								},
 								context.user
 							)
-							return { retryCount, feeMultiplier }
+							return {
+								retryCount,
+								feeNanomina,
+								request: null,
+								signedTransaction: null
+							}
 						})
 					},
 					{
-						target: "DONE",
-						actions: assign(({ event }) => ({
-							result: String(event.error).includes("Fee is too low")
-								? new Error("Bridge encountered a fee error. Please try your transaction again.")
-								: event.error instanceof Error
-									? event.error
-									: new Error(String(event.error))
-						}))
+						target: "FAILED",
+						actions: assign(({ event }) =>
+							assignError(
+								isFeeTooLowError(event.error)
+									? new Error("Bridge encountered a fee error. Please try your transaction again.")
+									: event.error
+							)
+						)
 					}
 				]
 			}
 		},
-		WAITING: {
-			description: "Wait for a transaction to be confirmed on L1.",
-			invoke: {
-				src: "waitForTransaction",
-				input: ({ context: { sentTransaction, worker, network, user } }) => {
-					if (sentTransaction) return { ...sentTransaction, worker, network, user }
-					throw new Error("No sent transaction was found.")
-				},
-				onDone: {
-					target: "DONE",
-					actions: enqueueActions(({ context, event, enqueue }) => {
-						const { db } = context
-						enqueue.assign({ result: db.createResult({ hash: event.output }) })
-						db.confirmTransaction()
-					})
-				}
-			}
-		},
-		DONE: { type: "final" }
+		DONE: { type: "final" },
+		FAILED: { type: "final" }
 	}
 })

@@ -6,7 +6,7 @@ import * as v from "valibot"
  * Categories:
  * - bridge: Network changes, direction flips, pending operations
  * - bridge_operation: Deposit/withdrawal lifecycle (started, paused, completed, failed)
- * - transaction: Transaction execution metrics, fee retries
+ * - transaction: SDK transaction creation, signing, completion, and fee retries
  *
  * Storage: Cloudflare Analytics Engine (BRIDGE_METRICS dataset)
  * - Blobs (strings): category, action, label, source, destination, userAgent, walletAddress, language, screenResolution

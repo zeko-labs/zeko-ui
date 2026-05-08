@@ -16,7 +16,7 @@
 		"prompt": "I want an unattended agent-friendly way to bridge between Mina testnet and Zeko testnet with a local private key. Should I use the bridge CLI, and how?",
 		"expectedReferences": ["30-bridge-and-faucet.md"],
 		"expectedFragments": [
-			"WALLET_PRIVATE_KEY",
+			"MINA_PRIVATE_KEY",
 			"zeko-bridge bridge",
 			"--from mina:testnet",
 			"--to zeko:testnet",

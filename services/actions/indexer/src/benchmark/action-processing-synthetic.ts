@@ -1,4 +1,4 @@
-import { fromList, pushHash } from "@zeko-labs/bridge-sdk"
+import { Actions, fromList } from "@zeko-labs/bridge-sdk"
 import { Field } from "o1js"
 import type { ArchiveAction } from "../action-processing/types"
 
@@ -34,7 +34,7 @@ export function generateSyntheticArchiveBlocks({
 				String((rand() + fieldIndex + 1) % 1_000_000)
 			)
 			const fieldValues = values.map((value) => Field.from(value))
-			const nextState = pushHash(chainState, fromList([fieldValues]).hash)
+			const nextState = Actions.pushHash(chainState, fromList([fieldValues]).hash)
 			actionData.push({
 				data: values,
 				transactionInfo: { hash: `synthetic-${blockIndex}-${actionIndex}` }

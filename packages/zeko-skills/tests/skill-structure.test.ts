@@ -89,7 +89,6 @@ describe("zeko-skills skill structure", () => {
 		expect(agentWorkflows).toContain("terminal and API workflows")
 		expect(agentWorkflows).not.toContain("Prefer direct keys and environment variables")
 		expect(agentWorkflows).not.toContain("MINA_PRIVATE_KEY")
-		expect(agentWorkflows).not.toContain("WALLET_PRIVATE_KEY")
 		expect(agentWorkflows).not.toContain("GITHUB_TOKEN")
 
 		const bridgeAndFaucet = fs.readFileSync(
@@ -97,7 +96,7 @@ describe("zeko-skills skill structure", () => {
 			"utf8"
 		)
 		expect(bridgeAndFaucet).toContain("https://docs.zeko.io/developers/tools/bridge-cli")
-		expect(bridgeAndFaucet).toContain("WALLET_PRIVATE_KEY")
+		expect(bridgeAndFaucet).toContain("MINA_PRIVATE_KEY")
 		expect(bridgeAndFaucet).toContain("zeko-bridge bridge")
 		expect(bridgeAndFaucet).toContain("--json")
 		expect(bridgeAndFaucet).toContain("doctor")

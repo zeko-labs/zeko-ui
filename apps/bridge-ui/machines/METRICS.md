@@ -35,7 +35,7 @@ Used for specific events not wrapped by `act()`:
 | Location             | Action     | Purpose                                  |
 | -------------------- | ---------- | ---------------------------------------- |
 | `bridgeOperation.ts` | `started`  | Tracks when user starts bridge operation |
-| `transaction.ts`     | `feeRetry` | Tracks fee-too-low retry attempts        |
+| `transaction.ts`     | `feeRetry` | Tracks low-fee retry attempts            |
 
 ## Categories
 
@@ -43,7 +43,7 @@ Used for specific events not wrapped by `act()`:
 | ------------------ | --------------------------- | --------------------------------- |
 | `bridge`           | `[BRIDGE]` logger           | Bridge machine operations         |
 | `bridge_operation` | `[BRIDGE_OPERATION]` logger | Individual bridge operation steps |
-| `transaction`      | `[TRANSACTION]` logger      | Transaction signing/sending       |
+| `transaction`      | `[TRANSACTION]` logger      | SDK transaction lifecycle         |
 
 ## Tracked Operations
 
@@ -61,11 +61,10 @@ Used for specific events not wrapped by `act()`:
 
 ### Transaction (`transaction`)
 
-- `findUnconfirmedTransaction` — Checks for resumable transactions
+- `createSdkSignature` — Creates an SDK signature request
 - `signTransaction` — Wallet signature request
-- `sendSignedTransaction` — Broadcasts to network
-- `waitForTransaction` — Waits for confirmation
-- `feeRetry` — Fee-too-low retry (includes retry count and multiplier)
+- `completeSdkSignature` — Completes the SDK request with the signed transaction
+- `feeRetry` — Fee-too-low retry (includes retry count and fee)
 
 ## Schema
 

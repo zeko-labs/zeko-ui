@@ -61,7 +61,7 @@ const message = computed(() => {
 		return "Switch your wallet to Mina to cancel."
 	if (machine.value.matches({ CANCEL_DEPOSIT: "transaction" }))
 		return "Preparing the cancellation transaction."
-	if (machine.value.matches({ CANCEL_DEPOSIT: "send_and_confirm" }))
+	if (machine.value.matches({ CANCEL_DEPOSIT: "done" }))
 		return "Waiting for cancellation confirmation."
 	if (readyToCancel.value) return "Ready to reclaim funds on Mina."
 	if (machine.value.matches("FAILED")) return "Cancellation failed."

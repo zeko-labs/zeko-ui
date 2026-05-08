@@ -13,7 +13,6 @@ export const requiredReferences = [
 ] as const
 
 export const clawhubRequiredEnvVars = [
-	"WALLET_PRIVATE_KEY",
 	"MINA_PRIVATE_KEY",
 	"GITHUB_TOKEN",
 	"PUBLIC_KEY",
@@ -35,19 +34,22 @@ export const publicSyncMappings = [
 
 export type EndpointCheck = {
 	name: string
-	expected: string
+	expected: string | readonly string[]
 	sources: string[]
 }
 
 export const endpointChecks: EndpointCheck[] = [
 	{
 		name: "zeko testnet graphql",
-		expected: "https://testnet.zeko.io/graphql",
+		expected: ["https://testnet.zeko.io/graphql", "https://alphanet.zeko.io/graphql"],
 		sources: ["apps/bridge-ui/machines/helpers.ts", "packages/graphql/moon.yml"]
 	},
 	{
 		name: "zeko archive graphql",
-		expected: "https://archive.testnet.zeko.io/graphql",
+		expected: [
+			"https://archive.testnet.zeko.io/graphql",
+			"https://archive.alphanet.zeko.io/graphql"
+		],
 		sources: ["apps/bridge-ui/machines/helpers.ts", "packages/graphql/moon.yml"]
 	},
 	{
@@ -88,7 +90,12 @@ export const endpointChecks: EndpointCheck[] = [
 	{
 		name: "minascan backup archive",
 		expected: "https://api.minascan.io/archive/devnet/v1/graphql",
-		sources: ["packages/graphql/moon.yml", "services/mina-archive-proxy/worker.ts"]
+		sources: ["packages/graphql/moon.yml"]
+	},
+	{
+		name: "mina archive proxy upstream",
+		expected: "https://devnet-archive-node-api.gcp.o1test.net",
+		sources: ["services/mina-archive-proxy/worker.ts"]
 	},
 	{
 		name: "actions api",

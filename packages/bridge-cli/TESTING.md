@@ -14,12 +14,12 @@ The CLI auto-loads dotenv files in this order before falling back to exported sh
 
 Set this key in one of those locations or export it directly before running the live checks:
 
-- `WALLET_PRIVATE_KEY`
+- `MINA_PRIVATE_KEY`
 
 Example shell setup:
 
 ```bash
-export WALLET_PRIVATE_KEY="<wallet private key>"
+export MINA_PRIVATE_KEY="<wallet private key>"
 ```
 
 ## Validation Protocol

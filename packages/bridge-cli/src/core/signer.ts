@@ -7,9 +7,9 @@ export type SignerKeys = {
 }
 
 export const resolveSignerKeys = (env: EnvLike = process.env): SignerKeys => {
-	const wallet = env.WALLET_PRIVATE_KEY?.trim()
+	const wallet = env.MINA_PRIVATE_KEY?.trim()
 	if (!wallet) {
-		throw new Error("Missing required signer private key: WALLET_PRIVATE_KEY")
+		throw new Error("Missing required signer private key: MINA_PRIVATE_KEY")
 	}
 
 	return { mina: wallet, zeko: wallet }

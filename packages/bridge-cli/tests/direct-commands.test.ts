@@ -1,3 +1,4 @@
+import { PrivateKey } from "o1js"
 import { describe, expect, it } from "vitest"
 import type { BridgeAdapter } from "../src/core/adapter"
 import {
@@ -81,6 +82,24 @@ const resolveSubCommands = async (value: unknown): Promise<Record<string, Runnab
 	}
 
 	return value as Record<string, RunnableSubCommand>
+}
+
+const withWalletPrivateKey = async (
+	run: (input: { publicKey: string }) => Promise<void>
+): Promise<void> => {
+	const previous = process.env.MINA_PRIVATE_KEY
+	const signer = PrivateKey.random()
+	process.env.MINA_PRIVATE_KEY = signer.toBase58()
+
+	try {
+		await run({ publicKey: signer.toPublicKey().toBase58() })
+	} finally {
+		if (previous === undefined) {
+			delete process.env.MINA_PRIVATE_KEY
+		} else {
+			process.env.MINA_PRIVATE_KEY = previous
+		}
+	}
 }
 
 describe("direct commands", () => {
@@ -494,6 +513,38 @@ describe("direct commands", () => {
 		expect(writes[0]).toContain("deposit-status-command")
 	})
 
+	it("defaults deposit status to the signer account", async () => {
+		await withWalletPrivateKey(async ({ publicKey }) => {
+			const writes: string[] = []
+			let seenAccount: string | undefined
+			const command = createDepositCommand({
+				write: (message) => writes.push(message),
+				createAdapter: async () =>
+					createDepositAdapter({
+						async getDepositStatuses(account) {
+							seenAccount = account
+							return []
+						}
+					})
+			})
+			const subCommands = await resolveSubCommands(command.subCommands)
+
+			await subCommands.status?.run?.({
+				rawArgs: [],
+				args: {
+					_: [],
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					latest: true
+				},
+				cmd: subCommands.status
+			})
+
+			expect(seenAccount).toBe(publicKey)
+			expect(writes[0]).toContain(`Account: ${publicKey}`)
+		})
+	})
+
 	it("runs the withdrawal submit command", async () => {
 		const writes: string[] = []
 		const command = createWithdrawalCommand({
@@ -594,5 +645,37 @@ describe("direct commands", () => {
 		expect(writes[0]).toContain("withdrawal status")
 		expect(writes[0]).toContain("Account: B62test")
 		expect(writes[0]).toContain("withdraw-status-command")
+	})
+
+	it("defaults withdrawal status to the signer account", async () => {
+		await withWalletPrivateKey(async ({ publicKey }) => {
+			const writes: string[] = []
+			let seenAccount: string | undefined
+			const command = createWithdrawalCommand({
+				write: (message) => writes.push(message),
+				createAdapter: async () =>
+					createWithdrawalAdapter({
+						async getWithdrawalStatuses(account) {
+							seenAccount = account
+							return []
+						}
+					})
+			})
+			const subCommands = await resolveSubCommands(command.subCommands)
+
+			await subCommands.status?.run?.({
+				rawArgs: [],
+				args: {
+					_: [],
+					from: "zeko:testnet",
+					to: "mina:testnet",
+					latest: true
+				},
+				cmd: subCommands.status
+			})
+
+			expect(seenAccount).toBe(publicKey)
+			expect(writes[0]).toContain(`Account: ${publicKey}`)
+		})
 	})
 })

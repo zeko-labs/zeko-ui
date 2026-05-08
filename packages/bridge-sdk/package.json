@@ -30,8 +30,9 @@
 		"vitest": "catalog:"
 	},
 	"dependencies": {
-		"@zeko-labs/graphql": "workspace:^",
 		"@urql/exchange-retry": "^1.3.0",
+		"@zeko-labs/graphql": "workspace:^",
+		"mina-signer": "^4.0.0",
 		"o1js": "catalog:",
 		"urql": "^4.2.2",
 		"valibot": "catalog:"

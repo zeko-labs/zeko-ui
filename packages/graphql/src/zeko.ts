@@ -11,6 +11,9 @@ export const fetchConfigQuery = graphql(`
       chainL1
       chainL2
       withdrawalDelay
+      bridgeFeeRecipientL1
+      bridgeFeeRecipientL2
+      bridgeProofFee
     }
   }
 `)
@@ -51,8 +54,8 @@ export const genesisConstantsQueryL2 = graphql(`
 `)
 
 export const submitDepositMutation = graphql(`
-  mutation SubmitDeposit($depositParams: DepositParamsInput!) {
-    request: proveDepositRequest(input: { depositParams: $depositParams }) {
+  mutation SubmitDeposit($depositParams: DepositParamsInput!, $transferrer: BridgeTransferrerInput!) {
+    request: proveDepositRequest(input: { depositParams: $depositParams, transferrer: $transferrer }) {
       key
     }
   }
@@ -67,8 +70,8 @@ export const finalizeDepositMutation = graphql(`
 `)
 
 export const submitWithdrawalMutation = graphql(`
-  mutation SubmitWithdrawal($input: WithdrawalParamsInput!) {
-    request: proveWithdrawalRequest(input: $input) {
+  mutation SubmitWithdrawal($withdrawalParams: WithdrawalParamsInput!, $transferrer: BridgeTransferrerInput!) {
+    request: proveWithdrawalRequest(input: { withdrawalParams: $withdrawalParams, transferrer: $transferrer }) {
       key
     }
   }
@@ -90,8 +93,8 @@ export const cancelDepositMutation = graphql(`
   }
 `)
 
-export const provedForestQuery = graphql(`
-  query provedForest($key: String!) {
-    provedForest(key: $key)
+export const provedResultQuery = graphql(`
+  query provingResult($key: String!) {
+    provingResult(key: $key)
   }
 `)

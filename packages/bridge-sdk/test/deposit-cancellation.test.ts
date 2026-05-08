@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
 import { Field, PublicKey, UInt32, UInt64 } from "o1js"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import type { GqlClient } from "../src/graphql"
 import { Bridge } from "../src/index"
 import type {
 	Config,
@@ -9,9 +10,8 @@ import type {
 	OuterWitness,
 	WitnessFetchResult
 } from "../src/types"
-import type { GqlClient } from "../src/graphql"
-import { depositAux } from "../src/utils"
 import * as utils from "../src/utils"
+import { depositAux } from "../src/utils"
 
 const recipient = PublicKey.fromBase58("B62qpuhMDp748xtE77iBXRRaipJYgs6yumAeTzaM7zS9dn8avLPaeFF")
 const holder = PublicKey.fromBase58("B62qmqHbTA6X54y5M2nSxpuPae5EUE2TBQXacAEqqgn667NRVFKDSeA")
@@ -312,7 +312,7 @@ describe("deposit cancellation state", () => {
 
 	it("does not mark finalised deposits as cancellable", async () => {
 		const bridge = buildBridge()
-		const deposit = buildDeposit({ amount: 20, timeout: 5 })
+		const deposit = buildDeposit({ amount: 20, timeout: 8 })
 		const depositWitness = buildDepositWitness(deposit, 0, { lower: 0, upper: 1 })
 		const timeoutWitness = buildOuterWitness({ index: 1, lower: 6, upper: 6 })
 		const lastCommit = buildCommit({ index: 2, lower: 7, upper: 7, synchronizedLength: 1 })
@@ -325,6 +325,28 @@ describe("deposit cancellation state", () => {
 			lastCommit,
 			nextDeposit: 1,
 			syncedLength: 1
+		})
+
+		const result = await bridge.fetchDepositsWithStates(recipient)
+
+		expect(result.deposits[0]?.finalised).toBe(true)
+		expect(result.deposits[0]?.cancellable).toBe(false)
+	})
+
+	it("marks finalised deposits by local action position when outer indices are absolute", async () => {
+		const bridge = buildBridge()
+		const deposit = buildDeposit({ amount: 20, timeout: 8 })
+		const depositWitness = buildDepositWitness(deposit, 8951, { lower: 0, upper: 1 })
+		const lastCommit = buildCommit({ index: 8952, lower: 7, upper: 7, synchronizedLength: 8952 })
+
+		mockDepositState({
+			bridge,
+			deposits: [deposit],
+			depositWitnesses: [depositWitness],
+			outerActions: [depositWitness, lastCommit],
+			lastCommit,
+			nextDeposit: 8952,
+			syncedLength: 8952
 		})
 
 		const result = await bridge.fetchDepositsWithStates(recipient)

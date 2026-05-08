@@ -1,4 +1,4 @@
-import { fromList, pushHash } from "@zeko-labs/bridge-sdk"
+import { Actions, fromList } from "@zeko-labs/bridge-sdk"
 import { Field } from "o1js"
 import type { ActionProcessingResult, ArchiveAction, ArchiveEvent } from "./types"
 
@@ -39,7 +39,7 @@ export function processArchiveBlocks({
 
 		for (const actionItem of actionData) {
 			const actionFields = actionItem.data.map((value) => Field.from(value))
-			const afterActionState = pushHash(actionState, fromList([actionFields]).hash)
+			const afterActionState = Actions.pushHash(actionState, fromList([actionFields]).hash)
 			const beforeActionStateString = actionState.toString()
 			const afterActionStateString = afterActionState.toString()
 

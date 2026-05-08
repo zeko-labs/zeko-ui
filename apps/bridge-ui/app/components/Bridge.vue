@@ -12,12 +12,41 @@ type OperationCard = BridgeQueueItem<
 	ActorRefFromLogic<typeof bridgeOperationMachine>
 >
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null
+
+const stateValueIncludes = (value: unknown, fragment: string): boolean => {
+	if (typeof value === "string") return value.includes(fragment)
+	if (!isRecord(value)) return false
+
+	return Object.entries(value).some(
+		([key, nested]) =>
+			key.includes(fragment) || stateValueIncludes(nested, fragment)
+	)
+}
+
+const operationStatus = ({
+	operation,
+	status
+}: {
+	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
+	status: OperationCard["status"]
+}) => {
+	if (status === "completed") return status
+
+	const snapshotValue = operation.getSnapshot().value
+	return snapshotValue === "BRIDGE_OPERATION_COMPLETED" ||
+		stateValueIncludes(snapshotValue, "DONE")
+		? "completed"
+		: status
+}
+
 const allOperations = useSelector(bs.bridge.actorRef, (state) => {
 	const items: OperationCard[] = [...state.context.operations.values()].map(
 		({ operation, order, status, lane }) => ({
 			id: operation.id,
 			order,
-			status,
+			status: operationStatus({ operation, status }),
 			lane,
 			direction: operation.getSnapshot().context.direction,
 			operation

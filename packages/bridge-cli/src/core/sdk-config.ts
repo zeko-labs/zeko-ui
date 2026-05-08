@@ -2,11 +2,15 @@ import type { Config } from "@zeko-labs/bridge-sdk"
 import type { RouteDescriptor } from "./routes"
 
 const TESTNET_CONFIG = {
-	l1Url: "https://gateway.mina.devnet.zeko.io",
-	l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
+	l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
+	l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
+	// l1ArchiveUrl: "https://devnet-archive-node-api.gcp.o1test.net/",
 	zekoUrl: "https://testnet.zeko.io/graphql",
 	zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql",
+	// zekoUrl: "https://alphanet.zeko.io/graphql",
+	// zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql",
 	actionsApi: "https://api.actions.zeko.io/graphql",
+	// actionsApi: "http://localhost:9100/graphql",
 	l1Network: "testnet",
 	l2Network: "testnet"
 } as const satisfies Config
@@ -30,11 +34,17 @@ export const createSdkConfig = (
 	}
 
 	if (route.from.includes("testnet") && route.to.includes("testnet")) {
-		return { ...TESTNET_CONFIG, verbose: options.verbose === true }
+		return {
+			...TESTNET_CONFIG,
+			verbose: options.verbose === true
+		}
 	}
 
 	if (route.from.includes("mainnet") && route.to.includes("mainnet")) {
-		return { ...MAINNET_CONFIG, verbose: options.verbose === true }
+		return {
+			...MAINNET_CONFIG,
+			verbose: options.verbose === true
+		}
 	}
 
 	throw new Error(`Unsupported network pairing for ${route.label}`)

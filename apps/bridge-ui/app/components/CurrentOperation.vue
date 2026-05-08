@@ -8,12 +8,20 @@ import {
 	statusFromState
 } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import type { transactionMachine } from "~~/machines/transaction"
 import { useSelector } from "~~/machines/vue-xstate"
 
 const { operation } = defineProps<{
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 }>()
 const machine = useSelector(operation, (state) => state)
+const transactionActor = computed(
+	() =>
+		machine.value.children.transaction as
+			| ActorRefFromLogic<typeof transactionMachine>
+			| undefined
+)
+const transaction = useSelector(transactionActor, (state) => state)
 
 const machineStep = computed(() => {
 	// Special case for `WAITING_FOR_NETWORK` state
@@ -45,6 +53,11 @@ const status = computed(() =>
 	})
 )
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
+const transactionIsComplete = (
+	key: keyof typeof machine.value.context.transactions
+) =>
+	transactionActor.value?.getSnapshot().context.key === key &&
+	transaction.value?.matches("COMPLETE") === true
 const isLoading = computed(() => machine.value.hasTag("loading"))
 const hasCTA = computed(() => machine.value.hasTag("cta"))
 
@@ -127,12 +140,18 @@ watch(machine.value.context.errors, (newErrors) => {
           </template>
 
           <template
-            v-else-if='machine.matches({ SUBMIT_WITHDRAWAL: "transaction" })'>
+            v-else-if='
+              machine.matches({ SUBMIT_WITHDRAWAL: "transaction" }) &&
+              !transactionIsComplete("submitWithdrawal")
+            '>
             <BridgeMessage messageKey="submit" />
           </template>
 
           <template
-            v-else-if='machine.matches({ SUBMIT_WITHDRAWAL: "send_and_confirm" })'>
+            v-else-if='
+              machine.matches({ SUBMIT_WITHDRAWAL: "transaction" }) &&
+              transactionIsComplete("submitWithdrawal")
+            '>
             <BridgeMessage
               messageKey="submitDeposit"
               :transactions="machine.context.transactions"
@@ -141,12 +160,18 @@ watch(machine.value.context.errors, (newErrors) => {
           </template>
 
           <template
-            v-else-if='machine.matches({ SUBMIT_DEPOSIT: "transaction" })'>
+            v-else-if='
+              machine.matches({ SUBMIT_DEPOSIT: "transaction" }) &&
+              !transactionIsComplete("submitDeposit")
+            '>
             <BridgeMessage messageKey="submit" />
           </template>
 
           <template
-            v-else-if='machine.matches({ SUBMIT_DEPOSIT: "send_and_confirm" })'>
+            v-else-if='
+              machine.matches({ SUBMIT_DEPOSIT: "transaction" }) &&
+              transactionIsComplete("submitDeposit")
+            '>
             <BridgeMessage
               messageKey="submitDeposit"
               :transactions="machine.context.transactions"
@@ -174,13 +199,47 @@ watch(machine.value.context.errors, (newErrors) => {
             <BridgeMessage messageKey="toFinalize" />
           </template>
 
+          <template v-else-if='machine.matches("CAN_CANCEL")'>
+            <div class="warning"><BridgeMessage messageKey="canCancel" /></div>
+          </template>
+
           <template
-            v-else-if='machine.matches({ FINALIZE_DEPOSIT: "transaction" })'>
+            v-else-if='
+              machine.matches({ CANCEL_DEPOSIT: "transaction" }) &&
+              !transactionIsComplete("cancelDeposit")
+            '>
+            <BridgeMessage messageKey="cancellingDeposit" />
+          </template>
+
+          <template
+            v-else-if='
+              machine.matches({ CANCEL_DEPOSIT: "transaction" }) &&
+              transactionIsComplete("cancelDeposit")
+            '>
+            <BridgeMessage
+              messageKey="cancelDeposit"
+              :transactions="machine.context.transactions"
+              transactionKey="cancelDeposit"
+            />
+          </template>
+
+          <template v-else-if='machine.matches("DEPOSIT_CANCELLED")'>
+            <BridgeMessage messageKey="depositCancelled" />
+          </template>
+
+          <template
+            v-else-if='
+              machine.matches({ FINALIZE_DEPOSIT: "transaction" }) &&
+              !transactionIsComplete("finalizeDeposit")
+            '>
             <BridgeMessage messageKey="finalizeTransaction" />
           </template>
 
           <template
-            v-else-if='machine.matches({ FINALIZE_DEPOSIT: "send_and_confirm" })'>
+            v-else-if='
+              machine.matches({ FINALIZE_DEPOSIT: "transaction" }) &&
+              transactionIsComplete("finalizeDeposit")
+            '>
             <BridgeMessage
               messageKey="finalizeDeposit"
               :transactions="machine.context.transactions"
@@ -189,12 +248,18 @@ watch(machine.value.context.errors, (newErrors) => {
           </template>
 
           <template
-            v-else-if='machine.matches({ FINALIZE_WITHDRAWAL: "transaction" })'>
+            v-else-if='
+              machine.matches({ FINALIZE_WITHDRAWAL: "transaction" }) &&
+              !transactionIsComplete("finalizeWithdrawal")
+            '>
             <BridgeMessage messageKey="finalizeTransaction" />
           </template>
 
           <template
-            v-else-if='machine.matches({ FINALIZE_WITHDRAWAL: "send_and_confirm" })'>
+            v-else-if='
+              machine.matches({ FINALIZE_WITHDRAWAL: "transaction" }) &&
+              transactionIsComplete("finalizeWithdrawal")
+            '>
             <BridgeMessage
               messageKey="finalizeWithdrawal"
               :transactions="machine.context.transactions"

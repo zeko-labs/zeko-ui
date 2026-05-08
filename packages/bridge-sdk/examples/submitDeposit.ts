@@ -1,42 +1,27 @@
-import { env } from "node:process"
-import { PrivateKey, UInt32, UInt64 } from "o1js"
+import { UInt32, UInt64 } from "o1js"
 import { Bridge } from "../src/index"
+import { readBridgeConfig, readMinaPrivateKey } from "./helper"
 
-if (!env.MINA_PRIVATE_KEY) {
-	throw new Error("MINA_PRIVATE_KEY is not set")
-}
-
-const signer = PrivateKey.fromBase58(env.MINA_PRIVATE_KEY)
+const signer = readMinaPrivateKey()
 const recipient = signer.toPublicKey()
 
 async function main() {
-	const bridge = await Bridge.init({
-		l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
-		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
-		actionsApi: "http://api.actions.zeko.io/graphql",
-		zekoUrl: "https://testnet.zeko.io/graphql",
-		zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql",
-		l1Network: "testnet",
-		l2Network: "testnet"
-	})
+	const bridge = await Bridge.init(readBridgeConfig())
 
 	const depositParams = {
 		recipient,
-		amount: UInt64.from(150 * 10e8),
-		timeout: UInt32.from(10),
+		amount: UInt64.from(72 * 10e8),
+		timeout: UInt32.from(1_000_000),
 		holderAccountL1: bridge.outerHolders[0]
 	}
 
-	const txn = await bridge.submitDeposit(
+	const txnHash = await bridge.submitDeposit(
 		{ sender: depositParams.recipient, fee: 0.1 * 10e8 },
-		depositParams
+		depositParams,
+		async (txn) => txn.sign([signer])
 	)
 
-	console.log(txn.toPretty())
-
-	const result = await txn.sign([signer]).send()
-
-	console.log(result.hash)
+	console.log(txnHash)
 }
 
 main().catch(console.error)

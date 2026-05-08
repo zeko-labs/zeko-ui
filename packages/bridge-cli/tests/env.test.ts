@@ -19,12 +19,12 @@ describe("bridge cli env loading", () => {
 
 	it("prefers earlier dotenv files over later files and inherited env", async () => {
 		const env: Record<string, string | undefined> = {
-			WALLET_PRIVATE_KEY: "global-wallet"
+			MINA_PRIVATE_KEY: "global-wallet"
 		}
 		const parsedByPath: Record<string, Record<string, string>> = {
-			"/home/tester/.zeko/.env": { WALLET_PRIVATE_KEY: "home-wallet" },
-			"/workspace/packages/bridge-cli/dist/.env": { WALLET_PRIVATE_KEY: "binary-wallet" },
-			"/workspace/project/bin/.env": { WALLET_PRIVATE_KEY: "invocation-wallet" }
+			"/home/tester/.zeko/.env": { MINA_PRIVATE_KEY: "home-wallet" },
+			"/workspace/packages/bridge-cli/dist/.env": { MINA_PRIVATE_KEY: "binary-wallet" },
+			"/workspace/project/bin/.env": { MINA_PRIVATE_KEY: "invocation-wallet" }
 		}
 
 		const result = await loadBridgeCliEnv({
@@ -47,12 +47,12 @@ describe("bridge cli env loading", () => {
 			"/workspace/packages/bridge-cli/dist/.env",
 			"/workspace/project/bin/.env"
 		])
-		expect(env.WALLET_PRIVATE_KEY).toBe("home-wallet")
+		expect(env.MINA_PRIVATE_KEY).toBe("home-wallet")
 	})
 
 	it("skips unreadable dotenv candidates and falls back to inherited env", async () => {
 		const env: Record<string, string | undefined> = {
-			WALLET_PRIVATE_KEY: "global-wallet"
+			MINA_PRIVATE_KEY: "global-wallet"
 		}
 
 		await loadBridgeCliEnv({
@@ -61,6 +61,6 @@ describe("bridge cli env loading", () => {
 			canRead: async () => false
 		})
 
-		expect(env.WALLET_PRIVATE_KEY).toBe("global-wallet")
+		expect(env.MINA_PRIVATE_KEY).toBe("global-wallet")
 	})
 })

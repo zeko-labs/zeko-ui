@@ -1,16 +1,16 @@
-import { Field, fetchAccount, type Mina, Poseidon, PublicKey, UInt32 } from "o1js"
-import * as v from "valibot"
 import {
 	fetchActionsQuery,
 	fetchCommitAsePastSlotQuery,
 	fetchInnerActionsQueryIndexer,
 	fetchInnerWitnessesFromAuxesQuery,
 	fetchLiveActionsQuery,
-	networkStateQuery,
 	fetchOuterActionsQueryIndexer,
-	fetchOuterWitnessesFromAuxesQuery
+	fetchOuterWitnessesFromAuxesQuery,
+	networkStateQuery
 } from "@zeko-labs/graphql"
-import { empty, fromList, pushHash } from "./actions"
+import { fetchAccount, Field, Mina, Poseidon, PublicKey, UInt32 } from "o1js"
+import * as v from "valibot"
+import { Actions, empty, fromList } from "./actions"
 import type { GqlClient } from "./graphql"
 import type {
 	Account,
@@ -355,7 +355,7 @@ const mapParsedActions = (output: v.InferOutput<typeof ActionOutputsSchema>): Ac
 			const correctActions = []
 			for (let i = 0; i < actions.length; i++) {
 				const action = actions[i]
-				const afterActionState = pushHash(actionState, fromList([action.data]).hash)
+				const afterActionState = Actions.pushHash(actionState, fromList([action.data]).hash)
 				correctActions.push({
 					index: index + i,
 					action: action.data,
@@ -426,12 +426,13 @@ export function filterNulls<T>(arr: (T | null)[]): T[] {
 	})
 }
 
-export async function refreshCache(feePayer: Mina.FeePayerSpec) {
+export async function refreshCache(feePayer: Mina.FeePayerSpec, tokenId?: Field) {
 	if (feePayer instanceof PublicKey) {
-		await fetchAccount({ publicKey: feePayer })
+		await fetchAccount({ publicKey: feePayer, tokenId })
 	} else if (feePayer) {
 		await fetchAccount({
-			publicKey: feePayer.sender
+			publicKey: feePayer.sender,
+			tokenId
 		})
 	}
 }
@@ -470,4 +471,11 @@ export function checkAccepted(
 	}
 
 	return { isRejected, isAccepted }
+}
+
+export async function getVkHash(publicKey: PublicKey): Promise<Field> {
+	await refreshCache(publicKey)
+	const vk = Mina.getAccount(publicKey).zkapp?.verificationKey?.hash
+	if (!vk) throw new Error("Verification key not found")
+	return Field(vk)
 }

@@ -5,6 +5,7 @@ import * as Comlink from "comlink"
 import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
+import { releaseCancellationSlot } from "./bridgeCancellationSlot"
 import { createLogger } from "./debug"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
 import type { RecoveredOperations, RecoveryLane } from "./recovery"
@@ -433,8 +434,10 @@ export const bridgeMachine = setup({
 				operations: new Map(operations),
 				operationsToUnpause: lane === "main" ? remainingToUnpause : context.operationsToUnpause,
 				activeOperation: lane === "main" ? idToResume : context.activeOperation,
-				activeCancellationOperation:
-					context.activeCancellationOperation === id ? null : context.activeCancellationOperation
+				activeCancellationOperation: releaseCancellationSlot({
+					activeCancellationOperation: context.activeCancellationOperation,
+					operationId: id
+				})
 			}
 		}),
 		activateCancellationOperation: assign(({ context }, params: { id: string }) => ({
@@ -445,10 +448,10 @@ export const bridgeMachine = setup({
 					: context.activeCancellationOperation
 		})),
 		releaseCancellationOperation: assign(({ context }, params: { id: string }) => ({
-			activeCancellationOperation:
-				context.activeCancellationOperation === params.id
-					? null
-					: context.activeCancellationOperation
+			activeCancellationOperation: releaseCancellationSlot({
+				activeCancellationOperation: context.activeCancellationOperation,
+				operationId: params.id
+			})
 		}))
 	}
 }).createMachine({
