@@ -32,6 +32,13 @@ export const resolveTargetIndex = ({
 
 		if (
 			session.targetIndex !== undefined &&
+			statuses.some((status) => status.index === session.targetIndex)
+		) {
+			return session.targetIndex
+		}
+
+		if (
+			session.targetIndex !== undefined &&
 			(session.finalTransaction !== undefined ||
 				session.pendingFinalizeIndex === session.targetIndex)
 		) {

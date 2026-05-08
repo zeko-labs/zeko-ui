@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { Field, PublicKey, UInt32, UInt64 } from "o1js"
 import { Bridge } from "../src/index"
-import type { Action, Config, OuterCommit, Withdrawal } from "../src/types"
+import type { Action, Config, InnerWitness, OuterCommit, Withdrawal } from "../src/types"
 import type { GqlClient } from "../src/graphql"
 import * as utils from "../src/utils"
 
@@ -100,6 +100,41 @@ describe("withdrawal state", () => {
 		vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue(null)
 		vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
 		vi.spyOn(utils, "fetchInnerWitnessesFromAuxes").mockResolvedValue([])
+		vi.spyOn(utils, "fetchCommitAsePastSlot").mockResolvedValue({
+			commit: lastCommit,
+			ase: []
+		})
+
+		const result = await bridge.fetchWithdrawalsWithStates(recipient)
+
+		expect(result.withdrawals).toHaveLength(1)
+		expect(result.withdrawals[0]?.timestamp).toBe("")
+		expect(result.withdrawals[0]?.committed).toBe(false)
+		expect(result.withdrawals[0]?.finalised).toBe(false)
+	})
+
+	it("normalizes witnessed withdrawal timestamps when the witness timestamp is unresolved", async () => {
+		const bridge = buildBridge()
+		const withdrawal = buildWithdrawalAction({ index: 0, timestamp: "1700000000000" })
+		const bridgeInternals = bridge as unknown as {
+			fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
+			fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
+			fetchCurrentSlot: () => Promise<UInt32>
+		}
+		const witness: InnerWitness = {
+			action: withdrawal.action,
+			beforeActionState: Field(401),
+			afterActionState: Field(402),
+			index: 0,
+			timestamp: "0",
+			hash: "withdrawal-witness",
+			aux: utils.withdrawalAux(withdrawal)
+		}
+
+		vi.spyOn(bridgeInternals, "fetchUserWithdrawalActions").mockResolvedValue([withdrawal])
+		vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue(null)
+		vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
+		vi.spyOn(utils, "fetchInnerWitnessesFromAuxes").mockResolvedValue([witness])
 		vi.spyOn(utils, "fetchCommitAsePastSlot").mockResolvedValue({
 			commit: lastCommit,
 			ase: []

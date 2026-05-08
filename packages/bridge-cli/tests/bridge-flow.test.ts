@@ -1799,7 +1799,7 @@ describe("bridge flow", () => {
 								accepted: true,
 								confirmed: true,
 								finalised: true,
-								hash: "retry-finalize",
+								hash: "retry-submit",
 								timestamp: "2026-03-09T19:02:00.000Z"
 							}
 						]
@@ -2314,7 +2314,7 @@ describe("bridge flow", () => {
 								recipient: "B62submitretry",
 								committed: true,
 								finalised: true,
-								hash: "withdrawal-finalize-retry",
+								hash: "withdrawal-submit-retry",
 								timestamp: "2026-03-09T19:03:00.000Z"
 							}
 						]

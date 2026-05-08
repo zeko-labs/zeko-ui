@@ -252,7 +252,9 @@ const parseBridgeCommandArgs = (args: BridgeCommandRunArgs) => ({
 	amount: args.amount,
 	account: parseOptionalString(args.account),
 	recipient: parseOptionalString(args.recipient),
-	timeoutSlots: parseOptionalNumber(args.timeoutSlots ?? args["timeout-slots"]),
+	timeoutSlots: parseOptionalNumber(
+		args.timeoutSlots && args.timeoutSlots.length > 0 ? args.timeoutSlots : args["timeout-slots"]
+	),
 	json: args.json === true,
 	verbose: args.verbose === true
 })
@@ -2196,7 +2198,18 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			verbose: { type: "boolean", default: false }
 		},
 		async run({ args }) {
-			const commandArgs = parseBridgeCommandArgs(args as BridgeCommandRunArgs)
+			const commandArgs = parseBridgeCommandArgs({
+				from: typeof args.from === "string" ? args.from : undefined,
+				to: typeof args.to === "string" ? args.to : undefined,
+				amount: typeof args.amount === "string" ? args.amount : "",
+				account: typeof args.account === "string" ? args.account : undefined,
+				recipient: typeof args.recipient === "string" ? args.recipient : undefined,
+				timeoutSlots: typeof args.timeoutSlots === "string" ? args.timeoutSlots : undefined,
+				"timeout-slots":
+					typeof args["timeout-slots"] === "string" ? args["timeout-slots"] : undefined,
+				json: args.json === true,
+				verbose: args.verbose === true
+			} satisfies BridgeCommandRunArgs)
 			const from = commandArgs.from
 			const to = commandArgs.to
 			const account = deriveAccount(from, commandArgs.account)

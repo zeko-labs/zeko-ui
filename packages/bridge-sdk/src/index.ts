@@ -1902,8 +1902,8 @@ export class Bridge {
 					if (!withdrawal) throw new Error("Unreachable: Did not find withdrawal")
 					return {
 						...withdrawal,
-						timestamp: normalizeTimestamp(withdrawal.timestamp),
 						...witness,
+						timestamp: normalizeTimestamp(witness.timestamp),
 						committed: lastCommit.innerActionStateLength
 							.greaterThan(UInt32.from(witness.index))
 							.toBoolean(),
