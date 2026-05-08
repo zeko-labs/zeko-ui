@@ -186,3 +186,4 @@
 - T186 | done | default-direct-status-account | done/T186-default-direct-status-account.md
 - T187 | done | reconcile-finalised-withdrawals | done/T187-reconcile-finalised-withdrawals.md
 - T188 | done | consolidate-bridge-example-env-helpers | done/T188-consolidate-bridge-example-env-helpers.md
+- T189 | done | demote-mocked-bridge-cli-tests | done/T189-demote-mocked-bridge-cli-tests.md
