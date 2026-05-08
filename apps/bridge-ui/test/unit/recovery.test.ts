@@ -208,7 +208,6 @@ describe("classifyRecoveredOperations", () => {
 				timeoutSlot: undefined
 			}
 		])
-		expect(result.operationsToUnpause).toEqual([])
 		expect(result.activeOperation).toBe("deposit-1")
 		expect(result.activeCancellationOperation).toBeNull()
 	})
@@ -254,7 +253,6 @@ describe("classifyRecoveredOperations", () => {
 				timeoutSlot: undefined
 			}
 		])
-		expect(result.operationsToUnpause).toEqual([])
 		expect(result.activeOperation).toBe("deposit-2")
 		expect(result.activeCancellationOperation).toBeNull()
 	})

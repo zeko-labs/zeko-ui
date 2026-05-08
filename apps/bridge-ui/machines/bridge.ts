@@ -5,7 +5,6 @@ import * as Comlink from "comlink"
 import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
-import { releaseCancellationSlot } from "./bridgeCancellationSlot"
 import { createLogger } from "./debug"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
 import type { RecoveredOperations, RecoveryLane } from "./recovery"
@@ -45,7 +44,6 @@ type StartOperationSettings = {
 	timeoutSlots?: number
 	state?: {
 		id?: string
-		index?: number
 		status: OperationStatus
 		source: Networks
 		destination: Networks
@@ -78,7 +76,6 @@ export interface BridgeContext {
 	sourceNetwork: Networks
 	destinationNetwork: Networks
 	operations: Operations
-	operationsToUnpause: string[]
 	wallet: Wallet
 	walletReady: boolean
 	accountReady: boolean
@@ -114,10 +111,7 @@ type StartArgs = {
 	command: Command
 }
 
-type RecoveryEnqueue = {
-	(action: { type: "startOperation"; params: StartOperationSettings }): void
-	assign: (assignment: Partial<BridgeContext>) => void
-}
+type RecoveryEnqueue = (action: { type: "startOperation"; params: StartOperationSettings }) => void
 
 const enqueueRecoveredOperations = ({
 	enqueue,
@@ -127,8 +121,7 @@ const enqueueRecoveredOperations = ({
 	recovered: RecoveredOperations
 }) => {
 	const start = ({ status, actionState, command }: StartArgs) => {
-		const { amount, source, destination, transaction, id, index, cancellable, timeoutSlot } =
-			actionState
+		const { amount, source, destination, transaction, id, cancellable, timeoutSlot } = actionState
 		enqueue({
 			type: "startOperation",
 			params: {
@@ -137,7 +130,6 @@ const enqueueRecoveredOperations = ({
 				lane: command === "resumeDeposit" && cancellable === true ? "cancellation" : "main",
 				state: {
 					id,
-					index,
 					status,
 					destination,
 					source,
@@ -174,12 +166,6 @@ const enqueueRecoveredOperations = ({
 			command: pendingOperation.command
 		})
 	}
-
-	enqueue.assign({
-		operationsToUnpause: queuedMainOperations.map(
-			(pendingOperation) => pendingOperation.actionState.id
-		)
-	})
 }
 
 const enqueueRecoveredOperation = ({
@@ -200,7 +186,6 @@ const enqueueRecoveredOperation = ({
 			command,
 			state: {
 				id: actionState.id,
-				index: actionState.index,
 				status,
 				source: actionState.source,
 				destination: actionState.destination,
@@ -262,10 +247,6 @@ const syncRecoveredOperations = ({
 
 	return {
 		operations,
-		operationsToUnpause: syncState.operationsToUnpause.flatMap((recoveredId) => {
-			const operationId = recoveryOperationIds.get(recoveredId)
-			return operationId ? [operationId] : []
-		}),
 		activeOperation: (() => {
 			if (!syncState.activeOperation) return null
 			return recoveryOperationIds.get(syncState.activeOperation) ?? null
@@ -395,11 +376,8 @@ export const bridgeMachine = setup({
 			const pausedEntry = operations.get(id)
 			if (!pausedEntry) throw new Error("Operation not found")
 			operations.set(id, { ...pausedEntry, status: "paused" })
-			const operationsToUnpause =
-				pausedEntry.lane === "main" ? pausedMainQueueIds(operations) : context.operationsToUnpause
 			return {
-				operations: new Map(operations),
-				operationsToUnpause
+				operations: new Map(operations)
 			}
 		}),
 		completeOperation: assign(({ context }, params: { id: string; terminate?: boolean }) => {
@@ -413,11 +391,9 @@ export const bridgeMachine = setup({
 			else operations.set(id, { status: "completed", lane, operation: completedOperation, order })
 
 			let idToResume: string | null = null
-			let remainingToUnpause = context.operationsToUnpause
 			if (lane === "main") {
 				const [nextId, ...rest] = pausedMainQueueIds(operations)
 				idToResume = nextId ?? null
-				remainingToUnpause = rest
 				logger.info("Found operation to resume", idToResume, rest)
 				if (idToResume) {
 					const nextEntry = operations.get(idToResume)
@@ -432,12 +408,9 @@ export const bridgeMachine = setup({
 
 			return {
 				operations: new Map(operations),
-				operationsToUnpause: lane === "main" ? remainingToUnpause : context.operationsToUnpause,
 				activeOperation: lane === "main" ? idToResume : context.activeOperation,
-				activeCancellationOperation: releaseCancellationSlot({
-					activeCancellationOperation: context.activeCancellationOperation,
-					operationId: id
-				})
+				activeCancellationOperation:
+					context.activeCancellationOperation === id ? null : context.activeCancellationOperation
 			}
 		}),
 		activateCancellationOperation: assign(({ context }, params: { id: string }) => ({
@@ -448,10 +421,10 @@ export const bridgeMachine = setup({
 					: context.activeCancellationOperation
 		})),
 		releaseCancellationOperation: assign(({ context }, params: { id: string }) => ({
-			activeCancellationOperation: releaseCancellationSlot({
-				activeCancellationOperation: context.activeCancellationOperation,
-				operationId: params.id
-			})
+			activeCancellationOperation:
+				context.activeCancellationOperation === params.id
+					? null
+					: context.activeCancellationOperation
 		}))
 	}
 }).createMachine({
@@ -464,7 +437,6 @@ export const bridgeMachine = setup({
 			wallet,
 			worker: Comlink.wrap<OperationsWorker>(worker),
 			operations: new Map(),
-			operationsToUnpause: [],
 			sourceNetwork,
 			destinationNetwork,
 			walletReady: false,
@@ -493,7 +465,6 @@ export const bridgeMachine = setup({
 					context.operations.clear()
 					enqueue.assign({
 						operations: new Map(),
-						operationsToUnpause: [],
 						activeOperation: null,
 						activeCancellationOperation: null,
 						nextOperationOrder: 0,
@@ -652,19 +623,14 @@ export const bridgeMachine = setup({
 					target: "READY",
 					actions: assign(({ context, event }) => {
 						const recovered = classifyRecoveredOperations(event.output)
-						const {
-							operations,
-							operationsToUnpause,
-							activeOperation,
-							activeCancellationOperation
-						} = syncRecoveredOperations({
-							context,
-							recovered
-						})
+						const { operations, activeOperation, activeCancellationOperation } =
+							syncRecoveredOperations({
+								context,
+								recovered
+							})
 
 						return {
 							operations,
-							operationsToUnpause,
 							activeOperation,
 							activeCancellationOperation,
 							currentSlot: event.output.currentSlot

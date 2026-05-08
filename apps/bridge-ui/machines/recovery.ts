@@ -6,7 +6,6 @@ export type RecoveryLane = "main" | "cancellation"
 export type PendingRecoveryOperation = {
 	actionState: ActionState
 	command: PendingRecoveryCommand
-	lane: RecoveryLane
 }
 
 export type RecoveredOperations = {
@@ -30,7 +29,6 @@ export type RecoverySyncOperation = {
 
 export type RecoverySyncState = {
 	pendingOperations: RecoverySyncOperation[]
-	operationsToUnpause: string[]
 	activeOperation: string | null
 	activeCancellationOperation: string | null
 }
@@ -42,20 +40,6 @@ export type RecoverySyncCandidate = {
 }
 
 const compareBySubmissionOrder = (a: ActionState, b: ActionState) => a.index - b.index
-
-const toPendingRecoveryOperation = ({
-	actionState,
-	command,
-	lane
-}: {
-	actionState: ActionState
-	command: PendingRecoveryCommand
-	lane: RecoveryLane
-}): PendingRecoveryOperation => ({
-	actionState,
-	command,
-	lane
-})
 
 export const classifyRecoveredOperations = ({
 	deposits,
@@ -83,23 +67,17 @@ export const classifyRecoveredOperations = ({
 		}
 
 		if (deposit.cancellable === true) {
-			recovered.cancellableDeposits.push(
-				toPendingRecoveryOperation({
-					actionState: deposit,
-					command: "resumeDeposit",
-					lane: "cancellation"
-				})
-			)
+			recovered.cancellableDeposits.push({
+				actionState: deposit,
+				command: "resumeDeposit"
+			})
 			continue
 		}
 
-		pendingDeposits.push(
-			toPendingRecoveryOperation({
-				actionState: deposit,
-				command: "resumeDeposit",
-				lane: "main"
-			})
-		)
+		pendingDeposits.push({
+			actionState: deposit,
+			command: "resumeDeposit"
+		})
 	}
 
 	for (const withdrawal of withdrawals) {
@@ -108,13 +86,10 @@ export const classifyRecoveredOperations = ({
 			continue
 		}
 
-		pendingWithdrawals.push(
-			toPendingRecoveryOperation({
-				actionState: withdrawal,
-				command: "resumeWithdrawal",
-				lane: "main"
-			})
-		)
+		pendingWithdrawals.push({
+			actionState: withdrawal,
+			command: "resumeWithdrawal"
+		})
 	}
 
 	pendingDeposits.sort((a, b) => compareBySubmissionOrder(a.actionState, b.actionState))
@@ -168,7 +143,6 @@ export const buildRecoverySyncState = ({
 
 	return {
 		pendingOperations,
-		operationsToUnpause: mainPendingIds.slice(1),
 		activeOperation: mainPendingIds[0] ?? null,
 		activeCancellationOperation
 	}
