@@ -24,14 +24,6 @@ describe("sdk config", () => {
 		expect(config.verbose).toBe(true)
 	})
 
-	it("can point live validation at a local actions api", () => {
-		const config = createSdkConfig(resolveRoute("mina:testnet", "zeko:testnet"), {
-			env: { BRIDGE_CLI_ACTIONS_API_URL: "http://localhost:9100/graphql" }
-		})
-
-		expect(config.actionsApi).toBe("http://localhost:9100/graphql")
-	})
-
 	it("rejects disabled routes", () => {
 		expect(() => createSdkConfig(resolveRoute("mina:mainnet", "zeko:mainnet"))).toThrowError(
 			"Known route, not enabled yet."

@@ -187,3 +187,4 @@
 - T187 | done | reconcile-finalised-withdrawals | done/T187-reconcile-finalised-withdrawals.md
 - T188 | done | consolidate-bridge-example-env-helpers | done/T188-consolidate-bridge-example-env-helpers.md
 - T189 | done | demote-mocked-bridge-cli-tests | done/T189-demote-mocked-bridge-cli-tests.md
+- T190 | done | tighten-bridge-env-config | done/T190-tighten-bridge-env-config.md

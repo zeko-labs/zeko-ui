@@ -1,12 +1,8 @@
-import { env } from "node:process"
 import { diagnoseBridgeHistory } from "../src/diagnostics"
-import { readBridgeConfig, writeLog } from "./helper"
+import { readBridgeConfig, readMinaPrivateKey, writeLog } from "./helper"
 
 async function main() {
-	const walletAddress = env.WALLET_ADDRESS
-	if (!walletAddress) {
-		throw new Error("WALLET_ADDRESS is not set")
-	}
+	const walletAddress = readMinaPrivateKey().toPublicKey().toBase58()
 
 	const diagnostics = await diagnoseBridgeHistory({
 		walletAddress,

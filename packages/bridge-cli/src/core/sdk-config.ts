@@ -27,19 +27,15 @@ const MAINNET_CONFIG = {
 
 export const createSdkConfig = (
 	route: RouteDescriptor,
-	options: { env?: Partial<Record<string, string | undefined>>; verbose?: boolean } = {}
+	options: { verbose?: boolean } = {}
 ): Config => {
 	if (!route.enabled) {
 		throw new Error(route.reason ?? `Bridge route ${route.label} is not enabled.`)
 	}
 
-	const env = options.env ?? process.env
-	const actionsApi = env.BRIDGE_CLI_ACTIONS_API_URL?.trim()
-
 	if (route.from.includes("testnet") && route.to.includes("testnet")) {
 		return {
 			...TESTNET_CONFIG,
-			...(actionsApi ? { actionsApi } : {}),
 			verbose: options.verbose === true
 		}
 	}
@@ -47,7 +43,6 @@ export const createSdkConfig = (
 	if (route.from.includes("mainnet") && route.to.includes("mainnet")) {
 		return {
 			...MAINNET_CONFIG,
-			...(actionsApi ? { actionsApi } : {}),
 			verbose: options.verbose === true
 		}
 	}
