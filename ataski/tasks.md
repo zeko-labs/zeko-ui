@@ -190,3 +190,5 @@
 - T190 | done | tighten-bridge-env-config | done/T190-tighten-bridge-env-config.md
 - T191 | done | refine-vue-xstate-selector-cleanup | done/T191-refine-vue-xstate-selector-cleanup.md
 - T192 | done | validate-pr-169-review-fixes | done/T192-validate-pr-169-review-fixes.md
+- T193 | done | refactor-bridge-sdk-functional-core | done/T193-refactor-bridge-sdk-functional-core.md
+- T194 | done | validate-bridge-sdk-functional-core-refactor | done/T194-validate-bridge-sdk-functional-core-refactor.md
