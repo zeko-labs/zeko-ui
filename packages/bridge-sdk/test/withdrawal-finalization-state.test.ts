@@ -29,7 +29,15 @@ const buildGraphqlClient = (payload: { data?: unknown; error?: unknown }): GqlCl
 		{ label: "test-client" }
 	)
 
-const buildBridge = () =>
+const buildBridge = ({
+	l1AccountCreationFee = 1,
+	l2AccountCreationFee = 1,
+	bridgeProofFee = 1
+}: {
+	l1AccountCreationFee?: number
+	l2AccountCreationFee?: number
+	bridgeProofFee?: number
+} = {}) =>
 	new Bridge(
 		bridgeConfig,
 		buildGraphqlClient({}),
@@ -37,20 +45,23 @@ const buildBridge = () =>
 		buildGraphqlClient({}),
 		buildGraphqlClient({}),
 		buildGraphqlClient({}),
-		UInt64.from(1),
-		UInt64.from(1),
+		UInt64.from(l1AccountCreationFee),
+		UInt64.from(l2AccountCreationFee),
 		outerPk,
 		innerPk,
 		[outerPk],
 		outerPk,
 		outerPk,
 		innerPk,
-		UInt32.from(10)
+		UInt32.from(10),
+		outerPk,
+		innerPk,
+		UInt64.from(bridgeProofFee)
 	)
 
-const buildWithdrawal = (): Withdrawal => ({
+const buildWithdrawal = ({ amount = 2_000_000_000 }: { amount?: number } = {}): Withdrawal => ({
 	recipient,
-	amount: UInt64.from(2_000_000_000)
+	amount: UInt64.from(amount)
 })
 
 const buildInnerWitness = (withdrawal: Withdrawal, index: number): InnerWitness => ({
@@ -99,13 +110,15 @@ const mockWithdrawalState = ({
 	withdrawal,
 	witness,
 	nextWithdrawal = 0,
-	innerActions = [witness]
+	innerActions = [witness],
+	helperAccountExists
 }: {
 	bridge: Bridge
 	withdrawal: Withdrawal
 	witness: InnerWitness
 	nextWithdrawal?: number
 	innerActions?: InnerWitness[]
+	helperAccountExists?: boolean
 }) => {
 	const bridgeInternals = bridge as unknown as {
 		fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
@@ -114,9 +127,13 @@ const mockWithdrawalState = ({
 		fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
 	}
 
-	vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue({
-		zkappState: ["0", String(nextWithdrawal)]
-	})
+	vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue(
+		helperAccountExists === false
+			? null
+			: {
+					zkappState: ["0", String(nextWithdrawal)]
+				}
+	)
 	vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
 	vi.spyOn(bridgeInternals, "fetchUserWithdrawals").mockResolvedValue([withdrawal])
 	vi.spyOn(bridgeInternals, "fetchUserWithdrawalActions").mockResolvedValue([
@@ -172,5 +189,21 @@ describe("withdrawal finalization state", () => {
 		expect(result.withdrawals).toHaveLength(1)
 		expect(result.withdrawals[0]?.finalised).toBe(true)
 		expect(result.finalisedIndex).toBe(0)
+	})
+
+	it("blocks first withdrawals below the l1 account creation plus bridge proof fee threshold", async () => {
+		const bridge = buildBridge({
+			l1AccountCreationFee: 1_000_000_000,
+			bridgeProofFee: 500_000_000
+		})
+		const withdrawal = buildWithdrawal({ amount: 1_000_000_001 })
+		const witness = buildInnerWitness(withdrawal, 0)
+		mockWithdrawalState({ bridge, withdrawal, witness, helperAccountExists: false })
+
+		await expect(bridge.canFinalizeWithdrawal(recipient)).resolves.toMatchObject({
+			available: false,
+			status: "blocked",
+			reason: expect.stringContaining("at least 1.5 MINA")
+		})
 	})
 })

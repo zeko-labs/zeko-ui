@@ -10,6 +10,7 @@ import type {
 import { Bridge } from "@zeko-labs/bridge-sdk"
 import * as Comlink from "comlink"
 import { PublicKey, Transaction, type Transaction as MinaTransaction, UInt32, UInt64 } from "o1js"
+import { createLogger } from "./debug"
 import { getBridgeConfig } from "./helpers"
 import { normalizeOperationTimestamp } from "./operationTimestamps"
 
@@ -60,6 +61,7 @@ type PendingSdkSignature = {
 
 const bridges = new Map<string, Bridge>()
 const pendingSdkSignatures = new Map<string, PendingSdkSignature>()
+const { logger } = createLogger("[OPERATIONS WORKER]")
 
 const normalizeError = (error: unknown) =>
 	error instanceof Error ? error : new Error(String(error))
@@ -97,10 +99,13 @@ const requestSdkSignature = (
 		result
 	})
 
-	result.catch((error) => {
-		request.reject(normalizeError(error))
-		pendingSdkSignatures.delete(requestId)
-	})
+	void result
+		.catch((error) => {
+			request.reject(normalizeError(error))
+		})
+		.finally(() => {
+			pendingSdkSignatures.delete(requestId)
+		})
 
 	return request.promise
 }
@@ -118,12 +123,8 @@ async function completeSdkSignature({
 	const pending = pendingSdkSignatures.get(requestId)
 	if (!pending) throw new Error(`No SDK signature request found for ${requestId}`)
 
-	try {
-		pending.resolveSignedTransaction(signedTransactionFromJson(signedTransaction))
-		return await pending.result
-	} finally {
-		pendingSdkSignatures.delete(requestId)
-	}
+	pending.resolveSignedTransaction(signedTransactionFromJson(signedTransaction))
+	return await pending.result
 }
 async function rejectSdkSignature({
 	requestId,
@@ -135,12 +136,16 @@ async function rejectSdkSignature({
 	const pending = pendingSdkSignatures.get(requestId)
 	if (!pending) return
 
-	pending.rejectSignedTransaction(new Error(message ?? "Transaction signing failed"))
-	pendingSdkSignatures.delete(requestId)
+	const rejectionMessage = message ?? "Transaction signing failed"
+	pending.rejectSignedTransaction(new Error(rejectionMessage))
 	try {
 		await pending.result
-	} catch {
+	} catch (error) {
 		// Rejection is intentionally surfaced through the UI signing state.
+		const normalizedError = normalizeError(error)
+		if (normalizedError.message !== rejectionMessage) {
+			Sentry.captureException(normalizedError)
+		}
 	}
 }
 
@@ -252,7 +257,7 @@ async function submitDeposit({
 		amount: UInt64.from(Number(amount) * 10e8),
 		timeout
 	}
-	console.log("Submit Deposit:", { timeoutSlots, submitDeposit })
+	logger.debug("Submit Deposit:", { timeoutSlots, submitDeposit })
 	return requestSdkSignature((signTransaction) =>
 		bridge.submitDeposit(feePayer, submitDeposit, signTransaction)
 	)

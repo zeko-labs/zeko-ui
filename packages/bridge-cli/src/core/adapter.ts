@@ -156,6 +156,7 @@ export const sendWithFeeRetries = async <TTransaction, TResult>({
 const signSdkTransaction =
 	(signer: PrivateKey) =>
 	async (transaction: MinaTransaction<boolean, false>): Promise<MinaTransaction<boolean, true>> =>
+		// o1js signs in place at runtime, but the public type does not narrow the transaction's signed flag.
 		transaction.sign([signer]) as MinaTransaction<boolean, true>
 
 const toCompletedSdkTransaction = (hash: string): SignedTransactionResult => ({ hash })

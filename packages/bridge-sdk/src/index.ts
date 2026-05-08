@@ -351,7 +351,7 @@ export class Bridge {
 	}
 
 	private async pollQuery(key: string, pollPeriod = 5_000): Promise<string> {
-		console.debug("pollQuery", key)
+		this.debug("pollQuery", { key })
 
 		let result: string | null = null
 		let attempts = 0

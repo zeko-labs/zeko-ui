@@ -189,3 +189,4 @@
 - T189 | done | demote-mocked-bridge-cli-tests | done/T189-demote-mocked-bridge-cli-tests.md
 - T190 | done | tighten-bridge-env-config | done/T190-tighten-bridge-env-config.md
 - T191 | done | refine-vue-xstate-selector-cleanup | done/T191-refine-vue-xstate-selector-cleanup.md
+- T192 | done | validate-pr-169-review-fixes | done/T192-validate-pr-169-review-fixes.md
