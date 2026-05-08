@@ -7,8 +7,8 @@ const main = async () => {
 	Mina.setActiveInstance(
 		Mina.Network({
 			networkId: "testnet",
-			mina: "https://api.minascan.io/node/devnet/v1/graphql",
-			archive: "https://api.minascan.io/archive/devnet/v1/graphql"
+			mina: "https://gateway.mina.devnet.zeko.io",
+			archive: "https://gateway.mina.archive.devnet.zeko.io"
 		})
 	)
 
@@ -95,8 +95,8 @@ and this is the code for deposit claim:
 
 ```ts
 const sequencerUrl = "https://devnet.zeko.io/graphql";
-const l1NodeUrl = "https://api.minascan.io/node/devnet/v1/graphql";
-const l1ArchiveUrl = "https://api.minascan.io/archive/devnet/v1/graphql";
+const l1NodeUrl = "https://gateway.mina.devnet.zeko.io";
+const l1ArchiveUrl = "https://gateway.mina.archive.devnet.zeko.io";
 
 const outerAccountPk = PublicKey.fromBase58("B62qpuhMDp748xtE77iBXRRaipJYgs6yumAeTzaM7zS9dn8avLPaeFF");
 const innerAccountPk = PublicKey.fromBase58("B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1");

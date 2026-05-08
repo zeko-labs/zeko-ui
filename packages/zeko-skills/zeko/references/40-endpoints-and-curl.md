@@ -27,8 +27,8 @@ Use this file when you need exact public endpoints, Bridge SDK config values, or
 
 ## Mina fallback endpoints
 
-- Mina node backup: `https://api.minascan.io/node/devnet/v1/graphql`
-- Mina archive backup: `https://api.minascan.io/archive/devnet/v1/graphql`
+- Mina node gateway: `https://gateway.mina.devnet.zeko.io`
+- Mina archive gateway: `https://gateway.mina.archive.devnet.zeko.io`
 
 Rule:
 

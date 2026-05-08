@@ -51,15 +51,27 @@ describe("zeko-skills spec and utils", () => {
 		).toBe(false)
 	})
 
-	it("tracks the archive proxy upstream separately from the public backup archive", () => {
-		const backupArchive = endpointChecks.find((check) => check.name === "minascan backup archive")
-		const archiveProxy = endpointChecks.find(
-			(check) => check.name === "mina archive proxy upstream"
-		)
+	it("tracks Mina devnet consumers through Zeko proxy endpoints", () => {
+		const minaGateway = endpointChecks.find((check) => check.name === "mina gateway")
+		const minaArchiveGateway = endpointChecks.find((check) => check.name === "mina archive gateway")
 
-		expect(backupArchive?.expected).toBe("https://api.minascan.io/archive/devnet/v1/graphql")
-		expect(backupArchive?.sources).toEqual(["packages/graphql/moon.yml"])
-		expect(archiveProxy?.expected).toBe("https://devnet-archive-node-api.gcp.o1test.net")
-		expect(archiveProxy?.sources).toEqual(["services/mina-archive-proxy/worker.ts"])
+		expect(minaGateway?.expected).toEqual([
+			"https://gateway.mina.devnet.zeko.io",
+			"gateway.mina.devnet.zeko.io"
+		])
+		expect(minaGateway?.sources).toEqual([
+			"apps/bridge-ui/machines/helpers.ts",
+			"packages/graphql/moon.yml",
+			"services/mina-proxy/wrangler.jsonc"
+		])
+		expect(minaArchiveGateway?.expected).toEqual([
+			"https://gateway.mina.archive.devnet.zeko.io",
+			"gateway.mina.archive.devnet.zeko.io"
+		])
+		expect(minaArchiveGateway?.sources).toEqual([
+			"apps/bridge-ui/machines/helpers.ts",
+			"packages/graphql/moon.yml",
+			"services/mina-archive-proxy/wrangler.jsonc"
+		])
 	})
 })

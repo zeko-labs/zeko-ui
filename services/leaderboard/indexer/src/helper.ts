@@ -44,7 +44,7 @@ export type ArchiveEvents = NonNullable<ResultOf<typeof FetchZekoArchiveEvents>[
 type Layer = "L1" | "L2"
 
 const l2Client = createMinaClient("https://archive.testnet.zeko.io/graphql")
-const l1Client = createMinaClient("https://api.minascan.io/archive/devnet/v1/graphql")
+const l1Client = createMinaClient("https://gateway.mina.archive.devnet.zeko.io")
 
 /**
  * Get the current maximum block height of the chain.

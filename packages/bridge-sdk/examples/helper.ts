@@ -7,8 +7,8 @@ import type { Config } from "../src/index"
 export const readEnv = (key: string, fallback: string): string => env[key]?.trim() || fallback
 
 export const readBridgeConfig = (): Config => ({
-	l1Url: readEnv("L1_URL", "https://api.minascan.io/node/devnet/v1/graphql"),
-	l1ArchiveUrl: readEnv("L1_ARCHIVE_URL", "https://api.minascan.io/archive/devnet/v1/graphql"),
+	l1Url: readEnv("L1_URL", "https://gateway.mina.devnet.zeko.io"),
+	l1ArchiveUrl: readEnv("L1_ARCHIVE_URL", "https://gateway.mina.archive.devnet.zeko.io"),
 	actionsApi: readEnv("ACTIONS_API_URL", "https://api.actions.zeko.io/graphql"),
 	zekoUrl: readEnv("L2_URL", "https://testnet.zeko.io/graphql"),
 	zekoArchiveUrl: readEnv("L2_ARCHIVE_URL", "https://archive.testnet.zeko.io/graphql"),

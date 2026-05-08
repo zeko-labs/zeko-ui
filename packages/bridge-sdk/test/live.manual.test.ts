@@ -3,10 +3,9 @@ import { PublicKey } from "o1js"
 import { Bridge, type Config } from "../src/index"
 
 const liveConfig: Config = {
-	l1Url: process.env.BRIDGE_SDK_L1_URL?.trim() || "https://api.minascan.io/node/devnet/v1/graphql",
+	l1Url: process.env.BRIDGE_SDK_L1_URL?.trim() || "https://gateway.mina.devnet.zeko.io",
 	l1ArchiveUrl:
-		process.env.BRIDGE_SDK_L1_ARCHIVE_URL?.trim() ||
-		"https://api.minascan.io/archive/devnet/v1/graphql",
+		process.env.BRIDGE_SDK_L1_ARCHIVE_URL?.trim() || "https://gateway.mina.archive.devnet.zeko.io",
 	zekoUrl: process.env.BRIDGE_SDK_L2_URL?.trim() || "https://testnet.zeko.io/graphql",
 	zekoArchiveUrl:
 		process.env.BRIDGE_SDK_L2_ARCHIVE_URL?.trim() || "https://archive.testnet.zeko.io/graphql",

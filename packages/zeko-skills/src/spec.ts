@@ -74,28 +74,24 @@ export const endpointChecks: EndpointCheck[] = [
 	},
 	{
 		name: "mina gateway",
-		expected: "gateway.mina.devnet.zeko.io",
-		sources: ["services/mina-proxy/wrangler.jsonc"]
+		expected: ["https://gateway.mina.devnet.zeko.io", "gateway.mina.devnet.zeko.io"],
+		sources: [
+			"apps/bridge-ui/machines/helpers.ts",
+			"packages/graphql/moon.yml",
+			"services/mina-proxy/wrangler.jsonc"
+		]
 	},
 	{
 		name: "mina archive gateway",
-		expected: "gateway.mina.archive.devnet.zeko.io",
-		sources: ["services/mina-archive-proxy/wrangler.jsonc"]
-	},
-	{
-		name: "minascan backup node",
-		expected: "https://api.minascan.io/node/devnet/v1/graphql",
-		sources: ["packages/graphql/moon.yml", "services/mina-proxy/worker.ts"]
-	},
-	{
-		name: "minascan backup archive",
-		expected: "https://api.minascan.io/archive/devnet/v1/graphql",
-		sources: ["packages/graphql/moon.yml"]
-	},
-	{
-		name: "mina archive proxy upstream",
-		expected: "https://devnet-archive-node-api.gcp.o1test.net",
-		sources: ["services/mina-archive-proxy/worker.ts"]
+		expected: [
+			"https://gateway.mina.archive.devnet.zeko.io",
+			"gateway.mina.archive.devnet.zeko.io"
+		],
+		sources: [
+			"apps/bridge-ui/machines/helpers.ts",
+			"packages/graphql/moon.yml",
+			"services/mina-archive-proxy/wrangler.jsonc"
+		]
 	},
 	{
 		name: "actions api",
