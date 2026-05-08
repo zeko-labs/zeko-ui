@@ -7,6 +7,7 @@ import {
 import { PublicKey, UInt32, UInt64 } from "o1js"
 import { createGraphqlClient, type GqlClient } from "./graphql"
 import type { Action, Account, Config, Deposit, Withdrawal } from "./types"
+import type { fetchDepositFinalizationWitnesses } from "./deposits"
 
 export type BridgeRuntime = {
 	readonly config: Config
@@ -34,6 +35,7 @@ export type BridgeRuntime = {
 			tokenId?: import("o1js").Field
 		) => Promise<Account | null>
 		fetchCurrentSlot: () => Promise<UInt32>
+		fetchDepositFinalizationWitnesses: typeof fetchDepositFinalizationWitnesses
 		fetchSyncedOuterActionState: () => Promise<{ state: import("o1js").Field; length: UInt32 }>
 		fetchUserDeposits: (pk: PublicKey) => Promise<Deposit[]>
 		fetchUserWithdrawals: (pk: PublicKey) => Promise<Withdrawal[]>

@@ -6,7 +6,7 @@ export const pollProvingResult = async (
 	key: string,
 	pollPeriod = 5_000
 ): Promise<string> => {
-	console.debug("pollQuery", key)
+	debug(runtime, "pollQuery", { key })
 
 	let result: string | null = null
 	let attempts = 0

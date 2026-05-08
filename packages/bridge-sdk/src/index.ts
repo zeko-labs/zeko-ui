@@ -1,11 +1,10 @@
 import type { Field, Mina, PublicKey, Transaction, UInt32, UInt64 } from "o1js"
+import { cancelDeposit, canCancelDeposit } from "./cancellations"
+import { fetchSyncedOuterActionState, fetchUserDeposits } from "./deposit-state"
 import {
-	cancelDeposit,
-	canCancelDeposit,
 	canFinalizeDeposit,
+	fetchDepositFinalizationWitnesses,
 	fetchDepositsWithStates,
-	fetchSyncedOuterActionState,
-	fetchUserDeposits,
 	finalizeDeposit,
 	submitDeposit
 } from "./deposits"
@@ -140,6 +139,8 @@ export class Bridge {
 			bridge: {
 				fetchAccount: (...args) => this.fetchAccount(...args),
 				fetchCurrentSlot: () => this.fetchCurrentSlot(),
+				fetchDepositFinalizationWitnesses: (_runtime, pk) =>
+					this.fetchDepositFinalizationWitnesses(pk),
 				fetchSyncedOuterActionState: () => this.fetchSyncedOuterActionState(),
 				fetchUserDeposits: (pk) => this.fetchUserDeposits(pk),
 				fetchUserWithdrawals: (pk) => this.fetchUserWithdrawals(pk),
@@ -222,6 +223,10 @@ export class Bridge {
 
 	private fetchUserDeposits(pk: PublicKey): Promise<Deposit[]> {
 		return fetchUserDeposits(this.runtime, pk)
+	}
+
+	private fetchDepositFinalizationWitnesses(pk: PublicKey) {
+		return fetchDepositFinalizationWitnesses(this.runtime, pk)
 	}
 
 	private fetchUserWithdrawals(pk: PublicKey): Promise<Withdrawal[]> {

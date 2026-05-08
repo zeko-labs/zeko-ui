@@ -192,3 +192,5 @@
 - T192 | done | validate-pr-169-review-fixes | done/T192-validate-pr-169-review-fixes.md
 - T193 | done | refactor-bridge-sdk-functional-core | done/T193-refactor-bridge-sdk-functional-core.md
 - T194 | done | validate-bridge-sdk-functional-core-refactor | done/T194-validate-bridge-sdk-functional-core-refactor.md
+- T195 | done | split-bridge-sdk-cancellation-module | done/T195-split-bridge-sdk-cancellation-module.md
+- T196 | in-progress | validate-pr-171-conflicts-and-ci | in-progress/T196-validate-pr-171-conflicts-and-ci.md
