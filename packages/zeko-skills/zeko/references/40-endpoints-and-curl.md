@@ -25,16 +25,6 @@ Use this file when you need exact public endpoints, Bridge SDK config values, or
 - This skill defaults to public testnet values because those are the stable public builder defaults.
 - If the user needs a browser wallet or custom network config for another network, start with `https://docs.zeko.io/developers/guides/custom-network`.
 
-## Mina fallback endpoints
-
-- Mina node gateway: `https://gateway.mina.devnet.zeko.io`
-- Mina archive gateway: `https://gateway.mina.archive.devnet.zeko.io`
-
-Rule:
-
-- Treat the gateway Mina endpoints as the default read path.
-- Use Minascan as a backup, not the first choice.
-
 ## Native MINA transfer rule
 
 - Use `sendPayment` for native MINA transfers.

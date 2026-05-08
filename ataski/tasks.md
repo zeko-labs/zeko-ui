@@ -191,3 +191,4 @@
 - T191 | done | refine-vue-xstate-selector-cleanup | done/T191-refine-vue-xstate-selector-cleanup.md
 - T192 | done | validate-pr-169-review-fixes | done/T192-validate-pr-169-review-fixes.md
 - T193 | done | replace-devnet-l1-endpoints-with-zeko-proxies | done/T193-replace-devnet-l1-endpoints-with-zeko-proxies.md
+- T194 | done | scope-zeko-skill-endpoint-validation | done/T194-scope-zeko-skill-endpoint-validation.md

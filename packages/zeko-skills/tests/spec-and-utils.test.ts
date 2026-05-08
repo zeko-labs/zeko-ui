@@ -51,27 +51,38 @@ describe("zeko-skills spec and utils", () => {
 		).toBe(false)
 	})
 
-	it("tracks Mina devnet consumers through Zeko proxy endpoints", () => {
+	it("tracks Mina gateway documentation against deployed routes only", () => {
 		const minaGateway = endpointChecks.find((check) => check.name === "mina gateway")
 		const minaArchiveGateway = endpointChecks.find((check) => check.name === "mina archive gateway")
 
-		expect(minaGateway?.expected).toEqual([
-			"https://gateway.mina.devnet.zeko.io",
-			"gateway.mina.devnet.zeko.io"
+		expect(minaGateway?.documentedUrl).toBe("https://gateway.mina.devnet.zeko.io")
+		expect(minaGateway?.documentedSources).toEqual([
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
 		])
-		expect(minaGateway?.sources).toEqual([
-			"apps/bridge-ui/machines/helpers.ts",
-			"packages/graphql/moon.yml",
-			"services/mina-proxy/wrangler.jsonc"
+		expect(minaGateway?.deployedSources).toEqual(["services/mina-proxy/wrangler.jsonc"])
+
+		expect(minaArchiveGateway?.documentedUrl).toBe("https://gateway.mina.archive.devnet.zeko.io")
+		expect(minaArchiveGateway?.documentedSources).toEqual([
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
 		])
-		expect(minaArchiveGateway?.expected).toEqual([
-			"https://gateway.mina.archive.devnet.zeko.io",
-			"gateway.mina.archive.devnet.zeko.io"
-		])
-		expect(minaArchiveGateway?.sources).toEqual([
-			"apps/bridge-ui/machines/helpers.ts",
-			"packages/graphql/moon.yml",
+		expect(minaArchiveGateway?.deployedSources).toEqual([
 			"services/mina-archive-proxy/wrangler.jsonc"
 		])
+
+		const checkedSources = endpointChecks.flatMap((check) => [
+			...check.documentedSources,
+			...(check.deployedSources ?? [])
+		])
+		expect(
+			checkedSources.every(
+				(source) =>
+					source.startsWith("packages/zeko-skills/zeko/references/") ||
+					source.endsWith("/wrangler.jsonc")
+			)
+		).toBe(true)
+		expect(checkedSources.some((source) => source.endsWith("moon.yml"))).toBe(false)
+		expect(checkedSources.some((source) => source.includes("/machines/"))).toBe(false)
 	})
 })
