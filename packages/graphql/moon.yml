@@ -38,13 +38,13 @@ tasks:
     outputs:
       - src/generated/zeko-archive.graphql
   schema-get-mina:
-    command: gql-tada generate schema 'https://api.minascan.io/node/devnet/v1/graphql' --output './src/generated/mina.graphql'
+    command: gql-tada generate schema 'https://gateway.mina.devnet.zeko.io' --output './src/generated/mina.graphql'
     options:
       cache: false
     outputs:
       - src/generated/mina.graphql
   schema-get-mina-archive:
-    command: gql-tada generate schema 'https://api.minascan.io/archive/devnet/v1/graphql' --output './src/generated/mina-archive.graphql'
+    command: gql-tada generate schema 'https://gateway.mina.archive.devnet.zeko.io' --output './src/generated/mina-archive.graphql'
     options:
       cache: false
     outputs:

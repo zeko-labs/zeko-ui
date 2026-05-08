@@ -2,9 +2,8 @@ import type { Config } from "@zeko-labs/bridge-sdk"
 import type { RouteDescriptor } from "./routes"
 
 const TESTNET_CONFIG = {
-	l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
-	l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
-	// l1ArchiveUrl: "https://devnet-archive-node-api.gcp.o1test.net/",
+	l1Url: "https://gateway.mina.devnet.zeko.io",
+	l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
 	zekoUrl: "https://testnet.zeko.io/graphql",
 	zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql",
 	// zekoUrl: "https://alphanet.zeko.io/graphql",

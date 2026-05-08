@@ -190,7 +190,9 @@
 - T190 | done | tighten-bridge-env-config | done/T190-tighten-bridge-env-config.md
 - T191 | done | refine-vue-xstate-selector-cleanup | done/T191-refine-vue-xstate-selector-cleanup.md
 - T192 | done | validate-pr-169-review-fixes | done/T192-validate-pr-169-review-fixes.md
-- T193 | done | refactor-bridge-sdk-functional-core | done/T193-refactor-bridge-sdk-functional-core.md
-- T194 | done | validate-bridge-sdk-functional-core-refactor | done/T194-validate-bridge-sdk-functional-core-refactor.md
-- T195 | done | split-bridge-sdk-cancellation-module | done/T195-split-bridge-sdk-cancellation-module.md
-- T196 | in-progress | validate-pr-171-conflicts-and-ci | in-progress/T196-validate-pr-171-conflicts-and-ci.md
+- T193 | done | replace-devnet-l1-endpoints-with-zeko-proxies | done/T193-replace-devnet-l1-endpoints-with-zeko-proxies.md
+- T194 | done | scope-zeko-skill-endpoint-validation | done/T194-scope-zeko-skill-endpoint-validation.md
+- T195 | done | refactor-bridge-sdk-functional-core | done/T195-refactor-bridge-sdk-functional-core.md
+- T196 | done | validate-bridge-sdk-functional-core-refactor | done/T196-validate-bridge-sdk-functional-core-refactor.md
+- T197 | done | split-bridge-sdk-cancellation-module | done/T197-split-bridge-sdk-cancellation-module.md
+- T198 | done | validate-pr-171-conflicts-and-ci | done/T198-validate-pr-171-conflicts-and-ci.md

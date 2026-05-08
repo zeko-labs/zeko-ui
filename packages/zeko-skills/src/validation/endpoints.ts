@@ -1,13 +1,26 @@
 import { type EndpointCheck, endpointChecks } from "../spec.js"
 import { assert, readRepoFile } from "../utils.js"
 
-const validateEndpointCheck = ({ name, expected, sources }: EndpointCheck) => {
-	const expectedEndpoints = Array.isArray(expected) ? expected : [expected]
-	for (const relativePath of sources) {
+const validateEndpointCheck = ({
+	name,
+	documentedUrl,
+	documentedSources,
+	deployedSources = []
+}: EndpointCheck) => {
+	for (const relativePath of documentedSources) {
 		const { content } = readRepoFile(relativePath)
 		assert(
-			expectedEndpoints.some((endpoint) => content.includes(endpoint)),
-			`Endpoint ${name} missing from ${relativePath}: ${expectedEndpoints.join(" or ")}`
+			content.includes(documentedUrl),
+			`Endpoint ${name} missing documented URL from ${relativePath}: ${documentedUrl}`
+		)
+	}
+
+	const deployedHostname = new URL(documentedUrl).hostname
+	for (const relativePath of deployedSources) {
+		const { content } = readRepoFile(relativePath)
+		assert(
+			content.includes(deployedHostname),
+			`Endpoint ${name} deployed route missing from ${relativePath}: ${deployedHostname}`
 		)
 	}
 }

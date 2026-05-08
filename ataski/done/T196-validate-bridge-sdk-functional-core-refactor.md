@@ -1,8 +1,8 @@
 ---
-id: T194
+id: T196
 title: "Validate bridge SDK functional core refactor"
 status: done
-blockedBy: [T193]
+blockedBy: [T195]
 owner: codex
 created_at: 2026-05-08T20:55:07Z
 updated_at: 2026-05-08T21:20:33Z
@@ -19,7 +19,7 @@ updated_at: 2026-05-08T21:20:33Z
 
 ## Test Plan
 
-- DDD compatibility validation after T193 is complete.
+- DDD compatibility validation after T195 is complete.
 - GREEN requires `moon run bridge-sdk:test -f`, `moon run bridge-sdk:typecheck -f`, and focused affected bridge CLI/UI tests to pass or have a documented external blocker.
 
 ## RED Evidence

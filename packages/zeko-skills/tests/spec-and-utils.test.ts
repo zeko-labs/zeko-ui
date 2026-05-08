@@ -51,15 +51,38 @@ describe("zeko-skills spec and utils", () => {
 		).toBe(false)
 	})
 
-	it("tracks the archive proxy upstream separately from the public backup archive", () => {
-		const backupArchive = endpointChecks.find((check) => check.name === "minascan backup archive")
-		const archiveProxy = endpointChecks.find(
-			(check) => check.name === "mina archive proxy upstream"
-		)
+	it("tracks Mina gateway documentation against deployed routes only", () => {
+		const minaGateway = endpointChecks.find((check) => check.name === "mina gateway")
+		const minaArchiveGateway = endpointChecks.find((check) => check.name === "mina archive gateway")
 
-		expect(backupArchive?.expected).toBe("https://api.minascan.io/archive/devnet/v1/graphql")
-		expect(backupArchive?.sources).toEqual(["packages/graphql/moon.yml"])
-		expect(archiveProxy?.expected).toBe("https://devnet-archive-node-api.gcp.o1test.net")
-		expect(archiveProxy?.sources).toEqual(["services/mina-archive-proxy/worker.ts"])
+		expect(minaGateway?.documentedUrl).toBe("https://gateway.mina.devnet.zeko.io")
+		expect(minaGateway?.documentedSources).toEqual([
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
+		])
+		expect(minaGateway?.deployedSources).toEqual(["services/mina-proxy/wrangler.jsonc"])
+
+		expect(minaArchiveGateway?.documentedUrl).toBe("https://gateway.mina.archive.devnet.zeko.io")
+		expect(minaArchiveGateway?.documentedSources).toEqual([
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
+		])
+		expect(minaArchiveGateway?.deployedSources).toEqual([
+			"services/mina-archive-proxy/wrangler.jsonc"
+		])
+
+		const checkedSources = endpointChecks.flatMap((check) => [
+			...check.documentedSources,
+			...(check.deployedSources ?? [])
+		])
+		expect(
+			checkedSources.every(
+				(source) =>
+					source.startsWith("packages/zeko-skills/zeko/references/") ||
+					source.endsWith("/wrangler.jsonc")
+			)
+		).toBe(true)
+		expect(checkedSources.some((source) => source.endsWith("moon.yml"))).toBe(false)
+		expect(checkedSources.some((source) => source.includes("/machines/"))).toBe(false)
 	})
 })

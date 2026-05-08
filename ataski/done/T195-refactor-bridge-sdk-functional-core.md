@@ -1,5 +1,5 @@
 ---
-id: T193
+id: T195
 title: "Refactor bridge SDK functional core"
 status: done
 blockedBy: []
@@ -22,7 +22,7 @@ updated_at: 2026-05-08T21:16:21Z
 
 - DDD: this is a structure-preserving protocol refactor. Before source edits, use the existing bridge-sdk tests as characterization coverage and record their current status as RED/baseline evidence.
 - During extraction, preserve existing domain invariants for deposit cancellation, deposit finalised state, withdrawal finalization state, fee payout handling, helper account signature extraction, and signing callback boundaries.
-- GREEN requires the focused bridge-sdk tests that cover existing protocol behavior to pass after the refactor; broader compatibility validation is tracked in T194.
+- GREEN requires the focused bridge-sdk tests that cover existing protocol behavior to pass after the refactor; broader compatibility validation is tracked in T196.
 
 ## RED Evidence
 

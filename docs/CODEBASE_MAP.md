@@ -645,8 +645,8 @@ function createProxyHandler(params: {
 
 **Targets**:
 
-- Mina proxy: `https://api.minascan.io/node/devnet/v1/graphql`
-- Archive proxy: `https://api.minascan.io/archive/devnet/v1/graphql`
+- Mina proxy: `https://gateway.mina.devnet.zeko.io`
+- Archive proxy: `https://gateway.mina.archive.devnet.zeko.io`
 
 **CORS**: Allows zeko.io and localhost with subdomain wildcard
 
