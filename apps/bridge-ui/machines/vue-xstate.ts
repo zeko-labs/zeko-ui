@@ -82,7 +82,6 @@ export function useSelector<
 ): Ref<T> {
 	const actorRefRef: Ref<TActor> = isRef(actor) ? actor : shallowRef(actor)
 	const selected = shallowRef(selector(actorRefRef.value?.getSnapshot()))
-	let sub: Subscription | undefined
 
 	const updateSelectedIfChanged = (nextSelected: T) => {
 		if (!compare(selected.value, nextSelected)) {
@@ -90,26 +89,32 @@ export function useSelector<
 		}
 	}
 
-	const subscribe = (actorRef: TActor) => {
-		sub?.unsubscribe()
-		updateSelectedIfChanged(selector(actorRef?.getSnapshot()))
+	const stopWatchingActorRef = watch(
+		actorRefRef,
+		(actorRef, _, onCleanup) => {
+			updateSelectedIfChanged(selector(actorRef?.getSnapshot()))
 
-		if (!actorRef) return
-		sub = actorRef.subscribe({
-			next: (emitted) => {
-				updateSelectedIfChanged(selector(emitted))
-			},
-			error: noop,
-			complete: noop
-		})
-	}
+			if (!actorRef) return
+			const sub = actorRef.subscribe({
+				next: (emitted) => {
+					updateSelectedIfChanged(selector(emitted))
+				},
+				error: noop,
+				complete: noop
+			})
 
-	const stopWatchingActorRef = watch(actorRefRef, subscribe, { immediate: true })
+			onCleanup(() => {
+				sub.unsubscribe()
+			})
+		},
+		{
+			immediate: true
+		}
+	)
 
 	if (getCurrentScope()) {
 		onScopeDispose(() => {
 			stopWatchingActorRef()
-			sub?.unsubscribe()
 		})
 	}
 

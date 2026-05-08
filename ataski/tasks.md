@@ -188,3 +188,4 @@
 - T188 | done | consolidate-bridge-example-env-helpers | done/T188-consolidate-bridge-example-env-helpers.md
 - T189 | done | demote-mocked-bridge-cli-tests | done/T189-demote-mocked-bridge-cli-tests.md
 - T190 | done | tighten-bridge-env-config | done/T190-tighten-bridge-env-config.md
+- T191 | done | refine-vue-xstate-selector-cleanup | done/T191-refine-vue-xstate-selector-cleanup.md
