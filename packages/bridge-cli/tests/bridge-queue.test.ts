@@ -131,4 +131,58 @@ describe("bridge queue analysis", () => {
 		expect(result.pendingAhead).toBe(0)
 		expect(result.shouldAdvanceQueuedClaims).toBe(true)
 	})
+
+	it("treats an unseen submitted deposit as waiting for submission instead of rebinding to an older same-amount item", () => {
+		const session = baseSession()
+		const result = analyzeDepositQueue({
+			session,
+			statuses: [
+				{
+					index: 8,
+					amount: "1",
+					recipient: "B62test",
+					cancelled: false,
+					synced: true,
+					accepted: true,
+					confirmed: true,
+					finalised: true,
+					hash: "older-same-amount",
+					timestamp: "2026-03-10T00:00:00.000Z"
+				}
+			]
+		})
+
+		expect(result.target).toBeUndefined()
+		expect(result.targetIndex).toBeUndefined()
+		expect(result.claimableIndex).toBeUndefined()
+		expect(result.pendingAhead).toBe(0)
+		expect(result.shouldAdvanceQueuedClaims).toBe(false)
+	})
+
+	it("treats an unseen submitted withdrawal as waiting for submission instead of rebinding to an older same-amount item", () => {
+		const session = baseSession({
+			route: "zeko:testnet->mina:testnet",
+			direction: "withdrawal"
+		})
+		const result = analyzeWithdrawalQueue({
+			session,
+			statuses: [
+				{
+					index: 8,
+					amount: "1",
+					recipient: "B62test",
+					committed: true,
+					finalised: true,
+					hash: "older-same-amount",
+					timestamp: "2026-03-10T00:00:00.000Z"
+				}
+			]
+		})
+
+		expect(result.target).toBeUndefined()
+		expect(result.targetIndex).toBeUndefined()
+		expect(result.claimableIndex).toBeUndefined()
+		expect(result.pendingAhead).toBe(0)
+		expect(result.shouldAdvanceQueuedClaims).toBe(false)
+	})
 })

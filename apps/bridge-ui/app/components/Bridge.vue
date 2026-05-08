@@ -1,50 +1,24 @@
 <script lang="ts" setup>
 import { Settings } from "lucide-vue-next"
 import { useSelector } from "~~/machines/vue-xstate"
+import { selectBridgeOperationView } from "./bridgeOperationView"
 
 const bs = useBridgeStore()
 const isSettingsOpen = ref(false)
 
-const allOperations = useSelector(bs.bridge.actorRef, (state) => {
-	const items = [...state.context.operations.values()].map(
-		({ operation, status }) => ({
-			id: operation.id,
-			status,
-			operation
-		})
-	)
-	const grouped: Record<string, typeof items> = {}
-	for (const item of items) {
-		const key = item.status === "completed" ? "complete" : "uncomplete"
-		;(grouped[key] ??= []).push(item)
-	}
-	return grouped
-})
-const completedOperations = computed(() => allOperations.value.complete ?? [])
-
-const currentOperation = computed(
-	() => allOperations.value.uncomplete?.[0]?.operation
+const operationView = useSelector(bs.bridge.actorRef, (state) =>
+	selectBridgeOperationView({
+		operations: state.context.operations,
+		activeOperation: state.context.activeOperation
+	})
+)
+const completedOperations = computed(
+	() => operationView.value.completedOperations
 )
 
-const queuedOperations = computed(
-	() =>
-		allOperations.value.uncomplete
-			?.slice(1)
-			.map(({ operation }) => operation) ?? []
-	// Array.from({ length: 10 }).map(
-	// 	() =>
-	// 		useMachine(bridgeOperationMachine, {
-	// 			input: {
-	// 				bridgeMachine: bs.bridge.actorRef,
-	// 				wallet: bs.wallet.actorRef,
-	// 				amount: "10",
-	// 				direction: "withdrawal",
-	// 				source: "zeko:testnet",
-	// 				destination: "mina:devnet"
-	// 			}
-	// 		}).actorRef
-	// )
-)
+const currentOperation = computed(() => operationView.value.currentOperation)
+
+const queuedOperations = computed(() => operationView.value.queuedOperations)
 </script>
 <template>
   <div class="Bridge">

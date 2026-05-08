@@ -101,6 +101,16 @@ export type Account = {
 	zkappState?: string[] | null
 }
 
-export type WitnessFetchResult<T> = { ok: true; value: T } | { ok: false; msg: string }
+export type WitnessFetchResult<T> =
+	| { ok: true; value: T }
+	| { ok: false; msg: string; status?: WithdrawalFinalizationStatus }
+
+export type WithdrawalFinalizationStatus = "available" | "alreadyFinalised" | "waiting" | "blocked"
+
+export type WithdrawalFinalizationResult = {
+	available: boolean
+	reason: string | null
+	status: WithdrawalFinalizationStatus
+}
 
 export type ExtractInput<T> = T extends TadaDocumentNode<any, { input: infer I }, any> ? I : never

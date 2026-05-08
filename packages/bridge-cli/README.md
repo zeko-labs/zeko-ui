@@ -46,9 +46,9 @@ The CLI signs transactions from environment variables only in v1.
 
 Required variables:
 
-| Variable             | Required | Description                                                        |
-| -------------------- | -------- | ------------------------------------------------------------------ |
-| `WALLET_PRIVATE_KEY` | yes      | Shared wallet private key used for all currently supported routes. |
+| Variable           | Required | Description                                                        |
+| ------------------ | -------- | ------------------------------------------------------------------ |
+| `MINA_PRIVATE_KEY` | yes      | Shared wallet private key used for all currently supported routes. |
 
 For human CLI usage, `zeko-bridge` auto-loads dotenv files in this order before falling back to inherited shell environment variables:
 
@@ -56,7 +56,7 @@ For human CLI usage, `zeko-bridge` auto-loads dotenv files in this order before 
 2. a sibling `.env` next to the CLI binary
 3. a sibling `.env` next to the invocation path
 
-Earlier files win over later files. If none of those files provide `WALLET_PRIVATE_KEY`, the CLI falls back to the existing exported environment variable.
+Earlier files win over later files. If none of those files provide `MINA_PRIVATE_KEY`, the CLI falls back to the existing exported environment variable.
 
 ## Recommended Usage
 
@@ -161,12 +161,12 @@ Use `operation logs <operation-id>` to inspect the recorded event stream for a s
 For funded real-network validation, run the built CLI directly so one long-lived `bridge` process owns the whole attempt:
 
 ```bash
-export WALLET_PRIVATE_KEY='<wallet private key>'
+export MINA_PRIVATE_KEY='<wallet private key>'
 node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko:testnet --amount 1 --json --verbose
 ```
 
 ```bash
-export WALLET_PRIVATE_KEY='<wallet private key>'
+export MINA_PRIVATE_KEY='<wallet private key>'
 node ./packages/bridge-cli/dist/cli.js bridge --from zeko:testnet --to mina:testnet --amount 1 --json --verbose
 ```
 

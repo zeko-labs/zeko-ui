@@ -46,6 +46,7 @@ import type {
 	OuterCommit,
 	OuterWitness,
 	Withdrawal,
+	WithdrawalFinalizationResult,
 	WithdrawalWithState,
 	WitnessFetchResult
 } from "./types"
@@ -99,6 +100,29 @@ type DepositStateContext = {
 	depositWitnesses: OuterWitness[]
 	depositsByAux: Map<bigint, DepositParams>
 	outerActions: OuterAction[]
+}
+
+type RetryableTransactionOptions = {
+	attempts?: number
+	feeNanomina?: number | bigint
+}
+
+const DEFAULT_BRIDGE_FEE_NANOMINA = 1 * 10e8
+
+const normalizeRetryableTransactionOptions = (
+	options: number | RetryableTransactionOptions | undefined
+) => {
+	if (typeof options === "number") {
+		return {
+			attempts: options,
+			fee: UInt64.from(DEFAULT_BRIDGE_FEE_NANOMINA)
+		}
+	}
+
+	return {
+		attempts: options?.attempts ?? 5,
+		fee: UInt64.from(options?.feeNanomina ?? DEFAULT_BRIDGE_FEE_NANOMINA)
+	}
 }
 
 export class Bridge {
@@ -322,8 +346,12 @@ export class Bridge {
 		}))
 	}
 
+	private minimumFirstWithdrawalAmount(): UInt64 {
+		return this.l1AccountCreationFee.add(this.bridgeProofFee)
+	}
+
 	private async pollQuery(key: string, pollPeriod = 5_000): Promise<string> {
-		console.debug("pollQuery", key)
+		this.debug("pollQuery", { key })
 
 		let result: string | null = null
 		let attempts = 0
@@ -539,8 +567,9 @@ export class Bridge {
 	public async finalizeDeposit(
 		pk: PublicKey,
 		signTxn: (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>,
-		attempts = 5
+		options?: number | RetryableTransactionOptions
 	): Promise<string> {
+		const { attempts, fee } = normalizeRetryableTransactionOptions(options)
 		const prove = async (attempts: number) => {
 			if (attempts === 0) throw new Error("Failed to prove deposit finalization")
 
@@ -559,7 +588,7 @@ export class Bridge {
 			const txn = await Mina.transaction(
 				{
 					sender: this.sequencerPk,
-					fee: UInt64.from(1 * 10e8)
+					fee
 				},
 				async () => {
 					const helperAccount = AccountUpdate.createSigned(
@@ -908,9 +937,19 @@ export class Bridge {
 		witness: OuterWitness
 	): DepositWithState {
 		const depositParams = this.getDepositParamsForWitness(context, witness)
+		const depositActionIndex = context.outerActions.findIndex(
+			(action) =>
+				action.type === "witness" &&
+				action.index === witness.index &&
+				action.aux.equals(witness.aux).toBoolean()
+		)
+		const acceptanceActions =
+			depositActionIndex === -1
+				? context.outerActions
+				: context.outerActions.slice(depositActionIndex + 1)
 
 		const { isRejected, isAccepted } = checkAccepted(
-			context.outerActions.slice(witness.index + 1),
+			acceptanceActions,
 			UInt32.from(witness.index),
 			depositParams.deposit
 		)
@@ -1073,8 +1112,10 @@ export class Bridge {
 	public async cancelDeposit(
 		pk: PublicKey,
 		signTxn: (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>,
-		_outerHolder?: PublicKey
+		_outerHolder?: PublicKey,
+		options?: RetryableTransactionOptions
 	): Promise<string> {
+		const { fee } = normalizeRetryableTransactionOptions(options)
 		this.debug("cancelDeposit start", { pk: pk.toBase58() })
 		const outerHolder = _outerHolder ?? this.outerHolders[0]
 		const witnesses = await this.fetchDepositCancellationWitnesses(pk, outerHolder)
@@ -1094,7 +1135,7 @@ export class Bridge {
 		const txn = await Mina.transaction(
 			{
 				sender: this.sequencerPk,
-				fee: UInt64.from(1 * 10e8)
+				fee
 			},
 			async () => {
 				const helperAccount = AccountUpdate.createSigned(
@@ -1258,7 +1299,7 @@ export class Bridge {
 		await ensureFirstWithdrawalAmountCanCreateHelper({
 			amount,
 			recipient,
-			accountCreationFee: this.l1AccountCreationFee,
+			accountCreationFee: this.minimumFirstWithdrawalAmount(),
 			helperAccountExists: async () =>
 				(await this.fetchAccount(
 					this.l1Client,
@@ -1466,14 +1507,44 @@ export class Bridge {
 		const findMatchingWithdrawal = (action: InnerWitness) =>
 			withdrawals.find(({ aux }) => aux.equals(action.aux).toBoolean())
 
+		const matchingWitnesses = withdrawalWitnesses.filter((witness) =>
+			Boolean(findMatchingWithdrawal(witness))
+		)
+		const alreadyFinalisedWitnessCount = matchingWitnesses.filter((witness) =>
+			prevNextWithdrawal.greaterThan(UInt32.from(witness.index)).toBoolean()
+		).length
+		const unfinalisedWitnessCount = matchingWitnesses.length - alreadyFinalisedWitnessCount
+		let insufficientFirstWithdrawalReason: string | null = null
+		let alreadyFinalisedCount = 0
+		let unfinalisedMatchCount = 0
 		const myWithdrawalIndex = innerActions.findIndex((action) => {
 			const matchingWithdrawal = findMatchingWithdrawal(action)
 
 			if (!matchingWithdrawal) return false
 
-			if (prevNextWithdrawal.greaterThan(UInt32.from(action.index)).toBoolean()) return false
+			if (prevNextWithdrawal.greaterThan(UInt32.from(action.index)).toBoolean()) {
+				alreadyFinalisedCount++
+				return false
+			}
+
+			unfinalisedMatchCount++
 
 			if (action.index === 3) return false
+
+			try {
+				assertFirstWithdrawalAmountCanCreateHelper({
+					helperAccountExists: helperAccount !== null,
+					amount: matchingWithdrawal.withdrawal.amount,
+					recipient: matchingWithdrawal.withdrawal.recipient,
+					accountCreationFee: this.minimumFirstWithdrawalAmount()
+				})
+			} catch (e) {
+				if (e instanceof InsufficientFirstWithdrawalAmountError) {
+					insufficientFirstWithdrawalReason ??= e.message
+					return false
+				}
+				throw e
+			}
 
 			return true
 		})
@@ -1487,7 +1558,20 @@ export class Bridge {
 				prevNextWithdrawal: prevNextWithdrawal.toString(),
 				innerActionIndices: innerActions.map((action) => action.index)
 			})
-			return { ok: false, msg: "No my withdrawal index found" }
+			if (insufficientFirstWithdrawalReason) {
+				return { ok: false, msg: insufficientFirstWithdrawalReason, status: "blocked" }
+			}
+			if (
+				(alreadyFinalisedCount > 0 && unfinalisedMatchCount === 0) ||
+				(alreadyFinalisedWitnessCount > 0 && unfinalisedWitnessCount === 0)
+			) {
+				return {
+					ok: false,
+					msg: "Withdrawal already finalised",
+					status: "alreadyFinalised"
+				}
+			}
+			return { ok: false, msg: "No my withdrawal index found", status: "waiting" }
 		}
 
 		const myWithdrawal = innerActions[myWithdrawalIndex]
@@ -1504,7 +1588,7 @@ export class Bridge {
 				helperAccountExists: helperAccount !== null,
 				amount: withdrawalParams.withdrawal.amount,
 				recipient: withdrawalParams.withdrawal.recipient,
-				accountCreationFee: this.l1AccountCreationFee
+				accountCreationFee: this.minimumFirstWithdrawalAmount()
 			})
 		} catch (e) {
 			if (e instanceof InsufficientFirstWithdrawalAmountError) {
@@ -1558,8 +1642,10 @@ export class Bridge {
 	public async finalizeWithdrawal(
 		pk: PublicKey,
 		signTxn: (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>,
-		_outerHolder?: PublicKey
+		_outerHolder?: PublicKey,
+		options?: RetryableTransactionOptions
 	): Promise<string> {
+		const { fee } = normalizeRetryableTransactionOptions(options)
 		const outerHolder = _outerHolder ?? this.outerHolders[0]
 		const witnesses = await this.fetchWithdrawalFinalizationWitnesses(pk, outerHolder)
 
@@ -1579,7 +1665,7 @@ export class Bridge {
 		const txn = await Mina.transaction(
 			{
 				sender: this.sequencerPk,
-				fee: UInt64.from(1 * 10e8)
+				fee
 			},
 			async () => {
 				const helperAccount = AccountUpdate.createSigned(
@@ -1723,15 +1809,14 @@ export class Bridge {
 		return await this.pollQuery(data.request.key)
 	}
 
-	public async canFinalizeWithdrawal(
-		pk: PublicKey
-	): Promise<{ available: boolean; reason: string | null }> {
+	public async canFinalizeWithdrawal(pk: PublicKey): Promise<WithdrawalFinalizationResult> {
 		this.debug("canFinalizeWithdrawal start", { pk: pk.toBase58() })
 		const result = await this.fetchWithdrawalFinalizationWitnesses(pk, this.outerTokenOwner)
 		this.debug("canFinalizeWithdrawal result", result)
 		return {
 			available: result.ok,
-			reason: result.ok ? null : result.msg
+			reason: result.ok ? null : result.msg,
+			status: result.ok ? "available" : result.status ?? "waiting"
 		}
 	}
 

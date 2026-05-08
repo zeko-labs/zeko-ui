@@ -1,31 +1,34 @@
-import type { PrivateKey } from "o1js"
 import { describe, expect, it } from "vitest"
 import { MAX_FEE_RETRIES, sendWithFeeRetries } from "../src/core/adapter"
 
 describe("adapter fee retries", () => {
+	it("accepts SDK operations that already executed and returned a hash", async () => {
+		const result = await sendWithFeeRetries({
+			initialFeeNanomina: 100n,
+			createTransaction: async () => ({ hash: "5Jexecuted" }),
+			sendTransaction: async (transaction) => transaction
+		})
+
+		expect(result).toEqual({ hash: "5Jexecuted" })
+	})
+
 	it("doubles the fee on low-fee send failures until the transaction succeeds", async () => {
 		const seenFees: bigint[] = []
 		let attempts = 0
 
 		const result = await sendWithFeeRetries({
-			signer: {} as PrivateKey,
 			initialFeeNanomina: 100n,
 			createTransaction: async (feeNanomina) => {
 				seenFees.push(feeNanomina)
-				return {
-					sign() {
-						return {
-							send: async () => {
-								attempts += 1
-								if (attempts < 3) {
-									throw new Error('Transaction failed: "Fee is too low"')
-								}
-
-								return { hash: "ok" }
-							}
-						}
-					}
+				return `transaction:${feeNanomina}`
+			},
+			sendTransaction: async () => {
+				attempts += 1
+				if (attempts < 3) {
+					throw new Error('Transaction failed: "Fee is too low"')
 				}
+
+				return { hash: "ok" }
 			}
 		})
 
@@ -38,19 +41,13 @@ describe("adapter fee retries", () => {
 
 		await expect(
 			sendWithFeeRetries({
-				signer: {} as PrivateKey,
 				initialFeeNanomina: 100n,
 				createTransaction: async (feeNanomina) => {
 					seenFees.push(feeNanomina)
-					return {
-						sign() {
-							return {
-								send: async () => {
-									throw new Error("network unavailable")
-								}
-							}
-						}
-					}
+					return `transaction:${feeNanomina}`
+				},
+				sendTransaction: async () => {
+					throw new Error("network unavailable")
 				}
 			})
 		).rejects.toThrow("network unavailable")
@@ -63,19 +60,13 @@ describe("adapter fee retries", () => {
 
 		await expect(
 			sendWithFeeRetries({
-				signer: {} as PrivateKey,
 				initialFeeNanomina: 100n,
 				createTransaction: async (feeNanomina) => {
 					seenFees.push(feeNanomina)
-					return {
-						sign() {
-							return {
-								send: async () => {
-									throw new Error('Transaction failed: "Fee is too low"')
-								}
-							}
-						}
-					}
+					return `transaction:${feeNanomina}`
+				},
+				sendTransaction: async () => {
+					throw new Error('Transaction failed: "Fee is too low"')
 				}
 			})
 		).rejects.toThrow("Fee is too low")
