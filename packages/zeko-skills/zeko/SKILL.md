@@ -4,10 +4,9 @@ description: "Use when a user needs to actually use or build on Zeko: bridge wit
 metadata:
   openclaw:
     homepage: https://docs.zeko.io/developers/tools/agent-skills
-    primaryEnv: WALLET_PRIVATE_KEY
+    primaryEnv: MINA_PRIVATE_KEY
     requires:
       env:
-        - WALLET_PRIVATE_KEY
         - MINA_PRIVATE_KEY
         - GITHUB_TOKEN
         - PUBLIC_KEY

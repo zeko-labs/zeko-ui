@@ -6,12 +6,12 @@ const liveConfig: Config = {
 	l1Url: process.env.BRIDGE_SDK_L1_URL?.trim() || "https://api.minascan.io/node/devnet/v1/graphql",
 	l1ArchiveUrl:
 		process.env.BRIDGE_SDK_L1_ARCHIVE_URL?.trim() ||
-		"https://devnet-archive-node-api.gcp.o1test.net/",
-	zekoUrl: process.env.BRIDGE_SDK_L2_URL?.trim() || "https://alphanet.zeko.io/graphql",
+		"https://api.minascan.io/archive/devnet/v1/graphql",
+	zekoUrl: process.env.BRIDGE_SDK_L2_URL?.trim() || "https://testnet.zeko.io/graphql",
 	zekoArchiveUrl:
-		process.env.BRIDGE_SDK_L2_ARCHIVE_URL?.trim() || "https://archive.alphanet.zeko.io/graphql",
+		process.env.BRIDGE_SDK_L2_ARCHIVE_URL?.trim() || "https://archive.testnet.zeko.io/graphql",
 	actionsApi:
-		process.env.BRIDGE_SDK_ACTIONS_API_URL?.trim() || "http://api.actions.zeko.io/graphql",
+		process.env.BRIDGE_SDK_ACTIONS_API_URL?.trim() || "https://api.actions.zeko.io/graphql",
 	l1Network: "testnet",
 	l2Network: "testnet"
 }

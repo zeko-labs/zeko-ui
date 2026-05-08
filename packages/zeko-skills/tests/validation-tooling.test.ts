@@ -74,7 +74,6 @@ describe("zeko-skills validation tooling", () => {
 
 		expect(skill).toContain("metadata:")
 		expect(skill).toContain("openclaw:")
-		expect(skill).toContain("WALLET_PRIVATE_KEY")
 		expect(skill).toContain("MINA_PRIVATE_KEY")
 		expect(skill).toContain("GITHUB_TOKEN")
 		expect(skill).toContain("@zeko-labs/bridge-cli")

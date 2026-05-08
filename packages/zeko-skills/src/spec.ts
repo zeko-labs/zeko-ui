@@ -13,7 +13,6 @@ export const requiredReferences = [
 ] as const
 
 export const clawhubRequiredEnvVars = [
-	"WALLET_PRIVATE_KEY",
 	"MINA_PRIVATE_KEY",
 	"GITHUB_TOKEN",
 	"PUBLIC_KEY",

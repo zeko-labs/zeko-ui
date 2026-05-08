@@ -14,7 +14,7 @@ Use this file for unattended bridge execution, programmatic bridge integrations,
 - Unattended bridge execution: prefer Bridge CLI first.
 - Embedded bridge logic inside code: use Bridge SDK.
 - Browser-led bridge walkthrough: use the user bridge guide.
-- Bridge CLI signing: `WALLET_PRIVATE_KEY`
+- Bridge CLI signing: `MINA_PRIVATE_KEY`
 - Bridge SDK signing: `MINA_PRIVATE_KEY`
 - Faucet CLI auth: `GITHUB_TOKEN`
 - Faucet automation: prefer `--json`
@@ -31,7 +31,7 @@ Use this file for unattended bridge execution, programmatic bridge integrations,
 ## Bridge CLI examples
 
 ```bash
-WALLET_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli bridge \
+MINA_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli bridge \
   --from mina:testnet \
   --to zeko:testnet \
   --amount 1 \
@@ -39,7 +39,7 @@ WALLET_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli bridge \
 ```
 
 ```bash
-WALLET_PRIVATE_KEY=... zeko-bridge bridge \
+MINA_PRIVATE_KEY=... zeko-bridge bridge \
   --from zeko:testnet \
   --to mina:testnet \
   --amount 3 \
@@ -48,7 +48,7 @@ WALLET_PRIVATE_KEY=... zeko-bridge bridge \
 ```
 
 ```bash
-WALLET_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli doctor
+MINA_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli doctor
 ```
 
 ## Bridge CLI practical rules

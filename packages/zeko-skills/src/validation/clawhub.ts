@@ -73,8 +73,8 @@ export const validateClawhubMetadata = () => {
 		"zeko/SKILL.md must declare the public docs homepage for OpenClaw metadata"
 	)
 	assert(
-		frontmatter.includes("    primaryEnv: WALLET_PRIVATE_KEY"),
-		"zeko/SKILL.md must declare WALLET_PRIVATE_KEY as the primary OpenClaw credential"
+		frontmatter.includes("    primaryEnv: MINA_PRIVATE_KEY"),
+		"zeko/SKILL.md must declare MINA_PRIVATE_KEY as the primary OpenClaw credential"
 	)
 
 	for (const envVar of clawhubRequiredEnvVars) {

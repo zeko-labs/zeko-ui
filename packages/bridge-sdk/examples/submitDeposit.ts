@@ -1,24 +1,12 @@
-import { env } from "node:process"
-import { PrivateKey, UInt32, UInt64 } from "o1js"
+import { UInt32, UInt64 } from "o1js"
 import { Bridge } from "../src/index"
+import { readBridgeConfig, readMinaPrivateKey } from "./helper"
 
-if (!env.MINA_PRIVATE_KEY) {
-	throw new Error("MINA_PRIVATE_KEY is not set")
-}
-
-const signer = PrivateKey.fromBase58(env.MINA_PRIVATE_KEY)
+const signer = readMinaPrivateKey()
 const recipient = signer.toPublicKey()
 
 async function main() {
-	const bridge = await Bridge.init({
-		l1Url: "https://api.minascan.io/node/devnet/v1/graphql",
-		l1ArchiveUrl: "https://devnet-archive-node-api.gcp.o1test.net/",
-		actionsApi: "http://localhost:9100/graphql",
-		zekoUrl: "https://alphanet.zeko.io/graphql",
-		zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql",
-		l1Network: "testnet",
-		l2Network: "testnet"
-	})
+	const bridge = await Bridge.init(readBridgeConfig())
 
 	const depositParams = {
 		recipient,

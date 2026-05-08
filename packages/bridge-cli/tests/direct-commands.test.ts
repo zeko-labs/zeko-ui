@@ -87,17 +87,17 @@ const resolveSubCommands = async (value: unknown): Promise<Record<string, Runnab
 const withWalletPrivateKey = async (
 	run: (input: { publicKey: string }) => Promise<void>
 ): Promise<void> => {
-	const previous = process.env.WALLET_PRIVATE_KEY
+	const previous = process.env.MINA_PRIVATE_KEY
 	const signer = PrivateKey.random()
-	process.env.WALLET_PRIVATE_KEY = signer.toBase58()
+	process.env.MINA_PRIVATE_KEY = signer.toBase58()
 
 	try {
 		await run({ publicKey: signer.toPublicKey().toBase58() })
 	} finally {
 		if (previous === undefined) {
-			delete process.env.WALLET_PRIVATE_KEY
+			delete process.env.MINA_PRIVATE_KEY
 		} else {
-			process.env.WALLET_PRIVATE_KEY = previous
+			process.env.MINA_PRIVATE_KEY = previous
 		}
 	}
 }
