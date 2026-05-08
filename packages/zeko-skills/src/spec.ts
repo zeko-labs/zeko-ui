@@ -34,78 +34,62 @@ export const publicSyncMappings = [
 
 export type EndpointCheck = {
 	name: string
-	expected: string | readonly string[]
-	sources: string[]
+	documentedUrl: string
+	documentedSources: string[]
+	deployedSources?: string[]
 }
 
 export const endpointChecks: EndpointCheck[] = [
 	{
 		name: "zeko testnet graphql",
-		expected: ["https://testnet.zeko.io/graphql", "https://alphanet.zeko.io/graphql"],
-		sources: ["apps/bridge-ui/machines/helpers.ts", "packages/graphql/moon.yml"]
+		documentedUrl: "https://testnet.zeko.io/graphql",
+		documentedSources: [
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md",
+			"packages/zeko-skills/zeko/references/50-build-on-zeko.md"
+		]
 	},
 	{
 		name: "zeko archive graphql",
-		expected: [
-			"https://archive.testnet.zeko.io/graphql",
-			"https://archive.alphanet.zeko.io/graphql"
-		],
-		sources: ["apps/bridge-ui/machines/helpers.ts", "packages/graphql/moon.yml"]
-	},
-	{
-		name: "zeko mainnet graphql",
-		expected: "https://mainnet.zeko.io/graphql",
-		sources: ["apps/bridge-ui/machines/helpers.ts"]
-	},
-	{
-		name: "zeko mainnet archive",
-		expected: "https://archive.mainnet.zeko.io/graphql",
-		sources: ["apps/bridge-ui/machines/helpers.ts"]
-	},
-	{
-		name: "zeko alphanet graphql",
-		expected: "https://alphanet.zeko.io/graphql",
-		sources: ["apps/bridge-ui/machines/helpers.ts"]
-	},
-	{
-		name: "zeko alphanet archive",
-		expected: "https://archive.alphanet.zeko.io/graphql",
-		sources: ["apps/bridge-ui/machines/helpers.ts"]
+		documentedUrl: "https://archive.testnet.zeko.io/graphql",
+		documentedSources: [
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md",
+			"packages/zeko-skills/zeko/references/50-build-on-zeko.md"
+		]
 	},
 	{
 		name: "mina gateway",
-		expected: "gateway.mina.devnet.zeko.io",
-		sources: ["services/mina-proxy/wrangler.jsonc"]
+		documentedUrl: "https://gateway.mina.devnet.zeko.io",
+		documentedSources: [
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
+		],
+		deployedSources: ["services/mina-proxy/wrangler.jsonc"]
 	},
 	{
 		name: "mina archive gateway",
-		expected: "gateway.mina.archive.devnet.zeko.io",
-		sources: ["services/mina-archive-proxy/wrangler.jsonc"]
-	},
-	{
-		name: "minascan backup node",
-		expected: "https://api.minascan.io/node/devnet/v1/graphql",
-		sources: ["packages/graphql/moon.yml", "services/mina-proxy/worker.ts"]
-	},
-	{
-		name: "minascan backup archive",
-		expected: "https://api.minascan.io/archive/devnet/v1/graphql",
-		sources: ["packages/graphql/moon.yml"]
-	},
-	{
-		name: "mina archive proxy upstream",
-		expected: "https://devnet-archive-node-api.gcp.o1test.net",
-		sources: ["services/mina-archive-proxy/worker.ts"]
+		documentedUrl: "https://gateway.mina.archive.devnet.zeko.io",
+		documentedSources: [
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
+		],
+		deployedSources: ["services/mina-archive-proxy/wrangler.jsonc"]
 	},
 	{
 		name: "actions api",
-		expected: "https://api.actions.zeko.io/graphql",
-		sources: ["apps/bridge-ui/machines/helpers.ts"]
+		documentedUrl: "https://api.actions.zeko.io/graphql",
+		documentedSources: [
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
+		],
+		deployedSources: ["services/actions/api/wrangler.jsonc"]
 	},
 	{
 		name: "faucet claim api",
-		expected: "https://api.faucet.zeko.io/claim",
-		sources: ["packages/faucet-cli/src/api.rs"]
+		documentedUrl: "https://api.faucet.zeko.io/claim",
+		documentedSources: ["packages/zeko-skills/zeko/references/40-endpoints-and-curl.md"],
+		deployedSources: ["apps/faucet/wrangler.jsonc"]
 	}
 ] as const
 

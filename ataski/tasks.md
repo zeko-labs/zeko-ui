@@ -214,5 +214,7 @@
 - T190 | done | tighten-bridge-env-config | done/T190-tighten-bridge-env-config.md
 - T191 | done | refine-vue-xstate-selector-cleanup | done/T191-refine-vue-xstate-selector-cleanup.md
 - T192 | done | validate-pr-169-review-fixes | done/T192-validate-pr-169-review-fixes.md
-- T193 | done | merge-latest-main-into-web-404 | done/T193-merge-latest-main-into-web-404.md
-- T194 | in-progress | merge-new-main-tip-into-web-404 | in-progress/T194-merge-new-main-tip-into-web-404.md
+- T193 | done | replace-devnet-l1-endpoints-with-zeko-proxies | done/T193-replace-devnet-l1-endpoints-with-zeko-proxies.md
+- T194 | done | scope-zeko-skill-endpoint-validation | done/T194-scope-zeko-skill-endpoint-validation.md
+- T195 | done | merge-latest-main-into-web-404 | done/T195-merge-latest-main-into-web-404.md
+- T196 | done | merge-new-main-tip-into-web-404 | done/T196-merge-new-main-tip-into-web-404.md
