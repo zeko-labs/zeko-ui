@@ -196,3 +196,4 @@
 - T196 | done | validate-bridge-sdk-functional-core-refactor | done/T196-validate-bridge-sdk-functional-core-refactor.md
 - T197 | done | split-bridge-sdk-cancellation-module | done/T197-split-bridge-sdk-cancellation-module.md
 - T198 | done | validate-pr-171-conflicts-and-ci | done/T198-validate-pr-171-conflicts-and-ci.md
+- T199 | done | remove-deposit-state-module-and-add-changeset | done/T199-remove-deposit-state-module-and-add-changeset.md

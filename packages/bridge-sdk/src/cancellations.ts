@@ -7,18 +7,14 @@ import {
 	Provable,
 	type PublicKey,
 	Signature,
-	TokenId,
-	UInt32
+	TokenId
 } from "o1js"
-import { fromList } from "./actions"
 import {
+	buildDepositCancellationWitnessInput,
 	fetchDepositStateContext,
 	getDepositParamsForWitness,
-	getSortedDepositWitnesses,
-	isDepositCancelled,
-	isDepositFinalised,
-	type DepositStateContext
-} from "./deposit-state"
+	getSortedDepositWitnesses
+} from "./deposits"
 import { setL1 } from "./network"
 import { pollProvingResult } from "./prover"
 import { debug, type BridgeRuntime } from "./runtime"
@@ -27,92 +23,8 @@ import {
 	type RetryableTransactionOptions,
 	type SignTransaction
 } from "./transactions"
-import type { Account, Deposit, ExtractInput, OuterWitness, WitnessFetchResult } from "./types"
-import { checkAccepted, getVkHash, refreshCache } from "./utils"
-
-export function buildDepositCancellationWitnessInput(
-	context: DepositStateContext,
-	witness: OuterWitness
-): Omit<ExtractInput<typeof cancelDepositMutation>, "publicKey"> | null {
-	const depositParams = getDepositParamsForWitness(context, witness)
-
-	const { isRejected, isAccepted } = checkAccepted(
-		context.outerActions,
-		UInt32.from(witness.index),
-		depositParams.deposit
-	)
-
-	const cancelled = isRejected && isDepositCancelled(context, witness)
-	const finalised = isAccepted && isDepositFinalised(context, witness)
-
-	if (cancelled || finalised) return null
-
-	const minDepositIndex = context.prevNextCancelledDeposit
-
-	if (minDepositIndex.greaterThan(UInt32.from(witness.index)).toBoolean()) return null
-
-	const cancellationActionIndex = context.outerActions.findIndex(
-		(action) =>
-			action.type === "witness" &&
-			action.index === witness.index &&
-			action.aux.equals(witness.aux).toBoolean()
-	)
-
-	if (cancellationActionIndex === -1) return null
-
-	if (context.lastCommitIndex === -1 || context.lastCommitIndex < cancellationActionIndex)
-		return null
-
-	if (context.synchronizedOuterActionStateIndex === -1) return null
-
-	if (!isRejected || isAccepted) return null
-
-	const syncAse = context.outerActions
-		.slice(context.synchronizedOuterActionStateIndex + 1)
-		.map(({ action }) => fromList([action]).hash)
-
-	return {
-		commitAse: {
-			fields: context.lastCommitAse.map((elem) => elem.toString()),
-			stmt: { actionState: context.lastCommit.afterActionState.toString() }
-		},
-		commit: {
-			actions: context.lastCommit.action.map((action) => action.toString())
-		},
-		beforeCommit: { actionState: context.lastCommit.beforeActionState.toString() },
-		prevNextCancelledDeposit: context.prevNextCancelledDeposit.toString(),
-		checkAccepted: {
-			elems: context.outerActions
-				.slice(cancellationActionIndex, context.lastCommitIndex + 1)
-				.map(({ action }) => ({ actions: action.map((field) => field.toString()) })),
-			init: {
-				depositIndex: witness.index.toString(),
-				orignalActionState: witness.beforeActionState.toString(),
-				params: {
-					amount: depositParams.deposit.amount.toString(),
-					recipient: depositParams.deposit.recipient.toBase58(),
-					holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
-					timeout: +depositParams.deposit.timeout,
-					children: "[]"
-				}
-			}
-		},
-		checkAcceptedAse: {
-			fields: context.lastCommitAse.map((elem) => elem.toString()),
-			stmt: {
-				actionState: context.lastCommit.afterActionState.toString(),
-				length: (context.lastCommit.index + 1).toString()
-			}
-		},
-		syncAse: {
-			fields: syncAse.map((elem) => elem.toString()),
-			stmt: {
-				actionState: context.lastCommit.synchronizedOuterActionState.toString(),
-				length: context.lastCommit.synchronizedOuterActionStateLength.toString()
-			}
-		}
-	}
-}
+import type { Account, Deposit, ExtractInput, WitnessFetchResult } from "./types"
+import { getVkHash, refreshCache } from "./utils"
 
 export async function fetchDepositCancellationWitnesses(
 	runtime: BridgeRuntime,

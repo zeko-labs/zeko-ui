@@ -1,10 +1,11 @@
 import type { Field, Mina, PublicKey, Transaction, UInt32, UInt64 } from "o1js"
 import { cancelDeposit, canCancelDeposit } from "./cancellations"
-import { fetchSyncedOuterActionState, fetchUserDeposits } from "./deposit-state"
 import {
 	canFinalizeDeposit,
 	fetchDepositFinalizationWitnesses,
 	fetchDepositsWithStates,
+	fetchSyncedOuterActionState,
+	fetchUserDeposits,
 	finalizeDeposit,
 	submitDeposit
 } from "./deposits"
