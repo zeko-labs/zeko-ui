@@ -1,12 +1,13 @@
 ---
 id: T195
 title: "Fix actions indexer canonical promotion parameter limit"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-05-11T18:22:52Z
-updated_at: 2026-05-11T18:23:06Z
+updated_at: 2026-05-11T18:52:39Z
 ---
+
 ## Requirements
 
 - Investigate the actions indexer failure reported in Linear ZK-535:
@@ -28,4 +29,21 @@ updated_at: 2026-05-11T18:23:06Z
 
 ## RED Evidence
 
+- Added focused regression coverage in `services/actions/indexer/test/canonical-progress.test.ts` for `promoteOuterCanonicalActions` with 65,534 unique `afterState` values and one matching row.
+- RED command:
+  `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55434/actions AUTH_TOKEN=test L1_ARCHIVE_URL=http://127.0.0.1:1/graphql L2_ARCHIVE_URL=http://127.0.0.1:1/graphql OUTER_PK=TEST_OUTER_PK INNER_PK=TEST_INNER_PK pnpm --filter @zeko/actions-indexer exec vitest run test/canonical-progress.test.ts --testNamePattern "Postgres parameter limit"`
+- RED result: failed with `MAX_PARAMETERS_EXCEEDED: Max number of parameters (65534) exceeded`, matching the production log's failing query shape.
+
 ## GREEN Evidence
+
+- Regression suite:
+  `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55434/actions AUTH_TOKEN=test L1_ARCHIVE_URL=http://127.0.0.1:1/graphql L2_ARCHIVE_URL=http://127.0.0.1:1/graphql OUTER_PK=TEST_OUTER_PK INNER_PK=TEST_INNER_PK pnpm --filter @zeko/actions-indexer exec vitest run test/canonical-progress.test.ts`
+  Result: 3 tests passed.
+- `moon run actions-indexer:lint -f`: passed.
+- `moon run actions-indexer:typecheck -f`: passed.
+- `moon run actions-indexer:build -f`: passed.
+- Testnet archive validation:
+  - Ran the local actions indexer against a clean Docker Postgres database with `L2_ARCHIVE_URL=https://archive.testnet.zeko.io/graphql`, `OUTER_PK=B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2`, and `INNER_PK=B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1`.
+  - Indexed `68,979` outer action rows and `10,530` inner action rows.
+  - Processed `68,784` outer canonical after-states through canonical promotion without `MAX_PARAMETERS_EXCEEDED`.
+  - `moon run actions-indexer:diagnose-sync -- --base-url http://127.0.0.1:53600 --json --timeout-ms 30000` returned `status: ok` for both outer and inner streams with `hasPendingActions=false`.
