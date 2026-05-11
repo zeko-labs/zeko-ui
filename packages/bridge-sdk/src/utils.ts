@@ -150,7 +150,7 @@ const OuterActionsSchema = v.array(OuterActionSchema)
 const InnerActionsSchema = v.array(InnerActionSchema)
 const OuterWitnessesSchema = v.array(WitnessSchema)
 const CommitAsePastSlotSchema = v.object({
-	commit: CommitSchema,
+	commit: v.nullable(CommitSchema),
 	ase: OuterActionsSchema
 })
 
@@ -238,7 +238,7 @@ export async function fetchInnerWitnessesFromAuxes(
 export async function fetchCommitAsePastSlot(
 	client: GqlClient,
 	slot: number
-): Promise<{ commit: OuterCommit; ase: OuterAction[] }> {
+): Promise<{ commit: OuterCommit | null; ase: OuterAction[] }> {
 	const { data, error } = await client().query(fetchCommitAsePastSlotQuery, { slot })
 
 	const commitAsePastSlot = parsePayload({
@@ -249,11 +249,14 @@ export async function fetchCommitAsePastSlot(
 	})
 
 	return {
-		commit: {
-			...baseActionFromSchema(commitAsePastSlot.commit),
-			...commitFromSchema(commitAsePastSlot.commit),
-			type: "commit"
-		},
+		commit:
+			commitAsePastSlot.commit === null
+				? null
+				: {
+						...baseActionFromSchema(commitAsePastSlot.commit),
+						...commitFromSchema(commitAsePastSlot.commit),
+						type: "commit"
+					},
 		ase: commitAsePastSlot.ase.map(outerActionFromSchema)
 	}
 }

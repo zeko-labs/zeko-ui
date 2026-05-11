@@ -193,3 +193,4 @@
 - T193 | done | replace-devnet-l1-endpoints-with-zeko-proxies | done/T193-replace-devnet-l1-endpoints-with-zeko-proxies.md
 - T194 | done | scope-zeko-skill-endpoint-validation | done/T194-scope-zeko-skill-endpoint-validation.md
 - T195 | done | fix-actions-indexer-canonical-param-limit | done/T195-fix-actions-indexer-canonical-param-limit.md
+- T196 | done | handle-null-actions-api-commit | done/T196-handle-null-actions-api-commit.md

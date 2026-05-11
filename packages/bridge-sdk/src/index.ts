@@ -91,7 +91,7 @@ type DepositStateContext = {
 		state: Field
 		length: UInt32
 	}
-	lastCommit: OuterCommit
+	lastCommit: OuterCommit | null
 	lastCommitAse: Field[]
 	lastCommitIndex: number
 	commitAseTarget: Field
@@ -108,6 +108,7 @@ type RetryableTransactionOptions = {
 }
 
 const DEFAULT_BRIDGE_FEE_NANOMINA = 1 * 10e8
+const NO_OUTER_COMMIT_REASON = "No outer commit available yet"
 
 const normalizeRetryableTransactionOptions = (
 	options: number | RetryableTransactionOptions | undefined
@@ -535,6 +536,10 @@ export class Bridge {
 			return { ok: false, msg: "No deposit witnesses found" }
 		}
 
+		if (context.lastCommit === null) {
+			return { ok: false, msg: NO_OUTER_COMMIT_REASON }
+		}
+
 		const minDepositIndex = context.prevNextDeposit
 
 		for (const witness of this.getSortedDepositWitnesses(context)) {
@@ -795,11 +800,22 @@ export class Bridge {
 			syncedOuterActionState,
 			lastCommit,
 			lastCommitAse: ase.map(({ action }) => fromList([action]).hash),
-			lastCommitIndex: outerActions.findIndex(({ index }) => lastCommit.index === index),
-			commitAseTarget: ase.at(-1)?.afterActionState ?? lastCommit.afterActionState,
-			synchronizedOuterActionStateIndex: outerActions.findIndex(({ index }) =>
-				lastCommit.synchronizedOuterActionStateLength.equals(UInt32.from(index + 1)).toBoolean()
-			),
+			lastCommitIndex:
+				lastCommit === null
+					? -1
+					: outerActions.findIndex(({ index }) => lastCommit.index === index),
+			commitAseTarget:
+				ase.at(-1)?.afterActionState ??
+				lastCommit?.afterActionState ??
+				syncedOuterActionState.state,
+			synchronizedOuterActionStateIndex:
+				lastCommit === null
+					? -1
+					: outerActions.findIndex(({ index }) =>
+							lastCommit.synchronizedOuterActionStateLength
+								.equals(UInt32.from(index + 1))
+								.toBoolean()
+						),
 			currentSyncedOuterActionStateIndex: outerActions.findIndex(({ afterActionState }) =>
 				afterActionState.equals(syncedOuterActionState.state).toBoolean()
 			),
@@ -961,8 +977,8 @@ export class Bridge {
 		const synced = context.syncedOuterActionState.length
 			.greaterThanOrEqual(UInt32.from(witness.index + 1))
 			.toBoolean()
-		const accepted = context.lastCommit.index >= witness.index
-		const confirmed = context.lastCommit.synchronizedOuterActionStateLength
+		const accepted = context.lastCommit !== null && context.lastCommit.index >= witness.index
+		const confirmed = context.lastCommit?.synchronizedOuterActionStateLength
 			.greaterThanOrEqual(UInt32.from(witness.index + 1))
 			.toBoolean()
 		const finalised = isAccepted && this.isDepositFinalised(context, witness)
@@ -1011,6 +1027,8 @@ export class Bridge {
 
 		if (context.lastCommitIndex === -1 || context.lastCommitIndex < cancellationActionIndex)
 			return null
+
+		if (context.lastCommit === null) return null
 
 		if (context.synchronizedOuterActionStateIndex === -1) return null
 
@@ -1488,6 +1506,12 @@ export class Bridge {
 			this.actionsApiClient,
 			+currentSlot.sub(this.withdrawalDelay)
 		)
+		if (lastCommit === null) {
+			this.debug("fetchWithdrawalFinalizationWitnesses no-outer-commit", {
+				aseCount: ase.length
+			})
+			return { ok: false, msg: NO_OUTER_COMMIT_REASON, status: "waiting" }
+		}
 		this.debug("fetchWithdrawalFinalizationWitnesses commitAsePastSlot", {
 			aseCount: ase.length,
 			innerActionState: lastCommit.innerActionState.toString(),
@@ -1838,10 +1862,11 @@ export class Bridge {
 				this.buildDepositWithState(context, witness)
 			),
 			syncedIndex: +safeDecrement(context.syncedOuterActionState.length).toString(),
-			acceptedIndex: context.lastCommit.index,
-			confirmedIndex: +safeDecrement(
-				context.lastCommit.synchronizedOuterActionStateLength
-			).toString(),
+			acceptedIndex: context.lastCommit?.index ?? -1,
+			confirmedIndex:
+				context.lastCommit === null
+					? -1
+					: +safeDecrement(context.lastCommit.synchronizedOuterActionStateLength).toString(),
 			finalisedIndex: +safeDecrement(context.prevNextDeposit).toString(),
 			cancelledIndex: +safeDecrement(context.prevNextCancelledDeposit).toString()
 		}
@@ -1904,7 +1929,7 @@ export class Bridge {
 						...withdrawal,
 						...witness,
 						timestamp: normalizeTimestamp(witness.timestamp),
-						committed: lastCommit.innerActionStateLength
+						committed: lastCommit?.innerActionStateLength
 							.greaterThan(UInt32.from(witness.index))
 							.toBoolean(),
 						finalised: nextWithdrawal.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean()
@@ -1912,7 +1937,8 @@ export class Bridge {
 				}),
 				...provisionalWithdrawals
 			],
-			committedIndex: +safeDecrement(lastCommit.innerActionStateLength).toString(),
+			committedIndex:
+				lastCommit === null ? -1 : +safeDecrement(lastCommit.innerActionStateLength).toString(),
 			finalisedIndex: +safeDecrement(nextWithdrawal).toString()
 		}
 	}
