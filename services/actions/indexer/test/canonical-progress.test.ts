@@ -89,6 +89,32 @@ describe("canonical progress", () => {
 		expect(afterProgress.outer.nonCanonicalTailCount).toBe(0)
 	})
 
+	it("promotes outer canonical actions without exceeding the Postgres parameter limit", async () => {
+		await db.insert(outerActions).values({
+			afterState: "outer-pending",
+			kind: "witness",
+			beforeState: null,
+			index: 0,
+			blockHeight: 100,
+			timestamp: new Date("2026-03-10T00:00:00.000Z"),
+			txnHash: "txn-0",
+			fields: ["0", "1", "2", "3", "4"],
+			slotRangeLower: 0n,
+			slotRangeUpper: 1n,
+			markedAsCanonicalAt: null
+		})
+
+		const afterStates = [
+			"outer-pending",
+			...Array.from({ length: 65_533 }, (_, index) => `missing-outer-${index}`)
+		]
+
+		const promotedCount = await promoteOuterCanonicalActions(db, afterStates)
+
+		expect(promotedCount).toBe(1)
+		expect((await getLastFinalOuterAction(db))?.afterState).toBe("outer-pending")
+	})
+
 	it("promotes existing inner actions to canonical and advances progress", async () => {
 		await db.insert(innerActions).values([
 			{
