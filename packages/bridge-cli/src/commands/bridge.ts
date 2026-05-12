@@ -5,6 +5,7 @@ import { isInsufficientFirstWithdrawalAmountError } from "@zeko-labs/bridge-sdk"
 import { PrivateKey } from "o1js"
 import { assign, createActor, fromPromise, setup, toPromise } from "xstate"
 import type { BridgeAdapter } from "../core/adapter"
+import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
 import { createOperationLogger } from "../core/logger"
 import { isRecoverableMutationError } from "../core/mutation-errors"
 import { createOperationStateController } from "../core/operation-machine"
@@ -18,6 +19,12 @@ import {
 	sortByIndex
 } from "../core/bridge-queue"
 import type { WithdrawalQueueState } from "../core/bridge-queue"
+import {
+	readAliasedNumberArg,
+	readAliasedOptionalNumberArg,
+	readBooleanArg,
+	readOptionalStringArg
+} from "../core/command-args"
 import { renderBridgeResult, renderOperationProgress, toBridgeJsonResult } from "../core/reporter"
 import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
 import { resolveSignerKeys } from "../core/signer"
@@ -77,9 +84,7 @@ type BridgeFlowInput = {
 }
 
 type BridgeCommandDeps = {
-	createAdapter?: (input: { from: ChainRef; to: ChainRef; verbose: boolean }) =>
-		| Promise<BridgeAdapter>
-		| BridgeAdapter
+	createAdapter?: BridgeAdapterFactory
 	createStore?: (input: { stateDir: string }) => Pick<SessionStore, "save">
 	createLogger?: (input: { logPath: string }) => Pick<
 		ReturnType<typeof createOperationLogger>,
@@ -106,22 +111,6 @@ type BridgeCommandArgs = {
 	retryDelayMs: { type: "string"; required: false; alias: string[] }
 	json: { type: "boolean"; default: false }
 	verbose: { type: "boolean"; default: false }
-}
-
-type BridgeCommandRunArgs = {
-	from?: string
-	to?: string
-	amount: string
-	account?: string
-	recipient?: string
-	timeoutSlots?: string
-	"timeout-slots"?: string
-	pollIntervalMs?: string
-	"poll-interval-ms"?: string
-	retryDelayMs?: string
-	"retry-delay-ms"?: string
-	json?: boolean
-	verbose?: boolean
 }
 
 type TransitionEvent =
@@ -246,43 +235,22 @@ const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
 }
 
-const parseOptionalString = (value: unknown): string | undefined =>
-	typeof value === "string" && value.length > 0 ? value : undefined
-
-const parseOptionalNumber = (value: unknown): number | undefined =>
-	typeof value === "string" && value.length > 0 ? Number(value) : undefined
-
-const parseOptionalNonNegativeNumber = (value: unknown, flag: string): number | undefined => {
-	const parsed = parseOptionalNumber(value)
-	if (parsed === undefined) return undefined
-	if (!Number.isFinite(parsed) || parsed < 0) {
-		throw new Error(`${flag} must be a non-negative number`)
-	}
-
-	return parsed
-}
-
-const parseBridgeCommandArgs = (args: BridgeCommandRunArgs) => ({
-	from: parseChainRef(args.from ?? "mina:testnet", "--from"),
-	to: parseChainRef(args.to ?? "zeko:testnet", "--to"),
-	amount: args.amount,
-	account: parseOptionalString(args.account),
-	recipient: parseOptionalString(args.recipient),
-	timeoutSlots: parseOptionalNumber(
-		args.timeoutSlots && args.timeoutSlots.length > 0 ? args.timeoutSlots : args["timeout-slots"]
-	),
-	pollIntervalMs: parseOptionalNonNegativeNumber(
-		args.pollIntervalMs && args.pollIntervalMs.length > 0
-			? args.pollIntervalMs
-			: args["poll-interval-ms"],
+const parseBridgeCommandArgs = (args: Record<string, unknown>) => ({
+	from: parseChainRef(readOptionalStringArg(args, "from") ?? "mina:testnet", "--from"),
+	to: parseChainRef(readOptionalStringArg(args, "to") ?? "zeko:testnet", "--to"),
+	amount: readOptionalStringArg(args, "amount") ?? "",
+	account: readOptionalStringArg(args, "account"),
+	recipient: readOptionalStringArg(args, "recipient"),
+	timeoutSlots: readAliasedOptionalNumberArg(args, "timeoutSlots", "timeout-slots"),
+	pollIntervalMs: readAliasedNumberArg(
+		args,
+		"pollIntervalMs",
+		"poll-interval-ms",
 		"--poll-interval-ms"
 	),
-	retryDelayMs: parseOptionalNonNegativeNumber(
-		args.retryDelayMs && args.retryDelayMs.length > 0 ? args.retryDelayMs : args["retry-delay-ms"],
-		"--retry-delay-ms"
-	),
-	json: args.json === true,
-	verbose: args.verbose === true
+	retryDelayMs: readAliasedNumberArg(args, "retryDelayMs", "retry-delay-ms", "--retry-delay-ms"),
+	json: readBooleanArg(args, "json"),
+	verbose: readBooleanArg(args, "verbose")
 })
 
 const requireAdapterMethod = <T extends keyof BridgeFlowDeps["adapter"]>(
@@ -2327,24 +2295,7 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			verbose: { type: "boolean", default: false }
 		},
 		async run({ args }) {
-			const commandArgs = parseBridgeCommandArgs({
-				from: typeof args.from === "string" ? args.from : undefined,
-				to: typeof args.to === "string" ? args.to : undefined,
-				amount: typeof args.amount === "string" ? args.amount : "",
-				account: typeof args.account === "string" ? args.account : undefined,
-				recipient: typeof args.recipient === "string" ? args.recipient : undefined,
-				timeoutSlots: typeof args.timeoutSlots === "string" ? args.timeoutSlots : undefined,
-				"timeout-slots":
-					typeof args["timeout-slots"] === "string" ? args["timeout-slots"] : undefined,
-				pollIntervalMs: typeof args.pollIntervalMs === "string" ? args.pollIntervalMs : undefined,
-				"poll-interval-ms":
-					typeof args["poll-interval-ms"] === "string" ? args["poll-interval-ms"] : undefined,
-				retryDelayMs: typeof args.retryDelayMs === "string" ? args.retryDelayMs : undefined,
-				"retry-delay-ms":
-					typeof args["retry-delay-ms"] === "string" ? args["retry-delay-ms"] : undefined,
-				json: args.json === true,
-				verbose: args.verbose === true
-			} satisfies BridgeCommandRunArgs)
+			const commandArgs = parseBridgeCommandArgs(args)
 			const from = commandArgs.from
 			const to = commandArgs.to
 			const account = deriveAccount(from, commandArgs.account)
@@ -2354,23 +2305,7 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			const id = (deps.generateId ?? randomUUID)()
 			const logPath = path.join(appPaths.logDir, `${id}.jsonl`)
 			const logger = (deps.createLogger ?? createOperationLogger)({ logPath })
-			const createAdapter =
-				deps.createAdapter ??
-				(async ({
-					from: inputFrom,
-					to: inputTo,
-					verbose
-				}: {
-					from: ChainRef
-					to: ChainRef
-					verbose: boolean
-				}) => {
-					const { createBridgeAdapter } = await import("../core/adapter")
-					return createBridgeAdapter({
-						route: resolveRoute(inputFrom, inputTo),
-						verbose
-					})
-				})
+			const createAdapter = deps.createAdapter ?? createDefaultBridgeAdapter
 			const session = await runBridgeOperation(
 				{
 					id,

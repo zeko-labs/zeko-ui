@@ -5,6 +5,7 @@ import { defineCommand, type CommandDef } from "citty"
 import { PrivateKey } from "o1js"
 import { runBridgeOperation } from "./bridge"
 import type { BridgeAdapter } from "../core/adapter"
+import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
 import {
 	analyzeDepositQueue,
 	analyzeWithdrawalQueue,
@@ -12,6 +13,12 @@ import {
 	getSubmitHash,
 	sortByIndex
 } from "../core/bridge-queue"
+import {
+	readAliasedNumberArg,
+	readBooleanArg,
+	readOptionalStringArg,
+	readRequiredStringArg
+} from "../core/command-args"
 import { createOperationLogger } from "../core/logger"
 import { resolveAppPaths } from "../core/paths"
 import {
@@ -36,9 +43,7 @@ import type {
 type OperationCommandDeps = {
 	createStore?: (input: { stateDir: string }) => Pick<SessionStore, "list" | "load" | "save">
 	resolvePaths?: typeof resolveAppPaths
-	createAdapter?: (input: { from: ChainRef; to: ChainRef; verbose: boolean }) =>
-		| Promise<BridgeAdapter>
-		| BridgeAdapter
+	createAdapter?: BridgeAdapterFactory
 	readLog?: (path: string) => Promise<string>
 	createLogger?: (input: { logPath: string }) => Pick<
 		ReturnType<typeof createOperationLogger>,
@@ -123,47 +128,10 @@ type OperationStatusJsonResult = {
 	error: string | null
 }
 
-const parseId = (value: unknown): string => {
-	if (typeof value !== "string" || value.length === 0) {
-		throw new Error("Missing required operation id")
-	}
-
-	return value
-}
-
-const parseJsonFlag = (value: unknown): boolean => (typeof value === "boolean" ? value : false)
-
 const parseRoutePair = (value: string): [ChainRef, ChainRef] => parseRouteString(value)
 
 const parseChainArg = (value: unknown, fallback: ChainRef, flag: "--from" | "--to"): ChainRef =>
 	parseChainRef(typeof value === "string" ? value : fallback, flag)
-
-const parseOptionalString = (value: unknown): string | undefined =>
-	typeof value === "string" && value.length > 0 ? value : undefined
-
-const parseOptionalNonNegativeNumber = (value: unknown, flag: string): number | undefined => {
-	if (typeof value !== "string" || value.length === 0) return undefined
-
-	const parsed = Number(value)
-	if (!Number.isFinite(parsed) || parsed < 0) {
-		throw new Error(`${flag} must be a non-negative number`)
-	}
-
-	return parsed
-}
-
-const parseAliasedNumberArg = (
-	args: Record<string, unknown>,
-	camelName: string,
-	kebabName: string,
-	flag: string
-): number | undefined =>
-	parseOptionalNonNegativeNumber(
-		typeof args[camelName] === "string" && args[camelName].length > 0
-			? args[camelName]
-			: args[kebabName],
-		flag
-	)
 
 const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	if (explicit) return explicit
@@ -742,11 +710,7 @@ const refreshOperationSession = async ({
 	verbose
 }: {
 	session: OperationSession
-	createAdapter: (input: {
-		from: ChainRef
-		to: ChainRef
-		verbose: boolean
-	}) => Promise<BridgeAdapter> | BridgeAdapter
+	createAdapter: BridgeAdapterFactory
 	now: () => string
 	verbose: boolean
 }): Promise<OperationSession> => {
@@ -767,11 +731,7 @@ const createAdapterWithRetries = async ({
 	sleep,
 	retryDelayMs
 }: {
-	createAdapter: (input: {
-		from: ChainRef
-		to: ChainRef
-		verbose: boolean
-	}) => Promise<BridgeAdapter> | BridgeAdapter
+	createAdapter: BridgeAdapterFactory
 	from: ChainRef
 	to: ChainRef
 	verbose: boolean
@@ -834,7 +794,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					json: { type: "boolean", default: false }
 				},
 				async run({ args }) {
-					const json = parseJsonFlag(args.json)
+					const json = readBooleanArg(args, "json")
 					const store = (deps.createStore ?? createSessionStore)({
 						stateDir: (deps.resolvePaths ?? resolveAppPaths)().stateDir
 					})
@@ -853,31 +813,15 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					verbose: { type: "boolean", default: false }
 				},
 				async run({ args }) {
-					const id = parseId(args.id)
-					const verbose = typeof args.verbose === "boolean" ? args.verbose : false
+					const id = readRequiredStringArg(args, "id", "Missing required operation id")
+					const verbose = readBooleanArg(args, "verbose")
 					const now = deps.now ?? (() => new Date().toISOString())
 					const store = (deps.createStore ?? createSessionStore)({
 						stateDir: (deps.resolvePaths ?? resolveAppPaths)().stateDir
 					})
 					const session = await store.load(id)
 					if (!session) throw new Error(`Operation ${id} not found`)
-					const createAdapter =
-						deps.createAdapter ??
-						(async ({
-							from: inputFrom,
-							to: inputTo,
-							verbose: inputVerbose
-						}: {
-							from: ChainRef
-							to: ChainRef
-							verbose: boolean
-						}) => {
-							const { createBridgeAdapter } = await import("../core/adapter")
-							return createBridgeAdapter({
-								route: resolveRoute(inputFrom, inputTo),
-								verbose: inputVerbose
-							})
-						})
+					const createAdapter = deps.createAdapter ?? createDefaultBridgeAdapter
 					;(deps.writeProgress ?? console.error)(
 						renderOperationProgress({
 							event: "refreshing-status",
@@ -906,7 +850,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					id: { type: "positional", required: true }
 				},
 				async run({ args }) {
-					const id = parseId(args.id)
+					const id = readRequiredStringArg(args, "id", "Missing required operation id")
 					const store = (deps.createStore ?? createSessionStore)({
 						stateDir: (deps.resolvePaths ?? resolveAppPaths)().stateDir
 					})
@@ -927,16 +871,16 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					verbose: { type: "boolean", default: false }
 				},
 				async run({ args }) {
-					const id = parseId(args.id)
-					const json = parseJsonFlag(args.json)
-					const verbose = typeof args.verbose === "boolean" ? args.verbose : false
-					const pollIntervalMs = parseAliasedNumberArg(
+					const id = readRequiredStringArg(args, "id", "Missing required operation id")
+					const json = readBooleanArg(args, "json")
+					const verbose = readBooleanArg(args, "verbose")
+					const pollIntervalMs = readAliasedNumberArg(
 						args,
 						"pollIntervalMs",
 						"poll-interval-ms",
 						"--poll-interval-ms"
 					)
-					const retryDelayMs = parseAliasedNumberArg(
+					const retryDelayMs = readAliasedNumberArg(
 						args,
 						"retryDelayMs",
 						"retry-delay-ms",
@@ -952,23 +896,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					const logger = (deps.createLogger ?? createOperationLogger)({
 						logPath: session.logPath
 					})
-					const createAdapter =
-						deps.createAdapter ??
-						(async ({
-							from: inputFrom,
-							to: inputTo,
-							verbose: inputVerbose
-						}: {
-							from: ChainRef
-							to: ChainRef
-							verbose: boolean
-						}) => {
-							const { createBridgeAdapter } = await import("../core/adapter")
-							return createBridgeAdapter({
-								route: resolveRoute(inputFrom, inputTo),
-								verbose: inputVerbose
-							})
-						})
+					const createAdapter = deps.createAdapter ?? createDefaultBridgeAdapter
 					const sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
 					const log = async ({
 						event,
@@ -1037,16 +965,16 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 				async run({ args }) {
 					const from = parseChainArg(args.from, "mina:testnet", "--from")
 					const to = parseChainArg(args.to, "zeko:testnet", "--to")
-					const json = parseJsonFlag(args.json)
-					const verbose = typeof args.verbose === "boolean" ? args.verbose : false
-					const account = deriveAccount(from, parseOptionalString(args.account))
-					const pollIntervalMs = parseAliasedNumberArg(
+					const json = readBooleanArg(args, "json")
+					const verbose = readBooleanArg(args, "verbose")
+					const account = deriveAccount(from, readOptionalStringArg(args, "account"))
+					const pollIntervalMs = readAliasedNumberArg(
 						args,
 						"pollIntervalMs",
 						"poll-interval-ms",
 						"--poll-interval-ms"
 					)
-					const retryDelayMs = parseAliasedNumberArg(
+					const retryDelayMs = readAliasedNumberArg(
 						args,
 						"retryDelayMs",
 						"retry-delay-ms",
@@ -1056,23 +984,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					const sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
 					const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
 					const store = (deps.createStore ?? createSessionStore)({ stateDir: appPaths.stateDir })
-					const createAdapter =
-						deps.createAdapter ??
-						(async ({
-							from: inputFrom,
-							to: inputTo,
-							verbose: inputVerbose
-						}: {
-							from: ChainRef
-							to: ChainRef
-							verbose: boolean
-						}) => {
-							const { createBridgeAdapter } = await import("../core/adapter")
-							return createBridgeAdapter({
-								route: resolveRoute(inputFrom, inputTo),
-								verbose: inputVerbose
-							})
-						})
+					const createAdapter = deps.createAdapter ?? createDefaultBridgeAdapter
 					const queueRoutes = resolveRouteQueue(from, to)
 					const discoveryLog = async ({
 						event,

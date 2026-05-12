@@ -6,10 +6,14 @@
 	"bin": {
 		"zeko-bridge": "./dist/cli.js"
 	},
+	"exports": {
+		".": "./dist/cli.js",
+		"./package.json": "./package.json"
+	},
 	"publishConfig": {
 		"access": "public"
 	},
-	"files": ["dist", "README.md", ".env.example"],
+	"files": ["dist/cli.js", "README.md", ".env.example"],
 	"keywords": ["zeko", "bridge", "cli", "mina"],
 	"license": "MIT",
 	"repository": {
