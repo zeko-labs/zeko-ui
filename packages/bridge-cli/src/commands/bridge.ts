@@ -811,6 +811,7 @@ type BridgeRunnerContext = {
 }
 
 type RunnerStep =
+	| "submit-deposit"
 	| "inspect-deposit"
 	| "inspect-withdrawal"
 	| "wait-deposit"
@@ -988,9 +989,14 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			run: async () => requireAdapterMethod(deps.adapter, "getDepositStatuses")(session.account)
 		})
 		session = depositStatusesResult.session
+		const hasSubmittedDeposit = getSubmitHash(session) !== undefined
+		const sortedStatuses = sortByIndex(depositStatusesResult.value)
+		const unresolvedStatuses = sortedStatuses.filter(
+			(status) => !status.finalised && !status.cancelled
+		)
 		const analysis = analyzeDepositQueue({
-			session,
-			statuses: sortByIndex(depositStatusesResult.value)
+			session: hasSubmittedDeposit ? session : { ...session, targetIndex: undefined },
+			statuses: sortedStatuses
 		})
 		const {
 			target,
@@ -1002,7 +1008,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			shouldAdvanceQueuedClaims
 		} = analysis
 
-		if (targetIndex !== undefined && session.targetIndex !== targetIndex) {
+		if (hasSubmittedDeposit && targetIndex !== undefined && session.targetIndex !== targetIndex) {
 			session = {
 				...session,
 				targetIndex,
@@ -1011,7 +1017,22 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			await deps.sessionStore.save(session)
 		}
 
-		if (target?.cancelled) {
+		if (!hasSubmittedDeposit && unresolvedStatuses.length === 0) {
+			return {
+				session: {
+					...session,
+					targetIndex: undefined,
+					pendingFinalizeIndex: undefined,
+					pendingFinalizeSubmittedAt: undefined,
+					pendingCancelMarker: undefined,
+					updatedAt: now()
+				},
+				depositAnalysis: analysis,
+				next: "submit-deposit"
+			}
+		}
+
+		if (hasSubmittedDeposit && target?.cancelled) {
 			return {
 				session: await cancelSession({
 					session,
@@ -1025,7 +1046,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			}
 		}
 
-		if (target?.finalised) {
+		if (hasSubmittedDeposit && target?.finalised) {
 			return {
 				session: await completeSession({
 					session,
@@ -1056,7 +1077,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 				event: "waiting-on-prior-claims",
 				phaseEvent: "MARK_WAITING_PRIOR_CLAIMS",
 				patch: {
-					targetIndex,
+					targetIndex: hasSubmittedDeposit ? targetIndex : undefined,
 					queueAdvances: session.queueAdvances ?? 0
 				},
 				details: {
@@ -1092,7 +1113,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 				event: "waiting-for-finalization",
 				phaseEvent: "MARK_WAITING_FINALIZATION",
 				patch: {
-					targetIndex: target.index
+					targetIndex: hasSubmittedDeposit ? target.index : undefined
 				},
 				details: {
 					targetIndex: target.index,
@@ -1174,11 +1195,19 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 		})
 
 		const shouldCancelCurrentTarget =
+			hasSubmittedDeposit &&
 			target !== undefined &&
 			pendingAhead === 0 &&
 			!canFinalizeDepositResult.value.available &&
 			canCancelResult.value.available &&
 			session.pendingCancelMarker !== currentTargetCancelMarker
+		const shouldCancelPreSubmitTarget =
+			!hasSubmittedDeposit &&
+			target !== undefined &&
+			pendingAhead === 0 &&
+			!canFinalizeDepositResult.value.available &&
+			canCancelResult.value.available &&
+			session.pendingCancelMarker !== priorCancelMarker
 
 		const shouldAdvanceClaim =
 			canFinalizeDepositResult.value.available &&
@@ -1199,7 +1228,11 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			skippableAhead > 0 &&
 			session.pendingCancelMarker !== priorCancelMarker
 
-		if (shouldAdvancePriorCancellation || shouldCancelCurrentTarget) {
+		if (
+			shouldAdvancePriorCancellation ||
+			shouldCancelCurrentTarget ||
+			shouldCancelPreSubmitTarget
+		) {
 			return {
 				session,
 				depositAnalysis: analysis,
@@ -1491,6 +1524,7 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 		pendingAhead: depositAnalysis.pendingAhead,
 		canFinalize: true
 	})
+	const hasSubmittedDeposit = getSubmitHash(session) !== undefined
 
 	try {
 		const finalizeDepositResult = await withRetry({
@@ -1525,7 +1559,9 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 					hash: finalizeResult.hash
 				}),
 				finalTransaction:
-					depositAnalysis.target && effectiveClaimableIndex === depositAnalysis.target.index
+					hasSubmittedDeposit &&
+					depositAnalysis.target &&
+					effectiveClaimableIndex === depositAnalysis.target.index
 						? {
 								action: "finalize",
 								hash: finalizeResult.hash,
@@ -1628,7 +1664,9 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 		})
 		session = cancelDepositResult.session
 		const cancelResult = cancelDepositResult.value
+		const hasSubmittedDeposit = getSubmitHash(session) !== undefined
 		const cancellingCurrentTarget =
+			hasSubmittedDeposit &&
 			depositAnalysis.target !== undefined &&
 			depositAnalysis.pendingAhead === 0 &&
 			(depositAnalysis.claimableIndex === undefined ||
@@ -1887,12 +1925,6 @@ const bridgeOperationMachine = setup({
 		route: {
 			always: [
 				{
-					target: "submitDeposit",
-					guard: ({ context }) =>
-						context.session.direction === "deposit" &&
-						context.session.submittedTransactions.length === 0
-				},
-				{
 					target: "submitWithdrawal",
 					guard: ({ context }) =>
 						context.session.direction === "withdrawal" &&
@@ -1954,6 +1986,14 @@ const bridgeOperationMachine = setup({
 				src: "inspectDepositStep",
 				input: ({ context }) => context,
 				onDone: [
+					{
+						target: "submitDeposit",
+						guard: ({ event }) => event.output.next === "submit-deposit",
+						actions: assign({
+							session: ({ event }) => event.output.session,
+							depositAnalysis: ({ event }) => event.output.depositAnalysis
+						})
+					},
 					{
 						target: "completed",
 						guard: ({ event }) => event.output.next === "completed",
