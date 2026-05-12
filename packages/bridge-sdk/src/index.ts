@@ -978,9 +978,12 @@ export class Bridge {
 			.greaterThanOrEqual(UInt32.from(witness.index + 1))
 			.toBoolean()
 		const accepted = context.lastCommit !== null && context.lastCommit.index >= witness.index
-		const confirmed = context.lastCommit?.synchronizedOuterActionStateLength
-			.greaterThanOrEqual(UInt32.from(witness.index + 1))
-			.toBoolean()
+		const confirmed =
+			context.lastCommit === null
+				? false
+				: context.lastCommit.synchronizedOuterActionStateLength
+						.greaterThanOrEqual(UInt32.from(witness.index + 1))
+						.toBoolean()
 		const finalised = isAccepted && this.isDepositFinalised(context, witness)
 
 		return {
@@ -1929,9 +1932,12 @@ export class Bridge {
 						...withdrawal,
 						...witness,
 						timestamp: normalizeTimestamp(witness.timestamp),
-						committed: lastCommit?.innerActionStateLength
-							.greaterThan(UInt32.from(witness.index))
-							.toBoolean(),
+						committed:
+							lastCommit === null
+								? false
+								: lastCommit.innerActionStateLength
+										.greaterThan(UInt32.from(witness.index))
+										.toBoolean(),
 						finalised: nextWithdrawal.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean()
 					}
 				}),
