@@ -2606,6 +2606,92 @@ describe("bridge flow", () => {
 		).toBe(true)
 	})
 
+	it("reports withdrawal status endpoints and submit visibility while waiting", async () => {
+		let statusCalls = 0
+		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-status-diagnostics",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "3",
+				account: "B62status"
+			},
+			{
+				adapter: {
+					getStatusSources() {
+						return {
+							withdrawals: [
+								{
+									name: "l2-archive",
+									endpoint: "https://archive.testnet.zeko.io/graphql",
+									role: "archived Zeko withdrawal actions"
+								},
+								{
+									name: "l2-live",
+									endpoint: "https://testnet.zeko.io/graphql",
+									role: "recent live Zeko withdrawal actions"
+								}
+							]
+						}
+					},
+					async submitWithdrawal() {
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdrawal-submit-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/withdrawal-submit-current",
+							included: false
+						}
+					},
+					async getWithdrawalStatuses() {
+						statusCalls += 1
+						if (statusCalls === 1) return []
+
+						return [
+							{
+								index: 2,
+								amount: "3",
+								recipient: "B62status",
+								committed: true,
+								finalised: true,
+								hash: "withdrawal-submit-current",
+								timestamp: "2026-03-09T19:03:00.000Z"
+							}
+						]
+					},
+					async canFinalizeWithdrawal() {
+						return { available: false, reason: "not ready", status: "waiting" }
+					},
+					async finalizeWithdrawal() {
+						throw new Error("finalizeWithdrawal should not be called")
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async ({ event, details }) => {
+					events.push({ event, details })
+				},
+				sleep: async () => {},
+				pollIntervalMs: 0
+			}
+		)
+
+		const waitingEvent = events.find((entry) => entry.event === "waiting-for-submission")
+		expect(result.status).toBe("completed")
+		expect(waitingEvent?.details).toMatchObject({
+			submitHash: "withdrawal-submit-current",
+			statusEndpoints:
+				"l2-archive=https://archive.testnet.zeko.io/graphql, l2-live=https://testnet.zeko.io/graphql",
+			withdrawalStatusCount: 0,
+			submitObserved: false
+		})
+	})
+
 	it("fails clearly during withdrawal submission on a terminal first-withdrawal amount error", async () => {
 		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
 		const errorMessage =

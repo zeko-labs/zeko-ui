@@ -22,10 +22,12 @@ import {
 } from "../core/reporter"
 import { resolveSignerKeys } from "../core/signer"
 import { createSessionStore, type SessionStore } from "../core/session-store"
+import { getWithdrawalStatusSourceSnapshot } from "../core/status-sources"
 import type { ChainRef } from "../core/routes"
 import { formatRoute, parseChainRef, parseRouteString, resolveRoute } from "../core/routes"
 import type {
 	BridgeCapabilityDiagnostic,
+	BridgeStatusSourceSnapshot,
 	DepositStatus,
 	OperationLiveSnapshot,
 	OperationPhase,
@@ -118,6 +120,7 @@ type OperationStatusJsonResult = {
 	can_cancel?: boolean
 	submit_hash?: string
 	observed_counts?: OperationLiveSnapshot["observedCounts"]
+	status_sources?: Partial<Record<OperationSession["direction"], BridgeStatusSourceSnapshot>>
 	next_action?: OperationLiveSnapshot["nextAction"]
 	waiting_on?: OperationLiveSnapshot["waitingOn"]
 	error: string | null
@@ -299,6 +302,9 @@ const toOperationStatusJsonResult = (session: OperationSession): OperationStatus
 	...(session.liveSnapshot?.submitHash ? { submit_hash: session.liveSnapshot.submitHash } : {}),
 	...(session.liveSnapshot?.observedCounts
 		? { observed_counts: session.liveSnapshot.observedCounts }
+		: {}),
+	...(session.liveSnapshot?.statusSources
+		? { status_sources: session.liveSnapshot.statusSources }
 		: {}),
 	...(session.liveSnapshot?.nextAction ? { next_action: session.liveSnapshot.nextAction } : {}),
 	...(session.liveSnapshot?.waitingOn ? { waiting_on: session.liveSnapshot.waitingOn } : {}),
@@ -627,6 +633,11 @@ const refreshWithdrawalSession = async ({
 }): Promise<OperationSession> => {
 	const withdrawals = sortByIndex(await adapter.getWithdrawalStatuses(session.account))
 	const analysis = analyzeWithdrawalQueue({ session, statuses: withdrawals })
+	const withdrawalStatusSourceSnapshot = getWithdrawalStatusSourceSnapshot({
+		adapter,
+		statuses: withdrawals,
+		submitHash: getSubmitHash(session)
+	})
 	const shouldCheckFinalize =
 		analysis.shouldAdvanceQueuedClaims || analysis.target?.committed === true
 	const canFinalizeResult =
@@ -644,7 +655,10 @@ const refreshWithdrawalSession = async ({
 		observedCounts: {
 			deposits: 0,
 			withdrawals: withdrawals.length
-		}
+		},
+		...(withdrawalStatusSourceSnapshot
+			? { statusSources: { withdrawal: withdrawalStatusSourceSnapshot } }
+			: {})
 	} satisfies Omit<OperationLiveSnapshot, "nextAction">
 
 	if (analysis.target?.finalised) {

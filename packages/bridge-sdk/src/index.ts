@@ -320,9 +320,12 @@ export class Bridge {
 		const userInnerActions = [...archiveActions, ...liveActions]
 
 		this.debug("fetchUserWithdrawals action sources", {
+			archiveEndpoint: this.config.zekoArchiveUrl,
+			liveEndpoint: this.config.zekoUrl,
 			archiveCount: archiveActions.length,
 			liveCount: liveActions.length,
-			totalCount: userInnerActions.length
+			totalCount: userInnerActions.length,
+			lastArchivedActionState: lastActionState
 		})
 
 		return filterNulls(

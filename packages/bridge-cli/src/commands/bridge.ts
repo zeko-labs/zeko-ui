@@ -21,6 +21,10 @@ import type { WithdrawalQueueState } from "../core/bridge-queue"
 import { renderBridgeResult, renderOperationProgress, toBridgeJsonResult } from "../core/reporter"
 import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
 import { resolveSignerKeys } from "../core/signer"
+import {
+	getWithdrawalStatusSourceSnapshot,
+	toWithdrawalStatusSourceLogDetails
+} from "../core/status-sources"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
 import { createSessionStore, type SessionStore } from "../core/session-store"
 import type {
@@ -54,6 +58,7 @@ type BridgeFlowDeps = {
 			| "canFinalizeDeposit"
 			| "canCancelDeposit"
 			| "canFinalizeWithdrawal"
+			| "getStatusSources"
 		>
 	>
 	sessionStore: Pick<SessionStore, "save">
@@ -1356,9 +1361,18 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			run: async () => requireAdapterMethod(deps.adapter, "getWithdrawalStatuses")(session.account)
 		})
 		session = withdrawalStatusesResult.session
+		const withdrawalStatuses = sortByIndex(withdrawalStatusesResult.value)
+		const withdrawalStatusSourceSnapshot = getWithdrawalStatusSourceSnapshot({
+			adapter: deps.adapter,
+			statuses: withdrawalStatuses,
+			submitHash: getSubmitHash(session)
+		})
+		const withdrawalStatusSourceDetails = toWithdrawalStatusSourceLogDetails(
+			withdrawalStatusSourceSnapshot
+		)
 		const analysis = analyzeWithdrawalQueue({
 			session,
-			statuses: sortByIndex(withdrawalStatusesResult.value)
+			statuses: withdrawalStatuses
 		})
 		const { target, targetIndex, claimableIndex, pendingAhead, shouldAdvanceQueuedClaims } =
 			analysis
@@ -1409,7 +1423,8 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 				details: {
 					targetIndex,
 					pendingAhead,
-					claimIndex: claimableIndex
+					claimIndex: claimableIndex,
+					...withdrawalStatusSourceDetails
 				}
 			})
 		} else if (!target || !target.committed) {
@@ -1423,7 +1438,11 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 				signature: target ? `submission:commit:${target.index}` : "submission:pending",
 				event: "waiting-for-submission",
 				phaseEvent: "MARK_WAITING_SUBMISSION",
-				details: { submitHash: getSubmitHash(session), targetIndex: target?.index }
+				details: {
+					submitHash: getSubmitHash(session),
+					targetIndex: target?.index,
+					...withdrawalStatusSourceDetails
+				}
 			})
 		} else {
 			session = await maybeEnterWaitState({
@@ -1441,7 +1460,8 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 				},
 				details: {
 					targetIndex: target.index,
-					claimIndex: claimableIndex
+					claimIndex: claimableIndex,
+					...withdrawalStatusSourceDetails
 				}
 			})
 		}
@@ -1456,7 +1476,8 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 				details: {
 					waiting: "submission",
 					targetIndex: target.index,
-					submitHash: getSubmitHash(session)
+					submitHash: getSubmitHash(session),
+					...withdrawalStatusSourceDetails
 				}
 			})
 
@@ -1549,7 +1570,8 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 						targetIndex,
 						claimIndex: claimableIndex,
 						finalizeAvailable: canFinalizeResult.value.available,
-						finalizeReason: canFinalizeResult.value.reason
+						finalizeReason: canFinalizeResult.value.reason,
+						...withdrawalStatusSourceDetails
 					}
 				: target
 					? {
@@ -1557,13 +1579,15 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 							targetIndex: target.index,
 							claimIndex: claimableIndex,
 							finalizeAvailable: canFinalizeResult.value.available,
-							finalizeReason: canFinalizeResult.value.reason
+							finalizeReason: canFinalizeResult.value.reason,
+							...withdrawalStatusSourceDetails
 						}
 					: {
 							waiting: "submission",
 							submitHash: getSubmitHash(session),
 							finalizeAvailable: canFinalizeResult.value.available,
-							finalizeReason: canFinalizeResult.value.reason
+							finalizeReason: canFinalizeResult.value.reason,
+							...withdrawalStatusSourceDetails
 						}
 		})
 

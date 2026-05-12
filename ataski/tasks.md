@@ -198,3 +198,4 @@
 - T198 | done | clear-deposit-queue-before-submit | done/T198-clear-deposit-queue-before-submit.md
 - T199 | done | disambiguate-withdrawal-finalization-indexes | done/T199-disambiguate-withdrawal-finalization-indexes.md
 - T200 | done | expose-bridge-cli-poll-delay-flags | done/T200-expose-bridge-cli-poll-delay-flags.md
+- T201 | done | improve-bridge-status-endpoint-logging | done/T201-improve-bridge-status-endpoint-logging.md
