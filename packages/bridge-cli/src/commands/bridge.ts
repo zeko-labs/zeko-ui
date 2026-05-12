@@ -3,7 +3,6 @@ import path from "node:path"
 import { defineCommand, type CommandDef } from "citty"
 import { isInsufficientFirstWithdrawalAmountError } from "@zeko-labs/bridge-sdk"
 import { PrivateKey } from "o1js"
-import { assign, createActor, fromPromise, setup, toPromise } from "xstate"
 import type { BridgeAdapter } from "../core/adapter"
 import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
 import { createOperationLogger } from "../core/logger"
@@ -615,6 +614,7 @@ type BridgeRunnerContext = {
 
 type RunnerStep =
 	| "submit-deposit"
+	| "submit-withdrawal"
 	| "inspect-deposit"
 	| "inspect-withdrawal"
 	| "wait-deposit"
@@ -1341,7 +1341,7 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 
 		return {
 			session,
-			next: "wait-deposit"
+			next: "inspect-deposit"
 		}
 	} catch (error) {
 		if (!isTransientClaimUnavailableError(error)) {
@@ -1369,7 +1369,7 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 
 		return {
 			session,
-			next: "wait-deposit"
+			next: "inspect-deposit"
 		}
 	}
 }
@@ -1467,7 +1467,7 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 
 		return {
 			session,
-			next: "wait-deposit"
+			next: "inspect-deposit"
 		}
 	} catch (error) {
 		return {
@@ -1566,7 +1566,7 @@ const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<
 
 		return {
 			session,
-			next: "wait-withdrawal"
+			next: "inspect-withdrawal"
 		}
 	} catch (error) {
 		if (!isTransientClaimUnavailableError(error)) {
@@ -1594,7 +1594,7 @@ const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<
 
 		return {
 			session,
-			next: "wait-withdrawal"
+			next: "inspect-withdrawal"
 		}
 	}
 }
@@ -1631,326 +1631,48 @@ const runWaitStep = async (
 	}
 }
 
-const bridgeOperationMachine = setup({
-	types: {
-		context: {} as BridgeRunnerContext,
-		input: {} as BridgeRunnerContext,
-		output: {} as OperationSession
-	},
-	actors: {
-		submitDepositStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runSubmitStep(input, "deposit")
-		),
-		submitWithdrawalStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runSubmitStep(input, "withdrawal")
-		),
-		inspectDepositStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runInspectDepositStep(input)
-		),
-		inspectWithdrawalStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runInspectWithdrawalStep(input)
-		),
-		finalizeDepositStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runFinalizeDepositStep(input)
-		),
-		cancelDepositStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runCancelDepositStep(input)
-		),
-		finalizeWithdrawalStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runFinalizeWithdrawalStep(input)
-		),
-		waitDepositStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runWaitStep(input, "deposit")
-		),
-		waitWithdrawalStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runWaitStep(input, "withdrawal")
-		)
+const runBridgeStep = async (
+	context: BridgeRunnerContext,
+	next: RunnerStep
+): Promise<RunnerOutput> => {
+	switch (next) {
+		case "submit-deposit":
+			return runSubmitStep(context, "deposit")
+		case "submit-withdrawal":
+			return runSubmitStep(context, "withdrawal")
+		case "inspect-deposit":
+			return runInspectDepositStep(context)
+		case "inspect-withdrawal":
+			return runInspectWithdrawalStep(context)
+		case "wait-deposit":
+			return runWaitStep(context, "deposit")
+		case "wait-withdrawal":
+			return runWaitStep(context, "withdrawal")
+		case "finalize-deposit":
+			return runFinalizeDepositStep(context)
+		case "cancel-deposit":
+			return runCancelDepositStep(context)
+		case "finalize-withdrawal":
+			return runFinalizeWithdrawalStep(context)
+		default:
+			return { ...context, next }
 	}
-}).createMachine({
-	id: "bridge-cli-runner",
-	context: ({ input }) => input,
-	output: ({ context }) => context.session,
-	initial: "route",
-	states: {
-		route: {
-			always: [
-				{
-					target: "submitWithdrawal",
-					guard: ({ context }) =>
-						context.session.direction === "withdrawal" &&
-						context.session.submittedTransactions.length === 0
-				},
-				{
-					target: "inspectDeposit",
-					guard: ({ context }) => context.session.direction === "deposit"
-				},
-				{
-					target: "inspectWithdrawal"
-				}
-			]
-		},
-		submitDeposit: {
-			invoke: {
-				src: "submitDepositStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectDeposit",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					}
-				]
-			}
-		},
-		submitWithdrawal: {
-			invoke: {
-				src: "submitWithdrawalStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectWithdrawal",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					}
-				]
-			}
-		},
-		inspectDeposit: {
-			invoke: {
-				src: "inspectDepositStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "submitDeposit",
-						guard: ({ event }) => event.output.next === "submit-deposit",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					},
-					{
-						target: "completed",
-						guard: ({ event }) => event.output.next === "completed",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					},
-					{
-						target: "cancelled",
-						guard: ({ event }) => event.output.next === "cancelled",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					},
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					},
-					{
-						target: "finalizeDeposit",
-						guard: ({ event }) => event.output.next === "finalize-deposit",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					},
-					{
-						target: "cancelDeposit",
-						guard: ({ event }) => event.output.next === "cancel-deposit",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					},
-					{
-						target: "waitDeposit",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					}
-				]
-			}
-		},
-		waitDeposit: {
-			invoke: {
-				src: "waitDepositStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectDeposit",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					}
-				]
-			}
-		},
-		finalizeDeposit: {
-			invoke: {
-				src: "finalizeDepositStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectDeposit",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					}
-				]
-			}
-		},
-		cancelDeposit: {
-			invoke: {
-				src: "cancelDepositStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectDeposit",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					}
-				]
-			}
-		},
-		inspectWithdrawal: {
-			invoke: {
-				src: "inspectWithdrawalStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "completed",
-						guard: ({ event }) => event.output.next === "completed",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							withdrawalAnalysis: ({ event }) => event.output.withdrawalAnalysis
-						})
-					},
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							withdrawalAnalysis: ({ event }) => event.output.withdrawalAnalysis
-						})
-					},
-					{
-						target: "finalizeWithdrawal",
-						guard: ({ event }) => event.output.next === "finalize-withdrawal",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							withdrawalAnalysis: ({ event }) => event.output.withdrawalAnalysis
-						})
-					},
-					{
-						target: "waitWithdrawal",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							withdrawalAnalysis: ({ event }) => event.output.withdrawalAnalysis
-						})
-					}
-				]
-			}
-		},
-		waitWithdrawal: {
-			invoke: {
-				src: "waitWithdrawalStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectWithdrawal",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							withdrawalAnalysis: ({ event }) => event.output.withdrawalAnalysis
-						})
-					}
-				]
-			}
-		},
-		finalizeWithdrawal: {
-			invoke: {
-				src: "finalizeWithdrawalStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectWithdrawal",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					}
-				]
-			}
-		},
-		completed: { type: "final" },
-		cancelled: { type: "final" },
-		failed: { type: "final" }
+}
+
+const getInitialBridgeStep = (session: OperationSession): RunnerStep => {
+	if (session.direction === "withdrawal" && session.submittedTransactions.length === 0) {
+		return "submit-withdrawal"
 	}
-})
+
+	return session.direction === "deposit" ? "inspect-deposit" : "inspect-withdrawal"
+}
 
 export const runBridgeOperation = async (
 	input: BridgeFlowInput,
 	deps: BridgeFlowDeps
 ): Promise<OperationSession> => {
-	const context = createInitialRunnerContext(input, deps)
+	let context = createInitialRunnerContext(input, deps)
+	let next = getInitialBridgeStep(context.session)
 
 	await persistSession({
 		session: context.session,
@@ -1959,16 +1681,13 @@ export const runBridgeOperation = async (
 		event: "initialized"
 	})
 
-	const actor = createActor(bridgeOperationMachine, {
-		input: context
-	})
-	actor.start()
-
-	try {
-		return await toPromise(actor)
-	} finally {
-		actor.stop()
+	while (next !== "completed" && next !== "cancelled" && next !== "failed") {
+		const output = await runBridgeStep(context, next)
+		context = { ...context, ...output }
+		next = output.next
 	}
+
+	return context.session
 }
 
 export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<BridgeCommandArgs> =>
