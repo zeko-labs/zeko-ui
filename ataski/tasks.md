@@ -194,3 +194,4 @@
 - T194 | done | scope-zeko-skill-endpoint-validation | done/T194-scope-zeko-skill-endpoint-validation.md
 - T195 | done | fix-actions-indexer-canonical-param-limit | done/T195-fix-actions-indexer-canonical-param-limit.md
 - T196 | done | handle-null-actions-api-commit | done/T196-handle-null-actions-api-commit.md
+- T197 | done | resolve-pr-ci-conflicts-and-changeset | done/T197-resolve-pr-ci-conflicts-and-changeset.md
