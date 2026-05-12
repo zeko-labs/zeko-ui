@@ -443,6 +443,19 @@ const normalizeCapabilityResult = (
 ): BridgeCapabilityDiagnostic =>
 	typeof result === "boolean" ? { available: result, reason: null } : result
 
+const isAlreadyFinalisedWithdrawal = (diagnostic: BridgeCapabilityDiagnostic): boolean =>
+	diagnostic.status === "alreadyFinalised" || diagnostic.reason === "Withdrawal already finalised"
+
+const capabilityAppliesToIndex = (
+	diagnostic: BridgeCapabilityDiagnostic,
+	index: number | undefined
+): boolean => index !== undefined && (diagnostic.index === undefined || diagnostic.index === index)
+
+const terminalWithdrawalMatchesIndex = (
+	diagnostic: BridgeCapabilityDiagnostic,
+	index: number | undefined
+): boolean => index !== undefined && diagnostic.index === index
+
 const refreshDepositSession = async ({
 	session,
 	adapter,
@@ -465,7 +478,7 @@ const refreshDepositSession = async ({
 	const canFinalize = normalizeCapabilityResult(canFinalizeResult).available
 	const canCancel = normalizeCapabilityResult(canCancelResult).available
 	const effectiveClaimableIndex = resolveEffectiveDepositClaimableIndex({
-		claimableIndex: analysis.claimableIndex,
+		claimableIndex: normalizeCapabilityResult(canFinalizeResult).index ?? analysis.claimableIndex,
 		target: analysis.target,
 		pendingAhead: analysis.pendingAhead,
 		canFinalize
@@ -537,6 +550,10 @@ const refreshDepositSession = async ({
 	const shouldFinalize =
 		canFinalize &&
 		effectiveClaimableIndex !== undefined &&
+		capabilityAppliesToIndex(
+			normalizeCapabilityResult(canFinalizeResult),
+			effectiveClaimableIndex
+		) &&
 		analysis.skippableAhead === 0 &&
 		(analysis.target === undefined ||
 			analysis.blockingAhead > 0 ||
@@ -586,9 +603,13 @@ const refreshWithdrawalSession = async ({
 }): Promise<OperationSession> => {
 	const withdrawals = sortByIndex(await adapter.getWithdrawalStatuses(session.account))
 	const analysis = analyzeWithdrawalQueue({ session, statuses: withdrawals })
-	const canFinalize = adapter.canFinalizeWithdrawal
-		? normalizeCapabilityResult(await adapter.canFinalizeWithdrawal(session.account)).available
-		: false
+	const shouldCheckFinalize =
+		analysis.shouldAdvanceQueuedClaims || analysis.target?.committed === true
+	const canFinalizeResult =
+		shouldCheckFinalize && adapter.canFinalizeWithdrawal
+			? normalizeCapabilityResult(await adapter.canFinalizeWithdrawal(session.account))
+			: { available: false, reason: null }
+	const canFinalize = canFinalizeResult.available
 	const liveBase = {
 		refreshedAt: now(),
 		targetIndex: analysis.targetIndex,
@@ -626,12 +647,42 @@ const refreshWithdrawalSession = async ({
 		})
 	}
 
+	if (
+		analysis.target?.committed &&
+		analysis.pendingAhead === 0 &&
+		isAlreadyFinalisedWithdrawal(canFinalizeResult) &&
+		terminalWithdrawalMatchesIndex(canFinalizeResult, analysis.target.index)
+	) {
+		return withLiveSnapshot({
+			session,
+			now,
+			patch: {
+				status: "completed",
+				phase: "completed",
+				lastError: undefined,
+				targetIndex: analysis.target.index,
+				pendingFinalizeIndex: undefined,
+				pendingFinalizeSubmittedAt: undefined,
+				finalTransaction: session.finalTransaction ?? {
+					action: "finalize",
+					hash: analysis.target.hash,
+					explorerUrl: ""
+				}
+			},
+			liveSnapshot: {
+				...liveBase,
+				nextAction: "completed"
+			}
+		})
+	}
+
 	const shouldFinalize =
 		canFinalize &&
 		analysis.claimableIndex !== undefined &&
+		capabilityAppliesToIndex(canFinalizeResult, analysis.claimableIndex) &&
 		(analysis.shouldAdvanceQueuedClaims || analysis.claimableIndex === analysis.target?.index)
 	const waitingOn =
-		analysis.target === undefined
+		analysis.target === undefined || analysis.target.committed === false
 			? "submission"
 			: analysis.shouldAdvanceQueuedClaims
 				? "prior-claims"

@@ -196,3 +196,4 @@
 - T196 | done | handle-null-actions-api-commit | done/T196-handle-null-actions-api-commit.md
 - T197 | done | resolve-pr-ci-conflicts-and-changeset | done/T197-resolve-pr-ci-conflicts-and-changeset.md
 - T198 | done | clear-deposit-queue-before-submit | done/T198-clear-deposit-queue-before-submit.md
+- T199 | done | disambiguate-withdrawal-finalization-indexes | done/T199-disambiguate-withdrawal-finalization-indexes.md

@@ -284,6 +284,19 @@ const getCapabilityDiagnostic = async ({
 	return typeof result === "boolean" ? { available: result, reason: null } : result
 }
 
+const isAlreadyFinalisedWithdrawal = (diagnostic: BridgeCapabilityDiagnostic): boolean =>
+	diagnostic.status === "alreadyFinalised" || diagnostic.reason === "Withdrawal already finalised"
+
+const capabilityAppliesToIndex = (
+	diagnostic: BridgeCapabilityDiagnostic,
+	index: number | undefined
+): boolean => index !== undefined && (diagnostic.index === undefined || diagnostic.index === index)
+
+const terminalWithdrawalMatchesIndex = (
+	diagnostic: BridgeCapabilityDiagnostic,
+	index: number | undefined
+): boolean => index !== undefined && diagnostic.index === index
+
 const appendSubmittedTransaction = (
 	session: OperationSession,
 	transaction: { action: "submit" | "finalize" | "cancel"; hash: string }
@@ -1170,16 +1183,16 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			key: "canCancelDeposit",
 			diagnostic: canCancelResult.value
 		})
-		const pendingFinalizeState = getPendingFinalizeRetryState({
-			session,
-			claimableIndex: claimableIndex ?? targetIndex,
-			now
-		})
 		const effectiveClaimableIndex = resolveEffectiveDepositClaimableIndex({
-			claimableIndex,
+			claimableIndex: canFinalizeDepositResult.value.index ?? claimableIndex,
 			target,
 			pendingAhead,
 			canFinalize: canFinalizeDepositResult.value.available
+		})
+		const pendingFinalizeState = getPendingFinalizeRetryState({
+			session,
+			claimableIndex: effectiveClaimableIndex ?? targetIndex,
+			now
 		})
 		const currentTargetCancelMarker = toPendingCancelMarker({
 			currentTargetIndex: target?.index,
@@ -1211,6 +1224,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 
 		const shouldAdvanceClaim =
 			canFinalizeDepositResult.value.available &&
+			capabilityAppliesToIndex(canFinalizeDepositResult.value, effectiveClaimableIndex) &&
 			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 			skippableAhead === 0 &&
 			!shouldCancelCurrentTarget
@@ -1372,7 +1386,7 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 					claimIndex: claimableIndex
 				}
 			})
-		} else if (!target) {
+		} else if (!target || !target.committed) {
 			session = await maybeEnterWaitState({
 				session,
 				controller,
@@ -1380,10 +1394,10 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 				log: deps.log,
 				now,
 				tracker: waitTracker,
-				signature: "submission:pending",
+				signature: target ? `submission:commit:${target.index}` : "submission:pending",
 				event: "waiting-for-submission",
 				phaseEvent: "MARK_WAITING_SUBMISSION",
-				details: { submitHash: getSubmitHash(session) }
+				details: { submitHash: getSubmitHash(session), targetIndex: target?.index }
 			})
 		} else {
 			session = await maybeEnterWaitState({
@@ -1404,6 +1418,27 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 					claimIndex: claimableIndex
 				}
 			})
+		}
+
+		if (target && !target.committed && !shouldAdvanceQueuedClaims) {
+			await maybeEmitHeartbeat({
+				session,
+				now,
+				pollIntervalMs: deps.pollIntervalMs,
+				tracker: waitTracker,
+				log: deps.log,
+				details: {
+					waiting: "submission",
+					targetIndex: target.index,
+					submitHash: getSubmitHash(session)
+				}
+			})
+
+			return {
+				session,
+				withdrawalAnalysis: analysis,
+				next: "wait-withdrawal"
+			}
 		}
 
 		const canFinalizeResult = await withRetry({
@@ -1429,6 +1464,31 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			key: "canFinalizeWithdrawal",
 			diagnostic: canFinalizeResult.value
 		})
+
+		if (
+			target?.committed &&
+			pendingAhead === 0 &&
+			isAlreadyFinalisedWithdrawal(canFinalizeResult.value) &&
+			terminalWithdrawalMatchesIndex(canFinalizeResult.value, target.index)
+		) {
+			return {
+				session: await completeSession({
+					session,
+					controller,
+					sessionStore: deps.sessionStore,
+					log: deps.log,
+					now,
+					finalTransaction: session.finalTransaction ?? {
+						action: "finalize",
+						hash: target.hash,
+						explorerUrl: ""
+					}
+				}),
+				withdrawalAnalysis: analysis,
+				next: "completed"
+			}
+		}
+
 		const pendingFinalizeState = getPendingFinalizeRetryState({
 			session,
 			claimableIndex,
@@ -1438,6 +1498,7 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 		const shouldAdvanceClaim =
 			canFinalizeResult.value.available &&
 			claimableIndex !== undefined &&
+			capabilityAppliesToIndex(canFinalizeResult.value, claimableIndex) &&
 			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 			(shouldAdvanceQueuedClaims || claimableIndex === target?.index)
 

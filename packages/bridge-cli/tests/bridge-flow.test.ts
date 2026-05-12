@@ -1519,6 +1519,221 @@ describe("bridge flow", () => {
 		expect(result.status).toBe("completed")
 	})
 
+	it("completes when the SDK reports the target withdrawal is already finalised", async () => {
+		let submitCalls = 0
+		let finalizeCalls = 0
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-already-finalised",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "3",
+				account: "B62test"
+			},
+			{
+				adapter: {
+					async submitWithdrawal() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdraw-submit-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
+							included: true
+						}
+					},
+					async getWithdrawalStatuses() {
+						if (submitCalls === 0) return []
+
+						return [
+							{
+								index: 9,
+								amount: "3",
+								recipient: "B62test",
+								committed: true,
+								finalised: false,
+								hash: "withdraw-submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeWithdrawal() {
+						return {
+							available: false,
+							reason: "Withdrawal already finalised",
+							status: "alreadyFinalised",
+							index: 9
+						}
+					},
+					async finalizeWithdrawal() {
+						finalizeCalls += 1
+						throw new Error("already-finalised withdrawal should not be finalized again")
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					throw new Error("already-finalised withdrawal should complete instead of waiting")
+				},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(result.status).toBe("completed")
+		expect(result.finalTransaction?.hash).toBe("withdraw-submit-current")
+		expect(finalizeCalls).toBe(0)
+	})
+
+	it("does not complete the target withdrawal from an already-finalised result for a different index", async () => {
+		let submitCalls = 0
+		let statusCalls = 0
+		let sleepCalls = 0
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-already-finalised-other-index",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "3",
+				account: "B62test"
+			},
+			{
+				adapter: {
+					async submitWithdrawal() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdraw-submit-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
+							included: true
+						}
+					},
+					async getWithdrawalStatuses() {
+						statusCalls += 1
+						if (submitCalls === 0) return []
+
+						return [
+							{
+								index: 8,
+								amount: "2",
+								recipient: "B62test",
+								committed: true,
+								finalised: true,
+								hash: "withdraw-finalize-older",
+								timestamp: "2026-03-09T19:00:00.000Z"
+							},
+							{
+								index: 9,
+								amount: "3",
+								recipient: "B62test",
+								committed: true,
+								finalised: statusCalls > 1,
+								hash: "withdraw-submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeWithdrawal() {
+						return {
+							available: false,
+							reason: "Withdrawal already finalised",
+							status: "alreadyFinalised",
+							index: 8
+						}
+					},
+					async finalizeWithdrawal() {
+						throw new Error("wrong-index already-finalised result should not finalize")
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					sleepCalls += 1
+				},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(result.status).toBe("completed")
+		expect(result.targetIndex).toBe(9)
+		expect(sleepCalls).toBe(1)
+	})
+
+	it("waits for a target withdrawal to commit before checking finalization", async () => {
+		let submitCalls = 0
+		let statusCalls = 0
+		let sleepCalls = 0
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-wait-commit-before-finalize-check",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "3",
+				account: "B62test"
+			},
+			{
+				adapter: {
+					async submitWithdrawal() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdraw-submit-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
+							included: true
+						}
+					},
+					async getWithdrawalStatuses() {
+						statusCalls += 1
+						if (submitCalls === 0) return []
+
+						return [
+							{
+								index: 9,
+								amount: "3",
+								recipient: "B62test",
+								committed: statusCalls > 1,
+								finalised: statusCalls > 1,
+								hash: "withdraw-submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeWithdrawal() {
+						throw new Error("uncommitted target withdrawal should not check finalizability")
+					},
+					async finalizeWithdrawal() {
+						throw new Error("uncommitted target withdrawal should not be finalized")
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					sleepCalls += 1
+				},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(result.status).toBe("completed")
+		expect(sleepCalls).toBe(1)
+	})
+
 	it.skip("waits across long queued deposit delays without failing", async () => {
 		const events: string[] = []
 		let nowCalls = 0

@@ -559,6 +559,7 @@ export class Bridge {
 			if (finalizationWitness) {
 				return {
 					ok: true,
+					index: witness.index,
 					value: finalizationWitness
 				}
 			}
@@ -732,13 +733,14 @@ export class Bridge {
 
 	public async canFinalizeDeposit(
 		pk: PublicKey
-	): Promise<{ available: boolean; reason: string | null }> {
+	): Promise<{ available: boolean; reason: string | null; index?: number }> {
 		this.debug("canFinalizeDeposit start", { pk: pk.toBase58() })
 		const result = await this.fetchDepositFinalizationWitnesses(pk)
 		this.debug("canFinalizeDeposit result", result)
 		return {
 			available: result.ok,
-			reason: result.ok ? null : result.msg
+			reason: result.ok ? null : result.msg,
+			index: result.index
 		}
 	}
 
@@ -1540,12 +1542,14 @@ export class Bridge {
 		const matchingWitnesses = withdrawalWitnesses.filter((witness) =>
 			Boolean(findMatchingWithdrawal(witness))
 		)
-		const alreadyFinalisedWitnessCount = matchingWitnesses.filter((witness) =>
-			prevNextWithdrawal.greaterThan(UInt32.from(witness.index)).toBoolean()
-		).length
+		const alreadyFinalisedWitnessIndices = matchingWitnesses
+			.filter((witness) => prevNextWithdrawal.greaterThan(UInt32.from(witness.index)).toBoolean())
+			.map((witness) => witness.index)
+		const alreadyFinalisedWitnessCount = alreadyFinalisedWitnessIndices.length
 		const unfinalisedWitnessCount = matchingWitnesses.length - alreadyFinalisedWitnessCount
 		let insufficientFirstWithdrawalReason: string | null = null
 		let alreadyFinalisedCount = 0
+		let alreadyFinalisedIndex: number | undefined
 		let unfinalisedMatchCount = 0
 		const myWithdrawalIndex = innerActions.findIndex((action) => {
 			const matchingWithdrawal = findMatchingWithdrawal(action)
@@ -1554,6 +1558,7 @@ export class Bridge {
 
 			if (prevNextWithdrawal.greaterThan(UInt32.from(action.index)).toBoolean()) {
 				alreadyFinalisedCount++
+				alreadyFinalisedIndex = Math.max(alreadyFinalisedIndex ?? action.index, action.index)
 				return false
 			}
 
@@ -1598,7 +1603,8 @@ export class Bridge {
 				return {
 					ok: false,
 					msg: "Withdrawal already finalised",
-					status: "alreadyFinalised"
+					status: "alreadyFinalised",
+					index: alreadyFinalisedIndex ?? Math.max(...alreadyFinalisedWitnessIndices)
 				}
 			}
 			return { ok: false, msg: "No my withdrawal index found", status: "waiting" }
@@ -1633,6 +1639,7 @@ export class Bridge {
 
 		return {
 			ok: true,
+			index: myWithdrawal.index,
 			value: {
 				commitAseTarget,
 				commitSlotRange: lastCommit.slotRange,
@@ -1846,7 +1853,8 @@ export class Bridge {
 		return {
 			available: result.ok,
 			reason: result.ok ? null : result.msg,
-			status: result.ok ? "available" : result.status ?? "waiting"
+			status: result.ok ? "available" : result.status ?? "waiting",
+			index: result.index
 		}
 	}
 

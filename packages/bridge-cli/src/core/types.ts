@@ -38,6 +38,8 @@ export type TransactionResult = {
 export type BridgeCapabilityDiagnostic = {
 	available: boolean
 	reason: string | null
+	status?: "available" | "alreadyFinalised" | "waiting" | "blocked"
+	index?: number
 }
 
 export type BridgeSdkOperation =

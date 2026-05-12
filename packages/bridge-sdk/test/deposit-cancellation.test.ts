@@ -388,6 +388,7 @@ describe("deposit cancellation state", () => {
 		if (!result.ok) throw new Error("Expected a finalization witness")
 		expect(result.value.witness.checkAccepted.init.depositIndex).toBe("0")
 		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
+			index: 0,
 			available: true,
 			reason: null
 		})
@@ -427,6 +428,7 @@ describe("deposit cancellation state", () => {
 		if (!result.ok) throw new Error("Expected a finalization witness")
 		expect(result.value.witness.checkAccepted.init.depositIndex).toBe("1")
 		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
+			index: 1,
 			available: true,
 			reason: null
 		})

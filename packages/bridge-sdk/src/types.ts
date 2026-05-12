@@ -102,8 +102,8 @@ export type Account = {
 }
 
 export type WitnessFetchResult<T> =
-	| { ok: true; value: T }
-	| { ok: false; msg: string; status?: WithdrawalFinalizationStatus }
+	| { ok: true; value: T; index?: number }
+	| { ok: false; msg: string; status?: WithdrawalFinalizationStatus; index?: number }
 
 export type WithdrawalFinalizationStatus = "available" | "alreadyFinalised" | "waiting" | "blocked"
 
@@ -111,6 +111,7 @@ export type WithdrawalFinalizationResult = {
 	available: boolean
 	reason: string | null
 	status: WithdrawalFinalizationStatus
+	index?: number
 }
 
 export type ExtractInput<T> = T extends TadaDocumentNode<any, { input: infer I }, any> ? I : never
