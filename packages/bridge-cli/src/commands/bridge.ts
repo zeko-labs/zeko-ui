@@ -102,6 +102,8 @@ type BridgeCommandArgs = {
 	account: { type: "string"; required: false }
 	recipient: { type: "string"; required: false }
 	timeoutSlots: { type: "string"; required: false; alias: string[] }
+	pollIntervalMs: { type: "string"; required: false; alias: string[] }
+	retryDelayMs: { type: "string"; required: false; alias: string[] }
 	json: { type: "boolean"; default: false }
 	verbose: { type: "boolean"; default: false }
 }
@@ -114,6 +116,10 @@ type BridgeCommandRunArgs = {
 	recipient?: string
 	timeoutSlots?: string
 	"timeout-slots"?: string
+	pollIntervalMs?: string
+	"poll-interval-ms"?: string
+	retryDelayMs?: string
+	"retry-delay-ms"?: string
 	json?: boolean
 	verbose?: boolean
 }
@@ -246,6 +252,16 @@ const parseOptionalString = (value: unknown): string | undefined =>
 const parseOptionalNumber = (value: unknown): number | undefined =>
 	typeof value === "string" && value.length > 0 ? Number(value) : undefined
 
+const parseOptionalNonNegativeNumber = (value: unknown, flag: string): number | undefined => {
+	const parsed = parseOptionalNumber(value)
+	if (parsed === undefined) return undefined
+	if (!Number.isFinite(parsed) || parsed < 0) {
+		throw new Error(`${flag} must be a non-negative number`)
+	}
+
+	return parsed
+}
+
 const parseBridgeCommandArgs = (args: BridgeCommandRunArgs) => ({
 	from: parseChainRef(args.from ?? "mina:testnet", "--from"),
 	to: parseChainRef(args.to ?? "zeko:testnet", "--to"),
@@ -254,6 +270,16 @@ const parseBridgeCommandArgs = (args: BridgeCommandRunArgs) => ({
 	recipient: parseOptionalString(args.recipient),
 	timeoutSlots: parseOptionalNumber(
 		args.timeoutSlots && args.timeoutSlots.length > 0 ? args.timeoutSlots : args["timeout-slots"]
+	),
+	pollIntervalMs: parseOptionalNonNegativeNumber(
+		args.pollIntervalMs && args.pollIntervalMs.length > 0
+			? args.pollIntervalMs
+			: args["poll-interval-ms"],
+		"--poll-interval-ms"
+	),
+	retryDelayMs: parseOptionalNonNegativeNumber(
+		args.retryDelayMs && args.retryDelayMs.length > 0 ? args.retryDelayMs : args["retry-delay-ms"],
+		"--retry-delay-ms"
 	),
 	json: args.json === true,
 	verbose: args.verbose === true
@@ -2295,6 +2321,8 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			account: { type: "string", required: false },
 			recipient: { type: "string", required: false },
 			timeoutSlots: { type: "string", required: false, alias: ["timeout-slots"] },
+			pollIntervalMs: { type: "string", required: false, alias: ["poll-interval-ms"] },
+			retryDelayMs: { type: "string", required: false, alias: ["retry-delay-ms"] },
 			json: { type: "boolean", default: false },
 			verbose: { type: "boolean", default: false }
 		},
@@ -2308,6 +2336,12 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 				timeoutSlots: typeof args.timeoutSlots === "string" ? args.timeoutSlots : undefined,
 				"timeout-slots":
 					typeof args["timeout-slots"] === "string" ? args["timeout-slots"] : undefined,
+				pollIntervalMs: typeof args.pollIntervalMs === "string" ? args.pollIntervalMs : undefined,
+				"poll-interval-ms":
+					typeof args["poll-interval-ms"] === "string" ? args["poll-interval-ms"] : undefined,
+				retryDelayMs: typeof args.retryDelayMs === "string" ? args.retryDelayMs : undefined,
+				"retry-delay-ms":
+					typeof args["retry-delay-ms"] === "string" ? args["retry-delay-ms"] : undefined,
 				json: args.json === true,
 				verbose: args.verbose === true
 			} satisfies BridgeCommandRunArgs)
@@ -2364,8 +2398,8 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 						await logger.write(event, { phase, ...details })
 					},
 					sleep: deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
-					pollIntervalMs: deps.pollIntervalMs ?? 20_000,
-					retryDelayMs: deps.retryDelayMs,
+					pollIntervalMs: commandArgs.pollIntervalMs ?? deps.pollIntervalMs ?? 20_000,
+					retryDelayMs: commandArgs.retryDelayMs ?? deps.retryDelayMs,
 					now: deps.now,
 					verbose: commandArgs.verbose
 				}

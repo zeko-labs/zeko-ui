@@ -141,6 +141,30 @@ const parseChainArg = (value: unknown, fallback: ChainRef, flag: "--from" | "--t
 const parseOptionalString = (value: unknown): string | undefined =>
 	typeof value === "string" && value.length > 0 ? value : undefined
 
+const parseOptionalNonNegativeNumber = (value: unknown, flag: string): number | undefined => {
+	if (typeof value !== "string" || value.length === 0) return undefined
+
+	const parsed = Number(value)
+	if (!Number.isFinite(parsed) || parsed < 0) {
+		throw new Error(`${flag} must be a non-negative number`)
+	}
+
+	return parsed
+}
+
+const parseAliasedNumberArg = (
+	args: Record<string, unknown>,
+	camelName: string,
+	kebabName: string,
+	flag: string
+): number | undefined =>
+	parseOptionalNonNegativeNumber(
+		typeof args[camelName] === "string" && args[camelName].length > 0
+			? args[camelName]
+			: args[kebabName],
+		flag
+	)
+
 const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	if (explicit) return explicit
 
@@ -897,6 +921,8 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 				meta: { name: "resume", description: "Resume a persisted operation." },
 				args: {
 					id: { type: "positional", required: true },
+					pollIntervalMs: { type: "string", required: false, alias: ["poll-interval-ms"] },
+					retryDelayMs: { type: "string", required: false, alias: ["retry-delay-ms"] },
 					json: { type: "boolean", default: false },
 					verbose: { type: "boolean", default: false }
 				},
@@ -904,6 +930,18 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					const id = parseId(args.id)
 					const json = parseJsonFlag(args.json)
 					const verbose = typeof args.verbose === "boolean" ? args.verbose : false
+					const pollIntervalMs = parseAliasedNumberArg(
+						args,
+						"pollIntervalMs",
+						"poll-interval-ms",
+						"--poll-interval-ms"
+					)
+					const retryDelayMs = parseAliasedNumberArg(
+						args,
+						"retryDelayMs",
+						"retry-delay-ms",
+						"--retry-delay-ms"
+					)
 					const now = deps.now ?? (() => new Date().toISOString())
 					const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
 					const store = (deps.createStore ?? createSessionStore)({ stateDir: appPaths.stateDir })
@@ -965,13 +1003,13 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 								verbose,
 								log,
 								sleep,
-								retryDelayMs: deps.retryDelayMs ?? 5_000
+								retryDelayMs: retryDelayMs ?? deps.retryDelayMs ?? 5_000
 							}),
 							sessionStore: store,
 							log,
 							sleep,
-							pollIntervalMs: deps.pollIntervalMs ?? 20_000,
-							retryDelayMs: deps.retryDelayMs,
+							pollIntervalMs: pollIntervalMs ?? deps.pollIntervalMs ?? 20_000,
+							retryDelayMs: retryDelayMs ?? deps.retryDelayMs,
 							verbose
 						}
 					)
@@ -991,6 +1029,8 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					from: { type: "string", default: "mina:testnet" },
 					to: { type: "string", default: "zeko:testnet" },
 					account: { type: "string", required: false },
+					pollIntervalMs: { type: "string", required: false, alias: ["poll-interval-ms"] },
+					retryDelayMs: { type: "string", required: false, alias: ["retry-delay-ms"] },
 					json: { type: "boolean", default: false },
 					verbose: { type: "boolean", default: false }
 				},
@@ -1000,6 +1040,18 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					const json = parseJsonFlag(args.json)
 					const verbose = typeof args.verbose === "boolean" ? args.verbose : false
 					const account = deriveAccount(from, parseOptionalString(args.account))
+					const pollIntervalMs = parseAliasedNumberArg(
+						args,
+						"pollIntervalMs",
+						"poll-interval-ms",
+						"--poll-interval-ms"
+					)
+					const retryDelayMs = parseAliasedNumberArg(
+						args,
+						"retryDelayMs",
+						"retry-delay-ms",
+						"--retry-delay-ms"
+					)
 					const now = deps.now ?? (() => new Date().toISOString())
 					const sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
 					const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
@@ -1173,13 +1225,13 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 										verbose,
 										log,
 										sleep,
-										retryDelayMs: deps.retryDelayMs ?? 5_000
+										retryDelayMs: retryDelayMs ?? deps.retryDelayMs ?? 5_000
 									}),
 									sessionStore: store,
 									log,
 									sleep,
-									pollIntervalMs: deps.pollIntervalMs ?? 20_000,
-									retryDelayMs: deps.retryDelayMs,
+									pollIntervalMs: pollIntervalMs ?? deps.pollIntervalMs ?? 20_000,
+									retryDelayMs: retryDelayMs ?? deps.retryDelayMs,
 									verbose,
 									now
 								}
