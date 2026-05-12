@@ -199,3 +199,8 @@
 - T199 | done | disambiguate-withdrawal-finalization-indexes | done/T199-disambiguate-withdrawal-finalization-indexes.md
 - T200 | done | expose-bridge-cli-poll-delay-flags | done/T200-expose-bridge-cli-poll-delay-flags.md
 - T201 | done | refactor-bridge-cli-package-boundary-and-command-plumbing | done/T201-refactor-bridge-cli-package-boundary-and-command-plumbing.md
+- T202 | done | characterize-bridge-cli-runtime-decisions | done/T202-characterize-bridge-cli-runtime-decisions.md
+- T203 | done | refactor-bridge-cli-runtime | done/T203-refactor-bridge-cli-runtime.md
+- T204 | done | refactor-operation-command-services | done/T204-refactor-operation-command-services.md
+- T205 | done | remove-bridge-cli-duplication | done/T205-remove-bridge-cli-duplication.md
+- T206 | done | validate-bridge-cli-complexity-refactor | done/T206-validate-bridge-cli-complexity-refactor.md
