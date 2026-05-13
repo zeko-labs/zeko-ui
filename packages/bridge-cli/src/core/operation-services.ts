@@ -7,8 +7,10 @@ import {
 } from "./bridge-queue"
 import type { BridgeAdapter } from "./adapter"
 import { formatRoute, parseRouteString, resolveRoute, type ChainRef } from "./routes"
+import { getWithdrawalStatusSourceSnapshot } from "./status-sources"
 import type {
 	BridgeCapabilityDiagnostic,
+	BridgeStatusSourceSnapshot,
 	DepositStatus,
 	OperationLiveSnapshot,
 	OperationSession,
@@ -38,6 +40,7 @@ export type OperationStatusJsonResult = {
 	can_cancel?: boolean
 	submit_hash?: string
 	observed_counts?: OperationLiveSnapshot["observedCounts"]
+	status_sources?: Partial<Record<OperationSession["direction"], BridgeStatusSourceSnapshot>>
 	next_action?: OperationLiveSnapshot["nextAction"]
 	waiting_on?: OperationLiveSnapshot["waitingOn"]
 	error: string | null
@@ -110,6 +113,9 @@ export const projectOperationStatus = (session: OperationSession): OperationStat
 	...(session.liveSnapshot?.submitHash ? { submit_hash: session.liveSnapshot.submitHash } : {}),
 	...(session.liveSnapshot?.observedCounts
 		? { observed_counts: session.liveSnapshot.observedCounts }
+		: {}),
+	...(session.liveSnapshot?.statusSources
+		? { status_sources: session.liveSnapshot.statusSources }
 		: {}),
 	...(session.liveSnapshot?.nextAction ? { next_action: session.liveSnapshot.nextAction } : {}),
 	...(session.liveSnapshot?.waitingOn ? { waiting_on: session.liveSnapshot.waitingOn } : {}),
@@ -467,11 +473,13 @@ export const refreshWithdrawalSessionSnapshot = async ({
 	session,
 	withdrawals,
 	canFinalizeResult,
+	statusSourceSnapshot,
 	now
 }: {
 	session: OperationSession
 	withdrawals: WithdrawalStatus[]
 	canFinalizeResult: BridgeCapabilityDiagnostic
+	statusSourceSnapshot?: BridgeStatusSourceSnapshot
 	now: () => string
 }): Promise<OperationSession> => {
 	const sortedWithdrawals = sortByIndex(withdrawals)
@@ -487,7 +495,8 @@ export const refreshWithdrawalSessionSnapshot = async ({
 		observedCounts: {
 			deposits: 0,
 			withdrawals: sortedWithdrawals.length
-		}
+		},
+		...(statusSourceSnapshot ? { statusSources: { withdrawal: statusSourceSnapshot } } : {})
 	} satisfies Omit<OperationLiveSnapshot, "nextAction">
 
 	if (analysis.target?.finalised) {
@@ -585,6 +594,7 @@ export const refreshSessionFromNetwork = async ({
 		| "canFinalizeDeposit"
 		| "canCancelDeposit"
 		| "canFinalizeWithdrawal"
+		| "getStatusSources"
 	>
 	now: () => string
 }): Promise<OperationSession> => {
@@ -609,6 +619,11 @@ export const refreshSessionFromNetwork = async ({
 	}
 
 	const withdrawals = sortByIndex(await adapter.getWithdrawalStatuses(session.account))
+	const statusSourceSnapshot = getWithdrawalStatusSourceSnapshot({
+		adapter,
+		statuses: withdrawals,
+		submitHash: getSubmitHash(session)
+	})
 	const analysis = analyzeWithdrawalQueue({ session, statuses: withdrawals })
 	const shouldCheckFinalize =
 		analysis.shouldAdvanceQueuedClaims || analysis.target?.committed === true
@@ -621,6 +636,7 @@ export const refreshSessionFromNetwork = async ({
 		session,
 		withdrawals,
 		canFinalizeResult,
+		statusSourceSnapshot,
 		now
 	})
 }

@@ -198,15 +198,5 @@
 - T198 | done | clear-deposit-queue-before-submit | done/T198-clear-deposit-queue-before-submit.md
 - T199 | done | disambiguate-withdrawal-finalization-indexes | done/T199-disambiguate-withdrawal-finalization-indexes.md
 - T200 | done | expose-bridge-cli-poll-delay-flags | done/T200-expose-bridge-cli-poll-delay-flags.md
-- T201 | done | refactor-bridge-cli-package-boundary-and-command-plumbing | done/T201-refactor-bridge-cli-package-boundary-and-command-plumbing.md
-- T202 | done | characterize-bridge-cli-runtime-decisions | done/T202-characterize-bridge-cli-runtime-decisions.md
-- T203 | done | refactor-bridge-cli-runtime | done/T203-refactor-bridge-cli-runtime.md
-- T204 | done | refactor-operation-command-services | done/T204-refactor-operation-command-services.md
-- T205 | done | remove-bridge-cli-duplication | done/T205-remove-bridge-cli-duplication.md
-- T206 | done | validate-bridge-cli-complexity-refactor | done/T206-validate-bridge-cli-complexity-refactor.md
-- T207 | done | correct-cli-refactor-by-removing-duplicate-runtime-layers | done/T207-correct-cli-refactor-by-removing-duplicate-runtime-layers.md
-- T208 | done | rewrite-bridge-cli-runtime-directly | done/T208-rewrite-bridge-cli-runtime-directly.md
-- T209 | done | rebuild-bridge-cli-internals-from-scratch | done/T209-rebuild-bridge-cli-internals-from-scratch.md
-- T210 | done | split-bridge-cli-by-responsibility | done/T210-split-bridge-cli-by-responsibility.md
-- T211 | done | rebase-cli-refactor-on-d8eb96b | done/T211-rebase-cli-refactor-on-d8eb96b.md
-- T212 | done | make-bridge-state-machine-meaningful | done/T212-make-bridge-state-machine-meaningful.md
+- T201 | done | improve-bridge-status-endpoint-logging | done/T201-improve-bridge-status-endpoint-logging.md
+- T202 | done | bridge-cli-cleanup-refactor | done/T202-bridge-cli-cleanup-refactor.md

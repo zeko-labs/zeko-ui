@@ -37,6 +37,10 @@ import {
 import { renderBridgeResult, renderOperationProgress, toBridgeJsonResult } from "../core/reporter"
 import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
 import { resolveSignerKeys } from "../core/signer"
+import {
+	getWithdrawalStatusSourceSnapshot,
+	toWithdrawalStatusSourceLogDetails
+} from "../core/status-sources"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
 import { createSessionStore, type SessionStore } from "../core/session-store"
 import type {
@@ -66,6 +70,7 @@ type BridgeFlowDeps = {
 			| "canFinalizeDeposit"
 			| "canCancelDeposit"
 			| "canFinalizeWithdrawal"
+			| "getStatusSources"
 		>
 	>
 	sessionStore: Pick<SessionStore, "save">
@@ -1025,6 +1030,13 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 		})
 		session = withdrawalStatusesResult.session
 		const sortedStatuses = sortByIndex(withdrawalStatusesResult.value)
+		const withdrawalStatusSourceDetails = toWithdrawalStatusSourceLogDetails(
+			getWithdrawalStatusSourceSnapshot({
+				adapter: deps.adapter,
+				statuses: sortedStatuses,
+				submitHash: getSubmitHash(session)
+			})
+		)
 		const initialDecision = decideWithdrawalStep({
 			session,
 			statuses: sortedStatuses,
@@ -1066,7 +1078,10 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 
 		session = await enterDecisionWaitState({
 			session,
-			decision: initialDecision,
+			decision: {
+				...initialDecision,
+				details: { ...initialDecision.details, ...withdrawalStatusSourceDetails }
+			},
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			now,
@@ -1097,7 +1112,8 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 				details: {
 					waiting: "submission",
 					targetIndex: target.index,
-					submitHash: getSubmitHash(session)
+					submitHash: getSubmitHash(session),
+					...withdrawalStatusSourceDetails
 				}
 			})
 
@@ -1184,7 +1200,8 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 						targetIndex: nextTargetIndex,
 						claimIndex: claimableIndex,
 						finalizeAvailable: canFinalizeResult.value.available,
-						finalizeReason: canFinalizeResult.value.reason
+						finalizeReason: canFinalizeResult.value.reason,
+						...withdrawalStatusSourceDetails
 					}
 				: nextTarget
 					? {
@@ -1192,13 +1209,15 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 							targetIndex: nextTarget.index,
 							claimIndex: claimableIndex,
 							finalizeAvailable: canFinalizeResult.value.available,
-							finalizeReason: canFinalizeResult.value.reason
+							finalizeReason: canFinalizeResult.value.reason,
+							...withdrawalStatusSourceDetails
 						}
 					: {
 							waiting: "submission",
 							submitHash: getSubmitHash(session),
 							finalizeAvailable: canFinalizeResult.value.available,
-							finalizeReason: canFinalizeResult.value.reason
+							finalizeReason: canFinalizeResult.value.reason,
+							...withdrawalStatusSourceDetails
 						}
 		})
 

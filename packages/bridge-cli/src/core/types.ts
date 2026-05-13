@@ -42,6 +42,25 @@ export type BridgeCapabilityDiagnostic = {
 	index?: number
 }
 
+export type BridgeStatusSource = {
+	name: string
+	endpoint: string
+	role: string
+}
+
+export type BridgeStatusSources = {
+	deposits?: BridgeStatusSource[]
+	withdrawals?: BridgeStatusSource[]
+}
+
+export type BridgeStatusSourceSnapshot = {
+	sources: BridgeStatusSource[]
+	observedCount: number
+	submitHash?: string
+	submitObserved?: boolean
+	observedHashes?: string[]
+}
+
 export type BridgeSdkOperation =
 	| "submitDeposit"
 	| "finalizeDeposit"
@@ -110,6 +129,7 @@ export type OperationLiveSnapshot = {
 		deposits: number
 		withdrawals: number
 	}
+	statusSources?: Partial<Record<Direction, BridgeStatusSourceSnapshot>>
 }
 
 export type StatusResult<T> = {
