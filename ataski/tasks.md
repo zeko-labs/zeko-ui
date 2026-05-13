@@ -200,3 +200,4 @@
 - T200 | done | expose-bridge-cli-poll-delay-flags | done/T200-expose-bridge-cli-poll-delay-flags.md
 - T201 | done | improve-bridge-status-endpoint-logging | done/T201-improve-bridge-status-endpoint-logging.md
 - T202 | done | bridge-cli-cleanup-refactor | done/T202-bridge-cli-cleanup-refactor.md
+- T203 | done | fix-bridge-cli-readme-and-env-precedence | done/T203-fix-bridge-cli-readme-and-env-precedence.md
