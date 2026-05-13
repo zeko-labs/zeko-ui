@@ -1,7 +1,7 @@
 import { runCommand } from "citty"
 import { PrivateKey } from "o1js"
 import { describe, expect, it } from "vitest"
-import type { BridgeAdapter } from "../src/app"
+import type { BridgeAdapter } from "../src/core/adapter"
 import {
 	createDepositCommand,
 	createWithdrawalCommand,
@@ -12,8 +12,8 @@ import {
 	runWithdrawalFinalize,
 	runWithdrawalStatus,
 	runWithdrawalSubmit
-} from "../src/app"
-import { DEFAULT_DEPOSIT_TIMEOUT_SLOTS } from "../src/app"
+} from "../src/commands/direct"
+import { DEFAULT_DEPOSIT_TIMEOUT_SLOTS } from "../src/core/timeouts"
 
 const createDepositAdapter = (overrides: Partial<BridgeAdapter>): BridgeAdapter => ({
 	async getDepositStatuses() {

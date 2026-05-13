@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { createDoctorCommand } from "../src/app"
-import type { AppPaths } from "../src/app"
+import { createDoctorCommand } from "../src/commands/doctor"
+import type { AppPaths } from "../src/core/paths"
 
 const appPaths: AppPaths = {
 	dataDir: "/tmp/data",

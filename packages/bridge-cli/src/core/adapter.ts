@@ -1,8 +1,4 @@
-import {
-	Bridge,
-	isInsufficientFirstWithdrawalAmountError,
-	type Config
-} from "@zeko-labs/bridge-sdk"
+import { Bridge } from "@zeko-labs/bridge-sdk"
 import {
 	PrivateKey,
 	PublicKey,
@@ -11,107 +7,59 @@ import {
 	UInt64,
 	fetchTransactionStatus
 } from "o1js"
-import { formatErrorMessage, sleepFor } from "./utils"
-import { formatRoute, resolveRoute } from "./routes"
+import { createExplorerUrl } from "./explorer"
+import { minaStringToNanomina, nanominaToMinaString } from "./format"
+import type { ChainRef, Direction, RouteDescriptor } from "./routes"
+import { createSdkConfig } from "./sdk-config"
+import { resolveSignerKeys } from "./signer"
+import { resolveDepositTimeoutSlots } from "./timeouts"
 import type {
-	BridgeAdapter,
-	BridgeAdapterFactory,
-	ChainRef,
+	BridgeCapabilityDiagnostic,
 	DepositStatus,
-	Direction,
-	RouteDescriptor,
-	SignedTransactionResult,
 	TransactionResult,
 	WithdrawalStatus
 } from "./types"
 
-const NANOMINA_PER_MINA = 1_000_000_000n
-const DEFAULT_BRIDGE_FEE_NANOMINA = 100_000_000n
-const WITHDRAWAL_SUBMIT_FEE_NANOMINA = 500_000_000n
-export const DIRECT_MUTATION_RETRY_DELAY_MS = 5_000
-export const DEFAULT_DEPOSIT_TIMEOUT_SLOTS = 720
-export const MAX_FEE_RETRIES = 5
-
-const TESTNET_CONFIG = {
-	l1Url: "https://gateway.mina.devnet.zeko.io",
-	l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
-	zekoUrl: "https://testnet.zeko.io/graphql",
-	zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql",
-	actionsApi: "https://api.actions.zeko.io/graphql",
-	l1Network: "testnet",
-	l2Network: "testnet"
-} as const satisfies Config
-
-const MAINNET_CONFIG = {
-	l1Url: "https://api.minascan.io/node/mainnet/v1/graphql",
-	l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql",
-	zekoUrl: "https://mainnet.zeko.io/graphql",
-	zekoArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
-	actionsApi: "https://api.actions.zeko.io/graphql",
-	l1Network: "mainnet",
-	l2Network: "mainnet"
-} as const satisfies Config
+export type BridgeAdapter = {
+	getDepositStatuses(account: string): Promise<DepositStatus[]>
+	getWithdrawalStatuses(account: string): Promise<WithdrawalStatus[]>
+	canFinalizeDeposit?(account?: string): Promise<boolean | BridgeCapabilityDiagnostic>
+	canCancelDeposit?(account?: string): Promise<boolean | BridgeCapabilityDiagnostic>
+	canFinalizeWithdrawal?(account?: string): Promise<boolean | BridgeCapabilityDiagnostic>
+	submitDeposit(input: {
+		account?: string
+		recipient?: string
+		amount: string
+		timeoutSlots?: number
+		wait: boolean
+	}): Promise<TransactionResult>
+	finalizeDeposit(input: { account?: string; wait: boolean }): Promise<TransactionResult>
+	cancelDeposit(input: { account?: string; wait: boolean }): Promise<TransactionResult>
+	submitWithdrawal(input: {
+		account?: string
+		recipient?: string
+		amount: string
+		wait: boolean
+	}): Promise<TransactionResult>
+	finalizeWithdrawal(input: { account?: string; wait: boolean }): Promise<TransactionResult>
+}
 
 const bridges = new Map<string, Promise<Bridge>>()
+const BRIDGE_FEE_NANOMINA = 100_000_000n
+const WITHDRAWAL_SUBMIT_FEE_NANOMINA = 500_000_000n
+export const MAX_FEE_RETRIES = 5
+export const normalizeStatusTimestamp = (timestamp: string): string =>
+	timestamp === "0" ? "" : timestamp
 
-export const createSdkConfig = (
-	route: RouteDescriptor,
-	options: { verbose?: boolean } = {}
-): Config => {
-	if (!route.enabled) throw new Error(route.reason ?? `Bridge route ${route.label} is not enabled.`)
-	if (route.from.includes("testnet") && route.to.includes("testnet")) {
-		return { ...TESTNET_CONFIG, verbose: options.verbose === true }
+type SignedTransactionResult = {
+	hash?: string
+	data?: {
+		sendZkapp?: {
+			zkapp?: {
+				id?: string
+			}
+		}
 	}
-	if (route.from.includes("mainnet") && route.to.includes("mainnet")) {
-		return { ...MAINNET_CONFIG, verbose: options.verbose === true }
-	}
-	throw new Error(`Unsupported network pairing for ${route.label}`)
-}
-
-export const minaStringToNanomina = (value: string): bigint => {
-	const trimmed = value.trim()
-	if (!/^\d+(?:\.\d{1,9})?$/.test(trimmed)) throw new Error(`Invalid MINA amount: ${value}`)
-	const [wholePart = "0", fractionPart = ""] = trimmed.split(".")
-	return BigInt(wholePart) * NANOMINA_PER_MINA + BigInt(fractionPart.padEnd(9, "0"))
-}
-
-const nanominaToMinaString = (value: bigint): string => {
-	const whole = value / NANOMINA_PER_MINA
-	const fraction = value % NANOMINA_PER_MINA
-	return fraction === 0n
-		? whole.toString()
-		: `${whole.toString()}.${fraction.toString().padStart(9, "0").replace(/0+$/, "")}`
-}
-
-const normalizeStatusTimestamp = (timestamp: string): string => (timestamp === "0" ? "" : timestamp)
-
-export const resolveDepositTimeoutSlots = (value?: number): number =>
-	value ?? DEFAULT_DEPOSIT_TIMEOUT_SLOTS
-
-export const resolveSignerKeys = (
-	env: Partial<Record<string, string | undefined>> = process.env
-) => {
-	const mina = env.MINA_PRIVATE_KEY ?? env.BRIDGE_PRIVATE_KEY
-	const zeko = env.ZEKO_PRIVATE_KEY ?? mina
-	const eth = env.ETH_PRIVATE_KEY
-	if (!mina && !zeko && !eth) {
-		throw new Error("Missing wallet private key. Set MINA_PRIVATE_KEY or BRIDGE_PRIVATE_KEY.")
-	}
-	return { mina, zeko, eth }
-}
-
-export const deriveAccount = (from: ChainRef, explicit?: string): string => {
-	if (explicit) return explicit
-	const keys = resolveSignerKeys()
-	const secret = from.startsWith("zeko:") ? keys.zeko : keys.mina
-	if (!secret) throw new Error(`Missing required signer private key for ${from}`)
-	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
-}
-
-const createExplorerUrl = (network: ChainRef, hash: string): string => {
-	if (network.startsWith("zeko:")) return `https://zekoscan.io/testnet/tx/${hash}`
-	if (network === "mina:mainnet") return `https://minascan.io/mainnet/tx/${hash}`
-	return `https://minascan.io/devnet/tx/${hash}`
 }
 
 const routeKey = (route: RouteDescriptor, verbose: boolean) =>
@@ -121,6 +69,7 @@ const getBridge = (route: RouteDescriptor, verbose: boolean) => {
 	const key = routeKey(route, verbose)
 	const cached = bridges.get(key)
 	if (cached) return cached
+
 	const bridge = Bridge.init(createSdkConfig(route, { verbose })).catch((error: unknown) => {
 		bridges.delete(key)
 		throw error
@@ -137,16 +86,21 @@ const resolvePublicKey = ({
 	account?: string
 	keys: ReturnType<typeof resolveSignerKeys>
 	network: ChainRef
-}) => {
+}): { publicKey: PublicKey; signer: PrivateKey } => {
 	const secret = network.startsWith("zeko:")
 		? keys.zeko
 		: network.startsWith("eth:")
 			? keys.eth
 			: keys.mina
-	if (!secret) throw new Error(`Missing required signer private key for ${network}`)
+
+	if (!secret) {
+		throw new Error(`Missing required signer private key for ${network}`)
+	}
+
 	const signer = PrivateKey.fromBase58(secret)
+	const fallback = signer.toPublicKey().toBase58()
 	return {
-		publicKey: PublicKey.fromBase58(account ?? signer.toPublicKey().toBase58()),
+		publicKey: PublicKey.fromBase58(account ?? fallback),
 		signer
 	}
 }
@@ -159,12 +113,13 @@ const waitForTransactionInclusion = async ({
 	graphqlUrl: string
 }): Promise<boolean> => {
 	if (!zkAppId) return false
+
 	for (;;) {
 		try {
 			const status = await fetchTransactionStatus(zkAppId, graphqlUrl)
 			if (status === "INCLUDED") return true
 			if (status !== "PENDING") return false
-			await sleepFor(2_000)
+			await new Promise((resolve) => setTimeout(resolve, 2_000))
 		} catch {
 			return false
 		}
@@ -183,11 +138,18 @@ export const sendWithFeeRetries = async <TTransaction, TResult>({
 	sendTransaction: (transaction: TTransaction) => Promise<TResult>
 }): Promise<TResult> => {
 	let feeNanomina = initialFeeNanomina
-	for (let retryCount = 0; ; retryCount += 1) {
+	let retryCount = 0
+
+	for (;;) {
 		try {
-			return await sendTransaction(await createTransaction(feeNanomina))
+			const transaction = await createTransaction(feeNanomina)
+			return await sendTransaction(transaction)
 		} catch (error) {
-			if (!isFeeTooLowError(error) || retryCount >= MAX_FEE_RETRIES) throw error
+			if (!isFeeTooLowError(error) || retryCount >= MAX_FEE_RETRIES) {
+				throw error
+			}
+
+			retryCount += 1
 			feeNanomina *= 2n
 		}
 	}
@@ -196,23 +158,29 @@ export const sendWithFeeRetries = async <TTransaction, TResult>({
 const signSdkTransaction =
 	(signer: PrivateKey) =>
 	async (transaction: MinaTransaction<boolean, false>): Promise<MinaTransaction<boolean, true>> =>
+		// o1js signs in place at runtime, but the public type does not narrow the transaction's signed flag.
 		transaction.sign([signer]) as MinaTransaction<boolean, true>
 
-const completedTx = (hash: string): SignedTransactionResult => ({ hash })
+const toCompletedSdkTransaction = (hash: string): SignedTransactionResult => ({ hash })
 
-const useCompletedTx = async (
+const useCompletedSdkTransaction = async (
 	transaction: SignedTransactionResult
 ): Promise<SignedTransactionResult> => transaction
 
-const networkForAction = ({
+const mapDirectionNetwork = ({
 	action,
 	route
 }: {
 	action: "submit" | "finalize" | "cancel"
 	route: RouteDescriptor
 }): ChainRef => {
-	if (route.direction === "deposit") return action === "finalize" ? route.to : route.from
-	return action === "submit" ? route.from : route.to
+	if (route.direction === "deposit") {
+		if (action === "submit" || action === "cancel") return route.from
+		return route.to
+	}
+
+	if (action === "submit") return route.from
+	return route.to
 }
 
 const graphqlUrlForAction = ({
@@ -223,7 +191,7 @@ const graphqlUrlForAction = ({
 	route: RouteDescriptor
 }): string => {
 	const config = createSdkConfig(route)
-	return networkForAction({ action, route }).startsWith("zeko:") ? config.zekoUrl : config.l1Url
+	return mapDirectionNetwork({ action, route }).startsWith("zeko:") ? config.zekoUrl : config.l1Url
 }
 
 const normalizeTxResult = async ({
@@ -239,16 +207,21 @@ const normalizeTxResult = async ({
 	result: SignedTransactionResult
 	wait: boolean
 }): Promise<TransactionResult> => {
-	if (!result.hash) throw new Error(`Transaction ${direction}:${action} did not return a hash`)
-	const network = networkForAction({ action, route })
+	const hash = result.hash
+	if (!hash) {
+		throw new Error(`Transaction ${direction}:${action} did not return a hash`)
+	}
+
 	const zkAppId = result.data?.sendZkapp?.zkapp?.id
+	const network = mapDirectionNetwork({ action, route })
+
 	return {
 		success: true,
 		direction,
 		action,
-		route: formatRoute(route.from, route.to),
-		hash: result.hash,
-		explorerUrl: createExplorerUrl(network, result.hash),
+		route: `${route.from}->${route.to}`,
+		hash,
+		explorerUrl: createExplorerUrl(network, hash),
 		included: wait
 			? await waitForTransactionInclusion({
 					zkAppId,
@@ -269,6 +242,7 @@ export const createBridgeAdapter = ({
 	verbose?: boolean
 }): BridgeAdapter => {
 	const keys = resolveSignerKeys(env)
+
 	return {
 		async getDepositStatuses(account) {
 			const bridge = await getBridge(route, verbose)
@@ -312,14 +286,13 @@ export const createBridgeAdapter = ({
 				keys,
 				network: route.to
 			})
-			const timeout = (await bridge.fetchCurrentSlot()).add(
-				UInt32.from(resolveDepositTimeoutSlots(timeoutSlots))
-			)
-			const result = await sendWithFeeRetries({
-				initialFeeNanomina: DEFAULT_BRIDGE_FEE_NANOMINA,
-				sendTransaction: useCompletedTx,
+			const currentSlot = await bridge.fetchCurrentSlot()
+			const timeout = currentSlot.add(UInt32.from(resolveDepositTimeoutSlots(timeoutSlots)))
+			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
+				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
+				sendTransaction: useCompletedSdkTransaction,
 				createTransaction: async (feeNanomina) =>
-					completedTx(
+					toCompletedSdkTransaction(
 						await bridge.submitDeposit(
 							{ sender: publicKey, fee: Number(feeNanomina) },
 							{
@@ -335,24 +308,22 @@ export const createBridgeAdapter = ({
 		},
 		async canFinalizeDeposit(account) {
 			const bridge = await getBridge(route, verbose)
-			return bridge.canFinalizeDeposit(
-				resolvePublicKey({ account, keys, network: route.to }).publicKey
-			)
+			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
+			return bridge.canFinalizeDeposit(publicKey)
 		},
 		async canCancelDeposit(account) {
 			const bridge = await getBridge(route, verbose)
-			return bridge.canCancelDeposit(
-				resolvePublicKey({ account, keys, network: route.from }).publicKey
-			)
+			const { publicKey } = resolvePublicKey({ account, keys, network: route.from })
+			return bridge.canCancelDeposit(publicKey)
 		},
 		async finalizeDeposit({ account, wait }) {
 			const bridge = await getBridge(route, verbose)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
-			const result = await sendWithFeeRetries({
-				initialFeeNanomina: DEFAULT_BRIDGE_FEE_NANOMINA,
-				sendTransaction: useCompletedTx,
+			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
+				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
+				sendTransaction: useCompletedSdkTransaction,
 				createTransaction: async (feeNanomina) =>
-					completedTx(
+					toCompletedSdkTransaction(
 						await bridge.finalizeDeposit(publicKey, signSdkTransaction(signer), { feeNanomina })
 					)
 			})
@@ -361,11 +332,11 @@ export const createBridgeAdapter = ({
 		async cancelDeposit({ account, wait }) {
 			const bridge = await getBridge(route, verbose)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
-			const result = await sendWithFeeRetries({
-				initialFeeNanomina: DEFAULT_BRIDGE_FEE_NANOMINA,
-				sendTransaction: useCompletedTx,
+			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
+				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
+				sendTransaction: useCompletedSdkTransaction,
 				createTransaction: async (feeNanomina) =>
-					completedTx(
+					toCompletedSdkTransaction(
 						await bridge.cancelDeposit(publicKey, signSdkTransaction(signer), undefined, {
 							feeNanomina
 						})
@@ -381,14 +352,17 @@ export const createBridgeAdapter = ({
 				keys,
 				network: route.to
 			})
-			const result = await sendWithFeeRetries({
+			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: WITHDRAWAL_SUBMIT_FEE_NANOMINA,
-				sendTransaction: useCompletedTx,
+				sendTransaction: useCompletedSdkTransaction,
 				createTransaction: async (feeNanomina) =>
-					completedTx(
+					toCompletedSdkTransaction(
 						await bridge.submitWithdrawal(
 							{ sender: publicKey, fee: Number(feeNanomina) },
-							{ recipient: recipientPublicKey, amount: UInt64.from(minaStringToNanomina(amount)) },
+							{
+								recipient: recipientPublicKey,
+								amount: UInt64.from(minaStringToNanomina(amount))
+							},
 							signSdkTransaction(signer)
 						)
 					)
@@ -397,36 +371,29 @@ export const createBridgeAdapter = ({
 		},
 		async canFinalizeWithdrawal(account) {
 			const bridge = await getBridge(route, verbose)
-			return bridge.canFinalizeWithdrawal(
-				resolvePublicKey({ account, keys, network: route.to }).publicKey
-			)
+			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
+			return bridge.canFinalizeWithdrawal(publicKey)
 		},
 		async finalizeWithdrawal({ account, wait }) {
 			const bridge = await getBridge(route, verbose)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
-			const result = await sendWithFeeRetries({
-				initialFeeNanomina: DEFAULT_BRIDGE_FEE_NANOMINA,
-				sendTransaction: useCompletedTx,
+			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
+				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
+				sendTransaction: useCompletedSdkTransaction,
 				createTransaction: async (feeNanomina) =>
-					completedTx(
+					toCompletedSdkTransaction(
 						await bridge.finalizeWithdrawal(publicKey, signSdkTransaction(signer), undefined, {
 							feeNanomina
 						})
 					)
 			})
-			return normalizeTxResult({ action: "finalize", direction: "withdrawal", route, result, wait })
+			return normalizeTxResult({
+				action: "finalize",
+				direction: "withdrawal",
+				route,
+				result,
+				wait
+			})
 		}
 	}
-}
-
-export const createDefaultBridgeAdapter: BridgeAdapterFactory = async ({ from, to, verbose }) =>
-	createBridgeAdapter({ route: resolveRoute(from, to), verbose })
-
-export const isRecoverableMutationError = (error: unknown): boolean => {
-	const message = formatErrorMessage(error)
-	return (
-		/Failed to fetch|fetch failed|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up|Failed to fetch proved forest|No key returned from mutation/i.test(
-			message
-		) && !isInsufficientFirstWithdrawalAmountError(error)
-	)
 }

@@ -208,3 +208,4 @@
 - T208 | done | rewrite-bridge-cli-runtime-directly | done/T208-rewrite-bridge-cli-runtime-directly.md
 - T209 | done | rebuild-bridge-cli-internals-from-scratch | done/T209-rebuild-bridge-cli-internals-from-scratch.md
 - T210 | done | split-bridge-cli-by-responsibility | done/T210-split-bridge-cli-by-responsibility.md
+- T211 | done | rebase-cli-refactor-on-d8eb96b | done/T211-rebase-cli-refactor-on-d8eb96b.md

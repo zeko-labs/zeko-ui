@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest"
-import { decideDepositStep, decideWithdrawalStep } from "../src/decisions"
-import type { DepositStatus, OperationSession, WithdrawalStatus } from "../src/types"
+import {
+	decideDepositStep,
+	decideWithdrawalStep,
+	type BridgeRuntimeDecision
+} from "../src/core/bridge-runtime/decisions"
+import type { DepositStatus, OperationSession, WithdrawalStatus } from "../src/core/types"
 
-const session = {
-	id: "op-decision",
+const baseSession = {
+	id: "op-1",
 	status: "running",
 	phase: "submitted",
 	route: "mina:testnet->zeko:testnet",
@@ -11,7 +15,7 @@ const session = {
 	account: "B62account",
 	recipient: "B62recipient",
 	amount: "2",
-	logPath: "/tmp/op-decision.jsonl",
+	logPath: "/tmp/op-1.jsonl",
 	createdAt: "2026-03-10T00:00:00.000Z",
 	updatedAt: "2026-03-10T00:00:00.000Z",
 	submittedTransactions: []
@@ -43,22 +47,27 @@ const withdrawal = (
 	timestamp: input.timestamp ?? "2026-03-10T00:00:00.000Z"
 })
 
-describe("bridge CLI decision rules", () => {
-	it("submits a deposit when there is no unresolved deposit before a submit hash exists", () => {
-		expect(
-			decideDepositStep({
-				session,
-				statuses: [],
-				canFinalize: { available: false, reason: "not ready" },
-				canCancel: { available: false, reason: "not ready" }
-			}).action
-		).toBe("submit")
+const expectAction = (decision: BridgeRuntimeDecision, action: BridgeRuntimeDecision["action"]) => {
+	expect(decision.action).toBe(action)
+	return decision
+}
+
+describe("bridge runtime decisions", () => {
+	it("submits a deposit when no unresolved deposit exists before a submit hash is known", () => {
+		const decision = decideDepositStep({
+			session: baseSession,
+			statuses: [],
+			canFinalize: { available: false, reason: "not ready" },
+			canCancel: { available: false, reason: "not ready" }
+		})
+
+		expectAction(decision, "submit")
 	})
 
-	it("waits for deposit submission visibility after a submit hash exists", () => {
+	it("waits for deposit submission visibility after a submit hash is known", () => {
 		const decision = decideDepositStep({
 			session: {
-				...session,
+				...baseSession,
 				submittedTransactions: [{ action: "submit", hash: "deposit-submit" }]
 			},
 			statuses: [],
@@ -66,14 +75,14 @@ describe("bridge CLI decision rules", () => {
 			canCancel: { available: false, reason: "not ready" }
 		})
 
-		expect(decision.action).toBe("wait")
-		expect(decision.action === "wait" ? decision.event : undefined).toBe("MARK_WAITING_SUBMISSION")
+		expectAction(decision, "wait")
+		expect(decision.phaseEvent).toBe("MARK_WAITING_SUBMISSION")
 	})
 
-	it("finalizes a claimable deposit when no prior blocking deposit remains", () => {
+	it("finalizes a claimable deposit through the SDK when no prior blocking deposit remains", () => {
 		const decision = decideDepositStep({
 			session: {
-				...session,
+				...baseSession,
 				submittedTransactions: [{ action: "submit", hash: "deposit-submit" }]
 			},
 			statuses: [deposit({ index: 0, hash: "deposit-submit" })],
@@ -81,14 +90,14 @@ describe("bridge CLI decision rules", () => {
 			canCancel: { available: false, reason: "not ready" }
 		})
 
-		expect(decision.action).toBe("finalize")
-		expect(decision.action === "finalize" ? decision.claimableIndex : undefined).toBe(0)
+		expectAction(decision, "finalize")
+		expect(decision.claimableIndex).toBe(0)
 	})
 
 	it("cancels a skippable older deposit before finalizing a later target", () => {
 		const decision = decideDepositStep({
 			session: {
-				...session,
+				...baseSession,
 				targetIndex: 1,
 				submittedTransactions: [{ action: "submit", hash: "deposit-submit" }]
 			},
@@ -100,13 +109,27 @@ describe("bridge CLI decision rules", () => {
 			canCancel: { available: true, reason: null, index: 0 }
 		})
 
-		expect(decision.action).toBe("cancel")
+		expectAction(decision, "cancel")
 	})
 
-	it("waits for withdrawal commit before finalization", () => {
+	it("completes a finalized deposit target", () => {
+		const decision = decideDepositStep({
+			session: {
+				...baseSession,
+				submittedTransactions: [{ action: "submit", hash: "deposit-submit" }]
+			},
+			statuses: [deposit({ index: 0, hash: "deposit-submit", finalised: true })],
+			canFinalize: { available: false, reason: "already done" },
+			canCancel: { available: false, reason: "not ready" }
+		})
+
+		expectAction(decision, "complete")
+	})
+
+	it("waits for withdrawal commit before checking finalization", () => {
 		const decision = decideWithdrawalStep({
 			session: {
-				...session,
+				...baseSession,
 				direction: "withdrawal",
 				route: "zeko:testnet->mina:testnet",
 				submittedTransactions: [{ action: "submit", hash: "withdrawal-submit" }]
@@ -115,14 +138,30 @@ describe("bridge CLI decision rules", () => {
 			canFinalize: { available: false, reason: "not ready" }
 		})
 
-		expect(decision.action).toBe("wait")
-		expect(decision.action === "wait" ? decision.event : undefined).toBe("MARK_WAITING_SUBMISSION")
+		expectAction(decision, "wait")
+		expect(decision.phaseEvent).toBe("MARK_WAITING_SUBMISSION")
+	})
+
+	it("finalizes a claimable withdrawal", () => {
+		const decision = decideWithdrawalStep({
+			session: {
+				...baseSession,
+				direction: "withdrawal",
+				route: "zeko:testnet->mina:testnet",
+				submittedTransactions: [{ action: "submit", hash: "withdrawal-submit" }]
+			},
+			statuses: [withdrawal({ index: 0, hash: "withdrawal-submit", committed: true })],
+			canFinalize: { available: true, reason: null, index: 0 }
+		})
+
+		expectAction(decision, "finalize")
+		expect(decision.claimableIndex).toBe(0)
 	})
 
 	it("does not complete a withdrawal from an already-finalised diagnostic for another index", () => {
 		const decision = decideWithdrawalStep({
 			session: {
-				...session,
+				...baseSession,
 				direction: "withdrawal",
 				route: "zeko:testnet->mina:testnet",
 				submittedTransactions: [{ action: "submit", hash: "withdrawal-submit" }]
@@ -136,6 +175,6 @@ describe("bridge CLI decision rules", () => {
 			}
 		})
 
-		expect(decision.action).toBe("wait")
+		expectAction(decision, "wait")
 	})
 })

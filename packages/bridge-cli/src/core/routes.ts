@@ -1,4 +1,16 @@
-import type { ChainRef, RouteDescriptor } from "./types"
+export type ChainFamily = "mina" | "zeko" | "eth"
+export type NetworkTier = "testnet" | "mainnet"
+export type ChainRef = `${ChainFamily}:${NetworkTier}`
+export type Direction = "deposit" | "withdrawal"
+
+export type RouteDescriptor = {
+	from: ChainRef
+	to: ChainRef
+	enabled: boolean
+	direction: Direction
+	label: string
+	reason?: string
+}
 
 export const KNOWN_ROUTES: RouteDescriptor[] = [
 	{
@@ -65,7 +77,9 @@ export const KNOWN_ROUTES: RouteDescriptor[] = [
 	}
 ]
 
-const CHAIN_REFS = [...new Set(KNOWN_ROUTES.flatMap(({ from, to }) => [from, to]))]
+export const CHAIN_REFS: ChainRef[] = [
+	...new Set(KNOWN_ROUTES.flatMap(({ from, to }) => [from, to]))
+]
 
 export const isChainRef = (value: string): value is ChainRef =>
 	CHAIN_REFS.includes(value as ChainRef)
@@ -74,22 +88,31 @@ export const parseChainRef = (value: unknown, flag: string): ChainRef => {
 	if (typeof value !== "string" || !isChainRef(value)) {
 		throw new Error(`Invalid ${flag} chain: ${String(value)}`)
 	}
+
 	return value
 }
 
 export const parseRouteString = (value: string): [ChainRef, ChainRef] => {
 	const [from, to] = value.split("->")
-	if (!from || !to || !isChainRef(from) || !isChainRef(to)) {
+	if (typeof from !== "string" || typeof to !== "string" || !isChainRef(from) || !isChainRef(to)) {
 		throw new Error(`Invalid persisted route: ${value}`)
 	}
+
 	return [from, to]
 }
 
 export const formatRoute = (from: ChainRef, to: ChainRef): `${ChainRef}->${ChainRef}` =>
 	`${from}->${to}`
 
+export class UnknownRouteError extends Error {
+	constructor(from: ChainRef, to: ChainRef) {
+		super(`Unknown bridge route: ${from} -> ${to}`)
+		this.name = "UnknownRouteError"
+	}
+}
+
 export const resolveRoute = (from: ChainRef, to: ChainRef): RouteDescriptor => {
 	const route = KNOWN_ROUTES.find((candidate) => candidate.from === from && candidate.to === to)
-	if (!route) throw new Error(`Unknown bridge route: ${from} -> ${to}`)
+	if (!route) throw new UnknownRouteError(from, to)
 	return route
 }
