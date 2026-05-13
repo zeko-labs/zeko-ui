@@ -580,7 +580,7 @@ export class Bridge {
 			return { ok: false, msg: "No deposit witnesses found" }
 		}
 
-		const minDepositIndex = uint32Max(V2_DEPOSITS_START_INDEX, context.prevNextDeposit)
+		const minDepositIndex = uint32Max(this.V2_DEPOSITS_START_INDEX, context.prevNextDeposit)
 
 		for (const witness of this.getSortedDepositWitnesses(context)) {
 			if (
@@ -888,7 +888,7 @@ export class Bridge {
 		witness: ExtractInput<typeof finalizeDepositMutation>
 	} | null {
 		const depositParams = this.getDepositParamsForWitness(context, witness)
-		const minDepositIndex = uint32Max(V2_DEPOSITS_START_INDEX, context.prevNextDeposit)
+		const minDepositIndex = uint32Max(this.V2_DEPOSITS_START_INDEX, context.prevNextDeposit)
 
 		if (this.isDepositCancelled(context, witness) || this.isDepositFinalised(context, witness)) {
 			return null
@@ -1038,7 +1038,10 @@ export class Bridge {
 
 		if (cancelled || finalised) return null
 
-		const minDepositIndex = uint32Max(V2_DEPOSITS_START_INDEX, context.prevNextCancelledDeposit)
+		const minDepositIndex = uint32Max(
+			this.V2_DEPOSITS_START_INDEX,
+			context.prevNextCancelledDeposit
+		)
 
 		if (minDepositIndex.greaterThan(UInt32.from(witness.index)).toBoolean()) return null
 
@@ -1563,7 +1566,7 @@ export class Bridge {
 		let alreadyFinalisedCount = 0
 		let unfinalisedMatchCount = 0
 
-		const minWithdrawalIndex = uint32Max(V2_WITHDRAWALS_START_INDEX, prevNextWithdrawal)
+		const minWithdrawalIndex = uint32Max(this.V2_WITHDRAWALS_START_INDEX, prevNextWithdrawal)
 
 		const myWithdrawalIndex = innerActions.findIndex((action) => {
 			const matchingWithdrawal = findMatchingWithdrawal(action)
