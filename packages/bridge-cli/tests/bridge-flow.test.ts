@@ -1589,6 +1589,90 @@ describe("bridge flow", () => {
 		expect(finalizeCalls).toBe(0)
 	})
 
+	it("does not resubmit withdrawal finalization while status lags after a finalization hash", async () => {
+		let submitCalls = 0
+		let statusCalls = 0
+		let finalizeCalls = 0
+		let sleepCalls = 0
+		let nowMs = Date.parse("2026-03-09T19:01:00.000Z")
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-finalize-status-lag",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "1.9",
+				account: "B62test"
+			},
+			{
+				adapter: {
+					async submitWithdrawal() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdraw-submit-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
+							included: true
+						}
+					},
+					async getWithdrawalStatuses() {
+						statusCalls += 1
+						if (submitCalls === 0) return []
+
+						const statusLaggingAfterFinalize = finalizeCalls > 0 && statusCalls < 4
+						return [
+							{
+								index: 9,
+								amount: "1.9",
+								recipient: "B62test",
+								committed: true,
+								finalised: finalizeCalls > 0 && !statusLaggingAfterFinalize,
+								hash:
+									finalizeCalls > 0 && !statusLaggingAfterFinalize
+										? "withdraw-finalize-current"
+										: "withdraw-submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeWithdrawal() {
+						return { available: true, reason: null, index: 9 }
+					},
+					async finalizeWithdrawal() {
+						finalizeCalls += 1
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "finalize",
+							route: "zeko:testnet->mina:testnet",
+							hash: `withdraw-finalize-current-${finalizeCalls}`,
+							explorerUrl: `https://minascan.io/devnet/tx/withdraw-finalize-current-${finalizeCalls}`,
+							included: true
+						}
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					sleepCalls += 1
+					nowMs += 181_000
+				},
+				pollIntervalMs: 0,
+				now: () => new Date(nowMs).toISOString()
+			}
+		)
+
+		expect(result.status).toBe("completed")
+		expect(finalizeCalls).toBe(1)
+		expect(sleepCalls).toBeGreaterThanOrEqual(1)
+		expect(result.finalTransaction?.hash).toBe("withdraw-finalize-current-1")
+	})
+
 	it("does not complete the target withdrawal from an already-finalised result for a different index", async () => {
 		let submitCalls = 0
 		let statusCalls = 0

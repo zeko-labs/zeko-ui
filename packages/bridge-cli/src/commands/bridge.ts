@@ -181,6 +181,17 @@ const getPendingFinalizeRetryState = ({
 	}
 }
 
+const hasSubmittedTargetFinalization = ({
+	session,
+	claimableIndex
+}: {
+	session: OperationSession
+	claimableIndex: number | undefined
+}): boolean =>
+	claimableIndex !== undefined &&
+	session.pendingFinalizeIndex === claimableIndex &&
+	session.finalTransaction?.action === "finalize"
+
 const toPendingCancelMarker = ({
 	currentTargetIndex,
 	claimableIndex,
@@ -1256,6 +1267,7 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 		const shouldAdvanceClaim =
 			canFinalizeDepositResult.value.available &&
 			capabilityAppliesToIndex(canFinalizeDepositResult.value, effectiveClaimableIndex) &&
+			!hasSubmittedTargetFinalization({ session, claimableIndex: effectiveClaimableIndex }) &&
 			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 			skippableAhead === 0 &&
 			!shouldCancelCurrentTarget
@@ -1546,6 +1558,7 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			canFinalizeResult.value.available &&
 			claimableIndex !== undefined &&
 			capabilityAppliesToIndex(canFinalizeResult.value, claimableIndex) &&
+			!hasSubmittedTargetFinalization({ session, claimableIndex }) &&
 			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 			(shouldAdvanceQueuedClaims || claimableIndex === target?.index)
 
