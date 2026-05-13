@@ -207,3 +207,4 @@
 - T207 | done | correct-cli-refactor-by-removing-duplicate-runtime-layers | done/T207-correct-cli-refactor-by-removing-duplicate-runtime-layers.md
 - T208 | done | rewrite-bridge-cli-runtime-directly | done/T208-rewrite-bridge-cli-runtime-directly.md
 - T209 | done | rebuild-bridge-cli-internals-from-scratch | done/T209-rebuild-bridge-cli-internals-from-scratch.md
+- T210 | done | split-bridge-cli-by-responsibility | done/T210-split-bridge-cli-by-responsibility.md
