@@ -68,6 +68,7 @@ import {
 	getVkHash,
 	refreshCache,
 	safeDecrement,
+	uint32Max,
 	withdrawalAux
 } from "./utils"
 
@@ -175,7 +176,10 @@ export class Bridge {
 
 		public readonly bridgeFeeRecipientL1: PublicKey,
 		public readonly bridgeFeeRecipientL2: PublicKey,
-		public readonly bridgeProofFee: UInt64
+		public readonly bridgeProofFee: UInt64,
+
+		private readonly V2_DEPOSITS_START_INDEX: UInt32,
+		private readonly V2_WITHDRAWALS_START_INDEX: UInt32
 	) {}
 
 	static async init(config: Config): Promise<Bridge> {
@@ -205,6 +209,11 @@ export class Bridge {
 		const sequencerPk = sequencerPkResult.data?.sequencerPk
 		if (!sequencerPk) throw new Error("Sequencer public key not found")
 
+		const V2_DEPOSITS_START_INDEX =
+			config.l2Network === "testnet" ? UInt32.from(68520) : UInt32.from(0)
+		const V2_WITHDRAWALS_START_INDEX =
+			config.l2Network === "testnet" ? UInt32.from(10529) : UInt32.from(0)
+
 		return new Bridge(
 			config,
 			l1Client,
@@ -223,7 +232,9 @@ export class Bridge {
 			UInt32.from(circuitsConfig.withdrawalDelay),
 			PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL1),
 			PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL2),
-			UInt64.from(circuitsConfig.bridgeProofFee)
+			UInt64.from(circuitsConfig.bridgeProofFee),
+			V2_DEPOSITS_START_INDEX,
+			V2_WITHDRAWALS_START_INDEX
 		)
 	}
 
@@ -569,7 +580,7 @@ export class Bridge {
 			return { ok: false, msg: "No deposit witnesses found" }
 		}
 
-		const minDepositIndex = context.prevNextDeposit
+		const minDepositIndex = uint32Max(V2_DEPOSITS_START_INDEX, context.prevNextDeposit)
 
 		for (const witness of this.getSortedDepositWitnesses(context)) {
 			if (
@@ -877,7 +888,7 @@ export class Bridge {
 		witness: ExtractInput<typeof finalizeDepositMutation>
 	} | null {
 		const depositParams = this.getDepositParamsForWitness(context, witness)
-		const minDepositIndex = context.prevNextDeposit
+		const minDepositIndex = uint32Max(V2_DEPOSITS_START_INDEX, context.prevNextDeposit)
 
 		if (this.isDepositCancelled(context, witness) || this.isDepositFinalised(context, witness)) {
 			return null
@@ -1027,7 +1038,7 @@ export class Bridge {
 
 		if (cancelled || finalised) return null
 
-		const minDepositIndex = context.prevNextCancelledDeposit
+		const minDepositIndex = uint32Max(V2_DEPOSITS_START_INDEX, context.prevNextCancelledDeposit)
 
 		if (minDepositIndex.greaterThan(UInt32.from(witness.index)).toBoolean()) return null
 
@@ -1551,6 +1562,9 @@ export class Bridge {
 		let insufficientFirstWithdrawalReason: string | null = null
 		let alreadyFinalisedCount = 0
 		let unfinalisedMatchCount = 0
+
+		const minWithdrawalIndex = uint32Max(V2_WITHDRAWALS_START_INDEX, prevNextWithdrawal)
+
 		const myWithdrawalIndex = innerActions.findIndex((action) => {
 			const matchingWithdrawal = findMatchingWithdrawal(action)
 
@@ -1560,6 +1574,8 @@ export class Bridge {
 				alreadyFinalisedCount++
 				return false
 			}
+
+			if (minWithdrawalIndex.greaterThan(UInt32.from(action.index)).toBoolean()) return false
 
 			unfinalisedMatchCount++
 

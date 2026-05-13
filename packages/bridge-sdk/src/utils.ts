@@ -479,3 +479,7 @@ export async function getVkHash(publicKey: PublicKey): Promise<Field> {
 	if (!vk) throw new Error("Verification key not found")
 	return Field(vk)
 }
+
+export function uint32Max(a: UInt32, b: UInt32): UInt32 {
+	return a.greaterThan(b) ? a : b
+}
