@@ -201,4 +201,5 @@
 - T201 | done | improve-bridge-status-endpoint-logging | done/T201-improve-bridge-status-endpoint-logging.md
 - T202 | done | bridge-cli-cleanup-refactor | done/T202-bridge-cli-cleanup-refactor.md
 - T203 | done | fix-bridge-cli-readme-and-env-precedence | done/T203-fix-bridge-cli-readme-and-env-precedence.md
-- T204 | in-progress | resolve-cleanup-pr-base-conflicts | in-progress/T204-resolve-cleanup-pr-base-conflicts.md
+- T204 | done | resolve-cleanup-pr-base-conflicts | done/T204-resolve-cleanup-pr-base-conflicts.md
+- T205 | done | prevent-duplicate-withdrawal-finalize | done/T205-prevent-duplicate-withdrawal-finalize.md

@@ -109,6 +109,17 @@ const getPendingFinalizeRetryState = ({
 	}
 }
 
+const hasSubmittedTargetFinalization = ({
+	session,
+	claimableIndex
+}: {
+	session: OperationSession
+	claimableIndex: number | undefined
+}): boolean =>
+	claimableIndex !== undefined &&
+	session.pendingFinalizeIndex === claimableIndex &&
+	session.finalTransaction?.action === "finalize"
+
 const waitForDeposit = ({
 	session,
 	analysis,
@@ -236,6 +247,7 @@ export const decideDepositStep = ({
 	const shouldFinalize =
 		canFinalize.available &&
 		capabilityAppliesToIndex(canFinalize, effectiveClaimableIndex) &&
+		!hasSubmittedTargetFinalization({ session, claimableIndex: effectiveClaimableIndex }) &&
 		(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 		skippableAhead === 0 &&
 		!shouldCancelCurrentTarget
@@ -372,6 +384,7 @@ export const decideWithdrawalStep = ({
 		canFinalize.available &&
 		claimableIndex !== undefined &&
 		capabilityAppliesToIndex(canFinalize, claimableIndex) &&
+		!hasSubmittedTargetFinalization({ session, claimableIndex }) &&
 		(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
 		(shouldAdvanceQueuedClaims || claimableIndex === target?.index)
 
