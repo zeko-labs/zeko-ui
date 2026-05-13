@@ -481,5 +481,5 @@ export async function getVkHash(publicKey: PublicKey): Promise<Field> {
 }
 
 export function uint32Max(a: UInt32, b: UInt32): UInt32 {
-	return a.greaterThan(b) ? a : b
+	return a.greaterThan(b).toBoolean() ? a : b
 }

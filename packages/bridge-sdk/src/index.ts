@@ -178,8 +178,8 @@ export class Bridge {
 		public readonly bridgeFeeRecipientL2: PublicKey,
 		public readonly bridgeProofFee: UInt64,
 
-		private readonly V2_DEPOSITS_START_INDEX: UInt32,
-		private readonly V2_WITHDRAWALS_START_INDEX: UInt32
+		private readonly V2_DEPOSITS_START_INDEX: UInt32 = UInt32.zero,
+		private readonly V2_WITHDRAWALS_START_INDEX: UInt32 = UInt32.zero
 	) {}
 
 	static async init(config: Config): Promise<Bridge> {

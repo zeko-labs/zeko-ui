@@ -195,3 +195,4 @@
 - T195 | done | fix-actions-indexer-canonical-param-limit | done/T195-fix-actions-indexer-canonical-param-limit.md
 - T196 | done | fallback-live-withdrawal-actions | done/T196-fallback-live-withdrawal-actions.md
 - T197 | done | resolve-bridge-sdk-review-findings | done/T197-resolve-bridge-sdk-review-findings.md
+- T198 | done | fix-bridge-sdk-v2-index-ci-failure | done/T198-fix-bridge-sdk-v2-index-ci-failure.md
