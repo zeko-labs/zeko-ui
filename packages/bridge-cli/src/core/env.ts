@@ -74,7 +74,9 @@ export const loadBridgeCliEnv = async ({
 		error?: Error
 	}
 } = {}): Promise<{ loadedPaths: string[] }> => {
-	const loadedValues: LoadedEnv = {}
+	const loadedValues: LoadedEnv = Object.fromEntries(
+		Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined)
+	)
 	const loadedPaths: string[] = []
 
 	for (const filePath of paths) {
@@ -89,12 +91,6 @@ export const loadBridgeCliEnv = async ({
 		}
 
 		loadedPaths.push(filePath)
-	}
-
-	for (const [key, value] of Object.entries(env)) {
-		if (loadedValues[key] === undefined && value !== undefined) {
-			loadedValues[key] = value
-		}
 	}
 
 	Object.assign(env, loadedValues)

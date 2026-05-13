@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { createBridgeCli } from "../src/cli"
 import { createBridgeCommand } from "../src/commands/bridge"
 import { createOperationCommand } from "../src/commands/operation"
 import type { BridgeAdapter } from "../src/core/adapter"
+import { createBridgeCliCommand } from "../src/core/root-command"
 import type { OperationSession } from "../src/core/types"
 import type { CommandDef } from "citty"
 
@@ -29,7 +29,7 @@ const resolveCommand = async (command: unknown): Promise<CommandDef | undefined>
 
 describe("cli skeleton", () => {
 	it("exposes the planned top-level command groups", async () => {
-		const cli = createBridgeCli()
+		const cli = createBridgeCliCommand()
 		const subCommands = await resolveSubCommands(cli.subCommands)
 
 		expect(Object.keys(subCommands).sort()).toEqual([
@@ -43,7 +43,7 @@ describe("cli skeleton", () => {
 	})
 
 	it("keeps bridge as the default high-level command without a public wait flag", async () => {
-		const cli = createBridgeCli()
+		const cli = createBridgeCliCommand()
 		const subCommands = await resolveSubCommands(cli.subCommands)
 		const bridge = await resolveCommand(subCommands.bridge)
 
@@ -52,7 +52,7 @@ describe("cli skeleton", () => {
 	})
 
 	it("exposes poll and retry delay flags on long-running operation commands", async () => {
-		const cli = createBridgeCli()
+		const cli = createBridgeCliCommand()
 		const subCommands = await resolveSubCommands(cli.subCommands)
 		const bridge = await resolveCommand(subCommands.bridge)
 		const operation = await resolveCommand(subCommands.operation)
@@ -64,6 +64,30 @@ describe("cli skeleton", () => {
 			expect(command?.args).toHaveProperty("pollIntervalMs")
 			expect(command?.args).toHaveProperty("retryDelayMs")
 		}
+	})
+
+	it("requires an amount on the high-level bridge command", async () => {
+		const command = createBridgeCommand()
+
+		await expect(
+			command.run?.({
+				args: {
+					_: [],
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					amount: "",
+					account: "B62test",
+					recipient: "B62test",
+					timeoutSlots: "",
+					pollIntervalMs: "",
+					retryDelayMs: "",
+					json: false,
+					verbose: false
+				},
+				rawArgs: [],
+				cmd: command
+			})
+		).rejects.toThrow("Missing required --amount")
 	})
 
 	it("accepts kebab-case poll delay on the high-level bridge command", async () => {
