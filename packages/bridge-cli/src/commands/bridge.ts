@@ -3,6 +3,7 @@ import path from "node:path"
 import { defineCommand, type CommandDef } from "citty"
 import { isInsufficientFirstWithdrawalAmountError } from "@zeko-labs/bridge-sdk"
 import { PrivateKey } from "o1js"
+import { assign, createActor, fromPromise, setup, toPromise } from "xstate"
 import type { BridgeAdapter } from "../core/adapter"
 import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
 import { createOperationLogger } from "../core/logger"
@@ -1588,62 +1589,295 @@ const runWaitStep = async (
 	}
 }
 
-const firstRunnerStep = (context: BridgeRunnerContext): RunnerStep =>
-	context.session.direction === "withdrawal" && context.session.submittedTransactions.length === 0
-		? "submit-withdrawal"
-		: context.session.direction === "deposit"
-			? "inspect-deposit"
-			: "inspect-withdrawal"
+const getDoneOutput = (event: unknown): RunnerOutput => (event as { output: RunnerOutput }).output
 
-const runRunnerStep = (context: BridgeRunnerContext, step: RunnerStep): Promise<RunnerOutput> => {
-	switch (step) {
-		case "submit-deposit":
-			return runSubmitStep(context, "deposit")
-		case "submit-withdrawal":
-			return runSubmitStep(context, "withdrawal")
-		case "inspect-deposit":
-			return runInspectDepositStep(context)
-		case "inspect-withdrawal":
-			return runInspectWithdrawalStep(context)
-		case "wait-deposit":
-			return runWaitStep(context, "deposit")
-		case "wait-withdrawal":
-			return runWaitStep(context, "withdrawal")
-		case "finalize-deposit":
-			return runFinalizeDepositStep(context).then((output) =>
-				output.next === "failed" ? output : { ...output, next: "inspect-deposit" }
-			)
-		case "cancel-deposit":
-			return runCancelDepositStep(context).then((output) =>
-				output.next === "failed" ? output : { ...output, next: "inspect-deposit" }
-			)
-		case "finalize-withdrawal":
-			return runFinalizeWithdrawalStep(context).then((output) =>
-				output.next === "failed" ? output : { ...output, next: "inspect-withdrawal" }
-			)
-		case "completed":
-		case "cancelled":
-		case "failed":
-			return Promise.resolve({ ...context, next: step })
+const routeDepositWait = [
+	{
+		target: "waitingDepositSubmission",
+		guard: "isWaitingDepositSubmission",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "waitingDepositPriorClaims",
+		guard: "isWaitingDepositPriorClaims",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "waitingDepositFinalization",
+		guard: "isWaitingDepositFinalization",
+		actions: "applyRunnerOutput"
 	}
-}
+] as const
 
-const applyRunnerOutput = (
-	context: BridgeRunnerContext,
-	output: RunnerOutput
-): BridgeRunnerContext => ({
-	...context,
-	session: output.session,
-	depositAnalysis: output.depositAnalysis ?? context.depositAnalysis,
-	withdrawalAnalysis: output.withdrawalAnalysis ?? context.withdrawalAnalysis
+const routeWithdrawalWait = [
+	{
+		target: "waitingWithdrawalSubmission",
+		guard: "isWaitingWithdrawalSubmission",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "waitingWithdrawalPriorClaims",
+		guard: "isWaitingWithdrawalPriorClaims",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "waitingWithdrawalFinalization",
+		guard: "isWaitingWithdrawalFinalization",
+		actions: "applyRunnerOutput"
+	}
+] as const
+
+const terminalRoutes = [
+	{
+		target: "completed",
+		guard: "isCompleted",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "cancelled",
+		guard: "isCancelled",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "failed",
+		guard: "isFailed",
+		actions: "applyRunnerOutput"
+	}
+] as const
+
+const actorInput = ({ context }: { context: BridgeRunnerContext }) => context
+
+export const bridgeOperationMachine = setup({
+	types: {
+		context: {} as BridgeRunnerContext,
+		input: {} as BridgeRunnerContext,
+		output: {} as OperationSession
+	},
+	actors: {
+		submitDeposit: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runSubmitStep(input, "deposit")
+		),
+		submitWithdrawal: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runSubmitStep(input, "withdrawal")
+		),
+		inspectDeposit: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runInspectDepositStep(input)
+		),
+		inspectWithdrawal: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runInspectWithdrawalStep(input)
+		),
+		waitDeposit: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runWaitStep(input, "deposit")
+		),
+		waitWithdrawal: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runWaitStep(input, "withdrawal")
+		),
+		finalizeDeposit: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runFinalizeDepositStep(input)
+		),
+		cancelDeposit: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runCancelDepositStep(input)
+		),
+		finalizeWithdrawal: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runFinalizeWithdrawalStep(input)
+		)
+	},
+	actions: {
+		applyRunnerOutput: assign({
+			session: ({ event }) => getDoneOutput(event).session,
+			depositAnalysis: ({ context, event }) =>
+				getDoneOutput(event).depositAnalysis ?? context.depositAnalysis,
+			withdrawalAnalysis: ({ context, event }) =>
+				getDoneOutput(event).withdrawalAnalysis ?? context.withdrawalAnalysis
+		})
+	},
+	guards: {
+		isCompleted: ({ event }) => getDoneOutput(event).next === "completed",
+		isCancelled: ({ event }) => getDoneOutput(event).next === "cancelled",
+		isFailed: ({ event }) => getDoneOutput(event).next === "failed",
+		isSubmitDeposit: ({ event }) => getDoneOutput(event).next === "submit-deposit",
+		isFinalizeDeposit: ({ event }) => getDoneOutput(event).next === "finalize-deposit",
+		isCancelDeposit: ({ event }) => getDoneOutput(event).next === "cancel-deposit",
+		isFinalizeWithdrawal: ({ event }) => getDoneOutput(event).next === "finalize-withdrawal",
+		isWaitingDepositSubmission: ({ event }) =>
+			getDoneOutput(event).next === "wait-deposit" &&
+			getDoneOutput(event).session.phase === "waiting-submission",
+		isWaitingDepositPriorClaims: ({ event }) =>
+			getDoneOutput(event).next === "wait-deposit" &&
+			getDoneOutput(event).session.phase === "waiting-prior-claims",
+		isWaitingDepositFinalization: ({ event }) => getDoneOutput(event).next === "wait-deposit",
+		isWaitingWithdrawalSubmission: ({ event }) =>
+			getDoneOutput(event).next === "wait-withdrawal" &&
+			getDoneOutput(event).session.phase === "waiting-submission",
+		isWaitingWithdrawalPriorClaims: ({ event }) =>
+			getDoneOutput(event).next === "wait-withdrawal" &&
+			getDoneOutput(event).session.phase === "waiting-prior-claims",
+		isWaitingWithdrawalFinalization: ({ event }) => getDoneOutput(event).next === "wait-withdrawal"
+	}
+}).createMachine({
+	id: "bridge-cli-operation",
+	context: ({ input }) => input,
+	initial: "route",
+	output: ({ context }) => context.session,
+	states: {
+		route: {
+			always: [
+				{
+					target: "submittingWithdrawal",
+					guard: ({ context }) =>
+						context.session.direction === "withdrawal" &&
+						context.session.submittedTransactions.length === 0
+				},
+				{
+					target: "inspectingDeposit",
+					guard: ({ context }) => context.session.direction === "deposit"
+				},
+				{ target: "inspectingWithdrawal" }
+			]
+		},
+		submittingDeposit: {
+			invoke: {
+				src: "submitDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
+			}
+		},
+		submittingWithdrawal: {
+			invoke: {
+				src: "submitWithdrawal",
+				input: actorInput,
+				onDone: [
+					...terminalRoutes,
+					{ target: "inspectingWithdrawal", actions: "applyRunnerOutput" }
+				]
+			}
+		},
+		inspectingDeposit: {
+			invoke: {
+				src: "inspectDeposit",
+				input: actorInput,
+				onDone: [
+					...terminalRoutes,
+					{
+						target: "submittingDeposit",
+						guard: "isSubmitDeposit",
+						actions: "applyRunnerOutput"
+					},
+					{
+						target: "finalizingDeposit",
+						guard: "isFinalizeDeposit",
+						actions: "applyRunnerOutput"
+					},
+					{
+						target: "cancelingDeposit",
+						guard: "isCancelDeposit",
+						actions: "applyRunnerOutput"
+					},
+					...routeDepositWait
+				]
+			}
+		},
+		inspectingWithdrawal: {
+			invoke: {
+				src: "inspectWithdrawal",
+				input: actorInput,
+				onDone: [
+					...terminalRoutes,
+					{
+						target: "finalizingWithdrawal",
+						guard: "isFinalizeWithdrawal",
+						actions: "applyRunnerOutput"
+					},
+					...routeWithdrawalWait
+				]
+			}
+		},
+		waitingDepositSubmission: {
+			invoke: {
+				src: "waitDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
+			}
+		},
+		waitingDepositPriorClaims: {
+			invoke: {
+				src: "waitDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
+			}
+		},
+		waitingDepositFinalization: {
+			invoke: {
+				src: "waitDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
+			}
+		},
+		waitingWithdrawalSubmission: {
+			invoke: {
+				src: "waitWithdrawal",
+				input: actorInput,
+				onDone: [
+					...terminalRoutes,
+					{ target: "inspectingWithdrawal", actions: "applyRunnerOutput" }
+				]
+			}
+		},
+		waitingWithdrawalPriorClaims: {
+			invoke: {
+				src: "waitWithdrawal",
+				input: actorInput,
+				onDone: [
+					...terminalRoutes,
+					{ target: "inspectingWithdrawal", actions: "applyRunnerOutput" }
+				]
+			}
+		},
+		waitingWithdrawalFinalization: {
+			invoke: {
+				src: "waitWithdrawal",
+				input: actorInput,
+				onDone: [
+					...terminalRoutes,
+					{ target: "inspectingWithdrawal", actions: "applyRunnerOutput" }
+				]
+			}
+		},
+		finalizingDeposit: {
+			invoke: {
+				src: "finalizeDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
+			}
+		},
+		cancelingDeposit: {
+			invoke: {
+				src: "cancelDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
+			}
+		},
+		finalizingWithdrawal: {
+			invoke: {
+				src: "finalizeWithdrawal",
+				input: actorInput,
+				onDone: [
+					...terminalRoutes,
+					{ target: "inspectingWithdrawal", actions: "applyRunnerOutput" }
+				]
+			}
+		},
+		completed: { type: "final" },
+		cancelled: { type: "final" },
+		failed: { type: "final" }
+	}
 })
 
 export const runBridgeOperation = async (
 	input: BridgeFlowInput,
 	deps: BridgeFlowDeps
 ): Promise<OperationSession> => {
-	let context = createInitialRunnerContext(input, deps)
-	let step = firstRunnerStep(context)
+	const context = createInitialRunnerContext(input, deps)
 
 	await persistSession({
 		session: context.session,
@@ -1652,13 +1886,12 @@ export const runBridgeOperation = async (
 		event: "initialized"
 	})
 
-	for (;;) {
-		const output = await runRunnerStep(context, step)
-		context = applyRunnerOutput(context, output)
-		if (output.next === "completed" || output.next === "cancelled" || output.next === "failed") {
-			return output.session
-		}
-		step = output.next
+	const actor = createActor(bridgeOperationMachine, { input: context })
+	actor.start()
+	try {
+		return await toPromise(actor)
+	} finally {
+		actor.stop()
 	}
 }
 

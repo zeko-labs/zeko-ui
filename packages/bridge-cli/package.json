@@ -27,7 +27,8 @@
 		"citty": "^0.1.6",
 		"dotenv": "^17.2.3",
 		"o1js": "catalog:",
-		"valibot": "catalog:"
+		"valibot": "catalog:",
+		"xstate": "catalog:"
 	},
 	"devDependencies": {
 		"@zeko-labs/bridge-sdk": "workspace:^",
