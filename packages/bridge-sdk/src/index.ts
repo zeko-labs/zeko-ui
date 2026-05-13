@@ -125,6 +125,21 @@ const normalizeRetryableTransactionOptions = (
 	}
 }
 
+const isUnknownLiveActionCursorError = (error: unknown): boolean => {
+	const message = error instanceof Error ? error.message : String(error)
+	return /\bfrom\s+\d+\s+not found\b/i.test(message)
+}
+
+const mergeActionsByAfterState = <TAction extends Action>(actions: TAction[]): TAction[] => {
+	const seen = new Set<string>()
+	return actions.filter((action) => {
+		const afterState = action.afterActionState.toString()
+		if (seen.has(afterState)) return false
+		seen.add(afterState)
+		return true
+	})
+}
+
 export class Bridge {
 	private debug(message: string, details?: unknown): void {
 		if (!this.config.verbose) return
@@ -315,8 +330,8 @@ export class Bridge {
 	private async fetchUserWithdrawalActions(pk: PublicKey): Promise<Array<Action & Withdrawal>> {
 		const archiveActions = await fetchActions(this.l2ArchiveClient, pk)
 		const lastActionState = archiveActions.at(-1)?.afterActionState.toString()
-		const liveActions = (await fetchRecentActions(this.l2Client, pk, lastActionState)).slice(1)
-		const userInnerActions = [...archiveActions, ...liveActions]
+		const liveActions = await this.fetchLiveWithdrawalActions(pk, lastActionState)
+		const userInnerActions = mergeActionsByAfterState([...archiveActions, ...liveActions])
 
 		this.debug("fetchUserWithdrawals action sources", {
 			archiveCount: archiveActions.length,
@@ -337,6 +352,24 @@ export class Bridge {
 				}
 			})
 		)
+	}
+
+	private async fetchLiveWithdrawalActions(
+		pk: PublicKey,
+		lastArchiveActionState?: string
+	): Promise<Action[]> {
+		if (!lastArchiveActionState) return await fetchRecentActions(this.l2Client, pk)
+
+		try {
+			return (await fetchRecentActions(this.l2Client, pk, lastArchiveActionState)).slice(1)
+		} catch (error) {
+			if (!isUnknownLiveActionCursorError(error)) throw error
+
+			this.debug("fetchUserWithdrawals live cursor not found; retrying without cursor", {
+				lastArchiveActionState
+			})
+			return await fetchRecentActions(this.l2Client, pk)
+		}
 	}
 
 	private async fetchUserWithdrawals(pk: PublicKey): Promise<Withdrawal[]> {

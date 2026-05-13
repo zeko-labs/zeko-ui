@@ -44,7 +44,7 @@ tasks:
   test:
     deps:
       - ^:build
-    command: pnpm exec vitest run test/*.test.ts
+    command: pnpm exec vitest run test/*.test.ts --exclude test/*.manual.test.ts
     inputs:
       - "@globs(src)"
       - "@globs(tests)"
