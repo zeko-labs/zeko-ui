@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { runBridgeOperation } from "../src/commands/bridge"
+import { runBridgeOperation } from "../src/app"
 
 describe("bridge flow", () => {
 	it("lets the SDK finalize the next available deposit even when status flags lag", async () => {

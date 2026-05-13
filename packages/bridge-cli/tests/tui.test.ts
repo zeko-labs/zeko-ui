@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
-import { createTuiCommand, renderTuiSnapshot } from "../src/commands/tui"
-import type { OperationSession } from "../src/core/types"
+import { createTuiCommand, renderTuiSnapshot } from "../src/app"
+import type { OperationSession } from "../src/app"
 
 describe("tui snapshot", () => {
 	it("renders active and recent operations from persisted state", () => {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { createBridgeCommand } from "../src/commands/bridge"
-import { createOperationCommand } from "../src/commands/operation"
-import type { BridgeAdapter } from "../src/core/adapter"
-import { createBridgeCliCommand } from "../src/core/root-command"
-import type { OperationSession } from "../src/core/types"
+import { createBridgeCommand } from "../src/app"
+import { createOperationCommand } from "../src/app"
+import type { BridgeAdapter } from "../src/app"
+import { createBridgeCliCommand } from "../src/app"
+import type { OperationSession } from "../src/app"
 import type { CommandDef } from "citty"
 
 const resolveSubCommands = async (subCommands: unknown): Promise<Record<string, unknown>> => {
