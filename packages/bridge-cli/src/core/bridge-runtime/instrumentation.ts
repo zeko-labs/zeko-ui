@@ -1,4 +1,3 @@
-import type { BridgeAdapter } from "../adapter"
 import type {
 	BridgeCapabilityDiagnostic,
 	BridgeSdkCallTrace,
@@ -7,35 +6,6 @@ import type {
 	OperationPhase,
 	OperationSession
 } from "../types"
-
-type InstrumentedBridgeAdapterInput = {
-	adapter: Partial<BridgeAdapter>
-	session: OperationSession
-	now?: () => string
-}
-
-const formatErrorMessage = (error: unknown): string =>
-	error instanceof Error ? error.message : String(error)
-
-const summarizeSdkResult = (value: unknown): string | undefined => {
-	if (typeof value === "boolean") return String(value)
-
-	if (Array.isArray(value)) return `count=${value.length}`
-
-	if (typeof value === "object" && value !== null) {
-		if ("available" in value && typeof value.available === "boolean") {
-			const reason =
-				"reason" in value && typeof value.reason === "string" ? ` reason=${value.reason}` : ""
-			return `available=${String(value.available)}${reason}`
-		}
-
-		if ("hash" in value && typeof value.hash === "string") {
-			return `hash=${value.hash}`
-		}
-	}
-
-	return undefined
-}
 
 const buildSdkMethodStats = (
 	calls: BridgeSdkCallTrace[]
@@ -181,75 +151,3 @@ export const mergeVerboseDiagnosticsFromSessions = ({
 		}
 	}
 }
-
-export const createInstrumentedBridgeAdapter = ({
-	adapter,
-	session,
-	now = () => new Date().toISOString()
-}: InstrumentedBridgeAdapterInput) => ({
-	adapter,
-	async call<T>(
-		operation: BridgeSdkOperation,
-		run: () => Promise<T> | T,
-		options: { attempt?: number } = {}
-	): Promise<{ session: OperationSession; value: T }> {
-		const attempt = options.attempt ?? 1
-		const startedAt = now()
-		const startedAtMs = Date.parse(startedAt)
-		try {
-			const value = await run()
-			const endedAt = now()
-			const endedAtMs = Date.parse(endedAt)
-			return {
-				value,
-				session: withRecordedSdkCall({
-					session,
-					trace: {
-						operation,
-						attempt,
-						startedAt,
-						endedAt,
-						durationMs:
-							Number.isNaN(startedAtMs) || Number.isNaN(endedAtMs)
-								? 0
-								: Math.max(0, endedAtMs - startedAtMs),
-						success: true,
-						result: summarizeSdkResult(value)
-					}
-				})
-			}
-		} catch (error) {
-			const endedAt = now()
-			const endedAtMs = Date.parse(endedAt)
-			const nextSession = withRecordedSdkCall({
-				session,
-				trace: {
-					operation,
-					attempt,
-					startedAt,
-					endedAt,
-					durationMs:
-						Number.isNaN(startedAtMs) || Number.isNaN(endedAtMs)
-							? 0
-							: Math.max(0, endedAtMs - startedAtMs),
-					success: false,
-					message: formatErrorMessage(error)
-				}
-			})
-			if (error instanceof Error) {
-				Object.assign(error, { session: nextSession })
-				throw error
-			}
-
-			const nextError = new Error(formatErrorMessage(error))
-			Object.assign(nextError, { session: nextSession })
-			throw nextError
-		}
-	},
-	recordWaitReason(
-		key: "canFinalizeDeposit" | "canCancelDeposit" | "canFinalizeWithdrawal",
-		diagnostic: BridgeCapabilityDiagnostic
-	): OperationSession {
-		return withCapabilityWaitReason({ session, key, diagnostic })
-	}
-})

@@ -205,3 +205,4 @@
 - T205 | done | remove-bridge-cli-duplication | done/T205-remove-bridge-cli-duplication.md
 - T206 | done | validate-bridge-cli-complexity-refactor | done/T206-validate-bridge-cli-complexity-refactor.md
 - T207 | done | correct-cli-refactor-by-removing-duplicate-runtime-layers | done/T207-correct-cli-refactor-by-removing-duplicate-runtime-layers.md
+- T208 | done | rewrite-bridge-cli-runtime-directly | done/T208-rewrite-bridge-cli-runtime-directly.md

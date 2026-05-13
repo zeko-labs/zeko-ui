@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { createInstrumentedBridgeAdapter } from "../src/core/bridge-runtime/instrumentation"
-import type { BridgeAdapter } from "../src/core/adapter"
+import {
+	withCapabilityWaitReason,
+	withRecordedSdkCall
+} from "../src/core/bridge-runtime/instrumentation"
 import type { OperationSession } from "../src/core/types"
 
 const session = {
@@ -25,27 +27,21 @@ const session = {
 } satisfies OperationSession
 
 describe("bridge runtime adapter instrumentation", () => {
-	it("records SDK calls through one wrapper path", async () => {
-		const adapter: Partial<BridgeAdapter> = {
-			async canFinalizeDeposit() {
-				return { available: true, reason: null, index: 0 }
-			}
-		}
-		const instrumented = createInstrumentedBridgeAdapter({
-			adapter,
+	it("records SDK calls on verbose sessions", () => {
+		const result = withRecordedSdkCall({
 			session,
-			now: (() => {
-				const dates = ["2026-03-10T00:00:01.000Z", "2026-03-10T00:00:01.250Z"]
-				return () => dates.shift() ?? "2026-03-10T00:00:01.250Z"
-			})()
+			trace: {
+				operation: "canFinalizeDeposit",
+				attempt: 1,
+				startedAt: "2026-03-10T00:00:01.000Z",
+				endedAt: "2026-03-10T00:00:01.250Z",
+				durationMs: 250,
+				success: true,
+				result: "available=true"
+			}
 		})
 
-		const result = await instrumented.call("canFinalizeDeposit", () =>
-			adapter.canFinalizeDeposit?.("B62account")
-		)
-
-		expect(result.value).toEqual({ available: true, reason: null, index: 0 })
-		expect(result.session.verboseDiagnostics?.sdkMethodStats.canFinalizeDeposit).toMatchObject({
+		expect(result.verboseDiagnostics?.sdkMethodStats.canFinalizeDeposit).toMatchObject({
 			count: 1,
 			successCount: 1,
 			errorCount: 0,
@@ -55,15 +51,13 @@ describe("bridge runtime adapter instrumentation", () => {
 	})
 
 	it("preserves capability wait reasons on verbose sessions", () => {
-		const instrumented = createInstrumentedBridgeAdapter({
-			adapter: {},
+		const next = withCapabilityWaitReason({
 			session,
-			now: () => "2026-03-10T00:00:01.000Z"
-		})
-
-		const next = instrumented.recordWaitReason("canFinalizeDeposit", {
-			available: false,
-			reason: "not ready"
+			key: "canFinalizeDeposit",
+			diagnostic: {
+				available: false,
+				reason: "not ready"
+			}
 		})
 
 		expect(next.verboseDiagnostics?.waitReasons?.canFinalizeDeposit).toEqual({
@@ -72,16 +66,21 @@ describe("bridge runtime adapter instrumentation", () => {
 		})
 	})
 
-	it("leaves non-verbose sessions unchanged", async () => {
+	it("leaves non-verbose sessions unchanged", () => {
 		const quietSession = { ...session, verboseDiagnostics: undefined }
-		const instrumented = createInstrumentedBridgeAdapter({
-			adapter: {},
+		const result = withRecordedSdkCall({
 			session: quietSession,
-			now: () => "2026-03-10T00:00:01.000Z"
+			trace: {
+				operation: "getDepositStatuses",
+				attempt: 1,
+				startedAt: "2026-03-10T00:00:01.000Z",
+				endedAt: "2026-03-10T00:00:01.000Z",
+				durationMs: 0,
+				success: true,
+				result: "count=0"
+			}
 		})
 
-		const result = await instrumented.call("getDepositStatuses", async () => [])
-
-		expect(result.session).toBe(quietSession)
+		expect(result).toBe(quietSession)
 	})
 })

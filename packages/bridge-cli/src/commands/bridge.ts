@@ -7,7 +7,6 @@ import type { BridgeAdapter } from "../core/adapter"
 import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
 import { createOperationLogger } from "../core/logger"
 import { isRecoverableMutationError } from "../core/mutation-errors"
-import { createOperationStateController } from "../core/operation-machine"
 import { resolveAppPaths } from "../core/paths"
 import {
 	type DepositQueueState,
@@ -23,11 +22,11 @@ import {
 	readOptionalStringArg
 } from "../core/command-args"
 import {
-	createInstrumentedBridgeAdapter,
 	createVerboseDiagnostics,
 	mergeVerboseDiagnosticsFromSessions,
 	withCapabilityWaitReason,
-	withPhaseTiming
+	withPhaseTiming,
+	withRecordedSdkCall
 } from "../core/bridge-runtime/instrumentation"
 import {
 	decideDepositStep,
@@ -139,6 +138,19 @@ type WaitStateTracker = {
 const HEARTBEAT_INTERVAL_MS = 30_000
 const RETRY_SLEEP_MS = 5_000
 
+const OPERATION_STATE_BY_EVENT = {
+	MARK_SUBMITTED: { phase: "submitted", status: "running" },
+	MARK_WAITING_SUBMISSION: { phase: "waiting-submission", status: "running" },
+	MARK_WAITING_PRIOR_CLAIMS: { phase: "waiting-prior-claims", status: "running" },
+	MARK_WAITING_FINALIZATION: { phase: "waiting-finalization", status: "running" },
+	MARK_RETRYING: { phase: "retrying", status: "running" },
+	MARK_FINALIZING: { phase: "finalizing", status: "running" },
+	MARK_CANCELLING: { phase: "canceling", status: "running" },
+	MARK_COMPLETED: { phase: "completed", status: "completed" },
+	MARK_CANCELLED: { phase: "cancelled", status: "cancelled" },
+	MARK_FAILED: { phase: "failed", status: "failed" }
+} satisfies Record<TransitionEvent, { phase: OperationPhase; status: OperationSession["status"] }>
+
 const toPendingCancelMarker = ({
 	currentTargetIndex,
 	claimableIndex,
@@ -171,19 +183,17 @@ const persistSession = async ({
 }
 
 const transitionSession = ({
-	controller,
 	session,
 	event,
 	now,
 	patch = {}
 }: {
-	controller: ReturnType<typeof createOperationStateController>
 	session: OperationSession
 	event: TransitionEvent
 	now: () => string
 	patch?: Partial<OperationSession>
 }): OperationSession => {
-	const next = controller.transition({ type: event })
+	const next = OPERATION_STATE_BY_EVENT[event]
 	const timestamp = now()
 	return {
 		...session,
@@ -283,6 +293,26 @@ const getHeartbeatBucket = ({
 const formatErrorMessage = (error: unknown): string =>
 	error instanceof Error ? error.message : String(error)
 
+const summarizeSdkResult = (value: unknown): string | undefined => {
+	if (typeof value === "boolean") return String(value)
+	if (Array.isArray(value)) return `count=${value.length}`
+	if (typeof value !== "object" || value === null) return undefined
+
+	if ("available" in value && typeof value.available === "boolean") {
+		return `available=${String(value.available)}`
+	}
+
+	return "hash" in value && typeof value.hash === "string" ? `hash=${value.hash}` : undefined
+}
+
+const getDurationMs = (startedAt: string, endedAt: string): number => {
+	const startedAtMs = Date.parse(startedAt)
+	const endedAtMs = Date.parse(endedAt)
+	return Number.isNaN(startedAtMs) || Number.isNaN(endedAtMs)
+		? 0
+		: Math.max(0, endedAtMs - startedAtMs)
+}
+
 const TRANSIENT_CLAIM_UNAVAILABLE_ERROR_PATTERNS = [
 	/Did not find any (deposit|withdrawal) to finalize/i,
 	/No (deposit|withdrawal) witnesses found/i,
@@ -299,14 +329,6 @@ const isTransientClaimUnavailableError = (error: unknown): boolean => {
 
 const isRetryableCapabilityError = (error: unknown): boolean =>
 	!isInsufficientFirstWithdrawalAmountError(error)
-
-const getRecordedSessionFromError = (error: unknown): OperationSession | undefined =>
-	typeof error === "object" &&
-	error !== null &&
-	"session" in error &&
-	typeof error.session === "object"
-		? (error.session as OperationSession)
-		: undefined
 
 const maybeEmitHeartbeat = async ({
 	session,
@@ -351,7 +373,6 @@ const maybeEmitHeartbeat = async ({
 
 const maybeEnterWaitState = async ({
 	session,
-	controller,
 	sessionStore,
 	log,
 	now,
@@ -363,7 +384,6 @@ const maybeEnterWaitState = async ({
 	details
 }: {
 	session: OperationSession
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	now: () => string
@@ -376,13 +396,8 @@ const maybeEnterWaitState = async ({
 }): Promise<OperationSession> => {
 	const nextSession =
 		tracker.lastWaitSignature === signature
-			? {
-					...session,
-					...patch,
-					updatedAt: now()
-				}
+			? { ...session, ...patch, updatedAt: now() }
 			: transitionSession({
-					controller,
 					session,
 					event: phaseEvent,
 					now,
@@ -392,13 +407,7 @@ const maybeEnterWaitState = async ({
 	if (tracker.lastWaitSignature !== signature) {
 		tracker.lastWaitSignature = signature
 		tracker.emittedImmediateHeartbeat = false
-		await persistSession({
-			session: nextSession,
-			sessionStore,
-			log,
-			event,
-			details
-		})
+		await persistSession({ session: nextSession, sessionStore, log, event, details })
 	}
 
 	return nextSession
@@ -407,7 +416,6 @@ const maybeEnterWaitState = async ({
 const enterDecisionWaitState = async ({
 	session,
 	decision,
-	controller,
 	sessionStore,
 	log,
 	now,
@@ -416,7 +424,6 @@ const enterDecisionWaitState = async ({
 }: {
 	session: OperationSession
 	decision: BridgeRuntimeDecision
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	now: () => string
@@ -429,7 +436,6 @@ const enterDecisionWaitState = async ({
 
 	return maybeEnterWaitState({
 		session,
-		controller,
 		sessionStore,
 		log,
 		now,
@@ -444,7 +450,6 @@ const enterDecisionWaitState = async ({
 
 const withRetry = async <T>({
 	session,
-	controller,
 	sessionStore,
 	log,
 	sleep,
@@ -455,7 +460,6 @@ const withRetry = async <T>({
 	run
 }: {
 	session: OperationSession
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	sleep: (ms: number) => Promise<void>
@@ -469,37 +473,51 @@ const withRetry = async <T>({
 	let attempt = 1
 
 	for (;;) {
+		const startedAt = now()
 		try {
-			const { session: nextSession, value } = await createInstrumentedBridgeAdapter({
-				adapter: {},
-				session: currentSession
-			}).call(operation, run, { attempt })
-			currentSession = nextSession
+			const value = await run()
+			const endedAt = now()
+			currentSession = withRecordedSdkCall({
+				session: currentSession,
+				trace: {
+					operation,
+					attempt,
+					startedAt,
+					endedAt,
+					durationMs: getDurationMs(startedAt, endedAt),
+					success: true,
+					result: summarizeSdkResult(value)
+				}
+			})
 			return { session: currentSession, value }
 		} catch (error) {
-			currentSession = getRecordedSessionFromError(error) ?? currentSession
-			if (shouldRetry && !shouldRetry(error)) {
-				throw error
-			}
+			const endedAt = now()
+			currentSession = withRecordedSdkCall({
+				session: currentSession,
+				trace: {
+					operation,
+					attempt,
+					startedAt,
+					endedAt,
+					durationMs: getDurationMs(startedAt, endedAt),
+					success: false,
+					message: formatErrorMessage(error)
+				}
+			})
+			if (shouldRetry && !shouldRetry(error)) throw error
 
 			currentSession = transitionSession({
-				controller,
 				session: currentSession,
 				event: "MARK_RETRYING",
 				now,
-				patch: {
-					lastError: formatErrorMessage(error)
-				}
+				patch: { lastError: formatErrorMessage(error) }
 			})
 			await persistSession({
 				session: currentSession,
 				sessionStore,
 				log,
 				event: "retrying",
-				details: {
-					operation,
-					message: formatErrorMessage(error)
-				}
+				details: { operation, message: formatErrorMessage(error) }
 			})
 			await sleep(retryDelayMs ?? RETRY_SLEEP_MS)
 			attempt += 1
@@ -509,21 +527,18 @@ const withRetry = async <T>({
 
 const completeSession = async ({
 	session,
-	controller,
 	sessionStore,
 	log,
 	now,
 	finalTransaction
 }: {
 	session: OperationSession
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	now: () => string
 	finalTransaction?: OperationSession["finalTransaction"]
 }) => {
 	const completed = transitionSession({
-		controller,
 		session,
 		event: "MARK_COMPLETED",
 		now,
@@ -541,55 +556,42 @@ const completeSession = async ({
 
 const cancelSession = async ({
 	session,
-	controller,
 	sessionStore,
 	log,
 	now
 }: {
 	session: OperationSession
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	now: () => string
 }) => {
 	const cancelled = transitionSession({
-		controller,
 		session,
 		event: "MARK_CANCELLED",
 		now
 	})
-	await persistSession({
-		session: cancelled,
-		sessionStore,
-		log,
-		event: "cancelled"
-	})
+	await persistSession({ session: cancelled, sessionStore, log, event: "cancelled" })
 	return cancelled
 }
 
 const failSession = async ({
 	session,
-	controller,
 	sessionStore,
 	log,
 	now,
 	error
 }: {
 	session: OperationSession
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	now: () => string
 	error: string
 }) => {
 	const failed = transitionSession({
-		controller,
 		session,
 		event: "MARK_FAILED",
 		now,
-		patch: {
-			lastError: error
-		}
+		patch: { lastError: error }
 	})
 	await persistSession({
 		session: failed,
@@ -605,7 +607,6 @@ type BridgeRunnerContext = {
 	session: OperationSession
 	input: BridgeFlowInput
 	deps: BridgeFlowDeps
-	controller: ReturnType<typeof createOperationStateController>
 	waitTracker: WaitStateTracker
 	now: () => string
 	depositAnalysis?: DepositQueueState
@@ -673,10 +674,6 @@ const createInitialRunnerContext = (
 		input,
 		deps,
 		now,
-		controller: createOperationStateController({
-			phase: session.phase,
-			status: session.status
-		}),
 		waitTracker: {
 			emittedImmediateHeartbeat: false
 		}
@@ -687,7 +684,7 @@ const runSubmitStep = async (
 	context: BridgeRunnerContext,
 	direction: "deposit" | "withdrawal"
 ): Promise<RunnerOutput> => {
-	const { deps, controller, now } = context
+	const { deps, now } = context
 	let { session } = context
 
 	try {
@@ -695,7 +692,6 @@ const runSubmitStep = async (
 			direction === "deposit"
 				? await withRetry({
 						session,
-						controller,
 						sessionStore: deps.sessionStore,
 						log: deps.log,
 						sleep: deps.sleep,
@@ -717,7 +713,6 @@ const runSubmitStep = async (
 					})
 				: await withRetry({
 						session,
-						controller,
 						sessionStore: deps.sessionStore,
 						log: deps.log,
 						sleep: deps.sleep,
@@ -739,7 +734,6 @@ const runSubmitStep = async (
 
 		session = submitResult.session
 		session = transitionSession({
-			controller,
 			session,
 			event: "MARK_SUBMITTED",
 			now,
@@ -764,7 +758,6 @@ const runSubmitStep = async (
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -776,13 +769,12 @@ const runSubmitStep = async (
 }
 
 const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<RunnerOutput> => {
-	const { deps, controller, waitTracker, now } = context
+	const { deps, waitTracker, now } = context
 	let { session } = context
 
 	try {
 		const depositStatusesResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -832,7 +824,6 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			return {
 				session: await cancelSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now
@@ -849,7 +840,6 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			return {
 				session: await completeSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now,
@@ -867,7 +857,6 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 		session = await enterDecisionWaitState({
 			session,
 			decision: initialDecision,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			now,
@@ -888,7 +877,6 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 		const [canFinalizeDepositResult, canCancelResult] = await Promise.all([
 			withRetry({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				sleep: deps.sleep,
@@ -904,7 +892,6 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			}),
 			withRetry({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				sleep: deps.sleep,
@@ -1020,7 +1007,6 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1032,13 +1018,12 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 }
 
 const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<RunnerOutput> => {
-	const { deps, controller, waitTracker, now } = context
+	const { deps, waitTracker, now } = context
 	let { session } = context
 
 	try {
 		const withdrawalStatusesResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -1074,7 +1059,6 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			return {
 				session: await completeSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now,
@@ -1092,7 +1076,6 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 		session = await enterDecisionWaitState({
 			session,
 			decision: initialDecision,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			now,
@@ -1136,7 +1119,6 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 
 		const canFinalizeResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -1176,7 +1158,6 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			return {
 				session: await completeSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now,
@@ -1239,7 +1220,6 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1251,14 +1231,13 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 }
 
 const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<RunnerOutput> => {
-	const { deps, controller, waitTracker, now, depositAnalysis } = context
+	const { deps, waitTracker, now, depositAnalysis } = context
 	let { session } = context
 
 	if (!depositAnalysis) {
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1279,7 +1258,6 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 	try {
 		const finalizeDepositResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -1299,7 +1277,6 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 		session = finalizeDepositResult.session
 		const finalizeResult = finalizeDepositResult.value
 		session = transitionSession({
-			controller,
 			session,
 			event: "MARK_FINALIZING",
 			now,
@@ -1348,7 +1325,6 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 			return {
 				session: await failSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now,
@@ -1375,14 +1351,13 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 }
 
 const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<RunnerOutput> => {
-	const { deps, controller, waitTracker, now, depositAnalysis } = context
+	const { deps, waitTracker, now, depositAnalysis } = context
 	let { session } = context
 
 	if (!depositAnalysis) {
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1395,7 +1370,6 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 	try {
 		const cancelDepositResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -1428,7 +1402,6 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 			isCurrentTarget: cancellingCurrentTarget
 		})
 		session = transitionSession({
-			controller,
 			session,
 			event: "MARK_CANCELLING",
 			now,
@@ -1473,7 +1446,6 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1485,14 +1457,13 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 }
 
 const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<RunnerOutput> => {
-	const { deps, controller, waitTracker, now, withdrawalAnalysis } = context
+	const { deps, waitTracker, now, withdrawalAnalysis } = context
 	let { session } = context
 
 	if (!withdrawalAnalysis) {
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1505,7 +1476,6 @@ const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<
 	try {
 		const finalizeWithdrawalResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -1525,7 +1495,6 @@ const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<
 		session = finalizeWithdrawalResult.session
 		const finalizeResult = finalizeWithdrawalResult.value
 		session = transitionSession({
-			controller,
 			session,
 			event: "MARK_FINALIZING",
 			now,
@@ -1573,7 +1542,6 @@ const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<
 			return {
 				session: await failSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now,
@@ -1603,7 +1571,7 @@ const runWaitStep = async (
 	context: BridgeRunnerContext,
 	direction: "deposit" | "withdrawal"
 ): Promise<RunnerOutput> => {
-	const { deps, controller, now } = context
+	const { deps, now } = context
 	const { session } = context
 
 	try {
@@ -1618,7 +1586,6 @@ const runWaitStep = async (
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
