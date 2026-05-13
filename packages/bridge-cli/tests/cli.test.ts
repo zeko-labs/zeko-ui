@@ -66,6 +66,30 @@ describe("cli skeleton", () => {
 		}
 	})
 
+	it("requires an amount on the high-level bridge command", async () => {
+		const command = createBridgeCommand()
+
+		await expect(
+			command.run?.({
+				args: {
+					_: [],
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					amount: "",
+					account: "B62test",
+					recipient: "B62test",
+					timeoutSlots: "",
+					pollIntervalMs: "",
+					retryDelayMs: "",
+					json: false,
+					verbose: false
+				},
+				rawArgs: [],
+				cmd: command
+			})
+		).rejects.toThrow("Missing required --amount")
+	})
+
 	it("accepts kebab-case poll delay on the high-level bridge command", async () => {
 		const sleeps: number[] = []
 		const adapter: BridgeAdapter = {

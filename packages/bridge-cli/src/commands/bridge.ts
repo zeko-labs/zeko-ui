@@ -20,7 +20,8 @@ import {
 	readAliasedNumberArg,
 	readAliasedOptionalNumberArg,
 	readBooleanArg,
-	readOptionalStringArg
+	readOptionalStringArg,
+	readRequiredStringArg
 } from "../core/command-args"
 import {
 	createInstrumentedBridgeAdapter,
@@ -228,7 +229,7 @@ const deriveAccount = (from: ChainRef, explicit?: string): string => {
 const parseBridgeCommandArgs = (args: Record<string, unknown>) => ({
 	from: parseChainRef(readOptionalStringArg(args, "from") ?? "mina:testnet", "--from"),
 	to: parseChainRef(readOptionalStringArg(args, "to") ?? "zeko:testnet", "--to"),
-	amount: readOptionalStringArg(args, "amount") ?? "",
+	amount: readRequiredStringArg(args, "amount", "Missing required --amount"),
 	account: readOptionalStringArg(args, "account"),
 	recipient: readOptionalStringArg(args, "recipient"),
 	timeoutSlots: readAliasedOptionalNumberArg(args, "timeoutSlots", "timeout-slots"),
@@ -316,11 +317,18 @@ const isTransientClaimUnavailableError = (error: unknown): boolean => {
 const isRetryableCapabilityError = (error: unknown): boolean =>
 	!isInsufficientFirstWithdrawalAmountError(error)
 
+const isOperationSession = (value: unknown): value is OperationSession =>
+	typeof value === "object" &&
+	value !== null &&
+	typeof (value as { id?: unknown }).id === "string" &&
+	typeof (value as { status?: unknown }).status === "string" &&
+	typeof (value as { phase?: unknown }).phase === "string"
+
 const getRecordedSessionFromError = (error: unknown): OperationSession | undefined =>
 	typeof error === "object" &&
 	error !== null &&
 	"session" in error &&
-	typeof error.session === "object"
+	isOperationSession(error.session)
 		? (error.session as OperationSession)
 		: undefined
 

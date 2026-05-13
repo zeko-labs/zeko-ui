@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
 	readAliasedNumberArg,
+	readAliasedOptionalNumberArg,
 	readBooleanArg,
 	readOptionalStringArg
 } from "../src/core/command-args"
@@ -43,6 +44,16 @@ describe("command arg helpers", () => {
 				"--retry-delay-ms"
 			)
 		).toThrow("--retry-delay-ms must be a non-negative number")
+	})
+
+	it("ignores non-finite optional numeric flags", () => {
+		expect(
+			readAliasedOptionalNumberArg(
+				{ timeoutSlots: "not-a-number" },
+				"timeoutSlots",
+				"timeout-slots"
+			)
+		).toBeUndefined()
 	})
 
 	it("normalizes boolean flags", () => {

@@ -5,7 +5,7 @@ status: done
 blockedBy: []
 owner: codex
 created_at: 2026-05-13T04:30:00Z
-updated_at: 2026-05-13T04:56:00Z
+updated_at: 2026-05-13T05:22:00Z
 ---
 
 ## Requirements
@@ -36,6 +36,9 @@ updated_at: 2026-05-13T04:56:00Z
 - `moon run bridge-cli:lint -f`
   - Result: GREEN.
 - `moon run bridge-cli:test -f`
-  - Result: GREEN, 21 files passed, 98 tests passed, 13 skipped.
+  - Result: GREEN, 21 files passed, 101 tests passed, 13 skipped.
 - `moon run bridge-cli:build -f`
   - Result: GREEN. Build completed; the existing tsdown `resolve.tsconfigFilename` deprecation warning remains unrelated.
+- Review follow-up validation:
+  - `pnpm exec vitest run tests/cli.test.ts tests/command-args.test.ts tests/operation-services.test.ts` from `packages/bridge-cli`
+  - Result: GREEN, 16 tests passed.

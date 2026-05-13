@@ -101,4 +101,26 @@ describe("operation services", () => {
 		expect(queue.map((item) => item.direction)).toEqual(["withdrawal", "deposit"])
 		expect(queue[0]?.session?.id).toBe("existing-withdrawal")
 	})
+
+	it("does not match persisted sessions from another account", () => {
+		const persisted: OperationSession = {
+			...session,
+			id: "wrong-account-withdrawal",
+			account: "B62other",
+			direction: "withdrawal",
+			route: "zeko:testnet->mina:testnet",
+			submittedTransactions: [{ action: "submit", hash: "withdrawal-0" }]
+		}
+
+		const queue = createResumeQueue({
+			from: "zeko:testnet",
+			to: "mina:testnet",
+			account: "B62account",
+			persistedSessions: [persisted],
+			depositStatuses: [],
+			withdrawalStatuses: [withdrawal({ index: 0, hash: "withdrawal-0" })]
+		})
+
+		expect(queue[0]?.session).toBeUndefined()
+	})
 })

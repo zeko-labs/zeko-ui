@@ -49,6 +49,8 @@ type WithdrawalDecisionInput = {
 	now?: () => string
 }
 
+const FINALIZE_RETRY_AFTER_MS = 180_000
+
 const toPendingCancelMarker = ({
 	currentTargetIndex,
 	claimableIndex,
@@ -103,7 +105,7 @@ const getPendingFinalizeRetryState = ({
 
 	return {
 		isPending: true,
-		isStale: nowMs - submittedAtMs >= 180_000
+		isStale: nowMs - submittedAtMs >= FINALIZE_RETRY_AFTER_MS
 	}
 }
 

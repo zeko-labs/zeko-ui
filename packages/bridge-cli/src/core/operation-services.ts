@@ -144,21 +144,25 @@ export const matchesPendingItem = ({
 	direction,
 	from,
 	to,
+	account,
 	hash
 }: {
 	session: OperationSession
 	direction: "deposit" | "withdrawal"
 	from: ChainRef
 	to: ChainRef
+	account: string
 	hash: string
 }): boolean =>
 	session.direction === direction &&
 	session.route === formatRoute(from, to) &&
+	session.account === account &&
 	getSubmitHash(session) === hash
 
 export const createResumeQueue = ({
 	from,
 	to,
+	account,
 	persistedSessions,
 	depositStatuses,
 	withdrawalStatuses
@@ -184,6 +188,7 @@ export const createResumeQueue = ({
 					direction: "deposit",
 					from: queueRoutes.depositFrom,
 					to: queueRoutes.depositTo,
+					account,
 					hash: target.hash
 				})
 			)
@@ -201,6 +206,7 @@ export const createResumeQueue = ({
 					direction: "withdrawal",
 					from: queueRoutes.withdrawalFrom,
 					to: queueRoutes.withdrawalTo,
+					account,
 					hash: target.hash
 				})
 			)

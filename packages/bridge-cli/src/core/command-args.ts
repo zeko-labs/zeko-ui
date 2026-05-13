@@ -24,7 +24,10 @@ export const readAliasedStringArg = (
 
 export const readOptionalNumberArg = (args: CommandArgs, name: string): number | undefined => {
 	const value = readOptionalStringArg(args, name)
-	return value === undefined ? undefined : Number(value)
+	if (value === undefined) return undefined
+
+	const parsed = Number(value)
+	return Number.isFinite(parsed) ? parsed : undefined
 }
 
 export const readAliasedOptionalNumberArg = (
