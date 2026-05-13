@@ -126,7 +126,8 @@ const normalizeRetryableTransactionOptions = (
 }
 
 const isUnknownLiveActionCursorError = (error: unknown): boolean => {
-	const message = error instanceof Error ? error.message : String(error)
+	const message =
+		error && typeof error === "object" && "message" in error ? String(error.message) : String(error)
 	return /\bfrom\s+\d+\s+not found\b/i.test(message)
 }
 
@@ -361,7 +362,7 @@ export class Bridge {
 		if (!lastArchiveActionState) return await fetchRecentActions(this.l2Client, pk)
 
 		try {
-			return (await fetchRecentActions(this.l2Client, pk, lastArchiveActionState)).slice(1)
+			return await fetchRecentActions(this.l2Client, pk, lastArchiveActionState)
 		} catch (error) {
 			if (!isUnknownLiveActionCursorError(error)) throw error
 

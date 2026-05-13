@@ -194,3 +194,4 @@
 - T194 | done | scope-zeko-skill-endpoint-validation | done/T194-scope-zeko-skill-endpoint-validation.md
 - T195 | done | fix-actions-indexer-canonical-param-limit | done/T195-fix-actions-indexer-canonical-param-limit.md
 - T196 | done | fallback-live-withdrawal-actions | done/T196-fallback-live-withdrawal-actions.md
+- T197 | done | resolve-bridge-sdk-review-findings | done/T197-resolve-bridge-sdk-review-findings.md
