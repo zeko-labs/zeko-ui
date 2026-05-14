@@ -68,6 +68,7 @@ import {
 	getVkHash,
 	refreshCache,
 	safeDecrement,
+	uint32Max,
 	withdrawalAux
 } from "./utils"
 
@@ -126,6 +127,22 @@ const normalizeRetryableTransactionOptions = (
 	}
 }
 
+const isUnknownLiveActionCursorError = (error: unknown): boolean => {
+	const message =
+		error && typeof error === "object" && "message" in error ? String(error.message) : String(error)
+	return /\bfrom\s+\d+\s+not found\b/i.test(message)
+}
+
+const mergeActionsByAfterState = <TAction extends Action>(actions: TAction[]): TAction[] => {
+	const seen = new Set<string>()
+	return actions.filter((action) => {
+		const afterState = action.afterActionState.toString()
+		if (seen.has(afterState)) return false
+		seen.add(afterState)
+		return true
+	})
+}
+
 export class Bridge {
 	private debug(message: string, details?: unknown): void {
 		if (!this.config.verbose) return
@@ -160,7 +177,10 @@ export class Bridge {
 
 		public readonly bridgeFeeRecipientL1: PublicKey,
 		public readonly bridgeFeeRecipientL2: PublicKey,
-		public readonly bridgeProofFee: UInt64
+		public readonly bridgeProofFee: UInt64,
+
+		private readonly V2_DEPOSITS_START_INDEX: UInt32 = UInt32.zero,
+		private readonly V2_WITHDRAWALS_START_INDEX: UInt32 = UInt32.zero
 	) {}
 
 	static async init(config: Config): Promise<Bridge> {
@@ -190,6 +210,11 @@ export class Bridge {
 		const sequencerPk = sequencerPkResult.data?.sequencerPk
 		if (!sequencerPk) throw new Error("Sequencer public key not found")
 
+		const V2_DEPOSITS_START_INDEX =
+			config.l2Network === "testnet" ? UInt32.from(68520) : UInt32.from(0)
+		const V2_WITHDRAWALS_START_INDEX =
+			config.l2Network === "testnet" ? UInt32.from(10529) : UInt32.from(0)
+
 		return new Bridge(
 			config,
 			l1Client,
@@ -208,7 +233,9 @@ export class Bridge {
 			UInt32.from(circuitsConfig.withdrawalDelay),
 			PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL1),
 			PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL2),
-			UInt64.from(circuitsConfig.bridgeProofFee)
+			UInt64.from(circuitsConfig.bridgeProofFee),
+			V2_DEPOSITS_START_INDEX,
+			V2_WITHDRAWALS_START_INDEX
 		)
 	}
 
@@ -316,8 +343,8 @@ export class Bridge {
 	private async fetchUserWithdrawalActions(pk: PublicKey): Promise<Array<Action & Withdrawal>> {
 		const archiveActions = await fetchActions(this.l2ArchiveClient, pk)
 		const lastActionState = archiveActions.at(-1)?.afterActionState.toString()
-		const liveActions = (await fetchRecentActions(this.l2Client, pk, lastActionState)).slice(1)
-		const userInnerActions = [...archiveActions, ...liveActions]
+		const liveActions = await this.fetchLiveWithdrawalActions(pk, lastActionState)
+		const userInnerActions = mergeActionsByAfterState([...archiveActions, ...liveActions])
 
 		this.debug("fetchUserWithdrawals action sources", {
 			archiveEndpoint: this.config.zekoArchiveUrl,
@@ -341,6 +368,24 @@ export class Bridge {
 				}
 			})
 		)
+	}
+
+	private async fetchLiveWithdrawalActions(
+		pk: PublicKey,
+		lastArchiveActionState?: string
+	): Promise<Action[]> {
+		if (!lastArchiveActionState) return await fetchRecentActions(this.l2Client, pk)
+
+		try {
+			return await fetchRecentActions(this.l2Client, pk, lastArchiveActionState)
+		} catch (error) {
+			if (!isUnknownLiveActionCursorError(error)) throw error
+
+			this.debug("fetchUserWithdrawals live cursor not found; retrying without cursor", {
+				lastArchiveActionState
+			})
+			return await fetchRecentActions(this.l2Client, pk)
+		}
 	}
 
 	private async fetchUserWithdrawals(pk: PublicKey): Promise<Withdrawal[]> {
@@ -543,7 +588,7 @@ export class Bridge {
 			return { ok: false, msg: NO_OUTER_COMMIT_REASON }
 		}
 
-		const minDepositIndex = context.prevNextDeposit
+		const minDepositIndex = uint32Max(this.V2_DEPOSITS_START_INDEX, context.prevNextDeposit)
 
 		for (const witness of this.getSortedDepositWitnesses(context)) {
 			if (
@@ -867,7 +912,7 @@ export class Bridge {
 		witness: ExtractInput<typeof finalizeDepositMutation>
 	} | null {
 		const depositParams = this.getDepositParamsForWitness(context, witness)
-		const minDepositIndex = context.prevNextDeposit
+		const minDepositIndex = uint32Max(this.V2_DEPOSITS_START_INDEX, context.prevNextDeposit)
 
 		if (this.isDepositCancelled(context, witness) || this.isDepositFinalised(context, witness)) {
 			return null
@@ -1020,7 +1065,10 @@ export class Bridge {
 
 		if (cancelled || finalised) return null
 
-		const minDepositIndex = context.prevNextCancelledDeposit
+		const minDepositIndex = uint32Max(
+			this.V2_DEPOSITS_START_INDEX,
+			context.prevNextCancelledDeposit
+		)
 
 		if (minDepositIndex.greaterThan(UInt32.from(witness.index)).toBoolean()) return null
 
@@ -1554,6 +1602,9 @@ export class Bridge {
 		let alreadyFinalisedCount = 0
 		let alreadyFinalisedIndex: number | undefined
 		let unfinalisedMatchCount = 0
+
+		const minWithdrawalIndex = uint32Max(this.V2_WITHDRAWALS_START_INDEX, prevNextWithdrawal)
+
 		const myWithdrawalIndex = innerActions.findIndex((action) => {
 			const matchingWithdrawal = findMatchingWithdrawal(action)
 
@@ -1564,6 +1615,8 @@ export class Bridge {
 				alreadyFinalisedIndex = Math.max(alreadyFinalisedIndex ?? action.index, action.index)
 				return false
 			}
+
+			if (minWithdrawalIndex.greaterThan(UInt32.from(action.index)).toBoolean()) return false
 
 			unfinalisedMatchCount++
 

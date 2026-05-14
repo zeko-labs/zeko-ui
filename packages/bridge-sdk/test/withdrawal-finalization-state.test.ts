@@ -84,6 +84,23 @@ const buildWithdrawalAction = (withdrawal: Withdrawal, index: number): Action & 
 	timestamp: `${1700000000000 + index}`
 })
 
+const buildRawWithdrawalAction = (
+	withdrawal: Withdrawal,
+	{
+		index,
+		beforeState,
+		afterState,
+		hash
+	}: { index: number; beforeState: number; afterState: number; hash: string }
+): Action => ({
+	action: [...withdrawal.recipient.toFields(), ...withdrawal.amount.toFields()],
+	afterActionState: Field(afterState),
+	beforeActionState: Field(beforeState),
+	hash,
+	index,
+	timestamp: `${1700000000000 + index}`
+})
+
 const buildCommit = ({
 	innerActionStateLength
 }: { innerActionStateLength: number }): OuterCommit => ({
@@ -164,6 +181,82 @@ describe("withdrawal finalization state", () => {
 			reason: null,
 			index: 4
 		})
+	})
+
+	it("falls back to cursorless live withdrawal actions when the archive cursor is not retained live", async () => {
+		const bridge = buildBridge()
+		const withdrawal = buildWithdrawal()
+		const archivedAction = buildRawWithdrawalAction(withdrawal, {
+			index: 0,
+			beforeState: 200,
+			afterState: 201,
+			hash: "archived-withdrawal"
+		})
+		const liveDuplicate = buildRawWithdrawalAction(withdrawal, {
+			index: 10,
+			beforeState: 200,
+			afterState: 201,
+			hash: "live-duplicate"
+		})
+		const liveAction = buildRawWithdrawalAction(withdrawal, {
+			index: 11,
+			beforeState: 201,
+			afterState: 202,
+			hash: "live-withdrawal"
+		})
+		const bridgeInternals = bridge as unknown as {
+			fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
+		}
+		const fetchRecentActions = vi
+			.spyOn(utils, "fetchRecentActions")
+			.mockRejectedValueOnce({
+				message:
+					"from 4474967054315016516812122185988395396069982311953508365013897653982583369647 not found"
+			})
+			.mockResolvedValueOnce([liveDuplicate, liveAction])
+
+		vi.spyOn(utils, "fetchActions").mockResolvedValue([archivedAction])
+
+		const actions = await bridgeInternals.fetchUserWithdrawalActions(recipient)
+
+		expect(fetchRecentActions).toHaveBeenNthCalledWith(1, expect.any(Function), recipient, "201")
+		expect(fetchRecentActions).toHaveBeenNthCalledWith(2, expect.any(Function), recipient)
+		expect(actions.map((action) => action.afterActionState.toString())).toEqual(["201", "202"])
+		expect(actions.map((action) => action.hash)).toEqual(["archived-withdrawal", "live-withdrawal"])
+	})
+
+	it("deduplicates incremental live withdrawal actions without assuming cursor action order", async () => {
+		const bridge = buildBridge()
+		const withdrawal = buildWithdrawal()
+		const archivedAction = buildRawWithdrawalAction(withdrawal, {
+			index: 0,
+			beforeState: 200,
+			afterState: 201,
+			hash: "archived-withdrawal"
+		})
+		const liveAction = buildRawWithdrawalAction(withdrawal, {
+			index: 11,
+			beforeState: 201,
+			afterState: 202,
+			hash: "live-withdrawal"
+		})
+		const liveDuplicate = buildRawWithdrawalAction(withdrawal, {
+			index: 10,
+			beforeState: 200,
+			afterState: 201,
+			hash: "live-duplicate"
+		})
+		const bridgeInternals = bridge as unknown as {
+			fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
+		}
+
+		vi.spyOn(utils, "fetchActions").mockResolvedValue([archivedAction])
+		vi.spyOn(utils, "fetchRecentActions").mockResolvedValue([liveAction, liveDuplicate])
+
+		const actions = await bridgeInternals.fetchUserWithdrawalActions(recipient)
+
+		expect(actions.map((action) => action.afterActionState.toString())).toEqual(["201", "202"])
+		expect(actions.map((action) => action.hash)).toEqual(["archived-withdrawal", "live-withdrawal"])
 	})
 
 	it("reports an already-finalised withdrawal when helper state has consumed its index", async () => {
