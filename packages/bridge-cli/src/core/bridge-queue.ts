@@ -124,6 +124,7 @@ export type DepositQueueState = {
 	target?: DepositStatus
 	targetIndex?: number
 	claimableIndex?: number
+	effectiveClaimableIndex?: number
 	pendingAhead: number
 	blockingAhead: number
 	skippableAhead: number

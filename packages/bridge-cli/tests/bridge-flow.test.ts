@@ -88,6 +88,136 @@ describe("bridge flow", () => {
 		expect(result.status).toBe("completed")
 	})
 
+	it("does not resubmit SDK-selected prior deposit finalization while status lags", async () => {
+		let submitCalls = 0
+		let finalizeCalls = 0
+		let sleepCalls = 0
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-sdk-selected-prior-deposit",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "2",
+				account: "B62test",
+				timeoutSlots: 10
+			},
+			{
+				adapter: {
+					async submitDeposit() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko:testnet",
+							hash: "submit-current",
+							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
+							included: true
+						}
+					},
+					async getDepositStatuses() {
+						if (submitCalls === 0) return []
+
+						if (finalizeCalls === 0 || sleepCalls < 2) {
+							return [
+								{
+									index: 0,
+									amount: "1",
+									recipient: "B62test",
+									cancelled: false,
+									cancellable: false,
+									synced: true,
+									accepted: true,
+									confirmed: false,
+									finalised: false,
+									hash: "submit-prior",
+									timestamp: "2026-03-09T19:00:00.000Z"
+								},
+								{
+									index: 1,
+									amount: "2",
+									recipient: "B62test",
+									cancelled: false,
+									cancellable: false,
+									synced: true,
+									accepted: true,
+									confirmed: false,
+									finalised: false,
+									hash: "submit-current",
+									timestamp: "2026-03-09T19:01:00.000Z"
+								}
+							]
+						}
+
+						return [
+							{
+								index: 0,
+								amount: "1",
+								recipient: "B62test",
+								cancelled: false,
+								cancellable: false,
+								synced: true,
+								accepted: true,
+								confirmed: true,
+								finalised: true,
+								hash: "finalize-prior",
+								timestamp: "2026-03-09T19:02:00.000Z"
+							},
+							{
+								index: 1,
+								amount: "2",
+								recipient: "B62test",
+								cancelled: false,
+								cancellable: false,
+								synced: true,
+								accepted: true,
+								confirmed: true,
+								finalised: true,
+								hash: "finalize-current",
+								timestamp: "2026-03-09T19:03:00.000Z"
+							}
+						]
+					},
+					async canFinalizeDeposit() {
+						return { available: true, reason: null, index: 0 }
+					},
+					async canCancelDeposit() {
+						return { available: false, reason: "No cancellable deposit found" }
+					},
+					async finalizeDeposit() {
+						finalizeCalls += 1
+						if (finalizeCalls > 1) {
+							throw new Error("duplicate prior deposit finalization")
+						}
+
+						return {
+							success: true,
+							direction: "deposit",
+							action: "finalize",
+							route: "mina:testnet->zeko:testnet",
+							hash: "finalize-prior",
+							explorerUrl: "https://zekoscan.io/testnet/tx/finalize-prior",
+							included: true
+						}
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					sleepCalls += 1
+				},
+				pollIntervalMs: 0,
+				now: () => "2026-03-10T00:00:00.000Z"
+			}
+		)
+
+		expect(finalizeCalls).toBe(1)
+		expect(result.status).toBe("completed")
+	})
+
 	it("drains older queued deposits before the new submission appears in status", async () => {
 		let depositStatusCalls = 0
 		let submitCalls = 0

@@ -252,6 +252,40 @@ describe("direct commands", () => {
 		expect(sleepCalls).toEqual([7, 7, 7, 7, 7, 7])
 	})
 
+	it("stops retrying recoverable deposit submit mutations after the retry budget", async () => {
+		const sleepCalls: number[] = []
+		let attempts = 0
+
+		await expect(
+			runDepositSubmit(
+				{
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					json: false,
+					account: "B62test",
+					amount: "1",
+					timeoutSlots: 1,
+					wait: false
+				},
+				{
+					adapter: {
+						async submitDeposit() {
+							attempts += 1
+							throw new Error("No key returned from mutation")
+						}
+					},
+					sleep: async (ms) => {
+						sleepCalls.push(ms)
+					},
+					retryDelayMs: 7
+				}
+			)
+		).rejects.toThrow("No key returned from mutation")
+
+		expect(attempts).toBe(10)
+		expect(sleepCalls).toEqual([7, 7, 7, 7, 7, 7, 7, 7, 7])
+	})
+
 	it("does not retry non-recoverable deposit submit failures", async () => {
 		let attempts = 0
 

@@ -213,6 +213,7 @@ export const decideDepositStep = ({
 		pendingAhead,
 		canFinalize: canFinalize.available
 	})
+	const analysisWithEffectiveClaim = { ...analysis, effectiveClaimableIndex }
 	const pendingFinalizeState = getPendingFinalizeRetryState({
 		session,
 		claimableIndex: effectiveClaimableIndex ?? targetIndex,
@@ -255,7 +256,7 @@ export const decideDepositStep = ({
 	if (shouldFinalize) {
 		return {
 			action: "finalize",
-			analysis,
+			analysis: analysisWithEffectiveClaim,
 			claimableIndex: effectiveClaimableIndex
 		}
 	}
@@ -271,7 +272,7 @@ export const decideDepositStep = ({
 		}
 	}
 
-	return waitForDeposit({ session, analysis, effectiveClaimableIndex })
+	return waitForDeposit({ session, analysis: analysisWithEffectiveClaim, effectiveClaimableIndex })
 }
 
 const waitForWithdrawal = ({

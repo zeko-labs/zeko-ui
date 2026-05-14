@@ -69,6 +69,7 @@ type DirectCommandDeps = {
 }
 
 const DIRECT_MUTATION_RETRY_DELAY_MS = 5_000
+const DIRECT_MUTATION_MAX_ATTEMPTS = 10
 
 const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	if (explicit) return explicit
@@ -139,18 +140,27 @@ const selectLatest = <T extends { index: number }>(items: T[], latest: boolean):
 const retryRecoverableMutation = async <T>({
 	run,
 	sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-	retryDelayMs = DIRECT_MUTATION_RETRY_DELAY_MS
+	retryDelayMs = DIRECT_MUTATION_RETRY_DELAY_MS,
+	maxAttempts = DIRECT_MUTATION_MAX_ATTEMPTS
 }: {
 	run: () => Promise<T>
 	sleep?: (ms: number) => Promise<void>
 	retryDelayMs?: number
+	maxAttempts?: number
 }): Promise<T> => {
-	for (;;) {
+	for (let attempt = 1; ; attempt += 1) {
 		try {
 			return await run()
 		} catch (error) {
 			if (!isRecoverableMutationError(error)) {
 				throw error
+			}
+
+			if (attempt >= maxAttempts) {
+				const message = error instanceof Error ? error.message : String(error)
+				throw new Error(
+					`Recoverable deposit submit mutation failed after ${attempt} attempts: ${message}`
+				)
 			}
 
 			await sleep(retryDelayMs)

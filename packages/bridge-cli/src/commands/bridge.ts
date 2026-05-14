@@ -1265,12 +1265,14 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 		}
 	}
 
-	const effectiveClaimableIndex = resolveEffectiveDepositClaimableIndex({
-		claimableIndex: depositAnalysis.claimableIndex,
-		target: depositAnalysis.target,
-		pendingAhead: depositAnalysis.pendingAhead,
-		canFinalize: true
-	})
+	const effectiveClaimableIndex =
+		depositAnalysis.effectiveClaimableIndex ??
+		resolveEffectiveDepositClaimableIndex({
+			claimableIndex: depositAnalysis.claimableIndex,
+			target: depositAnalysis.target,
+			pendingAhead: depositAnalysis.pendingAhead,
+			canFinalize: true
+		})
 	const hasSubmittedDeposit = getSubmitHash(session) !== undefined
 
 	try {
