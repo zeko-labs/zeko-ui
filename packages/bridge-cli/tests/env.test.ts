@@ -17,7 +17,7 @@ describe("bridge cli env loading", () => {
 		])
 	})
 
-	it("prefers earlier dotenv files over later files and inherited env", async () => {
+	it("prefers inherited env over dotenv files and earlier dotenv files over later files", async () => {
 		const env: Record<string, string | undefined> = {
 			MINA_PRIVATE_KEY: "global-wallet"
 		}
@@ -47,7 +47,7 @@ describe("bridge cli env loading", () => {
 			"/workspace/packages/bridge-cli/dist/.env",
 			"/workspace/project/bin/.env"
 		])
-		expect(env.MINA_PRIVATE_KEY).toBe("home-wallet")
+		expect(env.MINA_PRIVATE_KEY).toBe("global-wallet")
 	})
 
 	it("skips unreadable dotenv candidates and falls back to inherited env", async () => {

@@ -1,28 +1,17 @@
 # Bridge CLI
 
-CLI for bridging assets between Mina and Zeko.
+Command-line tool for bridging assets between Mina and Zeko.
 
-`zeko-bridge` is built around a single high-level `bridge` command, which signs, submits, waits, retries transient network checks, advances queued claims in order, and streams progress until the requested bridge completes.
+Use the `zeko-bridge` binary from the npm package.
 
-Lower-level commands still exist, but they are advanced tools for debugging, recovery, and explicit operator control.
-
-The package is maintained in the private Zeko monorepo and mirrored to [zeko-labs/bridge-cli](https://github.com/zeko-labs/bridge-cli) for public source, issues, and releases.
-
-## Status
+## Supported Routes
 
 Enabled routes:
 
-- `mina:testnet -> zeko:testnet`
-- `zeko:testnet -> mina:testnet`
-
-Known but not yet enabled:
-
-- `mina:mainnet -> zeko:mainnet`
-- `zeko:mainnet -> mina:mainnet`
-- `eth:testnet -> zeko:testnet`
-- `zeko:testnet -> eth:testnet`
-- `eth:mainnet -> zeko:mainnet`
-- `zeko:mainnet -> eth:mainnet`
+| From           | To             | Direction  |
+| -------------- | -------------- | ---------- |
+| `mina:testnet` | `zeko:testnet` | Deposit    |
+| `zeko:testnet` | `mina:testnet` | Withdrawal |
 
 ## Installation
 
@@ -32,81 +21,108 @@ Install globally:
 npm install -g @zeko-labs/bridge-cli
 ```
 
-Or run it directly:
+Then run:
+
+```bash
+zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
+```
+
+Or run without a global install:
 
 ```bash
 npx -y @zeko-labs/bridge-cli bridge --from mina:testnet --to zeko:testnet --amount 1
 ```
 
-The npm release is a single built JavaScript tarball. There are no platform-specific bridge-cli packages.
-
 ## Configuration
 
-The CLI signs transactions from environment variables only in v1.
+The currently enabled routes use one Mina-compatible private key:
 
-Required variables:
+| Variable           | Required | Description                                                                   |
+| ------------------ | -------- | ----------------------------------------------------------------------------- |
+| `MINA_PRIVATE_KEY` | Yes      | Private key used to sign supported Mina and Zeko testnet bridge transactions. |
 
-| Variable           | Required | Description                                                        |
-| ------------------ | -------- | ------------------------------------------------------------------ |
-| `MINA_PRIVATE_KEY` | yes      | Shared wallet private key used for all currently supported routes. |
+You can export it in your shell:
 
-For human CLI usage, `zeko-bridge` auto-loads dotenv files in this order before falling back to inherited shell environment variables:
+```bash
+export MINA_PRIVATE_KEY="<wallet private key>"
+```
 
-1. `~/.zeko/.env`
-2. a sibling `.env` next to the CLI binary
-3. a sibling `.env` next to the invocation path
+For local CLI use, `zeko-bridge` also loads dotenv files. The recommended file is:
 
-Earlier files win over later files. If none of those files provide `MINA_PRIVATE_KEY`, the CLI falls back to the existing exported environment variable.
+```text
+~/.zeko/.env
+```
 
-## Recommended Usage
+with:
 
-### `bridge`
+```dotenv
+MINA_PRIVATE_KEY=
+```
 
-Use `bridge` by default.
+Explicit shell variables take precedence over dotenv files:
+
+```bash
+MINA_PRIVATE_KEY="<wallet private key>" zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
+```
+
+For keys that are not already set in the shell, the first dotenv file that provides the key wins.
+
+## Commands
+
+| Command                 | Use                                                                                                  |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `bridge`                | Recommended full bridge flow. Submits, waits, finalizes or cancels as needed, and prints the result. |
+| `operation list`        | Lists locally persisted operations.                                                                  |
+| `operation completed`   | Lists completed and cancelled operations.                                                            |
+| `operation status <id>` | Refreshes one operation from current network state and prints status JSON.                           |
+| `operation logs <id>`   | Prints the JSONL event log for one operation.                                                        |
+| `operation resume <id>` | Continues a persisted operation after interruption.                                                  |
+| `operation resume-all`  | Discovers and resumes pending bridge work for an account.                                            |
+| `deposit submit`        | Low-level deposit submit.                                                                            |
+| `deposit finalize`      | Low-level deposit finalization.                                                                      |
+| `deposit cancel`        | Low-level deposit cancellation.                                                                      |
+| `deposit status`        | Low-level deposit status lookup.                                                                     |
+| `withdrawal submit`     | Low-level withdrawal submit.                                                                         |
+| `withdrawal finalize`   | Low-level withdrawal finalization.                                                                   |
+| `withdrawal status`     | Low-level withdrawal status lookup.                                                                  |
+| `tui`                   | Opens the terminal UI for operations and logs.                                                       |
+| `doctor`                | Prints local path, signer, and route diagnostics.                                                    |
+
+## Full Bridge Flow
+
+Use `bridge` for normal bridging. It submits the bridge transaction, waits for network state to become claimable, performs the required finalize or cancel action, persists progress, and prints the final result.
 
 ```bash
 zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
 zeko-bridge bridge --from zeko:testnet --to mina:testnet --amount 3 --recipient B62q...
 zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1 --json
+zeko-bridge bridge --from zeko:testnet --to mina:testnet --amount 3 --json
 ```
+
+Both directions can take a long time. A bridge command staying open for many minutes or even hours is normal: the CLI is waiting for chain visibility, bridge queue state, and finalization readiness. Keep the process running until it prints the final result.
 
 Flags:
 
-| Flag              | Description                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------- |
-| `--from`          | Source chain reference. Defaults to `mina:testnet`.                                   |
-| `--to`            | Destination chain reference. Defaults to `zeko:testnet`.                              |
-| `--amount`        | Amount in Mina units.                                                                 |
-| `--recipient`     | Optional destination account. Defaults to the account derived from the active signer. |
-| `--timeout-slots` | Optional deposit timeout override for Mina-originated bridges.                        |
-| `--json`          | Emit the final result as JSON on stdout. Progress continues on stderr.                |
+| Flag                 | Default                                   | Description                                                                                  |
+| -------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `--from`             | `mina:testnet`                            | Source chain.                                                                                |
+| `--to`               | `zeko:testnet`                            | Destination chain.                                                                           |
+| `--amount`           | Required                                  | Amount in MINA units.                                                                        |
+| `--account`          | Optional, derived from `MINA_PRIVATE_KEY` | Source account to use for bridge status and transaction requests. Most users should omit it. |
+| `--recipient`        | Source account                            | Destination account.                                                                         |
+| `--timeout-slots`    | Route default                             | Deposit timeout override for Mina-to-Zeko deposits.                                          |
+| `--poll-interval-ms` | `20000`                                   | Delay between bridge status polls while waiting.                                             |
+| `--retry-delay-ms`   | `5000`                                    | Delay before retrying transient network or bridge service errors.                            |
+| `--json`             | `false`                                   | Print the final result as JSON on stdout. Progress remains on stderr.                        |
+| `--verbose`          | `false`                                   | Record and print SDK call diagnostics and wait reasons.                                      |
 
-Behavior:
+The command is designed to be left running until completion. Long waits can be normal while the source chain transaction becomes visible, while earlier queued bridge work is claimed, or while the destination chain becomes ready for finalization.
 
-- waits for completion by default
-- retries transient bridge status and capability checks
-- keeps printing useful progress during long waits without spamming every poll
-- advances earlier queued claims in order when the account already has pending bridge work
-- writes structured logs to disk for debugging and recovery
-- is intended to complete unattended from a single CLI invocation, even when the network wait is very long
-- validation of that unattended contract is only valid if the same original `bridge` process remains alive through completion; local persisted operation state alone is not proof that the live command is still running
+## Result JSON
 
-### Current Protocol Notes
+With `--json`, `bridge`, `operation resume`, and `operation resume-all` print machine-readable results.
 
-- Archive queries are most reliable when they scan recent history in roughly `10_000`-block windows instead of using a giant `from=0` range.
-- After `submitDeposit`, long waits in `waiting-submission` are primarily an L1 visibility/finality concern. Mina-side progression can be slow, so a long pre-target wait does not by itself imply a stuck proof or sequencer bug.
-- After a deposit has a target index, `canFinalizeDeposit` and `canCancelDeposit` still depend on the sequencer committing enough state to make the capability checks true. Long waits in `waiting-finalization` can therefore also be normal sequencer-side delay rather than a broken command loop.
-- The `Invalid key` failure mode is not a general long-wait condition. It applies only after `finalizeDeposit` has been submitted and the server-side proof request then takes too long to complete. If that post-finalize proving step runs for roughly an hour or longer, the sequencer may evict the proof request from memory and later return `Invalid key`. That case is currently treated as a terminal failure and is not yet automatically recoverable.
-- A cancellable deposit can never be finalized.
-- Deposit queue behavior is asymmetric:
-  - cancellable deposits are skippable
-  - finalizable deposits must never be skipped
-  - the protocol uses `lastFinalizedDeposit` on L2 and `lastCancelledDeposit` on L1, and only deposits with higher indices than those state values may be claimed
-- The CLI does not fully implement cancellable-deposit skipping yet. The current behavior is documented here so operators understand the protocol rule and the current gap.
-
-### JSON Result
-
-`--json` prints a final object like:
+Example `bridge --json` result:
 
 ```json
 {
@@ -127,58 +143,122 @@ Behavior:
 		"explorerUrl": "https://zekoscan.io/testnet/tx/5Jfinalize"
 	},
 	"explorer_urls": ["https://zekoscan.io/testnet/tx/5Jfinalize"],
-	"log_path": "/Users/example/Library/Logs/zeko-bridge/f3d3d12a-8a1c-4b8b-9a1e-2a6e6bc7a1d7.jsonl"
+	"log_path": "/Users/example/Library/Logs/zeko-bridge/f3d3d12a-8a1c-4b8b-9a1e-2a6e6bc7a1d7.jsonl",
+	"error": null
 }
 ```
 
-## Advanced Commands
+When `--verbose` is enabled, the JSON result can also include `verbose_diagnostics` with SDK call counts, timings, and capability wait reasons.
 
-These commands are supported, but `bridge` is the default path for normal usage:
+## Low-Level Commands
 
-- `deposit` for low-level Mina-to-Zeko submit/finalize/cancel/status control
-- `withdrawal` for low-level Zeko-to-Mina submit/finalize/status control
-- `operation` for listing, inspecting logs, and resuming persisted operations
-- `tui` for viewing active and recent operations in OpenTUI
-- `doctor` for checking local paths, signer env status, and known routes
+The low-level `deposit` and `withdrawal` commands expose individual bridge actions. They are useful for recovery, debugging, and operator workflows. For normal bridging, prefer `bridge`.
 
-Use them when you need explicit low-level recovery or debugging. If you are simply trying to bridge, use `bridge`.
+Common flags:
+
+| Flag        | Description                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------- |
+| `--from`    | Source chain. Defaults to the route's source testnet.                                     |
+| `--to`      | Destination chain. Defaults to the route's destination testnet.                           |
+| `--account` | Optional account to operate on. Defaults to the signer public key.                        |
+| `--json`    | Print JSON instead of formatted text.                                                     |
+| `--verbose` | Enable verbose bridge diagnostics where supported.                                        |
+| `--wait`    | Wait for submitted transactions to be included. Defaults to `true` for mutation commands. |
+
+Deposit-specific flags:
+
+| Command          | Extra flags                                                                       |
+| ---------------- | --------------------------------------------------------------------------------- |
+| `deposit submit` | `--amount`, `--timeout-slots`                                                     |
+| `deposit status` | `--latest` to return only the latest deposit for the account. Defaults to `true`. |
+
+Withdrawal-specific flags:
+
+| Command             | Extra flags                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `withdrawal submit` | `--amount`                                                                           |
+| `withdrawal status` | `--latest` to return only the latest withdrawal for the account. Defaults to `true`. |
+
+## Operation Commands
+
+Bridge operations are persisted so they can be inspected or resumed after interruption.
+
+```bash
+zeko-bridge operation list
+zeko-bridge operation completed
+zeko-bridge operation status <operation-id>
+zeko-bridge operation logs <operation-id>
+zeko-bridge operation resume <operation-id>
+zeko-bridge operation resume-all --from mina:testnet --to zeko:testnet
+```
+
+Commands:
+
+| Command                 | Description                                                                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `operation list`        | Prints all locally persisted operations as JSON.                                                                                                       |
+| `operation completed`   | Lists completed and cancelled operations. Use `--json` for JSON output.                                                                                |
+| `operation status <id>` | Refreshes one operation from current network state, saves the refreshed state, and prints status JSON. Use `--verbose` for verbose bridge diagnostics. |
+| `operation logs <id>`   | Prints the JSONL event log for one operation.                                                                                                          |
+| `operation resume <id>` | Continues a persisted operation. Supports `--json`, `--verbose`, `--poll-interval-ms`, and `--retry-delay-ms`.                                         |
+| `operation resume-all`  | Discovers pending deposits and withdrawals for an account, matches them to persisted sessions when possible, and resumes them sequentially.            |
+
+`operation resume-all` flags:
+
+| Flag                 | Default                                   | Description                                           |
+| -------------------- | ----------------------------------------- | ----------------------------------------------------- |
+| `--from`             | `mina:testnet`                            | Route source used for queue discovery.                |
+| `--to`               | `zeko:testnet`                            | Route destination used for queue discovery.           |
+| `--account`          | Optional, derived from `MINA_PRIVATE_KEY` | Account whose pending bridge queue should be resumed. |
+| `--poll-interval-ms` | `20000`                                   | Delay between status polls.                           |
+| `--retry-delay-ms`   | `5000`                                    | Delay before retrying transient errors.               |
+| `--json`             | `false`                                   | Print JSON output.                                    |
+| `--verbose`          | `false`                                   | Enable verbose bridge diagnostics.                    |
+
+`operation status` JSON includes stable operation fields plus live fields when they are available:
+
+- `phase`, `status`, `route`, `direction`, `account`, `recipient`, `amount`
+- `submitted_transactions`, `final_transaction`, `error`
+- `target_index`, `claimable_index`, `pending_ahead`
+- `can_finalize`, `can_cancel`, `next_action`, `waiting_on`
+- `observed_counts` and `status_sources` for status endpoint visibility
+
+## TUI And Doctor
+
+Open the terminal UI:
+
+```bash
+zeko-bridge tui
+zeko-bridge tui <operation-id>
+```
+
+The TUI shows active and completed operations, selected operation details, and recent log lines.
+
+Check local configuration:
+
+```bash
+zeko-bridge doctor
+```
+
+`doctor` prints the data, state, log, and cache directories, signer configuration status, and known bridge routes.
 
 ## Logs And State
 
-The CLI writes:
+`zeko-bridge` stores operation state and logs in OS-standard application directories:
 
-- persisted operation state under the OS/XDG state directory
-- append-only JSONL logs under the OS/XDG log directory
+| Platform | State and logs                                                                     |
+| -------- | ---------------------------------------------------------------------------------- |
+| macOS    | `~/Library/Application Support/zeko-bridge/state` and `~/Library/Logs/zeko-bridge` |
+| Linux    | `$XDG_STATE_HOME/zeko-bridge` or `~/.local/state/zeko-bridge`                      |
+| Windows  | `%LOCALAPPDATA%\zeko-bridge\state` and `%LOCALAPPDATA%\zeko-bridge\logs`           |
 
-Use `operation logs <operation-id>` to inspect the recorded event stream for a specific bridge.
+Use `zeko-bridge doctor` to see the exact paths on your machine. Use `zeko-bridge operation logs <operation-id>` to inspect a specific operation log.
 
-`operation status` now refreshes the persisted session with live SDK/network reads before printing it, and it emits a short stderr progress line first so the terminal does not look hung during that refresh. `operation list` still reads local persisted state only.
+## Protocol Notes
 
-`operation status` is a recovery/debugging command, not a validation runner. It does not replace the original long-lived `bridge` process, it does not sign follow-up transactions on its own, and it must not be used as a polling loop to claim that a one-command bridge validation is still alive.
-
-## Manual Validation
-
-For funded real-network validation, run the built CLI directly so one long-lived `bridge` process owns the whole attempt:
-
-```bash
-export MINA_PRIVATE_KEY='<wallet private key>'
-node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko:testnet --amount 1 --json --verbose
-```
-
-```bash
-export MINA_PRIVATE_KEY='<wallet private key>'
-node ./packages/bridge-cli/dist/cli.js bridge --from zeko:testnet --to mina:testnet --amount 1 --json --verbose
-```
-
-Keep that same command alive through completion. Progress stays on stderr and the final JSON result stays on stdout.
-
-## Development
-
-Run from the monorepo root:
-
-```bash
-moon run bridge-cli:build
-moon run bridge-cli:typecheck
-moon run bridge-cli:test
-moon run bridge-cli:lint
-```
+- Mina-originated deposits can spend a long time waiting for source-chain visibility before a target index is observed.
+- Deposit finalization and cancellation depend on bridge capability checks. A wait in `waiting-finalization` can mean the destination chain has not committed enough state yet.
+- Earlier queued bridge work may need to be finalized or cancelled before the requested operation can complete.
+- If an earlier deposit is cancellable, the CLI can cancel it to unblock the queue. If an earlier deposit is finalizable, the CLI finalizes it before moving on.
+- Withdrawals require the withdrawal to be committed before it can be finalized on the destination chain.
+- If a post-finalize proof request runs for too long and the bridge service returns `Invalid key`, the command treats that response as terminal.

@@ -54,6 +54,9 @@ export interface CanonicalProgressSnapshot {
 	inner: CanonicalProgressStream
 }
 
+// Keep promotion batches close to Postgres' bind limit without risking overflow.
+const canonicalPromotionChunkSize = 50_000
+
 export async function batchInsert<TTable extends AnyPgTable>({
 	db,
 	table,
@@ -246,16 +249,22 @@ const promoteCanonicalActions = async ({
 		return 0
 	}
 
-	const promoted = await db
-		.update(table)
-		.set({ markedAsCanonicalAt: new Date() })
-		.where(and(inArray(table.afterState, uniqueAfterStates), isNull(table.markedAsCanonicalAt)))
-		.returning({ afterState: table.afterState })
+	const markedAsCanonicalAt = new Date()
+	let promotedCount = 0
+	for (let start = 0; start < uniqueAfterStates.length; start += canonicalPromotionChunkSize) {
+		const afterStateChunk = uniqueAfterStates.slice(start, start + canonicalPromotionChunkSize)
+		const promoted = await db
+			.update(table)
+			.set({ markedAsCanonicalAt })
+			.where(and(inArray(table.afterState, afterStateChunk), isNull(table.markedAsCanonicalAt)))
+			.returning({ afterState: table.afterState })
+		promotedCount += promoted.length
+	}
 
 	logger.info(
-		`[promoteCanonicalActions:${label}] promoted ${promoted.length}/${uniqueAfterStates.length} actions`
+		`[promoteCanonicalActions:${label}] promoted ${promotedCount}/${uniqueAfterStates.length} actions`
 	)
-	return promoted.length
+	return promotedCount
 }
 
 export async function promoteOuterCanonicalActions(db: PostgresJsDatabase, afterStates: string[]) {

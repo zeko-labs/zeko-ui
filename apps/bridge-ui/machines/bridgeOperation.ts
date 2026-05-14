@@ -346,10 +346,6 @@ export const bridgeOperationMachine = setup({
 		anotherOperationIsActive: ({ context }) => {
 			const ao = context.bridge.getSnapshot().context.activeOperation
 			return ao !== null && context.id !== ao
-		},
-		anotherCancellationIsActive: ({ context }) => {
-			const ao = context.bridge.getSnapshot().context.activeCancellationOperation
-			return ao !== null && context.id !== ao
 		}
 	},
 	delays: {

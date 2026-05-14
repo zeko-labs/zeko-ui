@@ -388,6 +388,7 @@ describe("deposit cancellation state", () => {
 		if (!result.ok) throw new Error("Expected a finalization witness")
 		expect(result.value.witness.checkAccepted.init.depositIndex).toBe("0")
 		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
+			index: 0,
 			available: true,
 			reason: null
 		})
@@ -427,8 +428,32 @@ describe("deposit cancellation state", () => {
 		if (!result.ok) throw new Error("Expected a finalization witness")
 		expect(result.value.witness.checkAccepted.init.depositIndex).toBe("1")
 		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
+			index: 1,
 			available: true,
 			reason: null
+		})
+	})
+
+	it("reports when an earlier deposit must resolve before later deposits can finalize", async () => {
+		const bridge = buildBridge()
+		const firstDeposit = buildDeposit({ amount: 10, timeout: 20 })
+		const secondDeposit = buildDeposit({ amount: 12, timeout: 20 })
+		const firstWitness = buildDepositWitness(firstDeposit, 0, { lower: 0, upper: 1 })
+		const secondWitness = buildDepositWitness(secondDeposit, 1, { lower: 2, upper: 3 })
+		const lastCommit = buildCommit({ index: 2, lower: 4, upper: 4, synchronizedLength: 2 })
+
+		mockDepositState({
+			bridge,
+			deposits: [firstDeposit, secondDeposit],
+			depositWitnesses: [firstWitness, secondWitness],
+			outerActions: [firstWitness, secondWitness, lastCommit],
+			lastCommit,
+			syncedLength: 0
+		})
+
+		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
+			available: false,
+			reason: "Deposit is not finalizable yet; an earlier deposit must be resolved first"
 		})
 	})
 })
