@@ -8,7 +8,10 @@ import {
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-vue-next"
 import { computed } from "vue"
 import type { ActorRefFromLogic } from "xstate"
-import { statusFromState } from "~/helpers"
+import {
+	shouldShowCompletedOperationsLoading,
+	statusFromState
+} from "~/helpers"
 import {
 	bridgeOperationColumns,
 	type BridgeOperationRow
@@ -28,7 +31,12 @@ const { operations } = defineProps<{
 }>()
 
 const bs = useBridgeStore()
-const loading = computed(() => !bs.bridge.snapshot.matches("READY"))
+const loading = computed(() =>
+	shouldShowCompletedOperationsLoading({
+		bridgeReady: bs.bridge.snapshot.matches("READY"),
+		operationCount: operations.length
+	})
+)
 
 const data = computed<BridgeOperationRow[]>(() =>
 	operations
@@ -36,7 +44,8 @@ const data = computed<BridgeOperationRow[]>(() =>
 			const state = useSelector(operation, (state) => state)
 			const { text, kind } = statusFromState(
 				state.value.value,
-				state.value.context.direction
+				state.value.context.direction,
+				{ canCancel: state.value.context.canCancel }
 			)
 			const timestampMs =
 				state.value.context.transaction?.timestampMs ??

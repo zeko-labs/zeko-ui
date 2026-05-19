@@ -17,22 +17,142 @@ export const withdrawalSteps = [
 ] as const
 
 export const steps = ["Send", "Confirming", "Claim", "Finalizing"] as const
-export const cancellationSteps = ["Send", "Confirming", "Cancel", "Cancelling"] as const
-export const cancellationFlowStage = {
-	Send: 0,
-	Confirming: 1,
-	Cancel: 2,
-	Cancelling: cancellationSteps.length
-} as const
 
 type Direction = "deposit" | "withdrawal"
-type ProgressFlow = "default" | "cancellation"
+const SLOT_DURATION_SECONDS = 180
+type QueueStatus = "started" | "paused" | "completed"
+type RecoveryLane = "main" | "cancellation"
+
+export const queueTitleForDirection = (direction: Direction) =>
+	direction === "deposit" ? "Deposit Queue" : "Withdrawal Queue"
+
+export const sortByQueueOrder = <T extends { order: number }>(items: T[]) =>
+	[...items].sort((left, right) => left.order - right.order)
+
+const userLocale = () => (typeof navigator === "undefined" ? undefined : navigator.language)
+
+const supportedLocale = (locale?: string) => {
+	if (!locale) return undefined
+
+	try {
+		return Intl.DateTimeFormat.supportedLocalesOf([locale])[0]
+	} catch {
+		return undefined
+	}
+}
+
+export type BridgeQueueItem<T> = {
+	id: string
+	order: number
+	status: QueueStatus
+	lane: RecoveryLane
+	direction: Direction
+	operation: T
+}
+
+export const deriveBridgeQueues = <T>(items: BridgeQueueItem<T>[]) => {
+	const completed = items.filter((item) => item.status === "completed")
+	const mainPending = sortByQueueOrder(
+		items.filter((item) => item.status !== "completed" && item.lane === "main")
+	)
+	const cancellationPending = sortByQueueOrder(
+		items.filter((item) => item.status !== "completed" && item.lane === "cancellation")
+	)
+	const queuedMainOperations = mainPending.filter((item) => item.status !== "started")
+
+	return {
+		completed,
+		currentMainOperation: mainPending.find((item) => item.status === "started")?.operation ?? null,
+		depositQueue: queuedMainOperations
+			.filter(({ direction }) => direction === "deposit")
+			.map(({ operation }) => operation),
+		withdrawalQueue: queuedMainOperations
+			.filter(({ direction }) => direction === "withdrawal")
+			.map(({ operation }) => operation),
+		cancellableOperations: cancellationPending.map(({ operation }) => operation)
+	}
+}
 
 type MachineStates = ReturnType<(typeof bridgeOperationMachine)["getInitialSnapshot"]>["value"]
 type UiProgress = {
-	flow: ProgressFlow
 	steps: readonly string[]
 	step: number
+}
+
+export const shouldShowCompletedOperationsLoading = ({
+	bridgeReady,
+	operationCount
+}: {
+	bridgeReady: boolean
+	operationCount: number
+}) => !bridgeReady && operationCount === 0
+
+export const formatQueueMetadata = (
+	{
+		cancellable,
+		direction,
+		currentSlot,
+		timeoutSlot,
+		timeoutSlots,
+		transaction
+	}: {
+		cancellable?: boolean
+		direction: Direction
+		currentSlot?: string
+		timeoutSlot?: string
+		timeoutSlots?: number
+		transaction?: { date?: Date; timestampMs?: number | null }
+	},
+	options: {
+		locale?: string
+		timeZone?: string
+	} = {}
+) => {
+	const metadata: string[] = []
+	const formatRemainingTimeout = ({
+		remainingSlots
+	}: {
+		remainingSlots: bigint
+	}) => {
+		if (remainingSlots <= 0n) return cancellable ? "Timed out" : null
+
+		const totalMinutes = Number((remainingSlots * BigInt(SLOT_DURATION_SECONDS)) / 60n)
+		const hours = Math.floor(totalMinutes / 60)
+		const minutes = totalMinutes % 60
+
+		if (hours === 0) return `Times out in ${totalMinutes} min`
+		if (minutes === 0) return `Times out in ${hours} hr${hours === 1 ? "" : "s"}`
+		return `Times out in ${hours} hr ${minutes} min`
+	}
+
+	const submittedAt =
+		transaction?.timestampMs != null ? new Date(transaction.timestampMs) : transaction?.date
+
+	if (submittedAt && !Number.isNaN(submittedAt.getTime())) {
+		metadata.push(
+			`Submitted ${new Intl.DateTimeFormat(supportedLocale(options.locale ?? userLocale()), {
+				dateStyle: "medium",
+				timeStyle: "short",
+				...(options.timeZone ? { timeZone: options.timeZone } : {})
+			}).format(submittedAt)}`
+		)
+	}
+
+	if (direction === "deposit") {
+		if (timeoutSlot && currentSlot) {
+			const timeoutMetadata = formatRemainingTimeout({
+				remainingSlots: BigInt(timeoutSlot) - BigInt(currentSlot)
+			})
+			if (timeoutMetadata) metadata.push(timeoutMetadata)
+		} else if (typeof timeoutSlots === "number") {
+			const timeoutMetadata = formatRemainingTimeout({
+				remainingSlots: BigInt(timeoutSlots)
+			})
+			if (timeoutMetadata) metadata.push(timeoutMetadata)
+		}
+	}
+
+	return metadata
 }
 
 const deposit = (kind: "pending" | "complete") => (step: number) => ({
@@ -57,7 +177,8 @@ export const statePath = (state: MachineStates) => {
 
 export const statusFromState = (
 	state: MachineStates,
-	direction: Direction
+	direction: Direction,
+	options?: { canCancel?: boolean }
 ): { text: string; kind: "pending" | "complete" | "cancelled" | "error" } => {
 	const isDeposit = direction === "deposit"
 	if (typeof state === "string") {
@@ -68,7 +189,9 @@ export const statusFromState = (
 		if (state === "PENDING_DEPOSIT") return pendingDeposit(1)
 		if (state === "PENDING_WITHDRAWAL") return pendingWithdrawal(1)
 		if (state === "TO_FINALIZE") return isDeposit ? pendingDeposit(2) : pendingWithdrawal(2)
-		if (state === "CAN_CANCEL") return { text: "Failed", kind: "error" }
+		if (state === "CAN_CANCEL") return { text: "Ready to cancel", kind: "pending" }
+		if (state === "PAUSED" && options?.canCancel)
+			return { text: "Ready to cancel", kind: "pending" }
 		if (state === "PAUSED") return { text: "Paused", kind: "pending" }
 		if (state === "IDLE") return { text: "Idle", kind: "pending" }
 		if (state === "FAILED") return { text: "Failed", kind: "error" }
@@ -84,54 +207,11 @@ export const statusFromState = (
 	return isDeposit ? pendingDeposit(1) : pendingWithdrawal(1)
 }
 
-export const isCancellationFlow = (state: MachineStates, returnTo?: string | false): boolean => {
-	if (typeof state === "string") {
-		return (
-			state === "CAN_CANCEL" ||
-			state === "DEPOSIT_CANCELLED" ||
-			state === "BRIDGE_OPERATION_CANCELLED_DONE" ||
-			(state === "WAITING_FOR_NETWORK" && returnTo === "CANCEL_DEPOSIT")
-		)
-	}
-	return "CANCEL_DEPOSIT" in state
-}
-
 export const progressFromState = ({
-	state,
-	returnTo,
 	step
 }: {
-	state: MachineStates
-	returnTo?: string | false
 	step: number
-}): UiProgress => {
-	if (!isCancellationFlow(state, returnTo)) return { flow: "default", steps, step }
-	if (typeof state === "string") {
-		if (state === "CAN_CANCEL") {
-			return {
-				flow: "cancellation",
-				steps: cancellationSteps,
-				step: cancellationFlowStage.Cancel
-			}
-		}
-		if (state === "WAITING_FOR_NETWORK" && returnTo === "CANCEL_DEPOSIT")
-			// The machine pauses on network mismatch, but the user-facing stage is still "Cancel".
-			return {
-				flow: "cancellation",
-				steps: cancellationSteps,
-				step: cancellationFlowStage.Cancel
-			}
-		if (state === "DEPOSIT_CANCELLED" || state === "BRIDGE_OPERATION_CANCELLED_DONE") {
-			// ProgressBar marks final label complete only when step === steps.length.
-			return {
-				flow: "cancellation",
-				steps: cancellationSteps,
-				step: cancellationFlowStage.Cancelling
-			}
-		}
-	}
-	return { flow: "cancellation", steps: cancellationSteps, step: 3 }
-}
+}): UiProgress => ({ steps, step })
 
 export const errorToaster = createToaster({
 	placement: "top-end",

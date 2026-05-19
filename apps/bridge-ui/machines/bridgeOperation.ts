@@ -107,6 +107,7 @@ type BridgeOperationEvents =
 	| { type: "ReturnTo" }
 	| { type: "CanFinalize" }
 	| { type: "CanCancel" }
+	| { type: "SyncRecoveredState"; cancellable: boolean; timeoutSlot?: string }
 	| { type: "TerminalError"; error: Error }
 	| { type: "AlreadyFinalised" }
 	| { type: "Finalize" }
@@ -125,6 +126,7 @@ export interface BridgeOperationContext {
 	l2: Networks
 	amount: string
 	timeoutSlots?: number
+	timeoutSlot?: string
 	paused: boolean
 	transaction?: ActionState["transaction"]
 	completedAtMs?: number
@@ -151,6 +153,21 @@ const fetchMina = ({ network }: { network: Networks }) =>
 	}) as const
 
 const POLL_INTERVAL = 20_000
+
+const createPollScheduler = (callback: () => void) => {
+	let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+	return {
+		schedule() {
+			timeoutId = setTimeout(callback, POLL_INTERVAL)
+		},
+		clear() {
+			if (timeoutId === undefined) return
+			clearTimeout(timeoutId)
+			timeoutId = undefined
+		}
+	}
+}
 
 type BridgeWorker = {
 	bridge: Bridge
@@ -231,7 +248,9 @@ export const bridgeOperationMachine = setup({
 			destination: Networks
 			amount: string
 			timeoutSlots?: number
+			timeoutSlot?: string
 			transaction?: ActionState["transaction"]
+			cancellable?: boolean
 		},
 		events: {} as BridgeOperationEvents,
 		tags: {} as "loading" | "cta",
@@ -246,28 +265,25 @@ export const bridgeOperationMachine = setup({
 				logger.start(label)
 				const { bridge, l1, l2, user } = input
 				const controller = new AbortController()
+				const scheduler = createPollScheduler(() => {
+					void checkDepositStatus(controller.signal)
+				})
 				const checkDepositStatus = async (signal: AbortSignal): Promise<void> => {
 					if (signal.aborted) return
 					try {
-						const [finalizeResult, cancelResult] = await Promise.all([
-							worker(bridge).canFinalizeDeposit({ l1, l2, user }),
-							worker(bridge).canCancelDeposit({ l1, l2, user })
-						])
-						logger.info(`Deposit status: ${JSON.stringify({ finalizeResult, cancelResult })}`)
-						// Keep finalize-first in the main widget until older queued cancellable deposits
-						// get their own UI surface. This cancel path is terminal for the current
-						// bridge operation, so it must not be used for queue-advancement cancels.
+						const finalizeResult = await worker(bridge).canFinalizeDeposit({ l1, l2, user })
+						logger.info(`Deposit status: ${JSON.stringify({ finalizeResult })}`)
 						if (finalizeResult.available) sendBack({ type: "CanFinalize" })
-						else if (cancelResult.available) sendBack({ type: "CanCancel" })
-						else if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)
+						else if (!signal.aborted) scheduler.schedule()
 					} catch (error) {
 						logger.error(error instanceof Error ? error : new Error(String(error)))
-						if (!signal.aborted) setTimeout(() => checkDepositStatus(signal), POLL_INTERVAL)
+						if (!signal.aborted) scheduler.schedule()
 					}
 				}
-				checkDepositStatus(controller.signal)
+				void checkDepositStatus(controller.signal)
 				return () => {
 					controller.abort()
+					scheduler.clear()
 					logger.success(label)
 					stop()
 				}
@@ -279,6 +295,9 @@ export const bridgeOperationMachine = setup({
 			logger.start(label)
 			const { bridge, user, l1, l2 } = input
 			const controller = new AbortController()
+			const scheduler = createPollScheduler(() => {
+				void checkWithdrawalStatus(controller.signal)
+			})
 			const checkWithdrawalStatus = async (signal: AbortSignal): Promise<void> => {
 				if (signal.aborted) return
 				try {
@@ -286,7 +305,7 @@ export const bridgeOperationMachine = setup({
 					const result = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
 					if (result.available) sendBack({ type: "CanFinalize" })
 					else if (result.status === "alreadyFinalised") sendBack({ type: "AlreadyFinalised" })
-					else if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
+					else if (!signal.aborted) scheduler.schedule()
 				} catch (error) {
 					logger.error(error instanceof Error ? error : new Error(String(error)))
 					if (isTerminalBridgeError(error)) {
@@ -296,12 +315,13 @@ export const bridgeOperationMachine = setup({
 						})
 						return
 					}
-					if (!signal.aborted) setTimeout(() => checkWithdrawalStatus(signal), POLL_INTERVAL)
+					if (!signal.aborted) scheduler.schedule()
 				}
 			}
-			checkWithdrawalStatus(controller.signal)
+			void checkWithdrawalStatus(controller.signal)
 			return () => {
 				controller.abort()
+				scheduler.clear()
 				logger.success(label)
 				stop()
 			}
@@ -317,6 +337,12 @@ export const bridgeOperationMachine = setup({
 		toFinalizeWithdrawal: ({ context: { returnTo } }) => returnTo === "FINALIZE_WITHDRAWAL",
 		toFinalize: ({ context: { returnTo } }) => returnTo === "TO_FINALIZE",
 		toCancelDeposit: ({ context: { returnTo } }) => returnTo === "CANCEL_DEPOSIT",
+		cancellationReady: ({ context }) => context.canCancel === true,
+		cancellationSlotAvailable: ({ context }) => {
+			const activeCancellationOperation =
+				context.bridge.getSnapshot().context.activeCancellationOperation
+			return activeCancellationOperation === null || activeCancellationOperation === context.id
+		},
 		anotherOperationIsActive: ({ context }) => {
 			const ao = context.bridge.getSnapshot().context.activeOperation
 			return ao !== null && context.id !== ao
@@ -329,7 +355,18 @@ export const bridgeOperationMachine = setup({
 	id: "bridgeOperation",
 	initial: "IDLE",
 	context: ({
-		input: { direction, source, destination, amount, timeoutSlots, bridge, wallet, transaction },
+		input: {
+			direction,
+			source,
+			destination,
+			amount,
+			timeoutSlots,
+			timeoutSlot,
+			bridge,
+			wallet,
+			transaction,
+			cancellable
+		},
 		self: { id }
 	}) => ({
 		id,
@@ -342,6 +379,7 @@ export const bridgeOperationMachine = setup({
 		destination,
 		amount,
 		timeoutSlots,
+		timeoutSlot,
 		returnTo: false,
 		paused: false,
 		transaction,
@@ -354,7 +392,7 @@ export const bridgeOperationMachine = setup({
 			submitWithdrawal: null,
 			finalizeWithdrawal: null
 		},
-		canCancel: false,
+		canCancel: cancellable ?? false,
 		l1: source.includes("mina") ? source : destination,
 		l2: source.includes("zeko") ? source : destination
 	}),
@@ -378,6 +416,12 @@ export const bridgeOperationMachine = setup({
 					}
 				}
 			})
+		},
+		SyncRecoveredState: {
+			actions: assign(({ event }) => ({
+				canCancel: event.cancellable,
+				timeoutSlot: event.timeoutSlot
+			}))
 		}
 	},
 	states: {
@@ -425,7 +469,35 @@ export const bridgeOperationMachine = setup({
 		},
 		PAUSED: {
 			on: {
-				Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) }
+				Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) },
+				Cancel: [
+					{
+						target: "CANCEL_DEPOSIT",
+						guard: and([
+							"cancellationReady",
+							"currentNetworkIsSource",
+							"cancellationSlotAvailable"
+						]),
+						actions: sendTo(
+							({ context }) => context.bridge,
+							({ self }) => ({ type: "ActivateCancellationOperation", id: self.id })
+						)
+					},
+					{
+						target: "WAITING_FOR_NETWORK",
+						guard: and(["cancellationReady", "cancellationSlotAvailable"]),
+						actions: [
+							sendTo(
+								({ context }) => context.bridge,
+								({ self }) => ({ type: "ActivateCancellationOperation", id: self.id })
+							),
+							assign({
+								returnTo: "CANCEL_DEPOSIT",
+								changeNetworkTo: ({ context }) => context.source
+							})
+						]
+					}
+				]
 			}
 		},
 		RESUMING: {
@@ -445,6 +517,18 @@ export const bridgeOperationMachine = setup({
 				{ actions: ({ context }) => finalizeNotification(context) }
 			],
 			on: {
+				Pause: {
+					target: "PAUSED",
+					actions: assign({ paused: true })
+				},
+				SyncRecoveredState: [
+					{
+						actions: assign(({ event }) => ({
+							canCancel: event.cancellable,
+							timeoutSlot: event.timeoutSlot
+						}))
+					}
+				],
 				Finalize: [
 					{
 						target: "FINALIZE_WITHDRAWAL",
@@ -473,6 +557,10 @@ export const bridgeOperationMachine = setup({
 				({ context }) => ({ type: "RequestNetworkChange", network: context.changeNetworkTo })
 			),
 			on: {
+				Pause: {
+					target: "PAUSED",
+					actions: assign({ paused: true })
+				},
 				ReturnTo: [
 					{
 						target: "INIT_BRIDGE_OPERATION",
@@ -569,8 +657,17 @@ export const bridgeOperationMachine = setup({
 				input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount })
 			},
 			on: {
+				Pause: {
+					target: "PAUSED",
+					actions: assign({ paused: true })
+				},
 				CanFinalize: { target: "TO_FINALIZE" },
-				CanCancel: { target: "CAN_CANCEL", actions: assign({ canCancel: true }) }
+				SyncRecoveredState: {
+					actions: assign(({ event }) => ({
+						canCancel: event.cancellable,
+						timeoutSlot: event.timeoutSlot
+					}))
+				}
 			}
 		},
 		CAN_CANCEL: {
@@ -590,17 +687,38 @@ export const bridgeOperationMachine = setup({
 				)
 			},
 			on: {
+				Pause: {
+					target: "PAUSED",
+					actions: assign({ paused: true })
+				},
+				SyncRecoveredState: {
+					actions: assign(({ event }) => ({
+						canCancel: event.cancellable,
+						timeoutSlot: event.timeoutSlot
+					}))
+				},
 				Cancel: [
 					{
 						target: "CANCEL_DEPOSIT",
-						guard: "currentNetworkIsSource"
+						guard: and(["currentNetworkIsSource", "cancellationSlotAvailable"]),
+						actions: sendTo(
+							({ context }) => context.bridge,
+							({ self }) => ({ type: "ActivateCancellationOperation", id: self.id })
+						)
 					},
 					{
 						target: "WAITING_FOR_NETWORK",
-						actions: assign({
-							returnTo: "CANCEL_DEPOSIT",
-							changeNetworkTo: ({ context }) => context.source
-						})
+						guard: "cancellationSlotAvailable",
+						actions: [
+							sendTo(
+								({ context }) => context.bridge,
+								({ self }) => ({ type: "ActivateCancellationOperation", id: self.id })
+							),
+							assign({
+								returnTo: "CANCEL_DEPOSIT",
+								changeNetworkTo: ({ context }) => context.source
+							})
+						]
 					}
 				]
 			}
@@ -753,6 +871,10 @@ export const bridgeOperationMachine = setup({
 				input: ({ context }) => ({ ...bridgeParameters(context), amount: context.amount })
 			},
 			on: {
+				Pause: {
+					target: "PAUSED",
+					actions: assign({ paused: true })
+				},
 				CanFinalize: { target: "TO_FINALIZE" },
 				AlreadyFinalised: { target: "BRIDGE_OPERATION_COMPLETED" },
 				TerminalError: {
@@ -865,20 +987,26 @@ export const bridgeOperationMachine = setup({
 		},
 		FAILED: {
 			type: "final",
-			entry: ({ context }) => {
-				const lastError = context.errors.at(-1)
-				sendMetric(
-					{
-						category: "bridge_operation",
-						action: "failed",
-						source: context.source,
-						destination: context.destination,
-						success: false,
-						label: (lastError?.message ?? "unknown error").slice(0, 500)
-					},
-					context.user
-				)
-			}
+			entry: [
+				sendTo(
+					({ context }) => context.bridge,
+					({ self }) => ({ type: "ReleaseCancellationOperation", id: self.id })
+				),
+				({ context }) => {
+					const lastError = context.errors.at(-1)
+					sendMetric(
+						{
+							category: "bridge_operation",
+							action: "failed",
+							source: context.source,
+							destination: context.destination,
+							success: false,
+							label: (lastError?.message ?? "unknown error").slice(0, 500)
+						},
+						context.user
+					)
+				}
+			]
 		}
 	}
 })
