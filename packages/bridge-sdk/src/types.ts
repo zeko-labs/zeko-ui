@@ -34,6 +34,8 @@ export type Withdrawal = {
 	amount: UInt64
 }
 
+export type BridgeVersion = 1 | 2
+
 export type OuterActionBase = Action & {
 	index: number
 	slotRange: {
@@ -71,6 +73,7 @@ export type DepositWithState = Action &
 		confirmed: boolean
 		finalised: boolean
 		cancellable: boolean
+		bridgeVersion: BridgeVersion
 	}
 
 export const DepositStateProgress = {
@@ -84,6 +87,7 @@ export type WithdrawalWithState = Action &
 	Withdrawal & {
 		committed: boolean
 		finalised: boolean
+		bridgeVersion: BridgeVersion
 	}
 
 export type InnerAction = InnerWitness
@@ -102,8 +106,8 @@ export type Account = {
 }
 
 export type WitnessFetchResult<T> =
-	| { ok: true; value: T }
-	| { ok: false; msg: string; status?: WithdrawalFinalizationStatus }
+	| { ok: true; value: T; index?: number }
+	| { ok: false; msg: string; status?: WithdrawalFinalizationStatus; index?: number }
 
 export type WithdrawalFinalizationStatus = "available" | "alreadyFinalised" | "waiting" | "blocked"
 
@@ -111,6 +115,7 @@ export type WithdrawalFinalizationResult = {
 	available: boolean
 	reason: string | null
 	status: WithdrawalFinalizationStatus
+	index?: number
 }
 
 export type ExtractInput<T> = T extends TadaDocumentNode<any, { input: infer I }, any> ? I : never

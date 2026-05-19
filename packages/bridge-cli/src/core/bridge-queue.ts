@@ -32,6 +32,13 @@ export const resolveTargetIndex = ({
 
 		if (
 			session.targetIndex !== undefined &&
+			statuses.some((status) => status.index === session.targetIndex)
+		) {
+			return session.targetIndex
+		}
+
+		if (
+			session.targetIndex !== undefined &&
 			(session.finalTransaction !== undefined ||
 				session.pendingFinalizeIndex === session.targetIndex)
 		) {
@@ -117,10 +124,33 @@ export type DepositQueueState = {
 	target?: DepositStatus
 	targetIndex?: number
 	claimableIndex?: number
+	effectiveClaimableIndex?: number
 	pendingAhead: number
 	blockingAhead: number
 	skippableAhead: number
 	shouldAdvanceQueuedClaims: boolean
+}
+
+export const resolveEffectiveDepositClaimableIndex = ({
+	claimableIndex,
+	target,
+	pendingAhead,
+	canFinalize
+}: {
+	claimableIndex?: number
+	target?: DepositStatus
+	pendingAhead: number
+	canFinalize: boolean
+}): number | undefined => {
+	if (claimableIndex !== undefined) {
+		return claimableIndex
+	}
+
+	if (canFinalize && pendingAhead === 0 && target) {
+		return target.index
+	}
+
+	return undefined
 }
 
 export const analyzeDepositQueue = ({

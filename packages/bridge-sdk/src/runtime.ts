@@ -28,6 +28,8 @@ export type BridgeRuntime = {
 	readonly bridgeFeeRecipientL1: PublicKey
 	readonly bridgeFeeRecipientL2: PublicKey
 	readonly bridgeProofFee: UInt64
+	readonly V2_DEPOSITS_START_INDEX: UInt32
+	readonly V2_WITHDRAWALS_START_INDEX: UInt32
 	readonly bridge?: {
 		fetchAccount: (
 			client: GqlClient,
@@ -81,6 +83,11 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 	const sequencerPk = sequencerPkResult.data?.sequencerPk
 	if (!sequencerPk) throw new Error("Sequencer public key not found")
 
+	const V2_DEPOSITS_START_INDEX =
+		config.l2Network === "testnet" ? UInt32.from(68520) : UInt32.from(0)
+	const V2_WITHDRAWALS_START_INDEX =
+		config.l2Network === "testnet" ? UInt32.from(10529) : UInt32.from(0)
+
 	return {
 		config,
 		l1Client,
@@ -99,6 +106,8 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 		withdrawalDelay: UInt32.from(circuitsConfig.withdrawalDelay),
 		bridgeFeeRecipientL1: PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL1),
 		bridgeFeeRecipientL2: PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL2),
-		bridgeProofFee: UInt64.from(circuitsConfig.bridgeProofFee)
+		bridgeProofFee: UInt64.from(circuitsConfig.bridgeProofFee),
+		V2_DEPOSITS_START_INDEX,
+		V2_WITHDRAWALS_START_INDEX
 	}
 }

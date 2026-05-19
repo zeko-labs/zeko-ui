@@ -1,7 +1,15 @@
 import { defineCommand, type CommandDef } from "citty"
 import { PrivateKey } from "o1js"
 import type { BridgeAdapter } from "../core/adapter"
-import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
+import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
+import {
+	readAliasedStringArg,
+	readBooleanArg,
+	readOptionalStringArg,
+	readRequiredStringArg
+} from "../core/command-args"
+import { isRecoverableMutationError } from "../core/mutation-errors"
+import { formatRoute, parseChainRef, type ChainRef } from "../core/routes"
 import { resolveSignerKeys } from "../core/signer"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
 import { color, icon, keyValue, section } from "../core/terminal"
@@ -54,22 +62,14 @@ type WithdrawalActionArgs = RouteArgs & {
 type WithdrawalStatusArgs = RouteArgs & StatusArgs
 
 type DirectCommandDeps = {
-	createAdapter?: (input: { from: ChainRef; to: ChainRef; verbose: boolean }) =>
-		| Promise<BridgeAdapter>
-		| BridgeAdapter
+	createAdapter?: BridgeAdapterFactory
+	sleep?: (ms: number) => Promise<void>
+	retryDelayMs?: number
 	write?: (message: string) => void
 }
 
-const parseString = (value: unknown, flag: string): string => {
-	if (typeof value !== "string" || value.length === 0) {
-		throw new Error(`Missing required ${flag}`)
-	}
-
-	return value
-}
-
-const parseOptionalString = (value: unknown): string | undefined =>
-	typeof value === "string" && value.length > 0 ? value : undefined
+const DIRECT_MUTATION_RETRY_DELAY_MS = 5_000
+const DIRECT_MUTATION_MAX_ATTEMPTS = 10
 
 const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	if (explicit) return explicit
@@ -82,90 +82,114 @@ const deriveAccount = (from: ChainRef, explicit?: string): string => {
 const parseOptionalNumber = (value: unknown): number | undefined =>
 	typeof value === "string" && value.length > 0 ? Number(value) : undefined
 
-const parseBoolean = (value: unknown, fallback: boolean): boolean =>
-	typeof value === "boolean" ? value : fallback
-
 const readRouteArgs = (args: Record<string, unknown>): RouteArgs => ({
 	from: parseChainRef(args.from, "--from"),
 	to: parseChainRef(args.to, "--to"),
-	json: parseBoolean(args.json, false),
-	verbose: parseBoolean(args.verbose, false)
+	json: readBooleanArg(args, "json"),
+	verbose: readBooleanArg(args, "verbose")
 })
 
 const readDepositSubmitArgs = (args: Record<string, unknown>): DepositSubmitArgs => ({
 	...readRouteArgs(args),
-	account: parseOptionalString(args.account),
-	amount: parseString(args.amount, "--amount"),
-	timeoutSlots: parseOptionalNumber(args.timeoutSlots),
-	wait: parseBoolean(args.wait, true)
+	account: readOptionalStringArg(args, "account"),
+	amount: readRequiredStringArg(args, "amount", "Missing required --amount"),
+	timeoutSlots: parseOptionalNumber(readAliasedStringArg(args, "timeoutSlots", "timeout-slots")),
+	wait: readBooleanArg(args, "wait", true)
 })
 
 const readDepositActionArgs = (args: Record<string, unknown>): DepositActionArgs => ({
 	...readRouteArgs(args),
-	account: parseOptionalString(args.account),
-	wait: parseBoolean(args.wait, true)
+	account: readOptionalStringArg(args, "account"),
+	wait: readBooleanArg(args, "wait", true)
 })
 
 const readDepositStatusArgs = (args: Record<string, unknown>): DepositStatusArgs => {
 	const routeArgs = readRouteArgs(args)
 	return {
 		...routeArgs,
-		account: deriveAccount(routeArgs.from, parseOptionalString(args.account)),
-		latest: parseBoolean(args.latest, true)
+		account: deriveAccount(routeArgs.from, readOptionalStringArg(args, "account")),
+		latest: readBooleanArg(args, "latest", true)
 	}
 }
 
 const readWithdrawalSubmitArgs = (args: Record<string, unknown>): WithdrawalSubmitArgs => ({
 	...readRouteArgs(args),
-	account: parseOptionalString(args.account),
-	amount: parseString(args.amount, "--amount"),
-	wait: parseBoolean(args.wait, true)
+	account: readOptionalStringArg(args, "account"),
+	amount: readRequiredStringArg(args, "amount", "Missing required --amount"),
+	wait: readBooleanArg(args, "wait", true)
 })
 
 const readWithdrawalActionArgs = (args: Record<string, unknown>): WithdrawalActionArgs => ({
 	...readRouteArgs(args),
-	account: parseOptionalString(args.account),
-	wait: parseBoolean(args.wait, true)
+	account: readOptionalStringArg(args, "account"),
+	wait: readBooleanArg(args, "wait", true)
 })
 
 const readWithdrawalStatusArgs = (args: Record<string, unknown>): WithdrawalStatusArgs => {
 	const routeArgs = readRouteArgs(args)
 	return {
 		...routeArgs,
-		account: deriveAccount(routeArgs.from, parseOptionalString(args.account)),
-		latest: parseBoolean(args.latest, true)
+		account: deriveAccount(routeArgs.from, readOptionalStringArg(args, "account")),
+		latest: readBooleanArg(args, "latest", true)
 	}
-}
-
-const defaultCreateAdapter = async ({
-	from,
-	to,
-	verbose
-}: {
-	from: ChainRef
-	to: ChainRef
-	verbose: boolean
-}): Promise<BridgeAdapter> => {
-	const { createBridgeAdapter } = await import("../core/adapter")
-	return createBridgeAdapter({ route: resolveRoute(from, to), verbose })
 }
 
 const selectLatest = <T extends { index: number }>(items: T[], latest: boolean): T[] =>
 	latest ? [...items].sort((left, right) => right.index - left.index).slice(0, 1) : items
 
+const retryRecoverableMutation = async <T>({
+	run,
+	sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+	retryDelayMs = DIRECT_MUTATION_RETRY_DELAY_MS,
+	maxAttempts = DIRECT_MUTATION_MAX_ATTEMPTS
+}: {
+	run: () => Promise<T>
+	sleep?: (ms: number) => Promise<void>
+	retryDelayMs?: number
+	maxAttempts?: number
+}): Promise<T> => {
+	for (let attempt = 1; ; attempt += 1) {
+		try {
+			return await run()
+		} catch (error) {
+			if (!isRecoverableMutationError(error)) {
+				throw error
+			}
+
+			if (attempt >= maxAttempts) {
+				const message = error instanceof Error ? error.message : String(error)
+				throw new Error(
+					`Recoverable deposit submit mutation failed after ${attempt} attempts: ${message}`
+				)
+			}
+
+			await sleep(retryDelayMs)
+		}
+	}
+}
+
 export const runDepositSubmit = async (
 	input: DepositSubmitArgs,
 	{
-		adapter
+		adapter,
+		sleep,
+		retryDelayMs
 	}: {
 		adapter: Pick<BridgeAdapter, "submitDeposit">
+		sleep?: (ms: number) => Promise<void>
+		retryDelayMs?: number
 	}
 ): Promise<TransactionResult> =>
-	adapter.submitDeposit({
-		account: input.account,
-		amount: input.amount,
-		timeoutSlots: resolveDepositTimeoutSlots(input.timeoutSlots),
-		wait: input.wait
+	retryRecoverableMutation({
+		run: () =>
+			adapter.submitDeposit({
+				account: input.account,
+				amount: input.amount,
+				timeoutSlots: resolveDepositTimeoutSlots(input.timeoutSlots),
+				wait: input.wait
+			}),
+		sleep,
+		retryDelayMs
 	})
 
 export const runDepositFinalize = async (
@@ -342,17 +366,21 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					...routeArgs({ from: "mina:testnet", to: "zeko:testnet" }),
 					account: { type: "string", required: false },
 					amount: { type: "string", required: true },
-					timeoutSlots: { type: "string", required: false },
+					timeoutSlots: { type: "string", required: false, alias: ["timeout-slots"] },
 					wait: { type: "boolean", default: true }
 				},
 				async run({ args }) {
 					const commandArgs = readDepositSubmitArgs(args)
-					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
+					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
 						verbose: commandArgs.verbose ?? false
 					})
-					const result = await runDepositSubmit(commandArgs, { adapter })
+					const result = await runDepositSubmit(commandArgs, {
+						adapter,
+						sleep: deps.sleep,
+						retryDelayMs: deps.retryDelayMs
+					})
 					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
 				}
 			}),
@@ -368,7 +396,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 				},
 				async run({ args }) {
 					const commandArgs = readDepositActionArgs(args)
-					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
+					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
 						verbose: commandArgs.verbose ?? false
@@ -389,7 +417,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 				},
 				async run({ args }) {
 					const commandArgs = readDepositActionArgs(args)
-					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
+					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
 						verbose: commandArgs.verbose ?? false
@@ -410,7 +438,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 				},
 				async run({ args }) {
 					const commandArgs = readDepositStatusArgs(args)
-					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
+					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
 						verbose: commandArgs.verbose ?? false
@@ -442,7 +470,7 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 				},
 				async run({ args }) {
 					const commandArgs = readWithdrawalSubmitArgs(args)
-					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
+					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
 						verbose: commandArgs.verbose ?? false
@@ -463,7 +491,7 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 				},
 				async run({ args }) {
 					const commandArgs = readWithdrawalActionArgs(args)
-					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
+					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
 						verbose: commandArgs.verbose ?? false
@@ -484,7 +512,7 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 				},
 				async run({ args }) {
 					const commandArgs = readWithdrawalStatusArgs(args)
-					const adapter = await (deps.createAdapter ?? defaultCreateAdapter)({
+					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
 						verbose: commandArgs.verbose ?? false

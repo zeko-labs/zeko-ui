@@ -37,6 +37,7 @@ import type {
 } from "./types"
 import {
 	BRIDGE_DEPLOY_BLOCK,
+	bridgeVersionForActionIndex,
 	checkAccepted,
 	depositAux,
 	fetchActions,
@@ -48,13 +49,16 @@ import {
 	getNextDepositIndex,
 	getVkHash,
 	refreshCache,
-	safeDecrement
+	safeDecrement,
+	uint32Max
 } from "./utils"
 
 export type DepositParams = {
 	deposit: Deposit
 	aux: Field
 }
+
+const NO_OUTER_COMMIT_REASON = "No outer commit available yet"
 
 export type DepositStateContext = {
 	helperAccountL1: Account | null
@@ -65,7 +69,7 @@ export type DepositStateContext = {
 		state: Field
 		length: UInt32
 	}
-	lastCommit: OuterCommit
+	lastCommit: OuterCommit | null
 	lastCommitAse: Field[]
 	lastCommitIndex: number
 	commitAseTarget: Field
@@ -74,6 +78,7 @@ export type DepositStateContext = {
 	depositWitnesses: OuterWitness[]
 	depositsByAux: Map<bigint, DepositParams>
 	outerActions: OuterAction[]
+	v2DepositsStartIndex: UInt32
 }
 
 export async function fetchUserDeposits(runtime: BridgeRuntime, pk: PublicKey): Promise<Deposit[]> {
@@ -213,17 +218,23 @@ export async function fetchDepositStateContext(
 		syncedOuterActionState,
 		lastCommit,
 		lastCommitAse: ase.map(({ action }) => fromList([action]).hash),
-		lastCommitIndex: outerActions.findIndex(({ index }) => lastCommit.index === index),
-		commitAseTarget: ase.at(-1)?.afterActionState ?? lastCommit.afterActionState,
-		synchronizedOuterActionStateIndex: outerActions.findIndex(({ index }) =>
-			lastCommit.synchronizedOuterActionStateLength.equals(UInt32.from(index + 1)).toBoolean()
-		),
+		lastCommitIndex:
+			lastCommit === null ? -1 : outerActions.findIndex(({ index }) => lastCommit.index === index),
+		commitAseTarget:
+			ase.at(-1)?.afterActionState ?? lastCommit?.afterActionState ?? syncedOuterActionState.state,
+		synchronizedOuterActionStateIndex:
+			lastCommit === null
+				? -1
+				: outerActions.findIndex(({ index }) =>
+						lastCommit.synchronizedOuterActionStateLength.equals(UInt32.from(index + 1)).toBoolean()
+					),
 		currentSyncedOuterActionStateIndex: outerActions.findIndex(({ afterActionState }) =>
 			afterActionState.equals(syncedOuterActionState.state).toBoolean()
 		),
 		depositWitnesses,
 		depositsByAux,
-		outerActions
+		outerActions,
+		v2DepositsStartIndex: runtime.V2_DEPOSITS_START_INDEX
 	}
 }
 
@@ -390,7 +401,11 @@ export async function fetchDepositFinalizationWitnesses(
 		return { ok: false, msg: "No deposit witnesses found" }
 	}
 
-	const minDepositIndex = context.prevNextDeposit
+	if (context.lastCommit === null) {
+		return { ok: false, msg: NO_OUTER_COMMIT_REASON }
+	}
+
+	const minDepositIndex = uint32Max(context.v2DepositsStartIndex, context.prevNextDeposit)
 
 	for (const witness of getSortedDepositWitnesses(context)) {
 		if (
@@ -409,11 +424,15 @@ export async function fetchDepositFinalizationWitnesses(
 		if (finalizationWitness) {
 			return {
 				ok: true,
+				index: witness.index,
 				value: finalizationWitness
 			}
 		}
 
-		return { ok: false, msg: "Earlier deposit must be resolved first" }
+		return {
+			ok: false,
+			msg: "Deposit is not finalizable yet; an earlier deposit must be resolved first"
+		}
 	}
 
 	return { ok: false, msg: "No finalizable deposit found" }
@@ -581,13 +600,14 @@ export async function finalizeDeposit(
 export async function canFinalizeDeposit(
 	runtime: BridgeRuntime,
 	pk: PublicKey
-): Promise<{ available: boolean; reason: string | null }> {
+): Promise<{ available: boolean; reason: string | null; index?: number }> {
 	debug(runtime, "canFinalizeDeposit start", { pk: pk.toBase58() })
 	const result = await fetchDepositFinalizationWitnesses(runtime, pk)
 	debug(runtime, "canFinalizeDeposit result", result)
 	return {
 		available: result.ok,
-		reason: result.ok ? null : result.msg
+		reason: result.ok ? null : result.msg,
+		index: result.index
 	}
 }
 
@@ -607,7 +627,7 @@ function buildDepositFinalizationWitnessValue(
 	witness: ExtractInput<typeof finalizeDepositMutation>
 } | null {
 	const depositParams = getDepositParamsForWitness(context, witness)
-	const minDepositIndex = context.prevNextDeposit
+	const minDepositIndex = uint32Max(context.v2DepositsStartIndex, context.prevNextDeposit)
 
 	if (isDepositCancelled(context, witness) || isDepositFinalised(context, witness)) {
 		return null
@@ -720,10 +740,13 @@ function buildDepositWithState(
 	const synced = context.syncedOuterActionState.length
 		.greaterThanOrEqual(UInt32.from(witness.index + 1))
 		.toBoolean()
-	const accepted = context.lastCommit.index >= witness.index
-	const confirmed = context.lastCommit.synchronizedOuterActionStateLength
-		.greaterThanOrEqual(UInt32.from(witness.index + 1))
-		.toBoolean()
+	const accepted = context.lastCommit !== null && context.lastCommit.index >= witness.index
+	const confirmed =
+		context.lastCommit === null
+			? false
+			: context.lastCommit.synchronizedOuterActionStateLength
+					.greaterThanOrEqual(UInt32.from(witness.index + 1))
+					.toBoolean()
 	const finalised = isAccepted && isDepositFinalised(context, witness)
 
 	return {
@@ -734,7 +757,11 @@ function buildDepositWithState(
 		accepted,
 		confirmed,
 		finalised,
-		cancellable: buildDepositCancellationWitnessInput(context, witness) !== null
+		cancellable: buildDepositCancellationWitnessInput(context, witness) !== null,
+		bridgeVersion: bridgeVersionForActionIndex({
+			actionIndex: witness.index,
+			v2StartIndex: context.v2DepositsStartIndex
+		})
 	}
 }
 
@@ -755,7 +782,7 @@ export function buildDepositCancellationWitnessInput(
 
 	if (cancelled || finalised) return null
 
-	const minDepositIndex = context.prevNextCancelledDeposit
+	const minDepositIndex = uint32Max(context.v2DepositsStartIndex, context.prevNextCancelledDeposit)
 
 	if (minDepositIndex.greaterThan(UInt32.from(witness.index)).toBoolean()) return null
 
@@ -770,6 +797,8 @@ export function buildDepositCancellationWitnessInput(
 
 	if (context.lastCommitIndex === -1 || context.lastCommitIndex < cancellationActionIndex)
 		return null
+
+	if (context.lastCommit === null) return null
 
 	if (context.synchronizedOuterActionStateIndex === -1) return null
 
@@ -840,10 +869,11 @@ export async function fetchDepositsWithStates(
 			buildDepositWithState(context, witness)
 		),
 		syncedIndex: +safeDecrement(context.syncedOuterActionState.length).toString(),
-		acceptedIndex: context.lastCommit.index,
-		confirmedIndex: +safeDecrement(
-			context.lastCommit.synchronizedOuterActionStateLength
-		).toString(),
+		acceptedIndex: context.lastCommit?.index ?? -1,
+		confirmedIndex:
+			context.lastCommit === null
+				? -1
+				: +safeDecrement(context.lastCommit.synchronizedOuterActionStateLength).toString(),
 		finalisedIndex: +safeDecrement(context.prevNextDeposit).toString(),
 		cancelledIndex: +safeDecrement(context.prevNextCancelledDeposit).toString()
 	}

@@ -27,35 +27,32 @@ const machineStep = computed(() => {
 	// Special case for `WAITING_FOR_NETWORK` state
 	if (machine.value.matches("WAITING_FOR_NETWORK")) {
 		if (!machine.value.context.returnTo) return 0
-		return {
-			INIT_BRIDGE_OPERATION: 0,
-			FINALIZE_DEPOSIT: 2,
-			FINALIZE_WITHDRAWAL: 2,
-			TO_FINALIZE: 2,
-			CANCEL_DEPOSIT: 1
-		}[machine.value.context.returnTo]
+		switch (machine.value.context.returnTo) {
+			case "INIT_BRIDGE_OPERATION":
+				return 0
+			case "FINALIZE_DEPOSIT":
+			case "FINALIZE_WITHDRAWAL":
+			case "TO_FINALIZE":
+				return 2
+			default:
+				return 0
+		}
 	}
 	const meta = machine.value.getMeta()
 	return meta[statePath(machine.value.value)]?.step ?? 0
 })
 const uiProgress = computed(() =>
 	progressFromState({
-		state: machine.value.value,
-		returnTo: machine.value.context.returnTo,
 		step: machineStep.value
 	})
 )
 
 const status = computed(() =>
-	statusFromState(machine.value.value, machine.value.context.direction)
+	statusFromState(machine.value.value, machine.value.context.direction, {
+		canCancel: machine.value.context.canCancel
+	})
 )
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
-const canCancel = computed(() => machine.value.matches("CAN_CANCEL"))
-const cancelling = computed(
-	() =>
-		machine.value.matches("CANCEL_DEPOSIT") ||
-		machine.value.matches("DEPOSIT_CANCELLED")
-)
 const transactionIsComplete = (
 	key: keyof typeof machine.value.context.transactions
 ) =>
@@ -128,13 +125,6 @@ watch(machine.value.context.errors, (newErrors) => {
               })
             '>
             Change Network
-          </Button>
-          <Button
-            v-else-if="canCancel || cancelling"
-            variant="cancel"
-            :disabled="cancelling"
-            @click='operation.send({ type: "Cancel" })'>
-            Cancel
           </Button>
           <Button
             v-else

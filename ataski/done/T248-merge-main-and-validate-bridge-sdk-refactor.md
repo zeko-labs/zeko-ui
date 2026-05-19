@@ -1,11 +1,11 @@
 ---
-id: T200
+id: T248
 title: "merge-main-and-validate-bridge-sdk-refactor"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-05-19T12:47:37Z
-updated_at: 2026-05-19T12:47:37Z
+updated_at: 2026-05-19T12:57:03Z
 ---
 
 ## Requirements
@@ -27,4 +27,12 @@ updated_at: 2026-05-19T12:47:37Z
 
 ## GREEN Evidence
 
-- Pending.
+- Resolved `origin/main` merge conflicts by preserving the split bridge-sdk facade/modules and porting new main behavior into `runtime`, `deposits`, and `withdrawals`.
+- `moon run bridge-sdk:test -f` passed: 8 files, 40 tests.
+- `moon run bridge-sdk:typecheck -f` passed.
+- `moon run bridge-sdk:build -f` passed.
+- `moon run bridge-sdk:lint -f` passed with the pre-existing `ExtractInput<any>` warnings in `packages/bridge-sdk/src/types.ts`.
+- `moon run bridge-cli:test -f -- tests/direct-commands.test.ts tests/bridge-flow.test.ts tests/adapter.test.ts tests/bridge-queue.test.ts` passed: 4 files, 52 passed, 13 skipped.
+- `moon run bridge-ui:test -f -- test/unit/bridge-operation.test.ts test/unit/bridge-versions.test.ts test/unit/helpers-queue.test.ts test/unit/helpers-status.test.ts test/unit/recovery.test.ts` passed: 5 files, 42 tests.
+- `moon run bridge-cli:typecheck -f` passed.
+- `moon run bridge-ui:typecheck -f` passed.

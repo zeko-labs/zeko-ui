@@ -1,8 +1,8 @@
 ---
-id: T196
+id: T244
 title: "Validate bridge SDK functional core refactor"
 status: done
-blockedBy: [T195]
+blockedBy: [T243]
 owner: codex
 created_at: 2026-05-08T20:55:07Z
 updated_at: 2026-05-08T21:20:33Z

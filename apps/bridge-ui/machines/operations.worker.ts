@@ -3,6 +3,7 @@ import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
 import type {
+	BridgeVersion,
 	DepositWithState,
 	WithdrawalFinalizationResult,
 	WithdrawalWithState
@@ -10,6 +11,7 @@ import type {
 import { Bridge } from "@zeko-labs/bridge-sdk"
 import * as Comlink from "comlink"
 import { PublicKey, Transaction, type Transaction as MinaTransaction, UInt32, UInt64 } from "o1js"
+import { filterBridgeVersionOperations } from "./bridgeVersions"
 import { createLogger } from "./debug"
 import { getBridgeConfig } from "./helpers"
 import { normalizeOperationTimestamp } from "./operationTimestamps"
@@ -29,9 +31,12 @@ export type ActionState = {
 	amount: string
 	cancelled: boolean
 	cancellable?: boolean
+	timeoutSlot?: string
 	finalised: boolean
+	bridgeVersion: BridgeVersion
 	transaction: {
-		timestampMs: number | null
+		date?: Date
+		timestampMs?: number | null
 		hash: string
 	}
 	source: Networks
@@ -41,6 +46,7 @@ export type ActionState = {
 export type PendingOperations = {
 	deposits: ActionState[]
 	withdrawals: ActionState[]
+	currentSlot: string
 }
 type L1L2 = { l1: Networks; l2: Networks }
 type FeeInput = { feeNanomina?: number }
@@ -166,10 +172,11 @@ async function findPendingOperations({
 }: { account: string } & L1L2): Promise<PendingOperations> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(account)
-	const [{ deposits, ...depositIndices }, { withdrawals, ...withdrawalIndices }] =
+	const [{ deposits, ...depositIndices }, { withdrawals, ...withdrawalIndices }, currentSlot] =
 		(await Promise.all([
 			bridge.fetchDepositsWithStates(recipient),
-			bridge.fetchWithdrawalsWithStates(recipient)
+			bridge.fetchWithdrawalsWithStates(recipient),
+			bridge.fetchCurrentSlot()
 		])) satisfies [
 			{
 				deposits: DepositWithState[]
@@ -183,11 +190,11 @@ async function findPendingOperations({
 				withdrawals: WithdrawalWithState[]
 				committedIndex: number
 				finalisedIndex: number
-			}
+			},
+			UInt32
 		]
 
 	const toAmount = (n: bigint) => Number(Number(n / BigInt(10e8)).toFixed(2)).toString()
-
 	const transferToString = ({
 		transfer,
 		cancelled,
@@ -205,7 +212,9 @@ async function findPendingOperations({
 		amount: toAmount(transfer.amount.toBigInt()),
 		cancelled,
 		cancellable: "cancellable" in transfer ? transfer.cancellable : undefined,
+		timeoutSlot: "timeout" in transfer ? transfer.timeout.toString() : undefined,
 		finalised: transfer.finalised,
+		bridgeVersion: transfer.bridgeVersion,
 		transaction: {
 			timestampMs: normalizeOperationTimestamp(transfer.timestamp),
 			hash: transfer.hash
@@ -215,7 +224,7 @@ async function findPendingOperations({
 	})
 
 	return {
-		deposits: deposits.map((deposit) =>
+		deposits: filterBridgeVersionOperations(deposits).map((deposit) =>
 			transferToString({
 				transfer: deposit,
 				cancelled: deposit.cancelled,
@@ -223,14 +232,15 @@ async function findPendingOperations({
 				destination: l2
 			})
 		),
-		withdrawals: withdrawals.map((withdrawal) =>
+		withdrawals: filterBridgeVersionOperations(withdrawals).map((withdrawal) =>
 			transferToString({
 				transfer: withdrawal,
 				cancelled: false,
 				source: l2,
 				destination: l1
 			})
-		)
+		),
+		currentSlot: currentSlot.toString()
 	}
 }
 

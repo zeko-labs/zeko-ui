@@ -4,6 +4,17 @@ This is the Bridge UI application, deployed at `https://bridge.zeko.io`.
 
 The bridge use the `@zeko/layer`.
 
+## Queue Behavior
+
+The bridge UI uses three distinct queue views:
+
+- The main lane processes one non-cancellable operation at a time.
+- The main lane ordering is global: non-cancellable deposits first in submission order, then non-cancellable withdrawals in submission order.
+- If the current deposit becomes cancellable, it is removed from the main lane immediately and moved to `Cancellable Deposits`.
+- Cancellable deposits are skippable and are never shown in the main lane.
+- `Deposit Queue` and `Withdrawal Queue` are shown separately whenever they contain queued items.
+- When the active main-lane operation completes, the main lane advances to the next item in that global deposit-first, withdrawal-second order.
+
 ## Sentry Issues
 
 Build debug flags : `NODE_OPTIONS=--max-old-space-size=8192 NODE_DEBUG=* SENTRY_LOG_LEVEL=debug nuxt build --logLevel verbose`

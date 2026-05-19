@@ -15,12 +15,14 @@ import { resolveSignerKeys } from "./signer"
 import { resolveDepositTimeoutSlots } from "./timeouts"
 import type {
 	BridgeCapabilityDiagnostic,
+	BridgeStatusSources,
 	DepositStatus,
 	TransactionResult,
 	WithdrawalStatus
 } from "./types"
 
 export type BridgeAdapter = {
+	getStatusSources?(): BridgeStatusSources
 	getDepositStatuses(account: string): Promise<DepositStatus[]>
 	getWithdrawalStatuses(account: string): Promise<WithdrawalStatus[]>
 	canFinalizeDeposit?(account?: string): Promise<boolean | BridgeCapabilityDiagnostic>
@@ -48,6 +50,8 @@ const bridges = new Map<string, Promise<Bridge>>()
 const BRIDGE_FEE_NANOMINA = 100_000_000n
 const WITHDRAWAL_SUBMIT_FEE_NANOMINA = 500_000_000n
 export const MAX_FEE_RETRIES = 5
+export const normalizeStatusTimestamp = (timestamp: string): string =>
+	timestamp === "0" ? "" : timestamp
 
 type SignedTransactionResult = {
 	hash?: string
@@ -240,8 +244,37 @@ export const createBridgeAdapter = ({
 	verbose?: boolean
 }): BridgeAdapter => {
 	const keys = resolveSignerKeys(env)
+	const config = createSdkConfig(route)
 
 	return {
+		getStatusSources() {
+			return {
+				deposits: [
+					{
+						name: "l1-archive",
+						endpoint: config.l1ArchiveUrl,
+						role: "archived Mina deposit actions"
+					},
+					{
+						name: "l1-live",
+						endpoint: config.l1Url,
+						role: "recent live Mina deposit actions"
+					}
+				],
+				withdrawals: [
+					{
+						name: "l2-archive",
+						endpoint: config.zekoArchiveUrl,
+						role: "archived Zeko withdrawal actions"
+					},
+					{
+						name: "l2-live",
+						endpoint: config.zekoUrl,
+						role: "recent live Zeko withdrawal actions"
+					}
+				]
+			}
+		},
 		async getDepositStatuses(account) {
 			const bridge = await getBridge(route, verbose)
 			const result = await bridge.fetchDepositsWithStates(PublicKey.fromBase58(account))
@@ -257,7 +290,7 @@ export const createBridgeAdapter = ({
 					confirmed: item.confirmed,
 					finalised: item.finalised,
 					hash: item.hash,
-					timestamp: item.timestamp
+					timestamp: normalizeStatusTimestamp(item.timestamp)
 				})
 			)
 		},
@@ -272,7 +305,7 @@ export const createBridgeAdapter = ({
 					committed: item.committed,
 					finalised: item.finalised,
 					hash: item.hash,
-					timestamp: item.timestamp
+					timestamp: normalizeStatusTimestamp(item.timestamp)
 				})
 			)
 		},

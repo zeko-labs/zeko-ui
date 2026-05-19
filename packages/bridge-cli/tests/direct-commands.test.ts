@@ -1,3 +1,4 @@
+import { runCommand } from "citty"
 import { PrivateKey } from "o1js"
 import { describe, expect, it } from "vitest"
 import type { BridgeAdapter } from "../src/core/adapter"
@@ -166,6 +167,153 @@ describe("direct commands", () => {
 		)
 
 		expect(seenTimeouts).toEqual([DEFAULT_DEPOSIT_TIMEOUT_SLOTS])
+	})
+
+	it("accepts --timeout-slots on the direct deposit submit command", async () => {
+		const seenTimeouts: Array<number | undefined> = []
+		const command = createDepositCommand({
+			createAdapter: async () =>
+				createDepositAdapter({
+					async submitDeposit(input) {
+						seenTimeouts.push(input.timeoutSlots)
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko:testnet",
+							hash: "deposit-submit-kebab-timeout",
+							explorerUrl: "https://example.test/deposit-submit-kebab-timeout",
+							included: false
+						}
+					}
+				}),
+			write: () => {}
+		})
+
+		await runCommand(command, {
+			rawArgs: [
+				"submit",
+				"--account",
+				"B62test",
+				"--amount",
+				"1",
+				"--timeout-slots",
+				"1",
+				"--wait",
+				"false"
+			]
+		})
+
+		expect(seenTimeouts).toEqual([1])
+	})
+
+	it("retries recoverable deposit submit mutations and eventually succeeds", async () => {
+		const sleepCalls: number[] = []
+		let attempts = 0
+
+		const result = await runDepositSubmit(
+			{
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				json: false,
+				account: "B62test",
+				amount: "1",
+				timeoutSlots: 1,
+				wait: false
+			},
+			{
+				adapter: {
+					async submitDeposit() {
+						attempts += 1
+						if (attempts < 7) {
+							throw new Error("No key returned from mutation")
+						}
+
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko:testnet",
+							hash: "deposit-submit-retried",
+							explorerUrl: "https://example.test/deposit-submit-retried",
+							included: false
+						}
+					}
+				},
+				sleep: async (ms) => {
+					sleepCalls.push(ms)
+				},
+				retryDelayMs: 7
+			}
+		)
+
+		expect(result.hash).toBe("deposit-submit-retried")
+		expect(attempts).toBe(7)
+		expect(sleepCalls).toEqual([7, 7, 7, 7, 7, 7])
+	})
+
+	it("stops retrying recoverable deposit submit mutations after the retry budget", async () => {
+		const sleepCalls: number[] = []
+		let attempts = 0
+
+		await expect(
+			runDepositSubmit(
+				{
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					json: false,
+					account: "B62test",
+					amount: "1",
+					timeoutSlots: 1,
+					wait: false
+				},
+				{
+					adapter: {
+						async submitDeposit() {
+							attempts += 1
+							throw new Error("No key returned from mutation")
+						}
+					},
+					sleep: async (ms) => {
+						sleepCalls.push(ms)
+					},
+					retryDelayMs: 7
+				}
+			)
+		).rejects.toThrow("No key returned from mutation")
+
+		expect(attempts).toBe(10)
+		expect(sleepCalls).toEqual([7, 7, 7, 7, 7, 7, 7, 7, 7])
+	})
+
+	it("does not retry non-recoverable deposit submit failures", async () => {
+		let attempts = 0
+
+		await expect(
+			runDepositSubmit(
+				{
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					json: false,
+					account: "B62test",
+					amount: "1",
+					timeoutSlots: 1,
+					wait: false
+				},
+				{
+					adapter: {
+						async submitDeposit() {
+							attempts += 1
+							throw new Error("Transaction failed with errors: insufficient funds")
+						}
+					},
+					sleep: async () => {},
+					retryDelayMs: 7
+				}
+			)
+		).rejects.toThrow("insufficient funds")
+
+		expect(attempts).toBe(1)
 	})
 
 	it("finalizes a deposit", async () => {

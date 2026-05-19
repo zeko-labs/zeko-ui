@@ -1,4 +1,4 @@
-import type { Field, Mina, PublicKey, Transaction, UInt32, UInt64 } from "o1js"
+import { UInt32, type Field, type Mina, type PublicKey, type Transaction, type UInt64 } from "o1js"
 import { cancelDeposit, canCancelDeposit } from "./cancellations"
 import {
 	canFinalizeDeposit,
@@ -66,7 +66,9 @@ export class Bridge {
 		withdrawalDelay: UInt32,
 		bridgeFeeRecipientL1: PublicKey,
 		bridgeFeeRecipientL2: PublicKey,
-		bridgeProofFee: UInt64
+		bridgeProofFee: UInt64,
+		V2_DEPOSITS_START_INDEX?: UInt32,
+		V2_WITHDRAWALS_START_INDEX?: UInt32
 	)
 	constructor(runtimeOrConfig: BridgeRuntime | Config, ...args: unknown[]) {
 		if ("config" in runtimeOrConfig && "l1Client" in runtimeOrConfig) {
@@ -91,7 +93,9 @@ export class Bridge {
 			withdrawalDelay,
 			bridgeFeeRecipientL1,
 			bridgeFeeRecipientL2,
-			bridgeProofFee
+			bridgeProofFee,
+			V2_DEPOSITS_START_INDEX,
+			V2_WITHDRAWALS_START_INDEX
 		] = args as [
 			GqlClient,
 			GqlClient,
@@ -109,7 +113,9 @@ export class Bridge {
 			UInt32,
 			PublicKey,
 			PublicKey,
-			UInt64
+			UInt64,
+			UInt32 | undefined,
+			UInt32 | undefined
 		]
 
 		this.runtime = this.withBridgeHooks({
@@ -130,13 +136,21 @@ export class Bridge {
 			withdrawalDelay,
 			bridgeFeeRecipientL1,
 			bridgeFeeRecipientL2,
-			bridgeProofFee
+			bridgeProofFee,
+			V2_DEPOSITS_START_INDEX: V2_DEPOSITS_START_INDEX ?? UInt32.zero,
+			V2_WITHDRAWALS_START_INDEX: V2_WITHDRAWALS_START_INDEX ?? UInt32.zero
 		})
 	}
 
 	private withBridgeHooks(runtime: BridgeRuntime): BridgeRuntime {
-		return {
+		const runtimeWithDefaults = {
 			...runtime,
+			V2_DEPOSITS_START_INDEX: runtime.V2_DEPOSITS_START_INDEX ?? UInt32.zero,
+			V2_WITHDRAWALS_START_INDEX: runtime.V2_WITHDRAWALS_START_INDEX ?? UInt32.zero
+		}
+
+		return {
+			...runtimeWithDefaults,
 			bridge: {
 				fetchAccount: (...args) => this.fetchAccount(...args),
 				fetchCurrentSlot: () => this.fetchCurrentSlot(),
@@ -259,7 +273,9 @@ export class Bridge {
 		return finalizeDeposit(this.runtime, pk, signTxn, options)
 	}
 
-	public canFinalizeDeposit(pk: PublicKey): Promise<{ available: boolean; reason: string | null }> {
+	public canFinalizeDeposit(
+		pk: PublicKey
+	): Promise<{ available: boolean; reason: string | null; index?: number }> {
 		return canFinalizeDeposit(this.runtime, pk)
 	}
 

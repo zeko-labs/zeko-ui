@@ -132,6 +132,44 @@ describe("bridge queue analysis", () => {
 		expect(result.shouldAdvanceQueuedClaims).toBe(true)
 	})
 
+	it("keeps a previously observed deposit target index when the status hash changes after finalization", () => {
+		const session = baseSession({ targetIndex: 5 })
+		const result = analyzeDepositQueue({
+			session,
+			statuses: [
+				{
+					index: 4,
+					amount: "2",
+					recipient: "B62older",
+					cancelled: false,
+					synced: true,
+					accepted: true,
+					confirmed: true,
+					finalised: true,
+					hash: "finalize-older",
+					timestamp: "2026-03-10T00:02:00.000Z"
+				},
+				{
+					index: 5,
+					amount: "1",
+					recipient: "B62test",
+					cancelled: false,
+					synced: true,
+					accepted: true,
+					confirmed: true,
+					finalised: true,
+					hash: "finalize-current",
+					timestamp: "2026-03-10T00:03:00.000Z"
+				}
+			]
+		})
+
+		expect(result.target?.index).toBe(5)
+		expect(result.targetIndex).toBe(5)
+		expect(result.pendingAhead).toBe(0)
+		expect(result.shouldAdvanceQueuedClaims).toBe(false)
+	})
+
 	it("treats an unseen submitted deposit as waiting for submission instead of rebinding to an older same-amount item", () => {
 		const session = baseSession()
 		const result = analyzeDepositQueue({

@@ -37,6 +37,7 @@ import type {
 	WitnessFetchResult
 } from "./types"
 import {
+	bridgeVersionForActionIndex,
 	fetchActions,
 	fetchCommitAsePastSlot,
 	fetchInnerActionsFromIndexer,
@@ -47,8 +48,46 @@ import {
 	getVkHash,
 	refreshCache,
 	safeDecrement,
+	uint32Max,
 	withdrawalAux
 } from "./utils"
+
+const NO_OUTER_COMMIT_REASON = "No outer commit available yet"
+
+const isUnknownLiveActionCursorError = (error: unknown): boolean => {
+	const message =
+		error && typeof error === "object" && "message" in error ? String(error.message) : String(error)
+	return /\bfrom\s+\d+\s+not found\b/i.test(message)
+}
+
+const mergeActionsByAfterState = <TAction extends Action>(actions: TAction[]): TAction[] => {
+	const seen = new Set<string>()
+	return actions.filter((action) => {
+		const afterState = action.afterActionState.toString()
+		if (seen.has(afterState)) return false
+		seen.add(afterState)
+		return true
+	})
+}
+
+async function fetchLiveWithdrawalActions(
+	runtime: BridgeRuntime,
+	pk: PublicKey,
+	lastArchiveActionState?: string
+): Promise<Action[]> {
+	if (!lastArchiveActionState) return await fetchRecentActions(runtime.l2Client, pk)
+
+	try {
+		return await fetchRecentActions(runtime.l2Client, pk, lastArchiveActionState)
+	} catch (error) {
+		if (!isUnknownLiveActionCursorError(error)) throw error
+
+		debug(runtime, "fetchUserWithdrawals live cursor not found; retrying without cursor", {
+			lastArchiveActionState
+		})
+		return await fetchRecentActions(runtime.l2Client, pk)
+	}
+}
 
 export async function fetchUserWithdrawalActions(
 	runtime: BridgeRuntime,
@@ -56,13 +95,16 @@ export async function fetchUserWithdrawalActions(
 ): Promise<Array<Action & Withdrawal>> {
 	const archiveActions = await fetchActions(runtime.l2ArchiveClient, pk)
 	const lastActionState = archiveActions.at(-1)?.afterActionState.toString()
-	const liveActions = (await fetchRecentActions(runtime.l2Client, pk, lastActionState)).slice(1)
-	const userInnerActions = [...archiveActions, ...liveActions]
+	const liveActions = await fetchLiveWithdrawalActions(runtime, pk, lastActionState)
+	const userInnerActions = mergeActionsByAfterState([...archiveActions, ...liveActions])
 
 	debug(runtime, "fetchUserWithdrawals action sources", {
+		archiveEndpoint: runtime.config.zekoArchiveUrl,
+		liveEndpoint: runtime.config.zekoUrl,
 		archiveCount: archiveActions.length,
 		liveCount: liveActions.length,
-		totalCount: userInnerActions.length
+		totalCount: userInnerActions.length,
+		lastArchivedActionState: lastActionState
 	})
 
 	return filterNulls(
@@ -297,6 +339,12 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		runtime.actionsApiClient,
 		+currentSlot.sub(runtime.withdrawalDelay)
 	)
+	if (lastCommit === null) {
+		debug(runtime, "fetchWithdrawalFinalizationWitnesses no-outer-commit", {
+			aseCount: ase.length
+		})
+		return { ok: false, msg: NO_OUTER_COMMIT_REASON, status: "waiting" }
+	}
 	debug(runtime, "fetchWithdrawalFinalizationWitnesses commitAsePastSlot", {
 		aseCount: ase.length,
 		innerActionState: lastCommit.innerActionState.toString(),
@@ -322,13 +370,18 @@ export async function fetchWithdrawalFinalizationWitnesses(
 	const matchingWitnesses = withdrawalWitnesses.filter((witness) =>
 		Boolean(findMatchingWithdrawal(witness))
 	)
-	const alreadyFinalisedWitnessCount = matchingWitnesses.filter((witness) =>
-		prevNextWithdrawal.greaterThan(UInt32.from(witness.index)).toBoolean()
-	).length
+	const alreadyFinalisedWitnessIndices = matchingWitnesses
+		.filter((witness) => prevNextWithdrawal.greaterThan(UInt32.from(witness.index)).toBoolean())
+		.map((witness) => witness.index)
+	const alreadyFinalisedWitnessCount = alreadyFinalisedWitnessIndices.length
 	const unfinalisedWitnessCount = matchingWitnesses.length - alreadyFinalisedWitnessCount
 	let insufficientFirstWithdrawalReason: string | null = null
 	let alreadyFinalisedCount = 0
+	let alreadyFinalisedIndex: number | undefined
 	let unfinalisedMatchCount = 0
+
+	const minWithdrawalIndex = uint32Max(runtime.V2_WITHDRAWALS_START_INDEX, prevNextWithdrawal)
+
 	const myWithdrawalIndex = innerActions.findIndex((action) => {
 		const matchingWithdrawal = findMatchingWithdrawal(action)
 
@@ -336,8 +389,11 @@ export async function fetchWithdrawalFinalizationWitnesses(
 
 		if (prevNextWithdrawal.greaterThan(UInt32.from(action.index)).toBoolean()) {
 			alreadyFinalisedCount++
+			alreadyFinalisedIndex = Math.max(alreadyFinalisedIndex ?? action.index, action.index)
 			return false
 		}
+
+		if (minWithdrawalIndex.greaterThan(UInt32.from(action.index)).toBoolean()) return false
 
 		unfinalisedMatchCount++
 
@@ -380,7 +436,8 @@ export async function fetchWithdrawalFinalizationWitnesses(
 			return {
 				ok: false,
 				msg: "Withdrawal already finalised",
-				status: "alreadyFinalised"
+				status: "alreadyFinalised",
+				index: alreadyFinalisedIndex ?? Math.max(...alreadyFinalisedWitnessIndices)
 			}
 		}
 		return { ok: false, msg: "No my withdrawal index found", status: "waiting" }
@@ -415,6 +472,7 @@ export async function fetchWithdrawalFinalizationWitnesses(
 
 	return {
 		ok: true,
+		index: myWithdrawal.index,
 		value: {
 			commitAseTarget,
 			commitSlotRange: lastCommit.slotRange,
@@ -632,7 +690,8 @@ export async function canFinalizeWithdrawal(
 	return {
 		available: result.ok,
 		reason: result.ok ? null : result.msg,
-		status: result.ok ? "available" : result.status ?? "waiting"
+		status: result.ok ? "available" : result.status ?? "waiting",
+		index: result.index
 	}
 }
 
@@ -674,6 +733,8 @@ export async function fetchWithdrawalsWithStates(
 		+currentSlot.sub(runtime.withdrawalDelay)
 	)
 
+	const normalizeTimestamp = (timestamp: string) => (timestamp === "0" ? "" : timestamp)
+
 	const witnessedAuxes = new Set(
 		withdrawalWitnesses.map((witness) => witness.aux.toBigInt().toString())
 	)
@@ -681,9 +742,14 @@ export async function fetchWithdrawalsWithStates(
 		.filter((withdrawal) => !witnessedAuxes.has(withdrawalAux(withdrawal).toBigInt().toString()))
 		.map((withdrawal, index, pending) => ({
 			...withdrawal,
+			timestamp: normalizeTimestamp(withdrawal.timestamp),
 			index: -(pending.length - index),
 			committed: false,
-			finalised: false
+			finalised: false,
+			bridgeVersion: bridgeVersionForActionIndex({
+				actionIndex: -(pending.length - index),
+				v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
+			})
 		}))
 
 	return {
@@ -694,15 +760,24 @@ export async function fetchWithdrawalsWithStates(
 				return {
 					...withdrawal,
 					...witness,
-					committed: lastCommit.innerActionStateLength
-						.greaterThan(UInt32.from(witness.index))
-						.toBoolean(),
-					finalised: nextWithdrawal.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean()
+					timestamp: normalizeTimestamp(witness.timestamp),
+					committed:
+						lastCommit === null
+							? false
+							: lastCommit.innerActionStateLength
+									.greaterThan(UInt32.from(witness.index))
+									.toBoolean(),
+					finalised: nextWithdrawal.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean(),
+					bridgeVersion: bridgeVersionForActionIndex({
+						actionIndex: witness.index,
+						v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
+					})
 				}
 			}),
 			...provisionalWithdrawals
 		],
-		committedIndex: +safeDecrement(lastCommit.innerActionStateLength).toString(),
+		committedIndex:
+			lastCommit === null ? -1 : +safeDecrement(lastCommit.innerActionStateLength).toString(),
 		finalisedIndex: +safeDecrement(nextWithdrawal).toString()
 	}
 }

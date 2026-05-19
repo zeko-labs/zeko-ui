@@ -1,5 +1,5 @@
 ---
-id: T195
+id: T243
 title: "Refactor bridge SDK functional core"
 status: done
 blockedBy: []

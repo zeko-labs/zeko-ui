@@ -5,29 +5,48 @@ import { isInsufficientFirstWithdrawalAmountError } from "@zeko-labs/bridge-sdk"
 import { PrivateKey } from "o1js"
 import { assign, createActor, fromPromise, setup, toPromise } from "xstate"
 import type { BridgeAdapter } from "../core/adapter"
+import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
 import { createOperationLogger } from "../core/logger"
-import { createOperationStateController } from "../core/operation-machine"
+import { isRecoverableMutationError } from "../core/mutation-errors"
 import { resolveAppPaths } from "../core/paths"
 import {
-	analyzeDepositQueue,
-	analyzeWithdrawalQueue,
 	type DepositQueueState,
 	getSubmitHash,
+	resolveEffectiveDepositClaimableIndex,
 	sortByIndex
 } from "../core/bridge-queue"
 import type { WithdrawalQueueState } from "../core/bridge-queue"
+import {
+	readAliasedNumberArg,
+	readAliasedOptionalNumberArg,
+	readBooleanArg,
+	readOptionalStringArg,
+	readRequiredStringArg
+} from "../core/command-args"
+import {
+	createInstrumentedBridgeAdapter,
+	createVerboseDiagnostics,
+	mergeVerboseDiagnosticsFromSessions,
+	withCapabilityWaitReason,
+	withPhaseTiming
+} from "../core/bridge-runtime/instrumentation"
+import {
+	decideDepositStep,
+	decideWithdrawalStep,
+	type BridgeRuntimeDecision
+} from "../core/bridge-runtime/decisions"
 import { renderBridgeResult, renderOperationProgress, toBridgeJsonResult } from "../core/reporter"
 import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
 import { resolveSignerKeys } from "../core/signer"
+import {
+	getWithdrawalStatusSourceSnapshot,
+	toWithdrawalStatusSourceLogDetails
+} from "../core/status-sources"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
 import { createSessionStore, type SessionStore } from "../core/session-store"
 import type {
 	BridgeCapabilityDiagnostic,
-	BridgePhaseTiming,
-	BridgeSdkCallTrace,
-	BridgeSdkMethodStat,
 	BridgeSdkOperation,
-	BridgeVerboseDiagnostics,
 	OperationPhase,
 	OperationSession
 } from "../core/types"
@@ -52,6 +71,7 @@ type BridgeFlowDeps = {
 			| "canFinalizeDeposit"
 			| "canCancelDeposit"
 			| "canFinalizeWithdrawal"
+			| "getStatusSources"
 		>
 	>
 	sessionStore: Pick<SessionStore, "save">
@@ -75,9 +95,7 @@ type BridgeFlowInput = {
 }
 
 type BridgeCommandDeps = {
-	createAdapter?: (input: { from: ChainRef; to: ChainRef; verbose: boolean }) =>
-		| Promise<BridgeAdapter>
-		| BridgeAdapter
+	createAdapter?: BridgeAdapterFactory
 	createStore?: (input: { stateDir: string }) => Pick<SessionStore, "save">
 	createLogger?: (input: { logPath: string }) => Pick<
 		ReturnType<typeof createOperationLogger>,
@@ -99,20 +117,11 @@ type BridgeCommandArgs = {
 	amount: { type: "string"; required: true }
 	account: { type: "string"; required: false }
 	recipient: { type: "string"; required: false }
-	timeoutSlots: { type: "string"; required: false }
+	timeoutSlots: { type: "string"; required: false; alias: string[] }
+	pollIntervalMs: { type: "string"; required: false; alias: string[] }
+	retryDelayMs: { type: "string"; required: false; alias: string[] }
 	json: { type: "boolean"; default: false }
 	verbose: { type: "boolean"; default: false }
-}
-
-type BridgeCommandRunArgs = {
-	from?: string
-	to?: string
-	amount: string
-	account?: string
-	recipient?: string
-	timeoutSlots?: string
-	json?: boolean
-	verbose?: boolean
 }
 
 type TransitionEvent =
@@ -135,37 +144,19 @@ type WaitStateTracker = {
 
 const HEARTBEAT_INTERVAL_MS = 30_000
 const RETRY_SLEEP_MS = 5_000
-const FINALIZE_RETRY_AFTER_MS = 180_000
 
-const getPendingFinalizeRetryState = ({
-	session,
-	claimableIndex,
-	now
-}: {
-	session: OperationSession
-	claimableIndex: number | undefined
-	now: () => string
-}): { isPending: boolean; isStale: boolean } => {
-	if (claimableIndex === undefined || session.pendingFinalizeIndex !== claimableIndex) {
-		return { isPending: false, isStale: false }
-	}
-
-	const submittedAt = session.pendingFinalizeSubmittedAt
-	if (!submittedAt) {
-		return { isPending: true, isStale: true }
-	}
-
-	const submittedAtMs = Date.parse(submittedAt)
-	const nowMs = Date.parse(now())
-	if (Number.isNaN(submittedAtMs) || Number.isNaN(nowMs)) {
-		return { isPending: true, isStale: true }
-	}
-
-	return {
-		isPending: true,
-		isStale: nowMs - submittedAtMs >= FINALIZE_RETRY_AFTER_MS
-	}
-}
+const OPERATION_STATE_BY_EVENT = {
+	MARK_SUBMITTED: { phase: "submitted", status: "running" },
+	MARK_WAITING_SUBMISSION: { phase: "waiting-submission", status: "running" },
+	MARK_WAITING_PRIOR_CLAIMS: { phase: "waiting-prior-claims", status: "running" },
+	MARK_WAITING_FINALIZATION: { phase: "waiting-finalization", status: "running" },
+	MARK_RETRYING: { phase: "retrying", status: "running" },
+	MARK_FINALIZING: { phase: "finalizing", status: "running" },
+	MARK_CANCELLING: { phase: "canceling", status: "running" },
+	MARK_COMPLETED: { phase: "completed", status: "completed" },
+	MARK_CANCELLED: { phase: "cancelled", status: "cancelled" },
+	MARK_FAILED: { phase: "failed", status: "failed" }
+} satisfies Record<TransitionEvent, { phase: OperationPhase; status: OperationSession["status"] }>
 
 const toPendingCancelMarker = ({
 	currentTargetIndex,
@@ -199,19 +190,17 @@ const persistSession = async ({
 }
 
 const transitionSession = ({
-	controller,
 	session,
 	event,
 	now,
 	patch = {}
 }: {
-	controller: ReturnType<typeof createOperationStateController>
 	session: OperationSession
 	event: TransitionEvent
 	now: () => string
 	patch?: Partial<OperationSession>
 }): OperationSession => {
-	const next = controller.transition({ type: event })
+	const next = OPERATION_STATE_BY_EVENT[event]
 	const timestamp = now()
 	return {
 		...session,
@@ -237,21 +226,22 @@ const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
 }
 
-const parseOptionalString = (value: unknown): string | undefined =>
-	typeof value === "string" && value.length > 0 ? value : undefined
-
-const parseOptionalNumber = (value: unknown): number | undefined =>
-	typeof value === "string" && value.length > 0 ? Number(value) : undefined
-
-const parseBridgeCommandArgs = (args: BridgeCommandRunArgs) => ({
-	from: parseChainRef(args.from ?? "mina:testnet", "--from"),
-	to: parseChainRef(args.to ?? "zeko:testnet", "--to"),
-	amount: String(args.amount),
-	account: parseOptionalString(args.account),
-	recipient: parseOptionalString(args.recipient),
-	timeoutSlots: parseOptionalNumber(args.timeoutSlots),
-	json: args.json === true,
-	verbose: args.verbose === true
+const parseBridgeCommandArgs = (args: Record<string, unknown>) => ({
+	from: parseChainRef(readOptionalStringArg(args, "from") ?? "mina:testnet", "--from"),
+	to: parseChainRef(readOptionalStringArg(args, "to") ?? "zeko:testnet", "--to"),
+	amount: readRequiredStringArg(args, "amount", "Missing required --amount"),
+	account: readOptionalStringArg(args, "account"),
+	recipient: readOptionalStringArg(args, "recipient"),
+	timeoutSlots: readAliasedOptionalNumberArg(args, "timeoutSlots", "timeout-slots"),
+	pollIntervalMs: readAliasedNumberArg(
+		args,
+		"pollIntervalMs",
+		"poll-interval-ms",
+		"--poll-interval-ms"
+	),
+	retryDelayMs: readAliasedNumberArg(args, "retryDelayMs", "retry-delay-ms", "--retry-delay-ms"),
+	json: readBooleanArg(args, "json"),
+	verbose: readBooleanArg(args, "verbose")
 })
 
 const requireAdapterMethod = <T extends keyof BridgeFlowDeps["adapter"]>(
@@ -310,198 +300,6 @@ const getHeartbeatBucket = ({
 const formatErrorMessage = (error: unknown): string =>
 	error instanceof Error ? error.message : String(error)
 
-const createVerboseDiagnostics = (
-	startedAt: string,
-	phase: OperationPhase
-): BridgeVerboseDiagnostics => ({
-	sdkCalls: [],
-	sdkMethodStats: {},
-	phaseTimings: [{ phase, startedAt, durationMs: 0 }],
-	waitReasons: {}
-})
-
-const summarizeSdkResult = (value: unknown): string | undefined => {
-	if (typeof value === "boolean") {
-		return String(value)
-	}
-
-	if (typeof value === "object" && value !== null) {
-		if ("available" in value && typeof value.available === "boolean") {
-			const reason =
-				"reason" in value && typeof value.reason === "string" ? ` reason=${value.reason}` : ""
-			return `available=${String(value.available)}${reason}`
-		}
-
-		if ("hash" in value && typeof value.hash === "string") {
-			return `hash=${value.hash}`
-		}
-
-		if (Array.isArray(value)) {
-			return `count=${value.length}`
-		}
-	}
-
-	return undefined
-}
-
-const buildSdkMethodStats = (
-	calls: BridgeSdkCallTrace[]
-): Partial<Record<BridgeSdkOperation, BridgeSdkMethodStat>> => {
-	const stats: Partial<Record<BridgeSdkOperation, BridgeSdkMethodStat>> = {}
-
-	for (const trace of calls) {
-		const previous = stats[trace.operation]
-		stats[trace.operation] = {
-			count: (previous?.count ?? 0) + 1,
-			successCount: (previous?.successCount ?? 0) + (trace.success ? 1 : 0),
-			errorCount: (previous?.errorCount ?? 0) + (trace.success ? 0 : 1),
-			totalDurationMs: (previous?.totalDurationMs ?? 0) + trace.durationMs,
-			lastStartedAt: trace.startedAt,
-			lastEndedAt: trace.endedAt,
-			lastDurationMs: trace.durationMs,
-			lastMessage: trace.message,
-			lastResult: trace.result
-		}
-	}
-
-	return stats
-}
-
-const withRecordedSdkCall = ({
-	session,
-	trace
-}: {
-	session: OperationSession
-	trace: BridgeSdkCallTrace
-}): OperationSession => {
-	if (!session.verboseDiagnostics) {
-		return session
-	}
-
-	const sdkCalls = [...session.verboseDiagnostics.sdkCalls, trace]
-
-	return {
-		...session,
-		verboseDiagnostics: {
-			...session.verboseDiagnostics,
-			sdkCalls,
-			sdkMethodStats: buildSdkMethodStats(sdkCalls)
-		}
-	}
-}
-
-const mergeVerboseDiagnosticsFromSessions = ({
-	session,
-	sources
-}: {
-	session: OperationSession
-	sources: OperationSession[]
-}): OperationSession => {
-	if (!session.verboseDiagnostics) {
-		return sources.at(-1) ?? session
-	}
-
-	const baseCallCount = session.verboseDiagnostics.sdkCalls.length
-	const sdkCalls = [...session.verboseDiagnostics.sdkCalls]
-	const waitReasons = { ...(session.verboseDiagnostics.waitReasons ?? {}) }
-
-	for (const source of sources) {
-		if (!source.verboseDiagnostics) {
-			continue
-		}
-
-		sdkCalls.push(...source.verboseDiagnostics.sdkCalls.slice(baseCallCount))
-		Object.assign(waitReasons, source.verboseDiagnostics.waitReasons ?? {})
-	}
-
-	return {
-		...session,
-		verboseDiagnostics: {
-			...session.verboseDiagnostics,
-			sdkCalls,
-			sdkMethodStats: buildSdkMethodStats(sdkCalls),
-			waitReasons
-		}
-	}
-}
-
-const withCapabilityWaitReason = ({
-	session,
-	key,
-	diagnostic
-}: {
-	session: OperationSession
-	key: "canFinalizeDeposit" | "canCancelDeposit" | "canFinalizeWithdrawal"
-	diagnostic: BridgeCapabilityDiagnostic
-}): OperationSession => {
-	if (!session.verboseDiagnostics) {
-		return session
-	}
-
-	return {
-		...session,
-		verboseDiagnostics: {
-			...session.verboseDiagnostics,
-			waitReasons: {
-				...session.verboseDiagnostics.waitReasons,
-				[key]: diagnostic
-			}
-		}
-	}
-}
-
-const withPhaseTiming = ({
-	diagnostics,
-	now,
-	nextPhase
-}: {
-	diagnostics: BridgeVerboseDiagnostics
-	now: string
-	nextPhase: OperationPhase
-}): BridgeVerboseDiagnostics => {
-	const phaseTimings = [...diagnostics.phaseTimings]
-	const current = phaseTimings.at(-1)
-
-	if (!current) {
-		return {
-			...diagnostics,
-			phaseTimings: [{ phase: nextPhase, startedAt: now, durationMs: 0 }]
-		}
-	}
-
-	const elapsed = Math.max(0, Date.parse(now) - Date.parse(current.startedAt))
-	const currentWithElapsed: BridgePhaseTiming = {
-		...current,
-		endedAt: now,
-		durationMs: Number.isNaN(elapsed) ? current.durationMs : elapsed
-	}
-
-	if (current.phase === nextPhase) {
-		phaseTimings[phaseTimings.length - 1] = {
-			...currentWithElapsed,
-			endedAt: undefined
-		}
-
-		return {
-			...diagnostics,
-			phaseTimings
-		}
-	}
-
-	phaseTimings[phaseTimings.length - 1] = currentWithElapsed
-	phaseTimings.push({ phase: nextPhase, startedAt: now, durationMs: 0 })
-
-	return {
-		...diagnostics,
-		phaseTimings
-	}
-}
-
-const RECOVERABLE_MUTATION_ERROR_PATTERNS = [
-	/Failed to fetch proved forest/i,
-	/No key returned from mutation/i
-]
-
 const TRANSIENT_CLAIM_UNAVAILABLE_ERROR_PATTERNS = [
 	/Did not find any (deposit|withdrawal) to finalize/i,
 	/No (deposit|withdrawal) witnesses found/i,
@@ -511,11 +309,6 @@ const TRANSIENT_CLAIM_UNAVAILABLE_ERROR_PATTERNS = [
 	/No synced outer action state index found/i
 ]
 
-const isRecoverableMutationError = (error: unknown): boolean => {
-	const message = formatErrorMessage(error)
-	return RECOVERABLE_MUTATION_ERROR_PATTERNS.some((pattern) => pattern.test(message))
-}
-
 const isTransientClaimUnavailableError = (error: unknown): boolean => {
 	const message = formatErrorMessage(error)
 	return TRANSIENT_CLAIM_UNAVAILABLE_ERROR_PATTERNS.some((pattern) => pattern.test(message))
@@ -523,6 +316,21 @@ const isTransientClaimUnavailableError = (error: unknown): boolean => {
 
 const isRetryableCapabilityError = (error: unknown): boolean =>
 	!isInsufficientFirstWithdrawalAmountError(error)
+
+const isOperationSession = (value: unknown): value is OperationSession =>
+	typeof value === "object" &&
+	value !== null &&
+	typeof (value as { id?: unknown }).id === "string" &&
+	typeof (value as { status?: unknown }).status === "string" &&
+	typeof (value as { phase?: unknown }).phase === "string"
+
+const getRecordedSessionFromError = (error: unknown): OperationSession | undefined =>
+	typeof error === "object" &&
+	error !== null &&
+	"session" in error &&
+	isOperationSession(error.session)
+		? (error.session as OperationSession)
+		: undefined
 
 const maybeEmitHeartbeat = async ({
 	session,
@@ -567,7 +375,6 @@ const maybeEmitHeartbeat = async ({
 
 const maybeEnterWaitState = async ({
 	session,
-	controller,
 	sessionStore,
 	log,
 	now,
@@ -579,7 +386,6 @@ const maybeEnterWaitState = async ({
 	details
 }: {
 	session: OperationSession
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	now: () => string
@@ -598,7 +404,6 @@ const maybeEnterWaitState = async ({
 					updatedAt: now()
 				}
 			: transitionSession({
-					controller,
 					session,
 					event: phaseEvent,
 					now,
@@ -620,9 +425,43 @@ const maybeEnterWaitState = async ({
 	return nextSession
 }
 
+const enterDecisionWaitState = async ({
+	session,
+	decision,
+	sessionStore,
+	log,
+	now,
+	tracker,
+	patch
+}: {
+	session: OperationSession
+	decision: BridgeRuntimeDecision
+	sessionStore: Pick<SessionStore, "save">
+	log: LogFn
+	now: () => string
+	tracker: WaitStateTracker
+	patch?: Partial<OperationSession>
+}): Promise<OperationSession> => {
+	if (!decision.waitSignature || !decision.waitEvent || !decision.phaseEvent) {
+		return session
+	}
+
+	return maybeEnterWaitState({
+		session,
+		sessionStore,
+		log,
+		now,
+		tracker,
+		signature: decision.waitSignature,
+		event: decision.waitEvent,
+		phaseEvent: decision.phaseEvent,
+		patch,
+		details: decision.details
+	})
+}
+
 const withRetry = async <T>({
 	session,
-	controller,
 	sessionStore,
 	log,
 	sleep,
@@ -633,7 +472,6 @@ const withRetry = async <T>({
 	run
 }: {
 	session: OperationSession
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	sleep: (ms: number) => Promise<void>
@@ -647,46 +485,20 @@ const withRetry = async <T>({
 	let attempt = 1
 
 	for (;;) {
-		const startedAtMs = Date.now()
-		const startedAt = new Date(startedAtMs).toISOString()
 		try {
-			const value = await run()
-			const endedAtMs = Date.now()
-			const endedAt = new Date(endedAtMs).toISOString()
-			currentSession = withRecordedSdkCall({
-				session: currentSession,
-				trace: {
-					operation,
-					attempt,
-					startedAt,
-					endedAt,
-					durationMs: Math.max(0, endedAtMs - startedAtMs),
-					success: true,
-					result: summarizeSdkResult(value)
-				}
-			})
+			const { session: nextSession, value } = await createInstrumentedBridgeAdapter({
+				adapter: {},
+				session: currentSession
+			}).call(operation, run, { attempt })
+			currentSession = nextSession
 			return { session: currentSession, value }
 		} catch (error) {
-			const endedAtMs = Date.now()
-			const endedAt = new Date(endedAtMs).toISOString()
-			currentSession = withRecordedSdkCall({
-				session: currentSession,
-				trace: {
-					operation,
-					attempt,
-					startedAt,
-					endedAt,
-					durationMs: Math.max(0, endedAtMs - startedAtMs),
-					success: false,
-					message: formatErrorMessage(error)
-				}
-			})
+			currentSession = getRecordedSessionFromError(error) ?? currentSession
 			if (shouldRetry && !shouldRetry(error)) {
 				throw error
 			}
 
 			currentSession = transitionSession({
-				controller,
 				session: currentSession,
 				event: "MARK_RETRYING",
 				now,
@@ -712,21 +524,18 @@ const withRetry = async <T>({
 
 const completeSession = async ({
 	session,
-	controller,
 	sessionStore,
 	log,
 	now,
 	finalTransaction
 }: {
 	session: OperationSession
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	now: () => string
 	finalTransaction?: OperationSession["finalTransaction"]
 }) => {
 	const completed = transitionSession({
-		controller,
 		session,
 		event: "MARK_COMPLETED",
 		now,
@@ -744,19 +553,16 @@ const completeSession = async ({
 
 const cancelSession = async ({
 	session,
-	controller,
 	sessionStore,
 	log,
 	now
 }: {
 	session: OperationSession
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	now: () => string
 }) => {
 	const cancelled = transitionSession({
-		controller,
 		session,
 		event: "MARK_CANCELLED",
 		now
@@ -772,21 +578,18 @@ const cancelSession = async ({
 
 const failSession = async ({
 	session,
-	controller,
 	sessionStore,
 	log,
 	now,
 	error
 }: {
 	session: OperationSession
-	controller: ReturnType<typeof createOperationStateController>
 	sessionStore: Pick<SessionStore, "save">
 	log: LogFn
 	now: () => string
 	error: string
 }) => {
 	const failed = transitionSession({
-		controller,
 		session,
 		event: "MARK_FAILED",
 		now,
@@ -808,7 +611,6 @@ type BridgeRunnerContext = {
 	session: OperationSession
 	input: BridgeFlowInput
 	deps: BridgeFlowDeps
-	controller: ReturnType<typeof createOperationStateController>
 	waitTracker: WaitStateTracker
 	now: () => string
 	depositAnalysis?: DepositQueueState
@@ -816,6 +618,8 @@ type BridgeRunnerContext = {
 }
 
 type RunnerStep =
+	| "submit-deposit"
+	| "submit-withdrawal"
 	| "inspect-deposit"
 	| "inspect-withdrawal"
 	| "wait-deposit"
@@ -874,10 +678,6 @@ const createInitialRunnerContext = (
 		input,
 		deps,
 		now,
-		controller: createOperationStateController({
-			phase: session.phase,
-			status: session.status
-		}),
 		waitTracker: {
 			emittedImmediateHeartbeat: false
 		}
@@ -888,7 +688,7 @@ const runSubmitStep = async (
 	context: BridgeRunnerContext,
 	direction: "deposit" | "withdrawal"
 ): Promise<RunnerOutput> => {
-	const { deps, controller, now } = context
+	const { deps, now } = context
 	let { session } = context
 
 	try {
@@ -896,7 +696,6 @@ const runSubmitStep = async (
 			direction === "deposit"
 				? await withRetry({
 						session,
-						controller,
 						sessionStore: deps.sessionStore,
 						log: deps.log,
 						sleep: deps.sleep,
@@ -918,7 +717,6 @@ const runSubmitStep = async (
 					})
 				: await withRetry({
 						session,
-						controller,
 						sessionStore: deps.sessionStore,
 						log: deps.log,
 						sleep: deps.sleep,
@@ -940,7 +738,6 @@ const runSubmitStep = async (
 
 		session = submitResult.session
 		session = transitionSession({
-			controller,
 			session,
 			event: "MARK_SUBMITTED",
 			now,
@@ -965,7 +762,6 @@ const runSubmitStep = async (
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -977,13 +773,12 @@ const runSubmitStep = async (
 }
 
 const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<RunnerOutput> => {
-	const { deps, controller, waitTracker, now } = context
+	const { deps, waitTracker, now } = context
 	let { session } = context
 
 	try {
 		const depositStatusesResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -993,21 +788,19 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			run: async () => requireAdapterMethod(deps.adapter, "getDepositStatuses")(session.account)
 		})
 		session = depositStatusesResult.session
-		const analysis = analyzeDepositQueue({
+		const hasSubmittedDeposit = getSubmitHash(session) !== undefined
+		const sortedStatuses = sortByIndex(depositStatusesResult.value)
+		const initialDecision = decideDepositStep({
 			session,
-			statuses: sortByIndex(depositStatusesResult.value)
+			statuses: sortedStatuses,
+			canFinalize: { available: false, reason: null },
+			canCancel: { available: false, reason: null },
+			now
 		})
-		const {
-			target,
-			targetIndex,
-			claimableIndex,
-			pendingAhead,
-			blockingAhead,
-			skippableAhead,
-			shouldAdvanceQueuedClaims
-		} = analysis
+		const analysis = initialDecision.analysis as DepositQueueState
+		const { target, targetIndex } = analysis
 
-		if (targetIndex !== undefined && session.targetIndex !== targetIndex) {
+		if (hasSubmittedDeposit && targetIndex !== undefined && session.targetIndex !== targetIndex) {
 			session = {
 				...session,
 				targetIndex,
@@ -1016,11 +809,25 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			await deps.sessionStore.save(session)
 		}
 
-		if (target?.cancelled) {
+		if (initialDecision.action === "submit") {
+			return {
+				session: {
+					...session,
+					targetIndex: undefined,
+					pendingFinalizeIndex: undefined,
+					pendingFinalizeSubmittedAt: undefined,
+					pendingCancelMarker: undefined,
+					updatedAt: now()
+				},
+				depositAnalysis: analysis,
+				next: "submit-deposit"
+			}
+		}
+
+		if (initialDecision.action === "cancelled") {
 			return {
 				session: await cancelSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now
@@ -1030,11 +837,13 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			}
 		}
 
-		if (target?.finalised) {
+		if (initialDecision.action === "complete") {
+			if (!target) {
+				throw new Error("Completed deposit decision did not include a target deposit.")
+			}
 			return {
 				session: await completeSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now,
@@ -1049,67 +858,29 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			}
 		}
 
-		if (shouldAdvanceQueuedClaims) {
-			session = await maybeEnterWaitState({
-				session,
-				controller,
-				sessionStore: deps.sessionStore,
-				log: deps.log,
-				now,
-				tracker: waitTracker,
-				signature: `prior:${targetIndex ?? "unknown"}:${claimableIndex ?? "none"}:${pendingAhead}:${blockingAhead}:${skippableAhead}`,
-				event: "waiting-on-prior-claims",
-				phaseEvent: "MARK_WAITING_PRIOR_CLAIMS",
-				patch: {
-					targetIndex,
-					queueAdvances: session.queueAdvances ?? 0
-				},
-				details: {
-					targetIndex,
-					pendingAhead,
-					blockingAhead,
-					skippableAhead,
-					claimIndex: claimableIndex
-				}
-			})
-		} else if (!target) {
-			session = await maybeEnterWaitState({
-				session,
-				controller,
-				sessionStore: deps.sessionStore,
-				log: deps.log,
-				now,
-				tracker: waitTracker,
-				signature: "submission:pending",
-				event: "waiting-for-submission",
-				phaseEvent: "MARK_WAITING_SUBMISSION",
-				details: { submitHash: getSubmitHash(session) }
-			})
-		} else {
-			session = await maybeEnterWaitState({
-				session,
-				controller,
-				sessionStore: deps.sessionStore,
-				log: deps.log,
-				now,
-				tracker: waitTracker,
-				signature: `finalization:${target.index}:${claimableIndex ?? "none"}`,
-				event: "waiting-for-finalization",
-				phaseEvent: "MARK_WAITING_FINALIZATION",
-				patch: {
-					targetIndex: target.index
-				},
-				details: {
-					targetIndex: target.index,
-					claimIndex: claimableIndex
-				}
-			})
-		}
+		session = await enterDecisionWaitState({
+			session,
+			decision: initialDecision,
+			sessionStore: deps.sessionStore,
+			log: deps.log,
+			now,
+			tracker: waitTracker,
+			patch:
+				initialDecision.phaseEvent === "MARK_WAITING_PRIOR_CLAIMS"
+					? {
+							targetIndex: hasSubmittedDeposit ? analysis.targetIndex : undefined,
+							queueAdvances: session.queueAdvances ?? 0
+						}
+					: initialDecision.phaseEvent === "MARK_WAITING_FINALIZATION"
+						? {
+								targetIndex: hasSubmittedDeposit ? analysis.target?.index : undefined
+							}
+						: undefined
+		})
 
 		const [canFinalizeDepositResult, canCancelResult] = await Promise.all([
 			withRetry({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				sleep: deps.sleep,
@@ -1125,7 +896,6 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			}),
 			withRetry({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				sleep: deps.sleep,
@@ -1154,54 +924,41 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 			key: "canCancelDeposit",
 			diagnostic: canCancelResult.value
 		})
-		const pendingFinalizeState = getPendingFinalizeRetryState({
+		const decision = decideDepositStep({
 			session,
-			claimableIndex: claimableIndex ?? targetIndex,
+			statuses: sortedStatuses,
+			canFinalize: canFinalizeDepositResult.value,
+			canCancel: canCancelResult.value,
 			now
 		})
-		const currentTargetCancelMarker = toPendingCancelMarker({
-			currentTargetIndex: target?.index,
+		const nextAnalysis = decision.analysis as DepositQueueState
+		const {
+			target: nextTarget,
+			targetIndex: nextTargetIndex,
 			claimableIndex,
 			pendingAhead,
-			isCurrentTarget: true
-		})
-		const priorCancelMarker = toPendingCancelMarker({
-			currentTargetIndex: target?.index,
-			claimableIndex,
+			blockingAhead,
+			skippableAhead,
+			shouldAdvanceQueuedClaims
+		} = nextAnalysis
+		const effectiveClaimableIndex = resolveEffectiveDepositClaimableIndex({
+			claimableIndex: canFinalizeDepositResult.value.index ?? claimableIndex,
+			target: nextTarget,
 			pendingAhead,
-			isCurrentTarget: false
+			canFinalize: canFinalizeDepositResult.value.available
 		})
-
-		const shouldCancelCurrentTarget =
-			target !== undefined &&
-			pendingAhead === 0 &&
-			!canFinalizeDepositResult.value.available &&
-			canCancelResult.value.available &&
-			session.pendingCancelMarker !== currentTargetCancelMarker
-
-		const shouldAdvanceClaim =
-			canFinalizeDepositResult.value.available &&
-			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
-			skippableAhead === 0 &&
-			!shouldCancelCurrentTarget
-
-		if (shouldAdvanceClaim) {
+		if (decision.action === "finalize") {
 			return {
 				session,
-				depositAnalysis: analysis,
+				depositAnalysis: nextAnalysis,
 				next: "finalize-deposit"
 			}
 		}
 
-		const shouldAdvancePriorCancellation =
-			canCancelResult.value.available &&
-			skippableAhead > 0 &&
-			session.pendingCancelMarker !== priorCancelMarker
-
-		if (shouldAdvancePriorCancellation || shouldCancelCurrentTarget) {
+		if (decision.action === "cancel") {
 			return {
 				session,
-				depositAnalysis: analysis,
+				depositAnalysis: nextAnalysis,
 				next: "cancel-deposit"
 			}
 		}
@@ -1218,18 +975,18 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 						pendingAhead,
 						blockingAhead,
 						skippableAhead,
-						targetIndex,
-						claimIndex: claimableIndex,
+						targetIndex: nextTargetIndex,
+						claimIndex: effectiveClaimableIndex,
 						finalizeAvailable: canFinalizeDepositResult.value.available,
 						finalizeReason: canFinalizeDepositResult.value.reason,
 						cancelAvailable: canCancelResult.value.available,
 						cancelReason: canCancelResult.value.reason
 					}
-				: target
+				: nextTarget
 					? {
 							waiting: "finalization",
-							targetIndex: target.index,
-							claimIndex: claimableIndex,
+							targetIndex: nextTarget.index,
+							claimIndex: effectiveClaimableIndex,
 							finalizeAvailable: canFinalizeDepositResult.value.available,
 							finalizeReason: canFinalizeDepositResult.value.reason,
 							cancelAvailable: canCancelResult.value.available,
@@ -1247,14 +1004,13 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 
 		return {
 			session,
-			depositAnalysis: analysis,
+			depositAnalysis: nextAnalysis,
 			next: "wait-deposit"
 		}
 	} catch (error) {
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1266,13 +1022,12 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 }
 
 const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<RunnerOutput> => {
-	const { deps, controller, waitTracker, now } = context
+	const { deps, waitTracker, now } = context
 	let { session } = context
 
 	try {
 		const withdrawalStatusesResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -1282,12 +1037,22 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			run: async () => requireAdapterMethod(deps.adapter, "getWithdrawalStatuses")(session.account)
 		})
 		session = withdrawalStatusesResult.session
-		const analysis = analyzeWithdrawalQueue({
+		const sortedStatuses = sortByIndex(withdrawalStatusesResult.value)
+		const withdrawalStatusSourceDetails = toWithdrawalStatusSourceLogDetails(
+			getWithdrawalStatusSourceSnapshot({
+				adapter: deps.adapter,
+				statuses: sortedStatuses,
+				submitHash: getSubmitHash(session)
+			})
+		)
+		const initialDecision = decideWithdrawalStep({
 			session,
-			statuses: sortByIndex(withdrawalStatusesResult.value)
+			statuses: sortedStatuses,
+			canFinalize: { available: false, reason: null },
+			now
 		})
-		const { target, targetIndex, claimableIndex, pendingAhead, shouldAdvanceQueuedClaims } =
-			analysis
+		const analysis = initialDecision.analysis as WithdrawalQueueState
+		const { target, targetIndex } = analysis
 
 		if (targetIndex !== undefined && session.targetIndex !== targetIndex) {
 			session = {
@@ -1298,11 +1063,13 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			await deps.sessionStore.save(session)
 		}
 
-		if (target?.finalised) {
+		if (initialDecision.action === "complete") {
+			if (!target) {
+				throw new Error("Completed withdrawal decision did not include a target withdrawal.")
+			}
 			return {
 				session: await completeSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now,
@@ -1317,64 +1084,56 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			}
 		}
 
-		if (shouldAdvanceQueuedClaims) {
-			session = await maybeEnterWaitState({
+		session = await enterDecisionWaitState({
+			session,
+			decision: {
+				...initialDecision,
+				details: { ...initialDecision.details, ...withdrawalStatusSourceDetails }
+			},
+			sessionStore: deps.sessionStore,
+			log: deps.log,
+			now,
+			tracker: waitTracker,
+			patch:
+				initialDecision.phaseEvent === "MARK_WAITING_PRIOR_CLAIMS"
+					? {
+							targetIndex,
+							queueAdvances: session.queueAdvances ?? 0
+						}
+					: initialDecision.phaseEvent === "MARK_WAITING_FINALIZATION" && target
+						? { targetIndex: target.index }
+						: undefined
+		})
+
+		if (
+			initialDecision.action === "wait" &&
+			initialDecision.phaseEvent === "MARK_WAITING_SUBMISSION" &&
+			target &&
+			!target.committed
+		) {
+			await maybeEmitHeartbeat({
 				session,
-				controller,
-				sessionStore: deps.sessionStore,
-				log: deps.log,
 				now,
+				pollIntervalMs: deps.pollIntervalMs,
 				tracker: waitTracker,
-				signature: `prior:${targetIndex ?? "unknown"}:${claimableIndex ?? "none"}:${pendingAhead}`,
-				event: "waiting-on-prior-claims",
-				phaseEvent: "MARK_WAITING_PRIOR_CLAIMS",
-				patch: {
-					targetIndex,
-					queueAdvances: session.queueAdvances ?? 0
-				},
+				log: deps.log,
 				details: {
-					targetIndex,
-					pendingAhead,
-					claimIndex: claimableIndex
-				}
-			})
-		} else if (!target) {
-			session = await maybeEnterWaitState({
-				session,
-				controller,
-				sessionStore: deps.sessionStore,
-				log: deps.log,
-				now,
-				tracker: waitTracker,
-				signature: "submission:pending",
-				event: "waiting-for-submission",
-				phaseEvent: "MARK_WAITING_SUBMISSION",
-				details: { submitHash: getSubmitHash(session) }
-			})
-		} else {
-			session = await maybeEnterWaitState({
-				session,
-				controller,
-				sessionStore: deps.sessionStore,
-				log: deps.log,
-				now,
-				tracker: waitTracker,
-				signature: `finalization:${target.index}:${claimableIndex ?? "none"}`,
-				event: "waiting-for-finalization",
-				phaseEvent: "MARK_WAITING_FINALIZATION",
-				patch: {
-					targetIndex: target.index
-				},
-				details: {
+					waiting: "submission",
 					targetIndex: target.index,
-					claimIndex: claimableIndex
+					submitHash: getSubmitHash(session),
+					...withdrawalStatusSourceDetails
 				}
 			})
+
+			return {
+				session,
+				withdrawalAnalysis: analysis,
+				next: "wait-withdrawal"
+			}
 		}
 
 		const canFinalizeResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -1395,22 +1154,43 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			key: "canFinalizeWithdrawal",
 			diagnostic: canFinalizeResult.value
 		})
-		const pendingFinalizeState = getPendingFinalizeRetryState({
+		const decision = decideWithdrawalStep({
 			session,
-			claimableIndex,
+			statuses: sortedStatuses,
+			canFinalize: canFinalizeResult.value,
 			now
 		})
+		const nextAnalysis = decision.analysis as WithdrawalQueueState
+		const {
+			target: nextTarget,
+			targetIndex: nextTargetIndex,
+			claimableIndex,
+			pendingAhead,
+			shouldAdvanceQueuedClaims
+		} = nextAnalysis
 
-		const shouldAdvanceClaim =
-			canFinalizeResult.value.available &&
-			claimableIndex !== undefined &&
-			(!pendingFinalizeState.isPending || pendingFinalizeState.isStale) &&
-			(shouldAdvanceQueuedClaims || claimableIndex === target?.index)
+		if (decision.action === "complete") {
+			return {
+				session: await completeSession({
+					session,
+					sessionStore: deps.sessionStore,
+					log: deps.log,
+					now,
+					finalTransaction: session.finalTransaction ?? {
+						action: "finalize",
+						hash: nextTarget?.hash ?? getSubmitHash(session) ?? "",
+						explorerUrl: ""
+					}
+				}),
+				withdrawalAnalysis: nextAnalysis,
+				next: "completed"
+			}
+		}
 
-		if (shouldAdvanceClaim) {
+		if (decision.action === "finalize") {
 			return {
 				session,
-				withdrawalAnalysis: analysis,
+				withdrawalAnalysis: nextAnalysis,
 				next: "finalize-withdrawal"
 			}
 		}
@@ -1425,37 +1205,39 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 				? {
 						waiting: "prior-claims",
 						pendingAhead,
-						targetIndex,
+						targetIndex: nextTargetIndex,
 						claimIndex: claimableIndex,
 						finalizeAvailable: canFinalizeResult.value.available,
-						finalizeReason: canFinalizeResult.value.reason
+						finalizeReason: canFinalizeResult.value.reason,
+						...withdrawalStatusSourceDetails
 					}
-				: target
+				: nextTarget
 					? {
 							waiting: "finalization",
-							targetIndex: target.index,
+							targetIndex: nextTarget.index,
 							claimIndex: claimableIndex,
 							finalizeAvailable: canFinalizeResult.value.available,
-							finalizeReason: canFinalizeResult.value.reason
+							finalizeReason: canFinalizeResult.value.reason,
+							...withdrawalStatusSourceDetails
 						}
 					: {
 							waiting: "submission",
 							submitHash: getSubmitHash(session),
 							finalizeAvailable: canFinalizeResult.value.available,
-							finalizeReason: canFinalizeResult.value.reason
+							finalizeReason: canFinalizeResult.value.reason,
+							...withdrawalStatusSourceDetails
 						}
 		})
 
 		return {
 			session,
-			withdrawalAnalysis: analysis,
+			withdrawalAnalysis: nextAnalysis,
 			next: "wait-withdrawal"
 		}
 	} catch (error) {
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1467,14 +1249,13 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 }
 
 const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<RunnerOutput> => {
-	const { deps, controller, waitTracker, now, depositAnalysis } = context
+	const { deps, waitTracker, now, depositAnalysis } = context
 	let { session } = context
 
 	if (!depositAnalysis) {
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1484,10 +1265,19 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 		}
 	}
 
+	const effectiveClaimableIndex =
+		depositAnalysis.effectiveClaimableIndex ??
+		resolveEffectiveDepositClaimableIndex({
+			claimableIndex: depositAnalysis.claimableIndex,
+			target: depositAnalysis.target,
+			pendingAhead: depositAnalysis.pendingAhead,
+			canFinalize: true
+		})
+	const hasSubmittedDeposit = getSubmitHash(session) !== undefined
+
 	try {
 		const finalizeDepositResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -1507,7 +1297,6 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 		session = finalizeDepositResult.session
 		const finalizeResult = finalizeDepositResult.value
 		session = transitionSession({
-			controller,
 			session,
 			event: "MARK_FINALIZING",
 			now,
@@ -1517,14 +1306,16 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 					hash: finalizeResult.hash
 				}),
 				finalTransaction:
-					depositAnalysis.target && depositAnalysis.claimableIndex === depositAnalysis.target.index
+					hasSubmittedDeposit &&
+					depositAnalysis.target &&
+					effectiveClaimableIndex === depositAnalysis.target.index
 						? {
 								action: "finalize",
 								hash: finalizeResult.hash,
 								explorerUrl: finalizeResult.explorerUrl
 							}
 						: session.finalTransaction,
-				pendingFinalizeIndex: depositAnalysis.claimableIndex ?? depositAnalysis.targetIndex,
+				pendingFinalizeIndex: effectiveClaimableIndex,
 				pendingFinalizeSubmittedAt: now(),
 				queueAdvances: depositAnalysis.shouldAdvanceQueuedClaims
 					? (session.queueAdvances ?? 0) + 1
@@ -1540,7 +1331,7 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 			event: "finalized",
 			details: {
 				hash: finalizeResult.hash,
-				claimIndex: depositAnalysis.claimableIndex,
+				claimIndex: effectiveClaimableIndex,
 				advancedPriorClaim: depositAnalysis.shouldAdvanceQueuedClaims
 			}
 		})
@@ -1554,7 +1345,6 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 			return {
 				session: await failSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now,
@@ -1568,7 +1358,7 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 			event: "claim-pending",
 			phase: session.phase,
 			details: {
-				claimIndex: depositAnalysis.claimableIndex,
+				claimIndex: effectiveClaimableIndex,
 				message: formatErrorMessage(error)
 			}
 		})
@@ -1581,14 +1371,13 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 }
 
 const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<RunnerOutput> => {
-	const { deps, controller, waitTracker, now, depositAnalysis } = context
+	const { deps, waitTracker, now, depositAnalysis } = context
 	let { session } = context
 
 	if (!depositAnalysis) {
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1601,7 +1390,6 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 	try {
 		const cancelDepositResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -1620,7 +1408,9 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 		})
 		session = cancelDepositResult.session
 		const cancelResult = cancelDepositResult.value
+		const hasSubmittedDeposit = getSubmitHash(session) !== undefined
 		const cancellingCurrentTarget =
+			hasSubmittedDeposit &&
 			depositAnalysis.target !== undefined &&
 			depositAnalysis.pendingAhead === 0 &&
 			(depositAnalysis.claimableIndex === undefined ||
@@ -1632,7 +1422,6 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 			isCurrentTarget: cancellingCurrentTarget
 		})
 		session = transitionSession({
-			controller,
 			session,
 			event: "MARK_CANCELLING",
 			now,
@@ -1677,7 +1466,6 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1689,14 +1477,13 @@ const runCancelDepositStep = async (context: BridgeRunnerContext): Promise<Runne
 }
 
 const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<RunnerOutput> => {
-	const { deps, controller, waitTracker, now, withdrawalAnalysis } = context
+	const { deps, waitTracker, now, withdrawalAnalysis } = context
 	let { session } = context
 
 	if (!withdrawalAnalysis) {
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1709,7 +1496,6 @@ const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<
 	try {
 		const finalizeWithdrawalResult = await withRetry({
 			session,
-			controller,
 			sessionStore: deps.sessionStore,
 			log: deps.log,
 			sleep: deps.sleep,
@@ -1729,7 +1515,6 @@ const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<
 		session = finalizeWithdrawalResult.session
 		const finalizeResult = finalizeWithdrawalResult.value
 		session = transitionSession({
-			controller,
 			session,
 			event: "MARK_FINALIZING",
 			now,
@@ -1777,7 +1562,6 @@ const runFinalizeWithdrawalStep = async (context: BridgeRunnerContext): Promise<
 			return {
 				session: await failSession({
 					session,
-					controller,
 					sessionStore: deps.sessionStore,
 					log: deps.log,
 					now,
@@ -1807,7 +1591,7 @@ const runWaitStep = async (
 	context: BridgeRunnerContext,
 	direction: "deposit" | "withdrawal"
 ): Promise<RunnerOutput> => {
-	const { deps, controller, now } = context
+	const { deps, now } = context
 	const { session } = context
 
 	try {
@@ -1822,7 +1606,6 @@ const runWaitStep = async (
 		return {
 			session: await failSession({
 				session,
-				controller,
 				sessionStore: deps.sessionStore,
 				log: deps.log,
 				now,
@@ -1835,310 +1618,281 @@ const runWaitStep = async (
 	}
 }
 
-const bridgeOperationMachine = setup({
+const getDoneOutput = (event: unknown): RunnerOutput => (event as { output: RunnerOutput }).output
+
+const routeDepositWait = [
+	{
+		target: "waitingDepositSubmission",
+		guard: "isWaitingDepositSubmission",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "waitingDepositPriorClaims",
+		guard: "isWaitingDepositPriorClaims",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "waitingDepositFinalization",
+		guard: "isWaitingDepositFinalization",
+		actions: "applyRunnerOutput"
+	}
+] as const
+
+const routeWithdrawalWait = [
+	{
+		target: "waitingWithdrawalSubmission",
+		guard: "isWaitingWithdrawalSubmission",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "waitingWithdrawalPriorClaims",
+		guard: "isWaitingWithdrawalPriorClaims",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "waitingWithdrawalFinalization",
+		guard: "isWaitingWithdrawalFinalization",
+		actions: "applyRunnerOutput"
+	}
+] as const
+
+const terminalRoutes = [
+	{
+		target: "completed",
+		guard: "isCompleted",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "cancelled",
+		guard: "isCancelled",
+		actions: "applyRunnerOutput"
+	},
+	{
+		target: "failed",
+		guard: "isFailed",
+		actions: "applyRunnerOutput"
+	}
+] as const
+
+const actorInput = ({ context }: { context: BridgeRunnerContext }) => context
+
+export const bridgeOperationMachine = setup({
 	types: {
 		context: {} as BridgeRunnerContext,
 		input: {} as BridgeRunnerContext,
 		output: {} as OperationSession
 	},
 	actors: {
-		submitDepositStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+		submitDeposit: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
 			runSubmitStep(input, "deposit")
 		),
-		submitWithdrawalStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+		submitWithdrawal: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
 			runSubmitStep(input, "withdrawal")
 		),
-		inspectDepositStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+		inspectDeposit: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
 			runInspectDepositStep(input)
 		),
-		inspectWithdrawalStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+		inspectWithdrawal: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
 			runInspectWithdrawalStep(input)
 		),
-		finalizeDepositStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runFinalizeDepositStep(input)
-		),
-		cancelDepositStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runCancelDepositStep(input)
-		),
-		finalizeWithdrawalStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
-			runFinalizeWithdrawalStep(input)
-		),
-		waitDepositStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+		waitDeposit: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
 			runWaitStep(input, "deposit")
 		),
-		waitWithdrawalStep: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+		waitWithdrawal: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
 			runWaitStep(input, "withdrawal")
+		),
+		finalizeDeposit: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runFinalizeDepositStep(input)
+		),
+		cancelDeposit: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runCancelDepositStep(input)
+		),
+		finalizeWithdrawal: fromPromise<RunnerOutput, BridgeRunnerContext>(({ input }) =>
+			runFinalizeWithdrawalStep(input)
 		)
+	},
+	actions: {
+		applyRunnerOutput: assign({
+			session: ({ event }) => getDoneOutput(event).session,
+			depositAnalysis: ({ context, event }) =>
+				getDoneOutput(event).depositAnalysis ?? context.depositAnalysis,
+			withdrawalAnalysis: ({ context, event }) =>
+				getDoneOutput(event).withdrawalAnalysis ?? context.withdrawalAnalysis
+		})
+	},
+	guards: {
+		isCompleted: ({ event }) => getDoneOutput(event).next === "completed",
+		isCancelled: ({ event }) => getDoneOutput(event).next === "cancelled",
+		isFailed: ({ event }) => getDoneOutput(event).next === "failed",
+		isSubmitDeposit: ({ event }) => getDoneOutput(event).next === "submit-deposit",
+		isFinalizeDeposit: ({ event }) => getDoneOutput(event).next === "finalize-deposit",
+		isCancelDeposit: ({ event }) => getDoneOutput(event).next === "cancel-deposit",
+		isFinalizeWithdrawal: ({ event }) => getDoneOutput(event).next === "finalize-withdrawal",
+		isWaitingDepositSubmission: ({ event }) =>
+			getDoneOutput(event).next === "wait-deposit" &&
+			getDoneOutput(event).session.phase === "waiting-submission",
+		isWaitingDepositPriorClaims: ({ event }) =>
+			getDoneOutput(event).next === "wait-deposit" &&
+			getDoneOutput(event).session.phase === "waiting-prior-claims",
+		isWaitingDepositFinalization: ({ event }) => getDoneOutput(event).next === "wait-deposit",
+		isWaitingWithdrawalSubmission: ({ event }) =>
+			getDoneOutput(event).next === "wait-withdrawal" &&
+			getDoneOutput(event).session.phase === "waiting-submission",
+		isWaitingWithdrawalPriorClaims: ({ event }) =>
+			getDoneOutput(event).next === "wait-withdrawal" &&
+			getDoneOutput(event).session.phase === "waiting-prior-claims",
+		isWaitingWithdrawalFinalization: ({ event }) => getDoneOutput(event).next === "wait-withdrawal"
 	}
 }).createMachine({
-	id: "bridge-cli-runner",
+	id: "bridge-cli-operation",
 	context: ({ input }) => input,
-	output: ({ context }) => context.session,
 	initial: "route",
+	output: ({ context }) => context.session,
 	states: {
 		route: {
 			always: [
 				{
-					target: "submitDeposit",
-					guard: ({ context }) =>
-						context.session.direction === "deposit" &&
-						context.session.submittedTransactions.length === 0
-				},
-				{
-					target: "submitWithdrawal",
+					target: "submittingWithdrawal",
 					guard: ({ context }) =>
 						context.session.direction === "withdrawal" &&
 						context.session.submittedTransactions.length === 0
 				},
 				{
-					target: "inspectDeposit",
+					target: "inspectingDeposit",
 					guard: ({ context }) => context.session.direction === "deposit"
 				},
-				{
-					target: "inspectWithdrawal"
-				}
+				{ target: "inspectingWithdrawal" }
 			]
 		},
-		submitDeposit: {
+		submittingDeposit: {
 			invoke: {
-				src: "submitDepositStep",
-				input: ({ context }) => context,
+				src: "submitDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
+			}
+		},
+		submittingWithdrawal: {
+			invoke: {
+				src: "submitWithdrawal",
+				input: actorInput,
 				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectDeposit",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					}
+					...terminalRoutes,
+					{ target: "inspectingWithdrawal", actions: "applyRunnerOutput" }
 				]
 			}
 		},
-		submitWithdrawal: {
+		inspectingDeposit: {
 			invoke: {
-				src: "submitWithdrawalStep",
-				input: ({ context }) => context,
+				src: "inspectDeposit",
+				input: actorInput,
 				onDone: [
+					...terminalRoutes,
 					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
+						target: "submittingDeposit",
+						guard: "isSubmitDeposit",
+						actions: "applyRunnerOutput"
 					},
 					{
-						target: "inspectWithdrawal",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					}
+						target: "finalizingDeposit",
+						guard: "isFinalizeDeposit",
+						actions: "applyRunnerOutput"
+					},
+					{
+						target: "cancelingDeposit",
+						guard: "isCancelDeposit",
+						actions: "applyRunnerOutput"
+					},
+					...routeDepositWait
 				]
 			}
 		},
-		inspectDeposit: {
+		inspectingWithdrawal: {
 			invoke: {
-				src: "inspectDepositStep",
-				input: ({ context }) => context,
+				src: "inspectWithdrawal",
+				input: actorInput,
 				onDone: [
+					...terminalRoutes,
 					{
-						target: "completed",
-						guard: ({ event }) => event.output.next === "completed",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
+						target: "finalizingWithdrawal",
+						guard: "isFinalizeWithdrawal",
+						actions: "applyRunnerOutput"
 					},
-					{
-						target: "cancelled",
-						guard: ({ event }) => event.output.next === "cancelled",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					},
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					},
-					{
-						target: "finalizeDeposit",
-						guard: ({ event }) => event.output.next === "finalize-deposit",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					},
-					{
-						target: "cancelDeposit",
-						guard: ({ event }) => event.output.next === "cancel-deposit",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					},
-					{
-						target: "waitDeposit",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					}
+					...routeWithdrawalWait
 				]
 			}
 		},
-		waitDeposit: {
+		waitingDepositSubmission: {
 			invoke: {
-				src: "waitDepositStep",
-				input: ({ context }) => context,
+				src: "waitDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
+			}
+		},
+		waitingDepositPriorClaims: {
+			invoke: {
+				src: "waitDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
+			}
+		},
+		waitingDepositFinalization: {
+			invoke: {
+				src: "waitDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
+			}
+		},
+		waitingWithdrawalSubmission: {
+			invoke: {
+				src: "waitWithdrawal",
+				input: actorInput,
 				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectDeposit",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							depositAnalysis: ({ event }) => event.output.depositAnalysis
-						})
-					}
+					...terminalRoutes,
+					{ target: "inspectingWithdrawal", actions: "applyRunnerOutput" }
 				]
 			}
 		},
-		finalizeDeposit: {
+		waitingWithdrawalPriorClaims: {
 			invoke: {
-				src: "finalizeDepositStep",
-				input: ({ context }) => context,
+				src: "waitWithdrawal",
+				input: actorInput,
 				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectDeposit",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					}
+					...terminalRoutes,
+					{ target: "inspectingWithdrawal", actions: "applyRunnerOutput" }
 				]
 			}
 		},
-		cancelDeposit: {
+		waitingWithdrawalFinalization: {
 			invoke: {
-				src: "cancelDepositStep",
-				input: ({ context }) => context,
+				src: "waitWithdrawal",
+				input: actorInput,
 				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectDeposit",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					}
+					...terminalRoutes,
+					{ target: "inspectingWithdrawal", actions: "applyRunnerOutput" }
 				]
 			}
 		},
-		inspectWithdrawal: {
+		finalizingDeposit: {
 			invoke: {
-				src: "inspectWithdrawalStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "completed",
-						guard: ({ event }) => event.output.next === "completed",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							withdrawalAnalysis: ({ event }) => event.output.withdrawalAnalysis
-						})
-					},
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							withdrawalAnalysis: ({ event }) => event.output.withdrawalAnalysis
-						})
-					},
-					{
-						target: "finalizeWithdrawal",
-						guard: ({ event }) => event.output.next === "finalize-withdrawal",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							withdrawalAnalysis: ({ event }) => event.output.withdrawalAnalysis
-						})
-					},
-					{
-						target: "waitWithdrawal",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							withdrawalAnalysis: ({ event }) => event.output.withdrawalAnalysis
-						})
-					}
-				]
+				src: "finalizeDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
 			}
 		},
-		waitWithdrawal: {
+		cancelingDeposit: {
 			invoke: {
-				src: "waitWithdrawalStep",
-				input: ({ context }) => context,
-				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectWithdrawal",
-						actions: assign({
-							session: ({ event }) => event.output.session,
-							withdrawalAnalysis: ({ event }) => event.output.withdrawalAnalysis
-						})
-					}
-				]
+				src: "cancelDeposit",
+				input: actorInput,
+				onDone: [...terminalRoutes, { target: "inspectingDeposit", actions: "applyRunnerOutput" }]
 			}
 		},
-		finalizeWithdrawal: {
+		finalizingWithdrawal: {
 			invoke: {
-				src: "finalizeWithdrawalStep",
-				input: ({ context }) => context,
+				src: "finalizeWithdrawal",
+				input: actorInput,
 				onDone: [
-					{
-						target: "failed",
-						guard: ({ event }) => event.output.next === "failed",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					},
-					{
-						target: "inspectWithdrawal",
-						actions: assign({
-							session: ({ event }) => event.output.session
-						})
-					}
+					...terminalRoutes,
+					{ target: "inspectingWithdrawal", actions: "applyRunnerOutput" }
 				]
 			}
 		},
@@ -2161,11 +1915,8 @@ export const runBridgeOperation = async (
 		event: "initialized"
 	})
 
-	const actor = createActor(bridgeOperationMachine, {
-		input: context
-	})
+	const actor = createActor(bridgeOperationMachine, { input: context })
 	actor.start()
-
 	try {
 		return await toPromise(actor)
 	} finally {
@@ -2185,21 +1936,14 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			amount: { type: "string", required: true },
 			account: { type: "string", required: false },
 			recipient: { type: "string", required: false },
-			timeoutSlots: { type: "string", required: false },
+			timeoutSlots: { type: "string", required: false, alias: ["timeout-slots"] },
+			pollIntervalMs: { type: "string", required: false, alias: ["poll-interval-ms"] },
+			retryDelayMs: { type: "string", required: false, alias: ["retry-delay-ms"] },
 			json: { type: "boolean", default: false },
 			verbose: { type: "boolean", default: false }
 		},
 		async run({ args }) {
-			const commandArgs = parseBridgeCommandArgs({
-				from: typeof args.from === "string" ? args.from : undefined,
-				to: typeof args.to === "string" ? args.to : undefined,
-				amount: typeof args.amount === "string" ? args.amount : "",
-				account: typeof args.account === "string" ? args.account : undefined,
-				recipient: typeof args.recipient === "string" ? args.recipient : undefined,
-				timeoutSlots: typeof args.timeoutSlots === "string" ? args.timeoutSlots : undefined,
-				json: args.json === true,
-				verbose: args.verbose === true
-			} satisfies BridgeCommandRunArgs)
+			const commandArgs = parseBridgeCommandArgs(args)
 			const from = commandArgs.from
 			const to = commandArgs.to
 			const account = deriveAccount(from, commandArgs.account)
@@ -2209,23 +1953,7 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			const id = (deps.generateId ?? randomUUID)()
 			const logPath = path.join(appPaths.logDir, `${id}.jsonl`)
 			const logger = (deps.createLogger ?? createOperationLogger)({ logPath })
-			const createAdapter =
-				deps.createAdapter ??
-				(async ({
-					from: inputFrom,
-					to: inputTo,
-					verbose
-				}: {
-					from: ChainRef
-					to: ChainRef
-					verbose: boolean
-				}) => {
-					const { createBridgeAdapter } = await import("../core/adapter")
-					return createBridgeAdapter({
-						route: resolveRoute(inputFrom, inputTo),
-						verbose
-					})
-				})
+			const createAdapter = deps.createAdapter ?? createDefaultBridgeAdapter
 			const session = await runBridgeOperation(
 				{
 					id,
@@ -2253,8 +1981,8 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 						await logger.write(event, { phase, ...details })
 					},
 					sleep: deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
-					pollIntervalMs: deps.pollIntervalMs ?? 20_000,
-					retryDelayMs: deps.retryDelayMs,
+					pollIntervalMs: commandArgs.pollIntervalMs ?? deps.pollIntervalMs ?? 20_000,
+					retryDelayMs: commandArgs.retryDelayMs ?? deps.retryDelayMs,
 					now: deps.now,
 					verbose: commandArgs.verbose
 				}

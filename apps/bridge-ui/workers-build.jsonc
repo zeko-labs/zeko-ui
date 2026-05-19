@@ -7,7 +7,13 @@
 			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks bridge-ui:deploy",
 			"branchIncludes": ["main"],
 			"branchExcludes": [],
-			"pathIncludes": ["apps/bridge-ui/**"],
+			"pathIncludes": [
+				"apps/bridge-ui/**",
+				"packages/bridge-sdk/**",
+				"packages/graphql/**",
+				"packages/design/**",
+				"packages/layer/**"
+			],
 			"pathExcludes": []
 		},
 		{
@@ -15,7 +21,13 @@
 			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks bridge-ui:deploy-preview",
 			"branchIncludes": ["*"],
 			"branchExcludes": ["main"],
-			"pathIncludes": ["apps/bridge-ui/**"],
+			"pathIncludes": [
+				"apps/bridge-ui/**",
+				"packages/bridge-sdk/**",
+				"packages/graphql/**",
+				"packages/design/**",
+				"packages/layer/**"
+			],
 			"pathExcludes": []
 		}
 	]

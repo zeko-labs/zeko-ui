@@ -4,6 +4,7 @@ import { runBridgeOperation } from "../src/commands/bridge"
 describe("bridge flow", () => {
 	it("lets the SDK finalize the next available deposit even when status flags lag", async () => {
 		let depositStatusCalls = 0
+		let submitCalls = 0
 		const finalizeCalls: string[] = []
 
 		const result = await runBridgeOperation(
@@ -18,6 +19,7 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitDeposit() {
+						submitCalls += 1
 						return {
 							success: true,
 							direction: "deposit",
@@ -30,6 +32,9 @@ describe("bridge flow", () => {
 					},
 					async getDepositStatuses() {
 						depositStatusCalls += 1
+						if (submitCalls === 0) {
+							return []
+						}
 
 						return [
 							{
@@ -83,10 +88,142 @@ describe("bridge flow", () => {
 		expect(result.status).toBe("completed")
 	})
 
+	it("does not resubmit SDK-selected prior deposit finalization while status lags", async () => {
+		let submitCalls = 0
+		let finalizeCalls = 0
+		let sleepCalls = 0
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-sdk-selected-prior-deposit",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "2",
+				account: "B62test",
+				timeoutSlots: 10
+			},
+			{
+				adapter: {
+					async submitDeposit() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko:testnet",
+							hash: "submit-current",
+							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
+							included: true
+						}
+					},
+					async getDepositStatuses() {
+						if (submitCalls === 0) return []
+
+						if (finalizeCalls === 0 || sleepCalls < 2) {
+							return [
+								{
+									index: 0,
+									amount: "1",
+									recipient: "B62test",
+									cancelled: false,
+									cancellable: false,
+									synced: true,
+									accepted: true,
+									confirmed: false,
+									finalised: false,
+									hash: "submit-prior",
+									timestamp: "2026-03-09T19:00:00.000Z"
+								},
+								{
+									index: 1,
+									amount: "2",
+									recipient: "B62test",
+									cancelled: false,
+									cancellable: false,
+									synced: true,
+									accepted: true,
+									confirmed: false,
+									finalised: false,
+									hash: "submit-current",
+									timestamp: "2026-03-09T19:01:00.000Z"
+								}
+							]
+						}
+
+						return [
+							{
+								index: 0,
+								amount: "1",
+								recipient: "B62test",
+								cancelled: false,
+								cancellable: false,
+								synced: true,
+								accepted: true,
+								confirmed: true,
+								finalised: true,
+								hash: "finalize-prior",
+								timestamp: "2026-03-09T19:02:00.000Z"
+							},
+							{
+								index: 1,
+								amount: "2",
+								recipient: "B62test",
+								cancelled: false,
+								cancellable: false,
+								synced: true,
+								accepted: true,
+								confirmed: true,
+								finalised: true,
+								hash: "finalize-current",
+								timestamp: "2026-03-09T19:03:00.000Z"
+							}
+						]
+					},
+					async canFinalizeDeposit() {
+						return { available: true, reason: null, index: 0 }
+					},
+					async canCancelDeposit() {
+						return { available: false, reason: "No cancellable deposit found" }
+					},
+					async finalizeDeposit() {
+						finalizeCalls += 1
+						if (finalizeCalls > 1) {
+							throw new Error("duplicate prior deposit finalization")
+						}
+
+						return {
+							success: true,
+							direction: "deposit",
+							action: "finalize",
+							route: "mina:testnet->zeko:testnet",
+							hash: "finalize-prior",
+							explorerUrl: "https://zekoscan.io/testnet/tx/finalize-prior",
+							included: true
+						}
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					sleepCalls += 1
+				},
+				pollIntervalMs: 0,
+				now: () => "2026-03-10T00:00:00.000Z"
+			}
+		)
+
+		expect(finalizeCalls).toBe(1)
+		expect(result.status).toBe("completed")
+	})
+
 	it("drains older queued deposits before the new submission appears in status", async () => {
 		let depositStatusCalls = 0
+		let submitCalls = 0
 		let nowCalls = 0
 		const finalizeCalls: string[] = []
+		const callOrder: string[] = []
 		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
 		const times = [
 			"2026-03-10T00:00:00.000Z",
@@ -109,6 +246,8 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitDeposit() {
+						submitCalls += 1
+						callOrder.push("submit-current")
 						return {
 							success: true,
 							direction: "deposit",
@@ -135,6 +274,23 @@ describe("bridge flow", () => {
 									finalised: false,
 									hash: "submit-older",
 									timestamp: "2026-03-09T19:00:00.000Z"
+								}
+							]
+						}
+
+						if (submitCalls === 0) {
+							return [
+								{
+									index: 4,
+									amount: "1",
+									recipient: "B62older",
+									cancelled: false,
+									synced: true,
+									accepted: true,
+									confirmed: true,
+									finalised: true,
+									hash: "finalize-older",
+									timestamp: "2026-03-09T19:00:30.000Z"
 								}
 							]
 						}
@@ -199,8 +355,9 @@ describe("bridge flow", () => {
 						return true
 					},
 					async finalizeDeposit() {
-						const hash = finalizeCalls.length === 0 ? "finalize-older" : "finalize-current"
+						const hash = submitCalls === 0 ? "finalize-older" : "finalize-current"
 						finalizeCalls.push(hash)
+						callOrder.push(hash)
 						return {
 							success: true,
 							direction: "deposit",
@@ -226,16 +383,14 @@ describe("bridge flow", () => {
 
 		expect(depositStatusCalls).toBeGreaterThanOrEqual(2)
 		expect(finalizeCalls).toEqual(["finalize-older", "finalize-current"])
-		expect(
-			events.some(
-				(entry) => entry.event === "finalized" && entry.details?.advancedPriorClaim === true
-			)
-		).toBe(true)
+		expect(callOrder).toEqual(["finalize-older", "submit-current", "finalize-current"])
+		expect(events.some((entry) => entry.event === "submitted")).toBe(true)
 		expect(result.status).toBe("completed")
 	})
 
 	it("advances earlier queued deposit claims before completing the current bridge", async () => {
-		let depositStatusCalls = 0
+		let _depositStatusCalls = 0
+		let submitCalls = 0
 		const finalizeCalls: string[] = []
 		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
 
@@ -251,6 +406,7 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitDeposit() {
+						submitCalls += 1
 						return {
 							success: true,
 							direction: "deposit",
@@ -262,8 +418,8 @@ describe("bridge flow", () => {
 						}
 					},
 					async getDepositStatuses() {
-						depositStatusCalls += 1
-						if (depositStatusCalls === 1) {
+						_depositStatusCalls += 1
+						if (submitCalls === 0 && finalizeCalls.length === 0) {
 							return [
 								{
 									index: 0,
@@ -276,23 +432,28 @@ describe("bridge flow", () => {
 									finalised: false,
 									hash: "submit-earlier",
 									timestamp: "2026-03-09T19:00:00.000Z"
-								},
+								}
+							]
+						}
+
+						if (submitCalls === 0) {
+							return [
 								{
-									index: 1,
-									amount: "2",
+									index: 0,
+									amount: "1",
 									recipient: "B62test",
 									cancelled: false,
 									synced: true,
 									accepted: true,
 									confirmed: true,
-									finalised: false,
-									hash: "submit-current",
-									timestamp: "2026-03-09T19:01:00.000Z"
+									finalised: true,
+									hash: "finalize-earlier",
+									timestamp: "2026-03-09T19:02:00.000Z"
 								}
 							]
 						}
 
-						if (depositStatusCalls === 2) {
+						if (finalizeCalls.length === 1) {
 							return [
 								{
 									index: 0,
@@ -352,7 +513,7 @@ describe("bridge flow", () => {
 						return true
 					},
 					async finalizeDeposit() {
-						const hash = finalizeCalls.length === 0 ? "finalize-earlier" : "finalize-current"
+						const hash = submitCalls === 0 ? "finalize-earlier" : "finalize-current"
 						finalizeCalls.push(hash)
 						return {
 							success: true,
@@ -378,17 +539,14 @@ describe("bridge flow", () => {
 		)
 
 		expect(finalizeCalls).toEqual(["finalize-earlier", "finalize-current"])
-		expect(
-			events.some(
-				(entry) => entry.event === "waiting-on-prior-claims" && entry.details?.pendingAhead === 1
-			)
-		).toBe(true)
+		expect(events.some((entry) => entry.event === "submitted")).toBe(true)
 		expect(result.finalTransaction?.hash).toBe("finalize-current")
 		expect(result.status).toBe("completed")
 	})
 
 	it("retries recoverable deposit finalization proof failures before completing", async () => {
-		let depositStatusCalls = 0
+		let _depositStatusCalls = 0
+		let submitCalls = 0
 		let finalizeAttempts = 0
 		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
 
@@ -403,6 +561,7 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitDeposit() {
+						submitCalls += 1
 						return {
 							success: true,
 							direction: "deposit",
@@ -414,8 +573,12 @@ describe("bridge flow", () => {
 						}
 					},
 					async getDepositStatuses() {
-						depositStatusCalls += 1
-						if (depositStatusCalls === 1) {
+						_depositStatusCalls += 1
+						if (submitCalls === 0) {
+							return []
+						}
+
+						if (finalizeAttempts === 0) {
 							return [
 								{
 									index: 0,
@@ -492,6 +655,7 @@ describe("bridge flow", () => {
 	})
 
 	it("treats invalid key as a terminal deposit finalization failure", async () => {
+		let submitCalls = 0
 		let finalizeAttempts = 0
 		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
 
@@ -506,6 +670,7 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitDeposit() {
+						submitCalls += 1
 						return {
 							success: true,
 							direction: "deposit",
@@ -517,6 +682,10 @@ describe("bridge flow", () => {
 						}
 					},
 					async getDepositStatuses() {
+						if (submitCalls === 0) {
+							return []
+						}
+
 						return [
 							{
 								index: 0,
@@ -819,6 +988,7 @@ describe("bridge flow", () => {
 
 	it("cancels an older skippable deposit before completing the requested bridge", async () => {
 		let depositStatusCalls = 0
+		let submitCalls = 0
 		let finalizeAttempts = 0
 		const cancelCalls: string[] = []
 		const finalizeCalls: string[] = []
@@ -836,6 +1006,7 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitDeposit() {
+						submitCalls += 1
 						return {
 							success: true,
 							direction: "deposit",
@@ -848,7 +1019,7 @@ describe("bridge flow", () => {
 					},
 					async getDepositStatuses() {
 						depositStatusCalls += 1
-						if (depositStatusCalls === 1) {
+						if (submitCalls === 0 && cancelCalls.length === 0) {
 							return [
 								{
 									index: 4,
@@ -862,23 +1033,29 @@ describe("bridge flow", () => {
 									finalised: false,
 									hash: "submit-older",
 									timestamp: "2026-03-09T19:00:00.000Z"
-								},
-								{
-									index: 5,
-									amount: "1",
-									recipient: "B62test",
-									cancelled: false,
-									synced: true,
-									accepted: true,
-									confirmed: false,
-									finalised: false,
-									hash: "submit-current",
-									timestamp: "2026-03-09T19:01:00.000Z"
 								}
 							]
 						}
 
-						if (depositStatusCalls === 2) {
+						if (submitCalls === 0) {
+							return [
+								{
+									index: 4,
+									amount: "2",
+									recipient: "B62older",
+									cancelled: true,
+									cancellable: false,
+									synced: true,
+									accepted: false,
+									confirmed: false,
+									finalised: false,
+									hash: "cancel-older",
+									timestamp: "2026-03-09T19:02:00.000Z"
+								}
+							]
+						}
+
+						if (finalizeCalls.length === 0) {
 							return [
 								{
 									index: 4,
@@ -900,37 +1077,7 @@ describe("bridge flow", () => {
 									cancelled: false,
 									synced: true,
 									accepted: true,
-									confirmed: true,
-									finalised: false,
-									hash: "submit-current",
-									timestamp: "2026-03-09T19:01:00.000Z"
-								}
-							]
-						}
-
-						if (depositStatusCalls === 3) {
-							return [
-								{
-									index: 4,
-									amount: "2",
-									recipient: "B62older",
-									cancelled: true,
-									cancellable: false,
-									synced: true,
-									accepted: false,
 									confirmed: false,
-									finalised: false,
-									hash: "cancel-older",
-									timestamp: "2026-03-09T19:02:00.000Z"
-								},
-								{
-									index: 5,
-									amount: "1",
-									recipient: "B62test",
-									cancelled: false,
-									synced: true,
-									accepted: true,
-									confirmed: true,
 									finalised: false,
 									hash: "submit-current",
 									timestamp: "2026-03-09T19:01:00.000Z"
@@ -1015,17 +1162,14 @@ describe("bridge flow", () => {
 
 		expect(cancelCalls).toEqual(["cancel-older"])
 		expect(finalizeCalls).toEqual(["finalize-current"])
-		expect(
-			events.some(
-				(entry) => entry.event === "cancel-submitted" && entry.details?.advancedPriorClaim === true
-			)
-		).toBe(true)
+		expect(events.some((entry) => entry.event === "submitted")).toBe(true)
 		expect(result.finalTransaction?.hash).toBe("finalize-current")
 		expect(result.status).toBe("completed")
 	})
 
 	it("prefers canceling an older skippable deposit before finalizing a later claimable target", async () => {
-		let depositStatusCalls = 0
+		let _depositStatusCalls = 0
+		let submitCalls = 0
 		const calls: string[] = []
 
 		const result = await runBridgeOperation(
@@ -1039,6 +1183,7 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitDeposit() {
+						submitCalls += 1
 						return {
 							success: true,
 							direction: "deposit",
@@ -1050,9 +1195,9 @@ describe("bridge flow", () => {
 						}
 					},
 					async getDepositStatuses() {
-						depositStatusCalls += 1
+						_depositStatusCalls += 1
 
-						if (depositStatusCalls === 1) {
+						if (submitCalls === 0 && !calls.includes("cancel")) {
 							return [
 								{
 									index: 4,
@@ -1066,24 +1211,29 @@ describe("bridge flow", () => {
 									finalised: false,
 									hash: "submit-older",
 									timestamp: "2026-03-09T19:00:00.000Z"
-								},
-								{
-									index: 5,
-									amount: "1",
-									recipient: "B62test",
-									cancelled: false,
-									cancellable: false,
-									synced: true,
-									accepted: true,
-									confirmed: true,
-									finalised: false,
-									hash: "submit-current",
-									timestamp: "2026-03-09T19:01:00.000Z"
 								}
 							]
 						}
 
-						if (depositStatusCalls === 2) {
+						if (submitCalls === 0) {
+							return [
+								{
+									index: 4,
+									amount: "2",
+									recipient: "B62older",
+									cancelled: true,
+									cancellable: false,
+									synced: true,
+									accepted: false,
+									confirmed: false,
+									finalised: false,
+									hash: "cancel-older",
+									timestamp: "2026-03-09T19:02:00.000Z"
+								}
+							]
+						}
+
+						if (!calls.includes("finalize")) {
 							return [
 								{
 									index: 4,
@@ -1144,7 +1294,7 @@ describe("bridge flow", () => {
 						]
 					},
 					async canFinalizeDeposit() {
-						return true
+						return submitCalls > 0
 					},
 					async canCancelDeposit() {
 						return true
@@ -1499,6 +1649,305 @@ describe("bridge flow", () => {
 		expect(result.status).toBe("completed")
 	})
 
+	it("completes when the SDK reports the target withdrawal is already finalised", async () => {
+		let submitCalls = 0
+		let finalizeCalls = 0
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-already-finalised",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "3",
+				account: "B62test"
+			},
+			{
+				adapter: {
+					async submitWithdrawal() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdraw-submit-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
+							included: true
+						}
+					},
+					async getWithdrawalStatuses() {
+						if (submitCalls === 0) return []
+
+						return [
+							{
+								index: 9,
+								amount: "3",
+								recipient: "B62test",
+								committed: true,
+								finalised: false,
+								hash: "withdraw-submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeWithdrawal() {
+						return {
+							available: false,
+							reason: "Withdrawal already finalised",
+							status: "alreadyFinalised",
+							index: 9
+						}
+					},
+					async finalizeWithdrawal() {
+						finalizeCalls += 1
+						throw new Error("already-finalised withdrawal should not be finalized again")
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					throw new Error("already-finalised withdrawal should complete instead of waiting")
+				},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(result.status).toBe("completed")
+		expect(result.finalTransaction?.hash).toBe("withdraw-submit-current")
+		expect(finalizeCalls).toBe(0)
+	})
+
+	it("does not resubmit withdrawal finalization while status lags after a finalization hash", async () => {
+		let submitCalls = 0
+		let statusCalls = 0
+		let finalizeCalls = 0
+		let sleepCalls = 0
+		let nowMs = Date.parse("2026-03-09T19:01:00.000Z")
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-finalize-status-lag",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "1.9",
+				account: "B62test"
+			},
+			{
+				adapter: {
+					async submitWithdrawal() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdraw-submit-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
+							included: true
+						}
+					},
+					async getWithdrawalStatuses() {
+						statusCalls += 1
+						if (submitCalls === 0) return []
+
+						const statusLaggingAfterFinalize = finalizeCalls > 0 && statusCalls < 4
+						return [
+							{
+								index: 9,
+								amount: "1.9",
+								recipient: "B62test",
+								committed: true,
+								finalised: finalizeCalls > 0 && !statusLaggingAfterFinalize,
+								hash:
+									finalizeCalls > 0 && !statusLaggingAfterFinalize
+										? "withdraw-finalize-current"
+										: "withdraw-submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeWithdrawal() {
+						return { available: true, reason: null, index: 9 }
+					},
+					async finalizeWithdrawal() {
+						finalizeCalls += 1
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "finalize",
+							route: "zeko:testnet->mina:testnet",
+							hash: `withdraw-finalize-current-${finalizeCalls}`,
+							explorerUrl: `https://minascan.io/devnet/tx/withdraw-finalize-current-${finalizeCalls}`,
+							included: true
+						}
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					sleepCalls += 1
+					nowMs += 181_000
+				},
+				pollIntervalMs: 0,
+				now: () => new Date(nowMs).toISOString()
+			}
+		)
+
+		expect(result.status).toBe("completed")
+		expect(finalizeCalls).toBe(1)
+		expect(sleepCalls).toBeGreaterThanOrEqual(1)
+		expect(result.finalTransaction?.hash).toBe("withdraw-finalize-current-1")
+	})
+
+	it("does not complete the target withdrawal from an already-finalised result for a different index", async () => {
+		let submitCalls = 0
+		let statusCalls = 0
+		let sleepCalls = 0
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-already-finalised-other-index",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "3",
+				account: "B62test"
+			},
+			{
+				adapter: {
+					async submitWithdrawal() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdraw-submit-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
+							included: true
+						}
+					},
+					async getWithdrawalStatuses() {
+						statusCalls += 1
+						if (submitCalls === 0) return []
+
+						return [
+							{
+								index: 8,
+								amount: "2",
+								recipient: "B62test",
+								committed: true,
+								finalised: true,
+								hash: "withdraw-finalize-older",
+								timestamp: "2026-03-09T19:00:00.000Z"
+							},
+							{
+								index: 9,
+								amount: "3",
+								recipient: "B62test",
+								committed: true,
+								finalised: statusCalls > 1,
+								hash: "withdraw-submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeWithdrawal() {
+						return {
+							available: false,
+							reason: "Withdrawal already finalised",
+							status: "alreadyFinalised",
+							index: 8
+						}
+					},
+					async finalizeWithdrawal() {
+						throw new Error("wrong-index already-finalised result should not finalize")
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					sleepCalls += 1
+				},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(result.status).toBe("completed")
+		expect(result.targetIndex).toBe(9)
+		expect(sleepCalls).toBe(1)
+	})
+
+	it("waits for a target withdrawal to commit before checking finalization", async () => {
+		let submitCalls = 0
+		let statusCalls = 0
+		let sleepCalls = 0
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-wait-commit-before-finalize-check",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "3",
+				account: "B62test"
+			},
+			{
+				adapter: {
+					async submitWithdrawal() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdraw-submit-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
+							included: true
+						}
+					},
+					async getWithdrawalStatuses() {
+						statusCalls += 1
+						if (submitCalls === 0) return []
+
+						return [
+							{
+								index: 9,
+								amount: "3",
+								recipient: "B62test",
+								committed: statusCalls > 1,
+								finalised: statusCalls > 1,
+								hash: "withdraw-submit-current",
+								timestamp: "2026-03-09T19:01:00.000Z"
+							}
+						]
+					},
+					async canFinalizeWithdrawal() {
+						throw new Error("uncommitted target withdrawal should not check finalizability")
+					},
+					async finalizeWithdrawal() {
+						throw new Error("uncommitted target withdrawal should not be finalized")
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async () => {
+					sleepCalls += 1
+				},
+				pollIntervalMs: 0
+			}
+		)
+
+		expect(result.status).toBe("completed")
+		expect(sleepCalls).toBe(1)
+	})
+
 	it.skip("waits across long queued deposit delays without failing", async () => {
 		const events: string[] = []
 		let nowCalls = 0
@@ -1639,6 +2088,8 @@ describe("bridge flow", () => {
 
 	it("submits and finalizes a deposit flow", async () => {
 		let depositStatusCalls = 0
+		let submitCalls = 0
+		let finalizeCalls = 0
 		const events: string[] = []
 		const waits: boolean[] = []
 
@@ -1654,6 +2105,7 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitDeposit({ wait }) {
+						submitCalls += 1
 						waits.push(wait)
 						return {
 							success: true,
@@ -1667,7 +2119,11 @@ describe("bridge flow", () => {
 					},
 					async getDepositStatuses() {
 						depositStatusCalls += 1
-						if (depositStatusCalls === 1) {
+						if (submitCalls === 0) {
+							return []
+						}
+
+						if (finalizeCalls === 0) {
 							return [
 								{
 									index: 0,
@@ -1676,10 +2132,27 @@ describe("bridge flow", () => {
 									cancelled: false,
 									synced: true,
 									accepted: true,
-									confirmed: true,
+									confirmed: false,
 									finalised: false,
 									hash: "submit-hash",
 									timestamp: "2026-03-09T19:00:00.000Z"
+								}
+							]
+						}
+
+						if (finalizeCalls === 1 && depositStatusCalls === 3) {
+							return [
+								{
+									index: 0,
+									amount: "2",
+									recipient: "B62test",
+									cancelled: false,
+									synced: true,
+									accepted: true,
+									confirmed: false,
+									finalised: false,
+									hash: "submit-hash",
+									timestamp: "2026-03-09T19:00:30.000Z"
 								}
 							]
 						}
@@ -1703,6 +2176,7 @@ describe("bridge flow", () => {
 						return true
 					},
 					async finalizeDeposit({ wait }) {
+						finalizeCalls += 1
 						waits.push(wait)
 						return {
 							success: true,
@@ -1732,6 +2206,8 @@ describe("bridge flow", () => {
 
 		expect(result.status).toBe("completed")
 		expect(result.finalTransaction?.hash).toBe("finalize-hash")
+		expect(depositStatusCalls).toBe(4)
+		expect(finalizeCalls).toBe(1)
 		expect(waits).toEqual([false, false])
 		expect(events).toContain("submitted")
 		expect(events).toContain("finalized")
@@ -1778,7 +2254,7 @@ describe("bridge flow", () => {
 								accepted: true,
 								confirmed: true,
 								finalised: true,
-								hash: "retry-finalize",
+								hash: "retry-submit",
 								timestamp: "2026-03-09T19:02:00.000Z"
 							}
 						]
@@ -1987,7 +2463,8 @@ describe("bridge flow", () => {
 	})
 
 	it("advances earlier deposit claims before completing the current bridge", async () => {
-		let statusCalls = 0
+		let _statusCalls = 0
+		let submitCalls = 0
 		let finalizeCalls = 0
 
 		const result = await runBridgeOperation(
@@ -2001,6 +2478,7 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitDeposit() {
+						submitCalls += 1
 						return {
 							success: true,
 							direction: "deposit",
@@ -2012,8 +2490,8 @@ describe("bridge flow", () => {
 						}
 					},
 					async getDepositStatuses() {
-						statusCalls += 1
-						if (statusCalls === 1) {
+						_statusCalls += 1
+						if (submitCalls === 0 && finalizeCalls === 0) {
 							return [
 								{
 									index: 0,
@@ -2026,22 +2504,28 @@ describe("bridge flow", () => {
 									finalised: false,
 									hash: "deposit-submit-earlier",
 									timestamp: "2026-03-09T19:00:00.000Z"
-								},
+								}
+							]
+						}
+
+						if (submitCalls === 0) {
+							return [
 								{
-									index: 1,
-									amount: "2",
+									index: 0,
+									amount: "1",
 									recipient: "B62queued",
 									cancelled: false,
 									synced: true,
 									accepted: true,
 									confirmed: true,
-									finalised: false,
-									hash: "deposit-submit-current",
-									timestamp: "2026-03-09T19:01:00.000Z"
+									finalised: true,
+									hash: "deposit-finalize-earlier",
+									timestamp: "2026-03-09T19:02:00.000Z"
 								}
 							]
 						}
-						if (statusCalls === 2) {
+
+						if (finalizeCalls === 1) {
 							return [
 								{
 									index: 0,
@@ -2107,7 +2591,7 @@ describe("bridge flow", () => {
 							direction: "deposit",
 							action: "finalize",
 							route: "mina:testnet->zeko:testnet",
-							hash: finalizeCalls === 1 ? "deposit-finalize-earlier" : "deposit-finalize-current",
+							hash: submitCalls === 0 ? "deposit-finalize-earlier" : "deposit-finalize-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/deposit-finalize-current",
 							included: true
 						}
@@ -2293,7 +2777,7 @@ describe("bridge flow", () => {
 								recipient: "B62submitretry",
 								committed: true,
 								finalised: true,
-								hash: "withdrawal-finalize-retry",
+								hash: "withdrawal-submit-retry",
 								timestamp: "2026-03-09T19:03:00.000Z"
 							}
 						]
@@ -2334,6 +2818,92 @@ describe("bridge flow", () => {
 					entry.details?.message === "Failed to fetch proved forest"
 			)
 		).toBe(true)
+	})
+
+	it("reports withdrawal status endpoints and submit visibility while waiting", async () => {
+		let statusCalls = 0
+		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-withdrawal-status-diagnostics",
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				amount: "3",
+				account: "B62status"
+			},
+			{
+				adapter: {
+					getStatusSources() {
+						return {
+							withdrawals: [
+								{
+									name: "l2-archive",
+									endpoint: "https://archive.testnet.zeko.io/graphql",
+									role: "archived Zeko withdrawal actions"
+								},
+								{
+									name: "l2-live",
+									endpoint: "https://testnet.zeko.io/graphql",
+									role: "recent live Zeko withdrawal actions"
+								}
+							]
+						}
+					},
+					async submitWithdrawal() {
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdrawal-submit-current",
+							explorerUrl: "https://zekoscan.io/testnet/tx/withdrawal-submit-current",
+							included: false
+						}
+					},
+					async getWithdrawalStatuses() {
+						statusCalls += 1
+						if (statusCalls === 1) return []
+
+						return [
+							{
+								index: 2,
+								amount: "3",
+								recipient: "B62status",
+								committed: true,
+								finalised: true,
+								hash: "withdrawal-submit-current",
+								timestamp: "2026-03-09T19:03:00.000Z"
+							}
+						]
+					},
+					async canFinalizeWithdrawal() {
+						return { available: false, reason: "not ready", status: "waiting" }
+					},
+					async finalizeWithdrawal() {
+						throw new Error("finalizeWithdrawal should not be called")
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async ({ event, details }) => {
+					events.push({ event, details })
+				},
+				sleep: async () => {},
+				pollIntervalMs: 0
+			}
+		)
+
+		const waitingEvent = events.find((entry) => entry.event === "waiting-for-submission")
+		expect(result.status).toBe("completed")
+		expect(waitingEvent?.details).toMatchObject({
+			submitHash: "withdrawal-submit-current",
+			statusEndpoints:
+				"l2-archive=https://archive.testnet.zeko.io/graphql, l2-live=https://testnet.zeko.io/graphql",
+			withdrawalStatusCount: 0,
+			submitObserved: false
+		})
 	})
 
 	it("fails clearly during withdrawal submission on a terminal first-withdrawal amount error", async () => {
@@ -2386,7 +2956,7 @@ describe("bridge flow", () => {
 	})
 
 	it("stops immediately when submission fails instead of falling through to inspect", async () => {
-		let inspected = false
+		let inspections = 0
 
 		const result = await runBridgeOperation(
 			{
@@ -2402,7 +2972,7 @@ describe("bridge flow", () => {
 						throw new Error("submit exploded")
 					},
 					async getDepositStatuses() {
-						inspected = true
+						inspections += 1
 						return []
 					}
 				},
@@ -2417,11 +2987,12 @@ describe("bridge flow", () => {
 
 		expect(result.status).toBe("failed")
 		expect(result.lastError).toBe("submit exploded")
-		expect(inspected).toBe(false)
+		expect(inspections).toBe(1)
 	})
 
 	it("cancels the current deposit when finalize stays unavailable but the SDK marks it cancelable", async () => {
 		let statusCalls = 0
+		let submitCalls = 0
 		let finalizeCalls = 0
 		const events: Array<{ event: string; details?: Record<string, unknown> }> = []
 
@@ -2436,6 +3007,7 @@ describe("bridge flow", () => {
 			{
 				adapter: {
 					async submitDeposit() {
+						submitCalls += 1
 						return {
 							success: true,
 							direction: "deposit",
@@ -2448,7 +3020,11 @@ describe("bridge flow", () => {
 					},
 					async getDepositStatuses() {
 						statusCalls += 1
-						if (statusCalls === 1) {
+						if (submitCalls === 0) {
+							return []
+						}
+
+						if (statusCalls === 2) {
 							return [
 								{
 									index: 12,

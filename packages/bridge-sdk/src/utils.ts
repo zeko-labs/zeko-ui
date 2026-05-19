@@ -15,6 +15,7 @@ import type { GqlClient } from "./graphql"
 import type {
 	Account,
 	Action,
+	BridgeVersion,
 	Deposit,
 	InnerAction,
 	InnerWitness,
@@ -150,7 +151,7 @@ const OuterActionsSchema = v.array(OuterActionSchema)
 const InnerActionsSchema = v.array(InnerActionSchema)
 const OuterWitnessesSchema = v.array(WitnessSchema)
 const CommitAsePastSlotSchema = v.object({
-	commit: CommitSchema,
+	commit: v.nullable(CommitSchema),
 	ase: OuterActionsSchema
 })
 
@@ -238,7 +239,7 @@ export async function fetchInnerWitnessesFromAuxes(
 export async function fetchCommitAsePastSlot(
 	client: GqlClient,
 	slot: number
-): Promise<{ commit: OuterCommit; ase: OuterAction[] }> {
+): Promise<{ commit: OuterCommit | null; ase: OuterAction[] }> {
 	const { data, error } = await client().query(fetchCommitAsePastSlotQuery, { slot })
 
 	const commitAsePastSlot = parsePayload({
@@ -249,11 +250,14 @@ export async function fetchCommitAsePastSlot(
 	})
 
 	return {
-		commit: {
-			...baseActionFromSchema(commitAsePastSlot.commit),
-			...commitFromSchema(commitAsePastSlot.commit),
-			type: "commit"
-		},
+		commit:
+			commitAsePastSlot.commit === null
+				? null
+				: {
+						...baseActionFromSchema(commitAsePastSlot.commit),
+						...commitFromSchema(commitAsePastSlot.commit),
+						type: "commit"
+					},
 		ase: commitAsePastSlot.ase.map(outerActionFromSchema)
 	}
 }
@@ -478,4 +482,20 @@ export async function getVkHash(publicKey: PublicKey): Promise<Field> {
 	const vk = Mina.getAccount(publicKey).zkapp?.verificationKey?.hash
 	if (!vk) throw new Error("Verification key not found")
 	return Field(vk)
+}
+
+export function uint32Max(a: UInt32, b: UInt32): UInt32 {
+	return a.greaterThan(b).toBoolean() ? a : b
+}
+
+export function bridgeVersionForActionIndex({
+	actionIndex,
+	v2StartIndex
+}: {
+	actionIndex: number
+	v2StartIndex: UInt32
+}): BridgeVersion {
+	if (actionIndex < 0) return 2
+
+	return v2StartIndex.greaterThan(UInt32.from(actionIndex)).toBoolean() ? 1 : 2
 }
