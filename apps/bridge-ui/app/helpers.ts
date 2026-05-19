@@ -31,6 +31,16 @@ export const sortByQueueOrder = <T extends { order: number }>(items: T[]) =>
 
 const userLocale = () => (typeof navigator === "undefined" ? undefined : navigator.language)
 
+const supportedLocale = (locale?: string) => {
+	if (!locale) return undefined
+
+	try {
+		return Intl.DateTimeFormat.supportedLocalesOf([locale])[0]
+	} catch {
+		return undefined
+	}
+}
+
 export type BridgeQueueItem<T> = {
 	id: string
 	order: number
@@ -120,7 +130,7 @@ export const formatQueueMetadata = (
 
 	if (submittedAt && !Number.isNaN(submittedAt.getTime())) {
 		metadata.push(
-			`Submitted ${new Intl.DateTimeFormat(options.locale ?? userLocale(), {
+			`Submitted ${new Intl.DateTimeFormat(supportedLocale(options.locale ?? userLocale()), {
 				dateStyle: "medium",
 				timeStyle: "short",
 				...(options.timeZone ? { timeZone: options.timeZone } : {})

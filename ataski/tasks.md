@@ -237,3 +237,4 @@
 - T237 | done | simplify-web-404-queue-logic-and-task-order | done/T237-simplify-web-404-queue-logic-and-task-order.md
 - T238 | done | resolve-web-404-main-conflicts | done/T238-resolve-web-404-main-conflicts.md
 - T239 | done | validate-gemini-copilot-findings | done/T239-validate-gemini-copilot-findings.md
+- T240 | done | fix-pr159-ci-and-validate-queue-review | done/T240-fix-pr159-ci-and-validate-queue-review.md

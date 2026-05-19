@@ -52,6 +52,20 @@ describe("formatQueueMetadata", () => {
 		).toEqual(["Submitted 24 mars 2026, 15:15"])
 	})
 
+	it("falls back when the browser reports an invalid locale tag", () => {
+		vi.spyOn(navigator, "language", "get").mockReturnValue("en-US@posix")
+
+		expect(() =>
+			formatQueueMetadata(
+				{
+					direction: "withdrawal",
+					transaction: { date: new Date("2026-03-24T15:15:00Z") }
+				},
+				{ timeZone: "UTC" }
+			)
+		).not.toThrow()
+	})
+
 	it("shows timed out only when the deposit is cancellable", () => {
 		expect(
 			formatQueueMetadata({

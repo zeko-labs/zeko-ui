@@ -106,6 +106,7 @@ const currentSlot = computed(() => allOperations.value.currentSlot)
       <div class="QueuedOperations">
         <CancellableOperation
           v-for="(operation, index) in cancellableOperations"
+          :key="operation.id"
           :operation
           :index
           :currentSlot
@@ -127,6 +128,7 @@ const currentSlot = computed(() => allOperations.value.currentSlot)
       <div class="QueuedOperations">
         <QueuedOperation
           v-for="(operation, index) in depositQueue"
+          :key="operation.id"
           :operation
           :index
           :currentSlot
@@ -144,6 +146,7 @@ const currentSlot = computed(() => allOperations.value.currentSlot)
       <div class="QueuedOperations">
         <QueuedOperation
           v-for="(operation, index) in withdrawalQueue"
+          :key="operation.id"
           :operation
           :index
           :currentSlot
