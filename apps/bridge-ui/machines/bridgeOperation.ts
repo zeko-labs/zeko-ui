@@ -469,12 +469,6 @@ export const bridgeOperationMachine = setup({
 		},
 		PAUSED: {
 			on: {
-				SyncRecoveredState: {
-					actions: assign(({ event }) => ({
-						canCancel: event.cancellable,
-						timeoutSlot: event.timeoutSlot
-					}))
-				},
 				Resume: { target: "RESUMING", actions: assign({ paused: ({ event }) => event.paused }) },
 				Cancel: [
 					{

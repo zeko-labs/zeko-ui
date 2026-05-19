@@ -236,3 +236,4 @@
 - T236 | done | merge-new-main-tip-into-web-404 | done/T236-merge-new-main-tip-into-web-404.md
 - T237 | done | simplify-web-404-queue-logic-and-task-order | done/T237-simplify-web-404-queue-logic-and-task-order.md
 - T238 | done | resolve-web-404-main-conflicts | done/T238-resolve-web-404-main-conflicts.md
+- T239 | done | validate-gemini-copilot-findings | done/T239-validate-gemini-copilot-findings.md

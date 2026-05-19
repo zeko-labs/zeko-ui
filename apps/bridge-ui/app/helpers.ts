@@ -29,6 +29,8 @@ export const queueTitleForDirection = (direction: Direction) =>
 export const sortByQueueOrder = <T extends { order: number }>(items: T[]) =>
 	[...items].sort((left, right) => left.order - right.order)
 
+const userLocale = () => (typeof navigator === "undefined" ? undefined : navigator.language)
+
 export type BridgeQueueItem<T> = {
 	id: string
 	order: number
@@ -118,7 +120,7 @@ export const formatQueueMetadata = (
 
 	if (submittedAt && !Number.isNaN(submittedAt.getTime())) {
 		metadata.push(
-			`Submitted ${new Intl.DateTimeFormat(options.locale ?? "en-US", {
+			`Submitted ${new Intl.DateTimeFormat(options.locale ?? userLocale(), {
 				dateStyle: "medium",
 				timeStyle: "short",
 				...(options.timeZone ? { timeZone: options.timeZone } : {})

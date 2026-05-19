@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
 	deriveBridgeQueues,
 	formatQueueMetadata,
@@ -7,6 +7,10 @@ import {
 } from "../../app/helpers"
 
 describe("formatQueueMetadata", () => {
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
 	it("includes submitted datetime and remaining timeout for recovered deposits", () => {
 		expect(
 			formatQueueMetadata(
@@ -16,7 +20,7 @@ describe("formatQueueMetadata", () => {
 					currentSlot: "63538",
 					transaction: { date: new Date("2026-03-24T15:15:00Z") }
 				},
-				{ timeZone: "UTC" }
+				{ locale: "en-US", timeZone: "UTC" }
 			)
 		).toEqual(["Submitted Mar 24, 2026, 3:15 PM", "Times out in 6 min"])
 	})
@@ -29,9 +33,23 @@ describe("formatQueueMetadata", () => {
 					timeoutSlots: 1,
 					transaction: { date: new Date("2026-03-24T15:15:00Z") }
 				},
-				{ timeZone: "UTC" }
+				{ locale: "en-US", timeZone: "UTC" }
 			)
 		).toEqual(["Submitted Mar 24, 2026, 3:15 PM", "Times out in 3 min"])
+	})
+
+	it("uses the browser locale when no locale option is provided", () => {
+		vi.spyOn(navigator, "language", "get").mockReturnValue("fr-FR")
+
+		expect(
+			formatQueueMetadata(
+				{
+					direction: "withdrawal",
+					transaction: { date: new Date("2026-03-24T15:15:00Z") }
+				},
+				{ timeZone: "UTC" }
+			)
+		).toEqual(["Submitted 24 mars 2026, 15:15"])
 	})
 
 	it("shows timed out only when the deposit is cancellable", () => {
@@ -56,7 +74,7 @@ describe("formatQueueMetadata", () => {
 					currentSlot: "63540",
 					transaction: { date: new Date("2026-03-24T15:15:00Z") }
 				},
-				{ timeZone: "UTC" }
+				{ locale: "en-US", timeZone: "UTC" }
 			)
 		).toEqual(["Submitted Mar 24, 2026, 3:15 PM"])
 	})
@@ -69,7 +87,7 @@ describe("formatQueueMetadata", () => {
 					timeoutSlot: "63540",
 					transaction: { date: new Date("2026-03-24T15:15:00Z") }
 				},
-				{ timeZone: "UTC" }
+				{ locale: "en-US", timeZone: "UTC" }
 			)
 		).toEqual(["Submitted Mar 24, 2026, 3:15 PM"])
 	})
@@ -90,7 +108,7 @@ describe("formatQueueMetadata", () => {
 					direction: "withdrawal",
 					transaction: { timestampMs: Date.parse("2026-03-24T15:15:00Z") }
 				},
-				{ timeZone: "UTC" }
+				{ locale: "en-US", timeZone: "UTC" }
 			)
 		).toEqual(["Submitted Mar 24, 2026, 3:15 PM"])
 	})
