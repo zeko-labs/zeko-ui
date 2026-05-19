@@ -34,6 +34,8 @@ export type Withdrawal = {
 	amount: UInt64
 }
 
+export type BridgeVersion = 1 | 2
+
 export type OuterActionBase = Action & {
 	index: number
 	slotRange: {
@@ -71,6 +73,7 @@ export type DepositWithState = Action &
 		confirmed: boolean
 		finalised: boolean
 		cancellable: boolean
+		bridgeVersion: BridgeVersion
 	}
 
 export const DepositStateProgress = {
@@ -84,6 +87,7 @@ export type WithdrawalWithState = Action &
 	Withdrawal & {
 		committed: boolean
 		finalised: boolean
+		bridgeVersion: BridgeVersion
 	}
 
 export type InnerAction = InnerWitness

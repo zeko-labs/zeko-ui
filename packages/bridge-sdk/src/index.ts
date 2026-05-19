@@ -52,6 +52,7 @@ import type {
 } from "./types"
 import {
 	BRIDGE_DEPLOY_BLOCK,
+	bridgeVersionForActionIndex,
 	checkAccepted,
 	depositAux,
 	fetchActions,
@@ -1044,7 +1045,11 @@ export class Bridge {
 			accepted,
 			confirmed,
 			finalised,
-			cancellable: this.buildDepositCancellationWitnessInput(context, witness) !== null
+			cancellable: this.buildDepositCancellationWitnessInput(context, witness) !== null,
+			bridgeVersion: bridgeVersionForActionIndex({
+				actionIndex: witness.index,
+				v2StartIndex: this.V2_DEPOSITS_START_INDEX
+			})
 		}
 	}
 
@@ -1984,7 +1989,11 @@ export class Bridge {
 				timestamp: normalizeTimestamp(withdrawal.timestamp),
 				index: -(pending.length - index),
 				committed: false,
-				finalised: false
+				finalised: false,
+				bridgeVersion: bridgeVersionForActionIndex({
+					actionIndex: -(pending.length - index),
+					v2StartIndex: this.V2_WITHDRAWALS_START_INDEX
+				})
 			}))
 
 		return {
@@ -2002,7 +2011,13 @@ export class Bridge {
 								: lastCommit.innerActionStateLength
 										.greaterThan(UInt32.from(witness.index))
 										.toBoolean(),
-						finalised: nextWithdrawal.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean()
+						finalised: nextWithdrawal
+							.greaterThanOrEqual(UInt32.from(witness.index + 1))
+							.toBoolean(),
+						bridgeVersion: bridgeVersionForActionIndex({
+							actionIndex: witness.index,
+							v2StartIndex: this.V2_WITHDRAWALS_START_INDEX
+						})
 					}
 				}),
 				...provisionalWithdrawals

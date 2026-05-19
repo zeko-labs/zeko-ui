@@ -3,6 +3,7 @@ import type { ZkappCommand } from "@aurowallet/mina-provider"
 import type { Networks } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
 import type {
+	BridgeVersion,
 	DepositWithState,
 	WithdrawalFinalizationResult,
 	WithdrawalWithState
@@ -10,6 +11,7 @@ import type {
 import { Bridge } from "@zeko-labs/bridge-sdk"
 import * as Comlink from "comlink"
 import { PublicKey, Transaction, type Transaction as MinaTransaction, UInt32, UInt64 } from "o1js"
+import { filterBridgeVersionOperations } from "./bridgeVersions"
 import { createLogger } from "./debug"
 import { getBridgeConfig } from "./helpers"
 import { normalizeOperationTimestamp } from "./operationTimestamps"
@@ -30,6 +32,7 @@ export type ActionState = {
 	cancelled: boolean
 	cancellable?: boolean
 	finalised: boolean
+	bridgeVersion: BridgeVersion
 	transaction: {
 		timestampMs: number | null
 		hash: string
@@ -206,6 +209,7 @@ async function findPendingOperations({
 		cancelled,
 		cancellable: "cancellable" in transfer ? transfer.cancellable : undefined,
 		finalised: transfer.finalised,
+		bridgeVersion: transfer.bridgeVersion,
 		transaction: {
 			timestampMs: normalizeOperationTimestamp(transfer.timestamp),
 			hash: transfer.hash
@@ -215,7 +219,7 @@ async function findPendingOperations({
 	})
 
 	return {
-		deposits: deposits.map((deposit) =>
+		deposits: filterBridgeVersionOperations(deposits).map((deposit) =>
 			transferToString({
 				transfer: deposit,
 				cancelled: deposit.cancelled,
@@ -223,7 +227,7 @@ async function findPendingOperations({
 				destination: l2
 			})
 		),
-		withdrawals: withdrawals.map((withdrawal) =>
+		withdrawals: filterBridgeVersionOperations(withdrawals).map((withdrawal) =>
 			transferToString({
 				transfer: withdrawal,
 				cancelled: false,

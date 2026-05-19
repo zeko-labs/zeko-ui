@@ -15,6 +15,7 @@ import type { GqlClient } from "./graphql"
 import type {
 	Account,
 	Action,
+	BridgeVersion,
 	Deposit,
 	InnerAction,
 	InnerWitness,
@@ -485,4 +486,16 @@ export async function getVkHash(publicKey: PublicKey): Promise<Field> {
 
 export function uint32Max(a: UInt32, b: UInt32): UInt32 {
 	return a.greaterThan(b).toBoolean() ? a : b
+}
+
+export function bridgeVersionForActionIndex({
+	actionIndex,
+	v2StartIndex
+}: {
+	actionIndex: number
+	v2StartIndex: UInt32
+}): BridgeVersion {
+	if (actionIndex < 0) return 2
+
+	return v2StartIndex.greaterThan(UInt32.from(actionIndex)).toBoolean() ? 1 : 2
 }
