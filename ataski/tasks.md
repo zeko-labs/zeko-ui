@@ -197,3 +197,4 @@
 - T197 | done | split-bridge-sdk-cancellation-module | done/T197-split-bridge-sdk-cancellation-module.md
 - T198 | done | validate-pr-171-conflicts-and-ci | done/T198-validate-pr-171-conflicts-and-ci.md
 - T199 | done | remove-deposit-state-module-and-add-changeset | done/T199-remove-deposit-state-module-and-add-changeset.md
+- T200 | in-progress | merge-main-and-validate-bridge-sdk-refactor | in-progress/T200-merge-main-and-validate-bridge-sdk-refactor.md
