@@ -6,8 +6,9 @@ describe("routes", () => {
 		expect(resolveRoute("mina:testnet", "zeko:testnet").enabled).toBe(true)
 	})
 
-	it("keeps future routes known but disabled", () => {
-		expect(resolveRoute("mina:mainnet", "zeko:mainnet").enabled).toBe(false)
+	it("enables Mina mainnet to Zeko mainnet routes", () => {
+		expect(resolveRoute("mina:mainnet", "zeko:mainnet").enabled).toBe(true)
+		expect(resolveRoute("zeko:mainnet", "mina:mainnet").enabled).toBe(true)
 		expect(resolveRoute("eth:testnet", "zeko:testnet").enabled).toBe(false)
 		expect(KNOWN_ROUTES.length).toBeGreaterThanOrEqual(4)
 	})

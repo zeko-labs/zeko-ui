@@ -10,7 +10,6 @@ const noWalletExtension = computed(() =>
 	bs.wallet.snapshot.matches("UNSUPPORTED")
 )
 const notConnected = computed(() => !bs.walletLoaded)
-const wrongNetwork = computed(() => bs.currentNetwork.includes("mainnet"))
 const error = computed(() => bs.bridge.snapshot.matches("ERROR"))
 onMounted(async () => {
 	await nextTick()
@@ -34,16 +33,6 @@ onMounted(async () => {
 		})
 		return
 	}
-	if (wrongNetwork.value) {
-		errorToaster.create({
-			title: "Wrong Network",
-			description:
-				"The Rollup Bridge is not available on Mainnet. Please switch to a testnet to start using the bridge.",
-			type: "error",
-			duration: Number.POSITIVE_INFINITY
-		})
-		return
-	}
 	if (error.value) {
 		errorToaster.create({
 			title: "Bridge Error",
@@ -59,8 +48,8 @@ onMounted(async () => {
 <template>
   <div class="Disabled">
     <p>
-      The Rollup Bridge is a trustless bridge for transferring tokens from Mina
-      L1 Devnet to Zeko L2 Testnet.
+      The Rollup Bridge is a trustless bridge for transferring tokens between
+      Mina L1 and Zeko L2.
     </p>
     <p>
       Please check <a href="https://docs.zeko.io">Zeko Docs</a> for more
@@ -84,13 +73,6 @@ onMounted(async () => {
       <p>Please connect your wallet to start bridging.</p>
       <Button variant="main" @click='bs.wallet.send({ type: "Connect" })'>
         Connect Wallet
-      </Button>
-    </template>
-    <template v-else-if="wrongNetwork">
-      <Button
-        variant="main"
-        @click='bs.bridge.send({ type: "SwitchToTesnet" })'>
-        Switch To Testnet
       </Button>
     </template>
     <template v-else-if="error">

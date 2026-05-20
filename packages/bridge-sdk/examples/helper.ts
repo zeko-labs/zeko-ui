@@ -12,8 +12,8 @@ export const readBridgeConfig = (): Config => ({
 	actionsApi: readEnv("ACTIONS_API_URL", "https://api.actions.zeko.io/graphql"),
 	zekoUrl: readEnv("L2_URL", "https://testnet.zeko.io/graphql"),
 	zekoArchiveUrl: readEnv("L2_ARCHIVE_URL", "https://archive.testnet.zeko.io/graphql"),
-	l1Network: "testnet",
-	l2Network: "testnet"
+	l1Network: "mainnet",
+	l2Network: { custom: "zeko-mainnet" }
 })
 
 export const readMinaPrivateKey = (): PrivateKey => {

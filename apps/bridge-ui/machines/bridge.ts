@@ -70,7 +70,6 @@ export type BridgeEvents =
 	| { type: "InvertDirection" }
 	| { type: "SetSource"; sourceNetwork: Networks }
 	| { type: "SetDestination"; destinationNetwork: Networks }
-	| { type: "SwitchToTesnet" }
 
 export interface BridgeContext {
 	sourceNetwork: Networks
@@ -103,7 +102,7 @@ const pausedMainQueueIds = (operations: Operations) =>
 		.map(([id]) => id)
 
 const operationId = () => `bridgeOperation-${Date.now()}-${nanoid(8)}`
-const supportedNetworks = ["mina:devnet", "zeko:testnet"] as const
+const supportedNetworks = ["mina:devnet", "zeko:testnet", "mina:mainnet", "zeko:mainnet"] as const
 
 type StartArgs = {
 	status: OperationStatus
@@ -359,9 +358,9 @@ export const bridgeMachine = setup({
 				nextOperationOrder: order + 1,
 				activeOperation:
 					lane === "cancellation" ||
-					command === "complete" ||
-					command === "completeCancelled" ||
-					state?.status === "paused"
+						command === "complete" ||
+						command === "completeCancelled" ||
+						state?.status === "paused"
 						? context.activeOperation
 						: id,
 				activeCancellationOperation:
@@ -416,7 +415,7 @@ export const bridgeMachine = setup({
 		activateCancellationOperation: assign(({ context }, params: { id: string }) => ({
 			activeCancellationOperation:
 				context.activeCancellationOperation === null ||
-				context.activeCancellationOperation === params.id
+					context.activeCancellationOperation === params.id
 					? params.id
 					: context.activeCancellationOperation
 		})),
@@ -475,16 +474,6 @@ export const bridgeMachine = setup({
 		],
 		NetworkChanged: [
 			{
-				target: ".MAINNET",
-				description: "TODO: this should be removed once the bridge supports mainnet.",
-				guard: ({ context }) => currentNetwork(context).includes("mainnet"),
-				actions: enqueueActions(({ context, enqueue }) => {
-					logger.error("Mainnet is not supported yet, manually change to a compatible network.")
-					enqueue.assign({ walletReady: false })
-					enqueue.sendTo(context.wallet, { type: "RequestNetworkChange", network: "zeko:testnet" })
-				})
-			},
-			{
 				target: ".FIND_OPERATIONS",
 				description:
 					"This is taken automatically for the first time as Auro will send the event on page load.",
@@ -501,15 +490,6 @@ export const bridgeMachine = setup({
 				actions: enqueueActions(({ context, event, enqueue }) => {
 					const sourceNetwork = event.network
 					const destinationNetwork = bridgeDirections[event.network]
-					//Check for mainnet
-					if (sourceNetwork.includes("mainnet")) {
-						logger.error("Mainnet is not supported yet, changing to 'zeko:testnet' ")
-						enqueue.sendTo(context.wallet, {
-							type: "RequestNetworkChange",
-							network: "zeko:testnet"
-						})
-						return
-					}
 					//Notify all operations
 					for (const { status, operation } of context.operations.values()) {
 						if (status === "started" || status === "paused") {

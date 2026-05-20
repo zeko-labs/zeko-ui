@@ -208,6 +208,9 @@
 - T208 | done | prevent-duplicate-withdrawal-finalize | done/T208-prevent-duplicate-withdrawal-finalize.md
 - T209 | done | resolve-final-main-conflicts | done/T209-resolve-final-main-conflicts.md
 - T210 | done | resolve-pr-163-review-followups | done/T210-resolve-pr-163-review-followups.md
+- T211 | done | enable-mainnet-bridge-and-indexer-endpoints | done/T211-enable-mainnet-bridge-and-indexer-endpoints.md
+- T212 | done | temporary-mainnet-actions-api-endpoint-switch | done/T212-temporary-mainnet-actions-api-endpoint-switch.md
+- T213 | done | set-bridge-sdk-example-network-ids-for-zeko-mainnet | done/T213-set-bridge-sdk-example-network-ids-for-zeko-mainnet.md
 - T211 | done | refactor-bridge-recovery-into-main-and-cancellation-lanes | done/T211-refactor-bridge-recovery-into-main-and-cancellation-lanes.md
 - T212 | done | build-cancellation-queue-ui | done/T212-build-cancellation-queue-ui.md
 - T213 | done | add-web-404-regression-tests | done/T213-add-web-404-regression-tests.md

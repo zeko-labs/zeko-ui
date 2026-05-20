@@ -7,7 +7,7 @@ const urls = {
 	l1: {
 		mainnet: {
 			l1Url: "https://api.minascan.io/node/mainnet/v1/graphql",
-			l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql"
+			l1ArchiveUrl: "https://archive-node-api.gcp.o1test.net"
 		},
 		testnet: {
 			l1Url: "https://gateway.mina.devnet.zeko.io",
