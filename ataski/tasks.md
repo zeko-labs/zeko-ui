@@ -241,4 +241,4 @@
 - T241 | done | filter-legacy-bridge-operations | done/T241-filter-legacy-bridge-operations.md
 - T242 | done | resolve-legacy-bridge-operation-pr-conflicts | done/T242-resolve-legacy-bridge-operation-pr-conflicts.md
 - T243 | done | audit-bridge-mainnet-readiness | done/T243-audit-bridge-mainnet-readiness.md
-- T244 | in-progress | correct-bridge-mainnet-config | in-progress/T244-correct-bridge-mainnet-config.md
+- T244 | done | correct-bridge-mainnet-config | done/T244-correct-bridge-mainnet-config.md
