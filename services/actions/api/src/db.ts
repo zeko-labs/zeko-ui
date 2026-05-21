@@ -25,11 +25,22 @@ const formatDatabaseError = (error: unknown): string => {
 	return `${error.message} | cause: ${causeText}`
 }
 
+type LocalDatabaseEnv = Omit<Env, "ENVIRONMENT"> & {
+	DATABASE_URL?: string
+	ENVIRONMENT?: string
+}
+
+const getLocalDatabaseUrl = (env: Env): string | null => {
+	const localEnv = env as LocalDatabaseEnv
+	if (localEnv.ENVIRONMENT !== "local") return null
+	return localEnv.DATABASE_URL?.trim() || null
+}
+
 const initializeDrizzle = ({ cache, env }: { cache: boolean; env: Env }) => {
-	const isLocal = env.ENVIRONMENT === "local"
+	const localDatabaseUrl = getLocalDatabaseUrl(env)
 	const hyperdrive = cache ? env.HYPERDRIVE : env.HYPERDRIVE_NO_CACHE
-	const client = isLocal
-		? postgres(env.DATABASE_URL, {
+	const client = localDatabaseUrl
+		? postgres(localDatabaseUrl, {
 				max: 5,
 				fetch_types: false
 			})

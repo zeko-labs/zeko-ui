@@ -20,17 +20,40 @@
 		}
 	},
 	"dev": { "port": 9100 },
+	"vars": {
+		"ENVIRONMENT": "mainnet"
+	},
 	"routes": [{ "custom_domain": true, "pattern": "api.actions.zeko.io" }],
 	"hyperdrive": [
 		{
 			"binding": "HYPERDRIVE_NO_CACHE",
-			"id": "33ea9e81023146799e5658aae00731fc",
+			"id": "REVIEW_REQUIRED_ACTIONS_MAINNET_DB_NO_CACHE_ID",
 			"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
 		},
 		{
 			"binding": "HYPERDRIVE",
-			"id": "abf1ac369edf418ba9243099f96ead76",
+			"id": "REVIEW_REQUIRED_ACTIONS_MAINNET_DB_CACHE_ID",
 			"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
 		}
-	]
+	],
+	"env": {
+		"testnet": {
+			"vars": {
+				"ENVIRONMENT": "testnet"
+			},
+			"routes": [{ "custom_domain": true, "pattern": "testnet.api.actions.zeko.io" }],
+			"hyperdrive": [
+				{
+					"binding": "HYPERDRIVE_NO_CACHE",
+					"id": "33ea9e81023146799e5658aae00731fc",
+					"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
+				},
+				{
+					"binding": "HYPERDRIVE",
+					"id": "abf1ac369edf418ba9243099f96ead76",
+					"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
+				}
+			]
+		}
+	}
 }

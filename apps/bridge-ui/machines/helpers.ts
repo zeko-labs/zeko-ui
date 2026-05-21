@@ -27,9 +27,8 @@ const urls = {
 		}
 	},
 	actions: {
-		//TODO: Configure for mainnet
 		mainnet: "https://api.actions.zeko.io/graphql",
-		testnet: "https://api.actions.zeko.io/graphql"
+		testnet: "https://testnet.api.actions.zeko.io/graphql"
 		// testnet: "http://localhost:9100/graphql"
 	}
 } as const

@@ -1,18 +1,51 @@
 import { describe, expect, it } from "vitest"
-import { PublicKey } from "o1js"
+import { PublicKey, type NetworkId } from "o1js"
 import { Bridge, type Config } from "../src/index"
 
+type BridgeNetworkId = Extract<NetworkId, "testnet" | "mainnet">
+
+const networkIds = ["testnet", "mainnet"] as const satisfies readonly BridgeNetworkId[]
+
+const readNetworkId = (key: string, fallback: BridgeNetworkId): BridgeNetworkId => {
+	const value = process.env[key]?.trim() || fallback
+	if (networkIds.includes(value as BridgeNetworkId)) return value as BridgeNetworkId
+	throw new Error(`${key} must be one of: ${networkIds.join(", ")}`)
+}
+
+const l1Network = readNetworkId("BRIDGE_SDK_L1_NETWORK", "testnet")
+const l2Network = readNetworkId("BRIDGE_SDK_L2_NETWORK", "testnet")
+
+const defaultL1Url = (network: BridgeNetworkId): string =>
+	network === "mainnet"
+		? "https://api.minascan.io/node/mainnet/v1/graphql"
+		: "https://gateway.mina.devnet.zeko.io"
+
+const defaultL1ArchiveUrl = (network: BridgeNetworkId): string =>
+	network === "mainnet"
+		? "https://api.minascan.io/archive/mainnet/v1/graphql"
+		: "https://gateway.mina.archive.devnet.zeko.io"
+
+const defaultL2Url = (network: BridgeNetworkId): string =>
+	network === "mainnet" ? "https://mainnet.zeko.io/graphql" : "https://testnet.zeko.io/graphql"
+
+const defaultL2ArchiveUrl = (network: BridgeNetworkId): string =>
+	network === "mainnet"
+		? "https://archive.mainnet.zeko.io/graphql"
+		: "https://archive.testnet.zeko.io/graphql"
+
+const defaultActionsApiUrl = (network: BridgeNetworkId): string =>
+	network === "mainnet"
+		? "https://api.actions.zeko.io/graphql"
+		: "https://testnet.api.actions.zeko.io/graphql"
+
 const liveConfig: Config = {
-	l1Url: process.env.BRIDGE_SDK_L1_URL?.trim() || "https://gateway.mina.devnet.zeko.io",
-	l1ArchiveUrl:
-		process.env.BRIDGE_SDK_L1_ARCHIVE_URL?.trim() || "https://gateway.mina.archive.devnet.zeko.io",
-	zekoUrl: process.env.BRIDGE_SDK_L2_URL?.trim() || "https://testnet.zeko.io/graphql",
-	zekoArchiveUrl:
-		process.env.BRIDGE_SDK_L2_ARCHIVE_URL?.trim() || "https://archive.testnet.zeko.io/graphql",
-	actionsApi:
-		process.env.BRIDGE_SDK_ACTIONS_API_URL?.trim() || "https://api.actions.zeko.io/graphql",
-	l1Network: "testnet",
-	l2Network: "testnet"
+	l1Url: process.env.BRIDGE_SDK_L1_URL?.trim() || defaultL1Url(l1Network),
+	l1ArchiveUrl: process.env.BRIDGE_SDK_L1_ARCHIVE_URL?.trim() || defaultL1ArchiveUrl(l1Network),
+	zekoUrl: process.env.BRIDGE_SDK_L2_URL?.trim() || defaultL2Url(l2Network),
+	zekoArchiveUrl: process.env.BRIDGE_SDK_L2_ARCHIVE_URL?.trim() || defaultL2ArchiveUrl(l2Network),
+	actionsApi: process.env.BRIDGE_SDK_ACTIONS_API_URL?.trim() || defaultActionsApiUrl(l2Network),
+	l1Network,
+	l2Network
 }
 
 const walletAddress =

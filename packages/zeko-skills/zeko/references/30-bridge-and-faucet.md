@@ -64,7 +64,7 @@ MINA_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli doctor
 - `l1ArchiveUrl`: `https://gateway.mina.archive.devnet.zeko.io`
 - `zekoUrl`: `https://testnet.zeko.io/graphql`
 - `zekoArchiveUrl`: `https://archive.testnet.zeko.io/graphql`
-- `actionsApi`: `https://api.actions.zeko.io/graphql`
+- `actionsApi`: `https://testnet.api.actions.zeko.io/graphql`
 
 ## Faucet CLI commands
 

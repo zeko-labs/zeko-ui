@@ -55,6 +55,9 @@ import {
 const NO_OUTER_COMMIT_REASON = "No outer commit available yet"
 const SKIPPED_LEGACY_WITHDRAWAL_ACTION_INDEX = 3
 
+const isSkippedLegacyWithdrawalAction = (runtime: BridgeRuntime, actionIndex: number): boolean =>
+	runtime.config.l2Network === "testnet" && actionIndex === SKIPPED_LEGACY_WITHDRAWAL_ACTION_INDEX
+
 const isUnknownLiveActionCursorError = (error: unknown): boolean => {
 	const message =
 		error && typeof error === "object" && "message" in error ? String(error.message) : String(error)
@@ -398,8 +401,8 @@ export async function fetchWithdrawalFinalizationWitnesses(
 
 		unfinalisedMatchCount++
 
-		// Preserve the historical protocol workaround for this legacy withdrawal action.
-		if (action.index === SKIPPED_LEGACY_WITHDRAWAL_ACTION_INDEX) return false
+		// Preserve the historical protocol workaround for this testnet legacy withdrawal action.
+		if (isSkippedLegacyWithdrawalAction(runtime, action.index)) return false
 
 		try {
 			assertFirstWithdrawalAmountCanCreateHelper({

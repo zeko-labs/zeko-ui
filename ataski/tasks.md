@@ -248,3 +248,10 @@
 - T248 | done | merge-main-and-validate-bridge-sdk-refactor | done/T248-merge-main-and-validate-bridge-sdk-refactor.md
 - T249 | done | resolve-pr171-bot-review-findings | done/T249-resolve-pr171-bot-review-findings.md
 - T250 | done | remove-bridge-legacy-constructor | done/T250-remove-bridge-legacy-constructor.md
+- T251 | done | prepare-mainnet-readiness-board | done/T251-prepare-mainnet-readiness-board.md
+- T252 | done | nushell-deploy-tooling-and-reviewable-scripts | done/T252-nushell-deploy-tooling-and-reviewable-scripts.md
+- T253 | done | actions-api-env-and-workflows | done/T253-actions-api-env-and-workflows.md
+- T254 | done | northflank-mainnet-testnet-pipeline | done/T254-northflank-mainnet-testnet-pipeline.md
+- T255 | done | bridge-ui-deploy-split | done/T255-bridge-ui-deploy-split.md
+- T256 | done | consumer-endpoints-and-sdk-constants | done/T256-consumer-endpoints-and-sdk-constants.md
+- T257 | done | docs-references-validation-and-pr | done/T257-docs-references-validation-and-pr.md

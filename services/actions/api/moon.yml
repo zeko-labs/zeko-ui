@@ -52,6 +52,16 @@ tasks:
     script: vitest run tests/actions.live-e2e.test.ts
     options:
       cache: false
+  live-e2e-testnet:
+    description: Live smoke test against the deployed testnet actions-api endpoint.
+    script: ACTIONS_API_E2E_BASE_URL=https://testnet.api.actions.zeko.io vitest run tests/actions.live-e2e.test.ts
+    options:
+      cache: false
+  live-e2e-mainnet:
+    description: Live smoke test against the deployed mainnet actions-api endpoint.
+    script: ACTIONS_API_E2E_BASE_URL=https://api.actions.zeko.io vitest run tests/actions.live-e2e.test.ts
+    options:
+      cache: false
   schema:
     command: bun run graphql/printSchema.ts
     inputs:
@@ -106,12 +116,34 @@ tasks:
     inputs:
       - "@group(sources)"
       - "@group(tests)"
+  typecheck:
+    deps:
+      - ^:build
+    command: tsc --noEmit -p tsconfig.json
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+  test:
+    command: vitest run --config vitest.node.config.ts
+    inputs:
+      - "@group(sources)"
+      - "@group(tests)"
+    options:
+      runInCI: false
   lint-fix:
     command: biome check --formatter-enabled=false --write
     inputs:
       - "@group(sources)"
       - "@group(tests)"
   deploy:
+    command: wrangler deploy --env testnet
+    deps:
+      - ^:build
+  deploy-testnet:
+    command: wrangler deploy --env testnet
+    deps:
+      - ^:build
+  deploy-mainnet:
     command: wrangler deploy
     deps:
       - ^:build

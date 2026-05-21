@@ -5,3 +5,9 @@ pnpm = "10.16.1"
 bun = "1.2.22"
 rust = "1.93.1"
 proto = "0.55.3"
+
+[plugins]
+nu = "github://hebilicious/proto-nu"
+
+[tools.nu]
+version = "0.112.2"

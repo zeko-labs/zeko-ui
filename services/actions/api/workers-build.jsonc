@@ -4,7 +4,7 @@
 	"triggers": [
 		{
 			"name": "Deploy default branch",
-			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks actions-api:deploy",
+			"deployCommand": "echo 'Actions API deploys are owned by GitHub Actions; Cloudflare Workers Build deploy is disabled.'",
 			"branchIncludes": ["main"],
 			"branchExcludes": [],
 			"pathIncludes": ["services/actions/api/**"],
@@ -12,7 +12,7 @@
 		},
 		{
 			"name": "Deploy non-production branches",
-			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks actions-api:deploy-preview",
+			"deployCommand": "echo 'Actions API preview deploys are disabled while env-specific GitHub Actions deploys own this Worker.'",
 			"branchIncludes": ["*"],
 			"branchExcludes": ["main"],
 			"pathIncludes": ["services/actions/api/**"],

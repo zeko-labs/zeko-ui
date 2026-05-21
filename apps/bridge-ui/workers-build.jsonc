@@ -4,7 +4,7 @@
 	"triggers": [
 		{
 			"name": "Deploy default branch",
-			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks bridge-ui:deploy",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks bridge-ui:deploy-testnet",
 			"branchIncludes": ["main"],
 			"branchExcludes": [],
 			"pathIncludes": [
