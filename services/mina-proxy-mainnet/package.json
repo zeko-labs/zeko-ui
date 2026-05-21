@@ -1,5 +1,5 @@
 {
-	"name": "@zeko/mina-proxy",
+	"name": "@zeko/mina-proxy-mainnet",
 	"private": true,
 	"dependencies": {
 		"@zeko/proxy-handler": "workspace:*"
