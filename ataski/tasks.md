@@ -240,3 +240,11 @@
 - T240 | done | fix-pr159-ci-and-validate-queue-review | done/T240-fix-pr159-ci-and-validate-queue-review.md
 - T241 | done | filter-legacy-bridge-operations | done/T241-filter-legacy-bridge-operations.md
 - T242 | done | resolve-legacy-bridge-operation-pr-conflicts | done/T242-resolve-legacy-bridge-operation-pr-conflicts.md
+- T243 | done | refactor-bridge-sdk-functional-core | done/T243-refactor-bridge-sdk-functional-core.md
+- T244 | done | validate-bridge-sdk-functional-core-refactor | done/T244-validate-bridge-sdk-functional-core-refactor.md
+- T245 | done | split-bridge-sdk-cancellation-module | done/T245-split-bridge-sdk-cancellation-module.md
+- T246 | done | validate-pr-171-conflicts-and-ci | done/T246-validate-pr-171-conflicts-and-ci.md
+- T247 | done | remove-deposit-state-module-and-add-changeset | done/T247-remove-deposit-state-module-and-add-changeset.md
+- T248 | done | merge-main-and-validate-bridge-sdk-refactor | done/T248-merge-main-and-validate-bridge-sdk-refactor.md
+- T249 | done | resolve-pr171-bot-review-findings | done/T249-resolve-pr171-bot-review-findings.md
+- T250 | done | remove-bridge-legacy-constructor | done/T250-remove-bridge-legacy-constructor.md

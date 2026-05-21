@@ -2,6 +2,7 @@ import { Field, PublicKey, UInt32, UInt64 } from "o1js"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { GqlClient } from "../src/graphql"
 import { Bridge } from "../src/index"
+import type { BridgeRuntime } from "../src/runtime"
 import type { Action, Config, InnerWitness, OuterCommit, Withdrawal } from "../src/types"
 import * as utils from "../src/utils"
 import { withdrawalAux } from "../src/utils"
@@ -38,26 +39,28 @@ const buildBridge = ({
 	l2AccountCreationFee?: number
 	bridgeProofFee?: number
 } = {}) =>
-	new Bridge(
-		bridgeConfig,
-		buildGraphqlClient({}),
-		buildGraphqlClient({}),
-		buildGraphqlClient({}),
-		buildGraphqlClient({}),
-		buildGraphqlClient({}),
-		UInt64.from(l1AccountCreationFee),
-		UInt64.from(l2AccountCreationFee),
+	new Bridge({
+		config: bridgeConfig,
+		l1Client: buildGraphqlClient({}),
+		l1ArchiveClient: buildGraphqlClient({}),
+		l2Client: buildGraphqlClient({}),
+		l2ArchiveClient: buildGraphqlClient({}),
+		actionsApiClient: buildGraphqlClient({}),
+		l1AccountCreationFee: UInt64.from(l1AccountCreationFee),
+		l2AccountCreationFee: UInt64.from(l2AccountCreationFee),
 		outerPk,
 		innerPk,
-		[outerPk],
-		outerPk,
-		outerPk,
-		innerPk,
-		UInt32.from(10),
-		outerPk,
-		innerPk,
-		UInt64.from(bridgeProofFee)
-	)
+		outerHolders: [outerPk],
+		innerHolder: outerPk,
+		outerTokenOwner: outerPk,
+		sequencerPk: innerPk,
+		withdrawalDelay: UInt32.from(10),
+		bridgeFeeRecipientL1: outerPk,
+		bridgeFeeRecipientL2: innerPk,
+		bridgeProofFee: UInt64.from(bridgeProofFee),
+		V2_DEPOSITS_START_INDEX: UInt32.zero,
+		V2_WITHDRAWALS_START_INDEX: UInt32.zero
+	} satisfies BridgeRuntime)
 
 const buildWithdrawal = ({ amount = 2_000_000_000 }: { amount?: number } = {}): Withdrawal => ({
 	recipient,
