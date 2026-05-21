@@ -23,6 +23,8 @@ Use this file when you need exact public endpoints, Bridge SDK config values, or
 ## Non-testnet note
 
 - This skill defaults to public testnet values because those are the stable public builder defaults.
+- Mina mainnet to Zeko mainnet bridge routes are not enabled by default; they require a dedicated mainnet Actions API and indexer deployment.
+- Do not reuse the public testnet Actions API endpoint for mainnet bridge operations.
 - If the user needs a browser wallet or custom network config for another network, start with `https://docs.zeko.io/developers/guides/custom-network`.
 
 ## Native MINA transfer rule

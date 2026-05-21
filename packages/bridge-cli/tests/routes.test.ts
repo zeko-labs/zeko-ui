@@ -11,4 +11,18 @@ describe("routes", () => {
 		expect(resolveRoute("eth:testnet", "zeko:testnet").enabled).toBe(false)
 		expect(KNOWN_ROUTES.length).toBeGreaterThanOrEqual(4)
 	})
+
+	it("keeps mina mainnet routes disabled until mainnet actions indexing is ready", () => {
+		expect(resolveRoute("mina:mainnet", "zeko:mainnet")).toMatchObject({
+			enabled: false,
+			reason:
+				"Mainnet bridge routes require a dedicated mainnet Actions API and indexer deployment before they can be enabled."
+		})
+
+		expect(resolveRoute("zeko:mainnet", "mina:mainnet")).toMatchObject({
+			enabled: false,
+			reason:
+				"Mainnet bridge routes require a dedicated mainnet Actions API and indexer deployment before they can be enabled."
+		})
+	})
 })

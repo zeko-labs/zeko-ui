@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { resolveRoute } from "../src/core/routes"
+import { MAINNET_ACTIONS_API_READINESS_REASON, resolveRoute } from "../src/core/routes"
 import { createSdkConfig } from "../src/core/sdk-config"
 
 describe("sdk config", () => {
@@ -26,7 +26,7 @@ describe("sdk config", () => {
 
 	it("rejects disabled routes", () => {
 		expect(() => createSdkConfig(resolveRoute("mina:mainnet", "zeko:mainnet"))).toThrowError(
-			"Known route, not enabled yet."
+			MAINNET_ACTIONS_API_READINESS_REASON
 		)
 	})
 })

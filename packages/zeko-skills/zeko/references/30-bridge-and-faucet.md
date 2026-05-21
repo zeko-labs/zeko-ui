@@ -25,6 +25,7 @@ Use this file for unattended bridge execution, programmatic bridge integrations,
 
 - Use `bridge` by default. It signs, submits, waits, retries transient checks, advances queued claims in order, and keeps running until the requested bridge reaches a terminal result.
 - Current enabled routes are public testnet only: `mina:testnet -> zeko:testnet` and `zeko:testnet -> mina:testnet`.
+- Mina mainnet to Zeko mainnet routes are known but disabled until there is a dedicated mainnet Actions API and indexer deployment.
 - Prefer the CLI when an agent needs a single command that can stay alive through a long bridge wait.
 - Use lower-level CLI commands only for debugging or recovery.
 
@@ -65,6 +66,10 @@ MINA_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli doctor
 - `zekoUrl`: `https://testnet.zeko.io/graphql`
 - `zekoArchiveUrl`: `https://archive.testnet.zeko.io/graphql`
 - `actionsApi`: `https://api.actions.zeko.io/graphql`
+- `l1Network`: `testnet`
+- `l2Network`: `testnet`
+
+Do not treat the testnet Actions API as mainnet-ready. Production mainnet bridge configuration needs matching mainnet L1/L2 endpoints, `l1Network: "mainnet"`, `l2Network: "mainnet"`, and a mainnet Actions API/indexer deployment.
 
 ## Faucet CLI commands
 

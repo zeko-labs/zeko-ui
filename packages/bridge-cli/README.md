@@ -13,6 +13,17 @@ Enabled routes:
 | `mina:testnet` | `zeko:testnet` | Deposit    |
 | `zeko:testnet` | `mina:testnet` | Withdrawal |
 
+Known but disabled routes:
+
+| From           | To             | Reason                                                                                           |
+| -------------- | -------------- | ------------------------------------------------------------------------------------------------ |
+| `mina:mainnet` | `zeko:mainnet` | Requires a dedicated mainnet Actions API and indexer deployment before the route can be enabled. |
+| `zeko:mainnet` | `mina:mainnet` | Requires a dedicated mainnet Actions API and indexer deployment before the route can be enabled. |
+| `eth:testnet`  | `zeko:testnet` | Known route, not enabled yet.                                                                    |
+| `zeko:testnet` | `eth:testnet`  | Known route, not enabled yet.                                                                    |
+| `eth:mainnet`  | `zeko:mainnet` | Known route, not enabled yet.                                                                    |
+| `zeko:mainnet` | `eth:mainnet`  | Known route, not enabled yet.                                                                    |
+
 ## Installation
 
 Install globally:
