@@ -1,4 +1,4 @@
-import { UInt32, type Field, type Mina, type PublicKey, type Transaction, type UInt64 } from "o1js"
+import { UInt32, type Field, type Mina, type PublicKey, type UInt64 } from "o1js"
 import { cancelDeposit, canCancelDeposit } from "./cancellations"
 import {
 	canFinalizeDeposit,
@@ -12,6 +12,7 @@ import {
 import type { GqlClient } from "./graphql"
 import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
 import { createBridgeRuntime, type BridgeRuntime } from "./runtime"
+import type { RetryableTransactionOptions, SignTransaction } from "./transactions"
 import type {
 	Account,
 	Action,
@@ -37,12 +38,11 @@ export * from "./errors"
 export * from "./graphql/index"
 export * from "./types"
 
-type SignTransaction = (txn: Transaction<boolean, false>) => Promise<Transaction<boolean, true>>
+const LEGACY_BRIDGE_CONSTRUCTOR_MIN_ARG_COUNT = 14
+const LEGACY_BRIDGE_CONSTRUCTOR_MAX_ARG_COUNT = 19
 
-type RetryableTransactionOptions = {
-	attempts?: number
-	feeNanomina?: number | bigint
-}
+const isBridgeRuntime = (value: BridgeRuntime | Config): value is BridgeRuntime =>
+	typeof value === "object" && value !== null && "config" in value && "l1Client" in value
 
 export class Bridge {
 	private readonly runtime: BridgeRuntime
@@ -71,9 +71,18 @@ export class Bridge {
 		V2_WITHDRAWALS_START_INDEX?: UInt32
 	)
 	constructor(runtimeOrConfig: BridgeRuntime | Config, ...args: unknown[]) {
-		if ("config" in runtimeOrConfig && "l1Client" in runtimeOrConfig) {
+		if (isBridgeRuntime(runtimeOrConfig)) {
 			this.runtime = this.withBridgeHooks(runtimeOrConfig)
 			return
+		}
+
+		if (
+			args.length < LEGACY_BRIDGE_CONSTRUCTOR_MIN_ARG_COUNT ||
+			args.length > LEGACY_BRIDGE_CONSTRUCTOR_MAX_ARG_COUNT
+		) {
+			throw new Error(
+				"Invalid Bridge constructor arguments: expected runtime or legacy config plus 14-19 arguments"
+			)
 		}
 
 		const [

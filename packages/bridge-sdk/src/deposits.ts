@@ -586,7 +586,9 @@ export async function finalizeDeposit(
 		if (!data?.request?.key) throw new Error(error?.message ?? "No key returned from mutation")
 		const txnHash = await pollProvingResult(runtime, data.request.key)
 
-		const currentSyncedOuterActionState = await fetchSyncedOuterActionState(runtime)
+		const currentSyncedOuterActionState =
+			(await runtime.bridge?.fetchSyncedOuterActionState?.()) ??
+			(await fetchSyncedOuterActionState(runtime))
 
 		if (currentSyncedOuterActionState.state.equals(aseTarget.state).toBoolean()) {
 			return txnHash

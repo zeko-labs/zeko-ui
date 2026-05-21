@@ -1,6 +1,18 @@
 import { provedResultQuery } from "@zeko-labs/graphql"
 import { debug, type BridgeRuntime } from "./runtime"
 
+const parseProvingResult = (
+	key: string,
+	result: string
+): { proved?: unknown; executed?: string } => {
+	try {
+		return JSON.parse(result)
+	} catch (error) {
+		const reason = error instanceof Error ? `: ${error.message}` : ""
+		throw new Error(`Invalid proving result JSON for key ${key}${reason}`)
+	}
+}
+
 export const pollProvingResult = async (
 	runtime: BridgeRuntime,
 	key: string,
@@ -8,10 +20,9 @@ export const pollProvingResult = async (
 ): Promise<string> => {
 	debug(runtime, "pollQuery", { key })
 
-	let result: string | null = null
 	let attempts = 0
 
-	while (!result) {
+	while (true) {
 		if (
 			typeof runtime.config.pollTimeout === "number" &&
 			runtime.config.pollTimeout >= 0 &&
@@ -26,17 +37,20 @@ export const pollProvingResult = async (
 
 		const resultResponse = await runtime.l2Client().query(provedResultQuery, { key })
 		if (resultResponse.error) throw resultResponse.error
-		result = resultResponse.data?.provingResult ?? null
+		const result = resultResponse.data?.provingResult ?? null
 
 		if (!result) continue
 
-		const resultObject: { proved?: unknown; executed?: string } = JSON.parse(result)
+		const resultObject = parseProvingResult(key, result)
 
 		if (resultObject.proved) {
-			result = null
-		} else if (resultObject.executed) {
+			continue
+		}
+
+		if (resultObject.executed) {
 			return resultObject.executed
 		}
+
+		throw new Error(`Unsupported proving result payload for key ${key}`)
 	}
-	throw new Error("Should not be reachable")
 }

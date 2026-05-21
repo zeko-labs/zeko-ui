@@ -18,7 +18,7 @@ export const setL2 = (runtime: BridgeRuntime): void => {
 	Mina.setActiveInstance(
 		Mina.Network({
 			mina: runtime.config.zekoUrl,
-			archive: runtime.config.zekoUrl,
+			archive: runtime.config.zekoArchiveUrl,
 			networkId: runtime.config.l2Network
 		})
 	)

@@ -9,7 +9,7 @@ export type RetryableTransactionOptions = {
 	feeNanomina?: number | bigint
 }
 
-const DEFAULT_BRIDGE_FEE_NANOMINA = 1 * 10e8
+const DEFAULT_BRIDGE_FEE_NANOMINA = 1_000_000_000
 
 export const normalizeRetryableTransactionOptions = (
 	options: number | RetryableTransactionOptions | undefined

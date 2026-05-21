@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { pollProvingResult } from "../src/prover"
 import type { BridgeRuntime } from "../src/runtime"
 
-const buildRuntime = ({ verbose }: { verbose: boolean }): BridgeRuntime =>
+const buildRuntime = ({
+	verbose,
+	provingResult = JSON.stringify({ executed: "txn-hash" })
+}: {
+	verbose: boolean
+	provingResult?: string
+}): BridgeRuntime =>
 	({
 		config: {
 			verbose,
@@ -18,7 +24,7 @@ const buildRuntime = ({ verbose }: { verbose: boolean }): BridgeRuntime =>
 		l2Client: () => ({
 			query: vi.fn().mockResolvedValue({
 				data: {
-					provingResult: JSON.stringify({ executed: "txn-hash" })
+					provingResult
 				}
 			})
 		})
@@ -37,5 +43,21 @@ describe("pollProvingResult", () => {
 		)
 
 		expect(consoleDebug).not.toHaveBeenCalled()
+	})
+
+	it("reports invalid proving result JSON with context", async () => {
+		await expect(
+			pollProvingResult(buildRuntime({ verbose: false, provingResult: "not-json" }), "proof-key", 0)
+		).rejects.toThrow("Invalid proving result JSON for key proof-key")
+	})
+
+	it("reports unsupported proving result payloads with context", async () => {
+		await expect(
+			pollProvingResult(
+				buildRuntime({ verbose: false, provingResult: JSON.stringify({ status: "unknown" }) }),
+				"proof-key",
+				0
+			)
+		).rejects.toThrow("Unsupported proving result payload for key proof-key")
 	})
 })

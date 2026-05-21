@@ -53,6 +53,7 @@ import {
 } from "./utils"
 
 const NO_OUTER_COMMIT_REASON = "No outer commit available yet"
+const SKIPPED_LEGACY_WITHDRAWAL_ACTION_INDEX = 3
 
 const isUnknownLiveActionCursorError = (error: unknown): boolean => {
 	const message =
@@ -397,7 +398,8 @@ export async function fetchWithdrawalFinalizationWitnesses(
 
 		unfinalisedMatchCount++
 
-		if (action.index === 3) return false
+		// Preserve the historical protocol workaround for this legacy withdrawal action.
+		if (action.index === SKIPPED_LEGACY_WITHDRAWAL_ACTION_INDEX) return false
 
 		try {
 			assertFirstWithdrawalAmountCanCreateHelper({

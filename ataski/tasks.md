@@ -246,3 +246,4 @@
 - T246 | done | validate-pr-171-conflicts-and-ci | done/T246-validate-pr-171-conflicts-and-ci.md
 - T247 | done | remove-deposit-state-module-and-add-changeset | done/T247-remove-deposit-state-module-and-add-changeset.md
 - T248 | done | merge-main-and-validate-bridge-sdk-refactor | done/T248-merge-main-and-validate-bridge-sdk-refactor.md
+- T249 | done | resolve-pr171-bot-review-findings | done/T249-resolve-pr171-bot-review-findings.md
