@@ -22,8 +22,12 @@ Use this file when you need exact public endpoints, Bridge SDK config values, or
 
 ## Non-testnet note
 
-- This skill defaults to public testnet values because those are the stable public builder defaults.
-- If the user needs a browser wallet or custom network config for another network, start with `https://docs.zeko.io/developers/guides/custom-network`.
+- Bridge SDK and Bridge CLI support Mina/Zeko mainnet routes with matching mainnet network IDs.
+- Mina mainnet GraphQL: `https://api.minascan.io/node/mainnet/v1/graphql`
+- Mina mainnet archive: `https://api.minascan.io/archive/mainnet/v1/graphql`
+- Zeko mainnet GraphQL: `https://mainnet.zeko.io/graphql`
+- Zeko mainnet archive: `https://archive.mainnet.zeko.io/graphql`
+- If the user needs a browser wallet or custom network config, start with `https://docs.zeko.io/developers/guides/custom-network`.
 
 ## Native MINA transfer rule
 

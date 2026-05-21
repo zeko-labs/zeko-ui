@@ -36,7 +36,7 @@ const bridge = await Bridge.init({
 })
 ```
 
-The endpoints above are testnet examples. Use the matching mainnet endpoints for production traffic.
+The endpoints above are testnet examples. For production traffic, use matching mainnet endpoints and set both network IDs to `"mainnet"`.
 
 ## Operational Notes
 

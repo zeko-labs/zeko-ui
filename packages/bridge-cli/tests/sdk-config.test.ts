@@ -24,8 +24,21 @@ describe("sdk config", () => {
 		expect(config.verbose).toBe(true)
 	})
 
+	it("maps the supported mainnet route to bridge-sdk endpoints", () => {
+		const config = createSdkConfig(resolveRoute("mina:mainnet", "zeko:mainnet"))
+
+		expect(config.l1Url).toBe("https://api.minascan.io/node/mainnet/v1/graphql")
+		expect(config.l1ArchiveUrl).toBe("https://api.minascan.io/archive/mainnet/v1/graphql")
+		expect(config.zekoUrl).toBe("https://mainnet.zeko.io/graphql")
+		expect(config.zekoArchiveUrl).toBe("https://archive.mainnet.zeko.io/graphql")
+		expect(config.actionsApi).toBe("https://api.actions.zeko.io/graphql")
+		expect(config.l1Network).toBe("mainnet")
+		expect(config.l2Network).toBe("mainnet")
+		expect(config.verbose).toBe(false)
+	})
+
 	it("rejects disabled routes", () => {
-		expect(() => createSdkConfig(resolveRoute("mina:mainnet", "zeko:mainnet"))).toThrowError(
+		expect(() => createSdkConfig(resolveRoute("eth:mainnet", "zeko:mainnet"))).toThrowError(
 			"Known route, not enabled yet."
 		)
 	})

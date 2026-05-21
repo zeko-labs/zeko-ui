@@ -254,7 +254,7 @@ export class Bridge {
 		Mina.setActiveInstance(
 			Mina.Network({
 				mina: this.config.zekoUrl,
-				archive: this.config.zekoUrl,
+				archive: this.config.zekoArchiveUrl,
 				networkId: this.config.l2Network
 			})
 		)

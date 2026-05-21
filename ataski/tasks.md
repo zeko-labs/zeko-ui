@@ -240,3 +240,4 @@
 - T240 | done | fix-pr159-ci-and-validate-queue-review | done/T240-fix-pr159-ci-and-validate-queue-review.md
 - T241 | done | filter-legacy-bridge-operations | done/T241-filter-legacy-bridge-operations.md
 - T242 | done | resolve-legacy-bridge-operation-pr-conflicts | done/T242-resolve-legacy-bridge-operation-pr-conflicts.md
+- T243 | done | bridge-mainnet-readiness | done/T243-bridge-mainnet-readiness.md

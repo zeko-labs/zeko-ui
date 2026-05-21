@@ -12,6 +12,8 @@ Enabled routes:
 | -------------- | -------------- | ---------- |
 | `mina:testnet` | `zeko:testnet` | Deposit    |
 | `zeko:testnet` | `mina:testnet` | Withdrawal |
+| `mina:mainnet` | `zeko:mainnet` | Deposit    |
+| `zeko:mainnet` | `mina:mainnet` | Withdrawal |
 
 ## Installation
 
@@ -35,11 +37,11 @@ npx -y @zeko-labs/bridge-cli bridge --from mina:testnet --to zeko:testnet --amou
 
 ## Configuration
 
-The currently enabled routes use one Mina-compatible private key:
+The currently enabled Mina/Zeko routes use one Mina-compatible private key:
 
-| Variable           | Required | Description                                                                   |
-| ------------------ | -------- | ----------------------------------------------------------------------------- |
-| `MINA_PRIVATE_KEY` | Yes      | Private key used to sign supported Mina and Zeko testnet bridge transactions. |
+| Variable           | Required | Description                                                           |
+| ------------------ | -------- | --------------------------------------------------------------------- |
+| `MINA_PRIVATE_KEY` | Yes      | Private key used to sign supported Mina and Zeko bridge transactions. |
 
 You can export it in your shell:
 
@@ -95,6 +97,8 @@ Use `bridge` for normal bridging. It submits the bridge transaction, waits for n
 ```bash
 zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
 zeko-bridge bridge --from zeko:testnet --to mina:testnet --amount 3 --recipient B62q...
+zeko-bridge bridge --from mina:mainnet --to zeko:mainnet --amount 1
+zeko-bridge bridge --from zeko:mainnet --to mina:mainnet --amount 3 --recipient B62q...
 zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1 --json
 zeko-bridge bridge --from zeko:testnet --to mina:testnet --amount 3 --json
 ```
@@ -158,8 +162,8 @@ Common flags:
 
 | Flag        | Description                                                                               |
 | ----------- | ----------------------------------------------------------------------------------------- |
-| `--from`    | Source chain. Defaults to the route's source testnet.                                     |
-| `--to`      | Destination chain. Defaults to the route's destination testnet.                           |
+| `--from`    | Source chain. Defaults to the command's testnet route source.                             |
+| `--to`      | Destination chain. Defaults to the command's testnet route destination.                   |
 | `--account` | Optional account to operate on. Defaults to the signer public key.                        |
 | `--json`    | Print JSON instead of formatted text.                                                     |
 | `--verbose` | Enable verbose bridge diagnostics where supported.                                        |
