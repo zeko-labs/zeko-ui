@@ -65,7 +65,10 @@ export const endpointChecks: EndpointCheck[] = [
 			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
 			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
 		],
-		deployedSources: ["services/mina-proxy/wrangler.jsonc"]
+		deployedSources: [
+			"services/mina-proxy-devnet/wrangler.jsonc",
+			"services/mina-proxy-mainnet/wrangler.jsonc"
+		]
 	},
 	{
 		name: "mina archive gateway",
@@ -74,7 +77,10 @@ export const endpointChecks: EndpointCheck[] = [
 			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
 			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
 		],
-		deployedSources: ["services/mina-archive-proxy/wrangler.jsonc"]
+		deployedSources: [
+			"services/mina-archive-proxy-devnet/wrangler.jsonc",
+			"services/mina-archive-proxy-mainnet/wrangler.jsonc"
+		]
 	},
 	{
 		name: "actions api",

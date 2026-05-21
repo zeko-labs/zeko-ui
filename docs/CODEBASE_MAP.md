@@ -101,8 +101,10 @@ zeko-ui/
 │   ├── leaderboard/          # Contest leaderboard system
 │   │   ├── api/             # GraphQL API + WebSocket (CF Workers + DO)
 │   │   └── indexer/         # Event indexer (Bun)
-│   ├── mina-archive-proxy/   # Mina archive proxy
-│   ├── mina-proxy/           # Mina node proxy
+│   ├── mina-archive-proxy-devnet/   # Mina archive proxy (devnet)
+│   ├── mina-archive-proxy-mainnet/  # Mina archive proxy (mainnet)
+│   ├── mina-proxy-devnet/           # Mina node proxy (devnet)
+│   ├── mina-proxy-mainnet/          # Mina node proxy (mainnet)
 │   └── proxies/              # Additional proxy services
 │
 ├── .github/                   # CI/CD workflows (GitHub Actions)
@@ -635,7 +637,7 @@ function createProxyHandler(params: {
 
 ---
 
-#### services/mina-proxy/ & services/mina-archive-proxy/ (~1.1k tokens)
+#### services/mina-proxy-devnet/ & services/mina-archive-proxy-devnet/ (+ mainnet variants) (~1.1k tokens)
 
 **Purpose**: Proxy services for Mina node and archive with failover
 
@@ -645,8 +647,10 @@ function createProxyHandler(params: {
 
 **Targets**:
 
-- Mina proxy: `https://gateway.mina.devnet.zeko.io`
-- Archive proxy: `https://gateway.mina.archive.devnet.zeko.io`
+- Mina proxy (devnet): `https://gateway.mina.devnet.zeko.io`
+- Mina proxy (mainnet): `https://gateway.mina.mainnet.zeko.io`
+- Archive proxy (devnet): `https://gateway.mina.archive.devnet.zeko.io`
+- Archive proxy (mainnet): `https://gateway.mina.archive.mainnet.zeko.io`
 
 **CORS**: Allows zeko.io and localhost with subdomain wildcard
 

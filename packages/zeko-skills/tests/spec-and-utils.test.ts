@@ -60,7 +60,10 @@ describe("zeko-skills spec and utils", () => {
 			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
 			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
 		])
-		expect(minaGateway?.deployedSources).toEqual(["services/mina-proxy/wrangler.jsonc"])
+		expect(minaGateway?.deployedSources).toEqual([
+			"services/mina-proxy-devnet/wrangler.jsonc",
+			"services/mina-proxy-mainnet/wrangler.jsonc"
+		])
 
 		expect(minaArchiveGateway?.documentedUrl).toBe("https://gateway.mina.archive.devnet.zeko.io")
 		expect(minaArchiveGateway?.documentedSources).toEqual([
@@ -68,7 +71,8 @@ describe("zeko-skills spec and utils", () => {
 			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
 		])
 		expect(minaArchiveGateway?.deployedSources).toEqual([
-			"services/mina-archive-proxy/wrangler.jsonc"
+			"services/mina-archive-proxy-devnet/wrangler.jsonc",
+			"services/mina-archive-proxy-mainnet/wrangler.jsonc"
 		])
 
 		const checkedSources = endpointChecks.flatMap((check) => [
