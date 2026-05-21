@@ -1,21 +1,21 @@
 {
 	"$schema": "../../../packages/cloudflare-build-config/schema/workers-build.schema.json",
-	"scriptName": "mina-archive-proxy",
+	"scriptName": "mina-proxy-devnet",
 	"triggers": [
 		{
 			"name": "Deploy default branch",
-			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks mina-archive-proxy:deploy",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks mina-proxy-devnet:deploy",
 			"branchIncludes": ["main"],
 			"branchExcludes": [],
-			"pathIncludes": ["services/mina-archive-proxy/**"],
+			"pathIncludes": ["services/mina-proxy-devnet/**"],
 			"pathExcludes": []
 		},
 		{
 			"name": "Deploy non-production branches",
-			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks mina-archive-proxy:deploy-preview",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks mina-proxy-devnet:deploy-preview",
 			"branchIncludes": ["*"],
 			"branchExcludes": ["main"],
-			"pathIncludes": ["services/mina-archive-proxy/**"],
+			"pathIncludes": ["services/mina-proxy-devnet/**"],
 			"pathExcludes": []
 		}
 	]

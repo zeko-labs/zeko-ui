@@ -255,3 +255,4 @@
 - T255 | done | bridge-ui-deploy-split | done/T255-bridge-ui-deploy-split.md
 - T256 | done | consumer-endpoints-and-sdk-constants | done/T256-consumer-endpoints-and-sdk-constants.md
 - T257 | done | docs-references-validation-and-pr | done/T257-docs-references-validation-and-pr.md
+- T258 | done | resolve-pr183-conflicts-and-ci | done/T258-resolve-pr183-conflicts-and-ci.md

@@ -148,6 +148,4 @@ tasks:
     deps:
       - ^:build
   deploy-preview:
-    command: wrangler versions upload
-    deps:
-      - ^:build
+    command: echo "Actions API preview deploys are disabled; use deploy-testnet or deploy-mainnet after review."

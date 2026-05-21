@@ -59,22 +59,40 @@ export const endpointChecks: EndpointCheck[] = [
 		]
 	},
 	{
-		name: "mina gateway",
+		name: "mina gateway devnet",
 		documentedUrl: "https://gateway.mina.devnet.zeko.io",
 		documentedSources: [
 			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
 			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
 		],
-		deployedSources: ["services/mina-proxy/wrangler.jsonc"]
+		deployedSources: ["services/mina-proxy-devnet/wrangler.jsonc"]
 	},
 	{
-		name: "mina archive gateway",
+		name: "mina gateway mainnet",
+		documentedUrl: "https://gateway.mina.mainnet.zeko.io",
+		documentedSources: [
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
+		],
+		deployedSources: ["services/mina-proxy-mainnet/wrangler.jsonc"]
+	},
+	{
+		name: "mina archive gateway devnet",
 		documentedUrl: "https://gateway.mina.archive.devnet.zeko.io",
 		documentedSources: [
 			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
 			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
 		],
-		deployedSources: ["services/mina-archive-proxy/wrangler.jsonc"]
+		deployedSources: ["services/mina-archive-proxy-devnet/wrangler.jsonc"]
+	},
+	{
+		name: "mina archive gateway mainnet",
+		documentedUrl: "https://gateway.mina.archive.mainnet.zeko.io",
+		documentedSources: [
+			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
+			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
+		],
+		deployedSources: ["services/mina-archive-proxy-mainnet/wrangler.jsonc"]
 	},
 	{
 		name: "testnet actions api",
@@ -106,7 +124,11 @@ export const forbiddenMarkdownPatterns = [
 ]
 export const skippedExternalLinkChecks = new Set<string>([
 	"https://testnet.api.actions.zeko.io/graphql",
-	"https://testnet.bridge.zeko.io"
+	"https://testnet.bridge.zeko.io",
+	"https://gateway.mina.devnet.zeko.io",
+	"https://gateway.mina.archive.devnet.zeko.io",
+	"https://gateway.mina.mainnet.zeko.io",
+	"https://gateway.mina.archive.mainnet.zeko.io"
 ])
 
 export type EvalCase = {

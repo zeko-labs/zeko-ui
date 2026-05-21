@@ -1,0 +1,27 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "mina-proxy-mainnet",
+	"compatibility_date": "2025-10-21",
+	"main": "worker.ts",
+	"preview_urls": true,
+	"routes": [
+		{
+			"pattern": "gateway.mina.mainnet.zeko.io",
+			"custom_domain": true
+		}
+	],
+	"observability": {
+		"traces": {
+			"enabled": true,
+			"destinations": ["zeko-traces"],
+			"head_sampling_rate": 1,
+			"persist": true
+		},
+		"logs": {
+			"enabled": true,
+			"destinations": ["zeko-logs"],
+			"head_sampling_rate": 1,
+			"persist": true
+		}
+	}
+}

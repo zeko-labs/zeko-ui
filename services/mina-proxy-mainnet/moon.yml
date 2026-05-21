@@ -1,7 +1,7 @@
 layer: application
 language: typescript
 stack: infrastructure
-id: mina-archive-proxy
+id: mina-proxy-mainnet
 dependsOn:
   - proxy-handler
 tasks:
@@ -24,6 +24,6 @@ tasks:
       - worker-configuration.d.ts
   publish-cf-build-config:
     description: Publish the checked-in Cloudflare Workers Build config for this project.
-    script: pnpm exec moon run cloudflare-build-config:sync -- services/mina-archive-proxy/workers-build.jsonc
+    script: pnpm exec moon run cloudflare-build-config:sync -- services/mina-proxy-mainnet/workers-build.jsonc
     options:
       cache: false
