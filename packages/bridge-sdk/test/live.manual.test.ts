@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest"
 import { PublicKey } from "o1js"
+import type { NetworkId } from "o1js"
 import { Bridge, type Config } from "../src/index"
+
+type SupportedNetworkId = Extract<NetworkId, "testnet" | "mainnet">
+
+const supportedNetworkIds = ["testnet", "mainnet"] as const satisfies readonly SupportedNetworkId[]
+
+const readNetworkId = (key: string, fallback: SupportedNetworkId): SupportedNetworkId => {
+	const value = process.env[key]?.trim() || fallback
+	if (supportedNetworkIds.includes(value as SupportedNetworkId)) {
+		return value as SupportedNetworkId
+	}
+
+	throw new Error(`${key} must be one of: ${supportedNetworkIds.join(", ")}`)
+}
 
 const liveConfig: Config = {
 	l1Url: process.env.BRIDGE_SDK_L1_URL?.trim() || "https://gateway.mina.devnet.zeko.io",
@@ -11,8 +25,8 @@ const liveConfig: Config = {
 		process.env.BRIDGE_SDK_L2_ARCHIVE_URL?.trim() || "https://archive.testnet.zeko.io/graphql",
 	actionsApi:
 		process.env.BRIDGE_SDK_ACTIONS_API_URL?.trim() || "https://api.actions.zeko.io/graphql",
-	l1Network: "testnet",
-	l2Network: "testnet"
+	l1Network: readNetworkId("BRIDGE_SDK_L1_NETWORK", "testnet"),
+	l2Network: readNetworkId("BRIDGE_SDK_L2_NETWORK", "testnet")
 }
 
 const walletAddress =

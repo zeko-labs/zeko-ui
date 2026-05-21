@@ -37,6 +37,7 @@ const bridge = await Bridge.init({
 ```
 
 The endpoints above are testnet examples. Use the matching mainnet endpoints for production traffic.
+For a Mina mainnet to Zeko mainnet bridge route, that includes a dedicated mainnet Actions API and indexer deployment; do not reuse testnet Actions API configuration for production mainnet bridge operations.
 
 ## Operational Notes
 
@@ -142,6 +143,8 @@ moon run bridge-sdk:finalizeWithdrawal
 moon run bridge-sdk:fetchOuterActions
 moon run bridge-sdk:fetchInnerActions
 ```
+
+The example scripts default to testnet network IDs. Set `L1_NETWORK=mainnet` and `L2_NETWORK=mainnet` only when all corresponding endpoint variables, including `ACTIONS_API_URL`, point at a mainnet-ready deployment.
 
 ## License
 

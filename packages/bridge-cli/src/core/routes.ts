@@ -12,6 +12,9 @@ export type RouteDescriptor = {
 	reason?: string
 }
 
+export const MAINNET_ACTIONS_API_READINESS_REASON =
+	"Mainnet bridge routes require a dedicated mainnet Actions API and indexer deployment before they can be enabled."
+
 export const KNOWN_ROUTES: RouteDescriptor[] = [
 	{
 		from: "mina:testnet",
@@ -33,7 +36,7 @@ export const KNOWN_ROUTES: RouteDescriptor[] = [
 		enabled: false,
 		direction: "deposit",
 		label: "Mina mainnet -> Zeko mainnet",
-		reason: "Known route, not enabled yet."
+		reason: MAINNET_ACTIONS_API_READINESS_REASON
 	},
 	{
 		from: "zeko:mainnet",
@@ -41,7 +44,7 @@ export const KNOWN_ROUTES: RouteDescriptor[] = [
 		enabled: false,
 		direction: "withdrawal",
 		label: "Zeko mainnet -> Mina mainnet",
-		reason: "Known route, not enabled yet."
+		reason: MAINNET_ACTIONS_API_READINESS_REASON
 	},
 	{
 		from: "eth:testnet",
