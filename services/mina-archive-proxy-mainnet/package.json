@@ -1,10 +1,10 @@
 {
-  "name": "@zeko/mina-archive-proxy-mainnet",
-  "private": true,
-  "dependencies": {
-    "@zeko/proxy-handler": "workspace:*"
-  },
-  "devDependencies": {
-    "wrangler": "catalog:"
-  }
+	"name": "@zeko/mina-archive-proxy-mainnet",
+	"private": true,
+	"dependencies": {
+		"@zeko/proxy-handler": "workspace:*"
+	},
+	"devDependencies": {
+		"wrangler": "catalog:"
+	}
 }

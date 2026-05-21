@@ -18,7 +18,9 @@ const collectMarkdownFiles = () => {
 const isGraphQlEndpoint = (url: string) =>
 	url.endsWith("/graphql") ||
 	url.includes("gateway.mina.devnet.zeko.io") ||
+	url.includes("gateway.mina.mainnet.zeko.io") ||
 	url.includes("gateway.mina.archive.devnet.zeko.io") ||
+	url.includes("gateway.mina.archive.mainnet.zeko.io") ||
 	url === "https://testnet.zeko.io"
 
 export const externalLinkPattern = /https:\/\/[^\s)`"'<>]+/g

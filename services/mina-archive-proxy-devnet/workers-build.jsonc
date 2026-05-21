@@ -5,27 +5,17 @@
 		{
 			"name": "Deploy default branch",
 			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks mina-archive-proxy-devnet:deploy",
-			"branchIncludes": [
-				"main"
-			],
+			"branchIncludes": ["main"],
 			"branchExcludes": [],
-			"pathIncludes": [
-				"services/mina-archive-proxy-devnet/**"
-			],
+			"pathIncludes": ["services/mina-archive-proxy-devnet/**"],
 			"pathExcludes": []
 		},
 		{
 			"name": "Deploy non-production branches",
 			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks mina-archive-proxy-devnet:deploy-preview",
-			"branchIncludes": [
-				"*"
-			],
-			"branchExcludes": [
-				"main"
-			],
-			"pathIncludes": [
-				"services/mina-archive-proxy-devnet/**"
-			],
+			"branchIncludes": ["*"],
+			"branchExcludes": ["main"],
+			"pathIncludes": ["services/mina-archive-proxy-devnet/**"],
 			"pathExcludes": []
 		}
 	]

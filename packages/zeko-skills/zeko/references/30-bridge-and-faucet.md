@@ -60,8 +60,10 @@ MINA_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli doctor
 
 ## Bridge SDK config defaults
 
-- `l1Url`: `https://gateway.mina.devnet.zeko.io`
-- `l1ArchiveUrl`: `https://gateway.mina.archive.devnet.zeko.io`
+- `l1Url` (devnet): `https://gateway.mina.devnet.zeko.io`
+- `l1Url` (mainnet): `https://gateway.mina.mainnet.zeko.io`
+- `l1ArchiveUrl` (devnet): `https://gateway.mina.archive.devnet.zeko.io`
+- `l1ArchiveUrl` (mainnet): `https://gateway.mina.archive.mainnet.zeko.io`
 - `zekoUrl`: `https://testnet.zeko.io/graphql`
 - `zekoArchiveUrl`: `https://archive.testnet.zeko.io/graphql`
 - `actionsApi`: `https://api.actions.zeko.io/graphql`

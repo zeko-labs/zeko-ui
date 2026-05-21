@@ -12,8 +12,10 @@ Use this file when you need exact public endpoints, Bridge SDK config values, or
 
 - Zeko GraphQL: `https://testnet.zeko.io/graphql`
 - Zeko archive: `https://archive.testnet.zeko.io/graphql`
-- Mina gateway: `https://gateway.mina.devnet.zeko.io`
-- Mina archive gateway: `https://gateway.mina.archive.devnet.zeko.io`
+- Mina gateway (devnet): `https://gateway.mina.devnet.zeko.io`
+- Mina gateway (mainnet): `https://gateway.mina.mainnet.zeko.io`
+- Mina archive gateway (devnet): `https://gateway.mina.archive.devnet.zeko.io`
+- Mina archive gateway (mainnet): `https://gateway.mina.archive.mainnet.zeko.io`
 - Actions API: `https://api.actions.zeko.io/graphql`
 - Faucet claim API: `https://api.faucet.zeko.io/claim`
 - Bridge UI: `https://bridge.zeko.io`
