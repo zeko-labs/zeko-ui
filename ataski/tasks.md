@@ -247,3 +247,4 @@
 - T247 | done | remove-deposit-state-module-and-add-changeset | done/T247-remove-deposit-state-module-and-add-changeset.md
 - T248 | done | merge-main-and-validate-bridge-sdk-refactor | done/T248-merge-main-and-validate-bridge-sdk-refactor.md
 - T249 | done | resolve-pr171-bot-review-findings | done/T249-resolve-pr171-bot-review-findings.md
+- T250 | done | remove-bridge-legacy-constructor | done/T250-remove-bridge-legacy-constructor.md

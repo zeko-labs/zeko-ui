@@ -38,117 +38,18 @@ export * from "./errors"
 export * from "./graphql/index"
 export * from "./types"
 
-const LEGACY_BRIDGE_CONSTRUCTOR_MIN_ARG_COUNT = 14
-const LEGACY_BRIDGE_CONSTRUCTOR_MAX_ARG_COUNT = 19
-
-const isBridgeRuntime = (value: BridgeRuntime | Config): value is BridgeRuntime =>
+const isBridgeRuntime = (value: unknown): value is BridgeRuntime =>
 	typeof value === "object" && value !== null && "config" in value && "l1Client" in value
 
 export class Bridge {
 	private readonly runtime: BridgeRuntime
 
-	constructor(runtime: BridgeRuntime)
-	constructor(
-		config: Config,
-		l1Client: GqlClient,
-		l1ArchiveClient: GqlClient,
-		l2Client: GqlClient,
-		l2ArchiveClient: GqlClient,
-		actionsApiClient: GqlClient,
-		l1AccountCreationFee: UInt64,
-		l2AccountCreationFee: UInt64,
-		outerPk: PublicKey,
-		innerPk: PublicKey,
-		outerHolders: PublicKey[],
-		innerHolder: PublicKey,
-		outerTokenOwner: PublicKey,
-		sequencerPk: PublicKey,
-		withdrawalDelay: UInt32,
-		bridgeFeeRecipientL1: PublicKey,
-		bridgeFeeRecipientL2: PublicKey,
-		bridgeProofFee: UInt64,
-		V2_DEPOSITS_START_INDEX?: UInt32,
-		V2_WITHDRAWALS_START_INDEX?: UInt32
-	)
-	constructor(runtimeOrConfig: BridgeRuntime | Config, ...args: unknown[]) {
-		if (isBridgeRuntime(runtimeOrConfig)) {
-			this.runtime = this.withBridgeHooks(runtimeOrConfig)
-			return
+	constructor(runtime: BridgeRuntime) {
+		if (!isBridgeRuntime(runtime)) {
+			throw new Error("Invalid Bridge runtime")
 		}
 
-		if (
-			args.length < LEGACY_BRIDGE_CONSTRUCTOR_MIN_ARG_COUNT ||
-			args.length > LEGACY_BRIDGE_CONSTRUCTOR_MAX_ARG_COUNT
-		) {
-			throw new Error(
-				"Invalid Bridge constructor arguments: expected runtime or legacy config plus 14-19 arguments"
-			)
-		}
-
-		const [
-			l1Client,
-			l1ArchiveClient,
-			l2Client,
-			l2ArchiveClient,
-			actionsApiClient,
-			l1AccountCreationFee,
-			l2AccountCreationFee,
-			outerPk,
-			innerPk,
-			outerHolders,
-			innerHolder,
-			outerTokenOwner,
-			sequencerPk,
-			withdrawalDelay,
-			bridgeFeeRecipientL1,
-			bridgeFeeRecipientL2,
-			bridgeProofFee,
-			V2_DEPOSITS_START_INDEX,
-			V2_WITHDRAWALS_START_INDEX
-		] = args as [
-			GqlClient,
-			GqlClient,
-			GqlClient,
-			GqlClient,
-			GqlClient,
-			UInt64,
-			UInt64,
-			PublicKey,
-			PublicKey,
-			PublicKey[],
-			PublicKey,
-			PublicKey,
-			PublicKey,
-			UInt32,
-			PublicKey,
-			PublicKey,
-			UInt64,
-			UInt32 | undefined,
-			UInt32 | undefined
-		]
-
-		this.runtime = this.withBridgeHooks({
-			config: runtimeOrConfig,
-			l1Client,
-			l1ArchiveClient,
-			l2Client,
-			l2ArchiveClient,
-			actionsApiClient,
-			l1AccountCreationFee,
-			l2AccountCreationFee,
-			outerPk,
-			innerPk,
-			outerHolders,
-			innerHolder,
-			outerTokenOwner,
-			sequencerPk,
-			withdrawalDelay,
-			bridgeFeeRecipientL1,
-			bridgeFeeRecipientL2,
-			bridgeProofFee,
-			V2_DEPOSITS_START_INDEX: V2_DEPOSITS_START_INDEX ?? UInt32.zero,
-			V2_WITHDRAWALS_START_INDEX: V2_WITHDRAWALS_START_INDEX ?? UInt32.zero
-		})
+		this.runtime = this.withBridgeHooks(runtime)
 	}
 
 	private withBridgeHooks(runtime: BridgeRuntime): BridgeRuntime {
