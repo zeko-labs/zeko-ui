@@ -1,12 +1,13 @@
 ---
 id: T244
 title: "correct-bridge-mainnet-config"
-status: todo
+status: in-progress
 blockedBy: [T243]
-owner: unassigned
+owner: codex
 created_at: 2026-05-21T07:51:03Z
-updated_at: 2026-05-21T07:51:03Z
+updated_at: 2026-05-21T08:00:34Z
 ---
+
 ## Requirements
 
 - Apply the minimal code/config/docs correction from the T243 audit.
@@ -24,5 +25,10 @@ updated_at: 2026-05-21T07:51:03Z
 - Do not run manual live tests or transaction-submitting commands.
 
 ## RED Evidence
+
+- Pending. The first implementation step is to add route/config regression tests that fail against current `origin/main` behavior:
+  - disabled mainnet routes should expose an explicit Actions API/indexer readiness reason instead of the generic `Known route, not enabled yet.`
+  - bridge-sdk examples should accept `L1_NETWORK=mainnet` / `L2_NETWORK=mainnet` and reject invalid network IDs.
+  - `Bridge.setL2()` should pass `config.zekoArchiveUrl` as the o1js archive endpoint.
 
 ## GREEN Evidence
