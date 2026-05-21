@@ -395,7 +395,7 @@ project-root/
   export ZEKO_CIRCUITS_CONFIG=/data/circuits/betternet-config.json
   export SEQUENCER_PK=$(cat /data/keys/sequencer-pk)
   export FAUCET_PK=$(cat /data/keys/faucet-pk)
-  zeko-deploy --account-creation-fee 1 \
+  zeko-deploy deploy-all --account-creation-fee 1 \
     --da-keys $(cat /data/keys/da-layer-pk) \
     --da-quorum 1 \
     --l1-uri https://gateway.mina.devnet.zeko.io \
