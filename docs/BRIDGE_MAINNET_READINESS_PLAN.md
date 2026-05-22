@@ -310,7 +310,7 @@ nu = "github://hebilicious/proto-nu"
 version = "0.112.2"
 ```
 
-Replace `apps/bridge-ui/deploy-ci.sh` with a Nushell entrypoint, for example `apps/bridge-ui/deploy-ci.nu`, invoked through `proto run nu --`.
+Replace `apps/bridge-ui/deploy-ci.sh` with a Nushell entrypoint, for example `apps/bridge-ui/deploy-ci.nu`, invoked through the checked-in `scripts/run-proto-nu.sh` bootstrap. The bootstrap installs the pinned proto toolchain when a CI image does not already provide proto, then runs `proto run nu --`.
 
 Current shell behavior that must be removed:
 
@@ -332,7 +332,7 @@ Required script behavior:
   - deploy route `bridge.zeko.io`
 - `preview` target in the Nushell script:
   - keep branch-hashed preview Sentry environment
-  - run `wrangler versions upload`
+  - run `wrangler versions upload --env testnet`
 - Do not infer production deployment solely from `WORKERS_CI_BRANCH=main`.
 - Fail fast if required CI variables are missing for the selected target.
 - Preserve sourcemap injection/upload and release finalization for all targets unless a target explicitly does not use Sentry.
@@ -340,9 +340,9 @@ Required script behavior:
 Required Moon task shape:
 
 ```yaml
-deploy-testnet: BRIDGE_UI_DEPLOY_TARGET=testnet proto run nu -- ./deploy-ci.nu
-deploy-mainnet: BRIDGE_UI_DEPLOY_TARGET=mainnet proto run nu -- ./deploy-ci.nu
-deploy-preview: BRIDGE_UI_DEPLOY_TARGET=preview proto run nu -- ./deploy-ci.nu
+deploy-testnet: BRIDGE_UI_DEPLOY_TARGET=testnet ../../scripts/run-proto-nu.sh ./deploy-ci.nu
+deploy-mainnet: BRIDGE_UI_DEPLOY_TARGET=mainnet ../../scripts/run-proto-nu.sh ./deploy-ci.nu
+deploy-preview: BRIDGE_UI_DEPLOY_TARGET=preview ../../scripts/run-proto-nu.sh ./deploy-ci.nu
 ```
 
 Existing `deploy` can either become an alias for `deploy-testnet` or be removed from Cloudflare Build usage. The important invariant is: `main` must not call a task that deploys `bridge.zeko.io`.
@@ -579,3 +579,4 @@ Initial log:
 - Left `docs/BRIDGE_INVALID_WITNESSES_INCIDENT_2026-03-05.md` unchanged because its `api.actions.zeko.io` references are historical incident evidence, not current endpoint guidance.
 - Added planned `testnet.api.actions.zeko.io/graphql` and `testnet.bridge.zeko.io` URLs to the Zeko skill external-link skip list because those endpoints are introduced by this PR and will not resolve until after reviewed DNS/deploy cutover.
 - Corrected a bad intermediate CI fix that disabled the old Cloudflare Build preview deploy tasks with `echo` commands. Preview deploy tasks remain real preview uploads and now target the testnet Wrangler env so PR branch previews do not touch mainnet config or placeholder mainnet infra.
+- Added `scripts/run-proto-nu.sh` and wired Bridge deploy Moon tasks through it because Cloudflare's build image does not preinstall proto, while the reviewed Bridge deploy flow runs the Nushell entrypoint through `proto run nu --`. `apps/bridge-ui/workers-build.jsonc` also uses the bootstrap as its build command so the source-of-truth trigger config documents the same toolchain requirement.

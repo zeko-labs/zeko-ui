@@ -1,6 +1,7 @@
 {
 	"$schema": "../../packages/cloudflare-build-config/schema/workers-build.schema.json",
 	"scriptName": "bridge",
+	"buildCommand": "./scripts/run-proto-nu.sh --version",
 	"triggers": [
 		{
 			"name": "Deploy default branch",

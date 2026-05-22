@@ -257,3 +257,4 @@
 - T257 | done | docs-references-validation-and-pr | done/T257-docs-references-validation-and-pr.md
 - T258 | done | resolve-pr183-conflicts-and-ci | done/T258-resolve-pr183-conflicts-and-ci.md
 - T259 | done | fix-worker-preview-ci-without-disabling | done/T259-fix-worker-preview-ci-without-disabling.md
+- T260 | done | bootstrap-proto-for-bridge-workers-build | done/T260-bootstrap-proto-for-bridge-workers-build.md

@@ -33,7 +33,7 @@ updated_at: 2026-05-22T09:47:26Z
 ## GREEN Evidence
 
 - Restored real branch preview commands instead of `echo` no-ops:
-  - `apps/bridge-ui:deploy-preview` runs `BRIDGE_UI_DEPLOY_TARGET=preview proto run nu -- ./deploy-ci.nu`.
+  - `apps/bridge-ui:deploy-preview` runs the real Bridge UI preview deploy path. T260 later routed the task through `scripts/run-proto-nu.sh` so Cloudflare Builds can bootstrap proto before running `deploy-ci.nu`.
   - `services/actions/api:deploy-preview` runs `wrangler versions upload --env testnet`.
 - Pointed Bridge UI preview uploads at the `testnet` Wrangler env so preview uploads do not use mainnet routes/placeholders.
 - Added `version_metadata` to `apps/bridge-ui/wrangler.jsonc` `env.testnet` because Wrangler does not inherit that binding from the top-level config.
