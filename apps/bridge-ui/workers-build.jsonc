@@ -18,7 +18,7 @@
 		},
 		{
 			"name": "Deploy non-production branches",
-			"deployCommand": "echo 'Bridge UI preview deploys are disabled until the mainnet/testnet split is reviewed.'",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks bridge-ui:deploy-preview",
 			"branchIncludes": ["*"],
 			"branchExcludes": ["main"],
 			"pathIncludes": [

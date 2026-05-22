@@ -296,7 +296,7 @@ Update `apps/bridge-ui/workers-build.jsonc`:
 
 - Default-branch trigger on `main` must deploy testnet Bridge UI only.
 - It should call `moon exec --ignore-ci-checks bridge-ui:deploy-testnet`.
-- Non-main branch preview deployments are disabled during this mainnet-readiness PR so PR checks do not deploy before review.
+- Non-main branches keep preview deployment behavior and must upload testnet-env preview versions, not mainnet versions.
 
 Rewrite the Bridge UI deploy script using Nushell installed through `proto-nu`.
 
@@ -342,7 +342,7 @@ Required Moon task shape:
 ```yaml
 deploy-testnet: BRIDGE_UI_DEPLOY_TARGET=testnet proto run nu -- ./deploy-ci.nu
 deploy-mainnet: BRIDGE_UI_DEPLOY_TARGET=mainnet proto run nu -- ./deploy-ci.nu
-deploy-preview: echo "Bridge UI preview deploys are disabled; use deploy-testnet or deploy-mainnet after review."
+deploy-preview: BRIDGE_UI_DEPLOY_TARGET=preview proto run nu -- ./deploy-ci.nu
 ```
 
 Existing `deploy` can either become an alias for `deploy-testnet` or be removed from Cloudflare Build usage. The important invariant is: `main` must not call a task that deploys `bridge.zeko.io`.
@@ -578,4 +578,4 @@ Initial log:
 - Updated docs-site bridge links and the Nuxt layer default `zekoBridge` link from `alpha.bridge.zeko.io` to `testnet.bridge.zeko.io`, while documenting alpha as a testnet alias.
 - Left `docs/BRIDGE_INVALID_WITNESSES_INCIDENT_2026-03-05.md` unchanged because its `api.actions.zeko.io` references are historical incident evidence, not current endpoint guidance.
 - Added planned `testnet.api.actions.zeko.io/graphql` and `testnet.bridge.zeko.io` URLs to the Zeko skill external-link skip list because those endpoints are introduced by this PR and will not resolve until after reviewed DNS/deploy cutover.
-- Disabled old Cloudflare Build preview deploy tasks for Actions API and Bridge UI because the remote PR Workers Build checks call those branch-preview tasks before the reviewed testnet/mainnet split can be deployed. The reviewed `deploy-testnet` and `deploy-mainnet` tasks remain the deploy entrypoints.
+- Corrected a bad intermediate CI fix that disabled the old Cloudflare Build preview deploy tasks with `echo` commands. Preview deploy tasks remain real preview uploads and now target the testnet Wrangler env so PR branch previews do not touch mainnet config or placeholder mainnet infra.

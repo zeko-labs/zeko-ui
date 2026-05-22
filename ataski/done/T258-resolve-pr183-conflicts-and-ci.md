@@ -36,9 +36,7 @@ updated_at: 2026-05-21T15:29:22Z
 - Merged `origin/main` into `branch/bridge-mainnet-readiness-plan` and resolved conflicts in:
   - `packages/zeko-skills/src/spec.ts`
   - `packages/zeko-skills/zeko/references/40-endpoints-and-curl.md`
-- Disabled stale PR preview deploy entrypoints that Cloudflare Workers Builds still invoke before the reviewed testnet/mainnet deploy split is published:
-  - `moon exec --ignore-ci-checks actions-api:deploy-preview`
-  - `moon exec --ignore-ci-checks bridge-ui:deploy-preview`
+- Initially disabled stale PR preview deploy entrypoints with no-op commands. This was incorrect because it hid the failing preview path instead of fixing it; T259 restores real preview deployments and points preview uploads at the testnet Wrangler env.
 - Confirmed no conflict markers or unresolved paths remained with `git diff --name-only --diff-filter=U`.
 - Local validation passed:
   - `moon exec --ignore-ci-checks actions-api:deploy-preview`

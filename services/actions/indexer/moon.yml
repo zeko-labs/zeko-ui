@@ -146,6 +146,8 @@ tasks:
       - "@group(sources)"
       - "@group(tests)"
   test:
+    deps:
+      - ^:build
     command: vitest run --exclude test/action-processing.proof.test.ts --exclude test/canonical-progress.test.ts --exclude test/service.integration.test.ts
     inputs:
       - "@group(sources)"

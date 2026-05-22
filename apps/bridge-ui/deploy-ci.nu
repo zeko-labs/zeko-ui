@@ -51,7 +51,7 @@ def target-config [target: string] {
 				sentry_environment: $"deploy-preview-(branch-hash $branch)",
 				sentry_release: $commit,
 				deploy_kind: "preview",
-				wrangler_args: ["versions", "upload"]
+				wrangler_args: ["versions", "upload", "--env", "testnet"]
 			}
 		},
 		_ => {

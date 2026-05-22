@@ -96,8 +96,8 @@ tasks:
     options:
       cache: false
   deploy-preview:
-    description: Preview deploys are disabled until this mainnet/testnet split is reviewed.
-    command: echo "Bridge UI preview deploys are disabled; use deploy-testnet or deploy-mainnet after review."
+    description: Run the CI deploy flow for non-production branches.
+    script: BRIDGE_UI_DEPLOY_TARGET=preview proto run nu -- ./deploy-ci.nu
     options:
       cache: false
   deploy-dev:
