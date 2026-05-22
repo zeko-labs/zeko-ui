@@ -259,3 +259,4 @@
 - T259 | done | fix-worker-preview-ci-without-disabling | done/T259-fix-worker-preview-ci-without-disabling.md
 - T260 | done | bootstrap-proto-for-bridge-workers-build | done/T260-bootstrap-proto-for-bridge-workers-build.md
 - T261 | done | keep-bridge-sentry-project-compatible | done/T261-keep-bridge-sentry-project-compatible.md
+- T262 | done | correct-mainnet-readiness-review-findings | done/T262-correct-mainnet-readiness-review-findings.md

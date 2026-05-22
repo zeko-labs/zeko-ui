@@ -3,7 +3,6 @@ import { MetricEventSchema } from "../../machines/metrics.schema"
 
 const ALLOWED_ORIGINS = [
 	"https://bridge.zeko.io",
-	"https://testnet.bridge.zeko.io",
 	"https://alpha.bridge.zeko.io",
 	...(process.dev ? ["http://localhost:3090"] : [])
 ]

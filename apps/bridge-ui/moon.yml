@@ -82,22 +82,22 @@ tasks:
     preset: server
   deploy:
     description: Run the CI deploy flow for the default testnet target, including Sentry release and Cloudflare deploy logic.
-    script: BRIDGE_UI_DEPLOY_TARGET=testnet ../../scripts/run-proto-nu.sh ./deploy-ci.nu
+    script: BRIDGE_UI_DEPLOY_TARGET=testnet proto run nu -- ./deploy-ci.nu
     options:
       cache: false
   deploy-testnet:
     description: Run the CI deploy flow for the testnet target.
-    script: BRIDGE_UI_DEPLOY_TARGET=testnet ../../scripts/run-proto-nu.sh ./deploy-ci.nu
+    script: BRIDGE_UI_DEPLOY_TARGET=testnet proto run nu -- ./deploy-ci.nu
     options:
       cache: false
   deploy-mainnet:
     description: Run the CI deploy flow for the mainnet target.
-    script: BRIDGE_UI_DEPLOY_TARGET=mainnet ../../scripts/run-proto-nu.sh ./deploy-ci.nu
+    script: BRIDGE_UI_DEPLOY_TARGET=mainnet proto run nu -- ./deploy-ci.nu
     options:
       cache: false
   deploy-preview:
     description: Run the CI deploy flow for non-production branches.
-    script: BRIDGE_UI_DEPLOY_TARGET=preview ../../scripts/run-proto-nu.sh ./deploy-ci.nu
+    script: BRIDGE_UI_DEPLOY_TARGET=preview proto run nu -- ./deploy-ci.nu
     options:
       cache: false
   deploy-dev:

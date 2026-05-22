@@ -1,0 +1,84 @@
+name: Bridge Mainnet Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release-mainnet:
+    name: Release Mainnet
+    runs-on: warp-ubuntu-latest-x64-8x
+    environment: mainnet
+    concurrency:
+      group: bridge-mainnet-release
+      cancel-in-progress: false
+    env:
+      NORTHFLANK_STAGE: ${{ vars.NORTHFLANK_STAGE || 'Mainnet' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run mainnet Actions DB migrations
+        env:
+          DATABASE_URL: ${{ secrets.ACTIONS_MAINNET_DATABASE_URL }}
+        run: moon exec --ignore-ci-checks actions-api:db-migrate -- --force
+
+      - name: Deploy mainnet Actions API
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: moon exec --ignore-ci-checks actions-api:deploy-mainnet
+
+      - name: Trigger mainnet Actions indexer release flow
+        env:
+          NORTHFLANK_API_TOKEN: ${{ secrets.NORTHFLANK_API_TOKEN }}
+          NORTHFLANK_PROJECT_ID: ${{ vars.NORTHFLANK_PROJECT_ID }}
+          NORTHFLANK_PIPELINE_ID: ${{ vars.NORTHFLANK_PIPELINE_ID }}
+        run: |
+          curl -fsS -X POST "https://api.northflank.com/v1/projects/${NORTHFLANK_PROJECT_ID}/pipelines/${NORTHFLANK_PIPELINE_ID}/release-flows/${NORTHFLANK_STAGE}/runs" \
+            -H "Authorization: Bearer ${NORTHFLANK_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"name\":\"Bridge mainnet release ${GITHUB_RUN_NUMBER}\",\"description\":\"Triggered by ${GITHUB_REPOSITORY}@${GITHUB_SHA}\",\"arguments\":{\"BRANCH\":\"${GITHUB_REF_NAME:-main}\",\"SHA\":\"${GITHUB_SHA}\"}}"
+
+      - name: Wait for mainnet services
+        run: |
+          retry() {
+            url="$1"
+            for attempt in $(seq 1 30); do
+              if curl -fsS "$url"; then
+                return 0
+              fi
+              echo "Waiting for $url ($attempt/30)"
+              sleep 20
+            done
+            return 1
+          }
+
+          retry https://api.actions.zeko.io/health
+          retry https://indexer.actions.zeko.io/health
+
+      - name: Validate mainnet Actions API
+        run: moon exec --ignore-ci-checks actions-api:live-e2e-mainnet -f
+
+      - name: Validate mainnet Actions indexer
+        run: moon run actions-indexer:diagnose-health -- --url https://indexer.actions.zeko.io --timeout-ms 30000
+
+      - name: Deploy mainnet Bridge UI
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT || 'zeko-bridge' }}
+          SENTRY_DSN_PUBLIC: ${{ secrets.SENTRY_DSN_PUBLIC }}
+          WORKERS_CI_BRANCH: ${{ github.ref_name }}
+          WORKERS_CI_COMMIT_SHA: ${{ github.sha }}
+        run: moon exec --ignore-ci-checks bridge-ui:deploy-mainnet
+
+      - name: Smoke mainnet Bridge UI
+        run: curl -fsS https://bridge.zeko.io

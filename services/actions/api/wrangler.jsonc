@@ -27,12 +27,12 @@
 	"hyperdrive": [
 		{
 			"binding": "HYPERDRIVE_NO_CACHE",
-			"id": "REVIEW_REQUIRED_ACTIONS_MAINNET_DB_NO_CACHE_ID",
+			"id": "__MAINNET_REVIEW_REQUIRED_HYPERDRIVE_NO_CACHE_ID__",
 			"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
 		},
 		{
 			"binding": "HYPERDRIVE",
-			"id": "REVIEW_REQUIRED_ACTIONS_MAINNET_DB_CACHE_ID",
+			"id": "__MAINNET_REVIEW_REQUIRED_HYPERDRIVE_CACHE_ID__",
 			"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
 		}
 	],

@@ -1,34 +1,59 @@
 #!/usr/bin/env nu
 
+const mainnet_l1_archive_url = "https://api.minascan.io/archive/mainnet/v1/graphql"
+const mainnet_l2_archive_url = "https://archive.mainnet.zeko.io/graphql"
+const mainnet_outer_pk = "B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC"
+const mainnet_inner_pk = "B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC"
+
+def required-env [name: string] {
+	let value = ($env | get --optional $name)
+	if ($value == null) or (($value | into string | str trim) == "") {
+		error make { msg: $"Missing required environment variable ($name)" }
+	}
+	$value | into string
+}
+
+def optional-env [name: string, fallback: string] {
+	let value = ($env | get --optional $name)
+	if ($value == null) or (($value | into string | str trim) == "") {
+		$fallback
+	} else {
+		$value | into string
+	}
+}
+
+def run-step [execute: bool, label: string, command: string] {
+	print $"# ($label)"
+	print $command
+	print ""
+	if $execute {
+		^bash -lc $command
+	}
+}
+
 def main [
 	--execute
 ] {
-	if $execute {
-		error make { msg: "This helper is intentionally dry-run for review. Replace this guard only after PR review approves Northflank mutations." }
-	}
+	let token = (required-env "NORTHFLANK_API_TOKEN")
+	let project_id = (required-env "NORTHFLANK_PROJECT_ID")
+	let pipeline_id = (required-env "NORTHFLANK_PIPELINE_ID")
+	let stage = (optional-env "NORTHFLANK_STAGE" "Mainnet")
+	let branch = (optional-env "GITHUB_REF_NAME" "main")
+	let sha = (required-env "GITHUB_SHA")
+	let run_number = (optional-env "GITHUB_RUN_NUMBER" "manual")
+	let repository = (optional-env "GITHUB_REPOSITORY" "zeko-labs/zeko-ui")
 
-	print "# Northflank mainnet/testnet pipeline plan"
-	print "# Dry-run only. No commands were executed."
+	print "# Northflank mainnet indexer commands"
+	print (if $execute { "# Executing commands." } else { "# Dry-run. Re-run with --execute after review to mutate Northflank." })
 	print ""
-	print "- Keep one Northflank project/template: northflank/actions-indexer/project.json"
-	print "- Model the existing live deployment as testnet and serve it at testnet.indexer.actions.zeko.io"
-	print "- Add a mainnet deployment service at indexer.actions.zeko.io"
-	print "- Keep secrets externalized through secure Northflank values"
-	print "- Mainnet L1_ARCHIVE_URL: https://api.minascan.io/archive/mainnet/v1/graphql"
-	print "- Mainnet L2_ARCHIVE_URL: https://archive.mainnet.zeko.io/graphql"
-	print "- Mainnet OUTER_PK/INNER_PK: B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC"
+	print $"# Mainnet Northflank template argument values to configure securely before release:"
+	print $"# MAINNET_L1_ARCHIVE_URL=($mainnet_l1_archive_url)"
+	print $"# MAINNET_L2_ARCHIVE_URL=($mainnet_l2_archive_url)"
+	print $"# MAINNET_OUTER_PK=($mainnet_outer_pk)"
+	print $"# MAINNET_INNER_PK=($mainnet_inner_pk)"
 	print ""
-	print "# Exact CI invocation shape for running the Mainnet pipeline release flow:"
-	print 'curl -fsS -X POST "https://api.northflank.com/v1/projects/${NORTHFLANK_PROJECT_ID}/pipelines/${NORTHFLANK_PIPELINE_ID}/release-flows/${NORTHFLANK_STAGE:-Mainnet}/runs" \'
-	print '  -H "Authorization: Bearer ${NORTHFLANK_API_TOKEN}" \'
-	print '  -H "Content-Type: application/json" \'
-	print '  --data "{\"name\":\"Bridge mainnet release ${GITHUB_RUN_NUMBER}\",\"description\":\"Triggered by ${GITHUB_REPOSITORY}@${GITHUB_SHA}\",\"arguments\":{\"BRANCH\":\"${GITHUB_REF_NAME:-main}\",\"SHA\":\"${GITHUB_SHA}\"}}"'
-	print ""
-	print "# Required CI environment:"
-	print "- NORTHFLANK_API_TOKEN"
-	print "- NORTHFLANK_PROJECT_ID"
-	print "- NORTHFLANK_PIPELINE_ID"
-	print "- optional NORTHFLANK_STAGE, default Mainnet"
-	print "- GITHUB_REF_NAME"
-	print "- GITHUB_SHA"
+
+	let payload = $"'{\"name\":\"Bridge mainnet release ($run_number)\",\"description\":\"Triggered by ($repository)@($sha)\",\"arguments\":{\"BRANCH\":\"($branch)\",\"SHA\":\"($sha)\"}}'"
+	let command = $"curl -fsS -X POST 'https://api.northflank.com/v1/projects/($project_id)/pipelines/($pipeline_id)/release-flows/($stage)/runs' -H 'Authorization: Bearer ($token)' -H 'Content-Type: application/json' --data ($payload)"
+	run-step $execute "Trigger the reviewed Mainnet release flow" $command
 }
