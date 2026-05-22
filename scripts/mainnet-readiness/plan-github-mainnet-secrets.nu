@@ -3,8 +3,6 @@
 const environment_name = "mainnet"
 const secret_names = [
 	"ACTIONS_MAINNET_DATABASE_URL",
-	"CLOUDFLARE_ACCOUNT_ID",
-	"CLOUDFLARE_API_TOKEN",
 	"NORTHFLANK_API_TOKEN",
 	"SENTRY_AUTH_TOKEN",
 	"SENTRY_DSN_PUBLIC",
