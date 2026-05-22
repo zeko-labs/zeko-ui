@@ -25,6 +25,10 @@ def required-env [name: string] {
 	$value | into string
 }
 
+def shell-env-ref [name: string] {
+	"$" + $name
+}
+
 def run-step [execute: bool, label: string, command: string] {
 	print $"# ($label)"
 	print $command
@@ -46,10 +50,14 @@ def main [
 	run-step $execute "Create or update the protected GitHub environment" $"gh api --method PUT 'repos/($repo)/environments/($environment_name)'"
 
 	for name in $secret_names {
-		run-step $execute $"Set secret ($name)" $"gh secret set ($name) --env ($environment_name) --body \"$($name)\""
+		required-env $name | ignore
+		let value_ref = (shell-env-ref $name)
+		run-step $execute $"Set secret ($name)" $"printf %s \"($value_ref)\" | gh secret set ($name) --env ($environment_name) --body-file -"
 	}
 
 	for name in $variable_names {
-		run-step $execute $"Set environment variable ($name)" $"gh variable set ($name) --env ($environment_name) --body \"$($name)\""
+		required-env $name | ignore
+		let value_ref = (shell-env-ref $name)
+		run-step $execute $"Set environment variable ($name)" $"gh variable set ($name) --env ($environment_name) --body \"($value_ref)\""
 	}
 }

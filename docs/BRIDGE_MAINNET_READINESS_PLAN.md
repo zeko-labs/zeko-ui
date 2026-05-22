@@ -574,8 +574,8 @@ GitHub `mainnet` environment inputs:
 
 Actions API mainnet database and Cloudflare inputs:
 
-- `SUPABASE_ORG_ID`, `ACTIONS_MAINNET_DB_PASSWORD`, `ACTIONS_MAINNET_DATABASE_URL`, optional `SUPABASE_REGION`, and optional `SUPABASE_SIZE` are required for `scripts/mainnet-readiness/provision-actions-mainnet.nu`.
-- That script creates the Supabase project, stores `ACTIONS_MAINNET_DATABASE_URL` in the GitHub `mainnet` environment, and creates the cached/no-cache Cloudflare Hyperdrive resources.
+- `SUPABASE_ORG_ID`, `ACTIONS_MAINNET_DB_PASSWORD`, optional `SUPABASE_REGION`, and optional `SUPABASE_SIZE` are required for the first `scripts/mainnet-readiness/provision-actions-mainnet.nu` pass.
+- After the Supabase project exists, derive and review `ACTIONS_MAINNET_DATABASE_URL`, then rerun the script to store that URL in the GitHub `mainnet` environment and create the cached/no-cache Cloudflare Hyperdrive resources.
 - After Hyperdrive creation, replace `__MAINNET_REVIEW_REQUIRED_HYPERDRIVE_CACHE_ID__` and `__MAINNET_REVIEW_REQUIRED_HYPERDRIVE_NO_CACHE_ID__` in `services/actions/api/wrangler.jsonc`.
 
 Northflank mainnet inputs:
@@ -628,3 +628,6 @@ Initial log:
 - Replaced deploy-script PATH string interpolation with list-aware PATH extension using `char esep` and `path join`.
 - Added this Deployment Access Inventory so deployment can start from a known list of required credentials, service access, placeholders, and review blockers.
 - Investigated the failing Cloudflare Workers Build PR check with the `CFB_TOKEN` API token. The build log shows the remote trigger still runs the old deploy command and fails with `nu: command not found`; `cloudflare-build-config:sync-dry-run` reports that both Bridge Workers Build triggers would be updated by the checked-in config.
+- Corrected `plan-github-mainnet-secrets.nu` so it reads secret and variable values from environment variables instead of writing the variable names as GitHub secret values.
+- Corrected `plan-github-mainnet-secrets.nu`, `plan-northflank-mainnet.nu`, and `provision-actions-mainnet.nu` so dry-run output references shell environment variables instead of printing secret values into logs.
+- Split `provision-actions-mainnet.nu` into a safe first pass for Supabase project creation and a second pass for GitHub secret/Hyperdrive creation after the reviewed mainnet database URL is available.
