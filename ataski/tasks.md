@@ -261,3 +261,4 @@
 - T261 | done | keep-bridge-sentry-project-compatible | done/T261-keep-bridge-sentry-project-compatible.md
 - T262 | done | correct-mainnet-readiness-review-findings | done/T262-correct-mainnet-readiness-review-findings.md
 - T263 | done | correct-mainnet-readiness-self-review-findings | done/T263-correct-mainnet-readiness-self-review-findings.md
+- T264 | done | resolve-review-comments-and-deploy-inventory | done/T264-resolve-review-comments-and-deploy-inventory.md

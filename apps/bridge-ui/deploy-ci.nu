@@ -20,7 +20,13 @@ def optional-env [name: string, fallback: string] {
 }
 
 def branch-hash [branch: string] {
-	$branch | hash sha256 | str substring 0..39
+	$branch | hash sha256 | encode hex | str substring 0..39
+}
+
+def assert-last-exit [message: string] {
+	if $env.LAST_EXIT_CODE != 0 {
+		error make { msg: $message }
+	}
 }
 
 def target-config [target: string] {
@@ -66,27 +72,47 @@ def main [] {
 	let sentry_project = (optional-env "SENTRY_PROJECT" "zeko-bridge")
 
 	$env.SENTRY_LOG_LEVEL = "debug"
-	$env.PATH = $"($env.PATH):(pwd)/node_modules/.bin:(pwd)/../../node_modules/.bin"
+	let current_path = if (($env.PATH | describe) | str starts-with "list") {
+		$env.PATH
+	} else {
+		$env.PATH | split row (char esep)
+	}
+	$env.PATH = (
+		$current_path
+		| append [
+			(path join (pwd) "node_modules" ".bin")
+			(path join (pwd) ".." ".." "node_modules" ".bin")
+		]
+		| uniq
+	)
 	$env.SENTRY_ENVIRONMENT = $config.sentry_environment
 	$env.SENTRY_RELEASE = $config.sentry_release
 
 	print $"Building release ($env.SENTRY_RELEASE) with DSN ($env.SENTRY_DSN_PUBLIC) on environment ($env.SENTRY_ENVIRONMENT) ..."
 	^moon run bridge-ui:build
+	assert-last-exit "Bridge UI build failed."
 	print "Build completed."
 
 	print $"Releasing version ($env.SENTRY_RELEASE) to Sentry in environment ($env.SENTRY_ENVIRONMENT) ..."
 	^sentry-cli releases new -p $sentry_project $env.SENTRY_RELEASE
+	assert-last-exit "Sentry release creation failed."
 	^sentry-cli releases set-commits $env.SENTRY_RELEASE --auto --ignore-missing
+	assert-last-exit "Sentry commit association failed."
 	^sentry-cli sourcemaps inject $output_dir
+	assert-last-exit "Sentry sourcemap injection failed."
 	^sentry-cli sourcemaps upload $"--release=($env.SENTRY_RELEASE)" $output_dir
+	assert-last-exit "Sentry sourcemap upload failed."
 	^sentry-cli deploys new $"--release=($env.SENTRY_RELEASE)" -e $env.SENTRY_ENVIRONMENT
+	assert-last-exit "Sentry deploy registration failed."
 	print "Sentry release and sourcemaps done."
 
 	print $"Deploying Bridge UI target ($target) with wrangler ($config.wrangler_args | str join ' ') ..."
 	^wrangler ...$config.wrangler_args
+	assert-last-exit "Wrangler deployment failed."
 	print $"Deployment completed for target ($target)."
 
 	print $"Finalizing Sentry release ($env.SENTRY_RELEASE) ..."
 	^sentry-cli releases finalize $env.SENTRY_RELEASE
+	assert-last-exit "Sentry release finalization failed."
 	print $"Sentry release ($env.SENTRY_RELEASE) finalized."
 }
