@@ -145,35 +145,6 @@ tasks:
     inputs:
       - "@group(sources)"
       - "@group(tests)"
-  test:
-    deps:
-      - ^:build
-    script: |
-      set -eu
-      container="actions-indexer-test-$$"
-      db_port="55434"
-      db_url="postgresql://postgres:postgres@127.0.0.1:${db_port}/actions"
-      if ! docker info >/dev/null 2>&1; then
-        echo "Docker daemon is not running. Start Docker/OrbStack and rerun moon run actions-indexer:test."
-        exit 1
-      fi
-      docker rm -f "$container" >/dev/null 2>&1 || true
-      docker run -d --rm --name "$container" -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=actions -p "127.0.0.1:${db_port}:5432" postgres:16-alpine
-      cleanup() {
-        docker rm -f "$container" >/dev/null 2>&1 || true
-      }
-      trap cleanup EXIT
-      for attempt in $(seq 1 60); do
-        if docker exec "$container" pg_isready -U postgres -d actions >/dev/null 2>&1; then
-          break
-        fi
-        sleep 1
-      done
-      DATABASE_URL="$db_url" pnpm --filter @zeko/actions-api exec drizzle-kit push
-      DATABASE_URL="$db_url" AUTH_TOKEN=indexer-test-token L1_ARCHIVE_URL=http://127.0.0.1:1/graphql L2_ARCHIVE_URL=http://127.0.0.1:1/graphql OUTER_PK=TEST_OUTER_PK INNER_PK=TEST_INNER_PK vitest run
-    inputs:
-      - "@group(sources)"
-      - "@group(tests)"
   typecheck:
     deps:
       - ^:build

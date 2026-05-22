@@ -124,6 +124,7 @@ export const forbiddenMarkdownPatterns = [
 ]
 export const skippedExternalLinkChecks = new Set<string>([
 	"https://testnet.api.actions.zeko.io/graphql",
+	"https://testnet.bridge.zeko.io",
 	"https://gateway.mina.devnet.zeko.io",
 	"https://gateway.mina.archive.devnet.zeko.io",
 	"https://gateway.mina.mainnet.zeko.io",

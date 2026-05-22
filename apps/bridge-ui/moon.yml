@@ -82,24 +82,44 @@ tasks:
     preset: server
   deploy:
     description: Run the CI deploy flow for the default testnet target, including Sentry release and Cloudflare deploy logic.
-    script: BRIDGE_UI_DEPLOY_TARGET=testnet proto run nu -- ./deploy-ci.nu
+    command: nu
+    args:
+      - ./deploy-ci.nu
+    env:
+      BRIDGE_UI_DEPLOY_TARGET: testnet
     options:
       cache: false
+      runInCI: false
   deploy-testnet:
     description: Run the CI deploy flow for the testnet target.
-    script: BRIDGE_UI_DEPLOY_TARGET=testnet proto run nu -- ./deploy-ci.nu
+    command: nu
+    args:
+      - ./deploy-ci.nu
+    env:
+      BRIDGE_UI_DEPLOY_TARGET: testnet
     options:
       cache: false
+      runInCI: false
   deploy-mainnet:
     description: Run the CI deploy flow for the mainnet target.
-    script: BRIDGE_UI_DEPLOY_TARGET=mainnet proto run nu -- ./deploy-ci.nu
+    command: nu
+    args:
+      - ./deploy-ci.nu
+    env:
+      BRIDGE_UI_DEPLOY_TARGET: mainnet
     options:
       cache: false
+      runInCI: false
   deploy-preview:
     description: Run the CI deploy flow for non-production branches.
-    script: BRIDGE_UI_DEPLOY_TARGET=preview proto run nu -- ./deploy-ci.nu
+    command: nu
+    args:
+      - ./deploy-ci.nu
+    env:
+      BRIDGE_UI_DEPLOY_TARGET: preview
     options:
       cache: false
+      runInCI: false
   deploy-dev:
     description: Build and Deploy to Cloudflare Workers. Use with caution, prefer using CI/CD.
     script: rimraf .output .wrangler .nuxt && nuxt build && wrangler deploy

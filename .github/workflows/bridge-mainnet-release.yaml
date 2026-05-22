@@ -43,7 +43,7 @@ jobs:
           curl -fsS -X POST "https://api.northflank.com/v1/projects/${NORTHFLANK_PROJECT_ID}/pipelines/${NORTHFLANK_PIPELINE_ID}/release-flows/${NORTHFLANK_STAGE}/runs" \
             -H "Authorization: Bearer ${NORTHFLANK_API_TOKEN}" \
             -H "Content-Type: application/json" \
-            --data "{\"name\":\"Bridge mainnet release ${GITHUB_RUN_NUMBER}\",\"description\":\"Triggered by ${GITHUB_REPOSITORY}@${GITHUB_SHA}\",\"arguments\":{\"BRANCH\":\"${GITHUB_REF_NAME:-main}\",\"SHA\":\"${GITHUB_SHA}\"}}"
+            --data "{\"name\":\"Bridge mainnet release ${GITHUB_RUN_NUMBER}\",\"description\":\"Triggered by ${GITHUB_REPOSITORY}@${GITHUB_SHA}\",\"overrides\":{\"actions-indexer-mainnet-pipeline-build\":{\"branch\":\"${GITHUB_REF_NAME:-main}\",\"sha\":\"${GITHUB_SHA}\"}}}"
 
       - name: Wait for mainnet services
         run: |

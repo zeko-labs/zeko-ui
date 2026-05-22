@@ -19,10 +19,7 @@ const logger = createConsola({
 }).withTag("ACTIONS_INDEXER")
 
 function getProcessScriptPath(): URL {
-	const siblingScript = new URL("./action-processing-process.js", import.meta.url)
-	if (existsSync(siblingScript)) return siblingScript
-
-	return new URL("../../dist/action-processing-process.js", import.meta.url)
+	return new URL("./action-processing-process.js", import.meta.url)
 }
 
 function resolveWorkerThreads(blockCount: number, requested?: number): number {

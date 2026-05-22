@@ -14,10 +14,10 @@ This document is the single source of truth for implementation. It is written fo
 
 Ship one PR that makes the bridge stack mainnet-ready while preserving testnet.
 
-| Environment | Actions API                   | Actions Indexer                   | Actions DB                    | Bridge UI                                            | Deployment owner                                        |
-| ----------- | ----------------------------- | --------------------------------- | ----------------------------- | ---------------------------------------------------- | ------------------------------------------------------- |
-| testnet     | `testnet.api.actions.zeko.io` | `testnet.indexer.actions.zeko.io` | current `actions` Supabase DB | alpha/staging code channel at `alpha.bridge.zeko.io` | auto-deploy from `main`                                 |
-| mainnet     | `api.actions.zeko.io`         | `indexer.actions.zeko.io`         | fresh Supabase DB             | production code channel at `bridge.zeko.io`          | one GitHub Actions workflow using environment `mainnet` |
+| Environment | Actions API                   | Actions Indexer                   | Actions DB                    | Bridge UI                                                  | Deployment owner                                        |
+| ----------- | ----------------------------- | --------------------------------- | ----------------------------- | ---------------------------------------------------------- | ------------------------------------------------------- |
+| testnet     | `testnet.api.actions.zeko.io` | `testnet.indexer.actions.zeko.io` | current `actions` Supabase DB | `testnet.bridge.zeko.io` with `alpha.bridge.zeko.io` alias | auto-deploy from `main`                                 |
+| mainnet     | `api.actions.zeko.io`         | `indexer.actions.zeko.io`         | fresh Supabase DB             | production code channel at `bridge.zeko.io`                | one GitHub Actions workflow using environment `mainnet` |
 
 Current `api.actions.zeko.io` serves testnet traffic. Cutover means:
 
@@ -30,9 +30,10 @@ Domain rules:
 
 - `alpha` and `testnet` share the testnet infrastructure environment.
 - Do not create a separate alpha stack.
-- Treat `alpha.bridge.zeko.io` as the alpha/staging Bridge UI code channel.
-- Bridge hostnames select the deployed code channel, not the user's bridge network. Both `bridge.zeko.io` and `alpha.bridge.zeko.io` must be capable of selecting supported testnet and mainnet routes.
-- Normalize old alphanet/testnet config distinctions so alpha is described as the staging code channel on testnet infrastructure, not a third infrastructure environment.
+- Treat `testnet.bridge.zeko.io` as the primary testnet Bridge UI code channel.
+- Treat `alpha.bridge.zeko.io` as an alias for that testnet Bridge UI code channel.
+- Bridge hostnames select the deployed code channel, not the user's bridge network. Both `bridge.zeko.io` and the testnet Bridge UI hostnames must be capable of selecting supported testnet and mainnet routes.
+- Normalize old alphanet/testnet config distinctions so alpha is described as a testnet alias, not a third infrastructure environment.
 
 ## Safety Rules
 
@@ -139,9 +140,11 @@ Add Actions API Moon tasks:
 ```yaml
 deploy-testnet: wrangler deploy --env testnet
 deploy-mainnet: wrangler deploy
-live-e2e-testnet: ACTIONS_API_E2E_BASE_URL=https://testnet.api.actions.zeko.io vitest run tests/actions.live-e2e.test.ts
-live-e2e-mainnet: ACTIONS_API_E2E_BASE_URL=https://api.actions.zeko.io vitest run tests/actions.live-e2e.test.ts
+live-e2e-testnet: vitest run tests/actions.live-e2e.test.ts
+live-e2e-mainnet: vitest run tests/actions.live-e2e.test.ts
 ```
+
+Set the live e2e task endpoint with Moon `env`, not inline shell.
 
 Use `moon exec --ignore-ci-checks` from GitHub Actions, not `options.runInCI: true`, because these are deploy and live-check tasks.
 
@@ -273,7 +276,7 @@ Northflank invocation requirement:
 curl -fsS -X POST "https://api.northflank.com/v1/projects/${NORTHFLANK_PROJECT_ID}/pipelines/${NORTHFLANK_PIPELINE_ID}/release-flows/${NORTHFLANK_STAGE:-Mainnet}/runs" \
   -H "Authorization: Bearer ${NORTHFLANK_API_TOKEN}" \
   -H "Content-Type: application/json" \
-  --data "{\"name\":\"Bridge mainnet release ${GITHUB_RUN_NUMBER}\",\"description\":\"Triggered by ${GITHUB_REPOSITORY}@${GITHUB_SHA}\",\"arguments\":{\"BRANCH\":\"${GITHUB_REF_NAME:-main}\",\"SHA\":\"${GITHUB_SHA}\"}}"
+  --data "{\"name\":\"Bridge mainnet release ${GITHUB_RUN_NUMBER}\",\"description\":\"Triggered by ${GITHUB_REPOSITORY}@${GITHUB_SHA}\",\"overrides\":{\"actions-indexer-mainnet-pipeline-build\":{\"branch\":\"${GITHUB_REF_NAME:-main}\",\"sha\":\"${GITHUB_SHA}\"}}}"
 ```
 
 - Provide `NORTHFLANK_API_TOKEN`, `NORTHFLANK_PROJECT_ID`, and `NORTHFLANK_PIPELINE_ID` in the GitHub `mainnet` environment; `NORTHFLANK_STAGE` may override the default `Mainnet` stage name if review chooses a different stage slug.
@@ -287,9 +290,10 @@ Update `apps/bridge-ui/wrangler.jsonc`:
 
 - Top-level/default config is mainnet:
   - route `bridge.zeko.io`
-- `env.testnet` is the alpha/staging code channel:
-  - route `alpha.bridge.zeko.io`
-- `alpha.bridge.zeko.io` must not be attached to the production/mainnet default config.
+- `env.testnet` is the testnet code channel:
+  - route `testnet.bridge.zeko.io`
+  - route `alpha.bridge.zeko.io` as an alias
+- Neither testnet route must be attached to the production/mainnet default config.
 
 Update `apps/bridge-ui/workers-build.jsonc`:
 
@@ -309,7 +313,7 @@ nu = "github://hebilicious/proto-nu"
 version = "0.112.2"
 ```
 
-Replace `apps/bridge-ui/deploy-ci.sh` with a Nushell entrypoint, for example `apps/bridge-ui/deploy-ci.nu`, invoked through `proto run nu --`. Cloudflare Builds install the pinned proto/Nushell toolchain in their checked-in build command, so normal Moon deploy tasks do not need a separate shell bootstrap.
+Replace `apps/bridge-ui/deploy-ci.sh` with a Nushell entrypoint, for example `apps/bridge-ui/deploy-ci.nu`. Cloudflare Builds install the pinned proto/Nushell toolchain in their checked-in build command, and Moon tasks invoke `nu ./deploy-ci.nu` without wrapping commands in `proto run`.
 
 Current shell behavior that must be removed:
 
@@ -324,7 +328,7 @@ Required script behavior:
 - `testnet` target:
   - use Sentry environment `testnet`
   - run `wrangler deploy --env testnet`
-  - deploy route `alpha.bridge.zeko.io`
+  - deploy routes `testnet.bridge.zeko.io` and `alpha.bridge.zeko.io`
 - `mainnet` target:
   - use Sentry environment `mainnet`
   - run plain `wrangler deploy`
@@ -339,9 +343,9 @@ Required script behavior:
 Required Moon task shape:
 
 ```yaml
-deploy-testnet: BRIDGE_UI_DEPLOY_TARGET=testnet proto run nu -- ./deploy-ci.nu
-deploy-mainnet: BRIDGE_UI_DEPLOY_TARGET=mainnet proto run nu -- ./deploy-ci.nu
-deploy-preview: BRIDGE_UI_DEPLOY_TARGET=preview proto run nu -- ./deploy-ci.nu
+deploy-testnet: BRIDGE_UI_DEPLOY_TARGET=testnet nu ./deploy-ci.nu
+deploy-mainnet: BRIDGE_UI_DEPLOY_TARGET=mainnet nu ./deploy-ci.nu
+deploy-preview: BRIDGE_UI_DEPLOY_TARGET=preview nu ./deploy-ci.nu
 ```
 
 Existing `deploy` can either become an alias for `deploy-testnet` or be removed from Cloudflare Build usage. The important invariant is: `main` must not call a task that deploys `bridge.zeko.io`.
@@ -401,7 +405,7 @@ On merge to `main`:
 - Cloudflare Build deploys the Actions API testnet Worker when API files changed.
 - Northflank release flow deploys the testnet indexer when indexer files or shared dependencies changed.
 - DB migrations run against testnet only when migration files changed.
-- Cloudflare Build deploys the Bridge UI alpha/staging code channel only by invoking `bridge-ui:deploy-testnet`.
+- Cloudflare Build deploys the Bridge UI testnet code channel only by invoking `bridge-ui:deploy-testnet`.
 - There is no standalone GitHub Actions testnet deploy workflow; testnet remains the automatic deploy path owned by the existing platform integrations.
 
 ## Consumer And SDK Changes
@@ -464,9 +468,9 @@ Required docs content:
 
 - Testnet Actions API is `https://testnet.api.actions.zeko.io/graphql`.
 - Mainnet Actions API is `https://api.actions.zeko.io/graphql`.
-- Alpha Bridge UI is the staging code channel.
+- Testnet Bridge UI is `https://testnet.bridge.zeko.io`.
+- Alpha Bridge UI is `https://alpha.bridge.zeko.io`, an alias for the testnet Bridge UI code channel.
 - Mainnet Bridge UI is `https://bridge.zeko.io`.
-- Alpha Bridge UI is `https://alpha.bridge.zeko.io`.
 - SDK examples must use matching L1/L2 network IDs and Actions API endpoint.
 
 ## Implementation Order
@@ -503,10 +507,10 @@ Required docs content:
 Automated validation should include:
 
 ```bash
-moon run actions-api:test
+moon run actions-api:manual-db-test
 moon run actions-api:typecheck
 moon run actions-api:lint
-moon run actions-indexer:test
+moon run actions-indexer:test-service-integration
 moon run actions-indexer:typecheck
 moon run actions-indexer:lint
 moon run bridge-cli:test
@@ -535,7 +539,8 @@ moon run actions-indexer:diagnose-health -- --url https://indexer.actions.zeko.i
 
 Bridge UI smoke checks:
 
-- `https://alpha.bridge.zeko.io` loads the alpha/staging Bridge UI code channel.
+- `https://testnet.bridge.zeko.io` loads the testnet Bridge UI code channel.
+- `https://alpha.bridge.zeko.io` loads the same testnet Bridge UI code channel as an alias.
 - `https://bridge.zeko.io` loads the mainnet Bridge UI after the unified mainnet GitHub Actions workflow deploys it.
 
 After mainnet services are deployed, add a mainnet-specific smoke query using a known action-state range or aux from the mainnet archive.
@@ -554,19 +559,20 @@ Initial log:
 - Northflank CLI is not installed in this worktree, so the mainnet pipeline trigger was derived from Northflank's documented release-flow API endpoint: `POST /v1/projects/{projectId}/pipelines/{pipelineId}/release-flows/{stage}/runs`.
 - Used explicit `__MAINNET_REVIEW_REQUIRED_HYPERDRIVE_*__` placeholder IDs in top-level Actions API Wrangler config so reviewers can ctrl+f the mainnet Hyperdrive IDs that must come from reviewed provisioning before any mainnet deploy.
 - Kept checked-in Actions API Workers Build deploy commands live for testnet and preview; testnet deploy ownership remains Cloudflare Build, not GitHub Actions.
-- Added concrete `actions-api:typecheck` and `actions-api:test` Moon tasks because the plan requires these validation targets and `moon run actions-api:typecheck` / `moon run actions-api:test` previously resolved as no-op tasks.
-- Kept Actions API local database support with a narrow local-env adapter in `services/actions/api/src/db.ts` because generated Wrangler production/testnet Env types intentionally no longer expose `DATABASE_URL`.
-- Scoped `actions-api:test` to the existing `vitest.node.config.ts` so deployed-service live checks remain in the explicit `live-e2e-testnet` and `live-e2e-mainnet` tasks and the local database unit tests avoid the Cloudflare worker-pool stream cleanup issue.
-- Updated `northflank/actions-indexer/project.json` with a structured JSON rewrite to avoid hand-editing the large template. The rewrite keeps the existing deployment ref as testnet, adds a mainnet deployment ref, and passes `BRANCH`/`SHA` as release-flow arguments for the mainnet API-triggered run.
-- Restored the `actions-indexer:test` Moon task to run the full Vitest suite. If a test needs infrastructure or setup, the fix is to provide that setup or document the review blocker, not exclude the test.
-- Updated the `action-processing.runtime.test.ts` Bridge SDK mock to expose `Actions.pushHash`, matching the current SDK import surface used by `src/action-processing/core.ts`.
-- Removed the unreviewed `SENTRY_HOST` Wrangler placeholder vars. The Sentry tunnel now derives the allowed ingest host from the existing public Sentry DSN that the deploy flow already requires.
+- Added a concrete `actions-api:typecheck` Moon task because the plan requires that validation target and `moon run actions-api:typecheck` previously resolved as a no-op task.
+- Modeled the new `actions-api:live-e2e-*` tasks with Moon `command`, `args`, and `env` fields rather than inline shell so the live endpoint selection is reviewable in structured task config.
+- Kept a narrow local-only `services/actions/api/src/db.ts` adapter for `ENVIRONMENT=local` because Wrangler environment bindings remove `DATABASE_URL` from generated deployment types; this preserves the existing local `manual-db-test` path without adding a deployed `DATABASE_URL` binding.
+- Did not add inline Docker orchestration to `services/actions/api/moon.yml`; local DB setup remains in the existing explicit `manual-db-test` task.
+- Updated `northflank/actions-indexer/project.json` to keep the existing deployment ref as testnet and add a mainnet deployment ref. The mainnet release flow defaults to branch `main`; GitHub Actions supplies branch/SHA selection through Northflank release-flow `overrides`, not checked-in template arguments.
+- Left `services/actions/indexer/moon.yml` unchanged from `origin/main`; indexer test harness changes are outside this plan.
+- Left `services/actions/indexer/src/action-processing/runtime.ts` unchanged from `origin/main`; action-processing process resolution changes are outside this plan.
+- Removed the unreviewed `SENTRY_HOST` Wrangler placeholder vars. The Sentry tunnel derives the allowed ingest host from the existing public Sentry DSN so the PR does not invent a new Wrangler variable. This is the only retained `server/routes/tunnel.ts` change.
 - Expanded `bridge doctor` to print route status, SDK endpoint mapping, and Actions API health checks because the CLI previously only listed route names and could not show whether mainnet/testnet endpoint selection was correct.
 - Added a small SDK unit test for network-specific bridge deploy blocks because the previous single `BRIDGE_DEPLOY_BLOCK` export made the testnet cutoff easy to reuse accidentally on mainnet.
-- Kept docs-site bridge links and the Nuxt layer default `zekoBridge` link on `alpha.bridge.zeko.io`; the Bridge hostname is a code channel, not a network selector.
+- Kept docs-site bridge links and the Nuxt layer default `zekoBridge` link on `testnet.bridge.zeko.io`; `alpha.bridge.zeko.io` remains documented as the testnet alias.
 - Left `docs/BRIDGE_INVALID_WITNESSES_INCIDENT_2026-03-05.md` unchanged because its `api.actions.zeko.io` references are historical incident evidence, not current endpoint guidance.
-- Added planned `testnet.api.actions.zeko.io/graphql` to the Zeko skill external-link skip list because that endpoint is introduced by this PR and will not resolve until after reviewed DNS/deploy cutover.
+- Added planned `testnet.api.actions.zeko.io/graphql` and `testnet.bridge.zeko.io` to the Zeko skill external-link skip list because those endpoints are introduced by this PR and will not resolve until after reviewed DNS/deploy cutover.
 - Corrected a bad intermediate CI fix that disabled the old Cloudflare Build preview deploy tasks with `echo` commands. Preview deploy tasks remain real preview uploads and now target the testnet Wrangler env so PR branch previews do not touch mainnet config or placeholder mainnet infra.
-- Removed `scripts/run-proto-nu.sh`. Cloudflare Builds bootstrap proto/Nushell in `apps/bridge-ui/workers-build.jsonc`; repo Moon deploy tasks invoke `proto run nu -- ./deploy-ci.nu` directly.
-- Removed the Bridge UI mainnet wallet block. `bridge.zeko.io` and `alpha.bridge.zeko.io` are code channels, and the Bridge machine now accepts Mina/Zeko mainnet and testnet networks.
+- Removed `scripts/run-proto-nu.sh`. Cloudflare Builds bootstrap proto/Nushell in `apps/bridge-ui/workers-build.jsonc`; repo Moon deploy tasks invoke `nu ./deploy-ci.nu` directly.
+- Removed the Bridge UI mainnet wallet block. Bridge hostnames are code channels, and the Bridge machine now accepts Mina/Zeko mainnet and testnet networks.
 - Kept `SENTRY_PROJECT` optional in `apps/bridge-ui/deploy-ci.nu`, defaulting to the historical `zeko-bridge` project slug, because the old shell deploy path hardcoded that slug and did not require a runtime `SENTRY_PROJECT` build variable.

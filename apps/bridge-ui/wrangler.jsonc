@@ -43,6 +43,10 @@
 			},
 			"routes": [
 				{
+					"pattern": "testnet.bridge.zeko.io",
+					"custom_domain": true
+				},
+				{
 					"pattern": "alpha.bridge.zeko.io",
 					"custom_domain": true
 				}

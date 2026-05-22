@@ -53,7 +53,7 @@ def main [
 	print $"# MAINNET_INNER_PK=($mainnet_inner_pk)"
 	print ""
 
-	let payload = $"'{\"name\":\"Bridge mainnet release ($run_number)\",\"description\":\"Triggered by ($repository)@($sha)\",\"arguments\":{\"BRANCH\":\"($branch)\",\"SHA\":\"($sha)\"}}'"
+	let payload = $"'{\"name\":\"Bridge mainnet release ($run_number)\",\"description\":\"Triggered by ($repository)@($sha)\",\"overrides\":{\"actions-indexer-mainnet-pipeline-build\":{\"branch\":\"($branch)\",\"sha\":\"($sha)\"}}}'"
 	let command = $"curl -fsS -X POST 'https://api.northflank.com/v1/projects/($project_id)/pipelines/($pipeline_id)/release-flows/($stage)/runs' -H 'Authorization: Bearer ($token)' -H 'Content-Type: application/json' --data ($payload)"
 	run-step $execute "Trigger the reviewed Mainnet release flow" $command
 }

@@ -30,7 +30,6 @@ def target-config [target: string] {
 			{
 				sentry_environment: "testnet",
 				sentry_release: $commit,
-				deploy_kind: "worker",
 				wrangler_args: ["deploy", "--env", "testnet"]
 			}
 		},
@@ -39,7 +38,6 @@ def target-config [target: string] {
 			{
 				sentry_environment: "mainnet",
 				sentry_release: $commit,
-				deploy_kind: "worker",
 				wrangler_args: ["deploy"]
 			}
 		},
@@ -49,7 +47,6 @@ def target-config [target: string] {
 			{
 				sentry_environment: $"deploy-preview-(branch-hash $branch)",
 				sentry_release: $commit,
-				deploy_kind: "preview",
 				wrangler_args: ["versions", "upload", "--env", "testnet"]
 			}
 		},

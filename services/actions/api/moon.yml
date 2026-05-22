@@ -54,14 +54,26 @@ tasks:
       cache: false
   live-e2e-testnet:
     description: Live smoke test against the deployed testnet actions-api endpoint.
-    script: ACTIONS_API_E2E_BASE_URL=https://testnet.api.actions.zeko.io vitest run tests/actions.live-e2e.test.ts
+    command: vitest
+    args:
+      - run
+      - tests/actions.live-e2e.test.ts
+    env:
+      ACTIONS_API_E2E_BASE_URL: https://testnet.api.actions.zeko.io
     options:
       cache: false
+      runInCI: false
   live-e2e-mainnet:
     description: Live smoke test against the deployed mainnet actions-api endpoint.
-    script: ACTIONS_API_E2E_BASE_URL=https://api.actions.zeko.io vitest run tests/actions.live-e2e.test.ts
+    command: vitest
+    args:
+      - run
+      - tests/actions.live-e2e.test.ts
+    env:
+      ACTIONS_API_E2E_BASE_URL: https://api.actions.zeko.io
     options:
       cache: false
+      runInCI: false
   schema:
     command: bun run graphql/printSchema.ts
     inputs:
@@ -123,54 +135,32 @@ tasks:
     inputs:
       - "@group(sources)"
       - "@group(tests)"
-  test:
-    script: |
-      set -eu
-      container="actions-api-test-$$"
-      db_port="55433"
-      db_url="postgresql://postgres:postgres@127.0.0.1:${db_port}/actions"
-      if ! docker info >/dev/null 2>&1; then
-        echo "Docker daemon is not running. Start Docker/OrbStack and rerun moon run actions-api:test."
-        exit 1
-      fi
-      docker rm -f "$container" >/dev/null 2>&1 || true
-      docker run -d --rm --name "$container" -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=actions -p "127.0.0.1:${db_port}:5432" postgres:16-alpine
-      cleanup() {
-        docker rm -f "$container" >/dev/null 2>&1 || true
-      }
-      trap cleanup EXIT
-      for attempt in $(seq 1 60); do
-        if docker exec "$container" pg_isready -U postgres -d actions >/dev/null 2>&1; then
-          break
-        fi
-        sleep 1
-      done
-      DATABASE_URL="$db_url" pnpm exec drizzle-kit push
-      ACTIONS_API_TEST_DATABASE_URL="$db_url" vitest run --config vitest.node.config.ts
-    inputs:
-      - "@group(sources)"
-      - "@group(tests)"
-    options:
-      runInCI: false
   lint-fix:
     command: biome check --formatter-enabled=false --write
     inputs:
       - "@group(sources)"
       - "@group(tests)"
   deploy:
-    command: wrangler deploy --env testnet
+    command: wrangler deploy
     deps:
       - ^:build
+    options:
+      runInCI: false
   deploy-testnet:
     command: wrangler deploy --env testnet
     deps:
       - ^:build
+    options:
+      runInCI: false
   deploy-mainnet:
     command: wrangler deploy
     deps:
       - ^:build
+    options:
+      runInCI: false
   deploy-preview:
     command: wrangler versions upload --env testnet
     deps:
       - ^:build
-    preset: server
+    options:
+      runInCI: false

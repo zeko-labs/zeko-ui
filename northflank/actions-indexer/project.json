@@ -304,8 +304,7 @@
 																			"buildFiles": {},
 																			"dockerSecretMounts": {}
 																		},
-																		"branch": "${args.BRANCH}",
-																		"sha": "${args.SHA}",
+																		"branch": "main",
 																		"id": "${template.refs.actions-indexer-build.id}",
 																		"type": "service"
 																	},
@@ -489,9 +488,7 @@
 		"MAINNET_OUTER_PK": "",
 		"MAINNET_INNER_PK": "",
 		"MAINNET_L1_FINALITY": "",
-		"MAINNET_L2_FINALITY_TIME_H": "",
-		"BRANCH": "main",
-		"SHA": ""
+		"MAINNET_L2_FINALITY_TIME_H": ""
 	},
 	"options": {
 		"autorun": false,
