@@ -575,7 +575,7 @@ GitHub `mainnet` environment inputs:
 
 Actions API mainnet database and Cloudflare inputs:
 
-- `SUPABASE_ORG_ID`, `ACTIONS_MAINNET_DB_PASSWORD`, optional `SUPABASE_REGION`, and optional `SUPABASE_SIZE` are required for the first `scripts/mainnet-readiness/provision-actions-mainnet.nu` pass.
+- `SUPABASE_ORG_ID`, `ACTIONS_MAINNET_DB_PASSWORD`, `SUPABASE_SIZE`, and optional `SUPABASE_REGION` are required for the first `scripts/mainnet-readiness/provision-actions-mainnet.nu` pass. Choose `SUPABASE_SIZE` after reviewing the current Actions database compute size; the helper script must not silently default it.
 - After the Supabase project exists, derive and review `ACTIONS_MAINNET_DATABASE_URL`, then rerun the script to store that URL in the GitHub `mainnet` environment and create the cached/no-cache Cloudflare Hyperdrive resources.
 - After Hyperdrive creation, replace `__MAINNET_REVIEW_REQUIRED_HYPERDRIVE_CACHE_ID__` and `__MAINNET_REVIEW_REQUIRED_HYPERDRIVE_NO_CACHE_ID__` in `services/actions/api/wrangler.jsonc`.
 
@@ -633,3 +633,4 @@ Initial log:
 - Corrected `plan-github-mainnet-secrets.nu`, `plan-northflank-mainnet.nu`, and `provision-actions-mainnet.nu` so dry-run output references shell environment variables instead of printing secret values into logs.
 - Split `provision-actions-mainnet.nu` into a safe first pass for Supabase project creation and a second pass for GitHub secret/Hyperdrive creation after the reviewed mainnet database URL is available.
 - Corrected `plan-github-mainnet-secrets.nu` to rely on existing repository-level Cloudflare secrets instead of requiring duplicate `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` environment secrets.
+- Removed the unchecked `small` Supabase compute-size default from `provision-actions-mainnet.nu`; `SUPABASE_SIZE` is now an explicit reviewed input.

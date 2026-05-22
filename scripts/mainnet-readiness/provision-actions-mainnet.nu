@@ -2,7 +2,6 @@
 
 const mainnet_project_name = "actions-mainnet"
 const default_supabase_region = "eu-west-1"
-const default_supabase_size = "small"
 
 def required-env [name: string] {
 	let value = ($env | get --optional $name)
@@ -40,7 +39,7 @@ def main [
 	let supabase_org_id = (required-env "SUPABASE_ORG_ID")
 	let supabase_db_password = (required-env "ACTIONS_MAINNET_DB_PASSWORD")
 	let supabase_region = (optional-env "SUPABASE_REGION" $default_supabase_region)
-	let supabase_size = (optional-env "SUPABASE_SIZE" $default_supabase_size)
+	let supabase_size = (required-env "SUPABASE_SIZE")
 	let mainnet_db_url = (optional-env "ACTIONS_MAINNET_DATABASE_URL" "")
 
 	print "# Actions mainnet provisioning commands"
