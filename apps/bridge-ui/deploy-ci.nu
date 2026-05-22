@@ -1,6 +1,5 @@
 #!/usr/bin/env nu
 
-const sentry_project = "zeko-bridge"
 const output_dir = "./.output"
 
 def require-env [name: string] {
@@ -65,9 +64,9 @@ def main [] {
 	let config = (target-config $target)
 
 	require-env "SENTRY_ORG" | ignore
-	require-env "SENTRY_PROJECT" | ignore
 	require-env "SENTRY_DSN_PUBLIC" | ignore
 	require-env "SENTRY_AUTH_TOKEN" | ignore
+	let sentry_project = (optional-env "SENTRY_PROJECT" "zeko-bridge")
 
 	$env.SENTRY_LOG_LEVEL = "debug"
 	$env.PATH = $"($env.PATH):(pwd)/node_modules/.bin:(pwd)/../../node_modules/.bin"
