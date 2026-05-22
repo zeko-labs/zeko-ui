@@ -571,7 +571,7 @@ Initial log:
 - Added a small SDK unit test for network-specific bridge deploy blocks because the previous single `BRIDGE_DEPLOY_BLOCK` export made the testnet cutoff easy to reuse accidentally on mainnet.
 - Kept docs-site bridge links and the Nuxt layer default `zekoBridge` link on `testnet.bridge.zeko.io`; `alpha.bridge.zeko.io` remains documented as the testnet alias.
 - Left `docs/BRIDGE_INVALID_WITNESSES_INCIDENT_2026-03-05.md` unchanged because its `api.actions.zeko.io` references are historical incident evidence, not current endpoint guidance.
-- Added planned `testnet.api.actions.zeko.io/graphql` and `testnet.bridge.zeko.io` to the Zeko skill external-link skip list because those endpoints are introduced by this PR and will not resolve until after reviewed DNS/deploy cutover.
+- Added planned `testnet.api.actions.zeko.io/graphql` and `testnet.bridge.zeko.io` to external-link skip lists because those endpoints are introduced by this PR and will not resolve until after reviewed DNS/deploy cutover.
 - Corrected a bad intermediate CI fix that disabled the old Cloudflare Build preview deploy tasks with `echo` commands. Preview deploy tasks remain real preview uploads and now target the testnet Wrangler env so PR branch previews do not touch mainnet config or placeholder mainnet infra.
 - Removed `scripts/run-proto-nu.sh`. Cloudflare Builds bootstrap proto/Nushell in `apps/bridge-ui/workers-build.jsonc`; repo Moon deploy tasks invoke `nu ./deploy-ci.nu` directly.
 - Removed the Bridge UI mainnet wallet block. Bridge hostnames are code channels, and the Bridge machine now accepts Mina/Zeko mainnet and testnet networks.

@@ -5,7 +5,7 @@ status: done
 blockedBy: []
 owner: codex
 created_at: 2026-05-22T12:12:00Z
-updated_at: 2026-05-22T12:26:22Z
+updated_at: 2026-05-22T12:36:00Z
 ---
 
 ## Requirements
@@ -46,5 +46,6 @@ updated_at: 2026-05-22T12:26:22Z
 - Forbidden-pattern scan for `proto run`, `run-proto`, Northflank `BRANCH`/`SHA` args, and old inline Docker test containers returns only the expected plan log text.
 - `moon run bridge-ui:type-cf`, `bridge-ui:typecheck`, `bridge-ui:lint -f`, `bridge-ui:test-ci -f`, and `bridge-ui:build -f` passed.
 - `moon run actions-api:typecheck -f`, `actions-indexer:typecheck -f`, `actions-indexer:lint -f`, `docs:test -f`, `zeko-skills:test -f`, `cloudflare-build-config:lint -f`, and `cloudflare-build-config:test -f` passed.
+- After the pushed commit, GitHub CI exposed the missing docs skip for `https://testnet.bridge.zeko.io`; added the same post-review endpoint skip to `apps/docs/tests/check-links.test.ts`.
 - `pnpm exec actionlint -ignore 'label "warp-ubuntu-latest-x64-8x" is unknown' .github/workflows/bridge-mainnet-release.yaml`, `jq empty northflank/actions-indexer/project.json`, `nu --version`, the Northflank dry-run script, `git diff --check`, and `moon run bridge-mainnet-readiness-plan:format -f` passed.
 - `moon ci -f` did not resolve deploy tasks into the CI target set, but the full workspace run was blocked by local `ENOSPC` during unrelated faucet/leaderboard builds and initially caught plan/task formatting that has since been fixed.
