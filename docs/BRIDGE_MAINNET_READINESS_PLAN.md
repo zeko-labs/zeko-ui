@@ -564,6 +564,7 @@ Local or CI tooling required:
 - `pnpm`, `moon`, `nu`, `gh`, and `wrangler` for repository workflows and reviewed helper scripts.
 - `sentry-cli` for Bridge UI release and sourcemap deployment.
 - Cloudflare Builds must install `nu` through proto before running the Bridge UI deploy script.
+- The reviewed Cloudflare Workers Build trigger sync command is `CLOUDFLARE_API_TOKEN="$CFB_TOKEN" CLOUDFLARE_ACCOUNT_ID="a12d2915bc16ee8550f19399839623f7" moon run bridge-ui:publish-cf-build-config`.
 
 GitHub `mainnet` environment inputs:
 
@@ -587,6 +588,7 @@ Northflank mainnet inputs:
 Known deployment blockers before review:
 
 - `https://testnet.bridge.zeko.io` and `https://testnet.api.actions.zeko.io/graphql` are planned endpoints introduced by this PR. Link checks skip them until reviewed DNS/deploy cutover makes them live.
+- The Bridge UI Workers Build PR check is blocked until the checked-in `apps/bridge-ui/workers-build.jsonc` is reviewed and synced to Cloudflare. The current remote trigger still runs the old deploy command without the proto `nu` install path, so it fails with `nu: command not found`.
 - Mainnet Actions API deploy is blocked until the reviewed Hyperdrive IDs replace the `__MAINNET_REVIEW_REQUIRED_HYPERDRIVE_*__` placeholders.
 - Mainnet release workflow execution is blocked until the GitHub `mainnet` environment secrets and variables above are present.
 
@@ -625,3 +627,4 @@ Initial log:
 - Changed Bridge UI preview branch hashing to `hash sha256 | encode hex | str substring 0..39` so the reviewable preview environment name is deterministic text instead of relying on raw binary hash output.
 - Replaced deploy-script PATH string interpolation with list-aware PATH extension using `char esep` and `path join`.
 - Added this Deployment Access Inventory so deployment can start from a known list of required credentials, service access, placeholders, and review blockers.
+- Investigated the failing Cloudflare Workers Build PR check with the `CFB_TOKEN` API token. The build log shows the remote trigger still runs the old deploy command and fails with `nu: command not found`; `cloudflare-build-config:sync-dry-run` reports that both Bridge Workers Build triggers would be updated by the checked-in config.
