@@ -21,7 +21,7 @@ Use [README.md](README.md) for setup and [`packages/bridge-cli/TESTING.md`](../.
 - Inspect a running or stuck Workflow with `curl 'https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=<workflow-instance-id>'`.
 - Inspect sandbox runner diagnostics with `curl 'https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=<workflow-instance-id>&logs=1'`.
 - The validator must exercise the latest published `@zeko-labs/bridge-cli`; do not pin the CLI version in the service.
-- The validator runs the npm binary through `node "$(readlink -f "$(command -v zeko-bridge)")"` inside the container so it executes the real `cli.js` entrypoint rather than a package-manager shim.
+- The validator runs `npm --prefer-online exec --package @zeko-labs/bridge-cli@latest -- zeko-bridge ...` inside the container. Do not replace it with a local workspace package, a pinned version, or a direct `node` call that bypasses the published npm binary behavior.
 
 ## Parallel Work
 

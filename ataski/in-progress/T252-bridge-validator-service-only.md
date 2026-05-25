@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T251]
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T05:28:00Z
+updated_at: 2026-05-26T05:58:00Z
 ---
 
 ## Requirements
@@ -14,6 +14,8 @@ updated_at: 2026-05-26T05:28:00Z
 - Stack PR #150 on the SDK/CLI prerequisite PR so reviewers can test package changes independently.
 - Preserve the validator runtime contract: one Cloudflare Worker/Workflow/Sandbox command, 2 hour hard timeout, cleanup after success/failure/timeout, and clear runtime docs.
 - Expose enough deployed sandbox diagnostics to identify why a Cloudflare Workflow is waiting when the runner process has already exited.
+- Execute the current published `@zeko-labs/bridge-cli@latest` npm binary path at runtime; do not use a cached Docker install or direct `node` entrypoint call that can mask published CLI defects.
+- Add a sandbox watchdog callback so a missing command callback still reaches the Workflow at the 2-hour hard limit.
 
 ## Test Plan
 
@@ -43,9 +45,14 @@ updated_at: 2026-05-26T05:28:00Z
   - `start bridge validation command` succeeded and returned process ID `159`.
   - `/bridge-status` later reported `found: false` for the command while the Workflow remained waiting for `bridge-command-complete`.
   - Added `/bridge-status?...&logs=1` diagnostics so the deployed service can report the sandbox runner PID file, process log, stdout, and stderr tails.
+- Deployed follow-up findings:
+  - `wrangler workflows instances describe` showed the same Workflow still `Waiting` after about 7 hours, despite the intended 2-hour wait timeout.
+  - `curl ...&logs=1` after redeploy returned no sandbox files for that old instance, so the old runner failure is no longer diagnosable from sandbox state.
+  - Wrangler deploy reused the cached Docker layer for `npm install @zeko-labs/bridge-cli@latest`, proving the previous container image could keep an old latest package.
+  - Local `npm --prefer-online exec --package @zeko-labs/bridge-cli@latest -- zeko-bridge --help` returned exit code 0 with no CLI help output for npm latest `0.1.0`, so the current published CLI still no-ops through the npm binary path.
 
 ## Remaining Work
 
-- Validate the diagnostic change locally, commit, push, redeploy, and query `logs=1` for the deployed Workflow.
-- Fix the specific deployed runner/callback blocker identified by the diagnostic response.
+- Validate, commit, push, and redeploy the runtime npm-exec and watchdog changes.
+- Trigger one new deployed deposit workflow after rollout to prove whether the validator reports the published CLI no-op correctly or reaches a completed deposit.
 - Complete one deployed deposit workflow through Cloudflare and capture `operation_id`, final transaction hash, log path, and reporting output.

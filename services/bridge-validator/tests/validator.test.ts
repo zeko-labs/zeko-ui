@@ -72,10 +72,11 @@ describe("bridge validator", () => {
 
 		const command = buildBridgeCommand({ routeKey: "mina-to-zeko" })
 
-		expect(command).toContain(`command -v ${BRIDGE_CLI_BINARY}`)
 		expect(command).toContain("timeout -k 30s -s TERM 7200s")
-		expect(command).toContain('node "$bridge_entrypoint"')
-		expect(command).toContain("'bridge' '--from' 'mina:testnet' '--to' 'zeko:testnet'")
+		expect(command).toContain("npm --prefer-online --cache /workspace/npm-cache exec --yes")
+		expect(command).toContain(`--package '${BRIDGE_CLI_SPECIFIER}'`)
+		expect(command).toContain(`-- ${BRIDGE_CLI_BINARY} 'bridge'`)
+		expect(command).toContain("'--from' 'mina:testnet' '--to' 'zeko:testnet'")
 		expect(command).toContain("'--amount' '2' '--json' '--verbose'")
 	})
 
@@ -144,11 +145,13 @@ describe("bridge validator", () => {
 		const script = buildBridgeCommandScript({ routeKey: "mina-to-zeko" })
 
 		expect(script).toContain("timeout -k 30s -s TERM 7200s")
-		expect(script).toContain("node \"$bridge_entrypoint\" 'bridge'")
+		expect(script).toContain("npm --prefer-online --cache /workspace/npm-cache exec --yes")
 		expect(script).toContain("stdout.json")
 		expect(script).toContain("stderr.log")
 		expect(script).toContain("fetch(process.env.BRIDGE_CALLBACK_URL")
 		expect(script).toContain("BRIDGE_WORKFLOW_INSTANCE_ID")
+		expect(script).toContain("watchdog_timeout_seconds=7200")
+		expect(script).toContain("bridge validator watchdog timeout")
 	})
 
 	it("reports bridge command process status without reading bridge logs", async () => {

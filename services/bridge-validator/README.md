@@ -10,7 +10,7 @@ The validator runs the high-level `bridge` command through Cloudflare Workflows 
 2. The Worker creates exactly two Workflow runs per tick:
    - one `mina-to-zeko` deposit validation
    - one `zeko-to-mina` withdrawal validation
-3. The sandbox image installs `@zeko-labs/bridge-cli@latest` directly during the Docker build.
+3. The sandbox command resolves `@zeko-labs/bridge-cli@latest` at runtime with `npm --prefer-online exec` so each validation exercises the current published package instead of a cached container layer.
 4. The Workflow validates a `2` MINA bridge amount. This keeps the validation above the proof-fee edge while still using a small testnet amount.
 5. The Workflow creates a Cloudflare Sandbox, explicitly sets `setKeepAlive(true)` on that sandbox instance, writes a tiny shell runner, and starts one background Sandbox command:
 
@@ -21,17 +21,17 @@ nohup bash /workspace/bridge-validator/run-bridge.sh >/workspace/bridge-validato
 The runner executes exactly one published bridge CLI invocation:
 
 ```bash
-timeout -k 30s -s TERM 7200s node "$(readlink -f "$(command -v zeko-bridge)")" bridge --from mina:testnet --to zeko:testnet --amount 2 --json --verbose
+timeout -k 30s -s TERM 7200s npm --prefer-online --cache /workspace/npm-cache exec --yes --package @zeko-labs/bridge-cli@latest -- zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 2 --json --verbose
 ```
 
-The command resolves the published package entrypoint with `readlink -f "$(command -v zeko-bridge)"` and runs it with `node`. This keeps the validator on the real published package while avoiding shell-shim differences between local npm and the Sandbox image. The command is wrapped with GNU `timeout` so the container process cannot run past the hard 2-hour timeout.
+The command intentionally uses the published npm binary path. If the latest published CLI entrypoint no-ops, the validator must fail and report that package defect. The command is wrapped with GNU `timeout` so the container process cannot run past the hard 2-hour timeout.
 
 6. Worker secrets are loaded before the bridge command starts:
    - `WALLET_PRIVATE_KEY`, injected into the process as both `WALLET_PRIVATE_KEY` for the currently published CLI and `MINA_PRIVATE_KEY` for the current source CLI contract
    - `SLACK_BOT_TOKEN`
    - `SLACK_CHANNEL_ID`
 7. The start step returns immediately. The Workflow then waits on `step.waitForEvent` for up to two hours.
-8. When the CLI exits, the runner posts one callback to `/bridge-callback` with the Workflow instance ID, callback token, exit code, stdout, and stderr. The Workflow rejects callbacks that do not match the stored token.
+8. The runner arms a 2-hour watchdog callback before starting the CLI. If the CLI exits first, the runner posts one callback to `/bridge-callback` with the Workflow instance ID, callback token, exit code, stdout, and stderr. If that callback cannot be delivered, the watchdog remains armed and reports a timeout callback at the hard limit. The Workflow rejects callbacks that do not match the stored token.
 9. If the command exits non-zero, the event times out, or the Workflow step fails, the Workflow reports failure to Slack and destroys the sandbox.
 10. When the command exits successfully, the Workflow:
 
