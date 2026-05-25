@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T251]
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T06:14:00Z
+updated_at: 2026-05-26T06:26:00Z
 ---
 
 ## Requirements
@@ -17,6 +17,7 @@ updated_at: 2026-05-26T06:14:00Z
 - Execute the current published `@zeko-labs/bridge-cli@latest` npm binary path at runtime; do not use a cached Docker install or direct `node` entrypoint call that can mask published CLI defects.
 - Add a sandbox watchdog callback so a missing command callback still reaches the Workflow at the 2-hour hard limit.
 - Pass callback and wallet environment variables directly on the detached `nohup` launch command so the background process cannot lose the `sandbox.exec` environment.
+- Report JSON/history validation step failures as validation failures with command stdout/stderr, even when Cloudflare wraps the original thrown error.
 
 ## Test Plan
 
@@ -56,9 +57,17 @@ updated_at: 2026-05-26T06:14:00Z
   - `start bridge validation command` succeeded and returned process ID `155`.
   - `/bridge-status?...&logs=1` initially reported the process running with empty stdout/stderr, then reported no PID or sandbox files while the Workflow still waited for `bridge-command-complete`.
   - This indicates the detached process exited before delivering a callback and the sandbox filesystem was not available after process exit.
+- Fresh deployed deposit after direct launch environment fix:
+  - Workflow instance ID: `80b423c6-e1bb-48ae-a813-4cf135fc3fe4`.
+  - `start bridge validation command` succeeded and returned process ID `332`.
+  - `wait for bridge command completion` received the callback after 46 seconds.
+  - Callback payload: `exitCode: 0`, `stdout: ""`, `stderr` contained only npm update notices.
+  - Workflow failed at `parse bridge result` with `Failed to parse bridge JSON output: No JSON object found in bridge output`.
+  - `notify slack runtime failure` succeeded and `destroy bridge sandbox` succeeded.
+  - This proves the deployed Cloudflare Worker/Workflow/Sandbox callback path works, but the current published `@zeko-labs/bridge-cli@latest` npm binary still no-ops.
 
 ## Remaining Work
 
-- Validate, commit, push, and redeploy the direct launch environment fix.
-- Trigger one new deployed deposit workflow after rollout to prove whether the validator reports the published CLI no-op correctly or reaches a completed deposit.
+- Validate, commit, push, and redeploy the validation failure reporting fix.
+- After the published CLI entrypoint fix is released to npm latest, trigger one new deployed deposit workflow.
 - Complete one deployed deposit workflow through Cloudflare and capture `operation_id`, final transaction hash, log path, and reporting output.

@@ -245,6 +245,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<Env, BridgeVali
 			}
 
 			let validationSummary: BridgeValidationSummary
+			let validationFailureStage: BridgeValidationError["stage"] = "json"
 
 			try {
 				const result = await step.do(
@@ -253,6 +254,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<Env, BridgeVali
 					async () => parseBridgeJson(commandResult.stdout)
 				)
 
+				validationFailureStage = "history"
 				validationSummary = await step.do(
 					"validate bridge completion",
 					{ retries: NO_STEP_RETRIES },
@@ -267,21 +269,24 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<Env, BridgeVali
 						})
 				)
 			} catch (error) {
-				if (isBridgeValidationError(error)) {
-					await step.do("notify slack validation failure", async () =>
-						reportSlackFailure({
-							slackBotToken,
-							slackChannelId,
-							instanceId: event.instanceId,
-							routeKey: route.key,
-							stage: error.stage,
-							progress: error.stderr || commandResult.stderr,
-							stdout: error.stdout || commandResult.stdout,
-							message: error.message
-						})
-					)
-					failureReported = true
-				}
+				const stage = isBridgeValidationError(error) ? error.stage : validationFailureStage
+				await step.do("notify slack validation failure", async () =>
+					reportSlackFailure({
+						slackBotToken,
+						slackChannelId,
+						instanceId: event.instanceId,
+						routeKey: route.key,
+						stage,
+						progress: isBridgeValidationError(error)
+							? error.stderr || commandResult.stderr
+							: commandResult.stderr,
+						stdout: isBridgeValidationError(error)
+							? error.stdout || commandResult.stdout
+							: commandResult.stdout,
+						message: error instanceof Error ? error.message : String(error)
+					})
+				)
+				failureReported = true
 
 				throw error
 			}
