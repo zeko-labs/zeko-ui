@@ -1,0 +1,23 @@
+{
+	"name": "@zeko/bridge-validator",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": "./dist/index.js",
+		"./*": "./*"
+	},
+	"dependencies": {
+		"@cloudflare/sandbox": "^0.7.20"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "catalog:",
+		"@types/node": "^25.4.0",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"wrangler": "catalog:"
+	}
+}

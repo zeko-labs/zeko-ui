@@ -1,0 +1,36 @@
+# Bridge Validator Agent Notes
+
+Use [README.md](README.md) for setup and [`packages/bridge-cli/TESTING.md`](../../packages/bridge-cli/TESTING.md) for the manual CLI-side validation instructions.
+
+## What Matters Here
+
+- this service validates only the published high-level `bridge` command
+- a Cloudflare cron trigger creates exactly two workflow instances per schedule
+- each workflow runs the published CLI inside Cloudflare Sandbox
+- failures go to Slack; success stays in Cloudflare Workflow logs
+
+## How To Run
+
+- Run all Moon tasks from the repo root. Inspect `services/bridge-validator/moon.yml` before running tasks.
+- Local gates: `moon run bridge-validator:test -f`, `moon run bridge-validator:typecheck -f`, `moon run bridge-validator:lint -f`, and `moon run bridge-validator:build -f`.
+- Regenerate Cloudflare types only from Wrangler config: `moon run bridge-validator:type-cf -f`. Never manually edit `worker-configuration.d.ts`.
+- Secret sync uses the repo-root `.env`: `services/bridge-validator/scripts/push-secrets-from-env.sh`. It maps `ZEKO_BRIDGE_MINA_PRIVATE_KEY` to the Cloudflare `WALLET_PRIVATE_KEY` secret.
+- Deploy only when explicitly approved: `moon run bridge-validator:deploy`.
+- Trigger exactly one deposit run with `pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config services/bridge-validator/wrangler.jsonc`.
+- Trigger exactly one withdrawal run with `pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config services/bridge-validator/wrangler.jsonc`.
+- The validator must exercise the latest published `@zeko-labs/bridge-cli`; do not pin the CLI version in the service.
+- The validator runs the npm binary through `node "$(readlink -f "$(command -v zeko-bridge)")"` inside the container so it executes the real `cli.js` entrypoint rather than a package-manager shim.
+
+## Parallel Work
+
+If you split work with subagents:
+
+- one subagent owns the Mina-to-Zeko workflow path and tests
+- one subagent owns the Zeko-to-Mina workflow path and tests
+- keep shared route constants, sandbox paths, and Slack formatting in one place so the outputs stay consistent
+
+## Related Docs
+
+- validator setup: [README.md](README.md)
+- public CLI contract: [`packages/bridge-cli/README.md`](../../packages/bridge-cli/README.md)
+- manual real-network bridge validation: [`packages/bridge-cli/TESTING.md`](../../packages/bridge-cli/TESTING.md)

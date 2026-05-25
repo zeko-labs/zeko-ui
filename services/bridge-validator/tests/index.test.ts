@@ -1,0 +1,55 @@
+import { describe, expect, it, vi } from "vitest"
+
+vi.mock("@cloudflare/sandbox", () => ({
+	getSandbox: vi.fn(),
+	Sandbox: class Sandbox {}
+}))
+
+import { BRIDGE_VALIDATOR_SERVICE_INFO } from "../src/service-info"
+import { getRemainingWorkflowTimeMs, WORKFLOW_HARD_TIMEOUT_MS } from "../src/runtime"
+import { BRIDGE_CLI_SPECIFIER } from "../src/validator"
+
+describe("bridge-validator worker", () => {
+	it("exposes runtime metadata from the status surface", () => {
+		expect(BRIDGE_VALIDATOR_SERVICE_INFO).toMatchObject({
+			ok: true,
+			service: "bridge-validator",
+			workflow: "bridge-validator",
+			trigger: {
+				type: "cron",
+				schedule: "0 */6 * * *"
+			},
+			runsPerSchedule: {
+				deposit: "mina-to-zeko",
+				withdrawal: "zeko-to-mina"
+			},
+			limits: {
+				maxRuntimeMinutes: 120
+			}
+		})
+
+		expect(BRIDGE_VALIDATOR_SERVICE_INFO.manualTrigger).toEqual(
+			expect.arrayContaining([
+				'pnpm exec wrangler workflows trigger bridge-validator \'{"routeKey":"mina-to-zeko"}\' --config services/bridge-validator/wrangler.jsonc',
+				'pnpm exec wrangler workflows trigger bridge-validator \'{"routeKey":"zeko-to-mina"}\' --config services/bridge-validator/wrangler.jsonc'
+			])
+		)
+		expect(BRIDGE_CLI_SPECIFIER).toBe("@zeko-labs/bridge-cli@latest")
+	})
+
+	it("caps process runtime to two hours", () => {
+		expect(WORKFLOW_HARD_TIMEOUT_MS).toBe(2 * 60 * 60 * 1000)
+		expect(
+			getRemainingWorkflowTimeMs({
+				startedAtMs: 1_000,
+				nowMs: 1_000 + 30_000
+			})
+		).toBe(WORKFLOW_HARD_TIMEOUT_MS - 30_000)
+		expect(
+			getRemainingWorkflowTimeMs({
+				startedAtMs: 1_000,
+				nowMs: 1_000 + WORKFLOW_HARD_TIMEOUT_MS + 1
+			})
+		).toBe(0)
+	})
+})
