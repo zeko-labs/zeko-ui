@@ -296,13 +296,21 @@ export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidat
 	].join("\n")
 }
 
-export const buildBridgeLaunchCommand = () =>
-	[
-		`nohup bash ${shellQuote(BRIDGE_COMMAND_SCRIPT_PATH)} > ${shellQuote(BRIDGE_COMMAND_PROCESS_LOG_PATH)} 2>&1 &`,
+const buildShellEnvPrefix = (env: Record<string, string>) =>
+	Object.entries(env)
+		.map(([key, value]) => `${key}=${shellQuote(value)}`)
+		.join(" ")
+
+export const buildBridgeLaunchCommand = ({ env = {} }: { env?: Record<string, string> } = {}) => {
+	const envPrefix = buildShellEnvPrefix(env)
+
+	return [
+		`${envPrefix ? `${envPrefix} ` : ""}nohup bash ${shellQuote(BRIDGE_COMMAND_SCRIPT_PATH)} > ${shellQuote(BRIDGE_COMMAND_PROCESS_LOG_PATH)} 2>&1 &`,
 		'pid="$!"',
 		`printf '%s' "$pid" > ${shellQuote(BRIDGE_COMMAND_PID_PATH)}`,
 		"printf '%s' \"$pid\""
 	].join("\n")
+}
 
 export const startBridgeCommand = async ({
 	routeKey,
@@ -325,15 +333,16 @@ export const startBridgeCommand = async ({
 	await sandbox.writeFile(BRIDGE_COMMAND_SCRIPT_PATH, buildBridgeCommandScript({ routeKey }), {
 		encoding: "utf8"
 	})
-	const result = await sandbox.exec(buildBridgeLaunchCommand(), {
+	const env = {
+		...buildBridgeProcessEnv({ walletPrivateKey }),
+		BRIDGE_CALLBACK_TOKEN: callbackToken,
+		BRIDGE_CALLBACK_URL,
+		BRIDGE_WORKFLOW_INSTANCE_ID: instanceId
+	}
+	const result = await sandbox.exec(buildBridgeLaunchCommand({ env }), {
 		cwd: BRIDGE_WORKSPACE_ROOT,
 		timeout: BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS,
-		env: {
-			...buildBridgeProcessEnv({ walletPrivateKey }),
-			BRIDGE_CALLBACK_TOKEN: callbackToken,
-			BRIDGE_CALLBACK_URL,
-			BRIDGE_WORKFLOW_INSTANCE_ID: instanceId
-		}
+		env
 	})
 
 	return {

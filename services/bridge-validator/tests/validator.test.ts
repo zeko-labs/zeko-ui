@@ -139,6 +139,16 @@ describe("bridge validator", () => {
 		expect(buildBridgeLaunchCommand()).toContain(`nohup bash '${BRIDGE_COMMAND_SCRIPT_PATH}'`)
 		expect(buildBridgeLaunchCommand()).toContain(`> '${BRIDGE_COMMAND_PROCESS_LOG_PATH}' 2>&1 &`)
 		expect(buildBridgeLaunchCommand()).toContain(`> '${BRIDGE_COMMAND_PID_PATH}'`)
+		expect(
+			buildBridgeLaunchCommand({
+				env: {
+					BRIDGE_CALLBACK_TOKEN: "callback token",
+					BRIDGE_WORKFLOW_INSTANCE_ID: "workflow-1"
+				}
+			})
+		).toContain(
+			"BRIDGE_CALLBACK_TOKEN='callback token' BRIDGE_WORKFLOW_INSTANCE_ID='workflow-1' nohup"
+		)
 	})
 
 	it("wraps the single bridge CLI command with stdout, stderr, and callback capture", () => {

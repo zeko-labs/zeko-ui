@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T251]
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T05:58:00Z
+updated_at: 2026-05-26T06:14:00Z
 ---
 
 ## Requirements
@@ -16,6 +16,7 @@ updated_at: 2026-05-26T05:58:00Z
 - Expose enough deployed sandbox diagnostics to identify why a Cloudflare Workflow is waiting when the runner process has already exited.
 - Execute the current published `@zeko-labs/bridge-cli@latest` npm binary path at runtime; do not use a cached Docker install or direct `node` entrypoint call that can mask published CLI defects.
 - Add a sandbox watchdog callback so a missing command callback still reaches the Workflow at the 2-hour hard limit.
+- Pass callback and wallet environment variables directly on the detached `nohup` launch command so the background process cannot lose the `sandbox.exec` environment.
 
 ## Test Plan
 
@@ -50,9 +51,14 @@ updated_at: 2026-05-26T05:58:00Z
   - `curl ...&logs=1` after redeploy returned no sandbox files for that old instance, so the old runner failure is no longer diagnosable from sandbox state.
   - Wrangler deploy reused the cached Docker layer for `npm install @zeko-labs/bridge-cli@latest`, proving the previous container image could keep an old latest package.
   - Local `npm --prefer-online exec --package @zeko-labs/bridge-cli@latest -- zeko-bridge --help` returned exit code 0 with no CLI help output for npm latest `0.1.0`, so the current published CLI still no-ops through the npm binary path.
+- Fresh deployed deposit after runtime npm-exec/watchdog deploy:
+  - Workflow instance ID: `d2897e62-7f4b-4fbd-bd73-fb9d6d52fb1f`.
+  - `start bridge validation command` succeeded and returned process ID `155`.
+  - `/bridge-status?...&logs=1` initially reported the process running with empty stdout/stderr, then reported no PID or sandbox files while the Workflow still waited for `bridge-command-complete`.
+  - This indicates the detached process exited before delivering a callback and the sandbox filesystem was not available after process exit.
 
 ## Remaining Work
 
-- Validate, commit, push, and redeploy the runtime npm-exec and watchdog changes.
+- Validate, commit, push, and redeploy the direct launch environment fix.
 - Trigger one new deployed deposit workflow after rollout to prove whether the validator reports the published CLI no-op correctly or reaches a completed deposit.
 - Complete one deployed deposit workflow through Cloudflare and capture `operation_id`, final transaction hash, log path, and reporting output.
