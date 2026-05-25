@@ -38,7 +38,7 @@ def run-step [execute: bool, label: string, command: string] {
 def main [
 	--execute
 ] {
-	let token = (required-env "NORTHFLANK_API_TOKEN")
+	let token = (required-env "NORTHFLANK_TOKEN")
 	let project_id = (required-env "NORTHFLANK_PROJECT_ID")
 	let pipeline_id = (required-env "NORTHFLANK_PIPELINE_ID")
 	let stage = (optional-env "NORTHFLANK_STAGE" "Mainnet")
@@ -58,7 +58,7 @@ def main [
 	print ""
 
 	let payload = $"'{\"name\":\"Bridge mainnet release ($run_number)\",\"description\":\"Triggered by ($repository)@($sha)\",\"overrides\":{\"actions-indexer-mainnet-pipeline-build\":{\"branch\":\"($branch)\",\"sha\":\"($sha)\"}}}'"
-	let token_ref = (shell-env-ref "NORTHFLANK_API_TOKEN")
+	let token_ref = (shell-env-ref "NORTHFLANK_TOKEN")
 	let command = $"curl -fsS -X POST 'https://api.northflank.com/v1/projects/($project_id)/pipelines/($pipeline_id)/release-flows/($stage)/runs' -H \"Authorization: Bearer ($token_ref)\" -H 'Content-Type: application/json' --data ($payload)"
 	run-step $execute "Trigger the reviewed Mainnet release flow" $command
 }

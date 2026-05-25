@@ -3,7 +3,7 @@
 const environment_name = "mainnet"
 const secret_names = [
 	"ACTIONS_MAINNET_DATABASE_URL",
-	"NORTHFLANK_API_TOKEN",
+	"NORTHFLANK_TOKEN",
 	"SENTRY_AUTH_TOKEN",
 	"SENTRY_DSN_PUBLIC",
 	"SENTRY_ORG"
