@@ -640,3 +640,5 @@ Initial log:
 - Removed local fallback values for `GITHUB_REF_NAME`, `GITHUB_SHA`, `GITHUB_RUN_NUMBER`, and `GITHUB_REPOSITORY` from the Northflank release-flow helper; GitHub Actions must provide them, and local dry-runs must pass explicit values.
 - Discovered the current testnet Actions Supabase compute size through the Supabase Management API billing addons endpoint: selected addon `compute_instance`, variant `ci_medium`, CLI project creation size `medium`.
 - Renamed the planned Northflank GitHub environment secret from `NORTHFLANK_API_TOKEN` to `NORTHFLANK_TOKEN` to match the provided local `.env` key and verified that token shape against the Northflank project API without printing the token.
+- Added `services/actions/api/.dev.vars` with non-secret local development values so `wrangler types` preserves the local `ENVIRONMENT=local`/`DATABASE_URL` contract while generated deployment envs still reflect testnet/mainnet Wrangler config.
+- Corrected `services/actions/api/.env.example` to use lowercase `ENVIRONMENT="local"`, matching the existing `db.ts` runtime check.
