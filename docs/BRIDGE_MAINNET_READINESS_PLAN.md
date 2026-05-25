@@ -610,7 +610,7 @@ Initial log:
 - Kept checked-in Actions API Workers Build deploy commands live for testnet and preview; testnet deploy ownership remains Cloudflare Build, not GitHub Actions.
 - Added a concrete `actions-api:typecheck` Moon task because the plan requires that validation target and `moon run actions-api:typecheck` previously resolved as a no-op task.
 - Modeled the new `actions-api:live-e2e-*` tasks with Moon `command`, `args`, and `env` fields rather than inline shell so the live endpoint selection is reviewable in structured task config.
-- Removed the stale local `DATABASE_URL` runtime branch from `services/actions/api/src/db.ts`; local Wrangler execution should use the configured Hyperdrive `localConnectionString`, while migration/test scripts that need `DATABASE_URL` read it outside the Worker runtime.
+- Preserved the local `ENVIRONMENT=local`/`DATABASE_URL` runtime branch in `services/actions/api/src/db.ts` with an explicit local runtime env type, while deployed testnet/mainnet runtimes continue to use Hyperdrive bindings.
 - Did not add inline Docker orchestration to `services/actions/api/moon.yml`; local DB setup remains in the existing explicit `manual-db-test` task.
 - Updated `northflank/actions-indexer/project.json` to keep the existing deployment ref as testnet and add a mainnet deployment ref. The mainnet release flow defaults to branch `main`; GitHub Actions supplies branch/SHA selection through Northflank release-flow `overrides`, not checked-in template arguments.
 - Left `services/actions/indexer/moon.yml` unchanged from `origin/main`; indexer test harness changes are outside this plan.
