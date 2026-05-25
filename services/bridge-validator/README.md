@@ -49,6 +49,14 @@ Operators can inspect whether a live Sandbox command is still running without re
 curl 'https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=<workflow-instance-id>'
 ```
 
+When the Workflow is waiting for the callback or a command has exited without a terminal Workflow state, include `logs=1` to read the runner diagnostics captured inside the Sandbox:
+
+```bash
+curl 'https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=<workflow-instance-id>&logs=1'
+```
+
+The diagnostic response includes the PID file, `/workspace/bridge-validator/process.log`, `/workspace/bridge-validator/stdout.json`, and `/workspace/bridge-validator/stderr.log`, each capped to the last 20,000 bytes.
+
 ## What This Proves
 
 - one unattended deposit through the published CLI on `mina-to-zeko`
@@ -139,9 +147,9 @@ moon run bridge-validator:type-cf
 Helpful commands:
 
 ```bash
-pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config services/bridge-validator/wrangler.jsonc
-pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config services/bridge-validator/wrangler.jsonc
-pnpm exec wrangler workflows instances list bridge-validator --config services/bridge-validator/wrangler.jsonc
+pnpm --dir services/bridge-validator exec wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config wrangler.jsonc
+pnpm --dir services/bridge-validator exec wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config wrangler.jsonc
+pnpm --dir services/bridge-validator exec wrangler workflows instances list bridge-validator --config wrangler.jsonc
 ```
 
 ## Funded Live Bridge Evidence

@@ -4,10 +4,13 @@ import type { BridgeCliJsonResult } from "../src/types"
 import {
 	BRIDGE_CLI_BINARY,
 	BRIDGE_CLI_SPECIFIER,
+	BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES,
 	BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS,
 	BRIDGE_COMMAND_PID_PATH,
 	BRIDGE_COMMAND_PROCESS_LOG_PATH,
 	BRIDGE_COMMAND_SCRIPT_PATH,
+	BRIDGE_COMMAND_STDERR_PATH,
+	BRIDGE_COMMAND_STDOUT_PATH,
 	BRIDGE_COMMAND_TIMEOUT_MS,
 	BRIDGE_CALLBACK_URL,
 	BRIDGE_SANDBOX_OPTIONS,
@@ -18,6 +21,7 @@ import {
 	buildBridgeProcessEnv,
 	buildScheduledValidations,
 	destroyBridgeSandbox,
+	getBridgeCommandDiagnostics,
 	getBridgeCommandStatus,
 	parseBridgeHistoryLog,
 	parseBridgeJson,
@@ -182,6 +186,38 @@ describe("bridge validator", () => {
 			processId: "bridge-validation-command",
 			found: false
 		})
+	})
+
+	it("reads diagnostic tails from the sandbox runner files", async () => {
+		const longProcessLog = `${"x".repeat(BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES)}callback failed`
+		const files = new Map([
+			[BRIDGE_COMMAND_PID_PATH, "1234"],
+			[BRIDGE_COMMAND_PROCESS_LOG_PATH, longProcessLog],
+			[BRIDGE_COMMAND_STDOUT_PATH, '{"success":false}']
+		])
+		const readFile = vi.fn(async (path: string) => {
+			const content = files.get(path)
+			if (content === undefined) {
+				throw new Error("File not found")
+			}
+
+			return {
+				success: true,
+				path,
+				content,
+				timestamp: "2026-03-24T12:00:00Z"
+			}
+		})
+
+		await expect(getBridgeCommandDiagnostics({ sandbox: { readFile } })).resolves.toEqual({
+			pidFile: "1234",
+			processLog: `${"x".repeat(
+				BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES - "callback failed".length
+			)}callback failed`,
+			stdout: '{"success":false}',
+			stderr: null
+		})
+		expect(readFile).toHaveBeenCalledWith(BRIDGE_COMMAND_STDERR_PATH)
 	})
 
 	it("builds fixed scheduled deposit and withdrawal validations", () => {

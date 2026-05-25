@@ -42,11 +42,12 @@ describe("bridge-validator README", () => {
 		expect(readme).toContain("`ZEKO_BRIDGE_MINA_PRIVATE_KEY`")
 		expect(readme).toContain("Cloudflare `WALLET_PRIVATE_KEY` secret")
 		expect(readme).toContain(
-			'pnpm exec wrangler workflows trigger bridge-validator \'{"routeKey":"mina-to-zeko"}\''
+			'pnpm --dir services/bridge-validator exec wrangler workflows trigger bridge-validator \'{"routeKey":"mina-to-zeko"}\' --config wrangler.jsonc'
 		)
 		expect(readme).toContain(
-			'pnpm exec wrangler workflows trigger bridge-validator \'{"routeKey":"zeko-to-mina"}\''
+			'pnpm --dir services/bridge-validator exec wrangler workflows trigger bridge-validator \'{"routeKey":"zeko-to-mina"}\' --config wrangler.jsonc'
 		)
+		expect(readme).toContain("/bridge-status?instanceId=<workflow-instance-id>&logs=1")
 		expect(readme).not.toContain("cliSpecifier")
 	})
 })

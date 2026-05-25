@@ -25,11 +25,19 @@ export const BRIDGE_COMMAND_PID_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validato
 export const BRIDGE_COMMAND_PROCESS_LOG_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/process.log`
 export const BRIDGE_COMMAND_STDOUT_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/stdout.json`
 export const BRIDGE_COMMAND_STDERR_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/stderr.log`
+export const BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES = 20_000
 
 export type BridgeCommandResult = {
 	exitCode: number
 	stdout: string
 	stderr: string
+}
+
+export type BridgeCommandDiagnostics = {
+	pidFile: string | null
+	processLog: string | null
+	stdout: string | null
+	stderr: string | null
 }
 
 export type BridgeHistoryLogEntry = {
@@ -146,6 +154,40 @@ export const getBridgeCommandStatus = async ({
 		status: status.stdout.trim() === "running" ? "running" : "exited"
 	}
 }
+
+const readSandboxFile = async ({
+	sandbox,
+	path
+}: {
+	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "readFile">
+	path: string
+}) => {
+	const file = await sandbox.readFile(path).catch((error) => {
+		if (error instanceof Error) {
+			return null
+		}
+
+		throw error
+	})
+
+	return file?.content ?? null
+}
+
+const tailDiagnosticText = (value: string | null) =>
+	value === null ? null : value.slice(-BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES)
+
+export const getBridgeCommandDiagnostics = async ({
+	sandbox
+}: {
+	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "readFile">
+}): Promise<BridgeCommandDiagnostics> => ({
+	pidFile: tailDiagnosticText(await readSandboxFile({ sandbox, path: BRIDGE_COMMAND_PID_PATH })),
+	processLog: tailDiagnosticText(
+		await readSandboxFile({ sandbox, path: BRIDGE_COMMAND_PROCESS_LOG_PATH })
+	),
+	stdout: tailDiagnosticText(await readSandboxFile({ sandbox, path: BRIDGE_COMMAND_STDOUT_PATH })),
+	stderr: tailDiagnosticText(await readSandboxFile({ sandbox, path: BRIDGE_COMMAND_STDERR_PATH }))
+})
 
 export const buildBridgeCommand = ({ routeKey }: { routeKey: BridgeValidatorRouteKey }) => {
 	const route = getValidatorRoute(routeKey)

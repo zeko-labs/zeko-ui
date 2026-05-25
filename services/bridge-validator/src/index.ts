@@ -10,6 +10,7 @@ import {
 	BridgeValidationError,
 	buildScheduledValidations,
 	destroyBridgeSandbox,
+	getBridgeCommandDiagnostics,
 	getBridgeCommandStatus,
 	getBridgeSandbox,
 	parseBridgeJson,
@@ -391,13 +392,25 @@ const worker: ExportedHandler<Env> = {
 				)
 			}
 
+			const includeLogs =
+				url.searchParams.get("logs") === "1" || url.searchParams.get("logs") === "true"
+			const sandboxId = `bridge-validator-${instanceId}`
+			const sandbox = getBridgeSandbox(env.Sandbox, sandboxId)
+
 			return Response.json({
 				ok: true,
 				instanceId,
-				sandboxId: `bridge-validator-${instanceId}`,
+				sandboxId,
 				command: await getBridgeCommandStatus({
-					sandbox: getBridgeSandbox(env.Sandbox, `bridge-validator-${instanceId}`)
-				})
+					sandbox
+				}),
+				...(includeLogs
+					? {
+							files: await getBridgeCommandDiagnostics({
+								sandbox
+							})
+						}
+					: {})
 			})
 		}
 

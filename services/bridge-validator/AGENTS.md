@@ -16,8 +16,10 @@ Use [README.md](README.md) for setup and [`packages/bridge-cli/TESTING.md`](../.
 - Regenerate Cloudflare types only from Wrangler config: `moon run bridge-validator:type-cf -f`. Never manually edit `worker-configuration.d.ts`.
 - Secret sync uses the repo-root `.env`: `services/bridge-validator/scripts/push-secrets-from-env.sh`. It maps `ZEKO_BRIDGE_MINA_PRIVATE_KEY` to the Cloudflare `WALLET_PRIVATE_KEY` secret.
 - Deploy only when explicitly approved: `moon run bridge-validator:deploy`.
-- Trigger exactly one deposit run with `pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config services/bridge-validator/wrangler.jsonc`.
-- Trigger exactly one withdrawal run with `pnpm exec wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config services/bridge-validator/wrangler.jsonc`.
+- Trigger exactly one deposit run from the repo root with `pnpm --dir services/bridge-validator exec wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config wrangler.jsonc`.
+- Trigger exactly one withdrawal run from the repo root with `pnpm --dir services/bridge-validator exec wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config wrangler.jsonc`.
+- Inspect a running or stuck Workflow with `curl 'https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=<workflow-instance-id>'`.
+- Inspect sandbox runner diagnostics with `curl 'https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=<workflow-instance-id>&logs=1'`.
 - The validator must exercise the latest published `@zeko-labs/bridge-cli`; do not pin the CLI version in the service.
 - The validator runs the npm binary through `node "$(readlink -f "$(command -v zeko-bridge)")"` inside the container so it executes the real `cli.js` entrypoint rather than a package-manager shim.
 
