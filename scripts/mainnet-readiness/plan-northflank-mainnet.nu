@@ -3,7 +3,7 @@
 const mainnet_l1_archive_url = "https://api.minascan.io/archive/mainnet/v1/graphql"
 const mainnet_l2_archive_url = "https://archive.mainnet.zeko.io/graphql"
 const mainnet_outer_pk = "B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC"
-const mainnet_inner_pk = "B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC"
+const mainnet_inner_pk = "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 
 def required-env [name: string] {
 	let value = ($env | get --optional $name)
@@ -42,10 +42,10 @@ def main [
 	let project_id = (required-env "NORTHFLANK_PROJECT_ID")
 	let pipeline_id = (required-env "NORTHFLANK_PIPELINE_ID")
 	let stage = (optional-env "NORTHFLANK_STAGE" "Mainnet")
-	let branch = (optional-env "GITHUB_REF_NAME" "main")
+	let branch = (required-env "GITHUB_REF_NAME")
 	let sha = (required-env "GITHUB_SHA")
-	let run_number = (optional-env "GITHUB_RUN_NUMBER" "manual")
-	let repository = (optional-env "GITHUB_REPOSITORY" "zeko-labs/zeko-ui")
+	let run_number = (required-env "GITHUB_RUN_NUMBER")
+	let repository = (required-env "GITHUB_REPOSITORY")
 
 	print "# Northflank mainnet indexer commands"
 	print (if $execute { "# Executing commands." } else { "# Dry-run. Re-run with --execute after review to mutate Northflank." })
