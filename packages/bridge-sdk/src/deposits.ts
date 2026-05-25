@@ -239,7 +239,11 @@ export async function fetchDepositStateContext(
 }
 
 export function getSortedDepositWitnesses(context: DepositStateContext): OuterWitness[] {
-	return [...context.depositWitnesses].sort((left, right) => left.index - right.index)
+	return [...context.depositWitnesses]
+		.filter((witness) =>
+			context.v2DepositsStartIndex.lessThanOrEqual(UInt32.from(witness.index)).toBoolean()
+		)
+		.sort((left, right) => left.index - right.index)
 }
 
 export function getDepositParamsForWitness(
@@ -431,11 +435,32 @@ export async function fetchDepositFinalizationWitnesses(
 
 		return {
 			ok: false,
-			msg: "Deposit is not finalizable yet; an earlier deposit must be resolved first"
+			msg: getDepositFinalizationWaitReason(context, witness)
 		}
 	}
 
 	return { ok: false, msg: "No finalizable deposit found" }
+}
+
+export function getDepositFinalizationWaitReason(
+	context: DepositStateContext,
+	witness: OuterWitness
+): string {
+	const accepted = context.lastCommit !== null && context.lastCommit.index >= witness.index
+	const confirmed =
+		context.lastCommit?.synchronizedOuterActionStateLength
+			.greaterThan(UInt32.from(witness.index))
+			.toBoolean() ?? false
+
+	if (accepted && !confirmed && context.lastCommit !== null) {
+		const confirmedIndex = safeDecrement(
+			context.lastCommit.synchronizedOuterActionStateLength
+		).toString()
+
+		return `Deposit ${witness.index} is accepted but not confirmed yet; confirmedIndex ${confirmedIndex} is behind deposit index ${witness.index}`
+	}
+
+	return "Deposit is not finalizable yet; an earlier deposit must be resolved first"
 }
 
 export async function finalizeDeposit(

@@ -11,7 +11,7 @@ import { createExplorerUrl } from "./explorer"
 import { minaStringToNanomina, nanominaToMinaString } from "./format"
 import type { ChainRef, Direction, RouteDescriptor } from "./routes"
 import { createSdkConfig } from "./sdk-config"
-import { resolveSignerKeys } from "./signer"
+import { assertSignerMatchesAccount, resolveSignerKeys } from "./signer"
 import { resolveDepositTimeoutSlots } from "./timeouts"
 import type {
 	BridgeCapabilityDiagnostic,
@@ -83,11 +83,13 @@ const getBridge = (route: RouteDescriptor, verbose: boolean) => {
 const resolvePublicKey = ({
 	account,
 	keys,
-	network
+	network,
+	requireSignerMatch = true
 }: {
 	account?: string
 	keys: ReturnType<typeof resolveSignerKeys>
 	network: ChainRef
+	requireSignerMatch?: boolean
 }): { publicKey: PublicKey; signer: PrivateKey } => {
 	const secret = network.startsWith("zeko:")
 		? keys.zeko
@@ -100,7 +102,9 @@ const resolvePublicKey = ({
 	}
 
 	const signer = PrivateKey.fromBase58(secret)
-	const fallback = signer.toPublicKey().toBase58()
+	const fallback = requireSignerMatch
+		? assertSignerMatchesAccount({ account, privateKey: secret, network })
+		: signer.toPublicKey().toBase58()
 	return {
 		publicKey: PublicKey.fromBase58(account ?? fallback),
 		signer
@@ -315,7 +319,8 @@ export const createBridgeAdapter = ({
 			const { publicKey: recipientPublicKey } = resolvePublicKey({
 				account: recipient,
 				keys,
-				network: route.to
+				network: route.to,
+				requireSignerMatch: false
 			})
 			const currentSlot = await bridge.fetchCurrentSlot()
 			const timeout = currentSlot.add(UInt32.from(resolveDepositTimeoutSlots(timeoutSlots)))
@@ -381,7 +386,8 @@ export const createBridgeAdapter = ({
 			const { publicKey: recipientPublicKey } = resolvePublicKey({
 				account: recipient,
 				keys,
-				network: route.to
+				network: route.to,
+				requireSignerMatch: false
 			})
 			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: WITHDRAWAL_SUBMIT_FEE_NANOMINA,
