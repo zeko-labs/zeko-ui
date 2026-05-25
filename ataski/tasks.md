@@ -262,3 +262,4 @@
 - T262 | done | correct-mainnet-readiness-review-findings | done/T262-correct-mainnet-readiness-review-findings.md
 - T263 | done | correct-mainnet-readiness-self-review-findings | done/T263-correct-mainnet-readiness-self-review-findings.md
 - T264 | done | resolve-review-comments-and-deploy-inventory | done/T264-resolve-review-comments-and-deploy-inventory.md
+- T265 | done | clean-up-bridge-sdk-example-helper | done/T265-clean-up-bridge-sdk-example-helper.md
