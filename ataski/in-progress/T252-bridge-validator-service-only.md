@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T251]
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T02:55:01Z
+updated_at: 2026-05-26T03:02:30Z
 ---
 
 ## Requirements
@@ -80,8 +80,14 @@ updated_at: 2026-05-26T02:55:01Z
   - Reran `moon run bridge-validator:typecheck -f`: passed.
   - Reran `moon run bridge-validator:lint -f`: passed.
   - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+- Third `codex-review` finding accepted and fixed:
+  - Pinned `@cloudflare/sandbox` to `0.7.21` and updated the Docker image to `cloudflare/sandbox:0.7.21` so the SDK and container versions match.
+  - Added a regression test that fails if the SDK dependency and Docker image tag drift.
+  - Reran `moon run bridge-validator:test -f`: 5 files passed, 23 tests passed.
+  - Reran `moon run bridge-validator:typecheck -f`: passed.
+  - Reran `moon run bridge-validator:lint -f`: passed.
 
 ## Remaining Work
 
-- Rerun `codex-review` after the timeout/callback-url fixes and address any remaining actionable validator-scope findings.
+- Rerun `codex-review` after the Sandbox version alignment fix and address any remaining actionable validator-scope findings.
 - After PR #184 is published to npm latest, redeploy and trigger one deposit plus one withdrawal through Cloudflare to capture final acceptance evidence.

@@ -10,7 +10,7 @@
 		"./*": "./*"
 	},
 	"dependencies": {
-		"@cloudflare/sandbox": "^0.7.20"
+		"@cloudflare/sandbox": "0.7.21"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "catalog:",

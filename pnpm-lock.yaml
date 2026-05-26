@@ -875,7 +875,7 @@ importers:
   services/bridge-validator:
     dependencies:
       '@cloudflare/sandbox':
-        specifier: ^0.7.20
+        specifier: 0.7.21
         version: 0.7.21
     devDependencies:
       '@cloudflare/vitest-pool-workers':
