@@ -5,6 +5,8 @@
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",
 		"@changesets/cli": "^2.29.8",
+		"@emnapi/core": "catalog:",
+		"@emnapi/runtime": "catalog:",
 		"@moonrepo/cli": "^2.0.3",
 		"dprint": "^0.47.6",
 		"lefthook": "^1.13.6",

@@ -30,6 +30,7 @@
 		"@types/bun": "catalog:",
 		"gql.tada": "catalog:graphql",
 		"tsdown": "catalog:",
+		"typescript": "catalog:",
 		"type-fest": "catalog:",
 		"vitest": "catalog:"
 	}

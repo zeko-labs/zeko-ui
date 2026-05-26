@@ -23,8 +23,9 @@
 		"@csstools/postcss-global-data": "catalog:",
 		"@total-typescript/ts-reset": "catalog:",
 		"nitro-cloudflare-dev": "catalog:",
+		"typescript": "catalog:",
 		"vitest": "catalog:",
-		"vue-tsc": "^3.0.6",
+		"vue-tsc": "^3.3.2",
 		"wrangler": "catalog:"
 	}
 }

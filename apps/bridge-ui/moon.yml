@@ -52,6 +52,22 @@ tasks:
     outputs:
       - .nuxt/
       - .output/
+  profile:
+    command: nuxt build
+    deps:
+      - ^:build
+    args:
+      - --profile
+    env:
+      SENTRY_LOG_LEVEL: debug
+      NODE_OPTIONS: --max-old-space-size=8192
+    inputs:
+      - "@group(sources)"
+    outputs:
+      - .nuxt/
+      - .output/
+    options:
+      cache: false
   dev-cf:
     command: wrangler dev .output/server/index.mjs --assets .output/public/
     preset: server

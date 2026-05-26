@@ -249,3 +249,7 @@
 - T249 | done | resolve-pr171-bot-review-findings | done/T249-resolve-pr171-bot-review-findings.md
 - T250 | done | remove-bridge-legacy-constructor | done/T250-remove-bridge-legacy-constructor.md
 - T252 | done | resolve-pr184-review-followups | done/T252-resolve-pr184-review-followups.md
+- T253 | done | audit-nuxt-usage-and-upgrade-path | done/T253-audit-nuxt-usage-and-upgrade-path.md
+- T254 | done | upgrade-nuxt-toolchain | done/T254-upgrade-nuxt-toolchain.md
+- T255 | done | apply-nuxt-4-4-ui-readiness-improvements | done/T255-apply-nuxt-4-4-ui-readiness-improvements.md
+- T256 | done | validate-and-open-nuxt-4-4-pr | done/T256-validate-and-open-nuxt-4-4-pr.md

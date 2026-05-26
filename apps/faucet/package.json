@@ -17,6 +17,7 @@
 		"@types/bun": "catalog:",
 		"citty": "^0.1.6",
 		"unplugin-swc": "^1.5.5",
+		"typescript": "catalog:",
 		"valibot": "^1.1.0",
 		"vitest": "catalog:",
 		"wrangler": "catalog:"
