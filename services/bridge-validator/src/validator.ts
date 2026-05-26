@@ -11,6 +11,9 @@ export const BRIDGE_CLI_SPECIFIER = "@zeko-labs/bridge-cli@latest"
 export const BRIDGE_SANDBOX_OPTIONS = {
 	keepAlive: true
 } as const
+export const BRIDGE_STATUS_SANDBOX_OPTIONS = {
+	keepAlive: false
+} as const
 export const BRIDGE_WORKSPACE_ROOT = "/workspace"
 export const BRIDGE_CLI_BINARY = "zeko-bridge"
 export const DEFAULT_BRIDGE_AMOUNT = "2"
@@ -130,6 +133,9 @@ export const parseBridgeCommandCallbackPayload = (value: unknown): BridgeCommand
 	return { instanceId, token, exitCode, stdout, stderr }
 }
 
+export const buildBridgeCommandCallbackEventType = (callbackToken: string) =>
+	`${BRIDGE_COMMAND_CALLBACK_EVENT}:${callbackToken}`
+
 export const buildBridgeProcessEnv = ({ walletPrivateKey }: { walletPrivateKey: string }) => ({
 	HOME: `${BRIDGE_WORKSPACE_ROOT}/home`,
 	MINA_PRIVATE_KEY: walletPrivateKey,
@@ -142,6 +148,11 @@ export const getBridgeSandbox = (
 	sandboxNamespace: DurableObjectNamespace<SandboxContainer>,
 	sandboxId: string
 ) => getSandbox(sandboxNamespace, sandboxId, BRIDGE_SANDBOX_OPTIONS)
+
+export const getBridgeStatusSandbox = (
+	sandboxNamespace: DurableObjectNamespace<SandboxContainer>,
+	sandboxId: string
+) => getSandbox(sandboxNamespace, sandboxId, BRIDGE_STATUS_SANDBOX_OPTIONS)
 
 export const destroyBridgeSandbox = async ({
 	sandbox

@@ -2,11 +2,11 @@ import type { ValidatorEnv } from "./env"
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "./service-info"
 import {
 	BRIDGE_CALLBACK_PATH,
-	BRIDGE_COMMAND_CALLBACK_EVENT,
 	BRIDGE_STATUS_PATH,
+	buildBridgeCommandCallbackEventType,
 	getBridgeCommandDiagnostics,
 	getBridgeCommandStatus,
-	getBridgeSandbox,
+	getBridgeStatusSandbox,
 	parseBridgeCommandCallbackPayload
 } from "./validator"
 
@@ -29,7 +29,7 @@ const bridgeStatus = async ({ url, env }: { url: URL; env: ValidatorEnv }) => {
 	}
 
 	const sandboxId = `bridge-validator-${instanceId}`
-	const sandbox = getBridgeSandbox(env.Sandbox, sandboxId)
+	const sandbox = getBridgeStatusSandbox(env.Sandbox, sandboxId)
 
 	return Response.json({
 		ok: true,
@@ -44,7 +44,7 @@ const bridgeCallback = async ({ request, env }: { request: Request; env: Validat
 	const payload = parseBridgeCommandCallbackPayload(await request.json())
 	const instance = await env.BRIDGE_VALIDATION_WORKFLOW.get(payload.instanceId)
 	await instance.sendEvent({
-		type: BRIDGE_COMMAND_CALLBACK_EVENT,
+		type: buildBridgeCommandCallbackEventType(payload.token),
 		payload
 	})
 

@@ -7,8 +7,8 @@ import {
 	type BridgeCommandCallbackPayload,
 	type BridgeValidationSummary,
 	BRIDGE_CLI_SPECIFIER,
-	BRIDGE_COMMAND_CALLBACK_EVENT,
 	BridgeValidationError,
+	buildBridgeCommandCallbackEventType,
 	destroyBridgeSandbox,
 	getBridgeSandbox,
 	parseBridgeJson,
@@ -189,7 +189,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 		const commandEvent = await step.waitForEvent<BridgeCommandCallbackPayload>(
 			"wait for bridge command completion",
 			{
-				type: BRIDGE_COMMAND_CALLBACK_EVENT,
+				type: buildBridgeCommandCallbackEventType(callbackToken),
 				timeout: BRIDGE_COMMAND_CALLBACK_TIMEOUT
 			}
 		)

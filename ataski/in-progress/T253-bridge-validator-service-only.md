@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T06:35:30Z
+updated_at: 2026-05-26T06:44:10Z
 ---
 
 ## Requirements
@@ -109,8 +109,16 @@ updated_at: 2026-05-26T06:35:30Z
   - Reran `moon run bridge-validator:lint -f`: passed.
   - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - Reran `git diff --check`: passed.
+- Next `codex-review` findings accepted and fixed:
+  - Status diagnostics now use a non-keepalive sandbox handle, so mistyped or completed `instanceId` lookups do not create leaked keep-alive sandboxes.
+  - Workflow callbacks now use a per-run event type derived from the callback token, so a wrong-token callback cannot resume and fail the active wait before the real sandbox callback arrives.
+  - Reran `moon run bridge-validator:test -f`: 5 files passed, 27 tests passed.
+  - Reran `moon run bridge-validator:typecheck -f`: passed.
+  - Reran `moon run bridge-validator:lint -f`: passed.
+  - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - Reran `git diff --check`: passed.
 
 ## Remaining Work
 
-- Rerun `codex-review` after the launcher/callback hardening changes and address any remaining actionable validator-scope findings.
+- Rerun `codex-review` after the status/callback hardening changes and address any remaining actionable validator-scope findings.
 - After PR #184 is published to npm latest, redeploy and trigger one deposit plus one withdrawal through Cloudflare to capture final acceptance evidence.
