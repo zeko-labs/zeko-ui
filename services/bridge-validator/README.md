@@ -6,7 +6,7 @@ Cloudflare Worker service that periodically validates the published bridge CLI t
 
 - Cron runs every 6 hours and creates one deposit workflow plus one withdrawal workflow.
 - Each workflow has a 2 hour timeout. The Cloudflare Sandbox command stops after 115 minutes so timeout callbacks have 5 minutes to reach the Workflow before the hard stop.
-- The sandbox runs `zeko-bridge bridge --json --verbose` from the published `@zeko-labs/bridge-cli@latest` package installed in the container image.
+- The sandbox runs `zeko-bridge bridge --json --verbose` from the published bridge CLI package configured in `package.json`.
 - The runner posts one authenticated callback to the Worker when the CLI exits. A sandbox watchdog posts a timeout callback if the command does not finish first.
 - The Workflow validates the CLI JSON result, then reads the CLI history log and confirms the submitted hashes and final transaction hash.
 - Slack receives success or failure output. The sandbox is destroyed in the Workflow `finally` path.
@@ -56,8 +56,8 @@ moon run bridge-validator:trigger-deposit
 moon run bridge-validator:trigger-withdrawal
 moon run bridge-validator:list-instances
 VALIDATOR_INSTANCE_ID=<id> moon run bridge-validator:describe-instance
-VALIDATOR_INSTANCE_ID=<id> VALIDATOR_API_TOKEN=<token> moon run bridge-validator:status
-VALIDATOR_INSTANCE_ID=<id> VALIDATOR_API_TOKEN=<token> moon run bridge-validator:status-logs
+VALIDATOR_INSTANCE_ID=<id> moon run bridge-validator:status
+VALIDATOR_INSTANCE_ID=<id> moon run bridge-validator:status-logs
 ```
 
 ## Acceptance Evidence

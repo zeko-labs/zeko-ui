@@ -1,3 +1,5 @@
+import * as v from "valibot"
+
 export type ValidatorSecretKey =
 	| "WALLET_PRIVATE_KEY"
 	| "SLACK_BOT_TOKEN"
@@ -10,38 +12,23 @@ export type ValidatorEnv = Env &
 	Record<ValidatorSecretKey, string> &
 	Record<ValidatorConfigKey, string>
 
-const normalizeSecret = (value: string | undefined) => {
-	const trimmed = value?.trim()
-	if (!trimmed) {
-		return ""
+const RequiredEnvValueSchema = v.pipe(v.string(), v.trim(), v.minLength(1))
+
+const requireEnvValue = (value: unknown, key: ValidatorSecretKey | ValidatorConfigKey) => {
+	const parsed = v.safeParse(RequiredEnvValueSchema, value)
+	if (!parsed.success) {
+		throw new Error(`Missing required environment variable ${key}`)
 	}
 
-	if (
-		(trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-		(trimmed.startsWith("'") && trimmed.endsWith("'"))
-	) {
-		return trimmed.slice(1, -1).trim()
-	}
-
-	return trimmed
+	return parsed.output
 }
 
 export const requireSecret = (env: ValidatorEnv, key: ValidatorSecretKey) => {
-	const value = normalizeSecret(env[key])
-	if (!value) {
-		throw new Error(`Missing required environment variable ${key}`)
-	}
-
-	return value
+	return requireEnvValue(env[key], key)
 }
 
 export const requireConfig = (env: ValidatorEnv, key: ValidatorConfigKey) => {
-	const value = normalizeSecret(env[key])
-	if (!value) {
-		throw new Error(`Missing required environment variable ${key}`)
-	}
-
-	return value
+	return requireEnvValue(env[key], key)
 }
 
 export const getValidatorSecrets = (env: ValidatorEnv) => ({

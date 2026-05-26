@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T06:44:10Z
+updated_at: 2026-05-26T06:52:56Z
 ---
 
 ## Requirements
@@ -117,8 +117,23 @@ updated_at: 2026-05-26T06:44:10Z
   - Reran `moon run bridge-validator:lint -f`: passed.
   - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - Reran `git diff --check`: passed.
+- User cleanup pass:
+  - Removed token-bearing status command docs; status tasks now read `VALIDATOR_API_TOKEN` from the repo `.env`.
+  - Replaced the Bash secret sync script with Nu scripts for secret sync and status requests.
+  - Removed the README wording test and kept behavior/script/runtime tests.
+  - Moved the bridge CLI package/version into `services/bridge-validator/package.json`; runtime code and Dockerfile now derive from that metadata.
+  - Replaced custom Worker env value trimming/validation with Valibot.
+  - Verified `origin/main...HEAD` includes no `packages/bridge-cli`, `packages/bridge-sdk`, or `.changeset` files.
+  - Reran `nu scripts/sync-secrets.nu --help`: passed.
+  - Reran `nu scripts/status.nu --help`: passed.
+  - Reran `pnpm install`: passed.
+  - Reran `moon run bridge-validator:test -f`: 4 files passed, 26 tests passed.
+  - Reran `moon run bridge-validator:typecheck -f`: passed.
+  - Reran `moon run bridge-validator:lint -f`: passed.
+  - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - Reran `git diff --check`: passed.
 
 ## Remaining Work
 
-- Rerun `codex-review` after the status/callback hardening changes and address any remaining actionable validator-scope findings.
+- Rerun `codex-review` after the cleanup pass and address any remaining actionable validator-scope findings.
 - After PR #184 is published to npm latest, redeploy and trigger one deposit plus one withdrawal through Cloudflare to capture final acceptance evidence.

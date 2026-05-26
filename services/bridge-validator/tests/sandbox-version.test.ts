@@ -6,6 +6,10 @@ import { describe, expect, it } from "vitest"
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const packageJson = JSON.parse(readFileSync(resolve(projectRoot, "package.json"), "utf8")) as {
 	dependencies: Record<string, string>
+	bridgeCli: {
+		package: string
+		version: string
+	}
 }
 const dockerfile = readFileSync(resolve(projectRoot, "Dockerfile"), "utf8")
 
@@ -15,5 +19,15 @@ describe("bridge-validator sandbox runtime", () => {
 
 		expect(sandboxVersion).toMatch(/^\d+\.\d+\.\d+$/)
 		expect(dockerfile).toContain(`FROM docker.io/cloudflare/sandbox:${sandboxVersion}`)
+	})
+
+	it("installs the bridge CLI version configured in package.json", () => {
+		expect(packageJson.bridgeCli).toEqual({
+			package: "@zeko-labs/bridge-cli",
+			version: "latest"
+		})
+		expect(dockerfile).toContain("bridgeCli.package")
+		expect(dockerfile).toContain("bridgeCli.version")
+		expect(dockerfile).not.toContain("@zeko-labs/bridge-cli@latest")
 	})
 })

@@ -4,19 +4,27 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
 const script = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/push-secrets-from-env.sh"),
+	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/sync-secrets.nu"),
+	"utf8"
+)
+const statusScript = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/status.nu"),
 	"utf8"
 )
 
 describe("bridge-validator secret sync script", () => {
 	it("maps required local values into Cloudflare Worker secrets", () => {
-		expect(script).toContain('DEFAULT_ENV_FILE="${REPO_ROOT}/.env"')
-		expect(script).toContain(
-			'DEFAULT_WRANGLER_CONFIG="${REPO_ROOT}/services/bridge-validator/wrangler.jsonc"'
-		)
+		expect(script).toContain("default-env-file")
+		expect(script).toContain("default-wrangler-config")
 		expect(script).toContain("ZEKO_BRIDGE_MINA_PRIVATE_KEY")
-		expect(script).toContain('put_secret "WALLET_PRIVATE_KEY" "$resolved_wallet_private_key"')
-		expect(script).toContain('require_secret "VALIDATOR_API_TOKEN"')
-		expect(script).toContain('put_secret "VALIDATOR_API_TOKEN" "$VALIDATOR_API_TOKEN"')
+		expect(script).toContain('put-secret "WALLET_PRIVATE_KEY"')
+		expect(script).toContain('require-value $values "VALIDATOR_API_TOKEN"')
+		expect(script).toContain('put-secret "VALIDATOR_API_TOKEN"')
+	})
+
+	it("loads the status bearer token from the dotenv file", () => {
+		expect(statusScript).toContain('require-value $values "VALIDATOR_API_TOKEN"')
+		expect(statusScript).toContain("http get --headers")
+		expect(statusScript).not.toContain("$env.VALIDATOR_API_TOKEN")
 	})
 })

@@ -877,6 +877,9 @@ importers:
       '@cloudflare/sandbox':
         specifier: 0.7.21
         version: 0.7.21
+      valibot:
+        specifier: 'catalog:'
+        version: 1.1.0(typescript@5.9.3)
     devDependencies:
       '@cloudflare/vitest-pool-workers':
         specifier: 'catalog:'

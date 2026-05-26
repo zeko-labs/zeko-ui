@@ -9,8 +9,13 @@
 		".": "./dist/index.js",
 		"./*": "./*"
 	},
+	"bridgeCli": {
+		"package": "@zeko-labs/bridge-cli",
+		"version": "latest"
+	},
 	"dependencies": {
-		"@cloudflare/sandbox": "0.7.21"
+		"@cloudflare/sandbox": "0.7.21",
+		"valibot": "catalog:"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "catalog:",

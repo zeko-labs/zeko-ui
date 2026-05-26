@@ -15,6 +15,7 @@ import {
 	BRIDGE_STATUS_SANDBOX_OPTIONS
 } from "../src/validator"
 import { buildValidatorUrl, hasValidBearerToken, type ValidatorEnv } from "../src/env"
+import packageJson from "../package.json"
 
 describe("bridge-validator worker", () => {
 	it("exposes runtime metadata from the status surface", () => {
@@ -43,7 +44,9 @@ describe("bridge-validator worker", () => {
 				"moon run bridge-validator:trigger-withdrawal"
 			])
 		)
-		expect(BRIDGE_CLI_SPECIFIER).toBe("@zeko-labs/bridge-cli@latest")
+		expect(BRIDGE_CLI_SPECIFIER).toBe(
+			`${packageJson.bridgeCli.package}@${packageJson.bridgeCli.version}`
+		)
 	})
 
 	it("caps process runtime to two hours", () => {

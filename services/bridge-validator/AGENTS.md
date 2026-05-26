@@ -18,8 +18,8 @@ Use [README.md](README.md) for setup and [`packages/bridge-cli/TESTING.md`](../.
 - Deploy only when explicitly approved: `moon run bridge-validator:deploy`.
 - Trigger exactly one deposit run with `moon run bridge-validator:trigger-deposit`.
 - Trigger exactly one withdrawal run with `moon run bridge-validator:trigger-withdrawal`.
-- Inspect a running or stuck Workflow with `VALIDATOR_INSTANCE_ID=<id> VALIDATOR_API_TOKEN=<token> moon run bridge-validator:status`.
-- Inspect sandbox runner diagnostics with `VALIDATOR_INSTANCE_ID=<id> VALIDATOR_API_TOKEN=<token> moon run bridge-validator:status-logs`.
+- Inspect a running or stuck Workflow with `VALIDATOR_INSTANCE_ID=<id> moon run bridge-validator:status`. The task reads `VALIDATOR_API_TOKEN` from the repo `.env`.
+- Inspect sandbox runner diagnostics with `VALIDATOR_INSTANCE_ID=<id> moon run bridge-validator:status-logs`. The task reads `VALIDATOR_API_TOKEN` from the repo `.env`.
 - The validator must exercise the latest published `@zeko-labs/bridge-cli`; do not pin the CLI version in the service.
 - The validator invokes `zeko-bridge bridge ...` directly inside the container. Do not replace it with a local workspace package, a pinned version, `npm exec`, or a direct `node` call.
 

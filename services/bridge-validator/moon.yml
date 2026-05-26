@@ -58,7 +58,7 @@ tasks:
     deps:
       - type-cf
   sync-secrets:
-    command: bash scripts/push-secrets-from-env.sh
+    command: nu scripts/sync-secrets.nu
     options:
       cache: false
   trigger-deposit:
@@ -79,12 +79,10 @@ tasks:
     options:
       cache: false
   status:
-    command: >
-      bash -lc 'curl -fsS -H "authorization: Bearer $VALIDATOR_API_TOKEN" "${BRIDGE_VALIDATOR_BASE_URL:-https://bridge-validator.zeko-labs.workers.dev}/bridge-status?instanceId=$VALIDATOR_INSTANCE_ID"'
+    command: nu scripts/status.nu
     options:
       cache: false
   status-logs:
-    command: >
-      bash -lc 'curl -fsS -H "authorization: Bearer $VALIDATOR_API_TOKEN" "${BRIDGE_VALIDATOR_BASE_URL:-https://bridge-validator.zeko-labs.workers.dev}/bridge-status?instanceId=$VALIDATOR_INSTANCE_ID&logs=1"'
+    command: nu scripts/status.nu --logs
     options:
       cache: false

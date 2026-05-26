@@ -6,8 +6,9 @@ import {
 } from "./routes"
 import { WORKFLOW_HARD_TIMEOUT_MS } from "./runtime"
 import type { BridgeCliJsonResult, ScheduledValidation } from "./types"
+import packageJson from "../package.json"
 
-export const BRIDGE_CLI_SPECIFIER = "@zeko-labs/bridge-cli@latest"
+export const BRIDGE_CLI_SPECIFIER = `${packageJson.bridgeCli.package}@${packageJson.bridgeCli.version}`
 export const BRIDGE_SANDBOX_OPTIONS = {
 	keepAlive: true
 } as const
