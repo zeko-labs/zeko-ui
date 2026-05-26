@@ -28,6 +28,8 @@ describe("bridge-validator sandbox runtime", () => {
 		})
 		expect(dockerfile).toContain("bridgeCli.package")
 		expect(dockerfile).toContain("bridgeCli.version")
+		expect(dockerfile).toContain("p.bridgeCli.package + '@' + p.bridgeCli.version")
 		expect(dockerfile).not.toContain("@zeko-labs/bridge-cli@latest")
+		expect(dockerfile).not.toContain("`${p.bridgeCli.package}@${p.bridgeCli.version}`")
 	})
 })

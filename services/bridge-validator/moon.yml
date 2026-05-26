@@ -74,8 +74,7 @@ tasks:
     options:
       cache: false
   describe-instance:
-    command: >
-      bash -lc 'wrangler workflows instances describe bridge-validator "$VALIDATOR_INSTANCE_ID" --config wrangler.jsonc'
+    command: nu scripts/describe-instance.nu
     options:
       cache: false
   status:

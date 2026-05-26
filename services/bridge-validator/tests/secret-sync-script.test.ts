@@ -11,6 +11,14 @@ const statusScript = readFileSync(
 	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/status.nu"),
 	"utf8"
 )
+const describeInstanceScript = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/describe-instance.nu"),
+	"utf8"
+)
+const moonConfig = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), "../moon.yml"),
+	"utf8"
+)
 
 describe("bridge-validator secret sync script", () => {
 	it("maps required local values into Cloudflare Worker secrets", () => {
@@ -26,5 +34,12 @@ describe("bridge-validator secret sync script", () => {
 		expect(statusScript).toContain('require-value $values "VALIDATOR_API_TOKEN"')
 		expect(statusScript).toContain("http get --headers")
 		expect(statusScript).not.toContain("$env.VALIDATOR_API_TOKEN")
+	})
+
+	it("uses Nu scripts for operator workflow diagnostics", () => {
+		expect(describeInstanceScript).toContain("VALIDATOR_INSTANCE_ID")
+		expect(describeInstanceScript).toContain("wrangler workflows instances describe")
+		expect(moonConfig).toContain("command: nu scripts/describe-instance.nu")
+		expect(moonConfig).not.toContain("bash -lc")
 	})
 })
