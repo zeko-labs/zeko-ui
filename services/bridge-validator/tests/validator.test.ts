@@ -4,6 +4,7 @@ import type { BridgeCliJsonResult } from "../src/types"
 import {
 	BRIDGE_CLI_BINARY,
 	BRIDGE_CLI_SPECIFIER,
+	BRIDGE_CALLBACK_SCRIPT_PATH,
 	BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES,
 	BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS,
 	BRIDGE_COMMAND_PID_PATH,
@@ -16,6 +17,7 @@ import {
 	BRIDGE_SANDBOX_OPTIONS,
 	BRIDGE_WORKSPACE_ROOT,
 	buildBridgeCommand,
+	buildBridgeCallbackScript,
 	buildBridgeLaunchCommand,
 	buildBridgeCommandScript,
 	buildBridgeProcessEnv,
@@ -73,9 +75,7 @@ describe("bridge validator", () => {
 		const command = buildBridgeCommand({ routeKey: "mina-to-zeko" })
 
 		expect(command).toContain("timeout -k 30s -s TERM 7200s")
-		expect(command).toContain("npm --prefer-online --cache /workspace/npm-cache exec --yes")
-		expect(command).toContain(`--package '${BRIDGE_CLI_SPECIFIER}'`)
-		expect(command).toContain(`-- ${BRIDGE_CLI_BINARY} 'bridge'`)
+		expect(command).toContain(`${BRIDGE_CLI_BINARY} 'bridge'`)
 		expect(command).toContain("'--from' 'mina:testnet' '--to' 'zeko:testnet'")
 		expect(command).toContain("'--amount' '2' '--json' '--verbose'")
 	})
@@ -110,7 +110,8 @@ describe("bridge validator", () => {
 				sandbox: { setKeepAlive, mkdir, writeFile, exec },
 				walletPrivateKey: "wallet-secret",
 				instanceId: "workflow-1",
-				callbackToken: "callback-token"
+				callbackToken: "callback-token",
+				apiToken: "api-token"
 			})
 		).resolves.toEqual({
 			processId: "1234"
@@ -123,11 +124,17 @@ describe("bridge validator", () => {
 			expect.stringContaining("BRIDGE_WORKFLOW_INSTANCE_ID"),
 			{ encoding: "utf8" }
 		)
+		expect(writeFile).toHaveBeenCalledWith(
+			BRIDGE_CALLBACK_SCRIPT_PATH,
+			expect.stringContaining("BRIDGE_API_TOKEN"),
+			{ encoding: "utf8" }
+		)
 		expect(exec).toHaveBeenCalledWith(expect.stringContaining("nohup bash"), {
 			cwd: BRIDGE_WORKSPACE_ROOT,
 			timeout: BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS,
 			env: {
 				...buildBridgeProcessEnv({ walletPrivateKey: "wallet-secret" }),
+				BRIDGE_API_TOKEN: "api-token",
 				BRIDGE_CALLBACK_TOKEN: "callback-token",
 				BRIDGE_CALLBACK_URL,
 				BRIDGE_WORKFLOW_INSTANCE_ID: "workflow-1"
@@ -155,13 +162,20 @@ describe("bridge validator", () => {
 		const script = buildBridgeCommandScript({ routeKey: "mina-to-zeko" })
 
 		expect(script).toContain("timeout -k 30s -s TERM 7200s")
-		expect(script).toContain("npm --prefer-online --cache /workspace/npm-cache exec --yes")
+		expect(script).toContain(`${BRIDGE_CLI_BINARY} 'bridge'`)
 		expect(script).toContain("stdout.json")
 		expect(script).toContain("stderr.log")
-		expect(script).toContain("fetch(process.env.BRIDGE_CALLBACK_URL")
 		expect(script).toContain("BRIDGE_WORKFLOW_INSTANCE_ID")
+		expect(script).toContain("BRIDGE_API_TOKEN")
 		expect(script).toContain("watchdog_timeout_seconds=7200")
 		expect(script).toContain("bridge validator watchdog timeout")
+	})
+
+	it("posts callbacks with bearer authentication", () => {
+		expect(buildBridgeCallbackScript()).toContain(
+			"authorization: `Bearer ${required('BRIDGE_API_TOKEN')}`"
+		)
+		expect(buildBridgeCallbackScript()).toContain("fetch(required('BRIDGE_CALLBACK_URL')")
 	})
 
 	it("reports bridge command process status without reading bridge logs", async () => {

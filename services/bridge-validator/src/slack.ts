@@ -1,4 +1,6 @@
 import type { BridgeValidatorRoute } from "./routes"
+import { getValidatorRoute } from "./routes"
+import type { BridgeValidationParams } from "./types"
 import type { BridgeValidationSummary } from "./validator"
 
 type FetchLike = typeof fetch
@@ -98,5 +100,87 @@ export const postSlackMessage = async ({
 	const payload = (await response.json()) as { ok?: boolean; error?: string }
 	if (!response.ok || payload.ok !== true) {
 		throw new Error(`Slack notification failed: ${payload.error ?? response.statusText}`)
+	}
+}
+
+export const reportSlackFailure = async ({
+	slackBotToken,
+	slackChannelId,
+	instanceId,
+	routeKey,
+	cliVersion,
+	stage,
+	exitCode,
+	stdout,
+	stderr,
+	message
+}: {
+	slackBotToken: string
+	slackChannelId: string
+	instanceId: string
+	routeKey: BridgeValidationParams["routeKey"]
+	cliVersion: string
+	stage: string
+	exitCode?: number
+	stdout?: string
+	stderr?: string
+	message: string
+}) => {
+	try {
+		await postSlackMessage({
+			token: slackBotToken,
+			channelId: slackChannelId,
+			text: buildSlackFailureMessage({
+				instanceId,
+				route: getValidatorRoute(routeKey),
+				cliVersion,
+				stage,
+				exitCode,
+				stdout,
+				stderr,
+				message
+			})
+		})
+	} catch (error) {
+		console.error(
+			`Bridge validator failure notification failed: ${
+				error instanceof Error ? error.message : String(error)
+			}`
+		)
+	}
+}
+
+export const reportSlackSuccess = async ({
+	slackBotToken,
+	slackChannelId,
+	instanceId,
+	routeKey,
+	cliVersion,
+	summary
+}: {
+	slackBotToken: string
+	slackChannelId: string
+	instanceId: string
+	routeKey: BridgeValidationParams["routeKey"]
+	cliVersion: string
+	summary: BridgeValidationSummary
+}) => {
+	try {
+		await postSlackMessage({
+			token: slackBotToken,
+			channelId: slackChannelId,
+			text: buildSlackSuccessMessage({
+				instanceId,
+				route: getValidatorRoute(routeKey),
+				cliVersion,
+				summary
+			})
+		})
+	} catch (error) {
+		console.error(
+			`Bridge validator success notification failed: ${
+				error instanceof Error ? error.message : String(error)
+			}`
+		)
 	}
 }

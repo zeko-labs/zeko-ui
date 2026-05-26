@@ -6,8 +6,9 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../../.." && pwd)"
 LOCAL_WRANGLER="${REPO_ROOT}/node_modules/.pnpm/node_modules/.bin/wrangler"
 DEFAULT_ENV_FILE="${REPO_ROOT}/.env"
+DEFAULT_WRANGLER_CONFIG="${REPO_ROOT}/services/bridge-validator/wrangler.jsonc"
 ENV_FILE="${1:-$DEFAULT_ENV_FILE}"
-WRANGLER_CONFIG="${2:-services/bridge-validator/wrangler.jsonc}"
+WRANGLER_CONFIG="${2:-$DEFAULT_WRANGLER_CONFIG}"
 
 if [ ! -f "$ENV_FILE" ]; then
 	echo "Env file not found: $ENV_FILE" >&2
@@ -66,6 +67,7 @@ put_secret() {
 
 require_secret "SLACK_BOT_TOKEN"
 require_secret "SLACK_CHANNEL_ID"
+require_secret "VALIDATOR_API_TOKEN"
 
 resolved_wallet_private_key="$(resolve_wallet_private_key)"
 
@@ -73,5 +75,6 @@ put_secret "WALLET_PRIVATE_KEY" "$resolved_wallet_private_key"
 
 put_secret "SLACK_BOT_TOKEN" "$SLACK_BOT_TOKEN"
 put_secret "SLACK_CHANNEL_ID" "$SLACK_CHANNEL_ID"
+put_secret "VALIDATOR_API_TOKEN" "$VALIDATOR_API_TOKEN"
 
 echo "Cloudflare validator secrets synced from $ENV_FILE"

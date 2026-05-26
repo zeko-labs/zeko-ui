@@ -23,11 +23,3 @@ export type ScheduledValidation = {
 	id: string
 	params: BridgeValidationParams
 }
-
-export type BridgeCommandCallbackPayload = {
-	instanceId: string
-	token: string
-	exitCode: number
-	stdout: string
-	stderr: string
-}

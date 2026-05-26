@@ -21,11 +21,13 @@ export const BRIDGE_CALLBACK_PATH = "/bridge-callback"
 export const BRIDGE_STATUS_PATH = "/bridge-status"
 export const BRIDGE_CALLBACK_URL = `https://bridge-validator.zeko-labs.workers.dev${BRIDGE_CALLBACK_PATH}`
 export const BRIDGE_COMMAND_SCRIPT_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/run-bridge.sh`
+export const BRIDGE_CALLBACK_SCRIPT_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/post-callback.mjs`
 export const BRIDGE_COMMAND_PID_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/bridge.pid`
 export const BRIDGE_COMMAND_PROCESS_LOG_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/process.log`
 export const BRIDGE_COMMAND_STDOUT_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/stdout.json`
 export const BRIDGE_COMMAND_STDERR_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/stderr.log`
 export const BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES = 20_000
+export const BRIDGE_COMMAND_CALLBACK_EVENT = "bridge-command-complete"
 
 export type BridgeCommandResult = {
 	exitCode: number
@@ -38,6 +40,14 @@ export type BridgeCommandDiagnostics = {
 	processLog: string | null
 	stdout: string | null
 	stderr: string | null
+}
+
+export type BridgeCommandCallbackPayload = {
+	instanceId: string
+	token: string
+	exitCode: number
+	stdout: string
+	stderr: string
 }
 
 export type BridgeHistoryLogEntry = {
@@ -96,6 +106,25 @@ const requireHistoryHash = (entries: BridgeHistoryLogEntry[], hash: string, labe
 			"history"
 		)
 	}
+}
+
+export const parseBridgeCommandCallbackPayload = (value: unknown): BridgeCommandCallbackPayload => {
+	if (!isRecord(value)) {
+		throw new Error("Bridge command callback payload must be an object")
+	}
+
+	const { instanceId, token, exitCode, stdout, stderr } = value
+	if (
+		typeof instanceId !== "string" ||
+		typeof token !== "string" ||
+		typeof exitCode !== "number" ||
+		typeof stdout !== "string" ||
+		typeof stderr !== "string"
+	) {
+		throw new Error("Bridge command callback payload has invalid fields")
+	}
+
+	return { instanceId, token, exitCode, stdout, stderr }
 }
 
 export const buildBridgeProcessEnv = ({ walletPrivateKey }: { walletPrivateKey: string }) => ({
@@ -208,17 +237,50 @@ export const buildBridgeCommand = ({ routeKey }: { routeKey: BridgeValidatorRout
 
 	return [
 		"set -euo pipefail",
-		"mkdir -p /workspace/home /workspace/cache /workspace/state /workspace/npm-cache",
-		[
-			`timeout -k 30s -s TERM ${timeoutSeconds}s`,
-			"npm --prefer-online --cache /workspace/npm-cache exec --yes",
-			`--package ${shellQuote(BRIDGE_CLI_SPECIFIER)}`,
-			"--",
-			BRIDGE_CLI_BINARY,
-			args
-		].join(" ")
+		"mkdir -p /workspace/home /workspace/cache /workspace/state",
+		`timeout -k 30s -s TERM ${timeoutSeconds}s ${BRIDGE_CLI_BINARY} ${args}`
 	].join("\n")
 }
+
+export const buildBridgeCallbackScript = () =>
+	[
+		"import fs from 'node:fs'",
+		"import { setTimeout as sleep } from 'node:timers/promises'",
+		"const required = (key) => {",
+		"  const value = process.env[key]",
+		"  if (!value) throw new Error(`Missing required environment variable ${key}`)",
+		"  return value",
+		"}",
+		"const readText = (path) => fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : ''",
+		"const stderr = `${readText(required('BRIDGE_STDERR_PATH'))}${process.env.BRIDGE_STDERR_SUFFIX || ''}`",
+		"const payload = {",
+		"  instanceId: required('BRIDGE_WORKFLOW_INSTANCE_ID'),",
+		"  token: required('BRIDGE_CALLBACK_TOKEN'),",
+		"  exitCode: Number(process.env.BRIDGE_EXIT_CODE || 1),",
+		"  stdout: readText(required('BRIDGE_STDOUT_PATH')),",
+		"  stderr: stderr.slice(-20000)",
+		"}",
+		"let lastError = ''",
+		"for (let attempt = 1; attempt <= 5; attempt += 1) {",
+		"  try {",
+		"    const response = await fetch(required('BRIDGE_CALLBACK_URL'), {",
+		"      method: 'POST',",
+		"      headers: {",
+		"        'content-type': 'application/json',",
+		"        authorization: `Bearer ${required('BRIDGE_API_TOKEN')}`",
+		"      },",
+		"      body: JSON.stringify(payload)",
+		"    })",
+		"    if (response.ok) process.exit(0)",
+		"    lastError = `${response.status} ${await response.text()}`",
+		"  } catch (error) {",
+		"    lastError = error instanceof Error ? error.message : String(error)",
+		"  }",
+		"  await sleep(attempt * 1000)",
+		"}",
+		"console.error(`Bridge callback failed: ${lastError}`)",
+		"process.exit(1)"
+	].join("\n")
 
 export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidatorRouteKey }) => {
 	const timeoutSeconds = Math.floor(BRIDGE_COMMAND_TIMEOUT_MS / 1000)
@@ -230,6 +292,7 @@ export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidat
 		': "${BRIDGE_CALLBACK_TOKEN:?missing BRIDGE_CALLBACK_TOKEN}"',
 		': "${BRIDGE_CALLBACK_URL:?missing BRIDGE_CALLBACK_URL}"',
 		': "${BRIDGE_WORKFLOW_INSTANCE_ID:?missing BRIDGE_WORKFLOW_INSTANCE_ID}"',
+		': "${BRIDGE_API_TOKEN:?missing BRIDGE_API_TOKEN}"',
 		`stdout_path=${shellQuote(BRIDGE_COMMAND_STDOUT_PATH)}`,
 		`stderr_path=${shellQuote(BRIDGE_COMMAND_STDERR_PATH)}`,
 		'export BRIDGE_STDOUT_PATH="$stdout_path"',
@@ -239,38 +302,7 @@ export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidat
 		"post_bridge_callback() {",
 		'  local callback_exit_code="$1"',
 		'  local stderr_suffix="${2:-}"',
-		'  BRIDGE_EXIT_CODE="$callback_exit_code" BRIDGE_STDERR_SUFFIX="$stderr_suffix" node --input-type=module <<\'NODE\'',
-		"import fs from 'node:fs'",
-		"import { setTimeout as sleep } from 'node:timers/promises'",
-		"const readText = (path) => fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : ''",
-		"const stderr = `${readText(process.env.BRIDGE_STDERR_PATH)}${process.env.BRIDGE_STDERR_SUFFIX || ''}`",
-		"const payload = {",
-		"  instanceId: process.env.BRIDGE_WORKFLOW_INSTANCE_ID,",
-		"  token: process.env.BRIDGE_CALLBACK_TOKEN,",
-		"  exitCode: Number(process.env.BRIDGE_EXIT_CODE || 1),",
-		"  stdout: readText(process.env.BRIDGE_STDOUT_PATH),",
-		"  stderr: stderr.slice(-20000)",
-		"}",
-		"let lastError = ''",
-		"for (let attempt = 1; attempt <= 5; attempt += 1) {",
-		"  try {",
-		"    const response = await fetch(process.env.BRIDGE_CALLBACK_URL, {",
-		"      method: 'POST',",
-		"      headers: { 'content-type': 'application/json' },",
-		"      body: JSON.stringify(payload)",
-		"    })",
-		"    if (response.ok) {",
-		"      process.exit(0)",
-		"    }",
-		"    lastError = `${response.status} ${await response.text()}`",
-		"  } catch (error) {",
-		"    lastError = error instanceof Error ? error.message : String(error)",
-		"  }",
-		"  await sleep(attempt * 1000)",
-		"}",
-		"console.error(`Bridge callback failed: ${lastError}`)",
-		"process.exit(1)",
-		"NODE",
+		`  BRIDGE_EXIT_CODE="$callback_exit_code" BRIDGE_STDERR_SUFFIX="$stderr_suffix" node ${shellQuote(BRIDGE_CALLBACK_SCRIPT_PATH)}`,
 		"}",
 		`watchdog_timeout_seconds=${timeoutSeconds}`,
 		"(",
@@ -317,7 +349,8 @@ export const startBridgeCommand = async ({
 	sandbox,
 	walletPrivateKey,
 	instanceId,
-	callbackToken
+	callbackToken,
+	apiToken
 }: {
 	routeKey: BridgeValidatorRouteKey
 	sandbox: Pick<
@@ -327,14 +360,19 @@ export const startBridgeCommand = async ({
 	walletPrivateKey: string
 	instanceId: string
 	callbackToken: string
+	apiToken: string
 }) => {
 	await sandbox.setKeepAlive(true)
 	await sandbox.mkdir(`${BRIDGE_WORKSPACE_ROOT}/bridge-validator`, { recursive: true })
 	await sandbox.writeFile(BRIDGE_COMMAND_SCRIPT_PATH, buildBridgeCommandScript({ routeKey }), {
 		encoding: "utf8"
 	})
+	await sandbox.writeFile(BRIDGE_CALLBACK_SCRIPT_PATH, buildBridgeCallbackScript(), {
+		encoding: "utf8"
+	})
 	const env = {
 		...buildBridgeProcessEnv({ walletPrivateKey }),
+		BRIDGE_API_TOKEN: apiToken,
 		BRIDGE_CALLBACK_TOKEN: callbackToken,
 		BRIDGE_CALLBACK_URL,
 		BRIDGE_WORKFLOW_INSTANCE_ID: instanceId

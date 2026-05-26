@@ -22,7 +22,7 @@ export const BRIDGE_VALIDATOR_SERVICE_INFO = {
 		"slack-reporting"
 	],
 	manualTrigger: [
-		'pnpm exec wrangler workflows trigger bridge-validator \'{"routeKey":"mina-to-zeko"}\' --config services/bridge-validator/wrangler.jsonc',
-		'pnpm exec wrangler workflows trigger bridge-validator \'{"routeKey":"zeko-to-mina"}\' --config services/bridge-validator/wrangler.jsonc'
+		"moon run bridge-validator:trigger-deposit",
+		"moon run bridge-validator:trigger-withdrawal"
 	]
 } as const

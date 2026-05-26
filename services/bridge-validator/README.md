@@ -1,183 +1,69 @@
 # Bridge Validator
 
-Internal Cloudflare Worker service for scheduled real-network validation of the published `@zeko-labs/bridge-cli`.
+Cloudflare Worker service that periodically validates the published bridge CLI through the deployed Cloudflare Worker, Workflow, and Sandbox path.
 
-The validator runs the high-level `bridge` command through Cloudflare Workflows and Cloudflare Sandbox. The Workflow owns orchestration, validation, cleanup, and Slack reporting. The Sandbox runs one published CLI command.
+## Runtime Contract
 
-## How It Runs
+- Cron runs every 6 hours and creates one deposit workflow plus one withdrawal workflow.
+- Each workflow starts one Cloudflare Sandbox command with a 2 hour timeout.
+- The sandbox runs `zeko-bridge bridge --json --verbose` from the published `@zeko-labs/bridge-cli@latest` package installed in the container image.
+- The runner posts one authenticated callback to the Worker when the CLI exits. A sandbox watchdog posts a timeout callback if the command does not finish first.
+- The Workflow validates the CLI JSON result, then reads the CLI history log and confirms the submitted hashes and final transaction hash.
+- Slack receives success or failure output. The sandbox is destroyed in the Workflow `finally` path.
 
-1. Cloudflare Cron triggers the Worker every 6 hours via `0 */6 * * *`.
-2. The Worker creates exactly two Workflow runs per tick:
-   - one `mina-to-zeko` deposit validation
-   - one `zeko-to-mina` withdrawal validation
-3. The sandbox command resolves `@zeko-labs/bridge-cli@latest` at runtime with `npm --prefer-online exec` so each validation exercises the current published package instead of a cached container layer.
-4. The Workflow validates a `2` MINA bridge amount. This keeps the validation above the proof-fee edge while still using a small testnet amount.
-5. The Workflow creates a Cloudflare Sandbox, explicitly sets `setKeepAlive(true)` on that sandbox instance, writes a tiny shell runner, and starts one background Sandbox command:
+## What It Proves
 
-```bash
-nohup bash /workspace/bridge-validator/run-bridge.sh >/workspace/bridge-validator/process.log 2>&1 &
-```
+- The deployed Worker/Workflow/Sandbox path can run the latest published `zeko-bridge` command unattended.
+- One real deposit route and one real withdrawal route can reach terminal CLI output.
+- The validator enforces a 2 hour hard stop and cleans up its sandbox.
+- The final transaction hash is present in both the CLI result and the referenced history log.
 
-The runner executes exactly one published bridge CLI invocation:
+## What It Does Not Prove
 
-```bash
-timeout -k 30s -s TERM 7200s npm --prefer-online --cache /workspace/npm-cache exec --yes --package @zeko-labs/bridge-cli@latest -- zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 2 --json --verbose
-```
+- Browser wallet or bridge UI behavior.
+- Cancellation-specific behavior beyond whatever the high-level CLI command performs.
+- All bridge routes, all queue shapes, or unconditional protocol correctness.
 
-The command intentionally uses the published npm binary path. If the latest published CLI entrypoint no-ops, the validator must fail and report that package defect. The command is wrapped with GNU `timeout` so the container process cannot run past the hard 2-hour timeout.
+## Required Secrets
 
-6. Worker secrets are loaded before the bridge command starts:
-   - `WALLET_PRIVATE_KEY`, injected into the process as both `WALLET_PRIVATE_KEY` for the currently published CLI and `MINA_PRIVATE_KEY` for the current source CLI contract
-   - `SLACK_BOT_TOKEN`
-   - `SLACK_CHANNEL_ID`
-7. The start step returns immediately. The Workflow then waits on `step.waitForEvent` for up to two hours.
-8. The runner arms a 2-hour watchdog callback before starting the CLI. If the CLI exits first, the runner posts one callback to `/bridge-callback` with the Workflow instance ID, callback token, exit code, stdout, and stderr. If that callback cannot be delivered, the watchdog remains armed and reports a timeout callback at the hard limit. The Workflow rejects callbacks that do not match the stored token.
-9. If the command exits non-zero, the event times out, or the Workflow step fails, the Workflow reports failure to Slack and destroys the sandbox.
-10. When the command exits successfully, the Workflow:
-
-- parses stdout as the bridge JSON result
-- requires the expected route, direction, amount, submitted transactions, final transaction, and `log_path`
-- reads the JSONL history log from `result.log_path`
-- confirms submitted hashes and final hash against that history log
-
-11. The Workflow posts Slack success or failure messages with the route, resolved CLI version, and validation artifacts.
-12. The Workflow destroys the `keepAlive` sandbox at the end of every run, whether the run succeeded, failed, or timed out.
-
-Operators can inspect whether a live Sandbox command is still running without reading bridge logs:
-
-```bash
-curl 'https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=<workflow-instance-id>'
-```
-
-When the Workflow is waiting for the callback or a command has exited without a terminal Workflow state, include `logs=1` to read the runner diagnostics captured inside the Sandbox:
-
-```bash
-curl 'https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=<workflow-instance-id>&logs=1'
-```
-
-The diagnostic response includes the PID file, `/workspace/bridge-validator/process.log`, `/workspace/bridge-validator/stdout.json`, and `/workspace/bridge-validator/stderr.log`, each capped to the last 20,000 bytes.
-
-## What This Proves
-
-- one unattended deposit through the published CLI on `mina-to-zeko`
-- one unattended withdrawal through the published CLI on `zeko-to-mina`
-- Cloudflare Workflow can run the published CLI through the deployed Sandbox command path
-- unattended runs have a hard stop after 120 minutes instead of leaking forever
-- the published CLI JSON result matches the validator contract
-- the referenced bridge history log matches the submitted hashes and final transaction hash
-- Slack reporting carries the evidence needed for operators
-
-## What This Does Not Prove
-
-- cancellation behavior
-- seeded queue-draining scenarios unless operators intentionally create them
-- browser-wallet or `apps/bridge-ui` behavior
-- unconditional bridge correctness
-
-## Required Environment
-
-Start from [`.env.example`](./.env.example).
-
-Required local secrets:
-
-- `ZEKO_BRIDGE_MINA_PRIVATE_KEY`
+- `WALLET_PRIVATE_KEY`
 - `SLACK_BOT_TOKEN`
 - `SLACK_CHANNEL_ID`
+- `VALIDATOR_API_TOKEN`
 
-`ZEKO_BRIDGE_MINA_PRIVATE_KEY` must belong to a dedicated funded validator wallet. The sync script writes it to the Cloudflare `WALLET_PRIVATE_KEY` secret consumed by the Worker. `WALLET_PRIVATE_KEY` is still accepted as a backward-compatible local alias, but if both local variables are set they must match.
+`VALIDATOR_API_TOKEN` is required as a bearer token for every Worker HTTP endpoint, including `/bridge-status` and `/bridge-callback`.
 
-Do not reuse a wallet with unresolved bridge deposits or withdrawals: the published CLI correctly advances/resolves pending queue state in order, so stale wallet state can consume the full two-hour validator window before the requested validation route reaches a terminal transaction.
-
-Local secret sync defaults to the repo-root [`.env`](../../.env):
-
-```bash
-bash services/bridge-validator/scripts/push-secrets-from-env.sh
-```
-
-Override the env file explicitly if needed:
-
-```bash
-bash services/bridge-validator/scripts/push-secrets-from-env.sh services/bridge-validator/.env services/bridge-validator/wrangler.jsonc
-```
-
-## Merge Gates
-
-```bash
-moon run bridge-validator:type-cf
-moon run bridge-validator:test
-moon run bridge-validator:typecheck
-moon run bridge-validator:lint
-moon run bridge-validator:build
-```
-
-Automated tests must cover:
-
-- `keepAlive` sandbox runtime configuration
-- 2-hour workflow hard timeout and cleanup behavior
-- command construction for the published latest bridge command
-- Sandbox command start and callback capture
-- live Sandbox command status inspection
-- JSON parsing, history-log reading, and bridge result validation
-- Slack success and failure payload generation
-
-If [`wrangler.jsonc`](./wrangler.jsonc) changes, regenerate and commit [`worker-configuration.d.ts`](./worker-configuration.d.ts):
-
-```bash
-moon run bridge-validator:type-cf
-```
-
-## Pre-Deploy Manual Validation
-
-1. Push real Worker secrets to Cloudflare.
-2. Deploy the Worker.
-3. Wait for the container rollout to settle before triggering validation. A run started during rollout can be killed by Cloudflare with `Runtime signalled the container to exit due to a new version rollout`.
-4. Trigger `mina-to-zeko` once.
-5. Trigger `zeko-to-mina` once.
-6. Confirm the deployed Workflow command reaches a terminal result.
-7. Confirm each successful run reports:
-   - Workflow instance ID
-   - `operation_id`
-   - `final_transaction.hash`
-   - `log_path`
-   - validated history-log match
-8. Confirm Slack success messages arrive with the route and final artifacts.
-9. Confirm timed-out or failed runs exit on their own without leaving the Workflow or sandbox alive indefinitely.
-10. If either run cannot complete through the deployed Sandbox command path, treat that as a hard failure of the deployed Cloudflare validator path.
-
-Helpful commands:
-
-```bash
-pnpm --dir services/bridge-validator exec wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config wrangler.jsonc
-pnpm --dir services/bridge-validator exec wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config wrangler.jsonc
-pnpm --dir services/bridge-validator exec wrangler workflows instances list bridge-validator --config wrangler.jsonc
-```
-
-## Funded Live Bridge Evidence
-
-The PR is not validated until operators attach or link evidence for:
-
-- one successful deposit run
-- one successful withdrawal run
-- the Workflow instance ID for both runs
-- the `operation_id` for both runs
-- the final transaction hash for both runs
-- the `log_path` for both runs
-- confirmation that each run completed through the deployed Sandbox command path
-
-## Local Project Commands
+## Commands
 
 Run from the monorepo root:
 
 ```bash
 moon run bridge-validator:type-cf
-moon run bridge-validator:typecheck
 moon run bridge-validator:test
+moon run bridge-validator:typecheck
 moon run bridge-validator:lint
 moon run bridge-validator:build
+moon run bridge-validator:deploy
 ```
 
-For local Worker dev:
+Operator commands:
 
 ```bash
-moon run bridge-validator:dev
+moon run bridge-validator:sync-secrets
+moon run bridge-validator:trigger-deposit
+moon run bridge-validator:trigger-withdrawal
+moon run bridge-validator:list-instances
+VALIDATOR_INSTANCE_ID=<id> moon run bridge-validator:describe-instance
+VALIDATOR_INSTANCE_ID=<id> VALIDATOR_API_TOKEN=<token> moon run bridge-validator:status
+VALIDATOR_INSTANCE_ID=<id> VALIDATOR_API_TOKEN=<token> moon run bridge-validator:status-logs
 ```
+
+## Acceptance Evidence
+
+A deployed run is accepted only when both a deposit and withdrawal complete through Cloudflare and report:
+
+- Workflow instance ID
+- `operation_id`
+- final transaction hash
+- history `log_path`
+- Slack success or failure output

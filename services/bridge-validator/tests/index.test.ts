@@ -8,6 +8,7 @@ vi.mock("@cloudflare/sandbox", () => ({
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "../src/service-info"
 import { getRemainingWorkflowTimeMs, WORKFLOW_HARD_TIMEOUT_MS } from "../src/runtime"
 import { BRIDGE_CLI_SPECIFIER } from "../src/validator"
+import { hasValidBearerToken, type ValidatorEnv } from "../src/env"
 
 describe("bridge-validator worker", () => {
 	it("exposes runtime metadata from the status surface", () => {
@@ -30,8 +31,8 @@ describe("bridge-validator worker", () => {
 
 		expect(BRIDGE_VALIDATOR_SERVICE_INFO.manualTrigger).toEqual(
 			expect.arrayContaining([
-				'pnpm exec wrangler workflows trigger bridge-validator \'{"routeKey":"mina-to-zeko"}\' --config services/bridge-validator/wrangler.jsonc',
-				'pnpm exec wrangler workflows trigger bridge-validator \'{"routeKey":"zeko-to-mina"}\' --config services/bridge-validator/wrangler.jsonc'
+				"moon run bridge-validator:trigger-deposit",
+				"moon run bridge-validator:trigger-withdrawal"
 			])
 		)
 		expect(BRIDGE_CLI_SPECIFIER).toBe("@zeko-labs/bridge-cli@latest")
@@ -51,5 +52,18 @@ describe("bridge-validator worker", () => {
 				nowMs: 1_000 + WORKFLOW_HARD_TIMEOUT_MS + 1
 			})
 		).toBe(0)
+	})
+
+	it("requires bearer authentication for HTTP surfaces", () => {
+		const env = { VALIDATOR_API_TOKEN: "validator-token" } as ValidatorEnv
+		const authorized = new Request("https://bridge-validator.zeko-labs.workers.dev", {
+			headers: { authorization: "Bearer validator-token" }
+		})
+		const unauthorized = new Request("https://bridge-validator.zeko-labs.workers.dev", {
+			headers: { authorization: "Bearer wrong" }
+		})
+
+		expect(hasValidBearerToken({ request: authorized, env })).toBe(true)
+		expect(hasValidBearerToken({ request: unauthorized, env })).toBe(false)
 	})
 })

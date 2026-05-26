@@ -9,9 +9,14 @@ const script = readFileSync(
 )
 
 describe("bridge-validator secret sync script", () => {
-	it("defaults to the root env file and maps the shared bridge key into the Worker secret", () => {
+	it("maps required local values into Cloudflare Worker secrets", () => {
 		expect(script).toContain('DEFAULT_ENV_FILE="${REPO_ROOT}/.env"')
+		expect(script).toContain(
+			'DEFAULT_WRANGLER_CONFIG="${REPO_ROOT}/services/bridge-validator/wrangler.jsonc"'
+		)
 		expect(script).toContain("ZEKO_BRIDGE_MINA_PRIVATE_KEY")
 		expect(script).toContain('put_secret "WALLET_PRIVATE_KEY" "$resolved_wallet_private_key"')
+		expect(script).toContain('require_secret "VALIDATOR_API_TOKEN"')
+		expect(script).toContain('put_secret "VALIDATOR_API_TOKEN" "$VALIDATOR_API_TOKEN"')
 	})
 })

@@ -11,7 +11,6 @@ fileGroups:
     - AGENTS.md
     - CLAUDE.md
     - .env.example
-    - env.d.ts
     - Dockerfile
     - scripts/**/*
     - wrangler.jsonc
@@ -58,3 +57,20 @@ tasks:
     command: wrangler deploy --config wrangler.jsonc
     deps:
       - type-cf
+  sync-secrets:
+    command: bash scripts/push-secrets-from-env.sh
+  trigger-deposit:
+    command: wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config wrangler.jsonc
+  trigger-withdrawal:
+    command: wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config wrangler.jsonc
+  list-instances:
+    command: wrangler workflows instances list bridge-validator --config wrangler.jsonc
+  describe-instance:
+    command: >
+      bash -lc 'wrangler workflows instances describe bridge-validator "$VALIDATOR_INSTANCE_ID" --config wrangler.jsonc'
+  status:
+    command: >
+      bash -lc 'curl -fsS -H "authorization: Bearer $VALIDATOR_API_TOKEN" "https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=$VALIDATOR_INSTANCE_ID"'
+  status-logs:
+    command: >
+      bash -lc 'curl -fsS -H "authorization: Bearer $VALIDATOR_API_TOKEN" "https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=$VALIDATOR_INSTANCE_ID&logs=1"'
