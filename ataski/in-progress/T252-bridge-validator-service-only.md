@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T251]
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T03:02:30Z
+updated_at: 2026-05-26T03:33:50Z
 ---
 
 ## Requirements
@@ -14,7 +14,7 @@ updated_at: 2026-05-26T03:02:30Z
 - Stack PR #150 on the SDK/CLI prerequisite PR so the validator can depend on the fixed published CLI contract without carrying SDK/CLI source changes.
 - Run one scheduled deposit route and one scheduled withdrawal route through the deployed Worker, Workflow, and Sandbox path.
 - Execute the published `zeko-bridge` binary directly from the container, without using local workspace code, direct `node` entrypoints, pinned CLI versions, or `npm exec` as the bridge invocation.
-- Enforce a 2 hour hard stop for the sandbox command and ensure the Workflow reaches a terminal success or failure callback.
+- Enforce a 2 hour Workflow hard stop, keep the sandbox command below that limit, and ensure the Workflow reaches a terminal success or failure callback.
 - Destroy the sandbox on success, validation failure, command failure, callback timeout, or runtime failure.
 - Protect all Worker HTTP surfaces with bearer-token authentication.
 - Keep runtime documentation and Moon tasks aligned with the actual operational commands.
@@ -86,8 +86,16 @@ updated_at: 2026-05-26T03:02:30Z
   - Reran `moon run bridge-validator:test -f`: 5 files passed, 23 tests passed.
   - Reran `moon run bridge-validator:typecheck -f`: passed.
   - Reran `moon run bridge-validator:lint -f`: passed.
+- Fourth `codex-review` finding accepted and fixed:
+  - Disabled Moon cache for live operator tasks so secret syncs, workflow triggers, instance listing, instance describes, and status requests always execute.
+  - Reran `moon run bridge-validator:test -f`: 5 files passed, 23 tests passed.
+  - Reran `moon run bridge-validator:typecheck -f`: passed.
+  - Reran `moon run bridge-validator:lint -f`: passed.
+  - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - Reran `git diff --check`: passed.
+  - Verified `moon task bridge-validator:trigger-deposit --json` reports `"cache": false`.
 
 ## Remaining Work
 
-- Rerun `codex-review` after the Sandbox version alignment fix and address any remaining actionable validator-scope findings.
+- Rerun `codex-review` after the Moon operator task cache fix and address any remaining actionable validator-scope findings.
 - After PR #184 is published to npm latest, redeploy and trigger one deposit plus one withdrawal through Cloudflare to capture final acceptance evidence.

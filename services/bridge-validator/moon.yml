@@ -59,18 +59,32 @@ tasks:
       - type-cf
   sync-secrets:
     command: bash scripts/push-secrets-from-env.sh
+    options:
+      cache: false
   trigger-deposit:
     command: wrangler workflows trigger bridge-validator '{"routeKey":"mina-to-zeko"}' --config wrangler.jsonc
+    options:
+      cache: false
   trigger-withdrawal:
     command: wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config wrangler.jsonc
+    options:
+      cache: false
   list-instances:
     command: wrangler workflows instances list bridge-validator --config wrangler.jsonc
+    options:
+      cache: false
   describe-instance:
     command: >
       bash -lc 'wrangler workflows instances describe bridge-validator "$VALIDATOR_INSTANCE_ID" --config wrangler.jsonc'
+    options:
+      cache: false
   status:
     command: >
       bash -lc 'curl -fsS -H "authorization: Bearer $VALIDATOR_API_TOKEN" "${BRIDGE_VALIDATOR_BASE_URL:-https://bridge-validator.zeko-labs.workers.dev}/bridge-status?instanceId=$VALIDATOR_INSTANCE_ID"'
+    options:
+      cache: false
   status-logs:
     command: >
       bash -lc 'curl -fsS -H "authorization: Bearer $VALIDATOR_API_TOKEN" "${BRIDGE_VALIDATOR_BASE_URL:-https://bridge-validator.zeko-labs.workers.dev}/bridge-status?instanceId=$VALIDATOR_INSTANCE_ID&logs=1"'
+    options:
+      cache: false
