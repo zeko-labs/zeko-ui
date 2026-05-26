@@ -248,5 +248,5 @@
 - T248 | done | merge-main-and-validate-bridge-sdk-refactor | done/T248-merge-main-and-validate-bridge-sdk-refactor.md
 - T249 | done | resolve-pr171-bot-review-findings | done/T249-resolve-pr171-bot-review-findings.md
 - T250 | done | remove-bridge-legacy-constructor | done/T250-remove-bridge-legacy-constructor.md
-- T251 | done | split-sdk-cli-validator-prerequisites | done/T251-split-sdk-cli-validator-prerequisites.md
-- T252 | in-progress | bridge-validator-service-only | in-progress/T252-bridge-validator-service-only.md
+- T252 | done | resolve-pr184-review-followups | done/T252-resolve-pr184-review-followups.md
+- T253 | in-progress | bridge-validator-service-only | in-progress/T253-bridge-validator-service-only.md

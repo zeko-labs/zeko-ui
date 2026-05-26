@@ -47,7 +47,13 @@ You can export it in your shell:
 export MINA_PRIVATE_KEY="<wallet private key>"
 ```
 
-For local CLI use, `zeko-bridge` also loads dotenv files. The recommended file is:
+For local CLI use, `zeko-bridge` also loads dotenv files. Inline or exported environment variables take precedence over every dotenv file:
+
+```bash
+MINA_PRIVATE_KEY="<wallet private key>" zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
+```
+
+For keys that are not already set in the shell, the first readable dotenv file that provides the key wins. The recommended dotenv file is:
 
 ```text
 ~/.zeko/.env
@@ -58,14 +64,6 @@ with:
 ```dotenv
 MINA_PRIVATE_KEY=
 ```
-
-Explicit shell variables take precedence over dotenv files:
-
-```bash
-MINA_PRIVATE_KEY="<wallet private key>" zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
-```
-
-For keys that are not already set in the shell, the first dotenv file that provides the key wins.
 
 ## Commands
 

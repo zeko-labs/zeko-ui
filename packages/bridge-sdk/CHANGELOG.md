@@ -1,5 +1,12 @@
 # @zeko-labs/bridge-sdk
 
+## 0.2.1
+
+### Patch Changes
+
+- 6ce5e75: Harden bridge CLI signer/account validation, dotenv precedence, transient mutation retries, and SDK deposit queue reporting.
+  - @zeko-labs/graphql@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

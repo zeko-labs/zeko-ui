@@ -17,9 +17,9 @@ Follow [TESTING.md](./TESTING.md) exactly for live bridge validation.
 
 Agent-specific rules on top of that procedure:
 
-- Run local source CLI commands from the active PR worktree root, not from another checkout. If secrets live in the main checkout, source that file explicitly and run this worktree's built CLI: `set -a; source /Users/hebilicious/GitHub/zeko-ui/.env; set +a; MINA_PRIVATE_KEY="$ZEKO_BRIDGE_MINA_PRIVATE_KEY" node packages/bridge-cli/dist/cli.js doctor`.
-- Before any live bridge command, run `doctor` and verify the printed `Signer public key` matches the intended `--account`. The CLI rejects mismatched signer/account pairs, but checking `doctor` first prevents wasting a live run on the wrong wallet.
-- Numbered root `.env` keys such as `ZEKO_BRIDGE_MINA_PRIVATE_KEY_0` are wallet inventory entries. Map exactly one selected entry to `MINA_PRIVATE_KEY` for a command instead of overwriting the inventory.
+- Run local source CLI commands from the active PR worktree root, using this worktree's built CLI.
+- Pass `MINA_PRIVATE_KEY` explicitly for one-off wallet selection. Inline/exported environment values take precedence over every dotenv file loaded by the CLI.
+- The CLI rejects an explicit `--account` that does not match the signer public key, so do not add separate preflight checks just to validate that pairing.
 - Do not add the live-validation tasks to CI or any automatic local workflow.
 - Do not copy release/publish workflow detail into the package README. Internal release guidance already lives in `RELEASE.md` and the repo skills.
 

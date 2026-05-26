@@ -1,17 +1,17 @@
 ---
-id: T252
+id: T253
 title: "Bridge validator service only"
 status: in-progress
-blockedBy: [T251]
+blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T03:34:58Z
+updated_at: 2026-05-26T06:24:32Z
 ---
 
 ## Requirements
 
 - Keep PR #150 scoped to the Cloudflare bridge validator service.
-- Stack PR #150 on the SDK/CLI prerequisite PR so the validator can depend on the fixed published CLI contract without carrying SDK/CLI source changes.
+- Target PR #150 at `main`; the SDK/CLI prerequisite PR has merged and must not remain as PR #150's base.
 - Run one scheduled deposit route and one scheduled withdrawal route through the deployed Worker, Workflow, and Sandbox path.
 - Execute the published `zeko-bridge` binary directly from the container, without using local workspace code, direct `node` entrypoints, pinned CLI versions, or `npm exec` as the bridge invocation.
 - Enforce a 2 hour Workflow hard stop, keep the sandbox command below that limit, and ensure the Workflow reaches a terminal success or failure callback.
@@ -40,7 +40,8 @@ updated_at: 2026-05-26T03:34:58Z
 - PR split completed:
   - PR-A: SDK/CLI prerequisite branch `branch/bridge-sdk-cli-validator-base`.
   - PR-B: validator-only branch `branch/feature-web-397-bridge-validator-e2e`.
-  - PR #150 is based on PR-A and contains only `services/bridge-validator`, lockfile, and this Ataski task.
+  - PR #150 was later retargeted to `main` after PR-A merged.
+  - The validator task was renumbered from `T252` to `T253` because `main` already had a separate `T252`.
 - Local service validation passed on the split branch:
   - `moon run bridge-validator:test -f`: 4 files passed.
   - `moon run bridge-validator:typecheck -f`: passed.
