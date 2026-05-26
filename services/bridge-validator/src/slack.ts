@@ -165,22 +165,14 @@ export const reportSlackSuccess = async ({
 	cliVersion: string
 	summary: BridgeValidationSummary
 }) => {
-	try {
-		await postSlackMessage({
-			token: slackBotToken,
-			channelId: slackChannelId,
-			text: buildSlackSuccessMessage({
-				instanceId,
-				route: getValidatorRoute(routeKey),
-				cliVersion,
-				summary
-			})
+	await postSlackMessage({
+		token: slackBotToken,
+		channelId: slackChannelId,
+		text: buildSlackSuccessMessage({
+			instanceId,
+			route: getValidatorRoute(routeKey),
+			cliVersion,
+			summary
 		})
-	} catch (error) {
-		console.error(
-			`Bridge validator success notification failed: ${
-				error instanceof Error ? error.message : String(error)
-			}`
-		)
-	}
+	})
 }

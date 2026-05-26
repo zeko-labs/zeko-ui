@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T251]
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T02:39:24Z
+updated_at: 2026-05-26T02:47:13Z
 ---
 
 ## Requirements
@@ -65,6 +65,13 @@ updated_at: 2026-05-26T02:39:24Z
   - `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `moon run bridge-validator:type-cf -f`: passed and regenerated Worker types from Wrangler config.
   - `git diff --check`: passed.
+- `codex-review` findings accepted and fixed:
+  - Removed secret environment serialization from the sandbox launch command; secrets are passed only through the `sandbox.exec` environment.
+  - Changed Slack success reporting to fail the Workflow if Slack rejects the success message.
+  - Reran `moon run bridge-validator:test -f`: 4 files passed, 21 tests passed.
+  - Reran `moon run bridge-validator:typecheck -f`: passed.
+  - Reran `moon run bridge-validator:lint -f`: passed.
+  - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
 
 ## Remaining Work
 

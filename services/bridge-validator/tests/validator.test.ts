@@ -1,5 +1,9 @@
-import { describe, expect, it, vi } from "vitest"
-import { buildSlackFailureMessage, buildSlackSuccessMessage } from "../src/slack"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import {
+	buildSlackFailureMessage,
+	buildSlackSuccessMessage,
+	reportSlackSuccess
+} from "../src/slack"
 import type { BridgeCliJsonResult } from "../src/types"
 import {
 	BRIDGE_CLI_BINARY,
@@ -38,6 +42,10 @@ vi.mock("@cloudflare/sandbox", () => ({
 	})),
 	Sandbox: class Sandbox {}
 }))
+
+afterEach(() => {
+	vi.unstubAllGlobals()
+})
 
 const completedDepositResult: BridgeCliJsonResult = {
 	success: true,
@@ -146,16 +154,8 @@ describe("bridge validator", () => {
 		expect(buildBridgeLaunchCommand()).toContain(`nohup bash '${BRIDGE_COMMAND_SCRIPT_PATH}'`)
 		expect(buildBridgeLaunchCommand()).toContain(`> '${BRIDGE_COMMAND_PROCESS_LOG_PATH}' 2>&1 &`)
 		expect(buildBridgeLaunchCommand()).toContain(`> '${BRIDGE_COMMAND_PID_PATH}'`)
-		expect(
-			buildBridgeLaunchCommand({
-				env: {
-					BRIDGE_CALLBACK_TOKEN: "callback token",
-					BRIDGE_WORKFLOW_INSTANCE_ID: "workflow-1"
-				}
-			})
-		).toContain(
-			"BRIDGE_CALLBACK_TOKEN='callback token' BRIDGE_WORKFLOW_INSTANCE_ID='workflow-1' nohup"
-		)
+		expect(buildBridgeLaunchCommand()).not.toContain("callback token")
+		expect(buildBridgeLaunchCommand()).not.toContain("wallet-secret")
 	})
 
 	it("wraps the single bridge CLI command with stdout, stderr, and callback capture", () => {
@@ -360,6 +360,35 @@ describe("bridge validator", () => {
 				message: "Bridge command exited non-zero"
 			})
 		).toContain("Bridge command exited non-zero")
+	})
+
+	it("fails successful validation reporting when Slack rejects the success message", async () => {
+		const summary = validateBridgeCompletion({
+			route: {
+				key: "mina-to-zeko",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				route: "mina:testnet->zeko:testnet",
+				direction: "deposit"
+			},
+			result: completedDepositResult,
+			historyLog: completedHistoryLog
+		})
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Response.json({ ok: false, error: "channel_not_found" }))
+		)
+
+		await expect(
+			reportSlackSuccess({
+				slackBotToken: "token",
+				slackChannelId: "channel",
+				instanceId: "workflow-1",
+				routeKey: "mina-to-zeko",
+				cliVersion: BRIDGE_CLI_SPECIFIER,
+				summary
+			})
+		).rejects.toThrow("Slack notification failed: channel_not_found")
 	})
 
 	it("destroys the sandbox", async () => {
