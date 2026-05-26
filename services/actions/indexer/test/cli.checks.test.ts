@@ -45,7 +45,10 @@ describe("sync checks", () => {
 			async ({
 				archiveUrl,
 				variables
-			}: { archiveUrl: string; variables: Record<string, unknown> }) => {
+			}: {
+				archiveUrl: string
+				variables: Record<string, unknown>
+			}) => {
 				if (!("pk" in variables)) {
 					return {
 						error: null,
@@ -94,7 +97,10 @@ describe("sync checks", () => {
 			async ({
 				archiveUrl,
 				variables
-			}: { archiveUrl: string; variables: Record<string, unknown> }) => {
+			}: {
+				archiveUrl: string
+				variables: Record<string, unknown>
+			}) => {
 				if (!("pk" in variables)) {
 					return {
 						error: null,
@@ -142,7 +148,10 @@ describe("sync checks", () => {
 			async ({
 				archiveUrl,
 				variables
-			}: { archiveUrl: string; variables: Record<string, unknown> }) => {
+			}: {
+				archiveUrl: string
+				variables: Record<string, unknown>
+			}) => {
 				if (!("pk" in variables)) {
 					return {
 						error: null,

@@ -319,7 +319,7 @@ const waitForWithdrawal = ({
 		}
 	}
 
-	if (!target || !target.committed) {
+	if (!target?.committed) {
 		return {
 			action: "wait",
 			analysis,

@@ -24,11 +24,11 @@ function ActionConfig(props: ActionConfigProps) {
 
 		props.setConfig((prev) => {
 			const c = current()
-			const startBlock = field === "startBlock" ? num ?? 0 : c?.startBlock ?? 0
+			const startBlock = field === "startBlock" ? (num ?? 0) : (c?.startBlock ?? 0)
 			const endBlock =
 				field === "endBlock"
-					? num ?? Number.POSITIVE_INFINITY
-					: c?.endBlock ?? Number.POSITIVE_INFINITY
+					? (num ?? Number.POSITIVE_INFINITY)
+					: (c?.endBlock ?? Number.POSITIVE_INFINITY)
 
 			if (startBlock === 0 && endBlock === Number.POSITIVE_INFINITY) {
 				const { [props.actionName]: _, ...rest } = prev
@@ -57,7 +57,7 @@ function ActionConfig(props: ActionConfigProps) {
 					<input
 						type="number"
 						value={
-							current()?.endBlock === Number.POSITIVE_INFINITY ? "" : current()?.endBlock ?? ""
+							current()?.endBlock === Number.POSITIVE_INFINITY ? "" : (current()?.endBlock ?? "")
 						}
 						placeholder="∞"
 						onInput={(e) => update("endBlock", e.currentTarget.value)}

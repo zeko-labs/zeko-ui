@@ -125,8 +125,8 @@ export const parseMetrics = (
 	const cpuValues: number[] = []
 	const memoryValues: number[] = []
 	collectValues(raw, "root", cpuValues, memoryValues)
-	const cpuPercent = cpuValues.length ? cpuValues.at(-1) ?? null : null
-	const memoryPercent = memoryValues.length ? memoryValues.at(-1) ?? null : null
+	const cpuPercent = cpuValues.length ? (cpuValues.at(-1) ?? null) : null
+	const memoryPercent = memoryValues.length ? (memoryValues.at(-1) ?? null) : null
 	return { cpuPercent, memoryPercent }
 }
 

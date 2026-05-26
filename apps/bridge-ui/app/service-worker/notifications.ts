@@ -3,7 +3,10 @@ import { QuietError } from "~/errors"
 export const dispatch = async ({
 	title,
 	options
-}: { title: string; options: NotificationOptions }) => {
+}: {
+	title: string
+	options: NotificationOptions
+}) => {
 	checkWebpushCompability()
 	await askPermission()
 	// Get the service worker registration

@@ -2,11 +2,11 @@ taskOptions:
   runInCI: false
 tasks:
   format:
-    command: dprint check
+    script: biome format --files-ignore-unknown=true --html-formatter-enabled=false . && dprint check
     options:
       runInCI: true
   format-fix:
-    command: dprint fmt --allow-no-files
+    script: biome format --files-ignore-unknown=true --html-formatter-enabled=false --write . && dprint fmt --allow-no-files
   test:
     options:
       runInCI: true

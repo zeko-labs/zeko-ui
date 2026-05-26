@@ -56,7 +56,8 @@ const normalizeBlock = (block: number): number => (block === 0 ? 1 : block)
 const createModuleState = (config: ActionConfig): ModuleState => ({
 	startBlock: config.startBlock,
 	lastFetchedBlock: normalizeBlock(config.startBlock),
-	endBlock: config.endBlock === Number.POSITIVE_INFINITY ? undefined : config.endBlock ?? undefined
+	endBlock:
+		config.endBlock === Number.POSITIVE_INFINITY ? undefined : (config.endBlock ?? undefined)
 })
 
 /**

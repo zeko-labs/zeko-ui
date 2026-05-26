@@ -443,7 +443,10 @@ export async function batchInsertActionsAndUpdateLeaderboard(options: {
 export async function batchInsertManualAdjustmentsAndUpdateLeaderboard({
 	db,
 	adjustments
-}: { db: PostgresJsDatabase; adjustments: ManualAdjustmentToInsert[] }) {
+}: {
+	db: PostgresJsDatabase
+	adjustments: ManualAdjustmentToInsert[]
+}) {
 	try {
 		await db.insert(manualAdjustments).values(adjustments)
 

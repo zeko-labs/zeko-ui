@@ -110,10 +110,9 @@ type BridgeFlowInput = {
 type BridgeCommandDeps = {
 	createAdapter?: BridgeAdapterFactory
 	createStore?: (input: { stateDir: string }) => Pick<SessionStore, "save">
-	createLogger?: (input: { logPath: string }) => Pick<
-		ReturnType<typeof createOperationLogger>,
-		"write"
-	>
+	createLogger?: (input: {
+		logPath: string
+	}) => Pick<ReturnType<typeof createOperationLogger>, "write">
 	now?: () => string
 	resolvePaths?: typeof resolveAppPaths
 	generateId?: () => string

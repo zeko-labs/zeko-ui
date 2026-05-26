@@ -2,15 +2,34 @@
 	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
 	"root": true,
 	"files": {
+		"ignoreUnknown": true,
 		"includes": [
+			"*.tsx",
+			"*.jsx",
+			"*.ts",
+			"*.vue",
+			"*.js",
+			"*.json",
+			"*.jsonc",
+			"*.html",
 			"**/*.tsx",
 			"**/*.jsx",
 			"**/*.ts",
 			"**/*.vue",
 			"**/*.js",
+			"**/*.json",
+			"**/*.jsonc",
+			"**/*.html",
+			"!node_modules",
+			"!node_modules/**",
+			"!**/node_modules",
+			"!**/node_modules/**",
 			"!**/worker-configuration.d.ts",
 			"!**/graphql/*.d.ts",
 			"!**/generated/*.d.ts",
+			"!**/generated/*.graphql",
+			"!.agents/**",
+			"!pnpm-lock.yaml",
 			"settings.json"
 		]
 	},
@@ -20,7 +39,7 @@
 		"useIgnoreFile": true
 	},
 	"formatter": {
-		"enabled": false
+		"enabled": true
 	},
 	"assist": {
 		"enabled": true,
@@ -82,6 +101,11 @@
 					},
 					"suspicious": {
 						"noAssignInExpressions": "warn"
+					},
+					"nursery": {
+						"noVueVOnNumberValues": "warn",
+						"useVueNextTickPromise": "warn",
+						"useVueValidVFor": "warn"
 					}
 				}
 			}
@@ -93,7 +117,13 @@
 			"enabled": true
 		},
 		"formatter": {
-			"enabled": true
+			"enabled": false
+		}
+	},
+	"json": {
+		"formatter": {
+			"expand": "auto",
+			"lineWidth": 100
 		}
 	},
 	"javascript": {

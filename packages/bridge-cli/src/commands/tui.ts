@@ -191,8 +191,8 @@ export const createTuiCommand = ({
 				const sessions = await store.list()
 				const focus =
 					targetId !== undefined
-						? sessions.find((session) => session.id === targetId) ?? null
-						: sessions[0] ?? null
+						? (sessions.find((session) => session.id === targetId) ?? null)
+						: (sessions[0] ?? null)
 
 				if (targetId !== undefined && focus === null) {
 					throw new Error(`Operation ${targetId} not found`)

@@ -254,3 +254,4 @@
 - T255 | done | apply-nuxt-4-4-ui-readiness-improvements | done/T255-apply-nuxt-4-4-ui-readiness-improvements.md
 - T256 | done | validate-and-open-nuxt-4-4-pr | done/T256-validate-and-open-nuxt-4-4-pr.md
 - T257 | done | align-native-typecheck-followup | done/T257-align-native-typecheck-followup.md
+- T258 | done | upgrade-tooling-and-biome-format | done/T258-upgrade-tooling-and-biome-format.md

@@ -138,7 +138,7 @@ export async function fetchSyncedOuterActionState(
 		runtime.innerPk
 	)
 
-	if (!innerAccount || !innerAccount.zkappState) throw new Error("Inner account not found")
+	if (!innerAccount?.zkappState) throw new Error("Inner account not found")
 	const [state, length] = innerAccount.zkappState
 	return {
 		state: Field.from(state),
@@ -201,7 +201,7 @@ export async function fetchDepositStateContext(
 	const earliestBeforeState =
 		depositWitnesses.length === 0
 			? null
-			: [...depositWitnesses].sort((a, b) => a.index - b.index).at(0)?.beforeActionState ?? null
+			: ([...depositWitnesses].sort((a, b) => a.index - b.index).at(0)?.beforeActionState ?? null)
 
 	const outerActions =
 		earliestBeforeState === null

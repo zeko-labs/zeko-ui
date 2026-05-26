@@ -53,7 +53,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build package
-        run: pnpm exec moon run bridge-sdk:build
+        run: pnpm exec moon run --no-actions bridge-sdk:build
 
       - name: Pack package
         working-directory: packages/bridge-sdk

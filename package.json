@@ -7,7 +7,7 @@
 		"@changesets/cli": "^2.29.8",
 		"@emnapi/core": "catalog:",
 		"@emnapi/runtime": "catalog:",
-		"@moonrepo/cli": "^2.0.3",
+		"@moonrepo/cli": "^2.2.5",
 		"@typescript/native-preview": "catalog:",
 		"dprint": "^0.47.6",
 		"lefthook": "^1.13.6",

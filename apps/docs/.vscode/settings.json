@@ -2,8 +2,7 @@
 	"editor.defaultFormatter": "dprint.dprint",
 	"editor.formatOnSave": true,
 	"editor.codeActionsOnSave": {
-		"quickfix.biome": "explicit",
-		"source.organizeImports.biome": "explicit"
+		"source.fixAll.biome": "explicit"
 	},
 	"dprint.path": "../../node_modules/.bin/dprint"
 }
