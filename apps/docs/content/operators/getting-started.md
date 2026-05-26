@@ -28,15 +28,21 @@ The core operator roles described in the sources include:
 
 ## Hardware and Software Requirements
 
-:::warning
-WIP: This section is under construction.
-:::
+Requirements depend on which component you operate:
+
+- A standalone DA node can start with the requirements in [Running Zeko's DA Node](./guides/da-layer.md): Linux or macOS, Docker, 1 CPU core, and 2 GB RAM.
+- A full rollup stack needs materially more capacity. The [Launch a Rollup](./guides/launch-rollup.md) guide uses at least 4 CPU cores and 24 GB RAM.
+- Phala deployments should follow [Rollup on Phala](./guides/rollup-on-phala.md), which currently recommends a 32 GB instance for rollup launch.
+- Archive services need persistent disk for PostgreSQL and indexed history. Size storage based on the retention window and expected network activity.
 
 ## Initial Setup and Configuration
 
-:::warning
-WIP: This section is under construction.
-:::
+Use the operator guides as the current runbooks:
+
+- [Launch a Rollup](./guides/launch-rollup.md) for the full sequencer, signer, DA, and prover stack.
+- [Running Zeko's DA Node](./guides/da-layer.md) for a DA-only setup.
+- [Running Zeko's Archive Node](./guides/archive-node.md) for archive indexing on top of a DA node.
+- [Rollup on Phala](./guides/rollup-on-phala.md) for a hosted deployment path.
 
 Setting up Zeko network infrastructure involves building and running specific software components and potentially deploying smart contracts on both L1 and the DA layer.
 

@@ -78,7 +78,6 @@ export default defineConfig({
 				collapsed: true,
 				items: [
 					{ text: "Getting Started", link: "/developers/getting-started" },
-					{ text: "Core Developer Concepts", link: "/developers/core-developer-concepts" },
 					{
 						text: "Guides & Tutorials",
 						link: "/developers/guides-tutorials",
