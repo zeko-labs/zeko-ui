@@ -19,6 +19,27 @@ export type BridgeValidationParams = {
 	routeKey: BridgeValidatorRouteKey
 }
 
+export type BridgeCommandTiming = {
+	startedAtMs: number
+	finishedAtMs: number
+	durationMs: number
+}
+
+export type WorkflowPhaseTiming = {
+	name: string
+	startedAtMs: number
+	finishedAtMs: number
+	durationMs: number
+}
+
+export type BridgeValidationTimings = {
+	workflowStartedAtMs: number
+	workflowFinishedAtMs: number
+	totalDurationMs: number
+	steps: WorkflowPhaseTiming[]
+	command?: BridgeCommandTiming
+}
+
 export type ScheduledValidation = {
 	id: string
 	params: BridgeValidationParams

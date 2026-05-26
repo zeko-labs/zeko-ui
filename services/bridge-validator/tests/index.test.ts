@@ -117,7 +117,12 @@ describe("bridge-validator worker", () => {
 			token: "callback-token",
 			exitCode: 0,
 			stdout: "{}",
-			stderr: ""
+			stderr: "",
+			timing: {
+				startedAtMs: 1_000,
+				finishedAtMs: 2_500,
+				durationMs: 1_500
+			}
 		}
 
 		const response = await handleBridgeValidatorRequest({

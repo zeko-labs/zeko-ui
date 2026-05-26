@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+	buildSlackSuccessBlocks,
 	buildSlackFailureMessage,
 	buildSlackSuccessMessage,
 	reportSlackSuccess
@@ -74,6 +75,31 @@ const completedHistoryLog = [
 	JSON.stringify({ event: "submitted", hash: "hash-finalize" }),
 	JSON.stringify({ event: "completed", hash: "hash-finalize" })
 ].join("\n")
+
+const completedTimings = {
+	workflowStartedAtMs: 1_000,
+	workflowFinishedAtMs: 12_500,
+	totalDurationMs: 11_500,
+	command: {
+		startedAtMs: 2_000,
+		finishedAtMs: 10_250,
+		durationMs: 8_250
+	},
+	steps: [
+		{
+			name: "start bridge validation command",
+			startedAtMs: 1_100,
+			finishedAtMs: 1_400,
+			durationMs: 300
+		},
+		{
+			name: "wait for bridge command completion",
+			startedAtMs: 1_400,
+			finishedAtMs: 10_300,
+			durationMs: 8_900
+		}
+	]
+}
 
 describe("bridge validator", () => {
 	it("uses a keepAlive sandbox and a single published CLI command", () => {
@@ -242,6 +268,10 @@ describe("bridge validator", () => {
 		expect(script).toContain("stderr.log")
 		expect(script).toContain("BRIDGE_WORKFLOW_INSTANCE_ID")
 		expect(script).toContain("BRIDGE_API_TOKEN")
+		expect(script).toContain('BRIDGE_COMMAND_STARTED_AT_MS="$(date +%s%3N)"')
+		expect(script).toContain(
+			'BRIDGE_COMMAND_DURATION_MS="$((BRIDGE_COMMAND_FINISHED_AT_MS - BRIDGE_COMMAND_STARTED_AT_MS))"'
+		)
 		expect(script).toContain("watchdog_timeout_seconds=6900")
 		expect(script).toContain(`callback_grace_seconds=${BRIDGE_COMMAND_CALLBACK_GRACE_SECONDS}`)
 		expect(script).toContain("bridge validator watchdog timeout")
@@ -253,6 +283,9 @@ describe("bridge validator", () => {
 	it("posts callbacks with bearer authentication", () => {
 		expect(buildBridgeCallbackScript()).toContain(
 			"authorization: `Bearer ${required('BRIDGE_API_TOKEN')}`"
+		)
+		expect(buildBridgeCallbackScript()).toContain(
+			"timing: { startedAtMs, finishedAtMs, durationMs }"
 		)
 		expect(buildBridgeCallbackScript()).toContain("fetch(required('BRIDGE_CALLBACK_URL')")
 	})
@@ -369,6 +402,7 @@ describe("bridge validator", () => {
 			amount: "2",
 			finalHash: "hash-finalize",
 			logPath: "/workspace/logs/bridge-op-1.jsonl",
+			finalExplorerUrl: "https://zekoscan.io/testnet/tx/hash-finalize",
 			submittedTransactionCount: 2,
 			queueAdvanceCount: 0,
 			historyEventCount: 3
@@ -417,9 +451,42 @@ describe("bridge validator", () => {
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
-				summary
+				summary,
+				timings: completedTimings
 			})
 		).toContain("hash-finalize")
+		expect(
+			buildSlackSuccessMessage({
+				instanceId: "workflow-1",
+				route: {
+					key: "mina-to-zeko",
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					route: "mina:testnet->zeko:testnet",
+					direction: "deposit"
+				},
+				cliVersion: BRIDGE_CLI_SPECIFIER,
+				summary,
+				timings: completedTimings
+			})
+		).toContain("wait for bridge command completion: 8.900s (8900 ms)")
+		expect(
+			JSON.stringify(
+				buildSlackSuccessBlocks({
+					instanceId: "workflow-1",
+					route: {
+						key: "mina-to-zeko",
+						from: "mina:testnet",
+						to: "zeko:testnet",
+						route: "mina:testnet->zeko:testnet",
+						direction: "deposit"
+					},
+					cliVersion: BRIDGE_CLI_SPECIFIER,
+					summary,
+					timings: completedTimings
+				})
+			)
+		).toContain("<https://zekoscan.io/testnet/tx/hash-finalize|hash-finalize>")
 
 		expect(
 			buildSlackFailureMessage({
@@ -436,9 +503,52 @@ describe("bridge validator", () => {
 				exitCode: 1,
 				stdout: "",
 				stderr: "failed",
-				message: "Bridge command exited non-zero"
+				message: "Bridge command exited non-zero",
+				timings: completedTimings
 			})
 		).toContain("Bridge command exited non-zero")
+	})
+
+	it("posts rich Slack success blocks", async () => {
+		const summary = validateBridgeCompletion({
+			route: {
+				key: "mina-to-zeko",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				route: "mina:testnet->zeko:testnet",
+				direction: "deposit"
+			},
+			result: completedDepositResult,
+			historyLog: completedHistoryLog
+		})
+		const fetchMock = vi.fn(async (..._args: Parameters<typeof fetch>) =>
+			Response.json({ ok: true })
+		)
+		vi.stubGlobal("fetch", fetchMock)
+
+		await reportSlackSuccess({
+			slackBotToken: "token",
+			slackChannelId: "channel",
+			instanceId: "workflow-1",
+			routeKey: "mina-to-zeko",
+			cliVersion: BRIDGE_CLI_SPECIFIER,
+			summary,
+			timings: completedTimings
+		})
+
+		const requestInit = fetchMock.mock.calls[0]?.[1]
+		expect(requestInit).toBeDefined()
+		const body = JSON.parse(String(requestInit?.body))
+		expect(body.blocks[0]).toEqual({
+			type: "header",
+			text: { type: "plain_text", text: "Bridge Validator Passed", emoji: false }
+		})
+		expect(JSON.stringify(body.blocks)).toContain(
+			"<https://zekoscan.io/testnet/tx/hash-finalize|hash-finalize>"
+		)
+		expect(JSON.stringify(body.blocks)).toContain(
+			"wait for bridge command completion: 8.900s (8900 ms)"
+		)
 	})
 
 	it("fails successful validation reporting when Slack rejects the success message", async () => {
@@ -465,7 +575,8 @@ describe("bridge validator", () => {
 				instanceId: "workflow-1",
 				routeKey: "mina-to-zeko",
 				cliVersion: BRIDGE_CLI_SPECIFIER,
-				summary
+				summary,
+				timings: completedTimings
 			})
 		).rejects.toThrow("Slack notification failed: channel_not_found")
 	})

@@ -9,7 +9,7 @@ Cloudflare Worker service that periodically validates the published bridge CLI t
 - The sandbox runs `zeko-bridge bridge --json --verbose` from the published bridge CLI package configured in `package.json`.
 - The runner posts one authenticated callback to the Worker when the CLI exits. A sandbox watchdog posts a timeout callback if the command does not finish first.
 - The Workflow validates the CLI JSON result, then reads the CLI history log and confirms the submitted hashes and final transaction hash.
-- Slack receives success or failure output. The sandbox is destroyed in the Workflow `finally` path.
+- Slack receives rich success or failure output with the workflow duration, bridge command duration, and each measured Workflow step duration. The sandbox is destroyed in the Workflow `finally` path.
 
 ## What It Proves
 
@@ -66,6 +66,6 @@ A deployed run is accepted only when both a deposit and withdrawal complete thro
 
 - Workflow instance ID
 - `operation_id`
-- final transaction hash
+- final transaction hash, linked to the explorer when the CLI reports an explorer URL
 - history `log_path`
-- Slack success or failure output
+- Slack success or failure output with exact millisecond timing for the workflow, bridge command, and reported Workflow steps

@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T06:52:56Z
+updated_at: 2026-05-26T07:56:00Z
 ---
 
 ## Requirements
@@ -132,8 +132,18 @@ updated_at: 2026-05-26T06:52:56Z
   - Reran `moon run bridge-validator:lint -f`: passed.
   - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - Reran `git diff --check`: passed.
+- Slack timing cleanup:
+  - Added sandbox callback timing for the exact published CLI command duration.
+  - Added Workflow phase timings for the measured validation steps and includes them in success, process failure, validation failure, and runtime failure reporting.
+  - Replaced plain Slack-only output with Block Kit success/failure payloads, structured route/evidence fields, final transaction explorer links when available, and exact millisecond durations.
+  - Updated README/AGENTS runtime docs so operators expect Slack success/failure reports with workflow, command, and step timing.
+  - Reran `moon run bridge-validator:test -f`: 4 files passed, 28 tests passed.
+  - Reran `moon run bridge-validator:typecheck -f`: passed.
+  - Reran `moon run bridge-validator:lint -f`: passed.
+  - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - Reran `git diff --check`: passed.
 
 ## Remaining Work
 
-- Rerun `codex-review` after the cleanup pass and address any remaining actionable validator-scope findings.
-- After PR #184 is published to npm latest, redeploy and trigger one deposit plus one withdrawal through Cloudflare to capture final acceptance evidence.
+- No deployment was performed in this pass per user instruction.
+- After the next approved deploy, trigger one deposit plus one withdrawal through Cloudflare to capture final acceptance evidence.

@@ -2,7 +2,7 @@ import { type WorkflowEvent, type WorkflowStep, WorkflowEntrypoint } from "cloud
 import { buildValidatorUrl, getValidatorSecrets, type ValidatorEnv } from "./env"
 import { getValidatorRoute } from "./routes"
 import { reportSlackFailure, reportSlackSuccess } from "./slack"
-import type { BridgeValidationParams } from "./types"
+import type { BridgeValidationParams, BridgeValidationTimings, WorkflowPhaseTiming } from "./types"
 import {
 	type BridgeCommandCallbackPayload,
 	type BridgeValidationSummary,
@@ -28,11 +28,45 @@ const BRIDGE_COMMAND_CALLBACK_TIMEOUT = "2 hours"
 const isBridgeValidationError = (error: unknown): error is BridgeValidationError =>
 	error instanceof BridgeValidationError
 
+const finishTimings = ({
+	workflowStartedAtMs,
+	steps,
+	command,
+	nowMs = Date.now()
+}: {
+	workflowStartedAtMs: number
+	steps: WorkflowPhaseTiming[]
+	command?: BridgeValidationTimings["command"]
+	nowMs?: number
+}): BridgeValidationTimings => ({
+	workflowStartedAtMs,
+	workflowFinishedAtMs: nowMs,
+	totalDurationMs: Math.max(0, nowMs - workflowStartedAtMs),
+	steps,
+	...(command ? { command } : {})
+})
+
 export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 	ValidatorEnv,
 	BridgeValidationParams
 > {
 	override async run(event: WorkflowEvent<BridgeValidationParams>, step: WorkflowStep) {
+		const workflowStartedAtMs = Date.now()
+		const stepTimings: WorkflowPhaseTiming[] = []
+		const timed = async <T>(name: string, action: () => Promise<T>) => {
+			const startedAtMs = Date.now()
+			try {
+				return await action()
+			} finally {
+				const finishedAtMs = Date.now()
+				stepTimings.push({
+					name,
+					startedAtMs,
+					finishedAtMs,
+					durationMs: Math.max(0, finishedAtMs - startedAtMs)
+				})
+			}
+		}
 		const route = getValidatorRoute(event.payload.routeKey)
 		const { walletPrivateKey, slackBotToken, slackChannelId, apiToken } = getValidatorSecrets(
 			this.env
@@ -42,51 +76,64 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 		let failureReported = false
 
 		try {
-			await step.do("record workflow start time", async () => Date.now())
+			await timed("record workflow start time", () =>
+				step.do("record workflow start time", async () => workflowStartedAtMs)
+			)
 			sandboxCreated = true
 
-			const callbackToken = await step.do("create bridge callback token", async () =>
-				crypto.randomUUID()
+			const callbackToken = await timed("create bridge callback token", () =>
+				step.do("create bridge callback token", async () => crypto.randomUUID())
 			)
 
-			await step.do(
-				"start bridge validation command",
-				{ retries: NO_STEP_RETRIES, timeout: BRIDGE_COMMAND_START_STEP_TIMEOUT },
-				async () =>
-					startBridgeCommand({
-						routeKey: route.key,
-						sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId),
-						walletPrivateKey,
-						instanceId: event.instanceId,
-						callbackToken,
-						callbackUrl: buildValidatorUrl({
-							env: this.env,
-							path: "/bridge-callback"
-						}),
-						apiToken
-					})
+			await timed("start bridge validation command", () =>
+				step.do(
+					"start bridge validation command",
+					{ retries: NO_STEP_RETRIES, timeout: BRIDGE_COMMAND_START_STEP_TIMEOUT },
+					async () =>
+						startBridgeCommand({
+							routeKey: route.key,
+							sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId),
+							walletPrivateKey,
+							instanceId: event.instanceId,
+							callbackToken,
+							callbackUrl: buildValidatorUrl({
+								env: this.env,
+								path: "/bridge-callback"
+							}),
+							apiToken
+						})
+				)
 			)
 
-			const commandResult = await this.waitForCommandCallback({
-				step,
-				instanceId: event.instanceId,
-				callbackToken
-			})
+			const commandResult = await timed("wait for bridge command completion", () =>
+				this.waitForCommandCallback({
+					step,
+					instanceId: event.instanceId,
+					callbackToken
+				})
+			)
 
 			if (commandResult.exitCode !== 0) {
-				await step.do("notify slack failure", async () =>
-					reportSlackFailure({
-						slackBotToken,
-						slackChannelId,
-						instanceId: event.instanceId,
-						routeKey: route.key,
-						cliVersion: BRIDGE_CLI_SPECIFIER,
-						stage: "process",
-						exitCode: commandResult.exitCode,
-						stdout: commandResult.stdout,
-						stderr: commandResult.stderr,
-						message: "Bridge command exited non-zero"
-					})
+				await timed("notify slack failure", () =>
+					step.do("notify slack failure", async () =>
+						reportSlackFailure({
+							slackBotToken,
+							slackChannelId,
+							instanceId: event.instanceId,
+							routeKey: route.key,
+							cliVersion: BRIDGE_CLI_SPECIFIER,
+							stage: "process",
+							exitCode: commandResult.exitCode,
+							stdout: commandResult.stdout,
+							stderr: commandResult.stderr,
+							message: "Bridge command exited non-zero",
+							timings: finishTimings({
+								workflowStartedAtMs,
+								steps: stepTimings,
+								command: commandResult.timing
+							})
+						})
+					)
 				)
 				failureReported = true
 
@@ -102,32 +149,47 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 					route,
 					slackBotToken,
 					slackChannelId,
-					instanceId: event.instanceId
+					instanceId: event.instanceId,
+					workflowStartedAtMs,
+					stepTimings,
+					timed
 				})
 			} catch (error) {
 				failureReported = true
 				throw error
 			}
 
-			await step.do("report bridge validation success", async () => {
-				console.log(
-					JSON.stringify({
-						service: "bridge-validator",
-						instanceId: event.instanceId,
-						cliVersion: BRIDGE_CLI_SPECIFIER,
-						...validationSummary
-					})
-				)
+			await timed("report bridge validation success", () =>
+				step.do("report bridge validation success", async () => {
+					console.log(
+						JSON.stringify({
+							service: "bridge-validator",
+							instanceId: event.instanceId,
+							cliVersion: BRIDGE_CLI_SPECIFIER,
+							timings: finishTimings({
+								workflowStartedAtMs,
+								steps: stepTimings,
+								command: commandResult.timing
+							}),
+							...validationSummary
+						})
+					)
 
-				await reportSlackSuccess({
-					slackBotToken,
-					slackChannelId,
-					instanceId: event.instanceId,
-					routeKey: route.key,
-					cliVersion: BRIDGE_CLI_SPECIFIER,
-					summary: validationSummary
+					await reportSlackSuccess({
+						slackBotToken,
+						slackChannelId,
+						instanceId: event.instanceId,
+						routeKey: route.key,
+						cliVersion: BRIDGE_CLI_SPECIFIER,
+						summary: validationSummary,
+						timings: finishTimings({
+							workflowStartedAtMs,
+							steps: stepTimings,
+							command: commandResult.timing
+						})
+					})
 				})
-			})
+			)
 
 			return {
 				route: validationSummary.route,
@@ -136,24 +198,35 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 				operationId: validationSummary.operationId,
 				finalHash: validationSummary.finalHash,
 				logPath: validationSummary.logPath,
+				timings: finishTimings({
+					workflowStartedAtMs,
+					steps: stepTimings,
+					command: commandResult.timing
+				}),
 				submittedTransactionCount: validationSummary.submittedTransactionCount,
 				queueAdvanceCount: validationSummary.queueAdvanceCount,
 				historyEventCount: validationSummary.historyEventCount
 			}
 		} catch (error) {
 			if (!failureReported) {
-				await step.do("notify slack runtime failure", async () =>
-					reportSlackFailure({
-						slackBotToken,
-						slackChannelId,
-						instanceId: event.instanceId,
-						routeKey: route.key,
-						cliVersion: BRIDGE_CLI_SPECIFIER,
-						stage: "runtime",
-						message: `Bridge validator runtime failed: ${
-							error instanceof Error ? error.message : String(error)
-						}`
-					})
+				await timed("notify slack runtime failure", () =>
+					step.do("notify slack runtime failure", async () =>
+						reportSlackFailure({
+							slackBotToken,
+							slackChannelId,
+							instanceId: event.instanceId,
+							routeKey: route.key,
+							cliVersion: BRIDGE_CLI_SPECIFIER,
+							stage: "runtime",
+							message: `Bridge validator runtime failed: ${
+								error instanceof Error ? error.message : String(error)
+							}`,
+							timings: finishTimings({
+								workflowStartedAtMs,
+								steps: stepTimings
+							})
+						})
+					)
 				)
 			}
 
@@ -161,10 +234,12 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 		} finally {
 			if (sandboxCreated) {
 				try {
-					await step.do("destroy bridge sandbox", async () =>
-						destroyBridgeSandbox({
-							sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId)
-						})
+					await timed("destroy bridge sandbox", () =>
+						step.do("destroy bridge sandbox", async () =>
+							destroyBridgeSandbox({
+								sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId)
+							})
+						)
 					)
 				} catch (error) {
 					console.error(
@@ -209,7 +284,10 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 		route,
 		slackBotToken,
 		slackChannelId,
-		instanceId
+		instanceId,
+		workflowStartedAtMs,
+		stepTimings,
+		timed
 	}: {
 		step: WorkflowStep
 		sandboxId: string
@@ -218,42 +296,56 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 		slackBotToken: string
 		slackChannelId: string
 		instanceId: string
+		workflowStartedAtMs: number
+		stepTimings: WorkflowPhaseTiming[]
+		timed: <T>(name: string, action: () => Promise<T>) => Promise<T>
 	}): Promise<BridgeValidationSummary> {
 		let stage: BridgeValidationError["stage"] = "json"
 
 		try {
-			const result = await step.do("parse bridge result", { retries: NO_STEP_RETRIES }, async () =>
-				parseBridgeJson(commandResult.stdout)
+			const result = await timed("parse bridge result", () =>
+				step.do("parse bridge result", { retries: NO_STEP_RETRIES }, async () =>
+					parseBridgeJson(commandResult.stdout)
+				)
 			)
 
 			stage = "history"
-			return await step.do("validate bridge completion", { retries: NO_STEP_RETRIES }, async () =>
-				validateBridgeCompletion({
-					route,
-					result,
-					historyLog: await readBridgeHistoryLog({
-						sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId),
-						logPath: result.log_path
+			return await timed("validate bridge completion", () =>
+				step.do("validate bridge completion", { retries: NO_STEP_RETRIES }, async () =>
+					validateBridgeCompletion({
+						route,
+						result,
+						historyLog: await readBridgeHistoryLog({
+							sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId),
+							logPath: result.log_path
+						})
 					})
-				})
+				)
 			)
 		} catch (error) {
-			await step.do("notify slack validation failure", async () =>
-				reportSlackFailure({
-					slackBotToken,
-					slackChannelId,
-					instanceId,
-					routeKey: route.key,
-					cliVersion: BRIDGE_CLI_SPECIFIER,
-					stage: isBridgeValidationError(error) ? error.stage : stage,
-					stdout: isBridgeValidationError(error)
-						? error.stdout || commandResult.stdout
-						: commandResult.stdout,
-					stderr: isBridgeValidationError(error)
-						? error.stderr || commandResult.stderr
-						: commandResult.stderr,
-					message: error instanceof Error ? error.message : String(error)
-				})
+			await timed("notify slack validation failure", () =>
+				step.do("notify slack validation failure", async () =>
+					reportSlackFailure({
+						slackBotToken,
+						slackChannelId,
+						instanceId,
+						routeKey: route.key,
+						cliVersion: BRIDGE_CLI_SPECIFIER,
+						stage: isBridgeValidationError(error) ? error.stage : stage,
+						stdout: isBridgeValidationError(error)
+							? error.stdout || commandResult.stdout
+							: commandResult.stdout,
+						stderr: isBridgeValidationError(error)
+							? error.stderr || commandResult.stderr
+							: commandResult.stderr,
+						message: error instanceof Error ? error.message : String(error),
+						timings: finishTimings({
+							workflowStartedAtMs,
+							steps: stepTimings,
+							command: commandResult.timing
+						})
+					})
+				)
 			)
 
 			throw error

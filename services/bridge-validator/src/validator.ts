@@ -5,7 +5,7 @@ import {
 	type BridgeValidatorRouteKey
 } from "./routes"
 import { WORKFLOW_HARD_TIMEOUT_MS } from "./runtime"
-import type { BridgeCliJsonResult, ScheduledValidation } from "./types"
+import type { BridgeCliJsonResult, BridgeCommandTiming, ScheduledValidation } from "./types"
 import packageJson from "../package.json"
 
 export const BRIDGE_CLI_SPECIFIER = `${packageJson.bridgeCli.package}@${packageJson.bridgeCli.version}`
@@ -52,6 +52,7 @@ export type BridgeCommandCallbackPayload = {
 	exitCode: number
 	stdout: string
 	stderr: string
+	timing: BridgeCommandTiming
 }
 
 export type BridgeHistoryLogEntry = {
@@ -69,6 +70,7 @@ export type BridgeValidationSummary = {
 	amount: string
 	finalHash: string
 	logPath: string
+	finalExplorerUrl?: string
 	submittedTransactionCount: number
 	queueAdvanceCount: number
 	historyEventCount: number
@@ -117,18 +119,33 @@ export const parseBridgeCommandCallbackPayload = (value: unknown): BridgeCommand
 		throw new Error("Bridge command callback payload must be an object")
 	}
 
-	const { instanceId, token, exitCode, stdout, stderr } = value
+	const { instanceId, token, exitCode, stdout, stderr, timing } = value
 	if (
 		typeof instanceId !== "string" ||
 		typeof token !== "string" ||
 		typeof exitCode !== "number" ||
 		typeof stdout !== "string" ||
-		typeof stderr !== "string"
+		typeof stderr !== "string" ||
+		!isRecord(timing) ||
+		typeof timing.startedAtMs !== "number" ||
+		typeof timing.finishedAtMs !== "number" ||
+		typeof timing.durationMs !== "number"
 	) {
 		throw new Error("Bridge command callback payload has invalid fields")
 	}
 
-	return { instanceId, token, exitCode, stdout, stderr }
+	return {
+		instanceId,
+		token,
+		exitCode,
+		stdout,
+		stderr,
+		timing: {
+			startedAtMs: timing.startedAtMs,
+			finishedAtMs: timing.finishedAtMs,
+			durationMs: timing.durationMs
+		}
+	}
 }
 
 export const buildBridgeCommandCallbackEventType = (callbackToken: string) =>
@@ -263,14 +280,23 @@ export const buildBridgeCallbackScript = () =>
 		"  if (!value) throw new Error(`Missing required environment variable ${key}`)",
 		"  return value",
 		"}",
+		"const readMillis = (key, fallback) => {",
+		"  const value = Number(process.env[key] || fallback)",
+		"  return Number.isFinite(value) ? value : fallback",
+		"}",
 		"const readText = (path) => fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : ''",
 		"const stderr = `${readText(required('BRIDGE_STDERR_PATH'))}${process.env.BRIDGE_STDERR_SUFFIX || ''}`",
+		"const fallbackFinishedAtMs = Date.now()",
+		"const startedAtMs = readMillis('BRIDGE_COMMAND_STARTED_AT_MS', fallbackFinishedAtMs)",
+		"const finishedAtMs = readMillis('BRIDGE_COMMAND_FINISHED_AT_MS', fallbackFinishedAtMs)",
+		"const durationMs = readMillis('BRIDGE_COMMAND_DURATION_MS', Math.max(0, finishedAtMs - startedAtMs))",
 		"const payload = {",
 		"  instanceId: required('BRIDGE_WORKFLOW_INSTANCE_ID'),",
 		"  token: required('BRIDGE_CALLBACK_TOKEN'),",
 		"  exitCode: Number(process.env.BRIDGE_EXIT_CODE || 1),",
 		"  stdout: readText(required('BRIDGE_STDOUT_PATH')),",
-		"  stderr: stderr.slice(-20000)",
+		"  stderr: stderr.slice(-20000),",
+		"  timing: { startedAtMs, finishedAtMs, durationMs }",
 		"}",
 		"let lastError = ''",
 		"for (let attempt = 1; attempt <= 5; attempt += 1) {",
@@ -311,6 +337,7 @@ export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidat
 		'export BRIDGE_STDERR_PATH="$stderr_path"',
 		': > "$stdout_path"',
 		': > "$stderr_path"',
+		'export BRIDGE_COMMAND_STARTED_AT_MS="$(date +%s%3N)"',
 		"post_bridge_callback() {",
 		'  local callback_exit_code="$1"',
 		'  local stderr_suffix="${2:-}"',
@@ -328,6 +355,8 @@ export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidat
 		buildBridgeCommand({ routeKey }),
 		') > "$stdout_path" 2> "$stderr_path"',
 		"exit_code=$?",
+		'export BRIDGE_COMMAND_FINISHED_AT_MS="$(date +%s%3N)"',
+		'export BRIDGE_COMMAND_DURATION_MS="$((BRIDGE_COMMAND_FINISHED_AT_MS - BRIDGE_COMMAND_STARTED_AT_MS))"',
 		'kill "$watchdog_pid" 2>/dev/null || true',
 		'wait "$watchdog_pid" 2>/dev/null || true',
 		"callback_deadline=$((SECONDS + callback_grace_seconds))",
@@ -628,6 +657,9 @@ export const validateBridgeCompletion = ({
 		amount,
 		finalHash,
 		logPath,
+		...(result.final_transaction.explorerUrl
+			? { finalExplorerUrl: result.final_transaction.explorerUrl }
+			: {}),
 		submittedTransactionCount: result.submitted_transactions.length,
 		queueAdvanceCount: historyEntries.filter((entry) => entry.advancedPriorClaim === true).length,
 		historyEventCount: historyEntries.length

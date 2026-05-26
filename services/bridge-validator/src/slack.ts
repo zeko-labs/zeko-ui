@@ -1,11 +1,17 @@
 import type { BridgeValidatorRoute } from "./routes"
 import { getValidatorRoute } from "./routes"
-import type { BridgeValidationParams } from "./types"
+import type { BridgeValidationParams, BridgeValidationTimings } from "./types"
 import type { BridgeValidationSummary } from "./validator"
 
 type FetchLike = typeof fetch
 
 const EXCERPT_LENGTH = 600
+type SlackBlock =
+	| { type: "header"; text: { type: "plain_text"; text: string; emoji?: boolean } }
+	| { type: "divider" }
+	| { type: "section"; text: { type: "mrkdwn"; text: string } }
+	| { type: "section"; fields: Array<{ type: "mrkdwn"; text: string }> }
+	| { type: "context"; elements: Array<{ type: "mrkdwn"; text: string }> }
 
 const excerpt = (value: string): string => {
 	const normalized = value.trim()
@@ -16,6 +22,60 @@ const excerpt = (value: string): string => {
 	return `${normalized.slice(0, EXCERPT_LENGTH)}...`
 }
 
+const escapeMrkdwn = (value: string) =>
+	value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+
+const linked = ({ text, url }: { text: string; url?: string }) =>
+	url ? `<${url}|${escapeMrkdwn(text)}>` : escapeMrkdwn(text)
+
+export const formatDuration = (durationMs: number) => {
+	const safeMs = Math.max(0, Math.round(durationMs))
+	const hours = Math.floor(safeMs / 3_600_000)
+	const minutes = Math.floor((safeMs % 3_600_000) / 60_000)
+	const seconds = Math.floor((safeMs % 60_000) / 1_000)
+	const milliseconds = safeMs % 1_000
+	const parts = [
+		hours > 0 ? `${hours}h` : "",
+		hours > 0 || minutes > 0 ? `${minutes}m` : "",
+		`${seconds}.${milliseconds.toString().padStart(3, "0")}s`
+	].filter(Boolean)
+
+	return `${parts.join(" ")} (${safeMs} ms)`
+}
+
+const formatTimestamp = (timestampMs: number) => new Date(timestampMs).toISOString()
+
+const formatTimingLines = (timings?: BridgeValidationTimings) => {
+	if (!timings) return ["No timing data captured."]
+
+	return [
+		`*Workflow total:* ${formatDuration(timings.totalDurationMs)}`,
+		`*Workflow started:* ${formatTimestamp(timings.workflowStartedAtMs)}`,
+		`*Workflow finished:* ${formatTimestamp(timings.workflowFinishedAtMs)}`,
+		timings.command
+			? `*Bridge command:* ${formatDuration(timings.command.durationMs)} (${formatTimestamp(
+					timings.command.startedAtMs
+				)} -> ${formatTimestamp(timings.command.finishedAtMs)})`
+			: "",
+		...timings.steps.map(
+			(step) => `- ${escapeMrkdwn(step.name)}: ${formatDuration(step.durationMs)}`
+		)
+	].filter(Boolean)
+}
+
+const buildTimingBlock = (timings?: BridgeValidationTimings): SlackBlock => ({
+	type: "section",
+	text: {
+		type: "mrkdwn",
+		text: ["*Timing*", ...formatTimingLines(timings)].join("\n").slice(0, 3000)
+	}
+})
+
+const field = (label: string, value: string) => ({
+	type: "mrkdwn" as const,
+	text: `*${label}*\n${value}`
+})
+
 export const buildSlackFailureMessage = ({
 	route,
 	cliVersion,
@@ -24,7 +84,8 @@ export const buildSlackFailureMessage = ({
 	exitCode,
 	stdout,
 	stderr,
-	message
+	message,
+	timings
 }: {
 	route: BridgeValidatorRoute
 	cliVersion: string
@@ -34,6 +95,7 @@ export const buildSlackFailureMessage = ({
 	stdout?: string
 	stderr?: string
 	message: string
+	timings?: BridgeValidationTimings
 }) =>
 	[
 		`Bridge validator failure`,
@@ -43,6 +105,7 @@ export const buildSlackFailureMessage = ({
 		`Stage: ${stage}`,
 		exitCode === undefined ? "" : `Exit code: ${exitCode}`,
 		`Message: ${message}`,
+		...formatTimingLines(timings),
 		stdout ? `stdout: ${excerpt(stdout)}` : "",
 		stderr ? `stderr: ${excerpt(stderr)}` : ""
 	]
@@ -53,12 +116,14 @@ export const buildSlackSuccessMessage = ({
 	route,
 	cliVersion,
 	instanceId,
-	summary
+	summary,
+	timings
 }: {
 	route: BridgeValidatorRoute
 	cliVersion: string
 	instanceId: string
 	summary: BridgeValidationSummary
+	timings?: BridgeValidationTimings
 }) =>
 	[
 		"Bridge validator success",
@@ -71,18 +136,126 @@ export const buildSlackSuccessMessage = ({
 		`Log path: ${summary.logPath}`,
 		`Submitted transactions: ${summary.submittedTransactionCount}`,
 		`History events: ${summary.historyEventCount}`,
-		`Queued claims advanced: ${summary.queueAdvanceCount}`
+		`Queued claims advanced: ${summary.queueAdvanceCount}`,
+		...formatTimingLines(timings)
 	].join("\n")
+
+export const buildSlackFailureBlocks = ({
+	route,
+	cliVersion,
+	instanceId,
+	stage,
+	exitCode,
+	stdout,
+	stderr,
+	message,
+	timings
+}: {
+	route: BridgeValidatorRoute
+	cliVersion: string
+	instanceId: string
+	stage: string
+	exitCode?: number
+	stdout?: string
+	stderr?: string
+	message: string
+	timings?: BridgeValidationTimings
+}): SlackBlock[] => [
+	{
+		type: "header",
+		text: { type: "plain_text", text: "Bridge Validator Failed", emoji: false }
+	},
+	{
+		type: "context",
+		elements: [{ type: "mrkdwn", text: `Workflow \`${escapeMrkdwn(instanceId)}\`` }]
+	},
+	{
+		type: "section",
+		fields: [
+			field("Route", `\`${route.route}\``),
+			field("Direction", route.direction),
+			field("Stage", `\`${escapeMrkdwn(stage)}\``),
+			field("CLI", `\`${escapeMrkdwn(cliVersion)}\``),
+			...(exitCode === undefined ? [] : [field("Exit code", `\`${exitCode}\``)])
+		]
+	},
+	{ type: "section", text: { type: "mrkdwn", text: `*Failure*\n${escapeMrkdwn(message)}` } },
+	buildTimingBlock(timings),
+	...(stdout || stderr
+		? [
+				{ type: "divider" as const },
+				{
+					type: "section" as const,
+					text: {
+						type: "mrkdwn" as const,
+						text: [
+							stdout ? `*stdout*\n\`\`\`${escapeMrkdwn(excerpt(stdout))}\`\`\`` : "",
+							stderr ? `*stderr*\n\`\`\`${escapeMrkdwn(excerpt(stderr))}\`\`\`` : ""
+						]
+							.filter(Boolean)
+							.join("\n")
+							.slice(0, 3000)
+					}
+				}
+			]
+		: [])
+]
+
+export const buildSlackSuccessBlocks = ({
+	route,
+	cliVersion,
+	instanceId,
+	summary,
+	timings
+}: {
+	route: BridgeValidatorRoute
+	cliVersion: string
+	instanceId: string
+	summary: BridgeValidationSummary
+	timings?: BridgeValidationTimings
+}): SlackBlock[] => [
+	{
+		type: "header",
+		text: { type: "plain_text", text: "Bridge Validator Passed", emoji: false }
+	},
+	{
+		type: "context",
+		elements: [{ type: "mrkdwn", text: `Workflow \`${escapeMrkdwn(instanceId)}\`` }]
+	},
+	{
+		type: "section",
+		fields: [
+			field("Route", `\`${route.route}\``),
+			field("Direction", route.direction),
+			field("Amount", `\`${escapeMrkdwn(summary.amount)}\``),
+			field("CLI", `\`${escapeMrkdwn(cliVersion)}\``),
+			field("Operation", `\`${escapeMrkdwn(summary.operationId)}\``),
+			field("Final transaction", linked({ text: summary.finalHash, url: summary.finalExplorerUrl }))
+		]
+	},
+	{
+		type: "section",
+		fields: [
+			field("History log", `\`${escapeMrkdwn(summary.logPath)}\``),
+			field("Submitted transactions", String(summary.submittedTransactionCount)),
+			field("History events", String(summary.historyEventCount)),
+			field("Queued claims advanced", String(summary.queueAdvanceCount))
+		]
+	},
+	buildTimingBlock(timings)
+]
 
 export const postSlackMessage = async ({
 	token,
 	channelId,
 	text,
+	blocks,
 	fetchImpl = fetch
 }: {
 	token: string
 	channelId: string
 	text: string
+	blocks?: SlackBlock[]
 	fetchImpl?: FetchLike
 }) => {
 	const response = await fetchImpl("https://slack.com/api/chat.postMessage", {
@@ -93,7 +266,8 @@ export const postSlackMessage = async ({
 		},
 		body: JSON.stringify({
 			channel: channelId,
-			text
+			text,
+			...(blocks ? { blocks } : {})
 		})
 	})
 
@@ -113,7 +287,8 @@ export const reportSlackFailure = async ({
 	exitCode,
 	stdout,
 	stderr,
-	message
+	message,
+	timings
 }: {
 	slackBotToken: string
 	slackChannelId: string
@@ -125,20 +300,34 @@ export const reportSlackFailure = async ({
 	stdout?: string
 	stderr?: string
 	message: string
+	timings?: BridgeValidationTimings
 }) => {
+	const route = getValidatorRoute(routeKey)
 	try {
 		await postSlackMessage({
 			token: slackBotToken,
 			channelId: slackChannelId,
 			text: buildSlackFailureMessage({
 				instanceId,
-				route: getValidatorRoute(routeKey),
+				route,
 				cliVersion,
 				stage,
 				exitCode,
 				stdout,
 				stderr,
-				message
+				message,
+				timings
+			}),
+			blocks: buildSlackFailureBlocks({
+				instanceId,
+				route,
+				cliVersion,
+				stage,
+				exitCode,
+				stdout,
+				stderr,
+				message,
+				timings
 			})
 		})
 	} catch (error) {
@@ -156,7 +345,8 @@ export const reportSlackSuccess = async ({
 	instanceId,
 	routeKey,
 	cliVersion,
-	summary
+	summary,
+	timings
 }: {
 	slackBotToken: string
 	slackChannelId: string
@@ -164,15 +354,25 @@ export const reportSlackSuccess = async ({
 	routeKey: BridgeValidationParams["routeKey"]
 	cliVersion: string
 	summary: BridgeValidationSummary
+	timings?: BridgeValidationTimings
 }) => {
+	const route = getValidatorRoute(routeKey)
 	await postSlackMessage({
 		token: slackBotToken,
 		channelId: slackChannelId,
 		text: buildSlackSuccessMessage({
 			instanceId,
-			route: getValidatorRoute(routeKey),
+			route,
 			cliVersion,
-			summary
+			summary,
+			timings
+		}),
+		blocks: buildSlackSuccessBlocks({
+			instanceId,
+			route,
+			cliVersion,
+			summary,
+			timings
 		})
 	})
 }

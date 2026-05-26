@@ -7,7 +7,7 @@ Use [README.md](README.md) for setup and [`packages/bridge-cli/TESTING.md`](../.
 - this service validates only the published high-level `bridge` command
 - a Cloudflare cron trigger creates exactly two workflow instances per schedule
 - each workflow runs the published CLI inside Cloudflare Sandbox
-- failures go to Slack; success stays in Cloudflare Workflow logs
+- success and failure go to Slack with route evidence, final transaction links when available, and exact timing for the workflow, bridge command, and reported Workflow steps
 
 ## How To Run
 
