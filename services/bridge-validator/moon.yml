@@ -85,3 +85,7 @@ tasks:
     command: nu scripts/status.nu --logs
     options:
       cache: false
+  cleanup:
+    command: nu scripts/cleanup.nu
+    options:
+      cache: false

@@ -20,5 +20,5 @@ export def main [
 	let logs_query = if $logs { "&logs=1" } else { "" }
 	let url = $"($base_url)/bridge-status?instanceId=($instance_id)($logs_query)"
 
-	http get --headers [authorization $"Bearer ($token)"] $url
+	http get --max-time 20sec --headers [authorization $"Bearer ($token)"] $url | to json --raw
 }

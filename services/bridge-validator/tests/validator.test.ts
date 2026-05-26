@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+	buildSlackFailureBlocks,
 	buildSlackSuccessBlocks,
 	buildSlackFailureMessage,
 	buildSlackSuccessMessage,
@@ -9,11 +10,10 @@ import type { BridgeCliJsonResult } from "../src/types"
 import {
 	BRIDGE_CLI_BINARY,
 	BRIDGE_CLI_SPECIFIER,
-	BRIDGE_CALLBACK_SCRIPT_PATH,
-	BRIDGE_COMMAND_CALLBACK_GRACE_SECONDS,
 	BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES,
 	BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS,
 	BRIDGE_COMMAND_PID_PATH,
+	BRIDGE_COMMAND_PROCESS_ID,
 	BRIDGE_COMMAND_PROCESS_LOG_PATH,
 	BRIDGE_COMMAND_SCRIPT_PATH,
 	BRIDGE_COMMAND_STDERR_PATH,
@@ -22,11 +22,11 @@ import {
 	BRIDGE_SANDBOX_OPTIONS,
 	BRIDGE_WORKSPACE_ROOT,
 	buildBridgeCommand,
-	buildBridgeCallbackScript,
-	buildBridgeLaunchCommand,
 	buildBridgeCommandScript,
+	buildBridgeLaunchCommand,
 	buildBridgeProcessEnv,
 	buildScheduledValidations,
+	describeBridgeCommandFailure,
 	destroyBridgeSandbox,
 	getBridgeCommandDiagnostics,
 	getBridgeCommandStatus,
@@ -54,7 +54,7 @@ const completedDepositResult: BridgeCliJsonResult = {
 	route: "mina:testnet->zeko:testnet",
 	direction: "deposit",
 	status: "completed",
-	amount: "2",
+	amount: "1",
 	recipient: "B62test",
 	submitted_transactions: [
 		{ action: "submit", hash: "hash-submit" },
@@ -111,10 +111,10 @@ describe("bridge validator", () => {
 		expect(command).toContain("timeout -k 30s -s TERM 6900s")
 		expect(command).toContain(`${BRIDGE_CLI_BINARY} 'bridge'`)
 		expect(command).toContain("'--from' 'mina:testnet' '--to' 'zeko:testnet'")
-		expect(command).toContain("'--amount' '2' '--json' '--verbose'")
+		expect(command).toContain("'--amount' '0.5' '--json' '--verbose'")
 	})
 
-	it("starts the bridge command and passes callback state into the sandbox", async () => {
+	it("starts the bridge command as one background process in the Cloudflare Sandbox", async () => {
 		const setKeepAlive = vi.fn(async () => {})
 		const mkdir = vi.fn(async () => ({
 			success: true,
@@ -133,8 +133,8 @@ describe("bridge validator", () => {
 			exitCode: 0,
 			stdout: "1234",
 			stderr: "",
-			command: "launch",
-			duration: 1,
+			command: buildBridgeLaunchCommand(),
+			duration: 10,
 			timestamp: "2026-03-24T12:00:00Z"
 		}))
 
@@ -142,42 +142,30 @@ describe("bridge validator", () => {
 			startBridgeCommand({
 				routeKey: "mina-to-zeko",
 				sandbox: { setKeepAlive, mkdir, writeFile, exec },
-				walletPrivateKey: "wallet-secret",
-				instanceId: "workflow-1",
-				callbackToken: "callback-token",
-				callbackUrl: "https://validator.example/bridge-callback",
-				apiToken: "api-token"
+				walletPrivateKey: "wallet-secret"
 			})
 		).resolves.toEqual({
-			processId: "1234"
+			pid: "1234",
+			processId: BRIDGE_COMMAND_PROCESS_ID
 		})
 
 		expect(setKeepAlive).toHaveBeenCalledWith(true)
 		expect(mkdir).toHaveBeenCalledWith("/workspace/bridge-validator", { recursive: true })
 		expect(writeFile).toHaveBeenCalledWith(
 			BRIDGE_COMMAND_SCRIPT_PATH,
-			expect.stringContaining("BRIDGE_WORKFLOW_INSTANCE_ID"),
+			buildBridgeCommandScript({ routeKey: "mina-to-zeko" }),
 			{ encoding: "utf8" }
 		)
-		expect(writeFile).toHaveBeenCalledWith(
-			BRIDGE_CALLBACK_SCRIPT_PATH,
-			expect.stringContaining("BRIDGE_API_TOKEN"),
-			{ encoding: "utf8" }
-		)
-		expect(exec).toHaveBeenCalledWith(expect.stringContaining("nohup bash"), {
+		expect(exec).toHaveBeenCalledWith(buildBridgeLaunchCommand(), {
 			cwd: BRIDGE_WORKSPACE_ROOT,
-			timeout: BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS,
 			env: {
-				...buildBridgeProcessEnv({ walletPrivateKey: "wallet-secret" }),
-				BRIDGE_API_TOKEN: "api-token",
-				BRIDGE_CALLBACK_TOKEN: "callback-token",
-				BRIDGE_CALLBACK_URL: "https://validator.example/bridge-callback",
-				BRIDGE_WORKFLOW_INSTANCE_ID: "workflow-1"
-			}
+				...buildBridgeProcessEnv({ walletPrivateKey: "wallet-secret" })
+			},
+			timeout: BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS
 		})
 	})
 
-	it("fails startup immediately when the launcher command fails", async () => {
+	it("fails startup immediately when the Sandbox process cannot start", async () => {
 		const setKeepAlive = vi.fn(async () => {})
 		const mkdir = vi.fn(async () => ({
 			success: true,
@@ -193,11 +181,11 @@ describe("bridge validator", () => {
 		}))
 		const exec = vi.fn(async () => ({
 			success: false,
-			exitCode: 127,
+			exitCode: 1,
 			stdout: "",
-			stderr: "bash: command not found",
-			command: "launch",
-			duration: 1,
+			stderr: "process start failed",
+			command: buildBridgeLaunchCommand(),
+			duration: 10,
 			timestamp: "2026-03-24T12:00:00Z"
 		}))
 
@@ -205,109 +193,35 @@ describe("bridge validator", () => {
 			startBridgeCommand({
 				routeKey: "mina-to-zeko",
 				sandbox: { setKeepAlive, mkdir, writeFile, exec },
-				walletPrivateKey: "wallet-secret",
-				instanceId: "workflow-1",
-				callbackToken: "callback-token",
-				callbackUrl: "https://validator.example/bridge-callback",
-				apiToken: "api-token"
+				walletPrivateKey: "wallet-secret"
 			})
-		).rejects.toThrow("Bridge command launcher failed with exit code 127")
-	})
-
-	it("fails startup when the launcher does not return a process id", async () => {
-		const setKeepAlive = vi.fn(async () => {})
-		const mkdir = vi.fn(async () => ({
-			success: true,
-			path: "/workspace/bridge-validator",
-			recursive: true,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
-		const writeFile = vi.fn(async () => ({
-			success: true,
-			path: BRIDGE_COMMAND_SCRIPT_PATH,
-			bytesWritten: 1,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
-		const exec = vi.fn(async () => ({
-			success: true,
-			exitCode: 0,
-			stdout: "",
-			stderr: "",
-			command: "launch",
-			duration: 1,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
-
-		await expect(
-			startBridgeCommand({
-				routeKey: "mina-to-zeko",
-				sandbox: { setKeepAlive, mkdir, writeFile, exec },
-				walletPrivateKey: "wallet-secret",
-				instanceId: "workflow-1",
-				callbackToken: "callback-token",
-				callbackUrl: "https://validator.example/bridge-callback",
-				apiToken: "api-token"
-			})
-		).rejects.toThrow("Bridge command launcher did not report a process id")
-	})
-
-	it("builds a short nohup launcher for the bridge runner", () => {
-		expect(buildBridgeLaunchCommand()).toContain(`nohup bash '${BRIDGE_COMMAND_SCRIPT_PATH}'`)
-		expect(buildBridgeLaunchCommand()).toContain(`> '${BRIDGE_COMMAND_PROCESS_LOG_PATH}' 2>&1 &`)
-		expect(buildBridgeLaunchCommand()).toContain(`> '${BRIDGE_COMMAND_PID_PATH}'`)
-		expect(buildBridgeLaunchCommand()).not.toContain("callback token")
-		expect(buildBridgeLaunchCommand()).not.toContain("wallet-secret")
-	})
-
-	it("wraps the single bridge CLI command with stdout, stderr, and callback capture", () => {
-		const script = buildBridgeCommandScript({ routeKey: "mina-to-zeko" })
-
-		expect(script).toContain("timeout -k 30s -s TERM 6900s")
-		expect(script).toContain(`${BRIDGE_CLI_BINARY} 'bridge'`)
-		expect(script).toContain("stdout.json")
-		expect(script).toContain("stderr.log")
-		expect(script).toContain("BRIDGE_WORKFLOW_INSTANCE_ID")
-		expect(script).toContain("BRIDGE_API_TOKEN")
-		expect(script).toContain('BRIDGE_COMMAND_STARTED_AT_MS="$(date +%s%3N)"')
-		expect(script).toContain(
-			'BRIDGE_COMMAND_DURATION_MS="$((BRIDGE_COMMAND_FINISHED_AT_MS - BRIDGE_COMMAND_STARTED_AT_MS))"'
-		)
-		expect(script).toContain("watchdog_timeout_seconds=6900")
-		expect(script).toContain(`callback_grace_seconds=${BRIDGE_COMMAND_CALLBACK_GRACE_SECONDS}`)
-		expect(script).toContain("bridge validator watchdog timeout")
-		expect(script).toContain('kill "$watchdog_pid"')
-		expect(script).toContain('while [ "$SECONDS" -le "$callback_deadline" ]; do')
-		expect(script).not.toContain("watchdog remains armed")
-	})
-
-	it("posts callbacks with bearer authentication", () => {
-		expect(buildBridgeCallbackScript()).toContain(
-			"authorization: `Bearer ${required('BRIDGE_API_TOKEN')}`"
-		)
-		expect(buildBridgeCallbackScript()).toContain(
-			"timing: { startedAtMs, finishedAtMs, durationMs }"
-		)
-		expect(buildBridgeCallbackScript()).toContain("fetch(required('BRIDGE_CALLBACK_URL')")
+		).rejects.toThrow("Bridge command launcher failed with exit code 1")
 	})
 
 	it("reports bridge command process status without reading bridge logs", async () => {
-		const readFile = vi.fn(async () => ({
-			success: true,
-			path: BRIDGE_COMMAND_PID_PATH,
-			content: "1234",
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
+		const readFile = vi.fn(async (path: string) => {
+			if (path === BRIDGE_COMMAND_PID_PATH) {
+				return {
+					success: true,
+					path,
+					content: "1234",
+					timestamp: "2026-03-24T12:00:00Z"
+				}
+			}
+
+			throw new Error("File not found")
+		})
 		const exec = vi.fn(async () => ({
 			success: true,
 			exitCode: 0,
 			stdout: "running",
 			stderr: "",
-			command: "status",
-			duration: 1,
+			command: "kill -0",
+			duration: 10,
 			timestamp: "2026-03-24T12:00:00Z"
 		}))
 
-		await expect(getBridgeCommandStatus({ sandbox: { readFile, exec } })).resolves.toEqual({
+		await expect(getBridgeCommandStatus({ sandbox: { exec, readFile } })).resolves.toEqual({
 			processId: "bridge-validation-command",
 			found: true,
 			pid: "1234",
@@ -321,42 +235,61 @@ describe("bridge validator", () => {
 		})
 		const exec = vi.fn()
 
-		await expect(getBridgeCommandStatus({ sandbox: { readFile, exec } })).resolves.toEqual({
+		await expect(getBridgeCommandStatus({ sandbox: { exec, readFile } })).resolves.toEqual({
 			processId: "bridge-validation-command",
 			found: false
 		})
 	})
 
-	it("reads diagnostic tails from the sandbox runner files", async () => {
-		const longProcessLog = `${"x".repeat(BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES)}callback failed`
-		const files = new Map([
-			[BRIDGE_COMMAND_PID_PATH, "1234"],
-			[BRIDGE_COMMAND_PROCESS_LOG_PATH, longProcessLog],
-			[BRIDGE_COMMAND_STDOUT_PATH, '{"success":false}']
-		])
+	it("reads diagnostic tails from the Sandbox process logs", async () => {
+		const longStdout = `${"x".repeat(BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES)}{"success":false}`
 		const readFile = vi.fn(async (path: string) => {
-			const content = files.get(path)
-			if (content === undefined) {
-				throw new Error("File not found")
+			if (path === BRIDGE_COMMAND_PID_PATH) {
+				return {
+					success: true,
+					path,
+					content: "1234",
+					timestamp: "2026-03-24T12:00:00Z"
+				}
 			}
 
-			return {
-				success: true,
-				path,
-				content,
-				timestamp: "2026-03-24T12:00:00Z"
+			if (path === BRIDGE_COMMAND_PROCESS_LOG_PATH) {
+				return {
+					success: true,
+					path,
+					content: "process output",
+					timestamp: "2026-03-24T12:00:00Z"
+				}
 			}
+
+			if (path === BRIDGE_COMMAND_STDOUT_PATH) {
+				return {
+					success: true,
+					path,
+					content: longStdout,
+					timestamp: "2026-03-24T12:00:00Z"
+				}
+			}
+
+			if (path === BRIDGE_COMMAND_STDERR_PATH) {
+				return {
+					success: true,
+					path,
+					content: "stderr output",
+					timestamp: "2026-03-24T12:00:00Z"
+				}
+			}
+
+			throw new Error("File not found")
 		})
-
 		await expect(getBridgeCommandDiagnostics({ sandbox: { readFile } })).resolves.toEqual({
 			pidFile: "1234",
-			processLog: `${"x".repeat(
-				BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES - "callback failed".length
-			)}callback failed`,
-			stdout: '{"success":false}',
-			stderr: null
+			processLog: "process output",
+			stdout: `${"x".repeat(
+				BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES - '{"success":false}'.length
+			)}{"success":false}`,
+			stderr: "stderr output"
 		})
-		expect(readFile).toHaveBeenCalledWith(BRIDGE_COMMAND_STDERR_PATH)
 	})
 
 	it("builds fixed scheduled deposit and withdrawal validations", () => {
@@ -399,7 +332,7 @@ describe("bridge validator", () => {
 			operationId: "bridge-op-1",
 			route: "mina:testnet->zeko:testnet",
 			direction: "deposit",
-			amount: "2",
+			amount: "1",
 			finalHash: "hash-finalize",
 			logPath: "/workspace/logs/bridge-op-1.jsonl",
 			finalExplorerUrl: "https://zekoscan.io/testnet/tx/hash-finalize",
@@ -407,6 +340,58 @@ describe("bridge validator", () => {
 			queueAdvanceCount: 0,
 			historyEventCount: 3
 		})
+	})
+
+	it("keeps a completed bridge result successful when the CLI preserves a retry warning", () => {
+		const result = {
+			...completedDepositResult,
+			error: "Error getting account data"
+		}
+		const summary = validateBridgeCompletion({
+			route: {
+				key: "mina-to-zeko",
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				route: "mina:testnet->zeko:testnet",
+				direction: "deposit"
+			},
+			result,
+			historyLog: completedHistoryLog
+		})
+
+		expect(summary.cliReportedError).toBe("Error getting account data")
+		expect(
+			buildSlackSuccessMessage({
+				instanceId: "workflow-1",
+				route: {
+					key: "mina-to-zeko",
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					route: "mina:testnet->zeko:testnet",
+					direction: "deposit"
+				},
+				cliVersion: BRIDGE_CLI_SPECIFIER,
+				summary,
+				timings: completedTimings
+			})
+		).toContain("CLI warning: Error getting account data")
+		expect(
+			JSON.stringify(
+				buildSlackSuccessBlocks({
+					instanceId: "workflow-1",
+					route: {
+						key: "mina-to-zeko",
+						from: "mina:testnet",
+						to: "zeko:testnet",
+						route: "mina:testnet->zeko:testnet",
+						direction: "deposit"
+					},
+					cliVersion: BRIDGE_CLI_SPECIFIER,
+					summary,
+					timings: completedTimings
+				})
+			)
+		).toContain("CLI warning")
 	})
 
 	it("rejects invalid json and incomplete history", () => {
@@ -501,12 +486,69 @@ describe("bridge validator", () => {
 				cliVersion: BRIDGE_CLI_SPECIFIER,
 				stage: "process",
 				exitCode: 1,
-				stdout: "",
+				stdout: `first stdout line\n${"x".repeat(13_000)}\nlast stdout line`,
 				stderr: "failed",
-				message: "Bridge command exited non-zero",
+				message: "Bridge command exited with code 1. Last diagnostic: failed",
 				timings: completedTimings
 			})
-		).toContain("Bridge command exited non-zero")
+		).toContain("```")
+		expect(
+			buildSlackFailureMessage({
+				instanceId: "workflow-1",
+				route: {
+					key: "mina-to-zeko",
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					route: "mina:testnet->zeko:testnet",
+					direction: "deposit"
+				},
+				cliVersion: BRIDGE_CLI_SPECIFIER,
+				stage: "process",
+				exitCode: 1,
+				stdout: `first stdout line\n${"x".repeat(13_000)}\nlast stdout line`,
+				stderr: "failed",
+				message: "Bridge command exited with code 1. Last diagnostic: failed",
+				timings: completedTimings
+			})
+		).toContain("last stdout line")
+		expect(
+			JSON.stringify(
+				buildSlackFailureBlocks({
+					instanceId: "workflow-1",
+					route: {
+						key: "mina-to-zeko",
+						from: "mina:testnet",
+						to: "zeko:testnet",
+						route: "mina:testnet->zeko:testnet",
+						direction: "deposit"
+					},
+					cliVersion: BRIDGE_CLI_SPECIFIER,
+					stage: "process",
+					exitCode: 124,
+					stdout: "polling bridge state",
+					stderr: "bridge validator watchdog timeout after 6900 seconds",
+					message: "Bridge command timed out after 6900s (6900000 ms)",
+					timings: completedTimings
+				})
+			)
+		).toContain("```")
+	})
+
+	it("describes bridge command timeout failures with the actual duration and diagnostic", () => {
+		expect(
+			describeBridgeCommandFailure({
+				exitCode: 124,
+				stdout: "polling bridge state",
+				stderr: "bridge validator watchdog timeout after 6900 seconds",
+				timing: {
+					startedAtMs: 1_000,
+					finishedAtMs: 6_901_000,
+					durationMs: 6_900_000
+				}
+			})
+		).toBe(
+			"Bridge command timed out after 6900s (6900000 ms) before reaching a terminal bridge result. Last diagnostic: bridge validator watchdog timeout after 6900 seconds"
+		)
 	})
 
 	it("posts rich Slack success blocks", async () => {

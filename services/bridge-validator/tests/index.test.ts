@@ -9,8 +9,8 @@ import { getSandbox } from "@cloudflare/sandbox"
 import { handleBridgeValidatorRequest } from "../src/request"
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "../src/service-info"
 import { getRemainingWorkflowTimeMs, WORKFLOW_HARD_TIMEOUT_MS } from "../src/runtime"
-import { BRIDGE_CLI_SPECIFIER, BRIDGE_COMMAND_CALLBACK_EVENT } from "../src/validator"
-import { buildValidatorUrl, hasValidBearerToken, type ValidatorEnv } from "../src/env"
+import { BRIDGE_CLI_SPECIFIER } from "../src/validator"
+import { hasValidBearerToken, type ValidatorEnv } from "../src/env"
 import packageJson from "../package.json"
 
 describe("bridge-validator worker", () => {
@@ -30,7 +30,7 @@ describe("bridge-validator worker", () => {
 			limits: {
 				maxRuntimeMinutes: 120,
 				commandTimeoutMinutes: 115,
-				callbackGraceMinutes: 5
+				reportingReserveMinutes: 5
 			}
 		})
 
@@ -61,16 +61,6 @@ describe("bridge-validator worker", () => {
 		).toBe(0)
 	})
 
-	it("builds deployment-specific worker URLs from configuration", () => {
-		const env = {
-			BRIDGE_VALIDATOR_BASE_URL: "https://preview.example.workers.dev"
-		} as ValidatorEnv
-
-		expect(buildValidatorUrl({ env, path: "/bridge-callback" })).toBe(
-			"https://preview.example.workers.dev/bridge-callback"
-		)
-	})
-
 	it("requires bearer authentication for HTTP surfaces", () => {
 		const env = { VALIDATOR_API_TOKEN: "validator-token" } as ValidatorEnv
 		const authorized = new Request("https://bridge-validator.zeko-labs.workers.dev", {
@@ -84,10 +74,29 @@ describe("bridge-validator worker", () => {
 		expect(hasValidBearerToken({ request: unauthorized, env })).toBe(false)
 	})
 
-	it("does not mutate sandbox keepAlive settings for status diagnostics", async () => {
+	it("uses the keepAlive sandbox handle for status diagnostics", async () => {
 		vi.mocked(getSandbox).mockReturnValue({
-			readFile: vi.fn(async () => ({ content: "1234" })),
-			exec: vi.fn(async () => ({ stdout: "running" }))
+			readFile: vi.fn(async (path: string) => {
+				if (path.endsWith("/bridge.pid")) {
+					return {
+						success: true,
+						path,
+						content: "1234",
+						timestamp: "2026-03-24T12:00:00Z"
+					}
+				}
+
+				throw new Error("File not found")
+			}),
+			exec: vi.fn(async () => ({
+				success: true,
+				exitCode: 0,
+				stdout: "running",
+				stderr: "",
+				command: "kill -0",
+				duration: 10,
+				timestamp: "2026-03-24T12:00:00Z"
+			}))
 		} as never)
 
 		const response = await handleBridgeValidatorRequest({
@@ -103,41 +112,35 @@ describe("bridge-validator worker", () => {
 			command: {
 				found: true,
 				pid: "1234",
+				processId: "bridge-validation-command",
 				status: "running"
 			}
 		})
-		expect(getSandbox).toHaveBeenCalledWith("sandbox-namespace", "bridge-validator-workflow-1")
+		expect(getSandbox).toHaveBeenCalledWith("sandbox-namespace", "bridge-validator-workflow-1", {
+			keepAlive: true
+		})
 	})
 
-	it("routes callbacks to a per-run workflow event type", async () => {
-		const sendEvent = vi.fn(async () => {})
-		const get = vi.fn(async () => ({ sendEvent }))
-		const payload = {
-			instanceId: "workflow-1",
-			token: "callback-token",
-			exitCode: 0,
-			stdout: "{}",
-			stderr: "",
-			timing: {
-				startedAtMs: 1_000,
-				finishedAtMs: 2_500,
-				durationMs: 1_500
-			}
-		}
+	it("destroys a workflow sandbox through the authenticated cleanup surface", async () => {
+		const destroy = vi.fn(async () => {})
+		vi.mocked(getSandbox).mockReturnValue({
+			destroy
+		} as never)
 
 		const response = await handleBridgeValidatorRequest({
-			request: new Request("https://bridge-validator.zeko-labs.workers.dev/bridge-callback", {
-				method: "POST",
-				body: JSON.stringify(payload)
-			}),
-			env: { BRIDGE_VALIDATION_WORKFLOW: { get } } as unknown as ValidatorEnv
+			request: new Request(
+				"https://bridge-validator.zeko-labs.workers.dev/bridge-cleanup?instanceId=workflow-1",
+				{ method: "POST" }
+			),
+			env: { Sandbox: "sandbox-namespace" } as unknown as ValidatorEnv
 		})
 
-		await expect(response.json()).resolves.toEqual({ ok: true })
-		expect(get).toHaveBeenCalledWith("workflow-1")
-		expect(sendEvent).toHaveBeenCalledWith({
-			type: `${BRIDGE_COMMAND_CALLBACK_EVENT}:callback-token`,
-			payload
+		await expect(response.json()).resolves.toEqual({
+			ok: true,
+			instanceId: "workflow-1",
+			sandboxId: "bridge-validator-workflow-1",
+			cleanup: "destroyed"
 		})
+		expect(destroy).toHaveBeenCalledOnce()
 	})
 })

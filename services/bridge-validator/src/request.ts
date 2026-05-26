@@ -1,13 +1,12 @@
 import type { ValidatorEnv } from "./env"
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "./service-info"
 import {
-	BRIDGE_CALLBACK_PATH,
+	destroyBridgeSandbox,
 	BRIDGE_STATUS_PATH,
-	buildBridgeCommandCallbackEventType,
 	getBridgeCommandDiagnostics,
 	getBridgeCommandStatus,
 	getBridgeStatusSandbox,
-	parseBridgeCommandCallbackPayload
+	getBridgeSandbox
 } from "./validator"
 
 const parseIncludeLogs = (url: URL) =>
@@ -40,15 +39,23 @@ const bridgeStatus = async ({ url, env }: { url: URL; env: ValidatorEnv }) => {
 	})
 }
 
-const bridgeCallback = async ({ request, env }: { request: Request; env: ValidatorEnv }) => {
-	const payload = parseBridgeCommandCallbackPayload(await request.json())
-	const instance = await env.BRIDGE_VALIDATION_WORKFLOW.get(payload.instanceId)
-	await instance.sendEvent({
-		type: buildBridgeCommandCallbackEventType(payload.token),
-		payload
+const bridgeCleanup = async ({ url, env }: { url: URL; env: ValidatorEnv }) => {
+	const instanceId = url.searchParams.get("instanceId")?.trim()
+	if (!instanceId) {
+		return badRequest("Missing instanceId")
+	}
+
+	const sandboxId = `bridge-validator-${instanceId}`
+	await destroyBridgeSandbox({
+		sandbox: getBridgeSandbox(env.Sandbox, sandboxId)
 	})
 
-	return Response.json({ ok: true })
+	return Response.json({
+		ok: true,
+		instanceId,
+		sandboxId,
+		cleanup: "destroyed"
+	})
 }
 
 export const handleBridgeValidatorRequest = async ({
@@ -61,12 +68,12 @@ export const handleBridgeValidatorRequest = async ({
 	const url = new URL(request.url)
 
 	try {
-		if (request.method === "POST" && url.pathname === BRIDGE_CALLBACK_PATH) {
-			return await bridgeCallback({ request, env })
-		}
-
 		if (request.method === "GET" && url.pathname === BRIDGE_STATUS_PATH) {
 			return await bridgeStatus({ url, env })
+		}
+
+		if (request.method === "POST" && url.pathname === "/bridge-cleanup") {
+			return await bridgeCleanup({ url, env })
 		}
 
 		return Response.json(BRIDGE_VALIDATOR_SERVICE_INFO)

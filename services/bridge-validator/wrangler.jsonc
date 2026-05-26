@@ -3,6 +3,7 @@
 	"compatibility_date": "2026-03-11",
 	"compatibility_flags": ["nodejs_compat"],
 	"name": "bridge-validator",
+	"account_id": "a12d2915bc16ee8550f19399839623f7",
 	"main": "src/index.ts",
 	"workers_dev": true,
 	"preview_urls": true,
@@ -36,7 +37,7 @@
 			"name": "bridge-validator-sandbox",
 			"class_name": "Sandbox",
 			"image": "./Dockerfile",
-			"instance_type": "lite",
+			"instance_type": "standard-2",
 			"max_instances": 2,
 			"image_build_context": "../.."
 		}

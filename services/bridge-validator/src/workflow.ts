@@ -1,29 +1,61 @@
 import { type WorkflowEvent, type WorkflowStep, WorkflowEntrypoint } from "cloudflare:workers"
-import { buildValidatorUrl, getValidatorSecrets, type ValidatorEnv } from "./env"
+import { getValidatorSecrets, type ValidatorEnv } from "./env"
 import { getValidatorRoute } from "./routes"
 import { reportSlackFailure, reportSlackSuccess } from "./slack"
 import type { BridgeValidationParams, BridgeValidationTimings, WorkflowPhaseTiming } from "./types"
 import {
 	type BridgeCommandCallbackPayload,
+	type BridgeCommandDiagnostics,
+	type BridgeCommandStatus,
 	type BridgeValidationSummary,
 	BRIDGE_CLI_SPECIFIER,
+	BRIDGE_COMMAND_PROCESS_ID,
 	BridgeValidationError,
-	buildBridgeCommandCallbackEventType,
+	describeBridgeCommandFailure,
 	destroyBridgeSandbox,
+	getBridgeCommandDiagnosticTails,
+	getBridgeCommandDiagnostics,
+	getBridgeCommandOutput,
+	getBridgeCommandStatus,
 	getBridgeSandbox,
 	parseBridgeJson,
 	readBridgeHistoryLog,
 	startBridgeCommand,
+	stopBridgeCommand,
 	validateBridgeCompletion
 } from "./validator"
+import { WORKFLOW_HARD_TIMEOUT_MS } from "./runtime"
 
 const NO_STEP_RETRIES = {
 	limit: 0,
 	delay: "1 second"
 } as const
+const CONTAINER_START_RETRIES = {
+	limit: 5,
+	delay: "30 seconds"
+} as const
 
-const BRIDGE_COMMAND_START_STEP_TIMEOUT = "5 minutes"
-const BRIDGE_COMMAND_CALLBACK_TIMEOUT = "2 hours"
+const BRIDGE_COMMAND_START_STEP_TIMEOUT = "10 minutes"
+const SANDBOX_CONTROL_STEP_TIMEOUT = "2 minutes"
+const NOTIFICATION_STEP_TIMEOUT = "2 minutes"
+const CLEANUP_STEP_TIMEOUT = "2 minutes"
+const BRIDGE_COMMAND_INITIAL_POLL_INTERVAL_MS = 30 * 1000
+const BRIDGE_COMMAND_POLL_INTERVAL_MS = 30 * 1000
+
+const SANDBOX_CONTROL_STEP_OPTIONS = {
+	retries: NO_STEP_RETRIES,
+	timeout: SANDBOX_CONTROL_STEP_TIMEOUT
+} as const
+
+const NOTIFICATION_STEP_OPTIONS = {
+	retries: NO_STEP_RETRIES,
+	timeout: NOTIFICATION_STEP_TIMEOUT
+} as const
+
+const CLEANUP_STEP_OPTIONS = {
+	retries: NO_STEP_RETRIES,
+	timeout: CLEANUP_STEP_TIMEOUT
+} as const
 
 const isBridgeValidationError = (error: unknown): error is BridgeValidationError =>
 	error instanceof BridgeValidationError
@@ -68,9 +100,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 			}
 		}
 		const route = getValidatorRoute(event.payload.routeKey)
-		const { walletPrivateKey, slackBotToken, slackChannelId, apiToken } = getValidatorSecrets(
-			this.env
-		)
+		const { walletPrivateKey, slackBotToken, slackChannelId } = getValidatorSecrets(this.env)
 		const sandboxId = `bridge-validator-${event.instanceId}`
 		let sandboxCreated = false
 		let failureReported = false
@@ -81,41 +111,31 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 			)
 			sandboxCreated = true
 
-			const callbackToken = await timed("create bridge callback token", () =>
-				step.do("create bridge callback token", async () => crypto.randomUUID())
-			)
-
 			await timed("start bridge validation command", () =>
 				step.do(
 					"start bridge validation command",
-					{ retries: NO_STEP_RETRIES, timeout: BRIDGE_COMMAND_START_STEP_TIMEOUT },
+					{ retries: CONTAINER_START_RETRIES, timeout: BRIDGE_COMMAND_START_STEP_TIMEOUT },
 					async () =>
 						startBridgeCommand({
 							routeKey: route.key,
 							sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId),
-							walletPrivateKey,
-							instanceId: event.instanceId,
-							callbackToken,
-							callbackUrl: buildValidatorUrl({
-								env: this.env,
-								path: "/bridge-callback"
-							}),
-							apiToken
+							walletPrivateKey
 						})
 				)
 			)
 
 			const commandResult = await timed("wait for bridge command completion", () =>
-				this.waitForCommandCallback({
+				this.waitForCommandCompletion({
 					step,
 					instanceId: event.instanceId,
-					callbackToken
+					sandboxId,
+					startedAtMs: workflowStartedAtMs
 				})
 			)
 
 			if (commandResult.exitCode !== 0) {
 				await timed("notify slack failure", () =>
-					step.do("notify slack failure", async () =>
+					step.do("notify slack failure", NOTIFICATION_STEP_OPTIONS, async () =>
 						reportSlackFailure({
 							slackBotToken,
 							slackChannelId,
@@ -126,7 +146,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 							exitCode: commandResult.exitCode,
 							stdout: commandResult.stdout,
 							stderr: commandResult.stderr,
-							message: "Bridge command exited non-zero",
+							message: describeBridgeCommandFailure(commandResult),
 							timings: finishTimings({
 								workflowStartedAtMs,
 								steps: stepTimings,
@@ -160,7 +180,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 			}
 
 			await timed("report bridge validation success", () =>
-				step.do("report bridge validation success", async () => {
+				step.do("report bridge validation success", NOTIFICATION_STEP_OPTIONS, async () => {
 					console.log(
 						JSON.stringify({
 							service: "bridge-validator",
@@ -210,7 +230,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 		} catch (error) {
 			if (!failureReported) {
 				await timed("notify slack runtime failure", () =>
-					step.do("notify slack runtime failure", async () =>
+					step.do("notify slack runtime failure", NOTIFICATION_STEP_OPTIONS, async () =>
 						reportSlackFailure({
 							slackBotToken,
 							slackChannelId,
@@ -235,7 +255,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 			if (sandboxCreated) {
 				try {
 					await timed("destroy bridge sandbox", () =>
-						step.do("destroy bridge sandbox", async () =>
+						step.do("destroy bridge sandbox", CLEANUP_STEP_OPTIONS, async () =>
 							destroyBridgeSandbox({
 								sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId)
 							})
@@ -252,29 +272,251 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 		}
 	}
 
-	private async waitForCommandCallback({
+	private async waitForCommandCompletion({
 		step,
 		instanceId,
-		callbackToken
+		sandboxId,
+		startedAtMs
 	}: {
 		step: WorkflowStep
 		instanceId: string
-		callbackToken: string
+		sandboxId: string
+		startedAtMs: number
 	}) {
-		const commandEvent = await step.waitForEvent<BridgeCommandCallbackPayload>(
-			"wait for bridge command completion",
-			{
-				type: buildBridgeCommandCallbackEventType(callbackToken),
-				timeout: BRIDGE_COMMAND_CALLBACK_TIMEOUT
-			}
-		)
-		const commandResult = commandEvent.payload
+		const deadlineMs = startedAtMs + WORKFLOW_HARD_TIMEOUT_MS
 
-		if (commandResult.instanceId !== instanceId || commandResult.token !== callbackToken) {
-			throw new Error("Bridge command callback did not match this workflow instance")
+		for (let attempt = 1; Date.now() < deadlineMs; attempt += 1) {
+			const nowMs = Date.now()
+			if (nowMs >= deadlineMs) {
+				return this.buildTimeoutCommandResult({
+					step,
+					sandboxId,
+					instanceId,
+					startedAtMs,
+					finishedAtMs: nowMs,
+					attempt,
+					label: "timeout"
+				})
+			}
+
+			await step.sleep(
+				`wait before bridge command inspection ${attempt}`,
+				Math.min(
+					attempt === 1 ? BRIDGE_COMMAND_INITIAL_POLL_INTERVAL_MS : BRIDGE_COMMAND_POLL_INTERVAL_MS,
+					deadlineMs - nowMs
+				)
+			)
+
+			const afterSleepMs = Date.now()
+			if (afterSleepMs >= deadlineMs) {
+				return this.buildTimeoutCommandResult({
+					step,
+					sandboxId,
+					instanceId,
+					startedAtMs,
+					finishedAtMs: afterSleepMs,
+					attempt,
+					label: "deadline"
+				})
+			}
+
+			const commandStatus = await step.do(
+				`inspect bridge command ${attempt}`,
+				SANDBOX_CONTROL_STEP_OPTIONS,
+				async () =>
+					getBridgeCommandStatus({
+						sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId)
+					})
+			)
+
+			if (
+				commandStatus.found &&
+				(commandStatus.status === "running" || commandStatus.status === "starting")
+			) {
+				continue
+			}
+
+			const diagnostics = await this.readCommandDiagnostics({
+				step,
+				sandboxId,
+				attempt,
+				label: "terminal",
+				fullOutput: true
+			})
+
+			if (!commandStatus.found) {
+				return this.buildMissingCommandResult({
+					instanceId,
+					exitCode: 1,
+					startedAtMs,
+					finishedAtMs: Date.now(),
+					message:
+						"Bridge command process disappeared from the Cloudflare Sandbox process registry.",
+					diagnostics
+				})
+			}
+
+			return this.buildCommandResult({
+				instanceId,
+				status: commandStatus,
+				diagnostics,
+				finishedAtMs: Date.now()
+			})
 		}
 
-		return commandResult
+		const finishedAtMs = Date.now()
+		return this.buildTimeoutCommandResult({
+			step,
+			sandboxId,
+			instanceId,
+			startedAtMs,
+			finishedAtMs,
+			attempt: 0,
+			label: "deadline"
+		})
+	}
+
+	private async buildTimeoutCommandResult({
+		step,
+		sandboxId,
+		instanceId,
+		startedAtMs,
+		finishedAtMs,
+		attempt,
+		label
+	}: {
+		step: WorkflowStep
+		sandboxId: string
+		instanceId: string
+		startedAtMs: number
+		finishedAtMs: number
+		attempt: number
+		label: string
+	}): Promise<BridgeCommandCallbackPayload> {
+		const termination = await step
+			.do(
+				`terminate bridge command after ${label} ${attempt}`,
+				SANDBOX_CONTROL_STEP_OPTIONS,
+				async () =>
+					stopBridgeCommand({
+						sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId)
+					})
+			)
+			.then(() => "Bridge command process was sent SIGTERM before sandbox cleanup.")
+			.catch(
+				(error) =>
+					`Bridge command process termination failed: ${
+						error instanceof Error ? error.message : String(error)
+					}`
+			)
+
+		const diagnostics = await this.readCommandDiagnostics({ step, sandboxId, attempt, label })
+
+		return this.buildMissingCommandResult({
+			instanceId,
+			exitCode: 124,
+			startedAtMs,
+			finishedAtMs,
+			message: [
+				"Bridge command did not complete before the 2 hour workflow timeout.",
+				termination
+			].join(" "),
+			diagnostics
+		})
+	}
+
+	private async readCommandDiagnostics({
+		step,
+		sandboxId,
+		attempt,
+		label,
+		fullOutput = false
+	}: {
+		step: WorkflowStep
+		sandboxId: string
+		attempt: number
+		label: string
+		fullOutput?: boolean
+	}) {
+		return await step.do(
+			`read bridge diagnostics after ${label} command ${attempt}`,
+			SANDBOX_CONTROL_STEP_OPTIONS,
+			async () =>
+				fullOutput
+					? getBridgeCommandOutput({
+							sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId)
+						})
+					: getBridgeCommandDiagnostics({
+							sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId)
+						})
+		)
+	}
+
+	private buildCommandResult({
+		instanceId,
+		status,
+		diagnostics,
+		finishedAtMs
+	}: {
+		instanceId: string
+		status: Extract<BridgeCommandStatus, { found: true }>
+		diagnostics: BridgeCommandDiagnostics
+		finishedAtMs: number
+	}): BridgeCommandCallbackPayload {
+		const statusLine = `Bridge command process ${status.processId} finished with status ${status.status}.`
+		const commandStartedAtMs = status.startedAtMs ?? finishedAtMs
+		const commandFinishedAtMs = status.finishedAtMs ?? finishedAtMs
+
+		return {
+			instanceId,
+			token: status.processId,
+			exitCode: status.exitCode ?? (status.status === "completed" ? 0 : 1),
+			stdout: diagnostics.stdout ?? "",
+			stderr: [statusLine, getBridgeCommandDiagnosticTails(diagnostics).stderr]
+				.filter(Boolean)
+				.join("\n\n"),
+			timing: {
+				startedAtMs: commandStartedAtMs,
+				finishedAtMs: commandFinishedAtMs,
+				durationMs: Math.max(0, commandFinishedAtMs - commandStartedAtMs)
+			}
+		}
+	}
+
+	private buildMissingCommandResult({
+		instanceId,
+		exitCode,
+		startedAtMs,
+		finishedAtMs,
+		message,
+		diagnostics
+	}: {
+		instanceId: string
+		exitCode: number
+		startedAtMs: number
+		finishedAtMs: number
+		message: string
+		diagnostics: BridgeCommandDiagnostics
+	}): BridgeCommandCallbackPayload {
+		const diagnosticSections = [
+			message,
+			diagnostics.processLog ? `process.log:\n${diagnostics.processLog}` : null,
+			diagnostics.stderr ? `stderr.log:\n${diagnostics.stderr}` : null,
+			diagnostics.pidFile ? `bridge.pid:\n${diagnostics.pidFile}` : null
+		].filter((section): section is string => section !== null)
+
+		return {
+			instanceId,
+			token: BRIDGE_COMMAND_PROCESS_ID,
+			exitCode,
+			stdout: diagnostics.stdout ?? "",
+			stderr: diagnosticSections.join("\n\n"),
+			timing: {
+				startedAtMs,
+				finishedAtMs,
+				durationMs: Math.max(0, finishedAtMs - startedAtMs)
+			}
+		}
 	}
 
 	private async validateCommandResult({
@@ -304,14 +546,14 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 
 		try {
 			const result = await timed("parse bridge result", () =>
-				step.do("parse bridge result", { retries: NO_STEP_RETRIES }, async () =>
+				step.do("parse bridge result", SANDBOX_CONTROL_STEP_OPTIONS, async () =>
 					parseBridgeJson(commandResult.stdout)
 				)
 			)
 
 			stage = "history"
 			return await timed("validate bridge completion", () =>
-				step.do("validate bridge completion", { retries: NO_STEP_RETRIES }, async () =>
+				step.do("validate bridge completion", SANDBOX_CONTROL_STEP_OPTIONS, async () =>
 					validateBridgeCompletion({
 						route,
 						result,
@@ -324,7 +566,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 			)
 		} catch (error) {
 			await timed("notify slack validation failure", () =>
-				step.do("notify slack validation failure", async () =>
+				step.do("notify slack validation failure", NOTIFICATION_STEP_OPTIONS, async () =>
 					reportSlackFailure({
 						slackBotToken,
 						slackChannelId,

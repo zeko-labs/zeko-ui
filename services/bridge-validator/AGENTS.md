@@ -20,6 +20,8 @@ Use [README.md](README.md) for setup and [`packages/bridge-cli/TESTING.md`](../.
 - Trigger exactly one withdrawal run with `moon run bridge-validator:trigger-withdrawal`.
 - Inspect a running or stuck Workflow with `VALIDATOR_INSTANCE_ID=<id> moon run bridge-validator:status`. The task reads `VALIDATOR_API_TOKEN` from the repo `.env`.
 - Inspect sandbox runner diagnostics with `VALIDATOR_INSTANCE_ID=<id> moon run bridge-validator:status-logs`. The task reads `VALIDATOR_API_TOKEN` from the repo `.env`.
+- Destroy a stale sandbox after terminating a bad workflow attempt with `VALIDATOR_INSTANCE_ID=<id> moon run bridge-validator:cleanup`. The task reads `VALIDATOR_API_TOKEN` from the repo `.env`.
+- Prefer `BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY` for Cloudflare validation. Do not rely on shared numbered bridge test keys unless the validator-specific key is absent and the selected wallet is funded and has an acceptable queue state.
 - The validator must exercise the latest published `@zeko-labs/bridge-cli`; do not pin the CLI version in the service.
 - The validator invokes `zeko-bridge bridge ...` directly inside the container. Do not replace it with a local workspace package, a pinned version, `npm exec`, or a direct `node` call.
 

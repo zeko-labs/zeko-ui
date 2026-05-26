@@ -12,6 +12,7 @@ const packageJson = JSON.parse(readFileSync(resolve(projectRoot, "package.json")
 	}
 }
 const dockerfile = readFileSync(resolve(projectRoot, "Dockerfile"), "utf8")
+const wranglerConfig = readFileSync(resolve(projectRoot, "wrangler.jsonc"), "utf8")
 
 describe("bridge-validator sandbox runtime", () => {
 	it("pins the Cloudflare Sandbox SDK and container image to the same version", () => {
@@ -31,5 +32,11 @@ describe("bridge-validator sandbox runtime", () => {
 		expect(dockerfile).toContain("p.bridgeCli.package + '@' + p.bridgeCli.version")
 		expect(dockerfile).not.toContain("@zeko-labs/bridge-cli@latest")
 		expect(dockerfile).not.toContain("`${p.bridgeCli.package}@${p.bridgeCli.version}`")
+	})
+
+	it("uses a sandbox size that can run the published bridge CLI", () => {
+		expect(wranglerConfig).toContain('"instance_type": "standard-2"')
+		expect(wranglerConfig).not.toContain('"instance_type": "standard-1"')
+		expect(wranglerConfig).not.toContain('"instance_type": "lite"')
 	})
 })

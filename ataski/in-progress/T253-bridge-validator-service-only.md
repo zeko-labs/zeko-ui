@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T07:56:00Z
+updated_at: 2026-05-26T08:54:14Z
 ---
 
 ## Requirements
@@ -24,13 +24,14 @@ updated_at: 2026-05-26T07:56:00Z
 - BDD. The service tests describe the required runtime contract first: scheduled route fanout, command construction, callback behavior, auth, status diagnostics, result parsing, history-log validation, Slack output, and cleanup.
 - Local gates: `moon run bridge-validator:test -f`, `moon run bridge-validator:typecheck -f`, `moon run bridge-validator:lint -f`, `moon run bridge-validator:build -f`.
 - Cloudflare gate: deploy the service, trigger exactly one deposit workflow through `bridge-validator:trigger-deposit`, and inspect the Workflow instance plus status endpoint.
-- Final acceptance remains blocked until npm `@zeko-labs/bridge-cli@latest` contains the fixed entrypoint from PR #184, then one deployed deposit and one deployed withdrawal must complete with `operation_id`, final hash, log path, and reporting output.
+- Final acceptance requires one deployed deposit and one deployed withdrawal to complete with `operation_id`, final hash, log path, and reporting output.
 
 ## RED Evidence
 
 - PR #150 previously mixed validator service work with SDK/CLI changes, making validator review depend on package code that belongs in a separate PR.
 - Early validator attempts did not exercise the deployed Cloudflare path reliably; local CLI runs alone were insufficient.
 - The first deployed sandbox runner could exit without delivering a Workflow callback, leaving the Workflow waiting.
+- Cloudflare workflow `20944a35-90cc-4c13-abd3-f606fcca1c86` remained waiting for 7 hours while `/bridge-status?instanceId=20944a35-90cc-4c13-abd3-f606fcca1c86&logs=1` reported no process and no diagnostic files; the Workflow must detect that deployed sandbox failure mode without local babysitting.
 - The status endpoint initially exposed only process presence, so it could not explain missing callbacks.
 - The Worker HTTP surface was unauthenticated.
 - The validator docs drifted into manual Wrangler commands and unrelated local secret details instead of the actual service contract.
@@ -142,8 +143,24 @@ updated_at: 2026-05-26T07:56:00Z
   - Reran `moon run bridge-validator:lint -f`: passed.
   - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - Reran `git diff --check`: passed.
+- Cloudflare deposit validation pass:
+  - Deployed Worker version `1be80707-903f-478b-8b5a-4f92494a6f2d`.
+  - Added application-level Sandbox control timeouts, HTTP status timeouts, and an authenticated `/bridge-cleanup` route after Cloudflare Sandbox startup/control calls were observed hanging during terminated attempts.
+  - Added `BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY` support so Cloudflare validation uses a dedicated funded wallet instead of implicitly selecting shared numbered bridge test keys with unrelated queues.
+  - Synced Cloudflare secrets from `/Users/hebilicious/GitHub/zeko-ui/.env` through `moon run bridge-validator:sync-secrets -f`.
+  - Destroyed stale Sandboxes for terminated attempts with `moon run bridge-validator:cleanup -f`.
+  - Triggered exactly one clean dedicated-wallet deposit workflow after cleanup: `7ccba267-7e54-41d7-9722-70919e0aec62`.
+  - Workflow `7ccba267-7e54-41d7-9722-70919e0aec62` completed successfully through Cloudflare Worker, Workflow, and Sandbox.
+  - CLI operation id: `794e477f-6ec0-479c-bf02-b2824c8712c3`.
+  - Submitted deposit hash: `5Jthv81XKtFQX2UiaNqjJoRzQeBoPxmJYVQ4aKfjGDK3VtxDDc5r`.
+  - Final transaction hash: `5JvExzCAP97JitHX2kReCKjbKEWAfJdomJGjHZrdSpWf7rrbLay2`.
+  - History log path: `/workspace/state/zeko-bridge/logs/794e477f-6ec0-479c-bf02-b2824c8712c3.jsonl`.
+  - Workflow success reporting step `report bridge validation success-1` succeeded.
+  - Workflow cleanup step `destroy bridge sandbox-1` succeeded.
+  - The deposit command ran from `2026-05-26T16:29:15.898Z` to `2026-05-26T17:57:36.946Z`.
 
 ## Remaining Work
 
-- No deployment was performed in this pass per user instruction.
-- After the next approved deploy, trigger one deposit plus one withdrawal through Cloudflare to capture final acceptance evidence.
+- Run final local gates for the current validator-only diff after the Cloudflare deposit fixes.
+- Trigger one withdrawal through Cloudflare to capture final acceptance evidence.
+- Commit and push the validator-only PR branch after local gates and the remaining deployed withdrawal validation are complete.

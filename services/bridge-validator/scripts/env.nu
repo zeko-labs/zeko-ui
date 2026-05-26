@@ -30,7 +30,22 @@ export def repo-root [] {
 }
 
 export def default-env-file [] {
-	repo-root | path join ".env"
+	let override = ($env.BRIDGE_VALIDATOR_ENV_FILE? | default "" | str trim)
+	if $override != "" {
+		return ($override | path expand)
+	}
+
+	let root = repo-root
+	let candidates = [
+		($root | path join ".env"),
+		($root | path join "../../.." | path expand | path join ".env")
+	]
+	let found = ($candidates | where { |candidate| $candidate | path exists } | first)
+	if ($found | is-not-empty) {
+		return $found
+	}
+
+	$candidates | first
 }
 
 export def default-wrangler-config [] {

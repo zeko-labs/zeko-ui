@@ -15,6 +15,10 @@ const describeInstanceScript = readFileSync(
 	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/describe-instance.nu"),
 	"utf8"
 )
+const cleanupScript = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/cleanup.nu"),
+	"utf8"
+)
 const moonConfig = readFileSync(
 	resolve(dirname(fileURLToPath(import.meta.url)), "../moon.yml"),
 	"utf8"
@@ -24,22 +28,30 @@ describe("bridge-validator secret sync script", () => {
 	it("maps required local values into Cloudflare Worker secrets", () => {
 		expect(script).toContain("default-env-file")
 		expect(script).toContain("default-wrangler-config")
+		expect(script).toContain("BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY")
 		expect(script).toContain("ZEKO_BRIDGE_MINA_PRIVATE_KEY")
 		expect(script).toContain('put-secret "WALLET_PRIVATE_KEY"')
 		expect(script).toContain('require-value $values "VALIDATOR_API_TOKEN"')
 		expect(script).toContain('put-secret "VALIDATOR_API_TOKEN"')
+		expect(script.indexOf("ZEKO_BRIDGE_MINA_PRIVATE_KEY_0")).toBeLessThan(
+			script.indexOf("ZEKO_BRIDGE_MINA_PRIVATE_KEY_1")
+		)
 	})
 
 	it("loads the status bearer token from the dotenv file", () => {
 		expect(statusScript).toContain('require-value $values "VALIDATOR_API_TOKEN"')
-		expect(statusScript).toContain("http get --headers")
+		expect(statusScript).toContain("http get")
+		expect(statusScript).toContain("--max-time 20sec")
 		expect(statusScript).not.toContain("$env.VALIDATOR_API_TOKEN")
 	})
 
 	it("uses Nu scripts for operator workflow diagnostics", () => {
 		expect(describeInstanceScript).toContain("VALIDATOR_INSTANCE_ID")
 		expect(describeInstanceScript).toContain("wrangler workflows instances describe")
+		expect(cleanupScript).toContain("/bridge-cleanup?instanceId=")
+		expect(cleanupScript).toContain("http post --max-time 30sec")
 		expect(moonConfig).toContain("command: nu scripts/describe-instance.nu")
+		expect(moonConfig).toContain("command: nu scripts/cleanup.nu")
 		expect(moonConfig).not.toContain("bash -lc")
 	})
 })

@@ -5,7 +5,8 @@ import type { BridgeValidationSummary } from "./validator"
 
 type FetchLike = typeof fetch
 
-const EXCERPT_LENGTH = 600
+const DIAGNOSTIC_TEXT_LIMIT = 12_000
+const DIAGNOSTIC_BLOCK_LIMIT = 2_400
 type SlackBlock =
 	| { type: "header"; text: { type: "plain_text"; text: string; emoji?: boolean } }
 	| { type: "divider" }
@@ -13,17 +14,30 @@ type SlackBlock =
 	| { type: "section"; fields: Array<{ type: "mrkdwn"; text: string }> }
 	| { type: "context"; elements: Array<{ type: "mrkdwn"; text: string }> }
 
-const excerpt = (value: string): string => {
+const excerpt = (value: string, limit: number): string => {
 	const normalized = value.trim()
-	if (normalized.length <= EXCERPT_LENGTH) {
+	if (normalized.length <= limit) {
 		return normalized
 	}
 
-	return `${normalized.slice(0, EXCERPT_LENGTH)}...`
+	const omittedCount = normalized.length - limit
+	const headLength = Math.floor(limit * 0.4)
+	const tailLength = limit - headLength
+
+	return [
+		normalized.slice(0, headLength).trimEnd(),
+		`... omitted ${omittedCount} characters ...`,
+		normalized.slice(-tailLength).trimStart()
+	].join("\n")
 }
 
 const escapeMrkdwn = (value: string) =>
 	value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+
+const sanitizeCodeBlock = (value: string) => value.replaceAll("```", "`\\`\\`")
+
+const codeBlock = (label: string, value: string, limit: number) =>
+	`*${label}*\n\`\`\`\n${sanitizeCodeBlock(excerpt(value, limit))}\n\`\`\``
 
 const linked = ({ text, url }: { text: string; url?: string }) =>
 	url ? `<${url}|${escapeMrkdwn(text)}>` : escapeMrkdwn(text)
@@ -76,6 +90,23 @@ const field = (label: string, value: string) => ({
 	text: `*${label}*\n${value}`
 })
 
+const buildDiagnosticBlocks = ({
+	stdout,
+	stderr
+}: {
+	stdout?: string
+	stderr?: string
+}): SlackBlock[] =>
+	[
+		stdout ? codeBlock("stdout", stdout, DIAGNOSTIC_BLOCK_LIMIT) : "",
+		stderr ? codeBlock("stderr", stderr, DIAGNOSTIC_BLOCK_LIMIT) : ""
+	]
+		.filter(Boolean)
+		.map((text) => ({
+			type: "section" as const,
+			text: { type: "mrkdwn" as const, text }
+		}))
+
 export const buildSlackFailureMessage = ({
 	route,
 	cliVersion,
@@ -106,8 +137,8 @@ export const buildSlackFailureMessage = ({
 		exitCode === undefined ? "" : `Exit code: ${exitCode}`,
 		`Message: ${message}`,
 		...formatTimingLines(timings),
-		stdout ? `stdout: ${excerpt(stdout)}` : "",
-		stderr ? `stderr: ${excerpt(stderr)}` : ""
+		stdout ? codeBlock("stdout", stdout, DIAGNOSTIC_TEXT_LIMIT) : "",
+		stderr ? codeBlock("stderr", stderr, DIAGNOSTIC_TEXT_LIMIT) : ""
 	]
 		.filter(Boolean)
 		.join("\n")
@@ -134,11 +165,14 @@ export const buildSlackSuccessMessage = ({
 		`Amount: ${summary.amount}`,
 		`Final hash: ${summary.finalHash}`,
 		`Log path: ${summary.logPath}`,
+		summary.cliReportedError ? `CLI warning: ${summary.cliReportedError}` : "",
 		`Submitted transactions: ${summary.submittedTransactionCount}`,
 		`History events: ${summary.historyEventCount}`,
 		`Queued claims advanced: ${summary.queueAdvanceCount}`,
 		...formatTimingLines(timings)
-	].join("\n")
+	]
+		.filter(Boolean)
+		.join("\n")
 
 export const buildSlackFailureBlocks = ({
 	route,
@@ -182,22 +216,7 @@ export const buildSlackFailureBlocks = ({
 	{ type: "section", text: { type: "mrkdwn", text: `*Failure*\n${escapeMrkdwn(message)}` } },
 	buildTimingBlock(timings),
 	...(stdout || stderr
-		? [
-				{ type: "divider" as const },
-				{
-					type: "section" as const,
-					text: {
-						type: "mrkdwn" as const,
-						text: [
-							stdout ? `*stdout*\n\`\`\`${escapeMrkdwn(excerpt(stdout))}\`\`\`` : "",
-							stderr ? `*stderr*\n\`\`\`${escapeMrkdwn(excerpt(stderr))}\`\`\`` : ""
-						]
-							.filter(Boolean)
-							.join("\n")
-							.slice(0, 3000)
-					}
-				}
-			]
+		? [{ type: "divider" as const }, ...buildDiagnosticBlocks({ stdout, stderr })]
 		: [])
 ]
 
@@ -242,6 +261,17 @@ export const buildSlackSuccessBlocks = ({
 			field("Queued claims advanced", String(summary.queueAdvanceCount))
 		]
 	},
+	...(summary.cliReportedError
+		? [
+				{
+					type: "section" as const,
+					text: {
+						type: "mrkdwn" as const,
+						text: `*CLI warning*\n${escapeMrkdwn(summary.cliReportedError)}`
+					}
+				}
+			]
+		: []),
 	buildTimingBlock(timings)
 ]
 

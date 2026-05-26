@@ -13,7 +13,7 @@ export const BRIDGE_VALIDATOR_SERVICE_INFO = {
 	limits: {
 		maxRuntimeMinutes: 120,
 		commandTimeoutMinutes: 115,
-		callbackGraceMinutes: 5
+		reportingReserveMinutes: 5
 	},
 	validation: [
 		"sandbox-command-execution",
