@@ -138,8 +138,7 @@ export default defineConfig({
 							{ text: "Rollup on Phala", link: "/operators/guides/rollup-on-phala.md" }
 						]
 					},
-					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" },
-					{ text: "Troubleshooting", link: "/operators/troubleshooting" }
+					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" }
 				]
 			},
 			{

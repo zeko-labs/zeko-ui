@@ -29,3 +29,4 @@ updated_at: 2026-05-26T23:01:45Z
 - `moon run docs:test` passed.
 - `moon run docs:build` passed.
 - `rg -n "WIP|under construction|core-developer-concepts" apps/docs/content apps/docs/.vitepress/config.ts --glob '*.md' --glob '*.ts'` returned no matches.
+- Follow-up: deleted `apps/docs/content/operators/troubleshooting.md`, removed it from the sidebar, and redirected the old URL to the operator guides index.
