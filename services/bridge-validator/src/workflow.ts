@@ -1,5 +1,5 @@
 import { type WorkflowEvent, type WorkflowStep, WorkflowEntrypoint } from "cloudflare:workers"
-import { getValidatorSecrets, type ValidatorEnv } from "./env"
+import { buildValidatorUrl, getValidatorSecrets, type ValidatorEnv } from "./env"
 import { getValidatorRoute } from "./routes"
 import { reportSlackFailure, reportSlackSuccess } from "./slack"
 import type { BridgeValidationParams } from "./types"
@@ -59,6 +59,10 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 						walletPrivateKey,
 						instanceId: event.instanceId,
 						callbackToken,
+						callbackUrl: buildValidatorUrl({
+							env: this.env,
+							path: "/bridge-callback"
+						}),
 						apiToken
 					})
 			)

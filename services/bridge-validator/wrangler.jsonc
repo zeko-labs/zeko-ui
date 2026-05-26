@@ -6,6 +6,9 @@
 	"main": "src/index.ts",
 	"workers_dev": true,
 	"preview_urls": true,
+	"vars": {
+		"BRIDGE_VALIDATOR_BASE_URL": "https://bridge-validator.zeko-labs.workers.dev"
+	},
 	"observability": {
 		"traces": {
 			"enabled": true,

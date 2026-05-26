@@ -11,7 +11,9 @@ export const BRIDGE_VALIDATOR_SERVICE_INFO = {
 		withdrawal: "zeko-to-mina"
 	},
 	limits: {
-		maxRuntimeMinutes: 120
+		maxRuntimeMinutes: 120,
+		commandTimeoutMinutes: 115,
+		callbackGraceMinutes: 5
 	},
 	validation: [
 		"sandbox-command-execution",

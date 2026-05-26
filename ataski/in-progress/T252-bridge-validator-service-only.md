@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T251]
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T02:47:13Z
+updated_at: 2026-05-26T02:55:01Z
 ---
 
 ## Requirements
@@ -72,10 +72,16 @@ updated_at: 2026-05-26T02:47:13Z
   - Reran `moon run bridge-validator:typecheck -f`: passed.
   - Reran `moon run bridge-validator:lint -f`: passed.
   - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+- Second `codex-review` findings accepted and fixed:
+  - Shortened the sandbox command timeout to 115 minutes under the 2 hour Workflow wait, leaving 5 minutes for timeout callbacks and failure reporting.
+  - Replaced the hard-coded callback host with `BRIDGE_VALIDATOR_BASE_URL` from Wrangler configuration so non-production deployments can route callbacks to their own Worker.
+  - Reran `moon run bridge-validator:type-cf -f`: passed and regenerated Worker types from Wrangler config.
+  - Reran `moon run bridge-validator:test -f`: 4 files passed, 22 tests passed.
+  - Reran `moon run bridge-validator:typecheck -f`: passed.
+  - Reran `moon run bridge-validator:lint -f`: passed.
+  - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
 
 ## Remaining Work
 
-- Finish this cleanup pass: restore useful Ataski context, remove unrelated secret/root-env documentation, simplify code structure, add bearer auth, remove manual `env.d.ts`, move operational commands into `moon.yml`, and trim README.
-- Re-run validator gates after cleanup.
-- Run `codex-review` against PR #150 and fix any actionable validator-scope findings.
+- Rerun `codex-review` after the timeout/callback-url fixes and address any remaining actionable validator-scope findings.
 - After PR #184 is published to npm latest, redeploy and trigger one deposit plus one withdrawal through Cloudflare to capture final acceptance evidence.

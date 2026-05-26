@@ -14,12 +14,12 @@ export const BRIDGE_SANDBOX_OPTIONS = {
 export const BRIDGE_WORKSPACE_ROOT = "/workspace"
 export const BRIDGE_CLI_BINARY = "zeko-bridge"
 export const DEFAULT_BRIDGE_AMOUNT = "2"
-export const BRIDGE_COMMAND_TIMEOUT_MS = WORKFLOW_HARD_TIMEOUT_MS
+export const BRIDGE_COMMAND_CALLBACK_GRACE_MS = 5 * 60 * 1000
+export const BRIDGE_COMMAND_TIMEOUT_MS = WORKFLOW_HARD_TIMEOUT_MS - BRIDGE_COMMAND_CALLBACK_GRACE_MS
 export const BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS = 5 * 60 * 1000
 export const BRIDGE_COMMAND_PROCESS_ID = "bridge-validation-command"
 export const BRIDGE_CALLBACK_PATH = "/bridge-callback"
 export const BRIDGE_STATUS_PATH = "/bridge-status"
-export const BRIDGE_CALLBACK_URL = `https://bridge-validator.zeko-labs.workers.dev${BRIDGE_CALLBACK_PATH}`
 export const BRIDGE_COMMAND_SCRIPT_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/run-bridge.sh`
 export const BRIDGE_CALLBACK_SCRIPT_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/post-callback.mjs`
 export const BRIDGE_COMMAND_PID_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/bridge.pid`
@@ -342,6 +342,7 @@ export const startBridgeCommand = async ({
 	walletPrivateKey,
 	instanceId,
 	callbackToken,
+	callbackUrl,
 	apiToken
 }: {
 	routeKey: BridgeValidatorRouteKey
@@ -352,6 +353,7 @@ export const startBridgeCommand = async ({
 	walletPrivateKey: string
 	instanceId: string
 	callbackToken: string
+	callbackUrl: string
 	apiToken: string
 }) => {
 	await sandbox.setKeepAlive(true)
@@ -366,7 +368,7 @@ export const startBridgeCommand = async ({
 		...buildBridgeProcessEnv({ walletPrivateKey }),
 		BRIDGE_API_TOKEN: apiToken,
 		BRIDGE_CALLBACK_TOKEN: callbackToken,
-		BRIDGE_CALLBACK_URL,
+		BRIDGE_CALLBACK_URL: callbackUrl,
 		BRIDGE_WORKFLOW_INSTANCE_ID: instanceId
 	}
 	const result = await sandbox.exec(buildBridgeLaunchCommand(), {

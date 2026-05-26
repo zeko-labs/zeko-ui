@@ -70,7 +70,7 @@ tasks:
       bash -lc 'wrangler workflows instances describe bridge-validator "$VALIDATOR_INSTANCE_ID" --config wrangler.jsonc'
   status:
     command: >
-      bash -lc 'curl -fsS -H "authorization: Bearer $VALIDATOR_API_TOKEN" "https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=$VALIDATOR_INSTANCE_ID"'
+      bash -lc 'curl -fsS -H "authorization: Bearer $VALIDATOR_API_TOKEN" "${BRIDGE_VALIDATOR_BASE_URL:-https://bridge-validator.zeko-labs.workers.dev}/bridge-status?instanceId=$VALIDATOR_INSTANCE_ID"'
   status-logs:
     command: >
-      bash -lc 'curl -fsS -H "authorization: Bearer $VALIDATOR_API_TOKEN" "https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=$VALIDATOR_INSTANCE_ID&logs=1"'
+      bash -lc 'curl -fsS -H "authorization: Bearer $VALIDATOR_API_TOKEN" "${BRIDGE_VALIDATOR_BASE_URL:-https://bridge-validator.zeko-labs.workers.dev}/bridge-status?instanceId=$VALIDATOR_INSTANCE_ID&logs=1"'

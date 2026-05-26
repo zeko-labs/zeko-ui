@@ -8,7 +8,7 @@ vi.mock("@cloudflare/sandbox", () => ({
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "../src/service-info"
 import { getRemainingWorkflowTimeMs, WORKFLOW_HARD_TIMEOUT_MS } from "../src/runtime"
 import { BRIDGE_CLI_SPECIFIER } from "../src/validator"
-import { hasValidBearerToken, type ValidatorEnv } from "../src/env"
+import { buildValidatorUrl, hasValidBearerToken, type ValidatorEnv } from "../src/env"
 
 describe("bridge-validator worker", () => {
 	it("exposes runtime metadata from the status surface", () => {
@@ -25,7 +25,9 @@ describe("bridge-validator worker", () => {
 				withdrawal: "zeko-to-mina"
 			},
 			limits: {
-				maxRuntimeMinutes: 120
+				maxRuntimeMinutes: 120,
+				commandTimeoutMinutes: 115,
+				callbackGraceMinutes: 5
 			}
 		})
 
@@ -52,6 +54,16 @@ describe("bridge-validator worker", () => {
 				nowMs: 1_000 + WORKFLOW_HARD_TIMEOUT_MS + 1
 			})
 		).toBe(0)
+	})
+
+	it("builds deployment-specific worker URLs from configuration", () => {
+		const env = {
+			BRIDGE_VALIDATOR_BASE_URL: "https://preview.example.workers.dev"
+		} as ValidatorEnv
+
+		expect(buildValidatorUrl({ env, path: "/bridge-callback" })).toBe(
+			"https://preview.example.workers.dev/bridge-callback"
+		)
 	})
 
 	it("requires bearer authentication for HTTP surfaces", () => {

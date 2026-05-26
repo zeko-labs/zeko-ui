@@ -17,7 +17,6 @@ import {
 	BRIDGE_COMMAND_STDERR_PATH,
 	BRIDGE_COMMAND_STDOUT_PATH,
 	BRIDGE_COMMAND_TIMEOUT_MS,
-	BRIDGE_CALLBACK_URL,
 	BRIDGE_SANDBOX_OPTIONS,
 	BRIDGE_WORKSPACE_ROOT,
 	buildBridgeCommand,
@@ -78,11 +77,11 @@ const completedHistoryLog = [
 describe("bridge validator", () => {
 	it("uses a keepAlive sandbox and a single published CLI command", () => {
 		expect(BRIDGE_SANDBOX_OPTIONS).toEqual({ keepAlive: true })
-		expect(BRIDGE_COMMAND_TIMEOUT_MS).toBe(2 * 60 * 60 * 1000)
+		expect(BRIDGE_COMMAND_TIMEOUT_MS).toBe(115 * 60 * 1000)
 
 		const command = buildBridgeCommand({ routeKey: "mina-to-zeko" })
 
-		expect(command).toContain("timeout -k 30s -s TERM 7200s")
+		expect(command).toContain("timeout -k 30s -s TERM 6900s")
 		expect(command).toContain(`${BRIDGE_CLI_BINARY} 'bridge'`)
 		expect(command).toContain("'--from' 'mina:testnet' '--to' 'zeko:testnet'")
 		expect(command).toContain("'--amount' '2' '--json' '--verbose'")
@@ -119,6 +118,7 @@ describe("bridge validator", () => {
 				walletPrivateKey: "wallet-secret",
 				instanceId: "workflow-1",
 				callbackToken: "callback-token",
+				callbackUrl: "https://validator.example/bridge-callback",
 				apiToken: "api-token"
 			})
 		).resolves.toEqual({
@@ -144,7 +144,7 @@ describe("bridge validator", () => {
 				...buildBridgeProcessEnv({ walletPrivateKey: "wallet-secret" }),
 				BRIDGE_API_TOKEN: "api-token",
 				BRIDGE_CALLBACK_TOKEN: "callback-token",
-				BRIDGE_CALLBACK_URL,
+				BRIDGE_CALLBACK_URL: "https://validator.example/bridge-callback",
 				BRIDGE_WORKFLOW_INSTANCE_ID: "workflow-1"
 			}
 		})
@@ -161,13 +161,13 @@ describe("bridge validator", () => {
 	it("wraps the single bridge CLI command with stdout, stderr, and callback capture", () => {
 		const script = buildBridgeCommandScript({ routeKey: "mina-to-zeko" })
 
-		expect(script).toContain("timeout -k 30s -s TERM 7200s")
+		expect(script).toContain("timeout -k 30s -s TERM 6900s")
 		expect(script).toContain(`${BRIDGE_CLI_BINARY} 'bridge'`)
 		expect(script).toContain("stdout.json")
 		expect(script).toContain("stderr.log")
 		expect(script).toContain("BRIDGE_WORKFLOW_INSTANCE_ID")
 		expect(script).toContain("BRIDGE_API_TOKEN")
-		expect(script).toContain("watchdog_timeout_seconds=7200")
+		expect(script).toContain("watchdog_timeout_seconds=6900")
 		expect(script).toContain("bridge validator watchdog timeout")
 	})
 

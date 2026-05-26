@@ -4,7 +4,11 @@ export type ValidatorSecretKey =
 	| "SLACK_CHANNEL_ID"
 	| "VALIDATOR_API_TOKEN"
 
-export type ValidatorEnv = Env & Record<ValidatorSecretKey, string>
+export type ValidatorConfigKey = "BRIDGE_VALIDATOR_BASE_URL"
+
+export type ValidatorEnv = Env &
+	Record<ValidatorSecretKey, string> &
+	Record<ValidatorConfigKey, string>
 
 const normalizeSecret = (value: string | undefined) => {
 	const trimmed = value?.trim()
@@ -31,12 +35,29 @@ export const requireSecret = (env: ValidatorEnv, key: ValidatorSecretKey) => {
 	return value
 }
 
+export const requireConfig = (env: ValidatorEnv, key: ValidatorConfigKey) => {
+	const value = normalizeSecret(env[key])
+	if (!value) {
+		throw new Error(`Missing required environment variable ${key}`)
+	}
+
+	return value
+}
+
 export const getValidatorSecrets = (env: ValidatorEnv) => ({
 	walletPrivateKey: requireSecret(env, "WALLET_PRIVATE_KEY"),
 	slackBotToken: requireSecret(env, "SLACK_BOT_TOKEN"),
 	slackChannelId: requireSecret(env, "SLACK_CHANNEL_ID"),
 	apiToken: requireSecret(env, "VALIDATOR_API_TOKEN")
 })
+
+export const buildValidatorUrl = ({
+	env,
+	path
+}: {
+	env: ValidatorEnv
+	path: string
+}) => new URL(path, requireConfig(env, "BRIDGE_VALIDATOR_BASE_URL")).toString()
 
 export const hasValidBearerToken = ({
 	request,
