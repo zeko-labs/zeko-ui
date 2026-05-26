@@ -25,7 +25,7 @@
 		"nitro-cloudflare-dev": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
-		"vue-tsc": "^3.3.2",
+		"vue-tsc": "catalog:",
 		"wrangler": "catalog:"
 	}
 }

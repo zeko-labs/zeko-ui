@@ -3,7 +3,20 @@ import path from "node:path"
 import { defineCommand, type CommandDef } from "citty"
 import { isInsufficientFirstWithdrawalAmountError } from "@zeko-labs/bridge-sdk"
 import { PrivateKey } from "o1js"
-import { assign, createActor, fromPromise, setup, toPromise } from "xstate"
+import {
+	assign,
+	createActor,
+	fromPromise,
+	setup,
+	toPromise,
+	type AnyActorRef,
+	type EventObject,
+	type MetaObject,
+	type ParameterizedObject,
+	type ProvidedActor,
+	type StateMachine,
+	type StateSchema
+} from "xstate"
 import type { BridgeAdapter } from "../core/adapter"
 import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
 import { createOperationLogger } from "../core/logger"
@@ -616,6 +629,39 @@ type BridgeRunnerContext = {
 	depositAnalysis?: DepositQueueState
 	withdrawalAnalysis?: WithdrawalQueueState
 }
+
+type BridgeOperationMachine = StateMachine<
+	BridgeRunnerContext,
+	EventObject,
+	Record<string, AnyActorRef | undefined>,
+	ProvidedActor,
+	ParameterizedObject,
+	ParameterizedObject,
+	string,
+	| "route"
+	| "submittingDeposit"
+	| "submittingWithdrawal"
+	| "inspectingDeposit"
+	| "inspectingWithdrawal"
+	| "waitingDepositSubmission"
+	| "waitingDepositPriorClaims"
+	| "waitingDepositFinalization"
+	| "waitingWithdrawalSubmission"
+	| "waitingWithdrawalPriorClaims"
+	| "waitingWithdrawalFinalization"
+	| "finalizingDeposit"
+	| "cancelingDeposit"
+	| "finalizingWithdrawal"
+	| "completed"
+	| "cancelled"
+	| "failed",
+	string,
+	BridgeRunnerContext,
+	OperationSession,
+	EventObject,
+	MetaObject,
+	StateSchema
+>
 
 type RunnerStep =
 	| "submit-deposit"
@@ -1676,7 +1722,7 @@ const terminalRoutes = [
 
 const actorInput = ({ context }: { context: BridgeRunnerContext }) => context
 
-export const bridgeOperationMachine = setup({
+export const bridgeOperationMachine: BridgeOperationMachine = setup({
 	types: {
 		context: {} as BridgeRunnerContext,
 		input: {} as BridgeRunnerContext,

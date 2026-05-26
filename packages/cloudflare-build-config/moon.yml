@@ -23,7 +23,7 @@ tasks:
     inputs:
       - "@group(src)"
   typecheck:
-    command: tsc --allowJs --checkJs --noEmit --types node --module nodenext --moduleResolution nodenext src/cli.js
+    command: tsgo --ignoreConfig --allowJs --checkJs --noEmit --strict false --types node --module nodenext --moduleResolution nodenext src/cli.js
     inputs:
       - "@group(src)"
   sync:

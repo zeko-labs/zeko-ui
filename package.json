@@ -8,9 +8,10 @@
 		"@emnapi/core": "catalog:",
 		"@emnapi/runtime": "catalog:",
 		"@moonrepo/cli": "^2.0.3",
+		"@typescript/native-preview": "catalog:",
 		"dprint": "^0.47.6",
 		"lefthook": "^1.13.6",
-		"typescript": "^5.9.3"
+		"typescript": "catalog:"
 	},
 	"engines": {
 		"node": "24.5.0"
