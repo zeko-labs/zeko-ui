@@ -9,11 +9,7 @@ import { getSandbox } from "@cloudflare/sandbox"
 import { handleBridgeValidatorRequest } from "../src/request"
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "../src/service-info"
 import { getRemainingWorkflowTimeMs, WORKFLOW_HARD_TIMEOUT_MS } from "../src/runtime"
-import {
-	BRIDGE_CLI_SPECIFIER,
-	BRIDGE_COMMAND_CALLBACK_EVENT,
-	BRIDGE_STATUS_SANDBOX_OPTIONS
-} from "../src/validator"
+import { BRIDGE_CLI_SPECIFIER, BRIDGE_COMMAND_CALLBACK_EVENT } from "../src/validator"
 import { buildValidatorUrl, hasValidBearerToken, type ValidatorEnv } from "../src/env"
 import packageJson from "../package.json"
 
@@ -88,7 +84,7 @@ describe("bridge-validator worker", () => {
 		expect(hasValidBearerToken({ request: unauthorized, env })).toBe(false)
 	})
 
-	it("uses a non-keepalive sandbox for status diagnostics", async () => {
+	it("does not mutate sandbox keepAlive settings for status diagnostics", async () => {
 		vi.mocked(getSandbox).mockReturnValue({
 			readFile: vi.fn(async () => ({ content: "1234" })),
 			exec: vi.fn(async () => ({ stdout: "running" }))
@@ -110,11 +106,7 @@ describe("bridge-validator worker", () => {
 				status: "running"
 			}
 		})
-		expect(getSandbox).toHaveBeenCalledWith(
-			"sandbox-namespace",
-			"bridge-validator-workflow-1",
-			BRIDGE_STATUS_SANDBOX_OPTIONS
-		)
+		expect(getSandbox).toHaveBeenCalledWith("sandbox-namespace", "bridge-validator-workflow-1")
 	})
 
 	it("routes callbacks to a per-run workflow event type", async () => {

@@ -12,9 +12,6 @@ export const BRIDGE_CLI_SPECIFIER = `${packageJson.bridgeCli.package}@${packageJ
 export const BRIDGE_SANDBOX_OPTIONS = {
 	keepAlive: true
 } as const
-export const BRIDGE_STATUS_SANDBOX_OPTIONS = {
-	keepAlive: false
-} as const
 export const BRIDGE_WORKSPACE_ROOT = "/workspace"
 export const BRIDGE_CLI_BINARY = "zeko-bridge"
 export const DEFAULT_BRIDGE_AMOUNT = "2"
@@ -153,7 +150,7 @@ export const getBridgeSandbox = (
 export const getBridgeStatusSandbox = (
 	sandboxNamespace: DurableObjectNamespace<SandboxContainer>,
 	sandboxId: string
-) => getSandbox(sandboxNamespace, sandboxId, BRIDGE_STATUS_SANDBOX_OPTIONS)
+) => getSandbox(sandboxNamespace, sandboxId)
 
 export const destroyBridgeSandbox = async ({
 	sandbox
