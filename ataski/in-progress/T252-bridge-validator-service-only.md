@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: [T251]
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T03:33:50Z
+updated_at: 2026-05-26T03:34:58Z
 ---
 
 ## Requirements
@@ -94,8 +94,9 @@ updated_at: 2026-05-26T03:33:50Z
   - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - Reran `git diff --check`: passed.
   - Verified `moon task bridge-validator:trigger-deposit --json` reports `"cache": false`.
+- Final `codex-review` rerun attempted after the Moon cache fix and was blocked by the Codex usage limit before producing findings: `try again at 11:27 AM`.
 
 ## Remaining Work
 
-- Rerun `codex-review` after the Moon operator task cache fix and address any remaining actionable validator-scope findings.
+- Rerun `codex-review` after the usage-limit reset and address any remaining actionable validator-scope findings.
 - After PR #184 is published to npm latest, redeploy and trigger one deposit plus one withdrawal through Cloudflare to capture final acceptance evidence.
