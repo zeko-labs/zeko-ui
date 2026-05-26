@@ -17,9 +17,9 @@ describe("bridge cli env loading", () => {
 		])
 	})
 
-	it("prefers inherited env over dotenv files and earlier dotenv files over later files", async () => {
+	it("keeps inherited env values above every dotenv file location", async () => {
 		const env: Record<string, string | undefined> = {
-			MINA_PRIVATE_KEY: "global-wallet"
+			MINA_PRIVATE_KEY: "inline-wallet"
 		}
 		const parsedByPath: Record<string, Record<string, string>> = {
 			"/home/tester/.zeko/.env": { MINA_PRIVATE_KEY: "home-wallet" },
@@ -47,7 +47,33 @@ describe("bridge cli env loading", () => {
 			"/workspace/packages/bridge-cli/dist/.env",
 			"/workspace/project/bin/.env"
 		])
-		expect(env.MINA_PRIVATE_KEY).toBe("global-wallet")
+		expect(env.MINA_PRIVATE_KEY).toBe("inline-wallet")
+	})
+
+	it("uses the first readable dotenv value only when the key is not inherited", async () => {
+		const env: Record<string, string | undefined> = {}
+		const parsedByPath: Record<string, Record<string, string>> = {
+			"/home/tester/.zeko/.env": { MINA_PRIVATE_KEY: "home-wallet" },
+			"/workspace/packages/bridge-cli/dist/.env": { MINA_PRIVATE_KEY: "binary-wallet" },
+			"/workspace/project/bin/.env": { MINA_PRIVATE_KEY: "invocation-wallet" }
+		}
+
+		await loadBridgeCliEnv({
+			env,
+			paths: Object.keys(parsedByPath),
+			canRead: async () => true,
+			loadConfig: (filePath, processEnv) => {
+				for (const [key, value] of Object.entries(parsedByPath[filePath] ?? {})) {
+					if (processEnv[key] === undefined) {
+						processEnv[key] = value
+					}
+				}
+
+				return { parsed: parsedByPath[filePath] ?? {} }
+			}
+		})
+
+		expect(env.MINA_PRIVATE_KEY).toBe("home-wallet")
 	})
 
 	it("skips unreadable dotenv candidates and falls back to inherited env", async () => {

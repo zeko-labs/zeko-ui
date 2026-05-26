@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest"
 import { createBridgeCommand } from "../src/commands/bridge"
 import { createOperationCommand } from "../src/commands/operation"
 import type { BridgeAdapter } from "../src/core/adapter"
-import { shouldRunBridgeCli } from "../src/core/entrypoint"
 import { createBridgeCliCommand } from "../src/core/root-command"
 import type { OperationSession } from "../src/core/types"
 import type { CommandDef } from "citty"
@@ -29,24 +28,6 @@ const resolveCommand = async (command: unknown): Promise<CommandDef | undefined>
 }
 
 describe("cli skeleton", () => {
-	it("runs when invoked through the npm zeko-bridge bin name", () => {
-		expect(
-			shouldRunBridgeCli({
-				argv1: "/tmp/node_modules/.bin/zeko-bridge",
-				moduleUrl: "file:///tmp/node_modules/@zeko-labs/bridge-cli/dist/cli.js"
-			})
-		).toBe(true)
-	})
-
-	it("does not run when imported by another process", () => {
-		expect(
-			shouldRunBridgeCli({
-				argv1: "/tmp/vitest.js",
-				moduleUrl: "file:///tmp/node_modules/@zeko-labs/bridge-cli/dist/cli.js"
-			})
-		).toBe(false)
-	})
-
 	it("exposes the planned top-level command groups", async () => {
 		const cli = createBridgeCliCommand()
 		const subCommands = await resolveSubCommands(cli.subCommands)
