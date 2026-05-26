@@ -16,6 +16,9 @@ export const BRIDGE_CLI_BINARY = "zeko-bridge"
 export const DEFAULT_BRIDGE_AMOUNT = "2"
 export const BRIDGE_COMMAND_CALLBACK_GRACE_MS = 5 * 60 * 1000
 export const BRIDGE_COMMAND_TIMEOUT_MS = WORKFLOW_HARD_TIMEOUT_MS - BRIDGE_COMMAND_CALLBACK_GRACE_MS
+export const BRIDGE_COMMAND_CALLBACK_GRACE_SECONDS = Math.floor(
+	BRIDGE_COMMAND_CALLBACK_GRACE_MS / 1000
+)
 export const BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS = 5 * 60 * 1000
 export const BRIDGE_COMMAND_PROCESS_ID = "bridge-validation-command"
 export const BRIDGE_CALLBACK_PATH = "/bridge-callback"
@@ -305,6 +308,7 @@ export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidat
 		`  BRIDGE_EXIT_CODE="$callback_exit_code" BRIDGE_STDERR_SUFFIX="$stderr_suffix" node ${shellQuote(BRIDGE_CALLBACK_SCRIPT_PATH)}`,
 		"}",
 		`watchdog_timeout_seconds=${timeoutSeconds}`,
+		`callback_grace_seconds=${BRIDGE_COMMAND_CALLBACK_GRACE_SECONDS}`,
 		"(",
 		'  sleep "$watchdog_timeout_seconds"',
 		'  post_bridge_callback 124 "\\nbridge validator watchdog timeout after ${watchdog_timeout_seconds} seconds"',
@@ -315,15 +319,19 @@ export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidat
 		buildBridgeCommand({ routeKey }),
 		') > "$stdout_path" 2> "$stderr_path"',
 		"exit_code=$?",
+		'kill "$watchdog_pid" 2>/dev/null || true',
+		'wait "$watchdog_pid" 2>/dev/null || true',
+		"callback_deadline=$((SECONDS + callback_grace_seconds))",
+		"callback_exit_code=1",
+		'while [ "$SECONDS" -le "$callback_deadline" ]; do',
 		'post_bridge_callback "$exit_code" ""',
 		"callback_exit_code=$?",
 		'if [ "$callback_exit_code" -eq 0 ]; then',
-		'  kill "$watchdog_pid" 2>/dev/null || true',
-		'  wait "$watchdog_pid" 2>/dev/null || true',
 		'  exit "$exit_code"',
 		"fi",
-		'echo "Bridge callback failed with exit code ${callback_exit_code}; watchdog remains armed." >&2',
-		'wait "$watchdog_pid"',
+		"  sleep 5",
+		"done",
+		'echo "Bridge callback failed with exit code ${callback_exit_code}; original bridge exit code was ${exit_code}." >&2',
 		'exit "$exit_code"'
 	].join("\n")
 }
@@ -376,9 +384,29 @@ export const startBridgeCommand = async ({
 		timeout: BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS,
 		env
 	})
+	if (!result.success || result.exitCode !== 0) {
+		throw new BridgeValidationError(
+			`Bridge command launcher failed with exit code ${result.exitCode}`,
+			"process",
+			result.exitCode,
+			result.stdout,
+			result.stderr
+		)
+	}
+
+	const processId = result.stdout.trim()
+	if (!/^\d+$/.test(processId)) {
+		throw new BridgeValidationError(
+			"Bridge command launcher did not report a process id",
+			"process",
+			result.exitCode,
+			result.stdout,
+			result.stderr
+		)
+	}
 
 	return {
-		processId: result.stdout.trim()
+		processId
 	}
 }
 

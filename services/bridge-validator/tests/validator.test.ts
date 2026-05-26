@@ -9,6 +9,7 @@ import {
 	BRIDGE_CLI_BINARY,
 	BRIDGE_CLI_SPECIFIER,
 	BRIDGE_CALLBACK_SCRIPT_PATH,
+	BRIDGE_COMMAND_CALLBACK_GRACE_SECONDS,
 	BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES,
 	BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS,
 	BRIDGE_COMMAND_PID_PATH,
@@ -150,6 +151,80 @@ describe("bridge validator", () => {
 		})
 	})
 
+	it("fails startup immediately when the launcher command fails", async () => {
+		const setKeepAlive = vi.fn(async () => {})
+		const mkdir = vi.fn(async () => ({
+			success: true,
+			path: "/workspace/bridge-validator",
+			recursive: true,
+			timestamp: "2026-03-24T12:00:00Z"
+		}))
+		const writeFile = vi.fn(async () => ({
+			success: true,
+			path: BRIDGE_COMMAND_SCRIPT_PATH,
+			bytesWritten: 1,
+			timestamp: "2026-03-24T12:00:00Z"
+		}))
+		const exec = vi.fn(async () => ({
+			success: false,
+			exitCode: 127,
+			stdout: "",
+			stderr: "bash: command not found",
+			command: "launch",
+			duration: 1,
+			timestamp: "2026-03-24T12:00:00Z"
+		}))
+
+		await expect(
+			startBridgeCommand({
+				routeKey: "mina-to-zeko",
+				sandbox: { setKeepAlive, mkdir, writeFile, exec },
+				walletPrivateKey: "wallet-secret",
+				instanceId: "workflow-1",
+				callbackToken: "callback-token",
+				callbackUrl: "https://validator.example/bridge-callback",
+				apiToken: "api-token"
+			})
+		).rejects.toThrow("Bridge command launcher failed with exit code 127")
+	})
+
+	it("fails startup when the launcher does not return a process id", async () => {
+		const setKeepAlive = vi.fn(async () => {})
+		const mkdir = vi.fn(async () => ({
+			success: true,
+			path: "/workspace/bridge-validator",
+			recursive: true,
+			timestamp: "2026-03-24T12:00:00Z"
+		}))
+		const writeFile = vi.fn(async () => ({
+			success: true,
+			path: BRIDGE_COMMAND_SCRIPT_PATH,
+			bytesWritten: 1,
+			timestamp: "2026-03-24T12:00:00Z"
+		}))
+		const exec = vi.fn(async () => ({
+			success: true,
+			exitCode: 0,
+			stdout: "",
+			stderr: "",
+			command: "launch",
+			duration: 1,
+			timestamp: "2026-03-24T12:00:00Z"
+		}))
+
+		await expect(
+			startBridgeCommand({
+				routeKey: "mina-to-zeko",
+				sandbox: { setKeepAlive, mkdir, writeFile, exec },
+				walletPrivateKey: "wallet-secret",
+				instanceId: "workflow-1",
+				callbackToken: "callback-token",
+				callbackUrl: "https://validator.example/bridge-callback",
+				apiToken: "api-token"
+			})
+		).rejects.toThrow("Bridge command launcher did not report a process id")
+	})
+
 	it("builds a short nohup launcher for the bridge runner", () => {
 		expect(buildBridgeLaunchCommand()).toContain(`nohup bash '${BRIDGE_COMMAND_SCRIPT_PATH}'`)
 		expect(buildBridgeLaunchCommand()).toContain(`> '${BRIDGE_COMMAND_PROCESS_LOG_PATH}' 2>&1 &`)
@@ -168,7 +243,11 @@ describe("bridge validator", () => {
 		expect(script).toContain("BRIDGE_WORKFLOW_INSTANCE_ID")
 		expect(script).toContain("BRIDGE_API_TOKEN")
 		expect(script).toContain("watchdog_timeout_seconds=6900")
+		expect(script).toContain(`callback_grace_seconds=${BRIDGE_COMMAND_CALLBACK_GRACE_SECONDS}`)
 		expect(script).toContain("bridge validator watchdog timeout")
+		expect(script).toContain('kill "$watchdog_pid"')
+		expect(script).toContain('while [ "$SECONDS" -le "$callback_deadline" ]; do')
+		expect(script).not.toContain("watchdog remains armed")
 	})
 
 	it("posts callbacks with bearer authentication", () => {

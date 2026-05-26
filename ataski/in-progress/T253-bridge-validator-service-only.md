@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T06:24:32Z
+updated_at: 2026-05-26T06:35:30Z
 ---
 
 ## Requirements
@@ -96,8 +96,21 @@ updated_at: 2026-05-26T06:24:32Z
   - Reran `git diff --check`: passed.
   - Verified `moon task bridge-validator:trigger-deposit --json` reports `"cache": false`.
 - Final `codex-review` rerun attempted after the Moon cache fix and was blocked by the Codex usage limit before producing findings: `try again at 11:27 AM`.
+- PR #150 was retargeted from `branch/bridge-sdk-cli-validator-base` to `main` after PR-A merged.
+- Merge conflicts from `origin/main` were resolved:
+  - Kept SDK/CLI behavior from `main`; validator PR #150 no longer carries PR-A package changes.
+  - Renumbered this validator task from `T252` to `T253` because `main` already contains `T252`.
+  - Removed merged SDK/CLI artifacts from the PR #150 diff.
+- Latest `codex-review` findings accepted and fixed:
+  - Failed sandbox launcher executions now fail the Workflow immediately instead of returning an empty process id and waiting for the hard timeout.
+  - Completed bridge commands now disarm the watchdog before callback retries, preserving the original CLI exit code if callback reporting cannot be delivered within the grace window.
+  - Reran `moon run bridge-validator:test -f`: 5 files passed, 25 tests passed.
+  - Reran `moon run bridge-validator:typecheck -f`: passed.
+  - Reran `moon run bridge-validator:lint -f`: passed.
+  - Reran `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - Reran `git diff --check`: passed.
 
 ## Remaining Work
 
-- Rerun `codex-review` after the usage-limit reset and address any remaining actionable validator-scope findings.
+- Rerun `codex-review` after the launcher/callback hardening changes and address any remaining actionable validator-scope findings.
 - After PR #184 is published to npm latest, redeploy and trigger one deposit plus one withdrawal through Cloudflare to capture final acceptance evidence.
