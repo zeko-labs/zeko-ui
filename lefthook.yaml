@@ -20,11 +20,11 @@
 pre-commit:
   parallel: false
   jobs:
-    - run: pnpm exec moon run --no-actions :lint-fix
+    - run: pnpm exec moon run :lint-fix
       stage_fixed: true
-    - run: pnpm exec moon run --no-actions :format-all-fix
+    - run: pnpm exec moon run :format-all-fix
       stage_fixed: true
-    - run: pnpm exec moon run --no-actions bridge-ui:typecheck
+    - run: pnpm exec moon run bridge-ui:typecheck
 #
 #     - name: rubocop
 #       glob: "*.rb"

@@ -9,16 +9,24 @@
 			"*.ts",
 			"*.vue",
 			"*.js",
+			"*.mjs",
 			"*.json",
 			"*.jsonc",
+			"*.css",
+			"*.graphql",
+			"*.gql",
 			"*.html",
 			"**/*.tsx",
 			"**/*.jsx",
 			"**/*.ts",
 			"**/*.vue",
 			"**/*.js",
+			"**/*.mjs",
 			"**/*.json",
 			"**/*.jsonc",
+			"**/*.css",
+			"**/*.graphql",
+			"**/*.gql",
 			"**/*.html",
 			"!node_modules",
 			"!node_modules/**",
@@ -27,7 +35,6 @@
 			"!**/worker-configuration.d.ts",
 			"!**/graphql/*.d.ts",
 			"!**/generated/*.d.ts",
-			"!**/generated/*.graphql",
 			"!.agents/**",
 			"!pnpm-lock.yaml",
 			"settings.json"
@@ -54,6 +61,12 @@
 			"suspicious": {
 				"useIterableCallbackReturn": {
 					"level": "warn"
+				},
+				"noUnknownAtRules": {
+					"level": "error",
+					"options": {
+						"ignore": ["custom-media"]
+					}
 				}
 			},
 			"correctness": {
@@ -115,9 +128,11 @@
 		"experimentalFullSupportEnabled": true,
 		"linter": {
 			"enabled": true
-		},
+		}
+	},
+	"css": {
 		"formatter": {
-			"enabled": false
+			"lineWidth": 150
 		}
 	},
 	"json": {

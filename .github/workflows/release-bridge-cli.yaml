@@ -52,7 +52,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build package
-        run: pnpm exec moon run --no-actions bridge-cli:build
+        run: pnpm exec moon run bridge-cli:build
 
       - name: Pack package
         id: pack

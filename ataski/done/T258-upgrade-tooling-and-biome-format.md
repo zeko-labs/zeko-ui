@@ -5,7 +5,7 @@ status: done
 blockedBy: [T257]
 owner: codex
 created_at: 2026-05-26T11:10:00Z
-updated_at: 2026-05-26T11:22:41Z
+updated_at: 2026-05-26T23:08:32Z
 ---
 
 ## Requirements
@@ -38,18 +38,19 @@ updated_at: 2026-05-26T11:22:41Z
 - Upgraded `@moonrepo/cli` to `^2.2.5`, `.prototools` `moon` to `2.2.5`, `.prototools` `proto` to `0.57.2`, `.moon/toolchains.yml` proto to `0.57.2`, and catalog `@biomejs/biome` to `^2.4.15`.
 - `pnpm i` completed and updated `pnpm-lock.yaml`; `pnpm exec moon --version` reports `moon 2.2.5`; `pnpm exec biome --version` reports `2.4.15`; `proto versions proto` reports latest `0.57.2`.
 - `pnpm exec biome migrate --write` reported no migration needed.
-- Biome now owns JS/TS/JSON formatting in root and inherited Moon format tasks; dprint remains for Markdown, YAML, Vue/HTML markup, CSS/PostCSS, and GraphQL to avoid unsupported coverage gaps and broad Vue SFC churn.
+- Biome now owns JS/TS/JSON/CSS/GraphQL/HTML/Vue formatting in root and inherited Moon format tasks; dprint remains only for Markdown and YAML.
 - Enabled new Biome 2.4.15 Vue lint rules as warnings for Vue files: `noVueVOnNumberValues`, `useVueNextTickPromise`, and `useVueValidVFor`.
 - Replaced deprecated VS Code `quickfix.biome` settings with `source.fixAll.biome` using Biome's safe `lint/suspicious/noQuickfixBiome` fix.
-- Updated local hooks and release/sync workflows to run `moon run --no-actions` after dependencies are installed, avoiding Moon 2.2.5's redundant dependency setup path that fails while inspecting a pnpm-linked dependency manifest.
 - `moon run -f :format-all-fix` completed after the formatter ownership change; it fixed 16 TS/TSX files.
+- `moon run -f :format-all-fix` completed after expanding Biome formatter ownership to CSS and GraphQL; it fixed 16 additional CSS/GraphQL files.
+- `pnpm exec moon run :format-all` passed with Biome formatting 505 files and dprint checking Markdown/YAML.
+- `pnpm exec moon run :lint` passed after configuring Biome CSS lint to allow the repo's PostCSS `@custom-media` at-rule. Existing warning-level findings remain in leaderboard and bridge SDK code.
+- `pnpm exec moon run graphql:build bridge-sdk:typecheck bridge-cli:typecheck bridge-ui:typecheck faucet-ui:typecheck` passed without `--no-actions`.
+- `pnpm exec moon run bridge-cli:test faucet:test` passed for `bridge-cli:test`; `faucet:test` hit one zkApp timeout on the first run and passed on immediate rerun with `pnpm exec moon run -f faucet:test`.
 - `moon run -f :format-all` passed.
 - `moon run -f bridge-ui:format faucet-ui:format graphql:format bridge-cli:format` passed.
 - `moon run -f :lint` passed after the editor settings migration. Existing warning-level findings remain in leaderboard and bridge SDK code.
 - `moon run -f faucet:typecheck actions-indexer:typecheck cloudflare-build-config:typecheck sync-standalone-package:typecheck bridge-cli:typecheck zeko-skills:typecheck graphql:typecheck bridge-sdk:typecheck` passed using native `tsgo` package typechecks.
 - `moon run -f bridge-ui:typecheck faucet-ui:typecheck` passed using Nuxt/Nuxi typecheck.
 - `moon run -f bridge-cli:test faucet:test` passed.
-- `pnpm exec moon run --no-actions :format-all` passed.
-- `pnpm exec moon run --no-actions :lint` passed; rerunning `pnpm exec moon run --no-actions -f lb-indexer:lint` confirms the deprecated `quickfix.biome` finding is gone and only the existing `noExplicitAny` warning remains.
-- `pnpm exec moon run --no-actions bridge-sdk:typecheck bridge-cli:typecheck bridge-ui:typecheck faucet-ui:typecheck` passed.
-- `pnpm exec moon run --no-actions bridge-cli:test faucet:test` passed.
+- Raw `pnpm exec moon run bridge-ui:typecheck` passed without `--no-actions`.

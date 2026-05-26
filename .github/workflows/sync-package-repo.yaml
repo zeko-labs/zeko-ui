@@ -87,7 +87,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build sync tooling package
-        run: pnpm exec moon run --no-actions sync-standalone-package:build
+        run: pnpm exec moon run sync-standalone-package:build
 
       - name: Create GitHub App token
         id: app-token
