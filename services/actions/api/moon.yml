@@ -90,7 +90,7 @@ tasks:
       - worker-configuration.d.ts
   publish-cf-build-config:
     description: Publish the checked-in Cloudflare Workers Build config for this project.
-    script: pnpm exec moon run cloudflare-build-config:sync -- services/actions/api/workers-build.jsonc services/actions/api/workers-build-mainnet-disabled.jsonc
+    script: pnpm exec moon run cloudflare-build-config:sync -- services/actions/api/workers-build.jsonc
     options:
       cache: false
   db-generate:
