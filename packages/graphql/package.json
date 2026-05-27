@@ -1,6 +1,6 @@
 {
 	"name": "@zeko-labs/graphql",
-	"version": "0.2.1",
+	"version": "0.3.0",
 	"description": "Shared GraphQL documents and generated types for Zeko services and SDKs.",
 	"type": "module",
 	"keywords": ["typescript", "library"],
