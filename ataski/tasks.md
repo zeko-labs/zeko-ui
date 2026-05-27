@@ -263,3 +263,4 @@
 - T263 | done | correct-mainnet-readiness-self-review-findings | done/T263-correct-mainnet-readiness-self-review-findings.md
 - T264 | done | resolve-review-comments-and-deploy-inventory | done/T264-resolve-review-comments-and-deploy-inventory.md
 - T265 | done | clean-up-bridge-sdk-example-helper | done/T265-clean-up-bridge-sdk-example-helper.md
+- T266 | done | apply-mainnet-hyperdrive-ids | done/T266-apply-mainnet-hyperdrive-ids.md

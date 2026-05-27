@@ -642,3 +642,12 @@ Initial log:
 - Renamed the planned Northflank GitHub environment secret from `NORTHFLANK_API_TOKEN` to `NORTHFLANK_TOKEN` to match the provided local `.env` key and verified that token shape against the Northflank project API without printing the token.
 - Added `services/actions/api/.dev.vars` with non-secret local development values so `wrangler types` preserves the local `ENVIRONMENT=local`/`DATABASE_URL` contract while generated deployment envs still reflect testnet/mainnet Wrangler config.
 - Corrected `services/actions/api/.env.example` to use lowercase `ENVIRONMENT="local"`, matching the existing `db.ts` runtime check.
+- After operator confirmation to proceed on 2026-05-27, used PR head `6511443e03f8ce306e2f7a98a1f7b8ae61e01690` as the release point even though GitHub still reported PR review state `REVIEW_REQUIRED`.
+- Created the Supabase mainnet Actions project `actions-mainnet` in org `sgiauboxfyybzczucvgd`, region `eu-central-1`, size `medium`; Supabase returned project ref `yfmzqqkzxsdktrrivlhn`.
+- Generated local `ACTIONS_MAINNET_DB_PASSWORD` and `MAINNET_AUTH_TOKEN` in ignored `.env.mainnet-readiness.local`; the generated password required URL encoding before use in PostgreSQL connection URLs.
+- Created the GitHub `mainnet` environment with no protection rules via `gh api --method PUT repos/zeko-labs/zeko-ui/environments/mainnet`, then set environment secrets/vars from the reviewed root `.env` mapping. If required reviewers are wanted, that remains an explicit GitHub environment settings follow-up.
+- Corrected `ACTIONS_MAINNET_DATABASE_URL` after initial GitHub secret setup so the final GitHub `mainnet` environment secret uses the URL-encoded database password.
+- Confirmed the Cloudflare Workers Builds token `CFB_TOKEN` can verify and sync Workers Build config, but Wrangler Hyperdrive API calls return Cloudflare authentication error with that token. Used the existing local Wrangler OAuth login for Hyperdrive list/create operations.
+- Created Cloudflare Hyperdrive config `actions-mainnet-db-cache` with ID `9d11060dc2af499d897f52c8d3a7c74f`.
+- Created Cloudflare Hyperdrive config `actions-mainnet-db-no-cache` with ID `e674c005e43c4d45ac622e987294c51d`.
+- Replaced the mainnet Hyperdrive placeholders in `services/actions/api/wrangler.jsonc` with the reviewed IDs and validated with `moon run actions-api:type-cf -f`, `moon run actions-api:typecheck -f`, and `moon run actions-api:lint -f`.
