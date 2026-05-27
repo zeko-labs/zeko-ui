@@ -195,7 +195,7 @@
 								"spec": {
 									"stages": [
 										{
-											"name": "Testnet",
+											"name": "Development",
 											"nfObjects": [
 												{
 													"id": "${refs.actions-indexer-deployment.id}",
@@ -278,7 +278,7 @@
 											}
 										},
 										{
-											"name": "Mainnet",
+											"name": "Production",
 											"nfObjects": [
 												{
 													"id": "${refs.actions-indexer-mainnet-deployment.id}",

@@ -41,7 +41,7 @@ def main [
 	let token = (required-env "NORTHFLANK_TOKEN")
 	let project_id = (required-env "NORTHFLANK_PROJECT_ID")
 	let pipeline_id = (required-env "NORTHFLANK_PIPELINE_ID")
-	let stage = (optional-env "NORTHFLANK_STAGE" "Mainnet")
+	let stage = (optional-env "NORTHFLANK_STAGE" "Production")
 	let branch = (required-env "GITHUB_REF_NAME")
 	let sha = (required-env "GITHUB_SHA")
 	let run_number = (required-env "GITHUB_RUN_NUMBER")

@@ -12,7 +12,7 @@ jobs:
       group: bridge-mainnet-release
       cancel-in-progress: false
     env:
-      NORTHFLANK_STAGE: ${{ vars.NORTHFLANK_STAGE || 'Mainnet' }}
+      NORTHFLANK_STAGE: ${{ vars.NORTHFLANK_STAGE || 'Production' }}
     steps:
       - uses: actions/checkout@v4
 

@@ -264,3 +264,4 @@
 - T264 | done | resolve-review-comments-and-deploy-inventory | done/T264-resolve-review-comments-and-deploy-inventory.md
 - T265 | done | clean-up-bridge-sdk-example-helper | done/T265-clean-up-bridge-sdk-example-helper.md
 - T266 | done | apply-mainnet-hyperdrive-ids | done/T266-apply-mainnet-hyperdrive-ids.md
+- T267 | done | use-valid-northflank-stage-names | done/T267-use-valid-northflank-stage-names.md

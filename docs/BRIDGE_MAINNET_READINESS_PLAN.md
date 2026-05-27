@@ -227,7 +227,7 @@ Target Northflank shape:
   - testnet deployment with domain `testnet.indexer.actions.zeko.io`
   - mainnet deployment with domain `indexer.actions.zeko.io`
 - one release flow for testnet, triggered from `main` when indexer-relevant files change
-- one mainnet pipeline stage/release flow that is not human-triggered directly; GitHub Actions triggers it as part of the single mainnet release workflow
+- one mainnet pipeline stage/release flow (`Production`, because Northflank pipeline stage names are constrained to `Development`, `Staging`, or `Production`) that is not human-triggered directly; GitHub Actions triggers it as part of the single mainnet release workflow
 - optional preview environment support can stay PR-based if useful
 
 The existing live deployment should be renamed/modeled as the testnet deployment rather than replaced by an unrelated service first.
@@ -270,16 +270,16 @@ Mainnet values:
 
 Northflank invocation requirement:
 
-- Use Northflank's release-flow API endpoint for triggering the `Mainnet` pipeline stage from GitHub Actions:
+- Use Northflank's release-flow API endpoint for triggering the mainnet `Production` pipeline stage from GitHub Actions:
 
 ```bash
-curl -fsS -X POST "https://api.northflank.com/v1/projects/${NORTHFLANK_PROJECT_ID}/pipelines/${NORTHFLANK_PIPELINE_ID}/release-flows/${NORTHFLANK_STAGE:-Mainnet}/runs" \
+curl -fsS -X POST "https://api.northflank.com/v1/projects/${NORTHFLANK_PROJECT_ID}/pipelines/${NORTHFLANK_PIPELINE_ID}/release-flows/${NORTHFLANK_STAGE:-Production}/runs" \
   -H "Authorization: Bearer ${NORTHFLANK_TOKEN}" \
   -H "Content-Type: application/json" \
   --data "{\"name\":\"Bridge mainnet release ${GITHUB_RUN_NUMBER}\",\"description\":\"Triggered by ${GITHUB_REPOSITORY}@${GITHUB_SHA}\",\"overrides\":{\"actions-indexer-mainnet-pipeline-build\":{\"branch\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\"}}}"
 ```
 
-- Provide `NORTHFLANK_TOKEN`, `NORTHFLANK_PROJECT_ID`, and `NORTHFLANK_PIPELINE_ID` in the GitHub `mainnet` environment; `NORTHFLANK_STAGE` may override the default `Mainnet` stage name if review chooses a different stage slug.
+- Provide `NORTHFLANK_TOKEN`, `NORTHFLANK_PROJECT_ID`, and `NORTHFLANK_PIPELINE_ID` in the GitHub `mainnet` environment; `NORTHFLANK_STAGE` may override the default `Production` stage name if review chooses a different stage slug accepted by Northflank.
 - Encode this invocation in the reviewed workflow and/or Nushell helper script.
 - Do not leave the workflow with a placeholder command.
 - Record the discovery path and final command in the Implementation Review Log.
@@ -613,6 +613,7 @@ Initial log:
 - Reverted `services/actions/api/src/db.ts` to match `origin/main`; changing Actions API database initialization is outside this plan.
 - Did not add inline Docker orchestration to `services/actions/api/moon.yml`; local DB setup remains in the existing explicit `manual-db-test` task.
 - Updated `northflank/actions-indexer/project.json` to keep the existing deployment ref as testnet and add a mainnet deployment ref. The mainnet release flow defaults to branch `main`; GitHub Actions supplies branch/SHA selection through Northflank release-flow `overrides`, not checked-in template arguments.
+- Corrected the Northflank pipeline stage names to API-accepted values after live template validation rejected `Testnet` and `Mainnet`; testnet maps to `Development`, and mainnet maps to `Production`.
 - Left `services/actions/indexer/moon.yml` unchanged from `origin/main`; indexer test harness changes are outside this plan.
 - Left `services/actions/indexer/src/action-processing/runtime.ts` unchanged from `origin/main`; action-processing process resolution changes are outside this plan.
 - Removed the unreviewed `SENTRY_HOST` Wrangler placeholder vars. The Sentry tunnel derives the allowed ingest host from the existing public Sentry DSN so the PR does not invent a new Wrangler variable. This is the only retained `server/routes/tunnel.ts` change.
@@ -651,3 +652,7 @@ Initial log:
 - Created Cloudflare Hyperdrive config `actions-mainnet-db-cache` with ID `9d11060dc2af499d897f52c8d3a7c74f`.
 - Created Cloudflare Hyperdrive config `actions-mainnet-db-no-cache` with ID `e674c005e43c4d45ac622e987294c51d`.
 - Replaced the mainnet Hyperdrive placeholders in `services/actions/api/wrangler.jsonc` with the reviewed IDs and validated with `moon run actions-api:type-cf -f`, `moon run actions-api:typecheck -f`, and `moon run actions-api:lint -f`.
+- The live Northflank project still had the old `Development`/`Staging`/`Production` pipeline and no mainnet deployment, so the checked-in template needed to be applied before the mainnet release flow could run.
+- Northflank template schema validation rejected checked-in stage names `Testnet` and `Mainnet`; corrected the template and workflow defaults so testnet maps to `Development` and mainnet maps to `Production`.
+- Northflank accepted the corrected template schema, but the live template run failed because `testnet.indexer.actions.zeko.io` was not verified in Northflank. Added the subdomain in Northflank; verification still requires a Cloudflare DNS CNAME for `testnet.indexer.actions.zeko.io` pointing at `testnet.indexer.actions.zeko.io.zeko-t5vf.dns.northflank.app`.
+- The available `CFB_TOKEN` can verify and list the `zeko.io` zone but returns Cloudflare authentication errors for DNS record read/write, so the Northflank template application is blocked until a Cloudflare token/session with DNS edit permission creates that CNAME.
