@@ -269,3 +269,4 @@
 - T269 | done | fix-northflank-release-description | done/T269-fix-northflank-release-description.md
 - T270 | done | resolve-main-conflicts-for-pr183 | done/T270-resolve-main-conflicts-for-pr183.md
 - T271 | done | resolve-pr184-review-followups | done/T271-resolve-pr184-review-followups.md
+- T272 | done | fix-bridge-ui-preview-wrangler-config | done/T272-fix-bridge-ui-preview-wrangler-config.md
