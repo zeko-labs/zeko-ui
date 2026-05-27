@@ -29,6 +29,16 @@ To install everything, run `pnpm i` from the root.
 - You can disable moon caching by passing the `-f` flag to any `moon run` command that has cached results.
 - If you need to run a command not specified in `moon.yml`, use `pnpm exec <command>`.
 
+## Cloudflare Workers Builds
+
+- `workers-build.jsonc` files are the source of truth for Cloudflare Workers Builds trigger configuration.
+- Before editing or publishing any Workers Builds trigger config, inspect the target project’s `moon.yml` for its `publish-cf-build-config` task and use that task.
+- Publish Workers Builds config only through Moon: run `moon run <project>:publish-cf-build-config` from the repo root, or use the underlying `moon run cloudflare-build-config:sync -- <path-to-workers-build.jsonc>` task when a project task does not exist.
+- For validation, use `moon run cloudflare-build-config:sync-dry-run -- <path-to-workers-build.jsonc>`.
+- Do not call Cloudflare’s Workers Builds API directly from ad hoc scripts, curl, browser tools, or one-off Node snippets to create, patch, or delete build triggers. If the sync task cannot perform the needed operation, stop and report the exact blocker.
+- When configuring testnet/mainnet separation, verify `scriptName` names the Worker whose build triggers should run. Changing only the deploy command is not enough. For example, default-branch testnet deploys must target the testnet Worker script, not the mainnet Worker script with a testnet deploy command.
+- Keep automatic `main` branch Workers Builds attached only to the intended non-production Worker unless the user explicitly requests automatic mainnet deployment. Mainnet deployment should stay manual/release-workflow driven when that is the established project pattern.
+
 ## Testing
 
 When writing tests, never attempt to use workarounds to make test pass.

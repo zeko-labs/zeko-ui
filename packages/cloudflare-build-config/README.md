@@ -13,7 +13,8 @@ For every enabled config file, it:
 1. Resolves the Worker by `scriptName`.
 2. Lists the existing Cloudflare Workers Build triggers for that Worker.
 3. Matches triggers by `triggers[].name`.
-4. Patches the mutable trigger settings so they match the file.
+4. Creates missing triggers when `triggerTemplateScriptName` is configured.
+5. Patches the mutable trigger settings so they match the file.
 
 It updates these trigger fields:
 
@@ -25,8 +26,8 @@ It updates these trigger fields:
 - `path_includes`
 - `path_excludes`
 
-It does not create or delete triggers. If a named trigger is missing remotely,
-the command fails so the drift is explicit.
+It does not delete triggers. If a named trigger is missing remotely and no
+template script is configured, the command fails so the drift is explicit.
 
 The package is private and only meant to be used from this monorepo.
 
@@ -41,6 +42,9 @@ Supported fields:
   Set to `false` to keep a checked-in config file without syncing it.
 - `scriptName`
   The Cloudflare Worker script name to look up.
+- `triggerTemplateScriptName`
+  Optional Worker script name to copy the repository connection and build token
+  from when creating missing triggers for `scriptName`.
 - `buildCommand`
   Default build command applied to every trigger unless a trigger overrides it.
 - `rootDirectory`
@@ -86,8 +90,10 @@ itself runs from `packages/cloudflare-build-config`.
 
 - `CLOUDFLARE_API_TOKEN` must be set.
 - `CLOUDFLARE_ACCOUNT_ID` must be set.
-- The token must be able to read and update Workers Build triggers.
-- The remote Worker and trigger names must already exist.
+- The token must be able to read, create, and update Workers Build triggers.
+- The remote Worker must already exist.
+- Existing trigger names must match the checked-in config. Missing trigger names
+  are created only when `triggerTemplateScriptName` is configured.
 
 ## Usage
 

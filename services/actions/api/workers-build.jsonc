@@ -1,6 +1,7 @@
 {
 	"$schema": "../../../packages/cloudflare-build-config/schema/workers-build.schema.json",
-	"scriptName": "actions-api",
+	"scriptName": "actions-api-testnet",
+	"triggerTemplateScriptName": "actions-api",
 	"triggers": [
 		{
 			"name": "Deploy default branch",
