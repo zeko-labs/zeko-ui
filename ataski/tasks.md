@@ -265,3 +265,5 @@
 - T265 | done | clean-up-bridge-sdk-example-helper | done/T265-clean-up-bridge-sdk-example-helper.md
 - T266 | done | apply-mainnet-hyperdrive-ids | done/T266-apply-mainnet-hyperdrive-ids.md
 - T267 | done | use-valid-northflank-stage-names | done/T267-use-valid-northflank-stage-names.md
+- T268 | done | fix-bridge-ui-deploy-path-list | done/T268-fix-bridge-ui-deploy-path-list.md
+- T269 | done | fix-northflank-release-description | done/T269-fix-northflank-release-description.md

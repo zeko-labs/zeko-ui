@@ -276,7 +276,7 @@ Northflank invocation requirement:
 curl -fsS -X POST "https://api.northflank.com/v1/projects/${NORTHFLANK_PROJECT_ID}/pipelines/${NORTHFLANK_PIPELINE_ID}/release-flows/${NORTHFLANK_STAGE:-Production}/runs" \
   -H "Authorization: Bearer ${NORTHFLANK_TOKEN}" \
   -H "Content-Type: application/json" \
-  --data "{\"name\":\"Bridge mainnet release ${GITHUB_RUN_NUMBER}\",\"description\":\"Triggered by ${GITHUB_REPOSITORY}@${GITHUB_SHA}\",\"overrides\":{\"actions-indexer-mainnet-pipeline-build\":{\"branch\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\"}}}"
+  --data "{\"name\":\"Bridge mainnet release ${GITHUB_RUN_NUMBER}\",\"description\":\"Triggered by ${GITHUB_REPOSITORY} sha ${GITHUB_SHA}\",\"overrides\":{\"actions-indexer-mainnet-pipeline-build\":{\"branch\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\"}}}"
 ```
 
 - Provide `NORTHFLANK_TOKEN`, `NORTHFLANK_PROJECT_ID`, and `NORTHFLANK_PIPELINE_ID` in the GitHub `mainnet` environment; `NORTHFLANK_STAGE` may override the default `Production` stage name if review chooses a different stage slug accepted by Northflank.
@@ -655,4 +655,16 @@ Initial log:
 - The live Northflank project still had the old `Development`/`Staging`/`Production` pipeline and no mainnet deployment, so the checked-in template needed to be applied before the mainnet release flow could run.
 - Northflank template schema validation rejected checked-in stage names `Testnet` and `Mainnet`; corrected the template and workflow defaults so testnet maps to `Development` and mainnet maps to `Production`.
 - Northflank accepted the corrected template schema, but the live template run failed because `testnet.indexer.actions.zeko.io` was not verified in Northflank. Added the subdomain in Northflank; verification still requires a Cloudflare DNS CNAME for `testnet.indexer.actions.zeko.io` pointing at `testnet.indexer.actions.zeko.io.zeko-t5vf.dns.northflank.app`.
-- The available `CFB_TOKEN` can verify and list the `zeko.io` zone but returns Cloudflare authentication errors for DNS record read/write, so the Northflank template application is blocked until a Cloudflare token/session with DNS edit permission creates that CNAME.
+- The available `CFB_TOKEN` can verify and list the `zeko.io` zone but initially returned Cloudflare authentication errors for DNS record read/write. After the token permissions were corrected, created the unproxied `testnet.indexer.actions.zeko.io` CNAME pointing at `testnet.indexer.actions.zeko.io.zeko-t5vf.dns.northflank.app`, verified it through Cloudflare DNS, and verified the subdomain in Northflank.
+- Applied the corrected Northflank template through template run `2b2f6555-25eb-46e7-a700-d7d5fb19fbf8`; the run completed successfully.
+- Ran the mainnet Actions API database migrations with `moon exec --ignore-ci-checks actions-api:db-migrate -- --force`; migrations completed successfully.
+- Deployed the mainnet Actions API. The token-backed Wrangler deploy uploaded the worker but failed on the route update; rerunning the final deploy through the existing local Wrangler OAuth session succeeded with version `43348e31-58a5-41ef-901d-68fb3fdb0a08`.
+- Triggered the Northflank `Production` release flow for the mainnet Actions indexer with branch `branch/bridge-mainnet-readiness-plan` and SHA `7dae5e173300c0462b60c291e9ecf907458710cb`; release flow run `930d259f-608b-436c-a5a9-2f92add76bb8` completed successfully.
+- The first Northflank release-flow trigger failed because descriptions reject `@`. Updated the workflow, helper script, and documented curl command to use `sha` in the description text instead.
+- The mainnet indexer initially failed health checks because the direct Supabase host resolved without an IPv4 `A` record in this environment. Updated the live Northflank deployment and stored template argument to use the Supabase pooler host `aws-1-eu-central-1.pooler.supabase.com:5432`; the indexer then reported healthy.
+- Validated mainnet Actions with `moon exec --ignore-ci-checks actions-api:live-e2e-mainnet -f` and `moon run actions-indexer:diagnose-health -- --url https://indexer.actions.zeko.io --timeout-ms 30000 --json`; both passed.
+- Published the checked-in Bridge Workers Build config with `moon run bridge-ui:publish-cf-build-config -f`; Cloudflare reported default-branch and non-production trigger updates.
+- GitHub cannot dispatch `.github/workflows/bridge-mainnet-release.yaml` from this feature branch because the workflow is not on the default branch yet, so Bridge UI mainnet deployment was run locally with the same deploy task inputs.
+- The Bridge UI deploy script failed under the current Nushell version because the PATH list used `path join` without pipeline input. Rewrote the two PATH entries to pipe `pwd` into `path join`, then validated the script parse and reran the deploy.
+- Deployed the mainnet Bridge UI. The token-backed deploy uploaded assets but failed on the route update; rerunning the final Wrangler deploy through the existing local Wrangler OAuth session succeeded with version `1ee2afc1-1042-46ae-8390-e3d5de4c3360`, then finalized the Sentry release.
+- Smoke checks after deployment returned healthy responses from `https://bridge.zeko.io`, `https://api.actions.zeko.io/health`, and `https://indexer.actions.zeko.io/health`.

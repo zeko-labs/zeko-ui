@@ -80,8 +80,8 @@ def main [] {
 	$env.PATH = (
 		$current_path
 		| append [
-			(path join (pwd) "node_modules" ".bin")
-			(path join (pwd) ".." ".." "node_modules" ".bin")
+			((pwd) | path join "node_modules" ".bin")
+			((pwd) | path join ".." ".." "node_modules" ".bin")
 		]
 		| uniq
 	)
