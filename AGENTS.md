@@ -67,6 +67,11 @@ When testing, prefer using the test tool to run the tests.
 
 Zeko UI is a private monorepo, but some packages are published publicly from split repositories. For those packages, the source of truth stays here and GitHub sync workflows export the package directory into a public standalone repo before release. When working on publishable packages, account for both environments: monorepo-only metadata such as `catalog:` and `workspace:` can be valid here, but the sync pipeline must rewrite anything non-publishable before the standalone repo runs its release workflow.
 
+## Release Changesets
+
+- Source changes to publishable packages require a `.changeset/*.md` entry before handoff; use `pnpm changeset` from the repo root and respect `.changeset/config.json` fixed/ignored packages.
+- If a required changeset was missed after merge, do not rewrite history. Add a new changeset commit on top of latest `main`.
+
 ## Coding Style
 
 - NEVER use hacky workaround for the sake of making things works. Be thorough.
