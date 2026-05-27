@@ -462,4 +462,27 @@ describe("deposit cancellation state", () => {
 			reason: "Deposit is not finalizable yet; an earlier deposit must be resolved first"
 		})
 	})
+
+	it("reports when an accepted deposit is waiting for outer commit confirmation", async () => {
+		const bridge = buildBridge()
+		const deposit = buildDeposit({ amount: 10, timeout: 20 })
+		const depositWitness = buildDepositWitness(deposit, 1, { lower: 0, upper: 1 })
+		const lastCommit = buildCommit({ index: 1, lower: 4, upper: 4, synchronizedLength: 1 })
+
+		mockDepositState({
+			bridge,
+			deposits: [deposit],
+			depositWitnesses: [depositWitness],
+			outerActions: [depositWitness, lastCommit],
+			lastCommit,
+			syncedLength: 1,
+			syncedState: lastCommit.afterActionState
+		})
+
+		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
+			available: false,
+			reason:
+				"Deposit 1 is accepted but not confirmed yet; confirmedIndex 0 is behind deposit index 1"
+		})
+	})
 })

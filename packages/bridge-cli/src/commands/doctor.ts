@@ -1,6 +1,6 @@
 import { defineCommand, type CommandDef } from "citty"
 import { resolveAppPaths } from "../core/paths"
-import { resolveSignerKeys } from "../core/signer"
+import { resolveSignerKeys, toSignerPublicKey } from "../core/signer"
 import { KNOWN_ROUTES } from "../core/routes"
 import { createSdkConfig } from "../core/sdk-config"
 
@@ -44,7 +44,8 @@ export const createDoctorCommand = (deps: DoctorCommandDeps = {}): CommandDef =>
 			const paths = (deps.resolvePaths ?? resolveAppPaths)()
 			const keyConfig = (() => {
 				try {
-					return { ok: true, value: (deps.resolveKeys ?? resolveSignerKeys)() }
+					const keys = (deps.resolveKeys ?? resolveSignerKeys)()
+					return { ok: true, publicKey: toSignerPublicKey(keys.mina) }
 				} catch (error) {
 					return { ok: false, message: error instanceof Error ? error.message : String(error) }
 				}
@@ -78,6 +79,8 @@ export const createDoctorCommand = (deps: DoctorCommandDeps = {}): CommandDef =>
 					`State dir: ${paths.stateDir}`,
 					`Log dir: ${paths.logDir}`,
 					`Wallet private key: ${keyConfig.ok ? "configured" : keyConfig.message}`,
+					...(keyConfig.ok ? [`Signer public key: ${keyConfig.publicKey}`] : []),
+					`Known routes: ${KNOWN_ROUTES.map((route) => `${route.from}->${route.to}`).join(", ")}`,
 					"Route status:",
 					...routeStatusLines,
 					"SDK endpoint mapping:",

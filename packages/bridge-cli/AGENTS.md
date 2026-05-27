@@ -17,6 +17,9 @@ Follow [TESTING.md](./TESTING.md) exactly for live bridge validation.
 
 Agent-specific rules on top of that procedure:
 
+- Run local source CLI commands from the active PR worktree root, using this worktree's built CLI.
+- Pass `MINA_PRIVATE_KEY` explicitly for one-off wallet selection. Inline/exported environment values take precedence over every dotenv file loaded by the CLI.
+- The CLI rejects an explicit `--account` that does not match the signer public key, so do not add separate preflight checks just to validate that pairing.
 - Do not add the live-validation tasks to CI or any automatic local workflow.
 - Do not copy release/publish workflow detail into the package README. Internal release guidance already lives in `RELEASE.md` and the repo skills.
 

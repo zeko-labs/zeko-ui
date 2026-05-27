@@ -1,6 +1,7 @@
 const RECOVERABLE_MUTATION_ERROR_PATTERNS = [
 	/Failed to fetch proved forest/i,
-	/No key returned from mutation/i
+	/No key returned from mutation/i,
+	/\bBad Gateway\b/i
 ]
 
 export const formatErrorMessage = (error: unknown): string =>

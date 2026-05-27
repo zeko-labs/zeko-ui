@@ -35,5 +35,9 @@ describe("published package boundary", () => {
 		const cliSource = readFileSync(path.join(packageRoot, "src/cli.ts"), "utf8")
 
 		expect(cliSource).not.toMatch(/export\s+const\s+createBridgeCli/)
+		expect(cliSource).not.toContain("shouldRunBridgeCli")
+		expect(cliSource).toContain("await loadBridgeCliEnv()")
+		expect(cliSource).toContain("await runMain(createBridgeCliCommand())")
+		expect(existsSync(path.join(packageRoot, "src/core/entrypoint.ts"))).toBe(false)
 	})
 })

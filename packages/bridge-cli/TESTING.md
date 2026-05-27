@@ -6,20 +6,20 @@ Agent-specific workflow rules live in [AGENTS.md](./AGENTS.md).
 
 ## Required Environment
 
-The CLI auto-loads dotenv files in this order before falling back to exported shell variables:
+Inline or exported environment variables take priority over every dotenv file. For keys that are not already set in the shell, the CLI loads dotenv files in this order:
 
 - `~/.zeko/.env`
 - a sibling `.env` next to the CLI binary
 - a sibling `.env` next to the invocation path
 
-Set this key in one of those locations or export it directly before running the live checks:
+Set this key in one of those locations or pass it directly for the command:
 
 - `MINA_PRIVATE_KEY`
 
-Example shell setup:
+Example explicit command environment:
 
 ```bash
-export MINA_PRIVATE_KEY="<wallet private key>"
+MINA_PRIVATE_KEY="<wallet private key>" zeko-bridge doctor
 ```
 
 ## Validation Protocol
