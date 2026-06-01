@@ -8,7 +8,10 @@
 	"workers_dev": true,
 	"preview_urls": true,
 	"vars": {
-		"BRIDGE_VALIDATOR_BASE_URL": "https://bridge-validator.zeko-labs.workers.dev"
+		"BRIDGE_VALIDATOR_BASE_URL": "https://bridge-validator.zeko-labs.workers.dev",
+		"BRIDGE_VALIDATOR_ENABLED": "false",
+		"BRIDGE_VALIDATOR_SOURCE_REPOSITORY": "https://github.com/zeko-labs/zeko-ui.git",
+		"BRIDGE_VALIDATOR_SOURCE_REF": "branch/feature-web-397-bridge-validator-e2e"
 	},
 	"observability": {
 		"traces": {
@@ -23,7 +26,7 @@
 		}
 	},
 	"triggers": {
-		"crons": ["0 */6 * * *"]
+		"crons": ["0 */12 * * *"]
 	},
 	"workflows": [
 		{
@@ -38,7 +41,7 @@
 			"class_name": "Sandbox",
 			"image": "./Dockerfile",
 			"instance_type": "standard-2",
-			"max_instances": 2,
+			"max_instances": 8,
 			"image_build_context": "../.."
 		}
 	],

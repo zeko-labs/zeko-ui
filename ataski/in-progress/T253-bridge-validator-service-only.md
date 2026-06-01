@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-05-26T08:54:14Z
+updated_at: 2026-06-01T09:35:16Z
 ---
 
 ## Requirements
@@ -18,11 +18,22 @@ updated_at: 2026-05-26T08:54:14Z
 - Destroy the sandbox on success, validation failure, command failure, callback timeout, or runtime failure.
 - Protect all Worker HTTP surfaces with bearer-token authentication.
 - Keep runtime documentation and Moon tasks aligned with the actual operational commands.
+- Reduce the scheduled validator frequency to one route every 12 hours.
+- Align bridge deposit and withdrawal retry behavior: retry recoverable setup, status, capability, and mutation failures with exponential backoff for 5 retries, then exit with a useful error.
+- Treat `Circuits config not found` and `No key returned from mutation` as bounded-retry failures, not infinite waits or immediate hard exits.
+- Avoid growing the bridge queue by clearing exactly one existing queued operation for the route/account before submitting a new operation, and return success once that queued operation is resolved.
+- Add a source-build validator path for Cloudflare Sandbox PR validation so unpublished SDK/CLI changes can be tested by cloning and building source instead of waiting for an npm release.
+- Move long stderr diagnostics out of Slack message blocks into Slack text snippet uploads while keeping stdout inline.
+- Keep the CLI reliability changes in PR #150 because the validator must work with these changes before deployment.
+- Replace every current infinite bridge retry path with the same bounded exponential retry policy, not just the two named error strings.
+- Add simple validator runtime configuration to disable scheduled runs, choose the source branch/ref for PR-built validation, and manually start one run.
+- Prove one deployed validator instance can run with PR-built source configuration without failing in the harness/setup path.
 
 ## Test Plan
 
 - BDD. The service tests describe the required runtime contract first: scheduled route fanout, command construction, callback behavior, auth, status diagnostics, result parsing, history-log validation, Slack output, and cleanup.
 - Local gates: `moon run bridge-validator:test -f`, `moon run bridge-validator:typecheck -f`, `moon run bridge-validator:lint -f`, `moon run bridge-validator:build -f`.
+- CLI gates for runtime behavior changes: `moon run bridge-cli:test -f`, `moon run bridge-cli:typecheck -f`, and `moon run bridge-cli:lint -f`.
 - Cloudflare gate: deploy the service, trigger exactly one deposit workflow through `bridge-validator:trigger-deposit`, and inspect the Workflow instance plus status endpoint.
 - Final acceptance requires one deployed deposit and one deployed withdrawal to complete with `operation_id`, final hash, log path, and reporting output.
 
@@ -158,9 +169,28 @@ updated_at: 2026-05-26T08:54:14Z
   - Workflow success reporting step `report bridge validation success-1` succeeded.
   - Workflow cleanup step `destroy bridge sandbox-1` succeeded.
   - The deposit command ran from `2026-05-26T16:29:15.898Z` to `2026-05-26T17:57:36.946Z`.
+- Current reliability cleanup:
+  - Reduced the validator cron cadence from every 6 hours to every 12 hours.
+  - Added a bounded exponential retry helper for bridge CLI setup/status/capability/mutation operations: 5 retries, 6 total attempts, then a concrete failure.
+  - Aligned deposit and withdrawal behavior for `Circuits config not found` and `No key returned from mutation` so they do not retry indefinitely or hard-exit inconsistently.
+  - Changed the high-level withdrawal flow to inspect the queue before submitting, matching deposit behavior.
+  - Changed the high-level bridge flow to resolve exactly one pre-existing queued operation and return success without submitting another operation.
+  - Added an explicit Cloudflare Sandbox source-build path for PR validation before SDK/CLI publication: clone source, build `bridge-cli`, then run the built CLI.
+  - Changed Slack failure reporting to keep stdout inline and upload stderr as a Slack text snippet.
+  - Did not deploy or trigger Cloudflare workflows in this pass.
+  - `moon run bridge-cli:test -f`: 22 files passed, 111 tests passed, 13 skipped.
+  - `moon run bridge-cli:typecheck -f`: passed.
+  - `moon run bridge-cli:lint -f`: passed.
+  - `moon run bridge-cli:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - `moon run bridge-validator:test -f`: 4 files passed, 31 tests passed.
+  - `moon run bridge-validator:typecheck -f`: passed.
+  - `moon run bridge-validator:lint -f`: passed.
+  - `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - `git diff --check`: passed.
 
 ## Remaining Work
 
-- Run final local gates for the current validator-only diff after the Cloudflare deposit fixes.
+- Review whether the CLI reliability changes should remain in PR #150 or be split again into a prerequisite SDK/CLI PR before PR #150 is finalized.
+- After the source-build path is deployed intentionally, trigger one source-built Cloudflare deposit and one source-built Cloudflare withdrawal if the SDK/CLI changes are still unpublished.
 - Trigger one withdrawal through Cloudflare to capture final acceptance evidence.
-- Commit and push the validator-only PR branch after local gates and the remaining deployed withdrawal validation are complete.
+- Commit and push after the PR scope is confirmed and any required Cloudflare validation is complete.

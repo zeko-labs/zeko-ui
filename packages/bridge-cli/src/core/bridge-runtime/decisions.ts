@@ -195,16 +195,16 @@ export const decideDepositStep = ({
 	})
 	const { target, targetIndex, claimableIndex, pendingAhead, skippableAhead } = analysis
 
-	if (!hasSubmittedDeposit && unresolvedStatuses.length === 0) {
-		return { action: "submit", analysis }
-	}
-
 	if (hasSubmittedDeposit && target?.cancelled) {
 		return { action: "cancelled", analysis }
 	}
 
-	if (hasSubmittedDeposit && target?.finalised) {
+	if ((hasSubmittedDeposit || session.finalTransaction !== undefined) && target?.finalised) {
 		return { action: "complete", analysis }
+	}
+
+	if (!hasSubmittedDeposit && unresolvedStatuses.length === 0) {
+		return { action: "submit", analysis }
 	}
 
 	const effectiveClaimableIndex = resolveEffectiveDepositClaimableIndex({
@@ -356,14 +356,21 @@ export const decideWithdrawalStep = ({
 	canFinalize,
 	now = () => new Date().toISOString()
 }: WithdrawalDecisionInput): BridgeRuntimeDecision => {
+	const sortedStatuses = sortByIndex(statuses)
+	const hasSubmittedWithdrawal = getSubmitHash(session) !== undefined
+	const unresolvedStatuses = sortedStatuses.filter((status) => !status.finalised)
 	const analysis = analyzeWithdrawalQueue({
 		session,
-		statuses: sortByIndex(statuses)
+		statuses: sortedStatuses
 	})
 	const { target, claimableIndex, pendingAhead, shouldAdvanceQueuedClaims } = analysis
 
-	if (target?.finalised) {
+	if ((hasSubmittedWithdrawal || session.finalTransaction !== undefined) && target?.finalised) {
 		return { action: "complete", analysis }
+	}
+
+	if (!hasSubmittedWithdrawal && unresolvedStatuses.length === 0) {
+		return { action: "submit", analysis }
 	}
 
 	if (

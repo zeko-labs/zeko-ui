@@ -9,6 +9,7 @@ import {
 	readRequiredStringArg
 } from "../core/command-args"
 import { isRecoverableMutationError } from "../core/mutation-errors"
+import { DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY_MS, retryWithBackoff } from "../core/retry"
 import { formatRoute, parseChainRef, type ChainRef } from "../core/routes"
 import { resolveSignerKeys } from "../core/signer"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
@@ -67,9 +68,6 @@ type DirectCommandDeps = {
 	retryDelayMs?: number
 	write?: (message: string) => void
 }
-
-const DIRECT_MUTATION_RETRY_DELAY_MS = 5_000
-const DIRECT_MUTATION_MAX_ATTEMPTS = 10
 
 const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	if (explicit) return explicit
@@ -138,35 +136,24 @@ const selectLatest = <T extends { index: number }>(items: T[], latest: boolean):
 	latest ? [...items].sort((left, right) => right.index - left.index).slice(0, 1) : items
 
 const retryRecoverableMutation = async <T>({
+	operation,
 	run,
 	sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-	retryDelayMs = DIRECT_MUTATION_RETRY_DELAY_MS,
-	maxAttempts = DIRECT_MUTATION_MAX_ATTEMPTS
+	retryDelayMs = DEFAULT_RETRY_DELAY_MS
 }: {
+	operation: string
 	run: () => Promise<T>
 	sleep?: (ms: number) => Promise<void>
 	retryDelayMs?: number
-	maxAttempts?: number
-}): Promise<T> => {
-	for (let attempt = 1; ; attempt += 1) {
-		try {
-			return await run()
-		} catch (error) {
-			if (!isRecoverableMutationError(error)) {
-				throw error
-			}
-
-			if (attempt >= maxAttempts) {
-				const message = error instanceof Error ? error.message : String(error)
-				throw new Error(
-					`Recoverable deposit submit mutation failed after ${attempt} attempts: ${message}`
-				)
-			}
-
-			await sleep(retryDelayMs)
-		}
-	}
-}
+}): Promise<T> =>
+	retryWithBackoff({
+		operation,
+		run,
+		sleep,
+		baseDelayMs: retryDelayMs,
+		maxRetries: DEFAULT_MAX_RETRIES,
+		shouldRetry: isRecoverableMutationError
+	})
 
 export const runDepositSubmit = async (
 	input: DepositSubmitArgs,
@@ -181,6 +168,7 @@ export const runDepositSubmit = async (
 	}
 ): Promise<TransactionResult> =>
 	retryRecoverableMutation({
+		operation: "deposit submit mutation",
 		run: () =>
 			adapter.submitDeposit({
 				account: input.account,
@@ -240,15 +228,25 @@ export const runDepositStatus = async (
 export const runWithdrawalSubmit = async (
 	input: WithdrawalSubmitArgs,
 	{
-		adapter
+		adapter,
+		sleep,
+		retryDelayMs
 	}: {
 		adapter: Pick<BridgeAdapter, "submitWithdrawal">
+		sleep?: (ms: number) => Promise<void>
+		retryDelayMs?: number
 	}
 ): Promise<TransactionResult> =>
-	adapter.submitWithdrawal({
-		account: input.account,
-		amount: input.amount,
-		wait: input.wait
+	retryRecoverableMutation({
+		operation: "withdrawal submit mutation",
+		run: () =>
+			adapter.submitWithdrawal({
+				account: input.account,
+				amount: input.amount,
+				wait: input.wait
+			}),
+		sleep,
+		retryDelayMs
 	})
 
 export const runWithdrawalFinalize = async (
@@ -475,7 +473,11 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 						to: commandArgs.to,
 						verbose: commandArgs.verbose ?? false
 					})
-					const result = await runWithdrawalSubmit(commandArgs, { adapter })
+					const result = await runWithdrawalSubmit(commandArgs, {
+						adapter,
+						sleep: deps.sleep,
+						retryDelayMs: deps.retryDelayMs
+					})
 					writeResult({ json: commandArgs.json, result, write: deps.write ?? console.log })
 				}
 			}),

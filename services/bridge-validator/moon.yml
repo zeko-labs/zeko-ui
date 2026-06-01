@@ -69,6 +69,14 @@ tasks:
     command: wrangler workflows trigger bridge-validator '{"routeKey":"zeko-to-mina"}' --config wrangler.jsonc
     options:
       cache: false
+  start-deposit:
+    command: nu scripts/start.nu mina-to-zeko
+    options:
+      cache: false
+  start-withdrawal:
+    command: nu scripts/start.nu zeko-to-mina
+    options:
+      cache: false
   list-instances:
     command: wrangler workflows instances list bridge-validator --config wrangler.jsonc
     options:

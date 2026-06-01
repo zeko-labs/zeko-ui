@@ -361,4 +361,116 @@ describe("cli skeleton", () => {
 
 		expect(seenTimeouts).toEqual([1])
 	})
+
+	it("retries transient bridge initialization failures with exponential backoff", async () => {
+		const sleeps: number[] = []
+		const progress: string[] = []
+		let initAttempts = 0
+		let submitCalls = 0
+		const adapter: BridgeAdapter = {
+			async submitDeposit() {
+				submitCalls += 1
+				return {
+					success: true,
+					direction: "deposit",
+					action: "submit",
+					route: "mina:testnet->zeko:testnet",
+					hash: "deposit-submit",
+					explorerUrl: "https://example.test/deposit-submit",
+					included: true
+				}
+			},
+			async getDepositStatuses() {
+				if (submitCalls === 0) return []
+
+				return [
+					{
+						index: 0,
+						amount: "2",
+						recipient: "B62test",
+						cancelled: false,
+						synced: true,
+						accepted: true,
+						confirmed: true,
+						finalised: true,
+						hash: "deposit-submit",
+						timestamp: "2026-03-10T00:00:01.000Z"
+					}
+				]
+			},
+			async getWithdrawalStatuses() {
+				return []
+			},
+			async submitWithdrawal() {
+				throw new Error("submitWithdrawal should not be called")
+			},
+			async finalizeDeposit() {
+				throw new Error("finalizeDeposit should not be called")
+			},
+			async finalizeWithdrawal() {
+				throw new Error("finalizeWithdrawal should not be called")
+			},
+			async cancelDeposit() {
+				throw new Error("cancelDeposit should not be called")
+			}
+		}
+		const command = createBridgeCommand({
+			resolvePaths: () => ({
+				dataDir: "/tmp/data",
+				stateDir: "/tmp/state",
+				logDir: "/tmp/logs",
+				cacheDir: "/tmp/cache"
+			}),
+			createStore: () => ({
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async () => {
+				initAttempts += 1
+				if (initAttempts < 6) {
+					throw new Error("Circuits config not found")
+				}
+
+				return adapter
+			},
+			generateId: () => "bridge-op-init-retry",
+			write: () => {},
+			writeProgress: (message) => {
+				progress.push(message)
+			},
+			sleep: async (ms) => {
+				sleeps.push(ms)
+			},
+			retryDelayMs: 7,
+			pollIntervalMs: 0,
+			now: () => "2026-03-10T00:00:00.000Z"
+		})
+
+		await command.run?.({
+			args: {
+				_: [],
+				from: "mina:testnet",
+				to: "zeko:testnet",
+				amount: "2",
+				account: "B62test",
+				recipient: "B62test",
+				timeoutSlots: "",
+				"timeout-slots": "",
+				pollIntervalMs: "",
+				"poll-interval-ms": "",
+				retryDelayMs: "",
+				"retry-delay-ms": "",
+				json: false,
+				verbose: false
+			},
+			rawArgs: [],
+			cmd: command
+		})
+
+		expect(initAttempts).toBe(6)
+		expect(sleeps).toEqual([7, 14, 28, 56, 112])
+		expect(progress.filter((message) => message.includes("Bridge.init"))).toHaveLength(5)
+	})
 })

@@ -25,6 +25,11 @@ export const validatorRoutes = {
 	}
 } satisfies Record<string, BridgeValidatorRoute>
 
+export const validatorRouteAmounts = {
+	[validatorRoutes.minaToZeko.key]: "2",
+	[validatorRoutes.zekoToMina.key]: "2"
+} satisfies Record<BridgeValidatorRouteKey, string>
+
 export const validatorRouteKeys = [
 	validatorRoutes.minaToZeko.key,
 	validatorRoutes.zekoToMina.key
@@ -37,3 +42,6 @@ export const validatorRoutesByKey = {
 
 export const getValidatorRoute = (routeKey: BridgeValidatorRouteKey): BridgeValidatorRoute =>
 	validatorRoutesByKey[routeKey]
+
+export const getValidatorRouteAmount = (routeKey: BridgeValidatorRouteKey) =>
+	validatorRouteAmounts[routeKey]

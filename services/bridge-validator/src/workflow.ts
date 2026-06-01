@@ -1,5 +1,5 @@
 import { type WorkflowEvent, type WorkflowStep, WorkflowEntrypoint } from "cloudflare:workers"
-import { getValidatorSecrets, type ValidatorEnv } from "./env"
+import { getSourceBuildConfig, getValidatorSecrets, type ValidatorEnv } from "./env"
 import { getValidatorRoute } from "./routes"
 import { reportSlackFailure, reportSlackSuccess } from "./slack"
 import type { BridgeValidationParams, BridgeValidationTimings, WorkflowPhaseTiming } from "./types"
@@ -10,7 +10,11 @@ import {
 	type BridgeValidationSummary,
 	BRIDGE_CLI_SPECIFIER,
 	BRIDGE_COMMAND_PROCESS_ID,
+	BRIDGE_SANDBOX_START_LAUNCH_TIMEOUT_MS,
+	BRIDGE_SANDBOX_START_ATTEMPT_TIMEOUT_MS,
+	BRIDGE_SANDBOX_START_ATTEMPTS,
 	BridgeValidationError,
+	buildBridgeSandboxId,
 	describeBridgeCommandFailure,
 	destroyBridgeSandbox,
 	getBridgeCommandDiagnosticTails,
@@ -30,12 +34,8 @@ const NO_STEP_RETRIES = {
 	limit: 0,
 	delay: "1 second"
 } as const
-const CONTAINER_START_RETRIES = {
-	limit: 5,
-	delay: "30 seconds"
-} as const
 
-const BRIDGE_COMMAND_START_STEP_TIMEOUT = "10 minutes"
+const BRIDGE_COMMAND_START_ATTEMPT_STEP_TIMEOUT = "3 minutes"
 const SANDBOX_CONTROL_STEP_TIMEOUT = "2 minutes"
 const NOTIFICATION_STEP_TIMEOUT = "2 minutes"
 const CLEANUP_STEP_TIMEOUT = "2 minutes"
@@ -83,7 +83,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 	BridgeValidationParams
 > {
 	override async run(event: WorkflowEvent<BridgeValidationParams>, step: WorkflowStep) {
-		const workflowStartedAtMs = Date.now()
+		let workflowStartedAtMs = Date.now()
 		const stepTimings: WorkflowPhaseTiming[] = []
 		const timed = async <T>(name: string, action: () => Promise<T>) => {
 			const startedAtMs = Date.now()
@@ -100,35 +100,33 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 			}
 		}
 		const route = getValidatorRoute(event.payload.routeKey)
-		const { walletPrivateKey, slackBotToken, slackChannelId } = getValidatorSecrets(this.env)
-		const sandboxId = `bridge-validator-${event.instanceId}`
-		let sandboxCreated = false
+		const { walletPrivateKey, walletPublicKey, slackBotToken, slackChannelId } =
+			getValidatorSecrets(this.env)
+		let sandboxId: string | undefined
 		let failureReported = false
 
 		try {
-			await timed("record workflow start time", () =>
-				step.do("record workflow start time", async () => workflowStartedAtMs)
+			workflowStartedAtMs = await timed("record workflow start time", () =>
+				step.do("record workflow start time", async () => Date.now())
 			)
-			sandboxCreated = true
 
-			await timed("start bridge validation command", () =>
-				step.do(
-					"start bridge validation command",
-					{ retries: CONTAINER_START_RETRIES, timeout: BRIDGE_COMMAND_START_STEP_TIMEOUT },
-					async () =>
-						startBridgeCommand({
-							routeKey: route.key,
-							sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId),
-							walletPrivateKey
-						})
-				)
-			)
+			const startedCommand = await this.startCommandInFreshSandbox({
+				step,
+				timed,
+				instanceId: event.instanceId,
+				routeKey: route.key,
+				walletPrivateKey,
+				githubToken: this.env.GITHUB_TOKEN,
+				sourceBuild: getSourceBuildConfig(this.env)
+			})
+			sandboxId = startedCommand.sandboxId
+			const selectedSandboxId = startedCommand.sandboxId
 
 			const commandResult = await timed("wait for bridge command completion", () =>
 				this.waitForCommandCompletion({
 					step,
 					instanceId: event.instanceId,
-					sandboxId,
+					sandboxId: selectedSandboxId,
 					startedAtMs: workflowStartedAtMs
 				})
 			)
@@ -142,6 +140,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 							instanceId: event.instanceId,
 							routeKey: route.key,
 							cliVersion: BRIDGE_CLI_SPECIFIER,
+							walletPublicKey,
 							stage: "process",
 							exitCode: commandResult.exitCode,
 							stdout: commandResult.stdout,
@@ -164,11 +163,12 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 			try {
 				validationSummary = await this.validateCommandResult({
 					step,
-					sandboxId,
+					sandboxId: selectedSandboxId,
 					commandResult,
 					route,
 					slackBotToken,
 					slackChannelId,
+					walletPublicKey,
 					instanceId: event.instanceId,
 					workflowStartedAtMs,
 					stepTimings,
@@ -186,6 +186,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 							service: "bridge-validator",
 							instanceId: event.instanceId,
 							cliVersion: BRIDGE_CLI_SPECIFIER,
+							walletPublicKey,
 							timings: finishTimings({
 								workflowStartedAtMs,
 								steps: stepTimings,
@@ -201,6 +202,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 						instanceId: event.instanceId,
 						routeKey: route.key,
 						cliVersion: BRIDGE_CLI_SPECIFIER,
+						walletPublicKey,
 						summary: validationSummary,
 						timings: finishTimings({
 							workflowStartedAtMs,
@@ -229,6 +231,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 			}
 		} catch (error) {
 			if (!failureReported) {
+				const stage = isBridgeValidationError(error) ? error.stage : "runtime"
 				await timed("notify slack runtime failure", () =>
 					step.do("notify slack runtime failure", NOTIFICATION_STEP_OPTIONS, async () =>
 						reportSlackFailure({
@@ -237,8 +240,9 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 							instanceId: event.instanceId,
 							routeKey: route.key,
 							cliVersion: BRIDGE_CLI_SPECIFIER,
-							stage: "runtime",
-							message: `Bridge validator runtime failed: ${
+							walletPublicKey,
+							stage,
+							message: `Bridge validator ${stage} failed: ${
 								error instanceof Error ? error.message : String(error)
 							}`,
 							timings: finishTimings({
@@ -252,12 +256,13 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 
 			throw error
 		} finally {
-			if (sandboxCreated) {
+			if (sandboxId !== undefined) {
+				const selectedSandboxId = sandboxId
 				try {
 					await timed("destroy bridge sandbox", () =>
 						step.do("destroy bridge sandbox", CLEANUP_STEP_OPTIONS, async () =>
 							destroyBridgeSandbox({
-								sandbox: getBridgeSandbox(this.env.Sandbox, sandboxId)
+								sandbox: getBridgeSandbox(this.env.Sandbox, selectedSandboxId)
 							})
 						)
 					)
@@ -270,6 +275,86 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 				}
 			}
 		}
+	}
+
+	private async startCommandInFreshSandbox({
+		instanceId,
+		routeKey,
+		walletPrivateKey,
+		githubToken,
+		sourceBuild,
+		step,
+		timed
+	}: {
+		instanceId: string
+		routeKey: BridgeValidationParams["routeKey"]
+		walletPrivateKey: string
+		githubToken?: string
+		sourceBuild?: { repository: string; ref: string }
+		step: WorkflowStep
+		timed: <T>(name: string, action: () => Promise<T>) => Promise<T>
+	}) {
+		const errors: string[] = []
+
+		for (let attempt = 1; attempt <= BRIDGE_SANDBOX_START_ATTEMPTS; attempt += 1) {
+			const sandboxId = buildBridgeSandboxId({ instanceId, attempt })
+			const sandbox = getBridgeSandbox(this.env.Sandbox, sandboxId)
+
+			try {
+				const command = await timed(`start bridge validation command attempt ${attempt}`, () =>
+					step.do(
+						`start bridge validation command attempt ${attempt}`,
+						{ retries: NO_STEP_RETRIES, timeout: BRIDGE_COMMAND_START_ATTEMPT_STEP_TIMEOUT },
+						async () =>
+							startBridgeCommand({
+								routeKey,
+								sandbox,
+								walletPrivateKey,
+								githubToken,
+								sourceBuild,
+								launchTimeoutMs: BRIDGE_SANDBOX_START_LAUNCH_TIMEOUT_MS
+							})
+					)
+				)
+
+				return {
+					sandboxId,
+					attempt,
+					...command
+				}
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error)
+				errors.push(`${sandboxId}: ${message}`)
+
+				await timed(`destroy failed startup sandbox attempt ${attempt}`, () =>
+					step
+						.do(
+							`destroy failed startup sandbox attempt ${attempt}`,
+							CLEANUP_STEP_OPTIONS,
+							async () =>
+								destroyBridgeSandbox({
+									sandbox,
+									timeoutMs: BRIDGE_SANDBOX_START_ATTEMPT_TIMEOUT_MS
+								})
+						)
+						.catch((cleanupError) => {
+							errors.push(
+								`${sandboxId} cleanup: ${
+									cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+								}`
+							)
+						})
+				)
+			}
+		}
+
+		throw new BridgeValidationError(
+			[
+				`Cloudflare Sandbox setup failed after ${BRIDGE_SANDBOX_START_ATTEMPTS} fresh attempts.`,
+				...errors
+			].join("\n"),
+			"setup"
+		)
 	}
 
 	private async waitForCommandCompletion({
@@ -526,6 +611,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 		route,
 		slackBotToken,
 		slackChannelId,
+		walletPublicKey,
 		instanceId,
 		workflowStartedAtMs,
 		stepTimings,
@@ -537,6 +623,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 		route: ReturnType<typeof getValidatorRoute>
 		slackBotToken: string
 		slackChannelId: string
+		walletPublicKey: string
 		instanceId: string
 		workflowStartedAtMs: number
 		stepTimings: WorkflowPhaseTiming[]
@@ -573,6 +660,7 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 						instanceId,
 						routeKey: route.key,
 						cliVersion: BRIDGE_CLI_SPECIFIER,
+						walletPublicKey,
 						stage: isBridgeValidationError(error) ? error.stage : stage,
 						stdout: isBridgeValidationError(error)
 							? error.stdout || commandResult.stdout

@@ -4,6 +4,7 @@ import {
 	buildSlackSuccessBlocks,
 	buildSlackFailureMessage,
 	buildSlackSuccessMessage,
+	reportSlackFailure,
 	reportSlackSuccess
 } from "../src/slack"
 import type { BridgeCliJsonResult } from "../src/types"
@@ -15,14 +16,12 @@ import {
 	BRIDGE_COMMAND_PID_PATH,
 	BRIDGE_COMMAND_PROCESS_ID,
 	BRIDGE_COMMAND_PROCESS_LOG_PATH,
-	BRIDGE_COMMAND_SCRIPT_PATH,
 	BRIDGE_COMMAND_STDERR_PATH,
 	BRIDGE_COMMAND_STDOUT_PATH,
 	BRIDGE_COMMAND_TIMEOUT_MS,
 	BRIDGE_SANDBOX_OPTIONS,
 	BRIDGE_WORKSPACE_ROOT,
 	buildBridgeCommand,
-	buildBridgeCommandScript,
 	buildBridgeLaunchCommand,
 	buildBridgeProcessEnv,
 	buildScheduledValidations,
@@ -100,40 +99,41 @@ const completedTimings = {
 		}
 	]
 }
+const walletPublicKey = "B62validator"
 
 describe("bridge validator", () => {
-	it("uses a keepAlive sandbox and a single published CLI command", () => {
+	it("uses a keepAlive sandbox and a single CLI command", () => {
 		expect(BRIDGE_SANDBOX_OPTIONS).toEqual({ keepAlive: true })
 		expect(BRIDGE_COMMAND_TIMEOUT_MS).toBe(115 * 60 * 1000)
 
 		const command = buildBridgeCommand({ routeKey: "mina-to-zeko" })
 
 		expect(command).toContain("timeout -k 30s -s TERM 6900s")
-		expect(command).toContain(`${BRIDGE_CLI_BINARY} 'bridge'`)
+		expect(command).toContain(`bridge_command=('${BRIDGE_CLI_BINARY}')`)
+		expect(command).toContain("\"${bridge_command[@]}\" 'bridge'")
 		expect(command).toContain("'--from' 'mina:testnet' '--to' 'zeko:testnet'")
-		expect(command).toContain("'--amount' '0.5' '--json' '--verbose'")
+		expect(command).toContain("'--amount' '2' '--json' '--verbose'")
+		expect(buildBridgeCommand({ routeKey: "zeko-to-mina" })).toContain(
+			"'--amount' '2' '--json' '--verbose'"
+		)
+	})
+
+	it("can build bridge CLI from a source checkout before running validation", () => {
+		const command = buildBridgeCommand({ routeKey: "mina-to-zeko" })
+
+		expect(command).toContain("BRIDGE_VALIDATOR_SOURCE_REPOSITORY")
+		expect(command).toContain("git fetch --depth 1 origin")
+		expect(command).toContain("pnpm exec moon run bridge-cli:build -f")
+		expect(command).toContain("packages/bridge-cli/dist/cli.js")
 	})
 
 	it("starts the bridge command as one background process in the Cloudflare Sandbox", async () => {
-		const setKeepAlive = vi.fn(async () => {})
-		const mkdir = vi.fn(async () => ({
-			success: true,
-			path: "/workspace/bridge-validator",
-			recursive: true,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
-		const writeFile = vi.fn(async () => ({
-			success: true,
-			path: BRIDGE_COMMAND_SCRIPT_PATH,
-			bytesWritten: 1,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
 		const exec = vi.fn(async () => ({
 			success: true,
 			exitCode: 0,
 			stdout: "1234",
 			stderr: "",
-			command: buildBridgeLaunchCommand(),
+			command: buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" }),
 			duration: 10,
 			timestamp: "2026-03-24T12:00:00Z"
 		}))
@@ -141,7 +141,7 @@ describe("bridge validator", () => {
 		await expect(
 			startBridgeCommand({
 				routeKey: "mina-to-zeko",
-				sandbox: { setKeepAlive, mkdir, writeFile, exec },
+				sandbox: { exec },
 				walletPrivateKey: "wallet-secret"
 			})
 		).resolves.toEqual({
@@ -149,14 +149,7 @@ describe("bridge validator", () => {
 			processId: BRIDGE_COMMAND_PROCESS_ID
 		})
 
-		expect(setKeepAlive).toHaveBeenCalledWith(true)
-		expect(mkdir).toHaveBeenCalledWith("/workspace/bridge-validator", { recursive: true })
-		expect(writeFile).toHaveBeenCalledWith(
-			BRIDGE_COMMAND_SCRIPT_PATH,
-			buildBridgeCommandScript({ routeKey: "mina-to-zeko" }),
-			{ encoding: "utf8" }
-		)
-		expect(exec).toHaveBeenCalledWith(buildBridgeLaunchCommand(), {
+		expect(exec).toHaveBeenCalledWith(buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" }), {
 			cwd: BRIDGE_WORKSPACE_ROOT,
 			env: {
 				...buildBridgeProcessEnv({ walletPrivateKey: "wallet-secret" })
@@ -165,26 +158,52 @@ describe("bridge validator", () => {
 		})
 	})
 
+	it("passes source-build configuration to the sandbox environment without embedding it in the command", async () => {
+		const exec = vi.fn(async () => ({
+			success: true,
+			exitCode: 0,
+			stdout: "1234",
+			stderr: "",
+			command: buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" }),
+			duration: 10,
+			timestamp: "2026-03-24T12:00:00Z"
+		}))
+
+		await startBridgeCommand({
+			routeKey: "mina-to-zeko",
+			sandbox: { exec },
+			walletPrivateKey: "wallet-secret",
+			githubToken: "github-token",
+			sourceBuild: {
+				repository: "https://github.com/zeko-labs/zeko-ui.git",
+				ref: "refs/pull/150/head"
+			}
+		})
+
+		expect(exec).toHaveBeenCalledWith(buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" }), {
+			cwd: BRIDGE_WORKSPACE_ROOT,
+			env: {
+				...buildBridgeProcessEnv({
+					walletPrivateKey: "wallet-secret",
+					githubToken: "github-token",
+					sourceBuild: {
+						repository: "https://github.com/zeko-labs/zeko-ui.git",
+						ref: "refs/pull/150/head"
+					}
+				})
+			},
+			timeout: BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS
+		})
+		expect(buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" })).not.toContain("github-token")
+	})
+
 	it("fails startup immediately when the Sandbox process cannot start", async () => {
-		const setKeepAlive = vi.fn(async () => {})
-		const mkdir = vi.fn(async () => ({
-			success: true,
-			path: "/workspace/bridge-validator",
-			recursive: true,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
-		const writeFile = vi.fn(async () => ({
-			success: true,
-			path: BRIDGE_COMMAND_SCRIPT_PATH,
-			bytesWritten: 1,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
 		const exec = vi.fn(async () => ({
 			success: false,
 			exitCode: 1,
 			stdout: "",
 			stderr: "process start failed",
-			command: buildBridgeLaunchCommand(),
+			command: buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" }),
 			duration: 10,
 			timestamp: "2026-03-24T12:00:00Z"
 		}))
@@ -192,7 +211,7 @@ describe("bridge validator", () => {
 		await expect(
 			startBridgeCommand({
 				routeKey: "mina-to-zeko",
-				sandbox: { setKeepAlive, mkdir, writeFile, exec },
+				sandbox: { exec },
 				walletPrivateKey: "wallet-secret"
 			})
 		).rejects.toThrow("Bridge command launcher failed with exit code 1")
@@ -292,14 +311,16 @@ describe("bridge validator", () => {
 		})
 	})
 
-	it("builds fixed scheduled deposit and withdrawal validations", () => {
-		expect(buildScheduledValidations({ scheduledTime: 123 })).toEqual([
+	it("alternates scheduled deposit and withdrawal validations", () => {
+		expect(buildScheduledValidations({ scheduledTime: 0 })).toEqual([
 			{
-				id: "bridge-validator-mina-to-zeko-123",
+				id: "bridge-validator-mina-to-zeko-0",
 				params: { routeKey: "mina-to-zeko" }
-			},
+			}
+		])
+		expect(buildScheduledValidations({ scheduledTime: 12 * 60 * 60 * 1000 })).toEqual([
 			{
-				id: "bridge-validator-zeko-to-mina-123",
+				id: "bridge-validator-zeko-to-mina-43200000",
 				params: { routeKey: "zeko-to-mina" }
 			}
 		])
@@ -371,6 +392,7 @@ describe("bridge validator", () => {
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
+				walletPublicKey,
 				summary,
 				timings: completedTimings
 			})
@@ -387,6 +409,7 @@ describe("bridge validator", () => {
 						direction: "deposit"
 					},
 					cliVersion: BRIDGE_CLI_SPECIFIER,
+					walletPublicKey,
 					summary,
 					timings: completedTimings
 				})
@@ -410,6 +433,34 @@ describe("bridge validator", () => {
 				historyLog: JSON.stringify({ event: "completed", hash: "hash-finalize" })
 			})
 		).toThrow("Bridge history log does not confirm submitted transaction hash hash-submit")
+	})
+
+	it("reports parsed CLI failure evidence instead of a generic result failure", () => {
+		const failedResult: BridgeCliJsonResult = {
+			...completedDepositResult,
+			success: false,
+			status: "failed",
+			operation_id: "failed-op-1",
+			final_transaction: null,
+			log_path: "/workspace/state/zeko-bridge/logs/failed-op-1.jsonl",
+			error: "Account_app_state_precondition_unsatisfied"
+		}
+
+		expect(() =>
+			validateBridgeCompletion({
+				route: {
+					key: "mina-to-zeko",
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					route: "mina:testnet->zeko:testnet",
+					direction: "deposit"
+				},
+				result: failedResult,
+				historyLog: completedHistoryLog
+			})
+		).toThrow(
+			"Bridge result reported success=false; status=failed; operation_id=failed-op-1; log_path=/workspace/state/zeko-bridge/logs/failed-op-1.jsonl; submitted_hashes=hash-submit,hash-finalize; cli_error=Account_app_state_precondition_unsatisfied"
+		)
 	})
 
 	it("formats Slack success and failure payloads with validation evidence", async () => {
@@ -436,6 +487,7 @@ describe("bridge validator", () => {
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
+				walletPublicKey,
 				summary,
 				timings: completedTimings
 			})
@@ -451,10 +503,27 @@ describe("bridge validator", () => {
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
+				walletPublicKey,
 				summary,
 				timings: completedTimings
 			})
-		).toContain("wait for bridge command completion: 8.900s (8900 ms)")
+		).toContain("Bridge command:* 8.250s (8250 ms)")
+		expect(
+			buildSlackSuccessMessage({
+				instanceId: "workflow-1",
+				route: {
+					key: "mina-to-zeko",
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					route: "mina:testnet->zeko:testnet",
+					direction: "deposit"
+				},
+				cliVersion: BRIDGE_CLI_SPECIFIER,
+				walletPublicKey,
+				summary,
+				timings: completedTimings
+			})
+		).not.toContain("wait for bridge command completion")
 		expect(
 			JSON.stringify(
 				buildSlackSuccessBlocks({
@@ -467,6 +536,7 @@ describe("bridge validator", () => {
 						direction: "deposit"
 					},
 					cliVersion: BRIDGE_CLI_SPECIFIER,
+					walletPublicKey,
 					summary,
 					timings: completedTimings
 				})
@@ -484,6 +554,7 @@ describe("bridge validator", () => {
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
+				walletPublicKey,
 				stage: "process",
 				exitCode: 1,
 				stdout: `first stdout line\n${"x".repeat(13_000)}\nlast stdout line`,
@@ -503,6 +574,7 @@ describe("bridge validator", () => {
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
+				walletPublicKey,
 				stage: "process",
 				exitCode: 1,
 				stdout: `first stdout line\n${"x".repeat(13_000)}\nlast stdout line`,
@@ -523,6 +595,7 @@ describe("bridge validator", () => {
 						direction: "deposit"
 					},
 					cliVersion: BRIDGE_CLI_SPECIFIER,
+					walletPublicKey,
 					stage: "process",
 					exitCode: 124,
 					stdout: "polling bridge state",
@@ -574,6 +647,7 @@ describe("bridge validator", () => {
 			instanceId: "workflow-1",
 			routeKey: "mina-to-zeko",
 			cliVersion: BRIDGE_CLI_SPECIFIER,
+			walletPublicKey,
 			summary,
 			timings: completedTimings
 		})
@@ -588,9 +662,58 @@ describe("bridge validator", () => {
 		expect(JSON.stringify(body.blocks)).toContain(
 			"<https://zekoscan.io/testnet/tx/hash-finalize|hash-finalize>"
 		)
-		expect(JSON.stringify(body.blocks)).toContain(
-			"wait for bridge command completion: 8.900s (8900 ms)"
-		)
+		expect(JSON.stringify(body.blocks)).toContain("B62validator")
+		expect(JSON.stringify(body.blocks)).not.toContain("wait for bridge command completion")
+	})
+
+	it("posts Slack failure blocks and uploads stderr as a text snippet", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input)
+			if (url === "https://slack.com/api/chat.postMessage") {
+				return Response.json({ ok: true, channel: "channel", ts: "123.456" })
+			}
+			if (url === "https://slack.com/api/files.getUploadURLExternal") {
+				return Response.json({
+					ok: true,
+					file_id: "file-1",
+					upload_url: "https://uploads.slack.test/file-1"
+				})
+			}
+			if (url === "https://uploads.slack.test/file-1") {
+				return new Response("", { status: 200, statusText: "OK" })
+			}
+			if (url === "https://slack.com/api/files.completeUploadExternal") {
+				return Response.json({ ok: true })
+			}
+
+			throw new Error(`Unexpected Slack URL ${url}`)
+		})
+		vi.stubGlobal("fetch", fetchMock)
+
+		await reportSlackFailure({
+			slackBotToken: "token",
+			slackChannelId: "channel",
+			instanceId: "workflow-1",
+			routeKey: "mina-to-zeko",
+			cliVersion: BRIDGE_CLI_SPECIFIER,
+			walletPublicKey,
+			stage: "process",
+			exitCode: 1,
+			stdout: "stdout output",
+			stderr: "stderr output",
+			message: "Bridge command exited with code 1.",
+			timings: completedTimings
+		})
+
+		expect(fetchMock).toHaveBeenCalledTimes(4)
+		const calls = fetchMock.mock.calls as Array<[RequestInfo | URL, RequestInit?]>
+		const messageBody = JSON.parse(String(calls[0]?.[1]?.body))
+		expect(JSON.stringify(messageBody.blocks)).toContain("stdout output")
+		expect(JSON.stringify(messageBody.blocks)).not.toContain("stderr output")
+		const completeBody = JSON.parse(String(calls[3]?.[1]?.body))
+		expect(completeBody.files).toEqual([
+			{ id: "file-1", title: "Bridge validator stderr: workflow-1" }
+		])
 	})
 
 	it("fails successful validation reporting when Slack rejects the success message", async () => {
@@ -617,6 +740,7 @@ describe("bridge validator", () => {
 				instanceId: "workflow-1",
 				routeKey: "mina-to-zeko",
 				cliVersion: BRIDGE_CLI_SPECIFIER,
+				walletPublicKey,
 				summary,
 				timings: completedTimings
 			})

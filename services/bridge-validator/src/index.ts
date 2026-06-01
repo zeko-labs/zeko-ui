@@ -1,5 +1,5 @@
 import { Sandbox as SandboxContainer } from "@cloudflare/sandbox"
-import { hasValidBearerToken, type ValidatorEnv } from "./env"
+import { hasValidBearerToken, isValidatorEnabled, type ValidatorEnv } from "./env"
 import { handleBridgeValidatorRequest } from "./request"
 import { buildScheduledValidations } from "./validator"
 import { BridgeValidationWorkflow } from "./workflow"
@@ -30,6 +30,10 @@ const worker: ExportedHandler<ValidatorEnv> = {
 	},
 
 	async scheduled(controller, env, ctx) {
+		if (!isValidatorEnabled(env)) {
+			return
+		}
+
 		for (const validation of buildScheduledValidations({
 			scheduledTime: controller.scheduledTime
 		})) {

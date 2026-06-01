@@ -7,6 +7,7 @@ type FetchLike = typeof fetch
 
 const DIAGNOSTIC_TEXT_LIMIT = 12_000
 const DIAGNOSTIC_BLOCK_LIMIT = 2_400
+const textEncoder = new TextEncoder()
 type SlackBlock =
 	| { type: "header"; text: { type: "plain_text"; text: string; emoji?: boolean } }
 	| { type: "divider" }
@@ -70,10 +71,7 @@ const formatTimingLines = (timings?: BridgeValidationTimings) => {
 			? `*Bridge command:* ${formatDuration(timings.command.durationMs)} (${formatTimestamp(
 					timings.command.startedAtMs
 				)} -> ${formatTimestamp(timings.command.finishedAtMs)})`
-			: "",
-		...timings.steps.map(
-			(step) => `- ${escapeMrkdwn(step.name)}: ${formatDuration(step.durationMs)}`
-		)
+			: ""
 	].filter(Boolean)
 }
 
@@ -90,16 +88,10 @@ const field = (label: string, value: string) => ({
 	text: `*${label}*\n${value}`
 })
 
-const buildDiagnosticBlocks = ({
-	stdout,
-	stderr
-}: {
-	stdout?: string
-	stderr?: string
-}): SlackBlock[] =>
+const buildDiagnosticBlocks = ({ stdout }: { stdout?: string }): SlackBlock[] =>
 	[
 		stdout ? codeBlock("stdout", stdout, DIAGNOSTIC_BLOCK_LIMIT) : "",
-		stderr ? codeBlock("stderr", stderr, DIAGNOSTIC_BLOCK_LIMIT) : ""
+		"stderr is uploaded as a Slack text snippet when present."
 	]
 		.filter(Boolean)
 		.map((text) => ({
@@ -110,6 +102,7 @@ const buildDiagnosticBlocks = ({
 export const buildSlackFailureMessage = ({
 	route,
 	cliVersion,
+	walletPublicKey,
 	instanceId,
 	stage,
 	exitCode,
@@ -120,6 +113,7 @@ export const buildSlackFailureMessage = ({
 }: {
 	route: BridgeValidatorRoute
 	cliVersion: string
+	walletPublicKey: string
 	instanceId: string
 	stage: string
 	exitCode?: number
@@ -133,12 +127,13 @@ export const buildSlackFailureMessage = ({
 		`Workflow instance: ${instanceId}`,
 		`Route: ${route.route}`,
 		`CLI version: ${cliVersion}`,
+		`Wallet: ${walletPublicKey}`,
 		`Stage: ${stage}`,
 		exitCode === undefined ? "" : `Exit code: ${exitCode}`,
 		`Message: ${message}`,
 		...formatTimingLines(timings),
 		stdout ? codeBlock("stdout", stdout, DIAGNOSTIC_TEXT_LIMIT) : "",
-		stderr ? codeBlock("stderr", stderr, DIAGNOSTIC_TEXT_LIMIT) : ""
+		stderr ? "stderr: uploaded as Slack text snippet" : ""
 	]
 		.filter(Boolean)
 		.join("\n")
@@ -146,12 +141,14 @@ export const buildSlackFailureMessage = ({
 export const buildSlackSuccessMessage = ({
 	route,
 	cliVersion,
+	walletPublicKey,
 	instanceId,
 	summary,
 	timings
 }: {
 	route: BridgeValidatorRoute
 	cliVersion: string
+	walletPublicKey: string
 	instanceId: string
 	summary: BridgeValidationSummary
 	timings?: BridgeValidationTimings
@@ -161,6 +158,7 @@ export const buildSlackSuccessMessage = ({
 		`Workflow instance: ${instanceId}`,
 		`Route: ${route.route}`,
 		`CLI version: ${cliVersion}`,
+		`Wallet: ${walletPublicKey}`,
 		`Operation ID: ${summary.operationId}`,
 		`Amount: ${summary.amount}`,
 		`Final hash: ${summary.finalHash}`,
@@ -177,6 +175,7 @@ export const buildSlackSuccessMessage = ({
 export const buildSlackFailureBlocks = ({
 	route,
 	cliVersion,
+	walletPublicKey,
 	instanceId,
 	stage,
 	exitCode,
@@ -187,6 +186,7 @@ export const buildSlackFailureBlocks = ({
 }: {
 	route: BridgeValidatorRoute
 	cliVersion: string
+	walletPublicKey: string
 	instanceId: string
 	stage: string
 	exitCode?: number
@@ -209,26 +209,27 @@ export const buildSlackFailureBlocks = ({
 			field("Route", `\`${route.route}\``),
 			field("Direction", route.direction),
 			field("Stage", `\`${escapeMrkdwn(stage)}\``),
+			field("Wallet", `\`${escapeMrkdwn(walletPublicKey)}\``),
 			field("CLI", `\`${escapeMrkdwn(cliVersion)}\``),
 			...(exitCode === undefined ? [] : [field("Exit code", `\`${exitCode}\``)])
 		]
 	},
 	{ type: "section", text: { type: "mrkdwn", text: `*Failure*\n${escapeMrkdwn(message)}` } },
 	buildTimingBlock(timings),
-	...(stdout || stderr
-		? [{ type: "divider" as const }, ...buildDiagnosticBlocks({ stdout, stderr })]
-		: [])
+	...(stdout || stderr ? [{ type: "divider" as const }, ...buildDiagnosticBlocks({ stdout })] : [])
 ]
 
 export const buildSlackSuccessBlocks = ({
 	route,
 	cliVersion,
+	walletPublicKey,
 	instanceId,
 	summary,
 	timings
 }: {
 	route: BridgeValidatorRoute
 	cliVersion: string
+	walletPublicKey: string
 	instanceId: string
 	summary: BridgeValidationSummary
 	timings?: BridgeValidationTimings
@@ -247,6 +248,7 @@ export const buildSlackSuccessBlocks = ({
 			field("Route", `\`${route.route}\``),
 			field("Direction", route.direction),
 			field("Amount", `\`${escapeMrkdwn(summary.amount)}\``),
+			field("Wallet", `\`${escapeMrkdwn(walletPublicKey)}\``),
 			field("CLI", `\`${escapeMrkdwn(cliVersion)}\``),
 			field("Operation", `\`${escapeMrkdwn(summary.operationId)}\``),
 			field("Final transaction", linked({ text: summary.finalHash, url: summary.finalExplorerUrl }))
@@ -301,9 +303,88 @@ export const postSlackMessage = async ({
 		})
 	})
 
-	const payload = (await response.json()) as { ok?: boolean; error?: string }
+	const payload = (await response.json()) as {
+		ok?: boolean
+		error?: string
+		channel?: string
+		ts?: string
+	}
 	if (!response.ok || payload.ok !== true) {
 		throw new Error(`Slack notification failed: ${payload.error ?? response.statusText}`)
+	}
+
+	return payload
+}
+
+export const uploadSlackTextSnippet = async ({
+	token,
+	channelId,
+	title,
+	filename,
+	content,
+	fetchImpl = fetch
+}: {
+	token: string
+	channelId: string
+	title: string
+	filename: string
+	content: string
+	fetchImpl?: FetchLike
+}) => {
+	const bytes = textEncoder.encode(content)
+	const uploadUrlResponse = await fetchImpl("https://slack.com/api/files.getUploadURLExternal", {
+		method: "POST",
+		headers: {
+			"content-type": "application/x-www-form-urlencoded; charset=utf-8",
+			authorization: `Bearer ${token}`
+		},
+		body: new URLSearchParams({
+			filename,
+			length: String(bytes.byteLength)
+		}).toString()
+	})
+	const uploadUrlPayload = (await uploadUrlResponse.json()) as {
+		ok?: boolean
+		error?: string
+		file_id?: string
+		upload_url?: string
+	}
+	if (!uploadUrlResponse.ok || uploadUrlPayload.ok !== true) {
+		throw new Error(
+			`Slack snippet upload URL failed: ${uploadUrlPayload.error ?? uploadUrlResponse.statusText}`
+		)
+	}
+	if (!uploadUrlPayload.upload_url || !uploadUrlPayload.file_id) {
+		throw new Error("Slack snippet upload URL response was missing upload_url or file_id")
+	}
+
+	const uploadResponse = await fetchImpl(uploadUrlPayload.upload_url, {
+		method: "POST",
+		headers: {
+			"content-type": "text/plain; charset=utf-8"
+		},
+		body: bytes
+	})
+	if (!uploadResponse.ok) {
+		throw new Error(`Slack snippet content upload failed: ${uploadResponse.statusText}`)
+	}
+
+	const completeResponse = await fetchImpl("https://slack.com/api/files.completeUploadExternal", {
+		method: "POST",
+		headers: {
+			"content-type": "application/json; charset=utf-8",
+			authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			channel_id: channelId,
+			files: [{ id: uploadUrlPayload.file_id, title }]
+		})
+	})
+	const completePayload = (await completeResponse.json()) as { ok?: boolean; error?: string }
+	if (!completeResponse.ok || completePayload.ok !== true) {
+		throw new Error(
+			`Slack snippet upload completion failed: ${completePayload.error ?? completeResponse.statusText}`
+		)
 	}
 }
 
@@ -313,6 +394,7 @@ export const reportSlackFailure = async ({
 	instanceId,
 	routeKey,
 	cliVersion,
+	walletPublicKey,
 	stage,
 	exitCode,
 	stdout,
@@ -325,6 +407,7 @@ export const reportSlackFailure = async ({
 	instanceId: string
 	routeKey: BridgeValidationParams["routeKey"]
 	cliVersion: string
+	walletPublicKey: string
 	stage: string
 	exitCode?: number
 	stdout?: string
@@ -341,6 +424,7 @@ export const reportSlackFailure = async ({
 				instanceId,
 				route,
 				cliVersion,
+				walletPublicKey,
 				stage,
 				exitCode,
 				stdout,
@@ -352,6 +436,7 @@ export const reportSlackFailure = async ({
 				instanceId,
 				route,
 				cliVersion,
+				walletPublicKey,
 				stage,
 				exitCode,
 				stdout,
@@ -360,6 +445,15 @@ export const reportSlackFailure = async ({
 				timings
 			})
 		})
+		if (stderr?.trim()) {
+			await uploadSlackTextSnippet({
+				token: slackBotToken,
+				channelId: slackChannelId,
+				title: `Bridge validator stderr: ${instanceId}`,
+				filename: `bridge-validator-${instanceId}-stderr.log`,
+				content: stderr
+			})
+		}
 	} catch (error) {
 		console.error(
 			`Bridge validator failure notification failed: ${
@@ -375,6 +469,7 @@ export const reportSlackSuccess = async ({
 	instanceId,
 	routeKey,
 	cliVersion,
+	walletPublicKey,
 	summary,
 	timings
 }: {
@@ -383,6 +478,7 @@ export const reportSlackSuccess = async ({
 	instanceId: string
 	routeKey: BridgeValidationParams["routeKey"]
 	cliVersion: string
+	walletPublicKey: string
 	summary: BridgeValidationSummary
 	timings?: BridgeValidationTimings
 }) => {
@@ -394,6 +490,7 @@ export const reportSlackSuccess = async ({
 			instanceId,
 			route,
 			cliVersion,
+			walletPublicKey,
 			summary,
 			timings
 		}),
@@ -401,6 +498,7 @@ export const reportSlackSuccess = async ({
 			instanceId,
 			route,
 			cliVersion,
+			walletPublicKey,
 			summary,
 			timings
 		})

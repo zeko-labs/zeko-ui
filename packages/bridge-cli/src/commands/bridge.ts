@@ -44,6 +44,7 @@ import {
 } from "../core/status-sources"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
 import { createSessionStore, type SessionStore } from "../core/session-store"
+import { DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY_MS, retryWithBackoff } from "../core/retry"
 import type {
 	BridgeCapabilityDiagnostic,
 	BridgeSdkOperation,
@@ -143,7 +144,6 @@ type WaitStateTracker = {
 }
 
 const HEARTBEAT_INTERVAL_MS = 30_000
-const RETRY_SLEEP_MS = 5_000
 
 const OPERATION_STATE_BY_EVENT = {
 	MARK_SUBMITTED: { phase: "submitted", status: "running" },
@@ -317,6 +317,13 @@ const isTransientClaimUnavailableError = (error: unknown): boolean => {
 const isRetryableCapabilityError = (error: unknown): boolean =>
 	!isInsufficientFirstWithdrawalAmountError(error)
 
+const isRetryableInitializationError = (error: unknown): boolean => {
+	const message = formatErrorMessage(error)
+	return !/Missing required signer private key|Unsupported bridge route|Invalid private key/i.test(
+		message
+	)
+}
+
 const isOperationSession = (value: unknown): value is OperationSession =>
 	typeof value === "object" &&
 	value !== null &&
@@ -482,43 +489,59 @@ const withRetry = async <T>({
 	run: () => Promise<T>
 }): Promise<{ session: OperationSession; value: T }> => {
 	let currentSession = session
-	let attempt = 1
 
-	for (;;) {
-		try {
-			const { session: nextSession, value } = await createInstrumentedBridgeAdapter({
-				adapter: {},
-				session: currentSession
-			}).call(operation, run, { attempt })
-			currentSession = nextSession
-			return { session: currentSession, value }
-		} catch (error) {
-			currentSession = getRecordedSessionFromError(error) ?? currentSession
-			if (shouldRetry && !shouldRetry(error)) {
-				throw error
+	try {
+		const value = await retryWithBackoff({
+			operation,
+			baseDelayMs: retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
+			maxRetries: DEFAULT_MAX_RETRIES,
+			sleep,
+			shouldRetry: shouldRetry ?? (() => true),
+			run: async (attempt) => {
+				const { session: nextSession, value } = await createInstrumentedBridgeAdapter({
+					adapter: {},
+					session: currentSession
+				}).call(operation, run, { attempt })
+				currentSession = nextSession
+				return value
+			},
+			onRetry: async ({ error, retryIndex, delayMs }) => {
+				currentSession = getRecordedSessionFromError(error) ?? currentSession
+				currentSession = transitionSession({
+					session: currentSession,
+					event: "MARK_RETRYING",
+					now,
+					patch: {
+						lastError: formatErrorMessage(error)
+					}
+				})
+				await persistSession({
+					session: currentSession,
+					sessionStore,
+					log,
+					event: "retrying",
+					details: {
+						operation,
+						attempt: retryIndex,
+						nextDelayMs: delayMs,
+						message: formatErrorMessage(error)
+					}
+				})
 			}
+		})
 
-			currentSession = transitionSession({
-				session: currentSession,
-				event: "MARK_RETRYING",
-				now,
-				patch: {
-					lastError: formatErrorMessage(error)
-				}
-			})
-			await persistSession({
-				session: currentSession,
-				sessionStore,
-				log,
-				event: "retrying",
-				details: {
-					operation,
-					message: formatErrorMessage(error)
-				}
-			})
-			await sleep(retryDelayMs ?? RETRY_SLEEP_MS)
-			attempt += 1
+		return { session: currentSession, value }
+	} catch (error) {
+		currentSession =
+			getRecordedSessionFromError(error) ??
+			(typeof error === "object" && error !== null && "cause" in error
+				? getRecordedSessionFromError(error.cause)
+				: undefined) ??
+			currentSession
+		if (error instanceof Error && !("session" in error)) {
+			Object.assign(error, { session: currentSession })
 		}
+		throw error
 	}
 }
 
@@ -1063,6 +1086,20 @@ const runInspectWithdrawalStep = async (context: BridgeRunnerContext): Promise<R
 			await deps.sessionStore.save(session)
 		}
 
+		if (initialDecision.action === "submit") {
+			return {
+				session: {
+					...session,
+					targetIndex: undefined,
+					pendingFinalizeIndex: undefined,
+					pendingFinalizeSubmittedAt: undefined,
+					updatedAt: now()
+				},
+				withdrawalAnalysis: analysis,
+				next: "submit-withdrawal"
+			}
+		}
+
 		if (initialDecision.action === "complete") {
 			if (!target) {
 				throw new Error("Completed withdrawal decision did not include a target withdrawal.")
@@ -1273,8 +1310,6 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 			pendingAhead: depositAnalysis.pendingAhead,
 			canFinalize: true
 		})
-	const hasSubmittedDeposit = getSubmitHash(session) !== undefined
-
 	try {
 		const finalizeDepositResult = await withRetry({
 			session,
@@ -1306,9 +1341,7 @@ const runFinalizeDepositStep = async (context: BridgeRunnerContext): Promise<Run
 					hash: finalizeResult.hash
 				}),
 				finalTransaction:
-					hasSubmittedDeposit &&
-					depositAnalysis.target &&
-					effectiveClaimableIndex === depositAnalysis.target.index
+					depositAnalysis.target && effectiveClaimableIndex === depositAnalysis.target.index
 						? {
 								action: "finalize",
 								hash: finalizeResult.hash,
@@ -1725,6 +1758,7 @@ export const bridgeOperationMachine = setup({
 		isCancelled: ({ event }) => getDoneOutput(event).next === "cancelled",
 		isFailed: ({ event }) => getDoneOutput(event).next === "failed",
 		isSubmitDeposit: ({ event }) => getDoneOutput(event).next === "submit-deposit",
+		isSubmitWithdrawal: ({ event }) => getDoneOutput(event).next === "submit-withdrawal",
 		isFinalizeDeposit: ({ event }) => getDoneOutput(event).next === "finalize-deposit",
 		isCancelDeposit: ({ event }) => getDoneOutput(event).next === "cancel-deposit",
 		isFinalizeWithdrawal: ({ event }) => getDoneOutput(event).next === "finalize-withdrawal",
@@ -1751,12 +1785,6 @@ export const bridgeOperationMachine = setup({
 	states: {
 		route: {
 			always: [
-				{
-					target: "submittingWithdrawal",
-					guard: ({ context }) =>
-						context.session.direction === "withdrawal" &&
-						context.session.submittedTransactions.length === 0
-				},
 				{
 					target: "inspectingDeposit",
 					guard: ({ context }) => context.session.direction === "deposit"
@@ -1812,6 +1840,11 @@ export const bridgeOperationMachine = setup({
 				input: actorInput,
 				onDone: [
 					...terminalRoutes,
+					{
+						target: "submittingWithdrawal",
+						guard: "isSubmitWithdrawal",
+						actions: "applyRunnerOutput"
+					},
 					{
 						target: "finalizingWithdrawal",
 						guard: "isFinalizeWithdrawal",
@@ -1924,6 +1957,43 @@ export const runBridgeOperation = async (
 	}
 }
 
+const createAdapterWithRetries = async ({
+	createAdapter,
+	from,
+	to,
+	verbose,
+	log,
+	sleep,
+	retryDelayMs
+}: {
+	createAdapter: BridgeAdapterFactory
+	from: ChainRef
+	to: ChainRef
+	verbose: boolean
+	log: LogFn
+	sleep: (ms: number) => Promise<void>
+	retryDelayMs?: number
+}) =>
+	retryWithBackoff({
+		operation: "Bridge.init",
+		baseDelayMs: retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
+		maxRetries: DEFAULT_MAX_RETRIES,
+		sleep,
+		shouldRetry: isRetryableInitializationError,
+		run: async () => await createAdapter({ from, to, verbose }),
+		onRetry: ({ error, retryIndex, delayMs }) =>
+			log({
+				event: "retrying",
+				phase: "initializing",
+				details: {
+					operation: "Bridge.init",
+					attempt: retryIndex,
+					nextDelayMs: delayMs,
+					message: formatErrorMessage(error)
+				}
+			})
+	})
+
 export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<BridgeCommandArgs> =>
 	defineCommand({
 		meta: {
@@ -1954,6 +2024,11 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			const logPath = path.join(appPaths.logDir, `${id}.jsonl`)
 			const logger = (deps.createLogger ?? createOperationLogger)({ logPath })
 			const createAdapter = deps.createAdapter ?? createDefaultBridgeAdapter
+			const sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
+			const log: LogFn = async ({ event, phase, details }) => {
+				;(deps.writeProgress ?? console.error)(renderOperationProgress({ event, phase, details }))
+				await logger.write(event, { phase, ...details })
+			}
 			const session = await runBridgeOperation(
 				{
 					id,
@@ -1968,19 +2043,22 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 							: commandArgs.timeoutSlots
 				},
 				{
-					adapter: await createAdapter({ from, to, verbose: commandArgs.verbose }),
+					adapter: await createAdapterWithRetries({
+						createAdapter,
+						from,
+						to,
+						verbose: commandArgs.verbose,
+						log,
+						sleep,
+						retryDelayMs: commandArgs.retryDelayMs ?? deps.retryDelayMs
+					}),
 					sessionStore: {
 						async save(operation) {
 							await store.save({ ...operation, logPath })
 						}
 					},
-					log: async ({ event, phase, details }) => {
-						;(deps.writeProgress ?? console.error)(
-							renderOperationProgress({ event, phase, details })
-						)
-						await logger.write(event, { phase, ...details })
-					},
-					sleep: deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+					log,
+					sleep,
 					pollIntervalMs: commandArgs.pollIntervalMs ?? deps.pollIntervalMs ?? 20_000,
 					retryDelayMs: commandArgs.retryDelayMs ?? deps.retryDelayMs,
 					now: deps.now,

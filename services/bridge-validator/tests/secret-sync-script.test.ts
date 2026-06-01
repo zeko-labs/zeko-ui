@@ -19,6 +19,10 @@ const cleanupScript = readFileSync(
 	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/cleanup.nu"),
 	"utf8"
 )
+const startScript = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/start.nu"),
+	"utf8"
+)
 const moonConfig = readFileSync(
 	resolve(dirname(fileURLToPath(import.meta.url)), "../moon.yml"),
 	"utf8"
@@ -29,10 +33,15 @@ describe("bridge-validator secret sync script", () => {
 		expect(script).toContain("default-env-file")
 		expect(script).toContain("default-wrangler-config")
 		expect(script).toContain("BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY")
+		expect(script).toContain("BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY")
 		expect(script).toContain("ZEKO_BRIDGE_MINA_PRIVATE_KEY")
 		expect(script).toContain('put-secret "WALLET_PRIVATE_KEY"')
+		expect(script).toContain('put-secret "WALLET_PUBLIC_KEY"')
 		expect(script).toContain('require-value $values "VALIDATOR_API_TOKEN"')
 		expect(script).toContain('put-secret "VALIDATOR_API_TOKEN"')
+		expect(script).toContain('put-optional-secret $values "BRIDGE_VALIDATOR_SOURCE_REPOSITORY"')
+		expect(script).toContain('put-optional-secret $values "BRIDGE_VALIDATOR_SOURCE_REF"')
+		expect(script).toContain('put-optional-secret $values "GITHUB_TOKEN"')
 		expect(script.indexOf("ZEKO_BRIDGE_MINA_PRIVATE_KEY_0")).toBeLessThan(
 			script.indexOf("ZEKO_BRIDGE_MINA_PRIVATE_KEY_1")
 		)
@@ -50,8 +59,12 @@ describe("bridge-validator secret sync script", () => {
 		expect(describeInstanceScript).toContain("wrangler workflows instances describe")
 		expect(cleanupScript).toContain("/bridge-cleanup?instanceId=")
 		expect(cleanupScript).toContain("http post --max-time 30sec")
+		expect(startScript).toContain("/bridge-start")
+		expect(startScript).toContain('require-value $values "VALIDATOR_API_TOKEN"')
 		expect(moonConfig).toContain("command: nu scripts/describe-instance.nu")
 		expect(moonConfig).toContain("command: nu scripts/cleanup.nu")
+		expect(moonConfig).toContain("command: nu scripts/start.nu mina-to-zeko")
+		expect(moonConfig).toContain("command: nu scripts/start.nu zeko-to-mina")
 		expect(moonConfig).not.toContain("bash -lc")
 	})
 })

@@ -225,7 +225,7 @@ describe("direct commands", () => {
 				adapter: {
 					async submitDeposit() {
 						attempts += 1
-						if (attempts < 7) {
+						if (attempts < 6) {
 							throw new Error("No key returned from mutation")
 						}
 
@@ -248,8 +248,8 @@ describe("direct commands", () => {
 		)
 
 		expect(result.hash).toBe("deposit-submit-retried")
-		expect(attempts).toBe(7)
-		expect(sleepCalls).toEqual([7, 7, 7, 7, 7, 7])
+		expect(attempts).toBe(6)
+		expect(sleepCalls).toEqual([7, 14, 28, 56, 112])
 	})
 
 	it("stops retrying recoverable deposit submit mutations after the retry budget", async () => {
@@ -282,8 +282,8 @@ describe("direct commands", () => {
 			)
 		).rejects.toThrow("No key returned from mutation")
 
-		expect(attempts).toBe(10)
-		expect(sleepCalls).toEqual([7, 7, 7, 7, 7, 7, 7, 7, 7])
+		expect(attempts).toBe(6)
+		expect(sleepCalls).toEqual([7, 14, 28, 56, 112])
 	})
 
 	it("does not retry non-recoverable deposit submit failures", async () => {
@@ -452,6 +452,50 @@ describe("direct commands", () => {
 
 		expect(result.action).toBe("submit")
 		expect(result.hash).toBe("withdraw-submit")
+	})
+
+	it("retries recoverable withdrawal submit mutations with the same budget as deposits", async () => {
+		const sleepCalls: number[] = []
+		let attempts = 0
+
+		const result = await runWithdrawalSubmit(
+			{
+				from: "zeko:testnet",
+				to: "mina:testnet",
+				json: false,
+				account: "B62test",
+				amount: "3",
+				wait: false
+			},
+			{
+				adapter: {
+					async submitWithdrawal() {
+						attempts += 1
+						if (attempts < 6) {
+							throw new Error("No key returned from mutation")
+						}
+
+						return {
+							success: true,
+							direction: "withdrawal",
+							action: "submit",
+							route: "zeko:testnet->mina:testnet",
+							hash: "withdraw-submit-retried",
+							explorerUrl: "https://example.test/withdraw-submit-retried",
+							included: false
+						}
+					}
+				},
+				sleep: async (ms) => {
+					sleepCalls.push(ms)
+				},
+				retryDelayMs: 7
+			}
+		)
+
+		expect(result.hash).toBe("withdraw-submit-retried")
+		expect(attempts).toBe(6)
+		expect(sleepCalls).toEqual([7, 14, 28, 56, 112])
 	})
 
 	it("finalizes a withdrawal", async () => {

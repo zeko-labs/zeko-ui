@@ -22,6 +22,7 @@ import {
 } from "../core/reporter"
 import { resolveSignerKeys } from "../core/signer"
 import { createSessionStore, type SessionStore } from "../core/session-store"
+import { DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY_MS, retryWithBackoff } from "../core/retry"
 import type { ChainRef } from "../core/routes"
 import { parseChainRef } from "../core/routes"
 import type { OperationPhase, OperationSession } from "../core/types"
@@ -194,26 +195,25 @@ const createAdapterWithRetries = async ({
 		)
 	}
 
-	for (let attempt = 1; ; attempt += 1) {
-		try {
-			return await createAdapter({ from, to, verbose })
-		} catch (error) {
-			if (!isRetryableInitializationError(error)) {
-				throw error
-			}
-
-			await log({
+	return retryWithBackoff({
+		operation: "Bridge.init",
+		run: async () => await createAdapter({ from, to, verbose }),
+		sleep,
+		baseDelayMs: retryDelayMs,
+		maxRetries: DEFAULT_MAX_RETRIES,
+		shouldRetry: isRetryableInitializationError,
+		onRetry: ({ error, retryIndex, delayMs }) =>
+			log({
 				event: "retrying",
 				phase: "initializing",
 				details: {
 					operation: "Bridge.init",
-					attempt,
+					attempt: retryIndex,
+					nextDelayMs: delayMs,
 					message: error instanceof Error ? error.message : String(error)
 				}
 			})
-			await sleep(retryDelayMs)
-		}
-	}
+	})
 }
 
 const createProgressLog = ({
@@ -236,7 +236,7 @@ const resolveRetryDelayMs = (input: {
 	argValue?: number
 	deps: OperationCommandDeps
 	fallback?: number
-}): number => input.argValue ?? input.deps.retryDelayMs ?? input.fallback ?? 5_000
+}): number => input.argValue ?? input.deps.retryDelayMs ?? input.fallback ?? DEFAULT_RETRY_DELAY_MS
 
 const resolvePollIntervalMs = (input: {
 	argValue?: number

@@ -10,7 +10,7 @@ import { handleBridgeValidatorRequest } from "../src/request"
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "../src/service-info"
 import { getRemainingWorkflowTimeMs, WORKFLOW_HARD_TIMEOUT_MS } from "../src/runtime"
 import { BRIDGE_CLI_SPECIFIER } from "../src/validator"
-import { hasValidBearerToken, type ValidatorEnv } from "../src/env"
+import { hasValidBearerToken, isValidatorEnabled, type ValidatorEnv } from "../src/env"
 import packageJson from "../package.json"
 
 describe("bridge-validator worker", () => {
@@ -21,9 +21,15 @@ describe("bridge-validator worker", () => {
 			workflow: "bridge-validator",
 			trigger: {
 				type: "cron",
-				schedule: "0 */6 * * *"
+				schedule: "0 */12 * * *",
+				enabledBy: "BRIDGE_VALIDATOR_ENABLED"
 			},
-			runsPerSchedule: {
+			sourceBuild: {
+				repository: "BRIDGE_VALIDATOR_SOURCE_REPOSITORY",
+				ref: "BRIDGE_VALIDATOR_SOURCE_REF"
+			},
+			scheduledRoutes: {
+				mode: "alternating",
 				deposit: "mina-to-zeko",
 				withdrawal: "zeko-to-mina"
 			},
@@ -74,7 +80,57 @@ describe("bridge-validator worker", () => {
 		expect(hasValidBearerToken({ request: unauthorized, env })).toBe(false)
 	})
 
-	it("uses the keepAlive sandbox handle for status diagnostics", async () => {
+	it("allows scheduled runs to be disabled by environment config", () => {
+		expect(isValidatorEnabled({ BRIDGE_VALIDATOR_ENABLED: "false" } as ValidatorEnv)).toBe(false)
+		expect(isValidatorEnabled({ BRIDGE_VALIDATOR_ENABLED: "true" } as ValidatorEnv)).toBe(true)
+		expect(isValidatorEnabled({} as ValidatorEnv)).toBe(true)
+	})
+
+	it("starts one workflow through the authenticated manual start surface", async () => {
+		const create = vi.fn(async (input: unknown) => ({
+			id: "manual-workflow-1",
+			input
+		}))
+		const response = await handleBridgeValidatorRequest({
+			request: new Request("https://bridge-validator.zeko-labs.workers.dev/bridge-start", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ routeKey: "mina-to-zeko" })
+			}),
+			env: {
+				BRIDGE_VALIDATION_WORKFLOW: { create }
+			} as unknown as ValidatorEnv
+		})
+
+		await expect(response.json()).resolves.toMatchObject({
+			ok: true,
+			workflow: {
+				id: "manual-workflow-1"
+			}
+		})
+		expect(create).toHaveBeenCalledWith({
+			id: expect.stringMatching(/^bridge-validator-manual-mina-to-zeko-/),
+			params: { routeKey: "mina-to-zeko" }
+		})
+	})
+
+	it("requires an explicit sandbox target for status diagnostics", async () => {
+		const response = await handleBridgeValidatorRequest({
+			request: new Request(
+				"https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=workflow-1"
+			),
+			env: { Sandbox: "sandbox-namespace" } as unknown as ValidatorEnv
+		})
+
+		await expect(response.json()).resolves.toEqual({
+			ok: false,
+			error: "Missing sandbox target: provide attempt or sandboxId"
+		})
+		expect(response.status).toBe(400)
+		expect(getSandbox).not.toHaveBeenCalled()
+	})
+
+	it("checks one sandbox attempt handle for status diagnostics without keepAlive", async () => {
 		vi.mocked(getSandbox).mockReturnValue({
 			readFile: vi.fn(async (path: string) => {
 				if (path.endsWith("/bridge.pid")) {
@@ -101,14 +157,14 @@ describe("bridge-validator worker", () => {
 
 		const response = await handleBridgeValidatorRequest({
 			request: new Request(
-				"https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=workflow-1"
+				"https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=workflow-1&attempt=2"
 			),
 			env: { Sandbox: "sandbox-namespace" } as unknown as ValidatorEnv
 		})
 
 		await expect(response.json()).resolves.toMatchObject({
 			ok: true,
-			sandboxId: "bridge-validator-workflow-1",
+			sandboxId: "bridge-validator-workflow-1-2",
 			command: {
 				found: true,
 				pid: "1234",
@@ -116,8 +172,8 @@ describe("bridge-validator worker", () => {
 				status: "running"
 			}
 		})
-		expect(getSandbox).toHaveBeenCalledWith("sandbox-namespace", "bridge-validator-workflow-1", {
-			keepAlive: true
+		expect(getSandbox).toHaveBeenCalledWith("sandbox-namespace", "bridge-validator-workflow-1-2", {
+			keepAlive: false
 		})
 	})
 
@@ -129,7 +185,7 @@ describe("bridge-validator worker", () => {
 
 		const response = await handleBridgeValidatorRequest({
 			request: new Request(
-				"https://bridge-validator.zeko-labs.workers.dev/bridge-cleanup?instanceId=workflow-1",
+				"https://bridge-validator.zeko-labs.workers.dev/bridge-cleanup?instanceId=workflow-1&attempt=2",
 				{ method: "POST" }
 			),
 			env: { Sandbox: "sandbox-namespace" } as unknown as ValidatorEnv
@@ -138,7 +194,7 @@ describe("bridge-validator worker", () => {
 		await expect(response.json()).resolves.toEqual({
 			ok: true,
 			instanceId: "workflow-1",
-			sandboxId: "bridge-validator-workflow-1",
+			sandboxId: "bridge-validator-workflow-1-2",
 			cleanup: "destroyed"
 		})
 		expect(destroy).toHaveBeenCalledOnce()
