@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-06-01T09:48:18Z
+updated_at: 2026-06-01T11:22:00Z
 ---
 
 ## Requirements
@@ -187,17 +187,27 @@ updated_at: 2026-06-01T09:48:18Z
   - `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `moon run bridge-validator:type-cf -f`: passed and regenerated Worker types from Wrangler config.
   - `git diff --check`: passed.
-- PR-built deployment attempt:
-  - Committed and pushed branch `branch/feature-web-397-bridge-validator-e2e` at `0c4aa9d` so the Sandbox source-build path can clone the PR branch.
-  - `moon run bridge-validator:sync-secrets -f` failed before any secret write completed because Wrangler's current OAuth token cannot access Cloudflare account `a12d2915bc16ee8550f19399839623f7`.
-  - `wrangler deployments list --config services/bridge-validator/wrangler.jsonc` failed with the same Cloudflare API authentication error for `/accounts/a12d2915bc16ee8550f19399839623f7/workers/scripts/bridge-validator/deployments`.
-  - `wrangler whoami` reports an OAuth token, but querying `/client/v4/accounts` with that token succeeds and returns zero accessible accounts.
-  - Authenticated service-info on `https://bridge-validator.zeko-labs.workers.dev` still reports the older deployed service (`0 */6 * * *`, no manual `start-deposit` task, no source-build config), so the current public Worker cannot prove the PR-built validator path.
+- Latest PR-built Cloudflare validation:
+  - Reauthenticated Wrangler and confirmed access to Cloudflare account `a12d2915bc16ee8550f19399839623f7`.
+  - Deployed Worker version `a8c812ce-f12e-4439-b05d-e5eeb9964b6a`, then triggered deposit workflow `bridge-validator-manual-mina-to-zeko-1780310070670`.
+  - Workflow `bridge-validator-manual-mina-to-zeko-1780310070670` cloned `branch/feature-web-397-bridge-validator-e2e`, checked out `d4b1de3`, installed only the bridge CLI workspace dependency graph, built `bridge-sdk`, built `bridge-cli`, and reached CLI initialization in the Cloudflare Sandbox.
+  - That run proved the PR-built source path no longer fails in harness setup, then failed during SDK runtime initialization with `operation_id=ecb0b15b-9dcc-4b75-9f55-d97e3b3839db`, `submitted_transactions=[]`, `final_transaction=null`, and `log_path=/workspace/state/zeko-bridge/logs/ecb0b15b-9dcc-4b75-9f55-d97e3b3839db.jsonl`.
+  - Added SDK runtime diagnostics so missing runtime config errors include the exact GraphQL endpoint and query name instead of only `Circuits config not found`.
+  - `moon run bridge-sdk:test -f`: 12 files passed, 50 tests passed.
+  - `moon run bridge-sdk:typecheck -f`: passed.
+  - Committed and pushed `946ba11` with the SDK diagnostic fix and a changeset.
+  - Deployed Worker version `b9368eee-cbe7-46e7-851d-f2b3056f864d`.
+  - Direct endpoint poll from `2026-06-01T10:48:00Z` through `2026-06-01T11:17:18Z` returned HTTP 502 for `POST https://testnet.zeko.io/graphql` with `query SequencerPK { sequencerPk }`.
+  - Direct archive check against `POST https://archive.testnet.zeko.io/graphql` returned HTTP 200 for `query NetworkState`, so the observed outage is specific to the live Zeko GraphQL endpoint used for `sequencerPk` and `circuitsConfig`.
+  - Triggered latest deployed deposit workflow `bridge-validator-manual-mina-to-zeko-1780312463205` against Worker version `b9368eee-cbe7-46e7-851d-f2b3056f864d`.
+  - Workflow `bridge-validator-manual-mina-to-zeko-1780312463205` checked out `946ba11`, built the PR source, reached CLI initialization, retried the SDK call with bounded exponential backoff, then exited after 6 total attempts with `operation_id=dd56b218-2670-4115-b630-896530e46c96`.
+  - Latest failure evidence: `log_path=/workspace/state/zeko-bridge/logs/dd56b218-2670-4115-b630-896530e46c96.jsonl`, `submitted_transactions=[]`, `final_transaction=null`, `cli_error=getDepositStatuses failed after 6 attempts: GraphQL query FetchConfig failed at https://testnet.zeko.io/graphql: [Network] Bad Gateway; networkError=Bad Gateway`.
+  - Latest Workflow failure notification step `notify slack validation failure-1` succeeded.
+  - Latest Workflow cleanup step `destroy bridge sandbox-1` succeeded.
 
 ## Remaining Work
 
-- Reauthenticate Wrangler or provide `CLOUDFLARE_API_TOKEN` for an account that can access `a12d2915bc16ee8550f19399839623f7`; current local Wrangler OAuth has zero accessible accounts.
-- Rerun `moon run bridge-validator:sync-secrets -f` after Cloudflare auth is fixed.
-- Deploy the pushed PR branch with `moon run bridge-validator:deploy -f`.
-- After the source-build path is deployed intentionally, trigger one source-built Cloudflare deposit and one source-built Cloudflare withdrawal if the SDK/CLI changes are still unpublished.
-- Trigger one withdrawal through Cloudflare to capture final acceptance evidence.
+- Deposit is not currently validated end-to-end on the latest PR-built deployed path because `POST https://testnet.zeko.io/graphql` is returning Cloudflare HTTP 502 for live Zeko GraphQL queries before any transaction can be submitted.
+- Exact live blocker: SDK runtime initialization cannot complete `query FetchConfig { circuitsConfig { ... } }` or `query SequencerPK { sequencerPk }` against `https://testnet.zeko.io/graphql`.
+- Once `https://testnet.zeko.io/graphql` returns HTTP 200 for `FetchConfig` and `SequencerPK`, trigger exactly one source-built Cloudflare deposit and capture `operation_id`, final hash, log path, Slack output, and cleanup evidence.
+- After deposit succeeds, trigger exactly one source-built Cloudflare withdrawal and capture the same evidence.
