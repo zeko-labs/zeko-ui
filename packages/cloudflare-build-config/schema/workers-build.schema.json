@@ -13,6 +13,15 @@
 		"triggerTemplateScriptName": {
 			"type": "string"
 		},
+		"pruneScriptNames": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"environmentVariables": {
+			"$ref": "#/$defs/environmentVariables"
+		},
 		"enabled": {
 			"type": "boolean"
 		},
@@ -64,11 +73,35 @@
 						"items": {
 							"type": "string"
 						}
+					},
+					"environmentVariables": {
+						"$ref": "#/$defs/environmentVariables"
 					}
 				},
 				"required": ["name", "deployCommand", "branchIncludes", "pathIncludes"]
 			}
 		}
 	},
-	"required": ["triggers"]
+	"required": ["triggers"],
+	"$defs": {
+		"environmentVariables": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "object",
+				"properties": {
+					"value": {
+						"type": "string"
+					},
+					"valueFromEnv": {
+						"type": "string"
+					},
+					"secret": {
+						"type": "boolean"
+					}
+				},
+				"oneOf": [{ "required": ["value"] }, { "required": ["valueFromEnv"] }],
+				"additionalProperties": false
+			}
+		}
+	}
 }

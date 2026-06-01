@@ -274,4 +274,5 @@
 - T274 | done | fix-mainnet-actions-indexer-release-validation | done/T274-fix-mainnet-actions-indexer-release-validation.md
 - T275 | done | install-nu-through-proto-toolchain-setup | done/T275-install-nu-through-proto-toolchain-setup.md
 - T276 | done | retry-mainnet-bridge-ui-smoke | done/T276-retry-mainnet-bridge-ui-smoke.md
-- T277 | done | docs-mainnet-wip-cleanup | done/T277-docs-mainnet-wip-cleanup.md
+- T277 | done | fix-bridge-ui-testnet-workers-build | done/T277-fix-bridge-ui-testnet-workers-build.md
+- T278 | done | docs-mainnet-wip-cleanup | done/T278-docs-mainnet-wip-cleanup.md

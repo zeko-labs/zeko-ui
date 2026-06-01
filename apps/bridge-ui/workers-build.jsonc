@@ -1,6 +1,27 @@
 {
 	"$schema": "../../packages/cloudflare-build-config/schema/workers-build.schema.json",
-	"scriptName": "bridge",
+	"scriptName": "bridge-testnet",
+	"triggerTemplateScriptName": "bridge",
+	"pruneScriptNames": ["bridge"],
+	"environmentVariables": {
+		"CLOUDFLARE_ACCOUNT_ID": {
+			"value": "a12d2915bc16ee8550f19399839623f7"
+		},
+		"SENTRY_AUTH_TOKEN": {
+			"valueFromEnv": "SENTRY_AUTH_TOKEN",
+			"secret": true
+		},
+		"SENTRY_DSN_PUBLIC": {
+			"valueFromEnv": "SENTRY_DSN_PUBLIC",
+			"secret": true
+		},
+		"SENTRY_ORG": {
+			"value": "zeko-labs"
+		},
+		"SENTRY_PROJECT": {
+			"value": "zeko-bridge"
+		}
+	},
 	"buildCommand": "curl -fsSL https://moonrepo.dev/install/proto.sh | bash -s -- 0.55.3 --yes && export PROTO_HOME=\"$HOME/.proto\" && export PATH=\"$PROTO_HOME/bin:$PROTO_HOME/shims:$PATH\" && proto install --yes nu",
 	"triggers": [
 		{
@@ -9,11 +30,18 @@
 			"branchIncludes": ["main"],
 			"branchExcludes": [],
 			"pathIncludes": [
+				".moon/**",
+				".prototools",
 				"apps/bridge-ui/**",
+				"moon.yml",
+				"package.json",
+				"patches/**",
 				"packages/bridge-sdk/**",
 				"packages/graphql/**",
 				"packages/design/**",
-				"packages/layer/**"
+				"packages/layer/**",
+				"pnpm-lock.yaml",
+				"pnpm-workspace.yaml"
 			],
 			"pathExcludes": []
 		},
@@ -23,11 +51,18 @@
 			"branchIncludes": ["*"],
 			"branchExcludes": ["main"],
 			"pathIncludes": [
+				".moon/**",
+				".prototools",
 				"apps/bridge-ui/**",
+				"moon.yml",
+				"package.json",
+				"patches/**",
 				"packages/bridge-sdk/**",
 				"packages/graphql/**",
 				"packages/design/**",
-				"packages/layer/**"
+				"packages/layer/**",
+				"pnpm-lock.yaml",
+				"pnpm-workspace.yaml"
 			],
 			"pathExcludes": []
 		}

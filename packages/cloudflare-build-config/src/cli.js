@@ -24,6 +24,51 @@ const normalizeList = (value) =>
 const normalizeStringArray = (value) =>
 	Array.isArray(value) ? value.filter((item) => typeof item === "string") : []
 
+const normalizeEnvironmentVariables = (value, configPath) => {
+	if (value == null) {
+		return {}
+	}
+
+	if (typeof value !== "object" || Array.isArray(value)) {
+		throw new Error(`Invalid environmentVariables definition in ${configPath}.`)
+	}
+
+	return Object.fromEntries(
+		Object.entries(value).map(([name, definition]) => {
+			if (
+				!name.trim() ||
+				typeof definition !== "object" ||
+				definition == null ||
+				Array.isArray(definition)
+			) {
+				throw new Error(`Invalid environment variable ${name} in ${configPath}.`)
+			}
+
+			const value =
+				typeof definition.value === "string" && definition.value.trim() ? definition.value : null
+			const valueFromEnv =
+				typeof definition.valueFromEnv === "string" && definition.valueFromEnv.trim()
+					? definition.valueFromEnv.trim()
+					: null
+
+			if ((value == null && valueFromEnv == null) || (value != null && valueFromEnv != null)) {
+				throw new Error(
+					`Environment variable ${name} in ${configPath} must define exactly one of value or valueFromEnv.`
+				)
+			}
+
+			return [
+				name,
+				{
+					secret: definition.secret === true,
+					value,
+					valueFromEnv
+				}
+			]
+		})
+	)
+}
+
 const arraysEqual = (left, right) =>
 	left.length === right.length && left.every((value, index) => value === right[index])
 
@@ -60,10 +105,20 @@ const readWorkersBuildConfig = async (configPath) => {
 		typeof config.triggerTemplateScriptName === "string" && config.triggerTemplateScriptName.trim()
 			? config.triggerTemplateScriptName.trim()
 			: null
+	const pruneScriptNames = normalizeStringArray(config.pruneScriptNames)
+	const baseEnvironmentVariables = normalizeEnvironmentVariables(
+		config.environmentVariables,
+		configPath
+	)
 	const triggers = normalizeList(config.triggers).map((trigger) => {
 		if (typeof trigger?.name !== "string" || typeof trigger?.deployCommand !== "string") {
 			throw new Error(`Invalid trigger definition in ${configPath}.`)
 		}
+
+		const triggerEnvironmentVariables = normalizeEnvironmentVariables(
+			trigger.environmentVariables,
+			configPath
+		)
 
 		return {
 			name: trigger.name,
@@ -75,7 +130,11 @@ const readWorkersBuildConfig = async (configPath) => {
 			branchIncludes: normalizeStringArray(trigger.branchIncludes),
 			branchExcludes: normalizeStringArray(trigger.branchExcludes),
 			pathIncludes: normalizeStringArray(trigger.pathIncludes),
-			pathExcludes: normalizeStringArray(trigger.pathExcludes)
+			pathExcludes: normalizeStringArray(trigger.pathExcludes),
+			environmentVariables: {
+				...baseEnvironmentVariables,
+				...triggerEnvironmentVariables
+			}
 		}
 	})
 
@@ -84,6 +143,7 @@ const readWorkersBuildConfig = async (configPath) => {
 		enabled,
 		scriptName,
 		triggerTemplateScriptName,
+		pruneScriptNames,
 		triggers
 	}
 }
@@ -202,11 +262,24 @@ const createClient = (token, accountId) => {
 			body: JSON.stringify(payload)
 		})
 
+	const deleteTrigger = async (triggerUuid) =>
+		request(`/builds/triggers/${triggerUuid}`, {
+			method: "DELETE"
+		})
+
+	const upsertEnvironmentVariables = async (triggerUuid, payload) =>
+		request(`/builds/triggers/${triggerUuid}/environment_variables`, {
+			method: "PATCH",
+			body: JSON.stringify(payload)
+		})
+
 	return {
 		createTrigger,
+		deleteTrigger,
 		getExternalScriptId,
 		listTriggers,
-		patchTrigger
+		patchTrigger,
+		upsertEnvironmentVariables
 	}
 }
 
@@ -220,6 +293,23 @@ const createDesiredPayload = (trigger) => ({
 	path_includes: trigger.pathIncludes,
 	path_excludes: trigger.pathExcludes
 })
+
+const createEnvironmentVariablesPayload = (trigger) =>
+	Object.fromEntries(
+		Object.entries(trigger.environmentVariables).map(([name, definition]) => {
+			const value = definition.valueFromEnv
+				? getRequiredEnv(definition.valueFromEnv)
+				: definition.value
+
+			return [
+				name,
+				{
+					is_secret: definition.secret,
+					value
+				}
+			]
+		})
+	)
 
 const needsUpdate = (existingTrigger, desiredTrigger) =>
 	existingTrigger.build_command !== desiredTrigger.build_command ||
@@ -268,22 +358,36 @@ const syncProject = async (client, projectConfig, dryRun) => {
 	for (const trigger of projectConfig.triggers) {
 		const existingTrigger = remoteTriggers.find((remote) => remote?.trigger_name === trigger.name)
 		const desiredPayload = createDesiredPayload(trigger)
+		const environmentVariableNames = Object.keys(trigger.environmentVariables)
 
 		if (!existingTrigger?.trigger_uuid) {
 			if (dryRun) {
 				console.log(`+ ${projectConfig.scriptName}: would create ${trigger.name}`)
+				if (environmentVariableNames.length > 0) {
+					console.log(
+						`~ ${projectConfig.scriptName}: would sync env vars for ${trigger.name}: ${environmentVariableNames.join(", ")}`
+					)
+				}
 				continue
 			}
 
 			const template = await getTriggerTemplate()
 			const externalScriptId = await client.getExternalScriptId(projectConfig.scriptName)
-			await client.createTrigger({
+			const createdTrigger = await client.createTrigger({
 				...desiredPayload,
 				external_script_id: externalScriptId,
 				build_token_uuid: template.build_token_uuid,
 				repo_connection_uuid: template.repo_connection.repo_connection_uuid
 			})
 			console.log(`+ ${projectConfig.scriptName}: created ${trigger.name}`)
+
+			if (environmentVariableNames.length > 0) {
+				await client.upsertEnvironmentVariables(
+					createdTrigger.result.trigger_uuid,
+					createEnvironmentVariablesPayload(trigger)
+				)
+				console.log(`+ ${projectConfig.scriptName}: synced env vars for ${trigger.name}`)
+			}
 			continue
 		}
 
@@ -291,16 +395,51 @@ const syncProject = async (client, projectConfig, dryRun) => {
 			console.log(
 				`= ${projectConfig.scriptName}: ${trigger.name} already matches ${projectConfig.configPath}`
 			)
-			continue
-		}
-
-		if (dryRun) {
+		} else if (dryRun) {
 			console.log(`~ ${projectConfig.scriptName}: would update ${trigger.name}`)
 			continue
+		} else {
+			await client.patchTrigger(existingTrigger.trigger_uuid, desiredPayload)
+			console.log(`+ ${projectConfig.scriptName}: updated ${trigger.name}`)
 		}
 
-		await client.patchTrigger(existingTrigger.trigger_uuid, desiredPayload)
-		console.log(`+ ${projectConfig.scriptName}: updated ${trigger.name}`)
+		if (environmentVariableNames.length > 0) {
+			if (dryRun) {
+				console.log(
+					`~ ${projectConfig.scriptName}: would sync env vars for ${trigger.name}: ${environmentVariableNames.join(", ")}`
+				)
+				continue
+			}
+
+			await client.upsertEnvironmentVariables(
+				existingTrigger.trigger_uuid,
+				createEnvironmentVariablesPayload(trigger)
+			)
+			console.log(`+ ${projectConfig.scriptName}: synced env vars for ${trigger.name}`)
+		}
+	}
+
+	const desiredTriggerNames = new Set(projectConfig.triggers.map((trigger) => trigger.name))
+
+	for (const scriptName of projectConfig.pruneScriptNames) {
+		const staleTriggers = await client.listTriggers(scriptName)
+
+		for (const staleTrigger of staleTriggers) {
+			if (
+				!desiredTriggerNames.has(staleTrigger?.trigger_name) ||
+				typeof staleTrigger?.trigger_uuid !== "string"
+			) {
+				continue
+			}
+
+			if (dryRun) {
+				console.log(`- ${scriptName}: would delete ${staleTrigger.trigger_name}`)
+				continue
+			}
+
+			await client.deleteTrigger(staleTrigger.trigger_uuid)
+			console.log(`- ${scriptName}: deleted ${staleTrigger.trigger_name}`)
+		}
 	}
 }
 
