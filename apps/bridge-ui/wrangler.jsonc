@@ -30,14 +30,31 @@
 		{
 			"pattern": "bridge.zeko.io",
 			"custom_domain": true
-		},
-		{
-			"pattern": "alpha.bridge.zeko.io",
-			"custom_domain": true
 		}
 	],
 	"analytics_engine_datasets": [{ "binding": "BRIDGE_METRICS", "dataset": "bridge_metrics" }],
 	"vars": {
 		"SENTRY_PROJECT_ID": "4510000244326480"
+	},
+	"env": {
+		"testnet": {
+			"version_metadata": {
+				"binding": "CF_VERSION_METADATA"
+			},
+			"routes": [
+				{
+					"pattern": "testnet.bridge.zeko.io",
+					"custom_domain": true
+				},
+				{
+					"pattern": "alpha.bridge.zeko.io",
+					"custom_domain": true
+				}
+			],
+			"analytics_engine_datasets": [{ "binding": "BRIDGE_METRICS", "dataset": "bridge_metrics" }],
+			"vars": {
+				"SENTRY_PROJECT_ID": "4510000244326480"
+			}
+		}
 	}
 }

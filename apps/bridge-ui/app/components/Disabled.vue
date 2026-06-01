@@ -10,7 +10,6 @@ const noWalletExtension = computed(() =>
 	bs.wallet.snapshot.matches("UNSUPPORTED")
 )
 const notConnected = computed(() => !bs.walletLoaded)
-const wrongNetwork = computed(() => bs.currentNetwork.includes("mainnet"))
 const error = computed(() => bs.bridge.snapshot.matches("ERROR"))
 onMounted(async () => {
 	await nextTick()
@@ -29,16 +28,6 @@ onMounted(async () => {
 			title: "No Wallet Extension",
 			description:
 				"Please install the Auro Wallet extension to use the Rollup Bridge.",
-			type: "error",
-			duration: Number.POSITIVE_INFINITY
-		})
-		return
-	}
-	if (wrongNetwork.value) {
-		errorToaster.create({
-			title: "Wrong Network",
-			description:
-				"The Rollup Bridge is not available on Mainnet. Please switch to a testnet to start using the bridge.",
 			type: "error",
 			duration: Number.POSITIVE_INFINITY
 		})
@@ -84,13 +73,6 @@ onMounted(async () => {
       <p>Please connect your wallet to start bridging.</p>
       <Button variant="main" @click='bs.wallet.send({ type: "Connect" })'>
         Connect Wallet
-      </Button>
-    </template>
-    <template v-else-if="wrongNetwork">
-      <Button
-        variant="main"
-        @click='bs.bridge.send({ type: "SwitchToTesnet" })'>
-        Switch To Testnet
       </Button>
     </template>
     <template v-else-if="error">

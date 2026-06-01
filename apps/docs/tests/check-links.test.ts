@@ -9,6 +9,7 @@ const CONCURRENCY = 5
 const LINK_TEST_TIMEOUT_MS = 180_000
 const MAX_FETCH_ATTEMPTS = 3
 const RETRY_BASE_DELAY_MS = 500
+const SKIPPED_EXTERNAL_LINKS = new Set(["https://testnet.bridge.zeko.io"])
 
 type CheckStatus = number | "timeout" | "error"
 
@@ -235,7 +236,7 @@ describe("documentation links", () => {
 				}
 			}
 
-			const urlEntries = [...urlMap.entries()]
+			const urlEntries = [...urlMap.entries()].filter(([url]) => !SKIPPED_EXTERNAL_LINKS.has(url))
 			const checkResults = await runWithConcurrency(
 				urlEntries.map(
 					([url]) =>

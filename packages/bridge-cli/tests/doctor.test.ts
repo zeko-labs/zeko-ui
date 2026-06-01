@@ -21,6 +21,7 @@ describe("doctor command", () => {
 				zeko: signer.toBase58(),
 				eth: undefined
 			}),
+			fetch: (async () => new Response("ok", { status: 200, statusText: "OK" })) as typeof fetch,
 			write: (message) => writes.push(message)
 		})
 
@@ -30,6 +31,18 @@ describe("doctor command", () => {
 		expect(writes[0]).toContain("Data dir: /tmp/data")
 		expect(writes[0]).toContain("Wallet private key: configured")
 		expect(writes[0]).toContain(`Signer public key: ${signer.toPublicKey().toBase58()}`)
+		expect(writes[0]).toContain("Known routes:")
 		expect(writes[0]).toContain("mina:testnet->zeko:testnet")
+		expect(writes[0]).toContain("Route status:")
+		expect(writes[0]).toContain("mina:testnet->zeko:testnet: enabled")
+		expect(writes[0]).toContain("mina:mainnet->zeko:mainnet: enabled")
+		expect(writes[0]).toContain(
+			"actionsApi=https://testnet.api.actions.zeko.io/graphql; l1=testnet; l2=testnet"
+		)
+		expect(writes[0]).toContain(
+			"actionsApi=https://api.actions.zeko.io/graphql; l1=mainnet; l2=mainnet"
+		)
+		expect(writes[0]).toContain("https://testnet.api.actions.zeko.io/health -> 200 OK")
+		expect(writes[0]).toContain("https://api.actions.zeko.io/health -> 200 OK")
 	})
 })

@@ -4,10 +4,10 @@ import type { Config } from "./types"
 import { createGraphqlClient } from "./graphql"
 import type { Action, Deposit, OuterWitness, Withdrawal, InnerWitness } from "./types"
 import {
-	BRIDGE_DEPLOY_BLOCK,
 	depositAux,
 	fetchActions,
 	fetchInnerWitnessesFromAuxes,
+	getBridgeDeployBlock,
 	fetchOuterWitnessesFromAuxes,
 	withdrawalAux
 } from "./utils"
@@ -328,7 +328,7 @@ export async function diagnoseBridgeHistory({
 		fetchActions(
 			createGraphqlClient(config.l1ArchiveUrl, "l1-archive"),
 			walletPk,
-			BRIDGE_DEPLOY_BLOCK
+			getBridgeDeployBlock(config.l1Network)
 		),
 		fetchActions(createGraphqlClient(config.zekoArchiveUrl, "l2-archive"), walletPk)
 	])

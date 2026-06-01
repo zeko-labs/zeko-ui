@@ -1,5 +1,15 @@
 # @zeko-labs/bridge-sdk
 
+## 0.3.0
+
+### Minor Changes
+
+- 28eed6c: Enable Mina/Zeko mainnet bridge routes, add bridge CLI route and backend health diagnostics, and use network-specific bridge history windows for SDK deposit and diagnostic lookups.
+
+### Patch Changes
+
+- @zeko-labs/graphql@0.3.0
+
 ## 0.2.1
 
 ### Patch Changes

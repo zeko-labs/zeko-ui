@@ -92,7 +92,66 @@
 									"loadBalancing": {
 										"mode": "leastConnection"
 									},
-									"name": "actions-indexer-deployment",
+									"name": "actions-indexer-testnet-deployment",
+									"infrastructure": {
+										"architecture": "x86"
+									},
+									"billing": {
+										"deploymentPlan": "nf-compute-100-1"
+									},
+									"ports": [
+										{
+											"internalPort": 3000,
+											"public": true,
+											"protocol": "HTTP",
+											"name": "p01",
+											"domains": ["testnet.indexer.actions.zeko.io"],
+											"security": {
+												"sso": {},
+												"policies": [],
+												"credentials": [],
+												"verificationMode": "or"
+											},
+											"disableNfDomain": false
+										}
+									],
+									"runtimeEnvironment": {
+										"DATABASE_URL": "${args.TESTNET_DATABASE_URL}",
+										"AUTH_TOKEN": "${args.TESTNET_AUTH_TOKEN}",
+										"PORT": "${args.PORT}",
+										"L1_ARCHIVE_URL": "${args.TESTNET_L1_ARCHIVE_URL}",
+										"L2_ARCHIVE_URL": "${args.TESTNET_L2_ARCHIVE_URL}",
+										"OUTER_PK": "${args.TESTNET_OUTER_PK}",
+										"INNER_PK": "${args.TESTNET_INNER_PK}",
+										"ENVIRONMENT": "testnet",
+										"L1_FINALITY": "${args.TESTNET_L1_FINALITY}",
+										"L2_FINALITY_TIME_H": "${args.TESTNET_L2_FINALITY_TIME_H}"
+									},
+									"runtimeFiles": {}
+								},
+								"ref": "actions-indexer-deployment"
+							},
+							{
+								"kind": "DeploymentService",
+								"spec": {
+									"deployment": {
+										"instances": 1,
+										"storage": {
+											"ephemeralStorage": {
+												"storageSize": 1024
+											},
+											"shmSize": 64
+										},
+										"docker": {
+											"configType": "default"
+										},
+										"type": "deployment",
+										"releaseFlowControlled": true
+									},
+									"loadBalancing": {
+										"mode": "leastConnection"
+									},
+									"name": "actions-indexer-mainnet-deployment",
 									"infrastructure": {
 										"architecture": "x86"
 									},
@@ -116,14 +175,20 @@
 										}
 									],
 									"runtimeEnvironment": {
-										"DATABASE_URL": "${args.DATABASE_URL}",
-										"AUTH_TOKEN": "${args.AUTH_TOKEN}",
+										"DATABASE_URL": "${args.MAINNET_DATABASE_URL}",
+										"AUTH_TOKEN": "${args.MAINNET_AUTH_TOKEN}",
 										"PORT": "${args.PORT}",
-										"L1_ARCHIVE_URL": "${args.L1_ARCHIVE_URL}"
+										"L1_ARCHIVE_URL": "${args.MAINNET_L1_ARCHIVE_URL}",
+										"L2_ARCHIVE_URL": "${args.MAINNET_L2_ARCHIVE_URL}",
+										"OUTER_PK": "${args.MAINNET_OUTER_PK}",
+										"INNER_PK": "${args.MAINNET_INNER_PK}",
+										"ENVIRONMENT": "mainnet",
+										"L1_FINALITY": "${args.MAINNET_L1_FINALITY}",
+										"L2_FINALITY_TIME_H": "${args.MAINNET_L2_FINALITY_TIME_H}"
 									},
 									"runtimeFiles": {}
 								},
-								"ref": "actions-indexer-deployment"
+								"ref": "actions-indexer-mainnet-deployment"
 							},
 							{
 								"kind": "Pipeline",
@@ -178,7 +243,7 @@
 																			"type": "service"
 																		}
 																	},
-																	"ref": "leaderboard-indexer-deployment-release-1"
+																	"ref": "actions-indexer-testnet-deployment-release"
 																}
 															]
 														}
@@ -213,26 +278,13 @@
 											}
 										},
 										{
-											"name": "Staging",
-											"nfObjects": [],
-											"releaseFlow": {
-												"kind": "ReleaseFlow",
-												"spec": {
-													"apiVersion": "v1.2",
-													"spec": {
-														"kind": "Workflow",
-														"spec": {
-															"type": "sequential",
-															"steps": []
-														}
-													},
-													"triggers": []
-												}
-											}
-										},
-										{
 											"name": "Production",
-											"nfObjects": [],
+											"nfObjects": [
+												{
+													"id": "${refs.actions-indexer-mainnet-deployment.id}",
+													"type": "service"
+												}
+											],
 											"releaseFlow": {
 												"kind": "ReleaseFlow",
 												"spec": {
@@ -241,10 +293,47 @@
 														"kind": "Workflow",
 														"spec": {
 															"type": "sequential",
-															"steps": []
+															"steps": [
+																{
+																	"kind": "Build",
+																	"spec": {
+																		"reuseExistingBuilds": true,
+																		"buildRuleFallThroughHandling": "fail",
+																		"buildOverrides": {
+																			"buildArguments": {},
+																			"buildFiles": {},
+																			"dockerSecretMounts": {}
+																		},
+																		"branch": "main",
+																		"id": "${template.refs.actions-indexer-build.id}",
+																		"type": "service"
+																	},
+																	"condition": "success",
+																	"ref": "actions-indexer-mainnet-pipeline-build"
+																},
+																{
+																	"kind": "Release",
+																	"spec": {
+																		"type": "build",
+																		"origin": {
+																			"id": "${refs.actions-indexer-mainnet-pipeline-build.nfObjectId}",
+																			"branch": "${refs.actions-indexer-mainnet-pipeline-build.branch}",
+																			"build": "${refs.actions-indexer-mainnet-pipeline-build.id}"
+																		},
+																		"target": {
+																			"id": "${template.refs.actions-indexer-mainnet-deployment.id}",
+																			"type": "service"
+																		}
+																	},
+																	"ref": "actions-indexer-mainnet-deployment-release"
+																}
+															]
 														}
 													},
-													"triggers": []
+													"triggers": [],
+													"options": {
+														"concurrencyPolicy": "allow"
+													}
 												}
 											}
 										}
@@ -305,10 +394,14 @@
 																	"deploymentPlan": "nf-compute-100-1"
 																},
 																"runtimeEnvironment": {
-																	"DATABASE_URL": "${args.DATABASE_URL}",
-																	"AUTH_TOKEN": "${args.AUTH_TOKEN}",
+																	"DATABASE_URL": "${args.TESTNET_DATABASE_URL}",
+																	"AUTH_TOKEN": "${args.TESTNET_AUTH_TOKEN}",
 																	"PORT": "${args.PORT}",
-																	"L1_ARCHIVE_URL": "${args.L1_ARCHIVE_URL}"
+																	"L1_ARCHIVE_URL": "${args.TESTNET_L1_ARCHIVE_URL}",
+																	"L2_ARCHIVE_URL": "${args.TESTNET_L2_ARCHIVE_URL}",
+																	"OUTER_PK": "${args.TESTNET_OUTER_PK}",
+																	"INNER_PK": "${args.TESTNET_INNER_PK}",
+																	"ENVIRONMENT": "testnet"
 																},
 																"runtimeFiles": {},
 																"infrastructure": {
@@ -380,9 +473,22 @@
 	},
 	"arguments": {
 		"PORT": "3000",
-		"DATABASE_URL": "",
-		"AUTH_TOKEN": "",
-		"L1_ARCHIVE_URL": ""
+		"TESTNET_DATABASE_URL": "",
+		"TESTNET_AUTH_TOKEN": "",
+		"TESTNET_L1_ARCHIVE_URL": "",
+		"TESTNET_L2_ARCHIVE_URL": "",
+		"TESTNET_OUTER_PK": "",
+		"TESTNET_INNER_PK": "",
+		"TESTNET_L1_FINALITY": "",
+		"TESTNET_L2_FINALITY_TIME_H": "",
+		"MAINNET_DATABASE_URL": "",
+		"MAINNET_AUTH_TOKEN": "",
+		"MAINNET_L1_ARCHIVE_URL": "",
+		"MAINNET_L2_ARCHIVE_URL": "",
+		"MAINNET_OUTER_PK": "",
+		"MAINNET_INNER_PK": "",
+		"MAINNET_L1_FINALITY": "",
+		"MAINNET_L2_FINALITY_TIME_H": ""
 	},
 	"options": {
 		"autorun": false,

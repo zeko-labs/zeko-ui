@@ -13,7 +13,6 @@ const bs = useBridgeStore()
           v-if='
             bs.bridge.snapshot.matches("ERROR") ||
             bs.wallet.snapshot.matches("UNSUPPORTED") ||
-            bs.currentNetwork.includes("mainnet") ||
             bs.wallet.snapshot.error ||
             (bs.address.length === 0 && bs.wallet.snapshot.matches("INIT"))
           '

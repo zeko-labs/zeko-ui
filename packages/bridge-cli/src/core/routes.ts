@@ -30,18 +30,16 @@ export const KNOWN_ROUTES: RouteDescriptor[] = [
 	{
 		from: "mina:mainnet",
 		to: "zeko:mainnet",
-		enabled: false,
+		enabled: true,
 		direction: "deposit",
-		label: "Mina mainnet -> Zeko mainnet",
-		reason: "Known route, not enabled yet."
+		label: "Mina mainnet -> Zeko mainnet"
 	},
 	{
 		from: "zeko:mainnet",
 		to: "mina:mainnet",
-		enabled: false,
+		enabled: true,
 		direction: "withdrawal",
-		label: "Zeko mainnet -> Mina mainnet",
-		reason: "Known route, not enabled yet."
+		label: "Zeko mainnet -> Mina mainnet"
 	},
 	{
 		from: "eth:testnet",

@@ -56,6 +56,10 @@ const readWorkersBuildConfig = async (configPath) => {
 
 	const baseBuildCommand = typeof config.buildCommand === "string" ? config.buildCommand : ""
 	const baseRootDirectory = typeof config.rootDirectory === "string" ? config.rootDirectory : ""
+	const triggerTemplateScriptName =
+		typeof config.triggerTemplateScriptName === "string" && config.triggerTemplateScriptName.trim()
+			? config.triggerTemplateScriptName.trim()
+			: null
 	const triggers = normalizeList(config.triggers).map((trigger) => {
 		if (typeof trigger?.name !== "string" || typeof trigger?.deployCommand !== "string") {
 			throw new Error(`Invalid trigger definition in ${configPath}.`)
@@ -79,6 +83,7 @@ const readWorkersBuildConfig = async (configPath) => {
 		configPath,
 		enabled,
 		scriptName,
+		triggerTemplateScriptName,
 		triggers
 	}
 }
@@ -174,6 +179,23 @@ const createClient = (token, accountId) => {
 		return normalizeList(data.result)
 	}
 
+	const getExternalScriptId = async (scriptName) => {
+		const scriptsByName = await getScriptsByName()
+		const externalScriptId = scriptsByName.get(scriptName)
+
+		if (!externalScriptId) {
+			throw new Error(`Cloudflare Workers script ${scriptName} was not found.`)
+		}
+
+		return externalScriptId
+	}
+
+	const createTrigger = async (payload) =>
+		request("/builds/triggers", {
+			method: "POST",
+			body: JSON.stringify(payload)
+		})
+
 	const patchTrigger = async (triggerUuid, payload) =>
 		request(`/builds/triggers/${triggerUuid}`, {
 			method: "PATCH",
@@ -181,6 +203,8 @@ const createClient = (token, accountId) => {
 		})
 
 	return {
+		createTrigger,
+		getExternalScriptId,
 		listTriggers,
 		patchTrigger
 	}
@@ -214,17 +238,54 @@ const needsUpdate = (existingTrigger, desiredTrigger) =>
 
 const syncProject = async (client, projectConfig, dryRun) => {
 	const remoteTriggers = await client.listTriggers(projectConfig.scriptName)
+	let templateTriggersPromise = null
 
-	for (const trigger of projectConfig.triggers) {
-		const existingTrigger = remoteTriggers.find((remote) => remote?.trigger_name === trigger.name)
-
-		if (!existingTrigger?.trigger_uuid) {
+	const getTriggerTemplate = async () => {
+		if (!projectConfig.triggerTemplateScriptName) {
 			throw new Error(
-				`Missing Cloudflare Build trigger "${trigger.name}" for ${projectConfig.scriptName}.`
+				`Missing Cloudflare Build trigger template for ${projectConfig.scriptName}; set triggerTemplateScriptName in ${projectConfig.configPath}.`
 			)
 		}
 
+		if (!templateTriggersPromise) {
+			templateTriggersPromise = client.listTriggers(projectConfig.triggerTemplateScriptName)
+		}
+
+		const templateTriggers = await templateTriggersPromise
+		const template = templateTriggers.find(
+			(trigger) => trigger?.build_token_uuid && trigger?.repo_connection?.repo_connection_uuid
+		)
+
+		if (!template) {
+			throw new Error(
+				`Unable to find a usable Cloudflare Build trigger template on ${projectConfig.triggerTemplateScriptName}.`
+			)
+		}
+
+		return template
+	}
+
+	for (const trigger of projectConfig.triggers) {
+		const existingTrigger = remoteTriggers.find((remote) => remote?.trigger_name === trigger.name)
 		const desiredPayload = createDesiredPayload(trigger)
+
+		if (!existingTrigger?.trigger_uuid) {
+			if (dryRun) {
+				console.log(`+ ${projectConfig.scriptName}: would create ${trigger.name}`)
+				continue
+			}
+
+			const template = await getTriggerTemplate()
+			const externalScriptId = await client.getExternalScriptId(projectConfig.scriptName)
+			await client.createTrigger({
+				...desiredPayload,
+				external_script_id: externalScriptId,
+				build_token_uuid: template.build_token_uuid,
+				repo_connection_uuid: template.repo_connection.repo_connection_uuid
+			})
+			console.log(`+ ${projectConfig.scriptName}: created ${trigger.name}`)
+			continue
+		}
 
 		if (!needsUpdate(existingTrigger, desiredPayload)) {
 			console.log(

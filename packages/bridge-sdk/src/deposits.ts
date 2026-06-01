@@ -36,7 +36,6 @@ import type {
 	WitnessFetchResult
 } from "./types"
 import {
-	BRIDGE_DEPLOY_BLOCK,
 	bridgeVersionForActionIndex,
 	checkAccepted,
 	depositAux,
@@ -45,6 +44,7 @@ import {
 	fetchOuterActionsFromIndexer,
 	fetchOuterWitnessesFromAuxes,
 	filterNulls,
+	getBridgeDeployBlock,
 	getNextCancelledDepositIndex,
 	getNextDepositIndex,
 	getVkHash,
@@ -82,7 +82,11 @@ export type DepositStateContext = {
 }
 
 export async function fetchUserDeposits(runtime: BridgeRuntime, pk: PublicKey): Promise<Deposit[]> {
-	const userOuterActions = await fetchActions(runtime.l1ArchiveClient, pk, BRIDGE_DEPLOY_BLOCK)
+	const userOuterActions = await fetchActions(
+		runtime.l1ArchiveClient,
+		pk,
+		getBridgeDeployBlock(runtime.config.l1Network)
+	)
 
 	return filterNulls(
 		userOuterActions.map(({ action }) => {

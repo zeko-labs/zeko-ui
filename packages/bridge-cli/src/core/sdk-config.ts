@@ -8,7 +8,7 @@ const TESTNET_CONFIG = {
 	zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql",
 	// zekoUrl: "https://alphanet.zeko.io/graphql",
 	// zekoArchiveUrl: "https://archive.alphanet.zeko.io/graphql",
-	actionsApi: "https://api.actions.zeko.io/graphql",
+	actionsApi: "https://testnet.api.actions.zeko.io/graphql",
 	// actionsApi: "http://localhost:9100/graphql",
 	l1Network: "testnet",
 	l2Network: "testnet"
