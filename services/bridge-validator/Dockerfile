@@ -11,7 +11,7 @@ RUN if command -v apt-get >/dev/null 2>&1; then \
 	fi
 
 RUN bridge_cli_specifier="$(node -p "const p = require('/tmp/bridge-validator-package.json'); p.bridgeCli.package + '@' + p.bridgeCli.version")" \
-	&& npm install --global --omit=dev --no-audit --no-fund "$bridge_cli_specifier" corepack@0.35.0 \
+	&& npm install --global --omit=dev --no-audit --no-fund "$bridge_cli_specifier" corepack@0.32.0 \
 	&& corepack enable \
 	&& npm cache clean --force
 
