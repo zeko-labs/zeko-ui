@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-06-01T11:22:00Z
+updated_at: 2026-06-01T16:02:00Z
 ---
 
 ## Requirements
@@ -204,6 +204,13 @@ updated_at: 2026-06-01T11:22:00Z
   - Latest failure evidence: `log_path=/workspace/state/zeko-bridge/logs/dd56b218-2670-4115-b630-896530e46c96.jsonl`, `submitted_transactions=[]`, `final_transaction=null`, `cli_error=getDepositStatuses failed after 6 attempts: GraphQL query FetchConfig failed at https://testnet.zeko.io/graphql: [Network] Bad Gateway; networkError=Bad Gateway`.
   - Latest Workflow failure notification step `notify slack validation failure-1` succeeded.
   - Latest Workflow cleanup step `destroy bridge sandbox-1` succeeded.
+- Slack stderr attachment cleanup:
+  - Removed the placeholder sentence `stderr is uploaded as a Slack text snippet when present` from Slack failure messages.
+  - Changed stderr snippet uploads to use the failure message timestamp as `thread_ts`, so stderr is attached in the failure message thread instead of being posted as an unrelated channel file.
+  - `moon run bridge-validator:test -f`: 4 files passed, 34 tests passed.
+  - `moon run bridge-validator:typecheck -f`: passed.
+  - `moon run bridge-validator:lint -f`: passed.
+  - `git diff --check`: passed.
 
 ## Remaining Work
 

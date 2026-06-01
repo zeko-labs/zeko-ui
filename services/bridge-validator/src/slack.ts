@@ -89,10 +89,7 @@ const field = (label: string, value: string) => ({
 })
 
 const buildDiagnosticBlocks = ({ stdout }: { stdout?: string }): SlackBlock[] =>
-	[
-		stdout ? codeBlock("stdout", stdout, DIAGNOSTIC_BLOCK_LIMIT) : "",
-		"stderr is uploaded as a Slack text snippet when present."
-	]
+	[stdout ? codeBlock("stdout", stdout, DIAGNOSTIC_BLOCK_LIMIT) : ""]
 		.filter(Boolean)
 		.map((text) => ({
 			type: "section" as const,
@@ -107,7 +104,6 @@ export const buildSlackFailureMessage = ({
 	stage,
 	exitCode,
 	stdout,
-	stderr,
 	message,
 	timings
 }: {
@@ -132,8 +128,7 @@ export const buildSlackFailureMessage = ({
 		exitCode === undefined ? "" : `Exit code: ${exitCode}`,
 		`Message: ${message}`,
 		...formatTimingLines(timings),
-		stdout ? codeBlock("stdout", stdout, DIAGNOSTIC_TEXT_LIMIT) : "",
-		stderr ? "stderr: uploaded as Slack text snippet" : ""
+		stdout ? codeBlock("stdout", stdout, DIAGNOSTIC_TEXT_LIMIT) : ""
 	]
 		.filter(Boolean)
 		.join("\n")
@@ -322,6 +317,7 @@ export const uploadSlackTextSnippet = async ({
 	title,
 	filename,
 	content,
+	threadTs,
 	fetchImpl = fetch
 }: {
 	token: string
@@ -329,6 +325,7 @@ export const uploadSlackTextSnippet = async ({
 	title: string
 	filename: string
 	content: string
+	threadTs?: string
 	fetchImpl?: FetchLike
 }) => {
 	const bytes = textEncoder.encode(content)
@@ -377,7 +374,8 @@ export const uploadSlackTextSnippet = async ({
 		},
 		body: JSON.stringify({
 			channel_id: channelId,
-			files: [{ id: uploadUrlPayload.file_id, title }]
+			files: [{ id: uploadUrlPayload.file_id, title }],
+			...(threadTs ? { thread_ts: threadTs, initial_comment: "stderr" } : {})
 		})
 	})
 	const completePayload = (await completeResponse.json()) as { ok?: boolean; error?: string }
@@ -417,7 +415,7 @@ export const reportSlackFailure = async ({
 }) => {
 	const route = getValidatorRoute(routeKey)
 	try {
-		await postSlackMessage({
+		const messageResult = await postSlackMessage({
 			token: slackBotToken,
 			channelId: slackChannelId,
 			text: buildSlackFailureMessage({
@@ -451,7 +449,8 @@ export const reportSlackFailure = async ({
 				channelId: slackChannelId,
 				title: `Bridge validator stderr: ${instanceId}`,
 				filename: `bridge-validator-${instanceId}-stderr.log`,
-				content: stderr
+				content: stderr,
+				threadTs: messageResult.ts
 			})
 		}
 	} catch (error) {

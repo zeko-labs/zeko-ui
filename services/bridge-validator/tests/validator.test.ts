@@ -611,6 +611,26 @@ describe("bridge validator", () => {
 			})
 		).toContain("last stdout line")
 		expect(
+			buildSlackFailureMessage({
+				instanceId: "workflow-1",
+				route: {
+					key: "mina-to-zeko",
+					from: "mina:testnet",
+					to: "zeko:testnet",
+					route: "mina:testnet->zeko:testnet",
+					direction: "deposit"
+				},
+				cliVersion: BRIDGE_CLI_SPECIFIER,
+				walletPublicKey,
+				stage: "process",
+				exitCode: 1,
+				stdout: "stdout",
+				stderr: "failed",
+				message: "Bridge command exited with code 1. Last diagnostic: failed",
+				timings: completedTimings
+			})
+		).not.toContain("stderr")
+		expect(
 			JSON.stringify(
 				buildSlackFailureBlocks({
 					instanceId: "workflow-1",
@@ -632,6 +652,28 @@ describe("bridge validator", () => {
 				})
 			)
 		).toContain("```")
+		expect(
+			JSON.stringify(
+				buildSlackFailureBlocks({
+					instanceId: "workflow-1",
+					route: {
+						key: "mina-to-zeko",
+						from: "mina:testnet",
+						to: "zeko:testnet",
+						route: "mina:testnet->zeko:testnet",
+						direction: "deposit"
+					},
+					cliVersion: BRIDGE_CLI_SPECIFIER,
+					walletPublicKey,
+					stage: "process",
+					exitCode: 124,
+					stdout: "polling bridge state",
+					stderr: "bridge validator watchdog timeout after 6900 seconds",
+					message: "Bridge command timed out after 6900s (6900000 ms)",
+					timings: completedTimings
+				})
+			)
+		).not.toContain("stderr is uploaded")
 	})
 
 	it("describes bridge command timeout failures with the actual duration and diagnostic", () => {
@@ -741,6 +783,8 @@ describe("bridge validator", () => {
 		expect(completeBody.files).toEqual([
 			{ id: "file-1", title: "Bridge validator stderr: workflow-1" }
 		])
+		expect(completeBody.thread_ts).toBe("123.456")
+		expect(completeBody.initial_comment).toBe("stderr")
 	})
 
 	it("fails successful validation reporting when Slack rejects the success message", async () => {
