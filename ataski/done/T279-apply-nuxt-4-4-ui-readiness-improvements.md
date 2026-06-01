@@ -1,8 +1,8 @@
 ---
-id: T255
+id: T279
 title: "Apply Nuxt 4.4 UI readiness improvements"
 status: done
-blockedBy: [T253, T254]
+blockedBy: [T277, T278]
 owner: codex
 created_at: 2026-05-26T08:07:17Z
 updated_at: 2026-05-26T08:07:17Z

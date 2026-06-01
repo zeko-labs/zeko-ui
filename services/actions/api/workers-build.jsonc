@@ -1,10 +1,11 @@
 {
 	"$schema": "../../../packages/cloudflare-build-config/schema/workers-build.schema.json",
-	"scriptName": "actions-api",
+	"scriptName": "actions-api-testnet",
+	"triggerTemplateScriptName": "actions-api",
 	"triggers": [
 		{
 			"name": "Deploy default branch",
-			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks actions-api:deploy",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks actions-api:deploy-testnet",
 			"branchIncludes": ["main"],
 			"branchExcludes": [],
 			"pathIncludes": ["services/actions/api/**"],

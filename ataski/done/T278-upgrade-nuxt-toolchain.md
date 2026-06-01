@@ -1,8 +1,8 @@
 ---
-id: T254
+id: T278
 title: "Upgrade Nuxt toolchain"
 status: done
-blockedBy: [T253]
+blockedBy: [T277]
 owner: codex
 created_at: 2026-05-26T08:07:17Z
 updated_at: 2026-05-26T08:32:00Z

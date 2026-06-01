@@ -1,10 +1,11 @@
 {
 	"$schema": "../../packages/cloudflare-build-config/schema/workers-build.schema.json",
 	"scriptName": "bridge",
+	"buildCommand": "curl -fsSL https://moonrepo.dev/install/proto.sh | bash -s -- 0.55.3 --yes && export PROTO_HOME=\"$HOME/.proto\" && export PATH=\"$PROTO_HOME/bin:$PROTO_HOME/shims:$PATH\" && proto install --yes nu",
 	"triggers": [
 		{
 			"name": "Deploy default branch",
-			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks bridge-ui:deploy",
+			"deployCommand": "PROTO_HOME=\"$HOME/.proto\" PATH=\"$HOME/.proto/bin:$HOME/.proto/shims:$PATH\" ./node_modules/.bin/moon exec --ignore-ci-checks bridge-ui:deploy-testnet",
 			"branchIncludes": ["main"],
 			"branchExcludes": [],
 			"pathIncludes": [
@@ -18,7 +19,7 @@
 		},
 		{
 			"name": "Deploy non-production branches",
-			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks bridge-ui:deploy-preview",
+			"deployCommand": "PROTO_HOME=\"$HOME/.proto\" PATH=\"$HOME/.proto/bin:$HOME/.proto/shims:$PATH\" ./node_modules/.bin/moon exec --ignore-ci-checks bridge-ui:deploy-preview",
 			"branchIncludes": ["*"],
 			"branchExcludes": ["main"],
 			"pathIncludes": [

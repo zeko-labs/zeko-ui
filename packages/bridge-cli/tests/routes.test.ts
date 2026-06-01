@@ -6,8 +6,12 @@ describe("routes", () => {
 		expect(resolveRoute("mina:testnet", "zeko:testnet").enabled).toBe(true)
 	})
 
-	it("keeps future routes known but disabled", () => {
-		expect(resolveRoute("mina:mainnet", "zeko:mainnet").enabled).toBe(false)
+	it("enables mina and zeko mainnet routes", () => {
+		expect(resolveRoute("mina:mainnet", "zeko:mainnet").enabled).toBe(true)
+		expect(resolveRoute("zeko:mainnet", "mina:mainnet").enabled).toBe(true)
+	})
+
+	it("keeps ethereum routes known but disabled", () => {
 		expect(resolveRoute("eth:testnet", "zeko:testnet").enabled).toBe(false)
 		expect(KNOWN_ROUTES.length).toBeGreaterThanOrEqual(4)
 	})

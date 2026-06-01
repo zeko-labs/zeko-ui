@@ -8,7 +8,7 @@ import {
 	fetchOuterWitnessesFromAuxesQuery,
 	networkStateQuery
 } from "@zeko-labs/graphql"
-import { fetchAccount, Field, Mina, Poseidon, PublicKey, UInt32 } from "o1js"
+import { fetchAccount, Field, Mina, Poseidon, PublicKey, UInt32, type NetworkId } from "o1js"
 import * as v from "valibot"
 import { Actions, empty, fromList } from "./actions"
 import type { GqlClient } from "./graphql"
@@ -268,7 +268,15 @@ export async function fetchCommitAsePastSlot(
 // https://github.com/o1-labs/Archive-Node-API/blob/2d726955502fbd02c70d388f589284dd838bbb45/src/server/server.ts#L13
 const BLOCK_RANGE_SIZE = 10_000
 
-export const BRIDGE_DEPLOY_BLOCK = 430_000
+export const BRIDGE_DEPLOY_BLOCK_BY_NETWORK = {
+	testnet: 430_000,
+	mainnet: 0
+} as const satisfies Record<Extract<NetworkId, "testnet" | "mainnet">, number>
+
+export const getBridgeDeployBlock = (network: NetworkId): number =>
+	network === "testnet"
+		? BRIDGE_DEPLOY_BLOCK_BY_NETWORK.testnet
+		: BRIDGE_DEPLOY_BLOCK_BY_NETWORK.mainnet
 
 export async function getNetworkTip(client: GqlClient): Promise<number> {
 	const res = await client().query(networkStateQuery, {})

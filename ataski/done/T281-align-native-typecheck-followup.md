@@ -1,8 +1,8 @@
 ---
-id: T257
+id: T281
 title: "Align native typecheck followup"
 status: done
-blockedBy: [T256]
+blockedBy: [T280]
 owner: codex
 created_at: 2026-05-26T09:40:00Z
 updated_at: 2026-05-26T10:35:00Z

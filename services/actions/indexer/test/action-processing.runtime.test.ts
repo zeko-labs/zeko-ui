@@ -96,13 +96,15 @@ const loadRuntime = async ({
 } = {}) => {
 	vi.resetModules()
 	vi.doMock("@zeko-labs/bridge-sdk", () => ({
+		Actions: {
+			pushHash: (state: FakeField, hash: string) => new FakeField(`${state.toString()}|${hash}`)
+		},
 		fromList: (items: FakeField[][]) => ({
 			hash: items
 				.flat()
 				.map((item) => item.toString())
 				.join(",")
-		}),
-		pushHash: (state: FakeField, hash: string) => new FakeField(`${state.toString()}|${hash}`)
+		})
 	}))
 	vi.doMock("o1js", () => ({
 		Field: {

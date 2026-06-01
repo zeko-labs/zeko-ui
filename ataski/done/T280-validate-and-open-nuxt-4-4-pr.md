@@ -1,8 +1,8 @@
 ---
-id: T256
+id: T280
 title: "Validate and open Nuxt 4.4 PR"
 status: done
-blockedBy: [T254, T255]
+blockedBy: [T278, T279]
 owner: codex
 created_at: 2026-05-26T08:07:17Z
 updated_at: 2026-05-26T08:07:17Z

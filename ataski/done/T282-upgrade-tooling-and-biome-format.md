@@ -1,8 +1,8 @@
 ---
-id: T258
+id: T282
 title: "Upgrade tooling and Biome format ownership"
 status: done
-blockedBy: [T257]
+blockedBy: [T281]
 owner: codex
 created_at: 2026-05-26T11:10:00Z
 updated_at: 2026-05-26T23:08:32Z

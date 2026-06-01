@@ -10,6 +10,9 @@
 		"scriptName": {
 			"type": "string"
 		},
+		"triggerTemplateScriptName": {
+			"type": "string"
+		},
 		"enabled": {
 			"type": "boolean"
 		},
