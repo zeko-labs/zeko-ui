@@ -468,7 +468,7 @@ export const buildBridgeSourceSetupCommand = () =>
 		'  git fetch --depth 1 origin "$BRIDGE_VALIDATOR_SOURCE_REF"',
 		"  git checkout --detach FETCH_HEAD",
 		"  corepack enable",
-		"  pnpm install --frozen-lockfile",
+		"  pnpm install --frozen-lockfile --filter @zeko-labs/bridge-cli... --ignore-scripts",
 		"  pnpm --dir packages/bridge-sdk exec tsdown",
 		"  pnpm --dir packages/bridge-cli exec tsdown",
 		`  bridge_command=(node ${shellQuote(`${BRIDGE_SOURCE_ROOT}/packages/bridge-cli/dist/cli.js`)})`,
