@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-06-01T09:35:16Z
+updated_at: 2026-06-01T09:48:18Z
 ---
 
 ## Requirements
@@ -177,20 +177,27 @@ updated_at: 2026-06-01T09:35:16Z
   - Changed the high-level bridge flow to resolve exactly one pre-existing queued operation and return success without submitting another operation.
   - Added an explicit Cloudflare Sandbox source-build path for PR validation before SDK/CLI publication: clone source, build `bridge-cli`, then run the built CLI.
   - Changed Slack failure reporting to keep stdout inline and upload stderr as a Slack text snippet.
-  - Did not deploy or trigger Cloudflare workflows in this pass.
   - `moon run bridge-cli:test -f`: 22 files passed, 111 tests passed, 13 skipped.
   - `moon run bridge-cli:typecheck -f`: passed.
   - `moon run bridge-cli:lint -f`: passed.
   - `moon run bridge-cli:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
-  - `moon run bridge-validator:test -f`: 4 files passed, 31 tests passed.
+  - `moon run bridge-validator:test -f`: 4 files passed, 33 tests passed.
   - `moon run bridge-validator:typecheck -f`: passed.
   - `moon run bridge-validator:lint -f`: passed.
   - `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - `moon run bridge-validator:type-cf -f`: passed and regenerated Worker types from Wrangler config.
   - `git diff --check`: passed.
+- PR-built deployment attempt:
+  - Committed and pushed branch `branch/feature-web-397-bridge-validator-e2e` at `0c4aa9d` so the Sandbox source-build path can clone the PR branch.
+  - `moon run bridge-validator:sync-secrets -f` failed before any secret write completed because Wrangler's current OAuth token cannot access Cloudflare account `a12d2915bc16ee8550f19399839623f7`.
+  - `wrangler deployments list --config services/bridge-validator/wrangler.jsonc` failed with the same Cloudflare API authentication error for `/accounts/a12d2915bc16ee8550f19399839623f7/workers/scripts/bridge-validator/deployments`.
+  - `wrangler whoami` reports an OAuth token, but querying `/client/v4/accounts` with that token succeeds and returns zero accessible accounts.
+  - Authenticated service-info on `https://bridge-validator.zeko-labs.workers.dev` still reports the older deployed service (`0 */6 * * *`, no manual `start-deposit` task, no source-build config), so the current public Worker cannot prove the PR-built validator path.
 
 ## Remaining Work
 
-- Review whether the CLI reliability changes should remain in PR #150 or be split again into a prerequisite SDK/CLI PR before PR #150 is finalized.
+- Reauthenticate Wrangler or provide `CLOUDFLARE_API_TOKEN` for an account that can access `a12d2915bc16ee8550f19399839623f7`; current local Wrangler OAuth has zero accessible accounts.
+- Rerun `moon run bridge-validator:sync-secrets -f` after Cloudflare auth is fixed.
+- Deploy the pushed PR branch with `moon run bridge-validator:deploy -f`.
 - After the source-build path is deployed intentionally, trigger one source-built Cloudflare deposit and one source-built Cloudflare withdrawal if the SDK/CLI changes are still unpublished.
 - Trigger one withdrawal through Cloudflare to capture final acceptance evidence.
-- Commit and push after the PR scope is confirmed and any required Cloudflare validation is complete.
