@@ -237,7 +237,23 @@ export const buildBridgeSandboxId = ({
 }: {
 	instanceId: string
 	attempt?: number
-}) => `bridge-validator-${instanceId}${attempt === undefined ? "" : `-${attempt}`}`
+}) => {
+	const slug =
+		instanceId
+			.toLowerCase()
+			.replace(/[^a-z0-9-]+/g, "-")
+			.replace(/^-+|-+$/g, "")
+			.slice(0, 24)
+			.replace(/-+$/g, "") || "run"
+	const hash = Array.from(instanceId).reduce(
+		(accumulator, character) => Math.imul(accumulator ^ character.charCodeAt(0), 0x01000193) >>> 0,
+		0x811c9dc5
+	)
+	const hashText = hash.toString(36).padStart(7, "0").slice(0, 8)
+	const attemptSuffix = attempt === undefined ? "" : `-${attempt}`
+
+	return `bridge-validator-${slug}${attemptSuffix}-${hashText}`
+}
 
 export const buildBridgeSandboxIds = ({ instanceId }: { instanceId: string }) => [
 	buildBridgeSandboxId({ instanceId }),

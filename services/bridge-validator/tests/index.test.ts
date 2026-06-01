@@ -9,7 +9,7 @@ import { getSandbox } from "@cloudflare/sandbox"
 import { handleBridgeValidatorRequest } from "../src/request"
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "../src/service-info"
 import { getRemainingWorkflowTimeMs, WORKFLOW_HARD_TIMEOUT_MS } from "../src/runtime"
-import { BRIDGE_CLI_SPECIFIER } from "../src/validator"
+import { BRIDGE_CLI_SPECIFIER, buildBridgeSandboxId } from "../src/validator"
 import { hasValidBearerToken, isValidatorEnabled, type ValidatorEnv } from "../src/env"
 import packageJson from "../package.json"
 
@@ -131,6 +131,7 @@ describe("bridge-validator worker", () => {
 	})
 
 	it("checks one sandbox attempt handle for status diagnostics without keepAlive", async () => {
+		const sandboxId = buildBridgeSandboxId({ instanceId: "workflow-1", attempt: 2 })
 		vi.mocked(getSandbox).mockReturnValue({
 			readFile: vi.fn(async (path: string) => {
 				if (path.endsWith("/bridge.pid")) {
@@ -164,7 +165,7 @@ describe("bridge-validator worker", () => {
 
 		await expect(response.json()).resolves.toMatchObject({
 			ok: true,
-			sandboxId: "bridge-validator-workflow-1-2",
+			sandboxId,
 			command: {
 				found: true,
 				pid: "1234",
@@ -172,12 +173,13 @@ describe("bridge-validator worker", () => {
 				status: "running"
 			}
 		})
-		expect(getSandbox).toHaveBeenCalledWith("sandbox-namespace", "bridge-validator-workflow-1-2", {
+		expect(getSandbox).toHaveBeenCalledWith("sandbox-namespace", sandboxId, {
 			keepAlive: false
 		})
 	})
 
 	it("destroys a workflow sandbox through the authenticated cleanup surface", async () => {
+		const sandboxId = buildBridgeSandboxId({ instanceId: "workflow-1", attempt: 2 })
 		const destroy = vi.fn(async () => {})
 		vi.mocked(getSandbox).mockReturnValue({
 			destroy
@@ -194,7 +196,7 @@ describe("bridge-validator worker", () => {
 		await expect(response.json()).resolves.toEqual({
 			ok: true,
 			instanceId: "workflow-1",
-			sandboxId: "bridge-validator-workflow-1-2",
+			sandboxId,
 			cleanup: "destroyed"
 		})
 		expect(destroy).toHaveBeenCalledOnce()

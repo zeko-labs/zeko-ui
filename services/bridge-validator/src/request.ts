@@ -2,6 +2,7 @@ import type { ValidatorEnv } from "./env"
 import { getValidatorRoute, type BridgeValidatorRouteKey } from "./routes"
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "./service-info"
 import {
+	buildBridgeSandboxIds,
 	buildBridgeSandboxId,
 	destroyBridgeSandbox,
 	BRIDGE_STATUS_PATH,
@@ -19,7 +20,7 @@ const parseIncludeLogs = (url: URL) =>
 const parseSandboxTarget = (url: URL, instanceId: string) => {
 	const sandboxId = url.searchParams.get("sandboxId")?.trim()
 	if (sandboxId) {
-		if (!sandboxId.startsWith(`bridge-validator-${instanceId}`)) {
+		if (!buildBridgeSandboxIds({ instanceId }).includes(sandboxId)) {
 			throw new Error("sandboxId must belong to the provided instanceId")
 		}
 

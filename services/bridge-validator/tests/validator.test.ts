@@ -21,6 +21,7 @@ import {
 	BRIDGE_COMMAND_TIMEOUT_MS,
 	BRIDGE_SANDBOX_OPTIONS,
 	BRIDGE_WORKSPACE_ROOT,
+	buildBridgeSandboxId,
 	buildBridgeCommand,
 	buildBridgeLaunchCommand,
 	buildBridgeProcessEnv,
@@ -324,6 +325,28 @@ describe("bridge validator", () => {
 				params: { routeKey: "zeko-to-mina" }
 			}
 		])
+	})
+
+	it("builds Cloudflare-compatible sandbox ids for long workflow ids", () => {
+		const sandboxId = buildBridgeSandboxId({
+			instanceId: "bridge-validator-manual-mina-to-zeko-1780308047887",
+			attempt: 1
+		})
+
+		expect(sandboxId).toMatch(/^bridge-validator-[a-z0-9-]+$/)
+		expect(sandboxId.length).toBeLessThanOrEqual(63)
+		expect(sandboxId).toBe(
+			buildBridgeSandboxId({
+				instanceId: "bridge-validator-manual-mina-to-zeko-1780308047887",
+				attempt: 1
+			})
+		)
+		expect(sandboxId).not.toBe(
+			buildBridgeSandboxId({
+				instanceId: "bridge-validator-manual-mina-to-zeko-1780308047888",
+				attempt: 1
+			})
+		)
 	})
 
 	it("parses and validates a completed bridge result against history", () => {
