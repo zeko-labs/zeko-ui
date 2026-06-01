@@ -17,17 +17,38 @@ export interface FaucetDeployProps extends Exclude<DeployArgs, undefined> {
 	amount: UInt64
 }
 
-export class FaucetClaimEvent extends Struct({
+type FaucetClaimEventFields = {
+	eventId: Field
+	claimer: PublicKey
+	amount: UInt64
+}
+
+type FaucetDepositEventFields = {
+	eventId: Field
+	depositor: PublicKey
+	amount: UInt64
+}
+
+type O1StructConstructor<T> = new (value: T) => T
+
+type O1Struct<T> = import("o1js").ProvablePureExtended<T> &
+	O1StructConstructor<T> & { _isStruct: true }
+
+const FaucetClaimEventBase: O1Struct<FaucetClaimEventFields> = Struct({
 	eventId: Field,
 	claimer: PublicKey,
 	amount: UInt64
-}) {}
+})
 
-export class FaucetDepositEvent extends Struct({
+const FaucetDepositEventBase: O1Struct<FaucetDepositEventFields> = Struct({
 	eventId: Field,
 	depositor: PublicKey,
 	amount: UInt64
-}) {}
+})
+
+export class FaucetClaimEvent extends FaucetClaimEventBase {}
+
+export class FaucetDepositEvent extends FaucetDepositEventBase {}
 
 export class Faucet extends TokenContract {
 	@state(UInt64) amount = State<UInt64>()

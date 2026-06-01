@@ -1,10 +1,10 @@
 layer: tool
 tasks:
   format-all:
-    command: dprint check --allow-no-files
+    script: biome format --files-ignore-unknown=true . && dprint check --allow-no-files
     options:
       cache: false
   format-all-fix:
-    command: dprint fmt --allow-no-files
+    script: biome format --files-ignore-unknown=true --write . && dprint fmt --allow-no-files
     options:
       cache: false

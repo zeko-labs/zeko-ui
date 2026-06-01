@@ -51,7 +51,9 @@ const isExpectedReferenceRead = (filePath: string, referenceFile: string) =>
 	) ||
 	endsWithPathSegment(filePath, path.join("references", referenceFile))
 
-const buildOpencodeEvalPrompt = (evalCase: EvalCase) => `You are being evaluated on whether you can answer a Zeko question by using the local zeko skill in this repository.
+const buildOpencodeEvalPrompt = (
+	evalCase: EvalCase
+) => `You are being evaluated on whether you can answer a Zeko question by using the local zeko skill in this repository.
 
 Requirements:
 - Follow the repository AGENTS instructions and available skills.

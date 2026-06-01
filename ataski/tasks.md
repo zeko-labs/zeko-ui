@@ -274,3 +274,9 @@
 - T274 | done | fix-mainnet-actions-indexer-release-validation | done/T274-fix-mainnet-actions-indexer-release-validation.md
 - T275 | done | install-nu-through-proto-toolchain-setup | done/T275-install-nu-through-proto-toolchain-setup.md
 - T276 | done | retry-mainnet-bridge-ui-smoke | done/T276-retry-mainnet-bridge-ui-smoke.md
+- T277 | done | audit-nuxt-usage-and-upgrade-path | done/T277-audit-nuxt-usage-and-upgrade-path.md
+- T278 | done | upgrade-nuxt-toolchain | done/T278-upgrade-nuxt-toolchain.md
+- T279 | done | apply-nuxt-4-4-ui-readiness-improvements | done/T279-apply-nuxt-4-4-ui-readiness-improvements.md
+- T280 | done | validate-and-open-nuxt-4-4-pr | done/T280-validate-and-open-nuxt-4-4-pr.md
+- T281 | done | align-native-typecheck-followup | done/T281-align-native-typecheck-followup.md
+- T282 | done | upgrade-tooling-and-biome-format | done/T282-upgrade-tooling-and-biome-format.md

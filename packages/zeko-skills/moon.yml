@@ -28,7 +28,7 @@ tasks:
     inputs:
       - "@group(skill)"
   typecheck:
-    command: tsc --noEmit
+    command: tsgo --noEmit
     inputs:
       - "@group(skill)"
   validate:

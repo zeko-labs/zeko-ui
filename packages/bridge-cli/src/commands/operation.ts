@@ -40,10 +40,9 @@ type OperationCommandDeps = {
 	resolvePaths?: typeof resolveAppPaths
 	createAdapter?: BridgeAdapterFactory
 	readLog?: (path: string) => Promise<string>
-	createLogger?: (input: { logPath: string }) => Pick<
-		ReturnType<typeof createOperationLogger>,
-		"write"
-	>
+	createLogger?: (input: {
+		logPath: string
+	}) => Pick<ReturnType<typeof createOperationLogger>, "write">
 	write?: (message: string) => void
 	writeProgress?: (message: string) => void
 	sleep?: (ms: number) => Promise<void>
@@ -238,10 +237,8 @@ const resolveRetryDelayMs = (input: {
 	fallback?: number
 }): number => input.argValue ?? input.deps.retryDelayMs ?? input.fallback ?? 5_000
 
-const resolvePollIntervalMs = (input: {
-	argValue?: number
-	deps: OperationCommandDeps
-}): number => input.argValue ?? input.deps.pollIntervalMs ?? 20_000
+const resolvePollIntervalMs = (input: { argValue?: number; deps: OperationCommandDeps }): number =>
+	input.argValue ?? input.deps.pollIntervalMs ?? 20_000
 
 export const createOperationCommand = (deps: OperationCommandDeps = {}): CommandDef =>
 	defineCommand({

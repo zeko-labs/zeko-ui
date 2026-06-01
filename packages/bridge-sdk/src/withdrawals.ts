@@ -695,7 +695,7 @@ export async function canFinalizeWithdrawal(
 	return {
 		available: result.ok,
 		reason: result.ok ? null : result.msg,
-		status: result.ok ? "available" : result.status ?? "waiting",
+		status: result.ok ? "available" : (result.status ?? "waiting"),
 		index: result.index
 	}
 }

@@ -1,39 +1,47 @@
 type LeaderboardEntry {
-  rank: Int!
-  score: Int!
-  wallet: String!
+	rank: Int!
+	score: Int!
+	wallet: String!
 }
 
 input LeaderboardInput {
-  page: Int = 1
-  pageSize: Int = 20
-  searchWallet: String
+	page: Int = 1
+	pageSize: Int = 20
+	searchWallet: String
 }
 
 type LeaderboardResult {
-  """Ranked leaderboard wallets and their scores."""
-  entries: [LeaderboardEntry!]!
+	"""
+	Ranked leaderboard wallets and their scores.
+	"""
+	entries: [LeaderboardEntry!]!
 
-  """Indicates if there are more entries beyond the current page."""
-  hasMore: Boolean!
+	"""
+	Indicates if there are more entries beyond the current page.
+	"""
+	hasMore: Boolean!
 
-  """Total number of entries in the leaderboard."""
-  totalEntries: Int!
+	"""
+	Total number of entries in the leaderboard.
+	"""
+	totalEntries: Int!
 
-  """Total points accumulated by all entries."""
-  totalPoints: Int!
+	"""
+	Total points accumulated by all entries.
+	"""
+	totalPoints: Int!
 }
 
 type LeaderboardUpdate {
-  hasNewEntries: Boolean!
-  maxBlockHeight: Int!
-  timestamp: Float!
+	hasNewEntries: Boolean!
+	maxBlockHeight: Int!
+	timestamp: Float!
 }
 
 type Query {
-  leaderboard(input: LeaderboardInput): LeaderboardResult
+	leaderboard(input: LeaderboardInput): LeaderboardResult
 }
 
 type Subscription {
-  onNewTransaction: LeaderboardUpdate
+	onNewTransaction: LeaderboardUpdate
 }

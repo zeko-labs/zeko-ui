@@ -106,7 +106,9 @@ const buildRawWithdrawalAction = (
 
 const buildCommit = ({
 	innerActionStateLength
-}: { innerActionStateLength: number }): OuterCommit => ({
+}: {
+	innerActionStateLength: number
+}): OuterCommit => ({
 	action: [Field(701), Field(801)],
 	afterActionState: Field(901),
 	beforeActionState: Field(900),

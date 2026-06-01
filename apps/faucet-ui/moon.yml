@@ -52,6 +52,19 @@ tasks:
     outputs:
       - .nuxt/
       - .output/
+  profile:
+    command: nuxt build
+    deps:
+      - typecheck
+    args:
+      - --profile
+    inputs:
+      - "@globs(sources)"
+    outputs:
+      - .nuxt/
+      - .output/
+    options:
+      cache: false
   type-cf:
     script: wrangler types -c ./wrangler.jsonc -c ../faucet/wrangler.jsonc
     deps:

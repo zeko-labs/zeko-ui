@@ -7,7 +7,11 @@ export async function verifyTurnstile({
 	token,
 	ip,
 	secret
-}: { token: string; secret: string; ip: string }): Promise<boolean> {
+}: {
+	token: string
+	secret: string
+	ip: string
+}): Promise<boolean> {
 	try {
 		const verifyEndpoint = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 

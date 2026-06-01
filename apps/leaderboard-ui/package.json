@@ -7,6 +7,7 @@
 	"dependencies": {
 		"@ark-ui/vue": "catalog:",
 		"@number-flow/vue": "catalog:",
+		"@pinia/nuxt": "catalog:",
 		"@tanstack/vue-table": "catalog:",
 		"@unhead/vue": "catalog:",
 		"@urql/exchange-retry": "catalog:graphql",

@@ -109,11 +109,7 @@ export const formatQueueMetadata = (
 	} = {}
 ) => {
 	const metadata: string[] = []
-	const formatRemainingTimeout = ({
-		remainingSlots
-	}: {
-		remainingSlots: bigint
-	}) => {
+	const formatRemainingTimeout = ({ remainingSlots }: { remainingSlots: bigint }) => {
 		if (remainingSlots <= 0n) return cancellable ? "Timed out" : null
 
 		const totalMinutes = Number((remainingSlots * BigInt(SLOT_DURATION_SECONDS)) / 60n)
@@ -207,11 +203,7 @@ export const statusFromState = (
 	return isDeposit ? pendingDeposit(1) : pendingWithdrawal(1)
 }
 
-export const progressFromState = ({
-	step
-}: {
-	step: number
-}): UiProgress => ({ steps, step })
+export const progressFromState = ({ step }: { step: number }): UiProgress => ({ steps, step })
 
 export const errorToaster = createToaster({
 	placement: "top-end",

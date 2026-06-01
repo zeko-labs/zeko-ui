@@ -35,7 +35,13 @@ export async function fetchEventsRaw({
 	to,
 	canonical = true,
 	client
-}: { address: string; canonical?: boolean; from?: number; to?: number; client: Client }) {
+}: {
+	address: string
+	canonical?: boolean
+	from?: number
+	to?: number
+	client: Client
+}) {
 	const input = {
 		address,
 		...(canonical && { status: "CANONICAL" as const }),

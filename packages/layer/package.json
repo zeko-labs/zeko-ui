@@ -18,6 +18,7 @@
 		"@hebilicious/cssforge": "catalog:",
 		"@unocss/reset": "catalog:",
 		"@zeko/design": "workspace:^",
-		"typescript": "catalog:"
+		"typescript": "catalog:",
+		"vite": "catalog:"
 	}
 }

@@ -92,6 +92,7 @@ const pending = computed(() => faucet.snapshot.value.matches("PENDING"))
 const errorMessage = computed(() => faucet.snapshot.value.context.errorMessage)
 const successResult = computed(() => faucet.snapshot.value.context.result)
 const zekoScanLink = computed(() => successResult.value?.explorer_url ?? "")
+const { polite, assertive } = useAnnouncer()
 
 const isValidAddress = computed(() => {
 	if (!minaAddress.value || typeof minaAddress.value !== "string") return false
@@ -101,6 +102,16 @@ const isValidAddress = computed(() => {
 const submitDisabled = computed(
 	() => pending.value || turnstile.isExecuting.value || !isValidAddress.value
 )
+
+watch(successResult, (result) => {
+	if (!result) return
+	polite(`tMINA successfully requested to ${result.address}.`)
+})
+
+watch(error, (isError) => {
+	if (!isError) return
+	assertive(errorMessage.value)
+})
 </script>
 <template>
   <main>
