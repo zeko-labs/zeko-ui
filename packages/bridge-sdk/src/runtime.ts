@@ -9,6 +9,68 @@ import { createGraphqlClient, type GqlClient } from "./graphql"
 import type { Action, Account, Config, Deposit, Withdrawal } from "./types"
 import type { fetchDepositFinalizationWitnesses } from "./deposits"
 
+type RuntimeQueryError = {
+	readonly message?: string
+	readonly graphQLErrors?: readonly unknown[]
+	readonly networkError?: unknown
+}
+
+type RuntimeQueryResult<T> = {
+	readonly data?: T
+	readonly error?: RuntimeQueryError
+}
+
+const formatUnknownError = (error: unknown): string => {
+	if (error instanceof Error) return error.message
+	if (typeof error === "string") return error
+
+	return JSON.stringify(error) ?? String(error)
+}
+
+const formatQueryError = (error: RuntimeQueryError): string => {
+	const parts = [
+		error.message,
+		error.networkError ? `networkError=${formatUnknownError(error.networkError)}` : undefined,
+		error.graphQLErrors?.length
+			? `graphQLErrors=${error.graphQLErrors.map(formatUnknownError).join("; ")}`
+			: undefined
+	].filter((part): part is string => Boolean(part))
+
+	return parts.join("; ") || "unknown GraphQL error"
+}
+
+const assertQuerySucceeded = ({
+	endpoint,
+	queryName,
+	result
+}: {
+	endpoint: string
+	queryName: string
+	result: RuntimeQueryResult<unknown>
+}): void => {
+	if (!result.error) return
+
+	throw new Error(
+		`GraphQL query ${queryName} failed at ${endpoint}: ${formatQueryError(result.error)}`
+	)
+}
+
+const requireQueryValue = <T>({
+	endpoint,
+	field,
+	queryName,
+	value
+}: {
+	endpoint: string
+	field: string
+	queryName: string
+	value: T | null | undefined
+}): T => {
+	if (value !== null && value !== undefined) return value
+
+	throw new Error(`GraphQL query ${queryName} at ${endpoint} did not return ${field}`)
+}
+
 export type BridgeRuntime = {
 	readonly config: Config
 	readonly l1Client: GqlClient
@@ -71,17 +133,54 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 			l2Client().query(sequencerPkQuery, {})
 		])
 
-	const circuitsConfig = fetchConfigResult.data?.circuitsConfig
-	if (!circuitsConfig) throw new Error("Circuits config not found")
+	assertQuerySucceeded({
+		endpoint: config.zekoUrl,
+		queryName: "FetchConfig",
+		result: fetchConfigResult
+	})
+	assertQuerySucceeded({
+		endpoint: config.zekoUrl,
+		queryName: "GenesisConstants",
+		result: genesisConstantL2Result
+	})
+	assertQuerySucceeded({
+		endpoint: config.l1Url,
+		queryName: "GenesisConstants",
+		result: genesisConstantL1Result
+	})
+	assertQuerySucceeded({
+		endpoint: config.zekoUrl,
+		queryName: "SequencerPK",
+		result: sequencerPkResult
+	})
 
-	const l1AccountCreationFee = genesisConstantL1Result.data?.genesisConstants?.accountCreationFee
-	if (!l1AccountCreationFee) throw new Error("L1 account creation fee not found")
+	const circuitsConfig = requireQueryValue({
+		endpoint: config.zekoUrl,
+		queryName: "FetchConfig",
+		field: "circuitsConfig",
+		value: fetchConfigResult.data?.circuitsConfig
+	})
 
-	const l2AccountCreationFee = genesisConstantL2Result.data?.genesisConstants?.accountCreationFee
-	if (!l2AccountCreationFee) throw new Error("L2 account creation fee not found")
+	const l1AccountCreationFee = requireQueryValue({
+		endpoint: config.l1Url,
+		queryName: "GenesisConstants",
+		field: "genesisConstants.accountCreationFee",
+		value: genesisConstantL1Result.data?.genesisConstants?.accountCreationFee
+	})
 
-	const sequencerPk = sequencerPkResult.data?.sequencerPk
-	if (!sequencerPk) throw new Error("Sequencer public key not found")
+	const l2AccountCreationFee = requireQueryValue({
+		endpoint: config.zekoUrl,
+		queryName: "GenesisConstants",
+		field: "genesisConstants.accountCreationFee",
+		value: genesisConstantL2Result.data?.genesisConstants?.accountCreationFee
+	})
+
+	const sequencerPk = requireQueryValue({
+		endpoint: config.zekoUrl,
+		queryName: "SequencerPK",
+		field: "sequencerPk",
+		value: sequencerPkResult.data?.sequencerPk
+	})
 
 	const V2_DEPOSITS_START_INDEX =
 		config.l2Network === "testnet" ? UInt32.from(68520) : UInt32.from(0)
