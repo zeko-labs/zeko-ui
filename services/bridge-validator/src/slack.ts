@@ -6,6 +6,13 @@ import type { BridgeValidationSummary } from "./validator"
 type FetchLike = typeof fetch
 
 const textEncoder = new TextEncoder()
+type SlackApiErrorPayload = {
+	ok?: boolean
+	error?: string
+	needed?: string
+	provided?: string
+}
+
 type SlackBlock =
 	| { type: "header"; text: { type: "plain_text"; text: string; emoji?: boolean } }
 	| { type: "divider" }
@@ -61,6 +68,26 @@ const buildTimingBlock = (timings?: BridgeValidationTimings): SlackBlock => ({
 	}
 })
 
+const buildSlackFileUploadFailureBlocks = ({
+	instanceId,
+	message
+}: {
+	instanceId: string
+	message: string
+}): SlackBlock[] => [
+	{
+		type: "section",
+		text: {
+			type: "mrkdwn",
+			text: [
+				"*Diagnostic file upload failed*",
+				`Workflow \`${escapeMrkdwn(instanceId)}\``,
+				escapeMrkdwn(message)
+			].join("\n")
+		}
+	}
+]
+
 const field = (label: string, value: string) => ({
 	type: "mrkdwn" as const,
 	text: `*${label}*\n${value}`
@@ -70,6 +97,23 @@ const formatDiagnosticFileList = ({ stdout, stderr }: { stdout?: string; stderr?
 	[hasDiagnosticText(stdout) ? "`stdout.log`" : "", hasDiagnosticText(stderr) ? "`stderr.log`" : ""]
 		.filter(Boolean)
 		.join(", ")
+
+const formatSlackApiError = ({
+	method,
+	payload,
+	statusText
+}: {
+	method: string
+	payload: SlackApiErrorPayload
+	statusText: string
+}) =>
+	[
+		`${method} failed: ${payload.error ?? statusText}`,
+		payload.needed ? `needed=${payload.needed}` : "",
+		payload.provided ? `provided=${payload.provided}` : ""
+	]
+		.filter(Boolean)
+		.join("; ")
 
 export const buildSlackFailureMessage = ({
 	route,
@@ -105,7 +149,7 @@ export const buildSlackFailureMessage = ({
 		`Message: ${message}`,
 		...formatTimingLines(timings),
 		stdout || stderr
-			? "Full stdout/stderr diagnostics are uploaded as Slack files when present."
+			? `Diagnostic file uploads requested: ${formatDiagnosticFileList({ stdout, stderr })}.`
 			: ""
 	]
 		.filter(Boolean)
@@ -196,9 +240,10 @@ export const buildSlackFailureBlocks = ({
 					type: "section" as const,
 					text: {
 						type: "mrkdwn" as const,
-						text: `*Diagnostics*\nFull diagnostic files uploaded in this thread: ${formatDiagnosticFileList(
-							{ stdout, stderr }
-						)}`
+						text: `*Diagnostics*\nDiagnostic file uploads requested: ${formatDiagnosticFileList({
+							stdout,
+							stderr
+						})}`
 					}
 				}
 			]
@@ -268,12 +313,14 @@ export const postSlackMessage = async ({
 	channelId,
 	text,
 	blocks,
+	threadTs,
 	fetchImpl = fetch
 }: {
 	token: string
 	channelId: string
 	text: string
 	blocks?: SlackBlock[]
+	threadTs?: string
 	fetchImpl?: FetchLike
 }) => {
 	const response = await fetchImpl("https://slack.com/api/chat.postMessage", {
@@ -285,6 +332,7 @@ export const postSlackMessage = async ({
 		body: JSON.stringify({
 			channel: channelId,
 			text,
+			...(threadTs ? { thread_ts: threadTs } : {}),
 			...(blocks ? { blocks } : {})
 		})
 	})
@@ -336,12 +384,18 @@ export const uploadSlackTextFile = async ({
 	const uploadUrlPayload = (await uploadUrlResponse.json()) as {
 		ok?: boolean
 		error?: string
+		needed?: string
+		provided?: string
 		file_id?: string
 		upload_url?: string
 	}
 	if (!uploadUrlResponse.ok || uploadUrlPayload.ok !== true) {
 		throw new Error(
-			`Slack file upload URL failed: ${uploadUrlPayload.error ?? uploadUrlResponse.statusText}`
+			formatSlackApiError({
+				method: "files.getUploadURLExternal",
+				payload: uploadUrlPayload,
+				statusText: uploadUrlResponse.statusText
+			})
 		)
 	}
 	if (!uploadUrlPayload.upload_url || !uploadUrlPayload.file_id) {
@@ -351,7 +405,7 @@ export const uploadSlackTextFile = async ({
 	const uploadResponse = await fetchImpl(uploadUrlPayload.upload_url, {
 		method: "POST",
 		headers: {
-			"content-type": "text/plain; charset=utf-8"
+			"content-type": "application/octet-stream"
 		},
 		body: bytes
 	})
@@ -372,10 +426,14 @@ export const uploadSlackTextFile = async ({
 			...(threadTs ? { thread_ts: threadTs } : {})
 		}).toString()
 	})
-	const completePayload = (await completeResponse.json()) as { ok?: boolean; error?: string }
+	const completePayload = (await completeResponse.json()) as SlackApiErrorPayload
 	if (!completeResponse.ok || completePayload.ok !== true) {
 		throw new Error(
-			`Slack file upload completion failed: ${completePayload.error ?? completeResponse.statusText}`
+			formatSlackApiError({
+				method: "files.completeUploadExternal",
+				payload: completePayload,
+				statusText: completeResponse.statusText
+			})
 		)
 	}
 }
@@ -477,14 +535,31 @@ export const reportSlackFailure = async ({
 				timings
 			})
 		})
-		await uploadDiagnosticFiles({
-			token: slackBotToken,
-			channelId: slackChannelId,
-			instanceId,
-			stdout,
-			stderr,
-			threadTs: messageResult.ts
-		})
+		try {
+			await uploadDiagnosticFiles({
+				token: slackBotToken,
+				channelId: slackChannelId,
+				instanceId,
+				stdout,
+				stderr,
+				threadTs: messageResult.ts
+			})
+		} catch (error) {
+			const uploadFailureMessage = `Bridge validator diagnostic upload failed: ${
+				error instanceof Error ? error.message : String(error)
+			}`
+			console.error(uploadFailureMessage)
+			await postSlackMessage({
+				token: slackBotToken,
+				channelId: slackChannelId,
+				threadTs: messageResult.ts,
+				text: uploadFailureMessage,
+				blocks: buildSlackFileUploadFailureBlocks({
+					instanceId,
+					message: uploadFailureMessage
+				})
+			})
+		}
 	} catch (error) {
 		console.error(
 			`Bridge validator failure notification failed: ${

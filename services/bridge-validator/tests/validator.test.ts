@@ -49,6 +49,7 @@ vi.mock("@cloudflare/sandbox", () => ({
 
 afterEach(() => {
 	vi.unstubAllGlobals()
+	vi.restoreAllMocks()
 })
 
 const completedDepositResult: BridgeCliJsonResult = {
@@ -678,7 +679,7 @@ describe("bridge validator", () => {
 				message: "Bridge command exited with code 1. Last diagnostic: failed",
 				timings: completedTimings
 			})
-		).toContain("Full stdout/stderr diagnostics are uploaded as Slack files when present.")
+		).toContain("Diagnostic file uploads requested: `stdout.log`, `stderr.log`.")
 		expect(
 			JSON.stringify(
 				buildSlackFailureBlocks({
@@ -855,6 +856,9 @@ describe("bridge validator", () => {
 		expect(JSON.stringify(messageBody.blocks)).not.toContain("stdout output")
 		expect(JSON.stringify(messageBody.blocks)).not.toContain("stderr output")
 		const stdoutCompleteBody = new URLSearchParams(String(calls[3]?.[1]?.body))
+		expect(calls[2]?.[1]?.headers).toMatchObject({
+			"content-type": "application/octet-stream"
+		})
 		expect(JSON.parse(String(stdoutCompleteBody.get("files")))).toEqual([
 			{ id: "file-1", title: "Bridge validator stdout: workflow-1" }
 		])

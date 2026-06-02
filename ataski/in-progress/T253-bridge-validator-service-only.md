@@ -220,6 +220,14 @@ updated_at: 2026-06-01T16:02:00Z
   - `moon run bridge-validator:lint -f`: passed.
   - `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `git diff --check`: passed.
+- Slack file upload verification:
+  - Real Slack API probe with the configured bot token and channel initially failed at `files.getUploadURLExternal` with `missing_scope`, `needed=files:write`, and `provided=chat:write,channels:read,groups:read`.
+  - After the Slack app OAuth scopes were updated, the real Slack API probe succeeded through `files.getUploadURLExternal`, direct `upload_url` byte upload, and `files.completeUploadExternal`.
+  - Verified uploaded file id `F0B7QDWTR1A` was shared in Slack channel `C0AKUKMTWMB` as a thread reply with `thread_ts=1780368182.037609`.
+  - Updated the service so diagnostic upload failures are reported in the Slack failure thread instead of silently logging only to Worker stderr.
+  - `moon run bridge-validator:test -f`: 4 files passed, 35 tests passed.
+  - `moon run bridge-validator:typecheck -f`: passed.
+  - `moon run bridge-validator:lint -f`: passed.
 - PR-built withdrawal index fix:
   - Triggered deployed withdrawal workflow `bridge-validator-manual-zeko-to-mina-1780366519190` against Worker version `2c985784-cc24-4dc8-84a5-b3c551abb62d`.
   - The workflow cloned the pushed PR branch, built `bridge-sdk` and `bridge-cli`, started the CLI, and submitted withdrawal hash `5Ju5jzjKjj4pcRqANLezxvHRfnGmZ12RXoYDBx3bb5fkeH43Buob`.
