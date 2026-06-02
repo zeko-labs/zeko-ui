@@ -760,26 +760,27 @@ export async function fetchWithdrawalsWithStates(
 				v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
 			})
 		}))
+	const currentWithdrawalStatuses = [
+		...withdrawalWitnesses.map((witness) => {
+			const withdrawal = auxesMap.get(witness.aux.toBigInt())
+			if (!withdrawal) throw new Error("Unreachable: Did not find withdrawal")
+			return {
+				...withdrawal,
+				...witness,
+				timestamp: normalizeTimestamp(witness.timestamp),
+				committed: isCommitted(witness.index),
+				finalised: isFinalised(witness.index),
+				bridgeVersion: bridgeVersionForActionIndex({
+					actionIndex: witness.index,
+					v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
+				})
+			}
+		}),
+		...provisionalWithdrawals
+	].filter((withdrawal) => withdrawal.bridgeVersion === 2)
 
 	return {
-		withdrawals: [
-			...withdrawalWitnesses.map((witness) => {
-				const withdrawal = auxesMap.get(witness.aux.toBigInt())
-				if (!withdrawal) throw new Error("Unreachable: Did not find withdrawal")
-				return {
-					...withdrawal,
-					...witness,
-					timestamp: normalizeTimestamp(witness.timestamp),
-					committed: isCommitted(witness.index),
-					finalised: isFinalised(witness.index),
-					bridgeVersion: bridgeVersionForActionIndex({
-						actionIndex: witness.index,
-						v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
-					})
-				}
-			}),
-			...provisionalWithdrawals
-		],
+		withdrawals: currentWithdrawalStatuses,
 		committedIndex:
 			lastCommit === null ? -1 : +safeDecrement(lastCommit.innerActionStateLength).toString(),
 		finalisedIndex: +safeDecrement(nextWithdrawal).toString()

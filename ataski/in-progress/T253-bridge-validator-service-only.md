@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-06-01T16:02:00Z
+updated_at: 2026-06-02T03:16:35Z
 ---
 
 ## Requirements
@@ -257,12 +257,14 @@ updated_at: 2026-06-01T16:02:00Z
   - `pnpm exec moon run bridge-sdk:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `pnpm exec moon run bridge-cli:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `git diff --check`: passed.
-- PR-built withdrawal finalised-state fix:
+- PR-built withdrawal queue-state fixes:
   - Triggered deployed withdrawal workflow `bridge-validator-manual-zeko-to-mina-1780368852499` against Worker version `21cd89dc-5486-4644-a642-15a8a4c7ece1`.
   - The sandbox supervisor fix kept diagnostics alive: PID `292`, stdout, and stderr were readable through `/bridge-status`.
   - Cloudflare diagnostics showed the CLI still waiting at `waiting-submission`, `targetIndex=0`, and observed withdrawal hash `5Ju5jzjKjj4pcRqANLezxvHRfnGmZ12RXoYDBx3bb5fkeH43Buob`.
-  - SDK investigation with the validator wallet showed the exact inconsistent status: withdrawal index `0`, hash `5Ju5jzjKjj4pcRqANLezxvHRfnGmZ12RXoYDBx3bb5fkeH43Buob`, amount `2000000000`, `committed=false`, `finalised=false`, while aggregate `committedIndex=-1` and `finalisedIndex=0`.
+  - SDK investigation with the validator wallet showed withdrawal index `0`, hash `5Ju5jzjKjj4pcRqANLezxvHRfnGmZ12RXoYDBx3bb5fkeH43Buob`, amount `2000000000`, `committed=false`, `finalised=false`, aggregate `committedIndex=-1`, and aggregate `finalisedIndex=0`.
   - SDK `canFinalizeWithdrawal` returned `available=false`, `reason="No withdrawal witnesses found"`, `status="waiting"`, `index=undefined`.
+  - Direct Actions API evidence: `POST https://api.actions.zeko.io/graphql`, operation `FetchInnerWitnessesFromAuxes`, variables `auxes=["16385132513779525086752585207967168710839667157436946764012138256052728626960"]`, returned HTTP 200 with `innerWitnessesFromAuxes=[]`.
+  - Runtime evidence: testnet `V2_WITHDRAWALS_START_INDEX=10529`, so withdrawal index `0` is a legacy pre-V2 action and must not block the current validator queue.
   - Added a RED SDK test for an unwitnessed withdrawal whose helper account has `nextWithdrawal=1`; it failed with `expected false to be true`.
   - Fixed `fetchWithdrawalsWithStates` so unwitnessed/provisional withdrawals are marked `finalised=true` when the helper account has advanced past their index, and `committed=true` when finalised.
   - `pnpm --dir packages/bridge-sdk exec vitest run test/withdrawal-state.test.ts`: failed before the fix, then passed after the fix.
@@ -275,6 +277,10 @@ updated_at: 2026-06-01T16:02:00Z
   - `pnpm exec moon run bridge-sdk:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `pnpm exec moon run bridge-cli:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `git diff --check`: passed.
+- PR-built pre-V2 withdrawal queue filter:
+  - Added a RED SDK test proving `fetchWithdrawalsWithStates` included pre-V2 withdrawal actions in current queue state when `V2_WITHDRAWALS_START_INDEX` was greater than the action index; it failed with `expected [ 0, 1 ] to deeply equal [ 1 ]`.
+  - Fixed `fetchWithdrawalsWithStates` to exclude pre-V2 withdrawal actions from returned queue state while preserving V2 withdrawals.
+  - `pnpm --dir packages/bridge-sdk exec vitest run test/withdrawal-state.test.ts`: 4 tests passed.
 
 ## Remaining Work
 
