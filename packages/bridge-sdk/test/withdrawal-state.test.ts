@@ -186,7 +186,7 @@ describe("withdrawal state", () => {
 		expect(result.finalisedIndex).toBe(0)
 	})
 
-	it("excludes pre-V2 withdrawal actions from queue state", async () => {
+	it("keeps unwitnessed withdrawal actions in queue state", async () => {
 		const bridge = buildBridge({ v2WithdrawalsStartIndex: UInt32.from(1) })
 		const bridgeInternals = bridge as unknown as {
 			fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
@@ -208,7 +208,7 @@ describe("withdrawal state", () => {
 
 		const result = await bridge.fetchWithdrawalsWithStates(recipient)
 
-		expect(result.withdrawals.map((withdrawal) => withdrawal.index)).toEqual([1])
-		expect(result.withdrawals[0]?.bridgeVersion).toBe(2)
+		expect(result.withdrawals.map((withdrawal) => withdrawal.index)).toEqual([0, 1])
+		expect(result.withdrawals.map((withdrawal) => withdrawal.bridgeVersion)).toEqual([1, 2])
 	})
 })

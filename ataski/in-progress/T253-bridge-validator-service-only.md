@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-06-02T03:16:35Z
+updated_at: 2026-06-02T03:59:08Z
 ---
 
 ## Requirements
@@ -277,10 +277,12 @@ updated_at: 2026-06-02T03:16:35Z
   - `pnpm exec moon run bridge-sdk:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `pnpm exec moon run bridge-cli:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `git diff --check`: passed.
-- PR-built pre-V2 withdrawal queue filter:
-  - Added a RED SDK test proving `fetchWithdrawalsWithStates` included pre-V2 withdrawal actions in current queue state when `V2_WITHDRAWALS_START_INDEX` was greater than the action index; it failed with `expected [ 0, 1 ] to deeply equal [ 1 ]`.
-  - Fixed `fetchWithdrawalsWithStates` to exclude pre-V2 withdrawal actions from returned queue state while preserving V2 withdrawals.
-  - `pnpm --dir packages/bridge-sdk exec vitest run test/withdrawal-state.test.ts`: 4 tests passed.
+- PR-built withdrawal provisional-index correction:
+  - Triggered deployed withdrawal workflow `bridge-validator-manual-zeko-to-mina-1780370294698` after pushing the provisional queue-index fix.
+  - The deployed source-build path cloned the pushed PR branch, built the CLI source, started PID `291`, and submitted withdrawal hash `5JuPBdUPF4wiD7jWG4qpmZU877zikzqAdRBGT3JecRQcCnxnej1H`.
+  - Cloudflare status then showed `withdrawalStatusCount=0` and `submitObserved=false` even after the archive saw the submitted withdrawal, proving that filtering provisional withdrawals by local action index was incorrect.
+  - SDK diagnosis showed both validator withdrawals shared aux `16385132513779525086752585207967168710839667157436946764012138256052728626960`; direct `POST https://api.actions.zeko.io/graphql`, operation `FetchInnerWitnessesFromAuxes`, returned HTTP 200 with `innerWitnessesFromAuxes=[]`.
+  - Corrected the queue-state test to prove unwitnessed withdrawals remain visible until an Actions API witness provides a real global index.
 
 ## Remaining Work
 

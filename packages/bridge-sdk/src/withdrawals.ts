@@ -760,7 +760,7 @@ export async function fetchWithdrawalsWithStates(
 				v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
 			})
 		}))
-	const currentWithdrawalStatuses = [
+	const currentWithdrawalStatuses: WithdrawalWithState[] = [
 		...withdrawalWitnesses.map((witness) => {
 			const withdrawal = auxesMap.get(witness.aux.toBigInt())
 			if (!withdrawal) throw new Error("Unreachable: Did not find withdrawal")
@@ -777,7 +777,7 @@ export async function fetchWithdrawalsWithStates(
 			}
 		}),
 		...provisionalWithdrawals
-	].filter((withdrawal) => withdrawal.bridgeVersion === 2)
+	]
 
 	return {
 		withdrawals: currentWithdrawalStatuses,
