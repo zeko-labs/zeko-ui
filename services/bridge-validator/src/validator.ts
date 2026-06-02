@@ -447,7 +447,7 @@ export const getBridgeCommandDiagnosticTails = ({
 export const buildBridgeSourceSetupCommand = () =>
 	[
 		"set -euo pipefail",
-		"mkdir -p /workspace/home /workspace/cache /workspace/state /workspace/source",
+		`mkdir -p ${shellQuote(`${BRIDGE_WORKSPACE_ROOT}/bridge-validator`)} /workspace/home /workspace/cache /workspace/state /workspace/source`,
 		'if [ -n "${BRIDGE_VALIDATOR_SOURCE_REPOSITORY:-}" ] && [ -n "${BRIDGE_VALIDATOR_SOURCE_REF:-}" ]; then',
 		`  rm -rf ${shellQuote(BRIDGE_SOURCE_ROOT)}`,
 		`  mkdir -p ${shellQuote(BRIDGE_SOURCE_ROOT)}`,

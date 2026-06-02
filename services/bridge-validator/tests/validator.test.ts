@@ -126,6 +126,7 @@ describe("bridge validator", () => {
 		const command = buildBridgeSourceSetupCommand()
 
 		expect(command).toContain("BRIDGE_VALIDATOR_SOURCE_REPOSITORY")
+		expect(command).toContain("mkdir -p '/workspace/bridge-validator'")
 		expect(command).toContain("git fetch --depth 1 origin")
 		expect(command).toContain(
 			"pnpm install --frozen-lockfile --filter @zeko-labs/bridge-cli... --ignore-scripts"
