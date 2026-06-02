@@ -257,6 +257,24 @@ updated_at: 2026-06-01T16:02:00Z
   - `pnpm exec moon run bridge-sdk:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `pnpm exec moon run bridge-cli:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `git diff --check`: passed.
+- PR-built withdrawal finalised-state fix:
+  - Triggered deployed withdrawal workflow `bridge-validator-manual-zeko-to-mina-1780368852499` against Worker version `21cd89dc-5486-4644-a642-15a8a4c7ece1`.
+  - The sandbox supervisor fix kept diagnostics alive: PID `292`, stdout, and stderr were readable through `/bridge-status`.
+  - Cloudflare diagnostics showed the CLI still waiting at `waiting-submission`, `targetIndex=0`, and observed withdrawal hash `5Ju5jzjKjj4pcRqANLezxvHRfnGmZ12RXoYDBx3bb5fkeH43Buob`.
+  - SDK investigation with the validator wallet showed the exact inconsistent status: withdrawal index `0`, hash `5Ju5jzjKjj4pcRqANLezxvHRfnGmZ12RXoYDBx3bb5fkeH43Buob`, amount `2000000000`, `committed=false`, `finalised=false`, while aggregate `committedIndex=-1` and `finalisedIndex=0`.
+  - SDK `canFinalizeWithdrawal` returned `available=false`, `reason="No withdrawal witnesses found"`, `status="waiting"`, `index=undefined`.
+  - Added a RED SDK test for an unwitnessed withdrawal whose helper account has `nextWithdrawal=1`; it failed with `expected false to be true`.
+  - Fixed `fetchWithdrawalsWithStates` so unwitnessed/provisional withdrawals are marked `finalised=true` when the helper account has advanced past their index, and `committed=true` when finalised.
+  - `pnpm --dir packages/bridge-sdk exec vitest run test/withdrawal-state.test.ts`: failed before the fix, then passed after the fix.
+  - `pnpm exec moon run bridge-sdk:test -f`: 12 files passed, 51 tests passed.
+  - `pnpm exec moon run bridge-cli:test -f`: 22 files passed, 111 tests passed, 13 skipped.
+  - `pnpm exec moon run bridge-sdk:typecheck -f`: passed.
+  - `pnpm exec moon run bridge-sdk:lint -f`: passed with existing `src/types.ts` `noExplicitAny` warnings.
+  - `pnpm exec moon run bridge-cli:typecheck -f`: passed.
+  - `pnpm exec moon run bridge-cli:lint -f`: passed.
+  - `pnpm exec moon run bridge-sdk:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - `pnpm exec moon run bridge-cli:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - `git diff --check`: passed.
 
 ## Remaining Work
 

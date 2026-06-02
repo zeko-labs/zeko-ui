@@ -736,6 +736,13 @@ export async function fetchWithdrawalsWithStates(
 	)
 
 	const normalizeTimestamp = (timestamp: string) => (timestamp === "0" ? "" : timestamp)
+	const isFinalised = (index: number) =>
+		nextWithdrawal.greaterThanOrEqual(UInt32.from(index + 1)).toBoolean()
+	const isCommitted = (index: number) =>
+		isFinalised(index) ||
+		(lastCommit === null
+			? false
+			: lastCommit.innerActionStateLength.greaterThan(UInt32.from(index)).toBoolean())
 
 	const witnessedAuxes = new Set(
 		withdrawalWitnesses.map((witness) => witness.aux.toBigInt().toString())
@@ -746,8 +753,8 @@ export async function fetchWithdrawalsWithStates(
 			...withdrawal,
 			timestamp: normalizeTimestamp(withdrawal.timestamp),
 			index: withdrawal.index,
-			committed: false,
-			finalised: false,
+			committed: isCommitted(withdrawal.index),
+			finalised: isFinalised(withdrawal.index),
 			bridgeVersion: bridgeVersionForActionIndex({
 				actionIndex: withdrawal.index,
 				v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
@@ -763,13 +770,8 @@ export async function fetchWithdrawalsWithStates(
 					...withdrawal,
 					...witness,
 					timestamp: normalizeTimestamp(witness.timestamp),
-					committed:
-						lastCommit === null
-							? false
-							: lastCommit.innerActionStateLength
-									.greaterThan(UInt32.from(witness.index))
-									.toBoolean(),
-					finalised: nextWithdrawal.greaterThanOrEqual(UInt32.from(witness.index + 1)).toBoolean(),
+					committed: isCommitted(witness.index),
+					finalised: isFinalised(witness.index),
 					bridgeVersion: bridgeVersionForActionIndex({
 						actionIndex: witness.index,
 						v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX

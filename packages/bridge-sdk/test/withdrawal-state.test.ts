@@ -154,4 +154,35 @@ describe("withdrawal state", () => {
 		expect(result.withdrawals[0]?.committed).toBe(false)
 		expect(result.withdrawals[0]?.finalised).toBe(false)
 	})
+
+	it("marks unwitnessed withdrawals finalised when the helper account has advanced past them", async () => {
+		const bridge = buildBridge()
+		const bridgeInternals = bridge as unknown as {
+			fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
+			fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
+			fetchCurrentSlot: () => Promise<UInt32>
+		}
+
+		vi.spyOn(bridgeInternals, "fetchUserWithdrawalActions").mockResolvedValue([
+			buildWithdrawalAction({ index: 0, timestamp: "1700000000000" })
+		])
+		vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue({
+			zkappState: ["0", "1"]
+		})
+		vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
+		vi.spyOn(utils, "fetchInnerWitnessesFromAuxes").mockResolvedValue([])
+		vi.spyOn(utils, "fetchCommitAsePastSlot").mockResolvedValue({
+			commit: null,
+			ase: []
+		})
+
+		const result = await bridge.fetchWithdrawalsWithStates(recipient)
+
+		expect(result.withdrawals).toHaveLength(1)
+		expect(result.withdrawals[0]?.index).toBe(0)
+		expect(result.withdrawals[0]?.committed).toBe(true)
+		expect(result.withdrawals[0]?.finalised).toBe(true)
+		expect(result.committedIndex).toBe(-1)
+		expect(result.finalisedIndex).toBe(0)
+	})
 })
