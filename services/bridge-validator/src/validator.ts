@@ -23,6 +23,7 @@ export const BRIDGE_COMMAND_REPORTING_RESERVE_MS = 5 * 60 * 1000
 export const BRIDGE_COMMAND_TIMEOUT_MS =
 	WORKFLOW_HARD_TIMEOUT_MS - BRIDGE_COMMAND_REPORTING_RESERVE_MS
 export const BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS = 5 * 60 * 1000
+export const BRIDGE_SANDBOX_PREPARE_TIMEOUT_MS = 10 * 60 * 1000
 export const BRIDGE_COMMAND_PROCESS_ID = "bridge-validation-command"
 export const BRIDGE_STATUS_PATH = "/bridge-status"
 export const BRIDGE_COMMAND_PID_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/bridge.pid`
@@ -445,6 +446,8 @@ export const getBridgeCommandDiagnosticTails = ({
 
 export const buildBridgeSourceSetupCommand = () =>
 	[
+		"set -euo pipefail",
+		"mkdir -p /workspace/home /workspace/cache /workspace/state /workspace/source",
 		'if [ -n "${BRIDGE_VALIDATOR_SOURCE_REPOSITORY:-}" ] && [ -n "${BRIDGE_VALIDATOR_SOURCE_REF:-}" ]; then',
 		`  rm -rf ${shellQuote(BRIDGE_SOURCE_ROOT)}`,
 		`  mkdir -p ${shellQuote(BRIDGE_SOURCE_ROOT)}`,
@@ -471,6 +474,12 @@ export const buildBridgeSourceSetupCommand = () =>
 		"  pnpm install --frozen-lockfile --filter @zeko-labs/bridge-cli... --ignore-scripts",
 		"  pnpm --dir packages/bridge-sdk exec tsdown",
 		"  pnpm --dir packages/bridge-cli exec tsdown",
+		"fi"
+	].join("\n")
+
+const buildBridgeCommandSelectionCommand = () =>
+	[
+		'if [ -n "${BRIDGE_VALIDATOR_SOURCE_REPOSITORY:-}" ] && [ -n "${BRIDGE_VALIDATOR_SOURCE_REF:-}" ]; then',
 		`  bridge_command=(node ${shellQuote(`${BRIDGE_SOURCE_ROOT}/packages/bridge-cli/dist/cli.js`)})`,
 		"else",
 		`  bridge_command=(${shellQuote(BRIDGE_CLI_BINARY)})`,
@@ -496,8 +505,7 @@ export const buildBridgeCommand = ({ routeKey }: { routeKey: BridgeValidatorRout
 
 	return [
 		"set -euo pipefail",
-		"mkdir -p /workspace/home /workspace/cache /workspace/state /workspace/source",
-		buildBridgeSourceSetupCommand(),
+		buildBridgeCommandSelectionCommand(),
 		`timeout -k 30s -s TERM ${timeoutSeconds}s "\${bridge_command[@]}" ${args}`
 	].join("\n")
 }
@@ -583,6 +591,41 @@ export const startBridgeCommand = async ({
 		processId: BRIDGE_COMMAND_PROCESS_ID,
 		pid
 	}
+}
+
+export const prepareBridgeSandbox = async ({
+	sandbox,
+	walletPrivateKey,
+	githubToken,
+	sourceBuild,
+	timeoutMs = BRIDGE_SANDBOX_PREPARE_TIMEOUT_MS
+}: {
+	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "exec">
+	walletPrivateKey: string
+	githubToken?: string
+	sourceBuild?: BridgeSourceBuildConfig
+	timeoutMs?: number
+}) => {
+	const result = await withSandboxTimeout(
+		sandbox.exec(buildBridgeSourceSetupCommand(), {
+			cwd: BRIDGE_WORKSPACE_ROOT,
+			timeout: timeoutMs,
+			env: buildBridgeProcessEnv({ walletPrivateKey, githubToken, sourceBuild })
+		}),
+		"Cloudflare Sandbox bridge source setup",
+		timeoutMs
+	)
+	if (!result.success || result.exitCode !== 0) {
+		throw new BridgeValidationError(
+			`Bridge source setup failed with exit code ${result.exitCode}`,
+			"setup",
+			result.exitCode,
+			result.stdout,
+			result.stderr
+		)
+	}
+
+	return result
 }
 
 export const readBridgeHistoryLog = async ({

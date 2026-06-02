@@ -20,11 +20,13 @@ import {
 	BRIDGE_COMMAND_STDOUT_PATH,
 	BRIDGE_COMMAND_TIMEOUT_MS,
 	BRIDGE_SANDBOX_OPTIONS,
+	BRIDGE_SANDBOX_PREPARE_TIMEOUT_MS,
 	BRIDGE_WORKSPACE_ROOT,
 	buildBridgeSandboxId,
 	buildBridgeCommand,
 	buildBridgeLaunchCommand,
 	buildBridgeProcessEnv,
+	buildBridgeSourceSetupCommand,
 	buildScheduledValidations,
 	describeBridgeCommandFailure,
 	destroyBridgeSandbox,
@@ -32,6 +34,7 @@ import {
 	getBridgeCommandStatus,
 	parseBridgeHistoryLog,
 	parseBridgeJson,
+	prepareBridgeSandbox,
 	startBridgeCommand,
 	validateBridgeCompletion
 } from "../src/validator"
@@ -120,7 +123,7 @@ describe("bridge validator", () => {
 	})
 
 	it("can build bridge CLI from a source checkout before running validation", () => {
-		const command = buildBridgeCommand({ routeKey: "mina-to-zeko" })
+		const command = buildBridgeSourceSetupCommand()
 
 		expect(command).toContain("BRIDGE_VALIDATOR_SOURCE_REPOSITORY")
 		expect(command).toContain("git fetch --depth 1 origin")
@@ -129,7 +132,52 @@ describe("bridge validator", () => {
 		)
 		expect(command).toContain("pnpm --dir packages/bridge-sdk exec tsdown")
 		expect(command).toContain("pnpm --dir packages/bridge-cli exec tsdown")
-		expect(command).toContain("packages/bridge-cli/dist/cli.js")
+		expect(buildBridgeCommand({ routeKey: "mina-to-zeko" })).toContain(
+			"packages/bridge-cli/dist/cli.js"
+		)
+		expect(buildBridgeCommand({ routeKey: "mina-to-zeko" })).not.toContain("git clone")
+	})
+
+	it("prepares source builds in the foreground before launching the long bridge command", async () => {
+		const exec = vi.fn(async () => ({
+			success: true,
+			exitCode: 0,
+			stdout: "setup complete",
+			stderr: "",
+			command: buildBridgeSourceSetupCommand(),
+			duration: 10,
+			timestamp: "2026-03-24T12:00:00Z"
+		}))
+
+		await expect(
+			prepareBridgeSandbox({
+				sandbox: { exec },
+				walletPrivateKey: "wallet-secret",
+				githubToken: "github-token",
+				sourceBuild: {
+					repository: "https://github.com/zeko-labs/zeko-ui.git",
+					ref: "refs/pull/150/head"
+				}
+			})
+		).resolves.toMatchObject({
+			success: true,
+			stdout: "setup complete"
+		})
+
+		expect(exec).toHaveBeenCalledWith(buildBridgeSourceSetupCommand(), {
+			cwd: BRIDGE_WORKSPACE_ROOT,
+			env: {
+				...buildBridgeProcessEnv({
+					walletPrivateKey: "wallet-secret",
+					githubToken: "github-token",
+					sourceBuild: {
+						repository: "https://github.com/zeko-labs/zeko-ui.git",
+						ref: "refs/pull/150/head"
+					}
+				})
+			},
+			timeout: BRIDGE_SANDBOX_PREPARE_TIMEOUT_MS
+		})
 	})
 
 	it("starts the bridge command as one background process in the Cloudflare Sandbox", async () => {

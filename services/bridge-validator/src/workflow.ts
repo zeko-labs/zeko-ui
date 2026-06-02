@@ -23,6 +23,7 @@ import {
 	getBridgeCommandStatus,
 	getBridgeSandbox,
 	parseBridgeJson,
+	prepareBridgeSandbox,
 	readBridgeHistoryLog,
 	startBridgeCommand,
 	stopBridgeCommand,
@@ -36,6 +37,7 @@ const NO_STEP_RETRIES = {
 } as const
 
 const BRIDGE_COMMAND_START_ATTEMPT_STEP_TIMEOUT = "3 minutes"
+const BRIDGE_SANDBOX_PREPARE_STEP_TIMEOUT = "15 minutes"
 const SANDBOX_CONTROL_STEP_TIMEOUT = "2 minutes"
 const NOTIFICATION_STEP_TIMEOUT = "2 minutes"
 const CLEANUP_STEP_TIMEOUT = "2 minutes"
@@ -301,6 +303,20 @@ export class BridgeValidationWorkflow extends WorkflowEntrypoint<
 			const sandbox = getBridgeSandbox(this.env.Sandbox, sandboxId)
 
 			try {
+				await timed(`prepare bridge validation sandbox attempt ${attempt}`, () =>
+					step.do(
+						`prepare bridge validation sandbox attempt ${attempt}`,
+						{ retries: NO_STEP_RETRIES, timeout: BRIDGE_SANDBOX_PREPARE_STEP_TIMEOUT },
+						async () =>
+							prepareBridgeSandbox({
+								sandbox,
+								walletPrivateKey,
+								githubToken,
+								sourceBuild
+							})
+					)
+				)
+
 				const command = await timed(`start bridge validation command attempt ${attempt}`, () =>
 					step.do(
 						`start bridge validation command attempt ${attempt}`,
