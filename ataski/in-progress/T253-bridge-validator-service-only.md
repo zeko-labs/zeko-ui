@@ -228,6 +228,17 @@ updated_at: 2026-06-01T16:02:00Z
   - `moon run bridge-validator:test -f`: 4 files passed, 35 tests passed.
   - `moon run bridge-validator:typecheck -f`: passed.
   - `moon run bridge-validator:lint -f`: passed.
+- Sandbox supervisor fix:
+  - Deployed Worker version `8b089471-cc43-436b-8532-60f082a3e898`.
+  - Triggered withdrawal workflow `bridge-validator-manual-zeko-to-mina-1780368510357`.
+  - Workflow prepared source in 41 seconds and started command PID `292`, but first inspection found no command marker and diagnostics were all null: no `bridge.pid`, `stdout.json`, `stderr.log`, or `process.log`.
+  - Root cause: fast command failures could let the detached shell exit before the Workflow collected diagnostics, causing the sandbox filesystem state to disappear.
+  - Fixed the launched bridge runner to remain alive as a small TERM-aware supervisor after writing `exit-code.txt`, so the Workflow can read stdout/stderr/exit/timing files before cleanup destroys the sandbox.
+  - `moon run bridge-validator:test -f`: 4 files passed, 35 tests passed.
+  - `moon run bridge-validator:typecheck -f`: passed.
+  - `moon run bridge-validator:lint -f`: passed.
+  - `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - `git diff --check`: passed.
 - PR-built withdrawal index fix:
   - Triggered deployed withdrawal workflow `bridge-validator-manual-zeko-to-mina-1780366519190` against Worker version `2c985784-cc24-4dc8-84a5-b3c551abb62d`.
   - The workflow cloned the pushed PR branch, built `bridge-sdk` and `bridge-cli`, started the CLI, and submitted withdrawal hash `5Ju5jzjKjj4pcRqANLezxvHRfnGmZ12RXoYDBx3bb5fkeH43Buob`.

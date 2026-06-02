@@ -520,6 +520,7 @@ export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidat
 		`exit_code_path=${shellQuote(BRIDGE_COMMAND_EXIT_CODE_PATH)}`,
 		`started_at_path=${shellQuote(BRIDGE_COMMAND_STARTED_AT_PATH)}`,
 		`finished_at_path=${shellQuote(BRIDGE_COMMAND_FINISHED_AT_PATH)}`,
+		"trap 'exit 0' TERM INT",
 		': > "$stdout_path"',
 		': > "$stderr_path"',
 		'date +%s%3N > "$started_at_path"',
@@ -530,7 +531,10 @@ export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidat
 		"exit_code=$?",
 		'date +%s%3N > "$finished_at_path"',
 		'printf "%s" "$exit_code" > "$exit_code_path"',
-		'exit "$exit_code"'
+		"while :; do",
+		"  sleep 3600 &",
+		'  wait "$!"',
+		"done"
 	].join("\n")
 
 export const buildBridgeLaunchCommand = ({ routeKey }: { routeKey: BridgeValidatorRouteKey }) =>

@@ -24,6 +24,7 @@ import {
 	BRIDGE_WORKSPACE_ROOT,
 	buildBridgeSandboxId,
 	buildBridgeCommand,
+	buildBridgeCommandScript,
 	buildBridgeLaunchCommand,
 	buildBridgeProcessEnv,
 	buildBridgeSourceSetupCommand,
@@ -211,6 +212,12 @@ describe("bridge validator", () => {
 			},
 			timeout: BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS
 		})
+		expect(buildBridgeCommandScript({ routeKey: "mina-to-zeko" })).toContain(
+			'printf "%s" "$exit_code" > "$exit_code_path"\nwhile :; do'
+		)
+		expect(buildBridgeCommandScript({ routeKey: "mina-to-zeko" })).toContain(
+			"trap 'exit 0' TERM INT"
+		)
 	})
 
 	it("passes source-build configuration to the sandbox environment without embedding it in the command", async () => {
