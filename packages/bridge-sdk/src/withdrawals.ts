@@ -742,14 +742,14 @@ export async function fetchWithdrawalsWithStates(
 	)
 	const provisionalWithdrawals = withdrawals
 		.filter((withdrawal) => !witnessedAuxes.has(withdrawalAux(withdrawal).toBigInt().toString()))
-		.map((withdrawal, index, pending) => ({
+		.map((withdrawal) => ({
 			...withdrawal,
 			timestamp: normalizeTimestamp(withdrawal.timestamp),
-			index: -(pending.length - index),
+			index: withdrawal.index,
 			committed: false,
 			finalised: false,
 			bridgeVersion: bridgeVersionForActionIndex({
-				actionIndex: -(pending.length - index),
+				actionIndex: withdrawal.index,
 				v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
 			})
 		}))

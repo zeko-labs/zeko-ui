@@ -220,6 +220,24 @@ updated_at: 2026-06-01T16:02:00Z
   - `moon run bridge-validator:lint -f`: passed.
   - `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
   - `git diff --check`: passed.
+- PR-built withdrawal index fix:
+  - Triggered deployed withdrawal workflow `bridge-validator-manual-zeko-to-mina-1780366519190` against Worker version `2c985784-cc24-4dc8-84a5-b3c551abb62d`.
+  - The workflow cloned the pushed PR branch, built `bridge-sdk` and `bridge-cli`, started the CLI, and submitted withdrawal hash `5Ju5jzjKjj4pcRqANLezxvHRfnGmZ12RXoYDBx3bb5fkeH43Buob`.
+  - Runtime diagnostics showed both live and archive withdrawal status endpoints observing the submitted hash, but the CLI stayed in `waiting-submission` with `targetIndex=-1`.
+  - Destroyed the stuck sandbox `bridge-validator-bridge-validator-manual-1-1ce4i3z` through `/bridge-cleanup`.
+  - Added a RED test proving `fetchWithdrawalsWithStates` returned `index=-1` for an indexed withdrawal action without an Actions API witness.
+  - Fixed `fetchWithdrawalsWithStates` so provisional withdrawal statuses preserve the action index while staying `committed=false` and `finalised=false`.
+  - Added changeset `.changeset/quiet-withdrawals-remember.md`.
+  - `pnpm --dir packages/bridge-sdk exec vitest run test/withdrawal-state.test.ts`: failed before the fix with `expected -1 to be +0`, then passed after the fix.
+  - `pnpm exec moon run bridge-sdk:test -f`: 12 files passed, 50 tests passed.
+  - `pnpm exec moon run bridge-cli:test -f`: 22 files passed, 111 tests passed, 13 skipped.
+  - `pnpm exec moon run bridge-sdk:typecheck -f`: passed.
+  - `pnpm exec moon run bridge-sdk:lint -f`: passed with existing `src/types.ts` `noExplicitAny` warnings.
+  - `pnpm exec moon run bridge-cli:typecheck -f`: passed.
+  - `pnpm exec moon run bridge-cli:lint -f`: passed.
+  - `pnpm exec moon run bridge-sdk:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - `pnpm exec moon run bridge-cli:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - `git diff --check`: passed.
 
 ## Remaining Work
 

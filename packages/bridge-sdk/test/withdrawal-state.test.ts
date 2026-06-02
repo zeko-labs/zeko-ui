@@ -114,6 +114,7 @@ describe("withdrawal state", () => {
 		const result = await bridge.fetchWithdrawalsWithStates(recipient)
 
 		expect(result.withdrawals).toHaveLength(1)
+		expect(result.withdrawals[0]?.index).toBe(0)
 		expect(result.withdrawals[0]?.timestamp).toBe("")
 		expect(result.withdrawals[0]?.committed).toBe(false)
 		expect(result.withdrawals[0]?.finalised).toBe(false)
