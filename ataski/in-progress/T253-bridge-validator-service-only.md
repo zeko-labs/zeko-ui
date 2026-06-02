@@ -211,6 +211,15 @@ updated_at: 2026-06-01T16:02:00Z
   - `moon run bridge-validator:typecheck -f`: passed.
   - `moon run bridge-validator:lint -f`: passed.
   - `git diff --check`: passed.
+- Slack stdout/stderr file upload cleanup:
+  - Replaced the remaining inline stdout / stderr snippet behavior with Slack-hosted text file uploads for both `stdout.log` and `stderr.log`, posted in the failure message thread through `files.getUploadURLExternal` and `files.completeUploadExternal`.
+  - Added the required Slack `files:write` bot scope to `services/bridge-validator/slack-app-manifest.json`.
+  - Updated README and AGENTS runtime notes so operators expect stdout/stderr Slack files instead of inline stdout or stderr snippets.
+  - `moon run bridge-validator:test -f`: 4 files passed, 35 tests passed.
+  - `moon run bridge-validator:typecheck -f`: passed.
+  - `moon run bridge-validator:lint -f`: passed.
+  - `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - `git diff --check`: passed.
 
 ## Remaining Work
 

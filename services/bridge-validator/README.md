@@ -11,7 +11,7 @@ Cloudflare Worker service that periodically validates the published bridge CLI t
 - Both validator routes use `2 MINA`. Keep the configured wallet funded enough to absorb bridge fees, account-creation fees, retries, and multiple scheduled runs.
 - The Workflow starts one background command in Cloudflare Sandbox, records PID/output marker files, and polls those marker files until the command reaches a terminal status or the hard timeout is reached.
 - The Workflow validates the CLI JSON result, then reads the CLI history log and confirms the submitted hashes and final transaction hash.
-- Slack receives rich success or failure output with the configured wallet public key, route evidence, workflow duration, and bridge command duration. Failure stdout stays inline; stderr is uploaded as a Slack text snippet to avoid truncating the message. The sandbox is destroyed in the Workflow `finally` path.
+- Slack receives rich success or failure output with the configured wallet public key, route evidence, workflow duration, and bridge command duration. Failure stdout and stderr are uploaded as Slack text files in the message thread when present so diagnostics are not truncated. The sandbox is destroyed in the Workflow `finally` path.
 
 ## What It Proves
 
@@ -77,6 +77,6 @@ A deployed run is accepted only when both a deposit and withdrawal complete thro
 - `operation_id`
 - final transaction hash, linked to the explorer when the CLI reports an explorer URL
 - history `log_path`
-- Slack success or failure output with the configured wallet public key, workflow timing, and bridge command timing
+- Slack success or failure output with the configured wallet public key, workflow timing, bridge command timing, and uploaded stdout/stderr files when diagnostics are present
 
 Current deployed status for PR #150: the deposit route has completed through Cloudflare. The withdrawal route still needs a deployed Cloudflare run before the validator service is fully accepted end-to-end.

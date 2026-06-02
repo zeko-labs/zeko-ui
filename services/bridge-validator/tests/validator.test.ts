@@ -638,7 +638,7 @@ describe("bridge validator", () => {
 				message: "Bridge command exited with code 1. Last diagnostic: failed",
 				timings: completedTimings
 			})
-		).toContain("```")
+		).not.toContain("```")
 		expect(
 			buildSlackFailureMessage({
 				instanceId: "workflow-1",
@@ -658,7 +658,7 @@ describe("bridge validator", () => {
 				message: "Bridge command exited with code 1. Last diagnostic: failed",
 				timings: completedTimings
 			})
-		).toContain("last stdout line")
+		).not.toContain("last stdout line")
 		expect(
 			buildSlackFailureMessage({
 				instanceId: "workflow-1",
@@ -678,7 +678,7 @@ describe("bridge validator", () => {
 				message: "Bridge command exited with code 1. Last diagnostic: failed",
 				timings: completedTimings
 			})
-		).not.toContain("stderr")
+		).toContain("Full stdout/stderr diagnostics are uploaded as Slack files when present.")
 		expect(
 			JSON.stringify(
 				buildSlackFailureBlocks({
@@ -700,7 +700,29 @@ describe("bridge validator", () => {
 					timings: completedTimings
 				})
 			)
-		).toContain("```")
+		).toContain("stdout.log")
+		expect(
+			JSON.stringify(
+				buildSlackFailureBlocks({
+					instanceId: "workflow-1",
+					route: {
+						key: "mina-to-zeko",
+						from: "mina:testnet",
+						to: "zeko:testnet",
+						route: "mina:testnet->zeko:testnet",
+						direction: "deposit"
+					},
+					cliVersion: BRIDGE_CLI_SPECIFIER,
+					walletPublicKey,
+					stage: "process",
+					exitCode: 124,
+					stdout: "polling bridge state",
+					stderr: "bridge validator watchdog timeout after 6900 seconds",
+					message: "Bridge command timed out after 6900s (6900000 ms)",
+					timings: completedTimings
+				})
+			)
+		).toContain("stderr.log")
 		expect(
 			JSON.stringify(
 				buildSlackFailureBlocks({
@@ -784,20 +806,22 @@ describe("bridge validator", () => {
 		expect(JSON.stringify(body.blocks)).not.toContain("wait for bridge command completion")
 	})
 
-	it("posts Slack failure blocks and uploads stderr as a text snippet", async () => {
+	it("posts Slack failure blocks and uploads stdout and stderr as Slack files", async () => {
+		let uploadIndex = 0
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input)
 			if (url === "https://slack.com/api/chat.postMessage") {
 				return Response.json({ ok: true, channel: "channel", ts: "123.456" })
 			}
 			if (url === "https://slack.com/api/files.getUploadURLExternal") {
+				uploadIndex += 1
 				return Response.json({
 					ok: true,
-					file_id: "file-1",
-					upload_url: "https://uploads.slack.test/file-1"
+					file_id: `file-${uploadIndex}`,
+					upload_url: `https://uploads.slack.test/file-${uploadIndex}`
 				})
 			}
-			if (url === "https://uploads.slack.test/file-1") {
+			if (url.startsWith("https://uploads.slack.test/file-")) {
 				return new Response("", { status: 200, statusText: "OK" })
 			}
 			if (url === "https://slack.com/api/files.completeUploadExternal") {
@@ -823,17 +847,25 @@ describe("bridge validator", () => {
 			timings: completedTimings
 		})
 
-		expect(fetchMock).toHaveBeenCalledTimes(4)
+		expect(fetchMock).toHaveBeenCalledTimes(7)
 		const calls = fetchMock.mock.calls as Array<[RequestInfo | URL, RequestInit?]>
 		const messageBody = JSON.parse(String(calls[0]?.[1]?.body))
-		expect(JSON.stringify(messageBody.blocks)).toContain("stdout output")
+		expect(JSON.stringify(messageBody.blocks)).toContain("stdout.log")
+		expect(JSON.stringify(messageBody.blocks)).toContain("stderr.log")
+		expect(JSON.stringify(messageBody.blocks)).not.toContain("stdout output")
 		expect(JSON.stringify(messageBody.blocks)).not.toContain("stderr output")
-		const completeBody = JSON.parse(String(calls[3]?.[1]?.body))
-		expect(completeBody.files).toEqual([
-			{ id: "file-1", title: "Bridge validator stderr: workflow-1" }
+		const stdoutCompleteBody = new URLSearchParams(String(calls[3]?.[1]?.body))
+		expect(JSON.parse(String(stdoutCompleteBody.get("files")))).toEqual([
+			{ id: "file-1", title: "Bridge validator stdout: workflow-1" }
 		])
-		expect(completeBody.thread_ts).toBe("123.456")
-		expect(completeBody.initial_comment).toBe("stderr")
+		expect(stdoutCompleteBody.get("thread_ts")).toBe("123.456")
+		expect(stdoutCompleteBody.get("initial_comment")).toBe("stdout.log")
+		const stderrCompleteBody = new URLSearchParams(String(calls[6]?.[1]?.body))
+		expect(JSON.parse(String(stderrCompleteBody.get("files")))).toEqual([
+			{ id: "file-2", title: "Bridge validator stderr: workflow-1" }
+		])
+		expect(stderrCompleteBody.get("thread_ts")).toBe("123.456")
+		expect(stderrCompleteBody.get("initial_comment")).toBe("stderr.log")
 	})
 
 	it("fails successful validation reporting when Slack rejects the success message", async () => {

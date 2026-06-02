@@ -7,7 +7,7 @@ Use [README.md](README.md) for setup and [`packages/bridge-cli/TESTING.md`](../.
 - this service validates the high-level `bridge` command; production uses the latest published CLI, and PR-only validation can opt into source clone/build with `BRIDGE_VALIDATOR_SOURCE_REPOSITORY` plus `BRIDGE_VALIDATOR_SOURCE_REF`
 - a Cloudflare cron trigger alternates one workflow instance per schedule so deposit and withdrawal do not contend on the same wallet nonce or queue state
 - each workflow runs the CLI inside Cloudflare Sandbox
-- success and failure go to Slack with the configured wallet public key, route evidence, final transaction links when available, workflow plus bridge command timing, inline stdout, and stderr uploaded as a text snippet
+- success and failure go to Slack with the configured wallet public key, route evidence, final transaction links when available, workflow plus bridge command timing, and stdout/stderr uploaded as Slack text files when diagnostics are present
 
 ## How To Run
 
