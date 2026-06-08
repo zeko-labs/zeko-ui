@@ -276,3 +276,6 @@
 - T276 | done | retry-mainnet-bridge-ui-smoke | done/T276-retry-mainnet-bridge-ui-smoke.md
 - T277 | done | fix-bridge-ui-testnet-workers-build | done/T277-fix-bridge-ui-testnet-workers-build.md
 - T278 | done | docs-mainnet-wip-cleanup | done/T278-docs-mainnet-wip-cleanup.md
+- T279 | done | confirm-actions-index-holes | done/T279-confirm-actions-index-holes.md
+- T280 | done | harden-action-inserts | done/T280-harden-action-inserts.md
+- T281 | done | bridge-rebuild-validation-plan | done/T281-bridge-rebuild-validation-plan.md

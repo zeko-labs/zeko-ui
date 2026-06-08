@@ -54,6 +54,36 @@ export interface CanonicalProgressSnapshot {
 	inner: CanonicalProgressStream
 }
 
+export interface ActionIndexRow {
+	afterState: string
+	beforeState: string | null
+	index: number
+}
+
+export interface LinkedActionIndexGap {
+	afterState: string
+	beforeState: string
+	index: number
+	expectedIndex: number
+}
+
+export interface ActionIndexIntegrity {
+	label: "outer" | "inner"
+	count: number
+	minIndex: number | null
+	maxIndex: number | null
+	expectedCount: number
+	isDense: boolean
+	firstMissingIndex: number | null
+	linkedGapCount: number
+	linkedGapSample: LinkedActionIndexGap[]
+}
+
+export interface ActionIndexIntegritySnapshot {
+	outer: ActionIndexIntegrity
+	inner: ActionIndexIntegrity
+}
+
 // Keep promotion batches close to Postgres' bind limit without risking overflow.
 const canonicalPromotionChunkSize = 50_000
 
@@ -76,9 +106,108 @@ export async function batchInsert<TTable extends AnyPgTable>({
 		const chunk = values.slice(i, i + chunkSize)
 		const chunkNum = Math.floor(i / chunkSize) + 1
 		logger.info(`[batchInsert] chunk ${chunkNum}/${totalChunks} (${chunk.length} rows)`)
-		await db.insert(table).values(chunk).onConflictDoNothing()
+		await db.insert(table).values(chunk)
 	}
 	logger.info(`[batchInsert] done inserting ${values.length} rows`)
+}
+
+export function analyzeActionIndexIntegrity({
+	label,
+	rows
+}: {
+	label: "outer" | "inner"
+	rows: ActionIndexRow[]
+}): ActionIndexIntegrity {
+	const orderedRows = [...rows].sort((a, b) => a.index - b.index)
+	const count = orderedRows.length
+	const minIndex = orderedRows.at(0)?.index ?? null
+	const maxIndex = orderedRows.at(-1)?.index ?? null
+	const expectedCount = minIndex === null || maxIndex === null ? 0 : maxIndex - minIndex + 1
+	const indexes = new Set(orderedRows.map((row) => row.index))
+	const firstMissingIndex =
+		minIndex === null || maxIndex === null
+			? null
+			: Array.from({ length: expectedCount }, (_, offset) => minIndex + offset).find(
+					(index) => !indexes.has(index)
+				) ?? null
+	const byAfterState = new Map(orderedRows.map((row) => [row.afterState, row]))
+	const linkedGaps = orderedRows.flatMap((row): LinkedActionIndexGap[] => {
+		if (row.beforeState === null) return []
+		const previous = byAfterState.get(row.beforeState)
+		if (!previous) return []
+		const expectedIndex = previous.index + 1
+		return row.index === expectedIndex
+			? []
+			: [
+					{
+						afterState: row.afterState,
+						beforeState: row.beforeState,
+						index: row.index,
+						expectedIndex
+					}
+				]
+	})
+
+	return {
+		label,
+		count,
+		minIndex,
+		maxIndex,
+		expectedCount,
+		isDense: count === expectedCount && firstMissingIndex === null,
+		firstMissingIndex: firstMissingIndex ?? null,
+		linkedGapCount: linkedGaps.length,
+		linkedGapSample: linkedGaps.slice(0, 10)
+	}
+}
+
+const getActionIndexIntegrity = async ({
+	db,
+	table,
+	label
+}: {
+	db: PostgresJsDatabase
+	table: typeof outerActions | typeof innerActions
+	label: "outer" | "inner"
+}) => {
+	const rows = await db
+		.select({
+			afterState: table.afterState,
+			beforeState: table.beforeState,
+			index: table.index
+		})
+		.from(table)
+		.orderBy(table.index)
+
+	return analyzeActionIndexIntegrity({ label, rows })
+}
+
+export async function getActionIndexIntegritySnapshot(
+	db: PostgresJsDatabase
+): Promise<ActionIndexIntegritySnapshot> {
+	const [outer, inner] = await Promise.all([
+		getActionIndexIntegrity({ db, table: outerActions, label: "outer" }),
+		getActionIndexIntegrity({ db, table: innerActions, label: "inner" })
+	])
+
+	return { outer, inner }
+}
+
+export function assertActionIndexIntegrity(integrity: ActionIndexIntegrity): void {
+	const linkedMessage =
+		integrity.linkedGapCount === 0
+			? ""
+			: `, linkedGapCount=${integrity.linkedGapCount}, linkedGapSample=${JSON.stringify(integrity.linkedGapSample)}`
+	if (integrity.isDense && integrity.linkedGapCount === 0) return
+	throw new Error(
+		`Sparse ${integrity.label} action indexes: count=${integrity.count}, min=${integrity.minIndex}, max=${integrity.maxIndex}, expectedCount=${integrity.expectedCount}, firstMissingIndex=${integrity.firstMissingIndex}${linkedMessage}`
+	)
+}
+
+export async function assertActionIndexIntegritySnapshot(db: PostgresJsDatabase): Promise<void> {
+	const snapshot = await getActionIndexIntegritySnapshot(db)
+	assertActionIndexIntegrity(snapshot.outer)
+	assertActionIndexIntegrity(snapshot.inner)
 }
 
 export async function clearAllTables(tx: PostgresJsDatabase) {
