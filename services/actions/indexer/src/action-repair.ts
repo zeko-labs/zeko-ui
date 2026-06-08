@@ -12,6 +12,12 @@ export interface ActionRepairResult {
 	lastFetchedBlock: number | null
 }
 
+export interface ActionRepairCheckResult {
+	checked: boolean
+	lastCheckedAt: number | null
+	repairResult: ActionRepairResult
+}
+
 export const actionIntegrityCheckIntervalMs = 5 * 60 * 1000
 
 export function shouldCheckActionIndexIntegrity({
@@ -86,5 +92,63 @@ export async function repairActionIndexDrift<FetchedAction extends ActionRepairI
 		repaired: true,
 		repairIndex,
 		lastFetchedBlock: fetched.lastFetchedBlock
+	}
+}
+
+export async function checkAndRepairActionIndexDrift<
+	FetchedAction extends ActionRepairItem,
+	DataToInsert
+>(
+	db: PostgresJsDatabase,
+	{
+		build,
+		deleteFromIndex,
+		fetchActions,
+		getIntegrity,
+		getRepairAnchor,
+		insert,
+		lastCheckedAt,
+		now
+	}: {
+		lastCheckedAt: number | null
+		now: number
+		getIntegrity: (db: PostgresJsDatabase) => Promise<ActionIndexIntegrity>
+		getRepairAnchor: (db: PostgresJsDatabase, repairIndex: number) => Promise<ActionRepairAnchor>
+		fetchActions: (
+			startBlock: number
+		) => Promise<{ data: FetchedAction[]; lastFetchedBlock: number }>
+		build: (items: FetchedAction[], currIndex: number) => DataToInsert
+		deleteFromIndex: (db: PostgresJsDatabase, index: number) => Promise<void>
+		insert: (db: PostgresJsDatabase, data: DataToInsert) => Promise<void>
+	}
+): Promise<ActionRepairCheckResult> {
+	const idleResult = {
+		repaired: false,
+		repairIndex: null,
+		lastFetchedBlock: null
+	}
+
+	if (!shouldCheckActionIndexIntegrity({ lastCheckedAt, now })) {
+		return {
+			checked: false,
+			lastCheckedAt,
+			repairResult: idleResult
+		}
+	}
+
+	const integrity = await getIntegrity(db)
+	const repairResult = await repairActionIndexDrift(db, {
+		integrity,
+		getRepairAnchor,
+		fetchActions,
+		build,
+		deleteFromIndex,
+		insert
+	})
+
+	return {
+		checked: true,
+		lastCheckedAt: now,
+		repairResult
 	}
 }

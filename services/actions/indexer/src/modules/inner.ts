@@ -2,7 +2,7 @@ import { innerActions } from "@zeko/actions-api"
 import { emptyActionsList } from "@zeko-labs/bridge-sdk"
 import { sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { repairActionIndexDrift, shouldCheckActionIndexIntegrity } from "../action-repair"
+import { checkAndRepairActionIndexDrift } from "../action-repair"
 import {
 	batchInsert,
 	clearAllTables,
@@ -114,20 +114,19 @@ async function insertInner(
 
 export async function handler(db: PostgresJsDatabase) {
 	const now = Date.now()
-	if (shouldCheckActionIndexIntegrity({ lastCheckedAt: lastIntegrityCheckAt, now })) {
-		lastIntegrityCheckAt = now
-		const integrity = await getInnerActionIndexIntegrity(db)
-		const repairResult = await repairActionIndexDrift(db, {
-			integrity,
-			getRepairAnchor: getInnerActionRepairAnchor,
-			fetchActions: async (startBlock: number) => fetch({ startBlock }),
-			build: buildInner,
-			deleteFromIndex: deleteInnerActionsFromIndex,
-			insert: insertInner
-		})
-		if (repairResult.repaired) {
-			return { lastFetchedBlock: repairResult.lastFetchedBlock }
-		}
+	const repairCheck = await checkAndRepairActionIndexDrift(db, {
+		lastCheckedAt: lastIntegrityCheckAt,
+		now,
+		getIntegrity: getInnerActionIndexIntegrity,
+		getRepairAnchor: getInnerActionRepairAnchor,
+		fetchActions: async (startBlock: number) => fetch({ startBlock }),
+		build: buildInner,
+		deleteFromIndex: deleteInnerActionsFromIndex,
+		insert: insertInner
+	})
+	lastIntegrityCheckAt = repairCheck.lastCheckedAt
+	if (repairCheck.repairResult.repaired) {
+		return { lastFetchedBlock: repairCheck.repairResult.lastFetchedBlock }
 	}
 
 	const tip = await getNetworkTip(l2Client)
