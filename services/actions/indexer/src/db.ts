@@ -1,5 +1,5 @@
 import { commitActions, innerActions, outerActions, witnessActions } from "@zeko/actions-api"
-import { and, desc, type InferInsertModel, inArray, isNull, not, sql } from "drizzle-orm"
+import { and, desc, gte, type InferInsertModel, inArray, isNull, lt, not, sql } from "drizzle-orm"
 import type { AnyPgTable } from "drizzle-orm/pg-core"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { drizzle } from "drizzle-orm/postgres-js"
@@ -84,6 +84,12 @@ export interface ActionIndexIntegritySnapshot {
 	inner: ActionIndexIntegrity
 }
 
+export interface ActionRepairAnchor {
+	repairIndex: number
+	previousAfterState: string | null
+	startBlock: number
+}
+
 // Keep promotion batches close to Postgres' bind limit without risking overflow.
 const canonicalPromotionChunkSize = 50_000
 
@@ -124,12 +130,15 @@ export function analyzeActionIndexIntegrity({
 	const maxIndex = orderedRows.at(-1)?.index ?? null
 	const expectedCount = minIndex === null || maxIndex === null ? 0 : maxIndex - minIndex + 1
 	const indexes = new Set(orderedRows.map((row) => row.index))
-	const firstMissingIndex =
-		minIndex === null || maxIndex === null
-			? null
-			: Array.from({ length: expectedCount }, (_, offset) => minIndex + offset).find(
-					(index) => !indexes.has(index)
-				) ?? null
+	let firstMissingIndex: number | null = null
+	if (minIndex !== null && maxIndex !== null) {
+		for (let index = minIndex; index <= maxIndex; index++) {
+			if (!indexes.has(index)) {
+				firstMissingIndex = index
+				break
+			}
+		}
+	}
 	const byAfterState = new Map(orderedRows.map((row) => [row.afterState, row]))
 	const linkedGaps = orderedRows.flatMap((row): LinkedActionIndexGap[] => {
 		if (row.beforeState === null) return []
@@ -155,10 +164,21 @@ export function analyzeActionIndexIntegrity({
 		maxIndex,
 		expectedCount,
 		isDense: count === expectedCount && firstMissingIndex === null,
-		firstMissingIndex: firstMissingIndex ?? null,
+		firstMissingIndex,
 		linkedGapCount: linkedGaps.length,
 		linkedGapSample: linkedGaps.slice(0, 10)
 	}
+}
+
+export function getActionIndexRepairIndex(integrity: ActionIndexIntegrity): number | null {
+	const linkedRepairIndexes = integrity.linkedGapSample.map((gap) =>
+		gap.expectedIndex < gap.index ? gap.expectedIndex : gap.index
+	)
+	const repairIndexes = [
+		...(integrity.firstMissingIndex === null ? [] : [integrity.firstMissingIndex]),
+		...linkedRepairIndexes
+	]
+	return repairIndexes.length === 0 ? null : Math.min(...repairIndexes)
 }
 
 const getActionIndexIntegrity = async ({
@@ -191,6 +211,68 @@ export async function getActionIndexIntegritySnapshot(
 	])
 
 	return { outer, inner }
+}
+
+export async function getOuterActionIndexIntegrity(
+	db: PostgresJsDatabase
+): Promise<ActionIndexIntegrity> {
+	return getActionIndexIntegrity({ db, table: outerActions, label: "outer" })
+}
+
+export async function getInnerActionIndexIntegrity(
+	db: PostgresJsDatabase
+): Promise<ActionIndexIntegrity> {
+	return getActionIndexIntegrity({ db, table: innerActions, label: "inner" })
+}
+
+const getActionRepairAnchor = async ({
+	db,
+	table,
+	repairIndex
+}: {
+	db: PostgresJsDatabase
+	table: typeof outerActions | typeof innerActions
+	repairIndex: number
+}): Promise<ActionRepairAnchor> => {
+	const [previousAction] = await db
+		.select({
+			afterState: table.afterState,
+			blockHeight: table.blockHeight
+		})
+		.from(table)
+		.where(lt(table.index, repairIndex))
+		.orderBy(desc(table.index))
+		.limit(1)
+	const [firstTailAction] = await db
+		.select({ blockHeight: table.blockHeight })
+		.from(table)
+		.where(gte(table.index, repairIndex))
+		.orderBy(table.index)
+		.limit(1)
+
+	if (!firstTailAction) {
+		throw new Error(`Cannot repair action index ${repairIndex}: no indexed tail action found`)
+	}
+
+	return {
+		repairIndex,
+		previousAfterState: previousAction?.afterState ?? null,
+		startBlock: previousAction?.blockHeight ?? firstTailAction.blockHeight
+	}
+}
+
+export async function getOuterActionRepairAnchor(
+	db: PostgresJsDatabase,
+	repairIndex: number
+): Promise<ActionRepairAnchor> {
+	return getActionRepairAnchor({ db, table: outerActions, repairIndex })
+}
+
+export async function getInnerActionRepairAnchor(
+	db: PostgresJsDatabase,
+	repairIndex: number
+): Promise<ActionRepairAnchor> {
+	return getActionRepairAnchor({ db, table: innerActions, repairIndex })
 }
 
 export function assertActionIndexIntegrity(integrity: ActionIndexIntegrity): void {

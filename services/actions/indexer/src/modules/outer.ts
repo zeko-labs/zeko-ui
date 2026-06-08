@@ -3,12 +3,15 @@ import { emptyActionsList } from "@zeko-labs/bridge-sdk"
 import { sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { outerActions } from "../../../api/drizzle/schema"
+import { repairActionIndexDrift } from "../action-repair"
 import {
 	batchInsert,
 	type CommitInsert,
 	clearAllTables,
 	deleteOuterActionsFromIndex,
 	getLastFinalOuterAction,
+	getOuterActionIndexIntegrity,
+	getOuterActionRepairAnchor,
 	getOuterActionsFromBlock,
 	type OuterActionsInsert,
 	promoteOuterCanonicalActions,
@@ -157,6 +160,19 @@ async function insertOuter(
 }
 
 export async function handler(db: PostgresJsDatabase) {
+	const integrity = await getOuterActionIndexIntegrity(db)
+	const repairResult = await repairActionIndexDrift(db, {
+		integrity,
+		getRepairAnchor: getOuterActionRepairAnchor,
+		fetchActions: async (startBlock: number) => fetch({ startBlock }),
+		build: buildOuter,
+		deleteFromIndex: deleteOuterActionsFromIndex,
+		insert: insertOuter
+	})
+	if (repairResult.repaired) {
+		return { lastFetchedBlock: repairResult.lastFetchedBlock }
+	}
+
 	const tip = await getNetworkTip(l1Client)
 	const lastFinal = await getLastFinalOuterAction(db)
 	const startBlock = lastFinal?.blockHeight ? lastFinal.blockHeight + 1 : 1

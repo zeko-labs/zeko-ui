@@ -2,10 +2,13 @@ import { innerActions } from "@zeko/actions-api"
 import { emptyActionsList } from "@zeko-labs/bridge-sdk"
 import { sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
+import { repairActionIndexDrift } from "../action-repair"
 import {
 	batchInsert,
 	clearAllTables,
 	deleteInnerActionsFromIndex,
+	getInnerActionIndexIntegrity,
+	getInnerActionRepairAnchor,
 	getInnerActionsFromBlock,
 	getLastFinalInnerAction,
 	type InnerActionsInsert,
@@ -109,6 +112,19 @@ async function insertInner(
 }
 
 export async function handler(db: PostgresJsDatabase) {
+	const integrity = await getInnerActionIndexIntegrity(db)
+	const repairResult = await repairActionIndexDrift(db, {
+		integrity,
+		getRepairAnchor: getInnerActionRepairAnchor,
+		fetchActions: async (startBlock: number) => fetch({ startBlock }),
+		build: buildInner,
+		deleteFromIndex: deleteInnerActionsFromIndex,
+		insert: insertInner
+	})
+	if (repairResult.repaired) {
+		return { lastFetchedBlock: repairResult.lastFetchedBlock }
+	}
+
 	const tip = await getNetworkTip(l2Client)
 	const lastFinal = await getLastFinalInnerAction(db)
 	const startBlock = lastFinal?.blockHeight ? lastFinal.blockHeight + 1 : 1

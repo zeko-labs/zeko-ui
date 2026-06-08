@@ -279,3 +279,4 @@
 - T279 | done | confirm-actions-index-holes | done/T279-confirm-actions-index-holes.md
 - T280 | done | harden-action-inserts | done/T280-harden-action-inserts.md
 - T281 | done | bridge-rebuild-validation-plan | done/T281-bridge-rebuild-validation-plan.md
+- T282 | done | self-heal-action-index-drift | done/T282-self-heal-action-index-drift.md

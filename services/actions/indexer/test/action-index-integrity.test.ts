@@ -62,6 +62,19 @@ describe("action index integrity", () => {
 		])
 	})
 
+	it("plans repair from the earliest broken action index", () => {
+		const integrity = dbModule.analyzeActionIndexIntegrity({
+			label: "outer",
+			rows: [
+				{ afterState: "a0", beforeState: null, index: 0 },
+				{ afterState: "a4", beforeState: "a0", index: 4 },
+				{ afterState: "a5", beforeState: "a4", index: 5 }
+			]
+		})
+
+		expect(dbModule.getActionIndexRepairIndex(integrity)).toBe(1)
+	})
+
 	it("propagates insert conflicts instead of silently ignoring them", async () => {
 		const insertError = new Error("duplicate key value violates unique constraint")
 		const onConflictDoNothing = vi.fn(async () => undefined)
