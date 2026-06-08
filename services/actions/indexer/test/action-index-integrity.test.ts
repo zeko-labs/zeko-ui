@@ -42,6 +42,22 @@ describe("action index integrity", () => {
 		expect(integrity.firstMissingIndex).toBe(1)
 	})
 
+	it("detects leading holes in zero-based action indexes", () => {
+		const integrity = dbModule.analyzeActionIndexIntegrity({
+			label: "outer",
+			rows: [
+				{ afterState: "a1", beforeState: null, index: 1 },
+				{ afterState: "a2", beforeState: "a1", index: 2 }
+			]
+		})
+
+		expect(integrity.count).toBe(2)
+		expect(integrity.expectedCount).toBe(3)
+		expect(integrity.isDense).toBe(false)
+		expect(integrity.firstMissingIndex).toBe(0)
+		expect(dbModule.getActionIndexRepairIndex(integrity)).toBe(0)
+	})
+
 	it("detects linked state rows with non-adjacent numeric indexes", () => {
 		const integrity = dbModule.analyzeActionIndexIntegrity({
 			label: "outer",

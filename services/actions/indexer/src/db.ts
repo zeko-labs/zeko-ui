@@ -129,11 +129,11 @@ export function analyzeActionIndexIntegrity({
 	const count = orderedRows.length
 	const minIndex = orderedRows.at(0)?.index ?? null
 	const maxIndex = orderedRows.at(-1)?.index ?? null
-	const expectedCount = minIndex === null || maxIndex === null ? 0 : maxIndex - minIndex + 1
+	const expectedCount = maxIndex === null ? 0 : maxIndex + 1
 	const indexes = new Set(orderedRows.map((row) => row.index))
 	let firstMissingIndex: number | null = null
-	if (minIndex !== null && maxIndex !== null) {
-		for (let index = minIndex; index <= maxIndex; index++) {
+	if (maxIndex !== null) {
+		for (let index = 0; index <= maxIndex; index++) {
 			if (!indexes.has(index)) {
 				firstMissingIndex = index
 				break

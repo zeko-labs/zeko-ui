@@ -282,3 +282,4 @@
 - T282 | done | self-heal-action-index-drift | done/T282-self-heal-action-index-drift.md
 - T283 | done | fix-linked-gap-repair-index | done/T283-fix-linked-gap-repair-index.md
 - T284 | done | fix-repair-delete-and-scan-cost | done/T284-fix-repair-delete-and-scan-cost.md
+- T285 | done | fix-leading-index-hole-detection | done/T285-fix-leading-index-hole-detection.md
