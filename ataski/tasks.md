@@ -280,3 +280,4 @@
 - T280 | done | harden-action-inserts | done/T280-harden-action-inserts.md
 - T281 | done | bridge-rebuild-validation-plan | done/T281-bridge-rebuild-validation-plan.md
 - T282 | done | self-heal-action-index-drift | done/T282-self-heal-action-index-drift.md
+- T283 | done | fix-linked-gap-repair-index | done/T283-fix-linked-gap-repair-index.md

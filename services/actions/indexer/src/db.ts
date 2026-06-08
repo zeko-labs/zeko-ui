@@ -76,6 +76,7 @@ export interface ActionIndexIntegrity {
 	isDense: boolean
 	firstMissingIndex: number | null
 	linkedGapCount: number
+	linkedRepairIndex: number | null
 	linkedGapSample: LinkedActionIndexGap[]
 }
 
@@ -156,6 +157,10 @@ export function analyzeActionIndexIntegrity({
 					}
 				]
 	})
+	const linkedRepairIndex = linkedGaps.reduce<number | null>((earliest, gap) => {
+		const repairIndex = Math.min(gap.expectedIndex, gap.index)
+		return earliest === null ? repairIndex : Math.min(earliest, repairIndex)
+	}, null)
 
 	return {
 		label,
@@ -166,17 +171,15 @@ export function analyzeActionIndexIntegrity({
 		isDense: count === expectedCount && firstMissingIndex === null,
 		firstMissingIndex,
 		linkedGapCount: linkedGaps.length,
+		linkedRepairIndex,
 		linkedGapSample: linkedGaps.slice(0, 10)
 	}
 }
 
 export function getActionIndexRepairIndex(integrity: ActionIndexIntegrity): number | null {
-	const linkedRepairIndexes = integrity.linkedGapSample.map((gap) =>
-		gap.expectedIndex < gap.index ? gap.expectedIndex : gap.index
-	)
 	const repairIndexes = [
 		...(integrity.firstMissingIndex === null ? [] : [integrity.firstMissingIndex]),
-		...linkedRepairIndexes
+		...(integrity.linkedRepairIndex === null ? [] : [integrity.linkedRepairIndex])
 	]
 	return repairIndexes.length === 0 ? null : Math.min(...repairIndexes)
 }

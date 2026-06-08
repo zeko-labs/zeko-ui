@@ -60,6 +60,7 @@ describe("action index integrity", () => {
 				expectedIndex: 1
 			}
 		])
+		expect(integrity.linkedRepairIndex).toBe(1)
 	})
 
 	it("plans repair from the earliest broken action index", () => {
@@ -73,6 +74,35 @@ describe("action index integrity", () => {
 		})
 
 		expect(dbModule.getActionIndexRepairIndex(integrity)).toBe(1)
+	})
+
+	it("plans repair from linked gaps outside the diagnostic sample", () => {
+		const rows = Array.from({ length: 102 }, (_, index) => ({
+			afterState: `a${index}`,
+			beforeState: index === 0 ? null : `a${index - 1}`,
+			index
+		}))
+		const sampledGapIndexes = Array.from({ length: 10 }, (_, offset) => 50 + offset)
+		const rowsWithGaps = rows.map((row) => {
+			if (sampledGapIndexes.includes(row.index)) {
+				return { ...row, beforeState: "a100" }
+			}
+			if (row.index === 80) {
+				return { ...row, beforeState: "a1" }
+			}
+			return row
+		})
+
+		const integrity = dbModule.analyzeActionIndexIntegrity({
+			label: "outer",
+			rows: rowsWithGaps
+		})
+
+		expect(integrity.linkedGapCount).toBe(11)
+		expect(integrity.linkedGapSample).toHaveLength(10)
+		expect(integrity.linkedGapSample.some((gap) => gap.index === 80)).toBe(false)
+		expect(integrity.linkedRepairIndex).toBe(2)
+		expect(dbModule.getActionIndexRepairIndex(integrity)).toBe(2)
 	})
 
 	it("propagates insert conflicts instead of silently ignoring them", async () => {

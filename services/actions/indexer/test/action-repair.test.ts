@@ -23,6 +23,7 @@ const sparseIntegrity: ActionIndexIntegrity = {
 	isDense: false,
 	firstMissingIndex: 1,
 	linkedGapCount: 1,
+	linkedRepairIndex: 1,
 	linkedGapSample: [
 		{
 			afterState: "a2",

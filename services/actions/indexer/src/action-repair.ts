@@ -13,12 +13,9 @@ export interface ActionRepairResult {
 }
 
 const getActionIndexRepairIndex = (integrity: ActionIndexIntegrity): number | null => {
-	const linkedRepairIndexes = integrity.linkedGapSample.map((gap) =>
-		gap.expectedIndex < gap.index ? gap.expectedIndex : gap.index
-	)
 	const repairIndexes = [
 		...(integrity.firstMissingIndex === null ? [] : [integrity.firstMissingIndex]),
-		...linkedRepairIndexes
+		...(integrity.linkedRepairIndex === null ? [] : [integrity.linkedRepairIndex])
 	]
 	return repairIndexes.length === 0 ? null : Math.min(...repairIndexes)
 }
