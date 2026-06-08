@@ -38,9 +38,24 @@ describe("action repair", () => {
 	let repairActionIndexDrift: Awaited<
 		typeof import("../src/action-repair")
 	>["repairActionIndexDrift"]
+	let shouldCheckActionIndexIntegrity: Awaited<
+		typeof import("../src/action-repair")
+	>["shouldCheckActionIndexIntegrity"]
 
 	beforeAll(async () => {
-		repairActionIndexDrift = (await import("../src/action-repair")).repairActionIndexDrift
+		const actionRepair = await import("../src/action-repair")
+		repairActionIndexDrift = actionRepair.repairActionIndexDrift
+		shouldCheckActionIndexIntegrity = actionRepair.shouldCheckActionIndexIntegrity
+	})
+
+	it("checks integrity on first run and then throttles steady-state scans", () => {
+		expect(shouldCheckActionIndexIntegrity({ lastCheckedAt: null, now: 1_000 })).toBe(true)
+		expect(shouldCheckActionIndexIntegrity({ lastCheckedAt: 1_000, now: 1_000 + 60_000 })).toBe(
+			false
+		)
+		expect(shouldCheckActionIndexIntegrity({ lastCheckedAt: 1_000, now: 1_000 + 300_000 })).toBe(
+			true
+		)
 	})
 
 	it("does not mutate indexed tables when archive fetch fails", async () => {

@@ -436,14 +436,28 @@ export async function getInnerActionsFromBlock(db: PostgresJsDatabase, startBloc
 	return actionsList
 }
 
+const deleteActionsFromIndex = async ({
+	tx,
+	table,
+	index,
+	label
+}: {
+	tx: PostgresJsDatabase
+	table: typeof outerActions | typeof innerActions
+	index: number
+	label: "outer" | "inner"
+}) => {
+	logger.info(`[deleteActionsFromIndex:${label}] deleting from index >= ${index}`)
+	await tx.update(table).set({ beforeState: null }).where(gte(table.index, index))
+	await tx.delete(table).where(gte(table.index, index))
+}
+
 export async function deleteOuterActionsFromIndex(tx: PostgresJsDatabase, index: number) {
-	logger.info(`[deleteOuterActionsFromIndex] deleting from index >= ${index}`)
-	await tx.delete(outerActions).where(sql`${outerActions.index} >= ${index}`)
+	await deleteActionsFromIndex({ tx, table: outerActions, index, label: "outer" })
 }
 
 export async function deleteInnerActionsFromIndex(tx: PostgresJsDatabase, index: number) {
-	logger.info(`[deleteInnerActionsFromIndex] deleting from index >= ${index}`)
-	await tx.delete(innerActions).where(sql`${innerActions.index} >= ${index}`)
+	await deleteActionsFromIndex({ tx, table: innerActions, index, label: "inner" })
 }
 
 const promoteCanonicalActions = async ({

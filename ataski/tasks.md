@@ -281,3 +281,4 @@
 - T281 | done | bridge-rebuild-validation-plan | done/T281-bridge-rebuild-validation-plan.md
 - T282 | done | self-heal-action-index-drift | done/T282-self-heal-action-index-drift.md
 - T283 | done | fix-linked-gap-repair-index | done/T283-fix-linked-gap-repair-index.md
+- T284 | done | fix-repair-delete-and-scan-cost | done/T284-fix-repair-delete-and-scan-cost.md

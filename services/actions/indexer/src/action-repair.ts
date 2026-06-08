@@ -12,6 +12,18 @@ export interface ActionRepairResult {
 	lastFetchedBlock: number | null
 }
 
+export const actionIntegrityCheckIntervalMs = 5 * 60 * 1000
+
+export function shouldCheckActionIndexIntegrity({
+	lastCheckedAt,
+	now
+}: {
+	lastCheckedAt: number | null
+	now: number
+}): boolean {
+	return lastCheckedAt === null || now - lastCheckedAt >= actionIntegrityCheckIntervalMs
+}
+
 const getActionIndexRepairIndex = (integrity: ActionIndexIntegrity): number | null => {
 	const repairIndexes = [
 		...(integrity.firstMissingIndex === null ? [] : [integrity.firstMissingIndex]),

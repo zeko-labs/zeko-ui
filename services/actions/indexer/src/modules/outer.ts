@@ -3,7 +3,7 @@ import { emptyActionsList } from "@zeko-labs/bridge-sdk"
 import { sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { outerActions } from "../../../api/drizzle/schema"
-import { repairActionIndexDrift } from "../action-repair"
+import { repairActionIndexDrift, shouldCheckActionIndexIntegrity } from "../action-repair"
 import {
 	batchInsert,
 	type CommitInsert,
@@ -26,6 +26,7 @@ import { fetchActions, getNetworkTip, handleFork, l1Client, logger } from "../he
  */
 
 const EMPTY_ACTIONS_STATE = emptyActionsList.toString()
+let lastIntegrityCheckAt: number | null = null
 
 export async function fetch({ startBlock }: { startBlock: number }) {
 	logger.info(`[outer.fetch] Fetching from ${startBlock}`)
@@ -160,17 +161,21 @@ async function insertOuter(
 }
 
 export async function handler(db: PostgresJsDatabase) {
-	const integrity = await getOuterActionIndexIntegrity(db)
-	const repairResult = await repairActionIndexDrift(db, {
-		integrity,
-		getRepairAnchor: getOuterActionRepairAnchor,
-		fetchActions: async (startBlock: number) => fetch({ startBlock }),
-		build: buildOuter,
-		deleteFromIndex: deleteOuterActionsFromIndex,
-		insert: insertOuter
-	})
-	if (repairResult.repaired) {
-		return { lastFetchedBlock: repairResult.lastFetchedBlock }
+	const now = Date.now()
+	if (shouldCheckActionIndexIntegrity({ lastCheckedAt: lastIntegrityCheckAt, now })) {
+		lastIntegrityCheckAt = now
+		const integrity = await getOuterActionIndexIntegrity(db)
+		const repairResult = await repairActionIndexDrift(db, {
+			integrity,
+			getRepairAnchor: getOuterActionRepairAnchor,
+			fetchActions: async (startBlock: number) => fetch({ startBlock }),
+			build: buildOuter,
+			deleteFromIndex: deleteOuterActionsFromIndex,
+			insert: insertOuter
+		})
+		if (repairResult.repaired) {
+			return { lastFetchedBlock: repairResult.lastFetchedBlock }
+		}
 	}
 
 	const tip = await getNetworkTip(l1Client)
