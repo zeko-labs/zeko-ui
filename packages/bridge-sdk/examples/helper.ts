@@ -9,7 +9,7 @@ export const readEnv = (key: string, fallback: string): string => env[key]?.trim
 export const readBridgeConfig = (): Config => ({
 	l1Url: readEnv("L1_URL", "https://gateway.mina.devnet.zeko.io"),
 	l1ArchiveUrl: readEnv("L1_ARCHIVE_URL", "https://gateway.mina.archive.devnet.zeko.io"),
-	actionsApi: readEnv("ACTIONS_API_URL", "https://api.actions.zeko.io/graphql"),
+	actionsApi: readEnv("ACTIONS_API_URL", "https://testnet.api.actions.zeko.io/graphql"),
 	zekoUrl: readEnv("L2_URL", "https://testnet.zeko.io/graphql"),
 	zekoArchiveUrl: readEnv("L2_ARCHIVE_URL", "https://archive.testnet.zeko.io/graphql"),
 	l1Network: "testnet",

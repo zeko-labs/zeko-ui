@@ -29,7 +29,11 @@ import {
 	stopBridgeCommand,
 	validateBridgeCompletion
 } from "./validator"
-import { WORKFLOW_HARD_TIMEOUT_MS } from "./runtime"
+import {
+	BRIDGE_COMMAND_INITIAL_POLL_INTERVAL_MS,
+	BRIDGE_COMMAND_POLL_INTERVAL_MS,
+	WORKFLOW_HARD_TIMEOUT_MS
+} from "./runtime"
 
 const NO_STEP_RETRIES = {
 	limit: 0,
@@ -41,9 +45,6 @@ const BRIDGE_SANDBOX_PREPARE_STEP_TIMEOUT = "15 minutes"
 const SANDBOX_CONTROL_STEP_TIMEOUT = "2 minutes"
 const NOTIFICATION_STEP_TIMEOUT = "2 minutes"
 const CLEANUP_STEP_TIMEOUT = "2 minutes"
-const BRIDGE_COMMAND_INITIAL_POLL_INTERVAL_MS = 30 * 1000
-const BRIDGE_COMMAND_POLL_INTERVAL_MS = 30 * 1000
-
 const SANDBOX_CONTROL_STEP_OPTIONS = {
 	retries: NO_STEP_RETRIES,
 	timeout: SANDBOX_CONTROL_STEP_TIMEOUT

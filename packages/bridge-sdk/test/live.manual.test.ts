@@ -10,7 +10,7 @@ const liveConfig: Config = {
 	zekoArchiveUrl:
 		process.env.BRIDGE_SDK_L2_ARCHIVE_URL?.trim() || "https://archive.testnet.zeko.io/graphql",
 	actionsApi:
-		process.env.BRIDGE_SDK_ACTIONS_API_URL?.trim() || "https://api.actions.zeko.io/graphql",
+		process.env.BRIDGE_SDK_ACTIONS_API_URL?.trim() || "https://testnet.api.actions.zeko.io/graphql",
 	l1Network: "testnet",
 	l2Network: "testnet"
 }

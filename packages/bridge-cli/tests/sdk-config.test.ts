@@ -10,7 +10,7 @@ describe("sdk config", () => {
 		expect(config.l1ArchiveUrl).toBe("https://gateway.mina.archive.devnet.zeko.io")
 		expect(config.zekoUrl).toBe("https://testnet.zeko.io/graphql")
 		expect(config.zekoArchiveUrl).toBe("https://archive.testnet.zeko.io/graphql")
-		expect(config.actionsApi).toBe("https://api.actions.zeko.io/graphql")
+		expect(config.actionsApi).toBe("https://testnet.api.actions.zeko.io/graphql")
 		expect(config.l1Network).toBe("testnet")
 		expect(config.l2Network).toBe("testnet")
 		expect(config.verbose).toBe(false)

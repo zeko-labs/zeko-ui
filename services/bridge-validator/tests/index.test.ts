@@ -8,7 +8,12 @@ vi.mock("@cloudflare/sandbox", () => ({
 import { getSandbox } from "@cloudflare/sandbox"
 import { handleBridgeValidatorRequest } from "../src/request"
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "../src/service-info"
-import { getRemainingWorkflowTimeMs, WORKFLOW_HARD_TIMEOUT_MS } from "../src/runtime"
+import {
+	BRIDGE_COMMAND_INITIAL_POLL_INTERVAL_MS,
+	BRIDGE_COMMAND_POLL_INTERVAL_MS,
+	getRemainingWorkflowTimeMs,
+	WORKFLOW_HARD_TIMEOUT_MS
+} from "../src/runtime"
 import { BRIDGE_CLI_SPECIFIER, buildBridgeSandboxId } from "../src/validator"
 import { hasValidBearerToken, isValidatorEnabled, type ValidatorEnv } from "../src/env"
 import packageJson from "../package.json"
@@ -65,6 +70,11 @@ describe("bridge-validator worker", () => {
 				nowMs: 1_000 + WORKFLOW_HARD_TIMEOUT_MS + 1
 			})
 		).toBe(0)
+	})
+
+	it("spaces long bridge command polls to avoid noisy slow-operation polling", () => {
+		expect(BRIDGE_COMMAND_INITIAL_POLL_INTERVAL_MS).toBe(30 * 1000)
+		expect(BRIDGE_COMMAND_POLL_INTERVAL_MS).toBe(10 * 60 * 1000)
 	})
 
 	it("requires bearer authentication for HTTP surfaces", () => {

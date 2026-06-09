@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-06-02T03:59:08Z
+updated_at: 2026-06-09T16:19:52Z
 ---
 
 ## Requirements
@@ -283,10 +283,101 @@ updated_at: 2026-06-02T03:59:08Z
   - Cloudflare status then showed `withdrawalStatusCount=0` and `submitObserved=false` even after the archive saw the submitted withdrawal, proving that filtering provisional withdrawals by local action index was incorrect.
   - SDK diagnosis showed both validator withdrawals shared aux `16385132513779525086752585207967168710839667157436946764012138256052728626960`; direct `POST https://api.actions.zeko.io/graphql`, operation `FetchInnerWitnessesFromAuxes`, returned HTTP 200 with `innerWitnessesFromAuxes=[]`.
   - Corrected the queue-state test to prove unwitnessed withdrawals remain visible until an Actions API witness provides a real global index.
+- SDK-example-first endpoint validation:
+  - Built and ran repository SDK examples with the validator wallet before running more CLI recovery.
+  - With the current default `ACTIONS_API_URL=https://api.actions.zeko.io/graphql`, `canFinalizeWithdrawal` returned `available=false`, `reason="No withdrawal witnesses found"`, and `diagnoseHistory` reported 0 deposit witnesses and 0 withdrawal witnesses.
+  - The SDK `finalizeWithdrawal` example failed before signing with `Did not find any withdrawal to finalize`; `finalizeDeposit` failed before signing with `No deposit witnesses found`.
+  - Re-running the same SDK examples with `ACTIONS_API_URL=https://testnet.api.actions.zeko.io/graphql` returned withdrawal finalization availability at index `10551`, 4 matched deposit witnesses, and 2 matched withdrawal witnesses.
+  - The CLI second check against the old default endpoint reused persisted operation `fdc0f3e3-1333-469f-88c6-1a5af0516a9e` and waited on the existing withdrawal rather than submitting a fresh operation.
+  - After patching the testnet Actions API default, the SDK `canFinalizeWithdrawal` example returned `available=true`, `index=10551` without an endpoint override.
+  - Removed speculative SDK source edits after live validation did not prove them; there are no remaining `packages/bridge-sdk/src` changes in this cleanup pass.
+  - SDK `finalizeWithdrawal` was re-run through the repository example path. The queue later reported `alreadyFinalised`, `prevNextWithdrawal=10553`, `index=10552`, proving the existing withdrawal queue item had cleared.
+  - SDK `finalizeDeposit` was re-run through the repository example path and returned `No finalizable deposit found`.
+  - SDK `diagnoseHistory` with the testnet Actions API reported 4 matched deposit witnesses and 2 matched withdrawal witnesses for the validator wallet.
+  - CLI second queue-only validation passed after SDK checks:
+    - `operation resume-all --from zeko:testnet --to mina:testnet --json --verbose` returned `operations_found=0`, `operations_resolved=0`.
+    - `operation resume-all --from mina:testnet --to zeko:testnet --json --verbose` returned `operations_found=0`, `operations_resolved=0`.
+  - Fresh-operation gate satisfied: SDK and CLI both reported empty queues before starting a new operation.
+  - Edited SDK submit examples only to use exactly 2 MINA (`2_000_000_000` nanomina).
+  - SDK `submitDeposit` example succeeded with hash `5JtthdEUsGPN9mvbYn9VbHcm8EGvLppPM5HU9GtmkiMEW49zc3DW`.
+  - First SDK `canFinalizeDeposit` poll after that fresh deposit returned `available=false`, `reason="No finalizable deposit found"`; next poll is spaced by 10 minutes.
+  - Later SDK `canFinalizeDeposit` and `finalizeDeposit` attempts returned `Deposit is not finalizable yet; an earlier deposit must be resolved first`.
+  - SDK `fetchOuterActions` example clarified the state: prior validator-wallet deposits are finalised through index `72089`; the fresh 2 MINA deposit is index `73547`, `synced=false`, `accepted=false`, `confirmed=false`, `finalised=false`, with `syncedIndex=73543`, `acceptedIndex=73541`, and `confirmedIndex=73535`.
+  - CLI second was briefly started after the SDK checks and found the same existing fresh deposit without submitting a new operation: `operationId=541c9749-4beb-46d6-a60c-1667523baee3`, `targetIndex=73547`, `submitted_transactions[0].hash=5JtthdEUsGPN9mvbYn9VbHcm8EGvLppPM5HU9GtmkiMEW49zc3DW`, `can_finalize=false`, `can_cancel=false`, `pending_ahead=0`.
+  - The local CLI process was terminated before it could finalize because the corrected validation order requires the SDK finalizer to process the fresh operation first.
+  - After the next 10 minute wait, SDK `finalizeDeposit` still returned the same not-finalizable reason. A follow-up SDK `fetchOuterActions` example showed progress but not completion: `syncedIndex=73546`, `acceptedIndex=73543`, `confirmedIndex=73537` for target deposit index `73547`.
+  - Subsequent SDK `fetchOuterActions` showed the fresh deposit became `synced=true`, with `acceptedIndex=73546` and `confirmedIndex=73540`; target index remained `73547`.
+  - Subsequent SDK `finalizeDeposit` reached the accepted-but-not-confirmed condition: `Deposit 73547 is accepted but not confirmed yet; confirmedIndex 73541 is behind deposit index 73547`.
+  - Subsequent SDK `finalizeDeposit` reached the finalization mutation path, then failed before a proving key was returned with `error: [Network] Bad Gateway` from `packages/bridge-sdk/src/deposits.ts:611`; same SDK example is being retried after a 10 minute wait.
+  - The same SDK finalization mutation failed a second time with `error: [Network] Bad Gateway`.
+  - Direct endpoint probes after the repeated mutation failure returned HTTP 200 for:
+    - `POST https://testnet.zeko.io/graphql`, `query SequencerPK`.
+    - `POST https://testnet.zeko.io/graphql`, `query FetchConfig`.
+    - `POST https://testnet.api.actions.zeko.io/graphql`, `query Health { __typename }`.
+  - A later SDK `fetchOuterActions` example confirmed the fresh deposit was fully ready but unresolved: `index=73547`, `synced=true`, `accepted=true`, `confirmed=true`, `finalised=false`, with `confirmedIndex=73548` and `finalisedIndex=72089`.
+  - CLI second was run against the existing operation only. It found `operationId=541c9749-4beb-46d6-a60c-1667523baee3`, `submitted_transactions[0].hash=5JtthdEUsGPN9mvbYn9VbHcm8EGvLppPM5HU9GtmkiMEW49zc3DW`, `claimIndex=73547`, and `canFinalizeDeposit available=true`.
+  - CLI `finalizeDeposit` then failed after 6 bounded attempts with the same network error: `finalizeDeposit failed after 6 attempts: [Network] Bad Gateway`; no new operation was submitted and `final_transaction=null`.
+  - Temporary example-helper fetch diagnostics, later reverted, confirmed the failing SDK `finalizeDeposit` mutation receives HTTP 502 responses from `https://testnet.zeko.io/graphql` with Cloudflare `error_name=origin_bad_gateway`, `retryable=true`, and `retry_after=60`.
+  - Final read-only SDK check still reports the deposit queue item is finalizable: `canFinalizeDeposit { available: true, reason: null, index: 73547 }`.
+- Sequencer fix revalidation on 2026-06-08:
+  - SDK `finalizeDeposit` no longer fails with Cloudflare 502. It now reaches the endpoint and returns a GraphQL circuit failure:
+    - `Constraint unsatisfied (unreduced)` in `src/app/zeko/circuits/rule_bridge_finalize_deposit.ml`.
+    - `Constraint: Equal(Var 163797)(Add(Var 139220)(Constant 1))`.
+    - `Data: Equal 73545 73549`.
+  - SDK read-only refresh then reported the same deposit hash `5JtthdEUsGPN9mvbYn9VbHcm8EGvLppPM5HU9GtmkiMEW49zc3DW` at index `73548`, with `synced=true`, `accepted=true`, `confirmed=true`, `finalised=false`; `canFinalizeDeposit` returned `available=true`, `index=73548`.
+  - SDK `finalizeDeposit` retried against the refreshed state and returned the same GraphQL circuit failure: `Data: Equal 73545 73549`.
+  - CLI `operation resume-all --from mina:testnet --to zeko:testnet` found the existing deposit only, did not submit a new operation, and matched SDK behavior:
+    - `operationId=541c9749-4beb-46d6-a60c-1667523baee3`.
+    - `targetIndex=73548`, `claimIndex=73548`, `canFinalizeDeposit available=true`.
+    - Failed with the same GraphQL circuit failure `Data: Equal 73545 73549`; `final_transaction=null`.
+  - SDK withdrawal verification:
+    - `canFinalizeWithdrawal` returned `available=false`, `reason="Withdrawal already finalised"`, `status="alreadyFinalised"`, `index=10552`.
+    - `fetchInnerActions` returned two 2 MINA withdrawals, indices `10551` and `10552`, both `committed=true` and `finalised=true`; aggregate `finalisedIndex=10552`.
+    - SDK `finalizeWithdrawal` returned `Did not find any withdrawal to finalize`.
+  - CLI withdrawal verification:
+    - `withdrawal status --from zeko:testnet --to mina:testnet --json --verbose --account <validator>` returned the same two withdrawals, indices `10551` and `10552`, both `committed=true` and `finalised=true`.
+    - Direct `withdrawal finalize --from zeko:testnet --to mina:testnet --json --verbose --account <validator> --no-wait` returned `Did not find any withdrawal to finalize`, matching the SDK example.
+  - CLI `operation resume-all --from zeko:testnet --to mina:testnet` intentionally discovered the unresolved deposit after finding no withdrawal queue work, because `resume-all` builds an account-level queue across both bridge directions and prioritizes the requested direction first.
+- Sequencer fix revalidation on 2026-06-09:
+  - SDK `finalizeDeposit` succeeded for the existing validator-wallet 2 MINA deposit.
+    - Submit hash: `5JtthdEUsGPN9mvbYn9VbHcm8EGvLppPM5HU9GtmkiMEW49zc3DW`.
+    - Final hash: `5JuUHMngqipejCKxVBBkR7L9j4ujiqQmThE3dzTQHQwaheDYUZE1`.
+  - CLI second check, `operation resume-all --from mina:testnet --to zeko:testnet`, found `operations_found=0`, `operations_resolved=0`, confirming the deposit queue was empty after SDK finalization.
+  - SDK queue checks after deposit finalization:
+    - `canFinalizeDeposit`: `available=false`, `reason="No finalizable deposit found"`.
+    - Validator-wallet `canFinalizeWithdrawal`: `available=false`, `reason="Withdrawal already finalised"`, `status="alreadyFinalised"`, `index=10552`.
+  - Validator wallet balances after deposit finalization were not enough for a fresh 2 MINA withdrawal (`L2=1.9 MINA`) or fresh 2 MINA deposit (`L1=0.6 MINA`), so the existing second wallet was checked instead of creating a new wallet.
+  - Existing wallet key 0 balances were sufficient for withdrawal validation (`L2=5.2357 MINA`, `L1=0.8293 MINA`), but its queue was not empty:
+    - SDK `canFinalizeWithdrawal`: `available=true`, `index=10543`.
+    - SDK `canFinalizeDeposit`: `available=true`, `index=72214`.
+  - SDK `submitWithdrawal` on the underfunded validator wallet failed before producing a hash with an endpoint GraphQL error on `provingResult`: Mina zkApp command logic `Overflow`.
+  - SDK `finalizeWithdrawal` on existing key-0 queue work succeeded:
+    - Finalized withdrawal index `10543`.
+    - Final hash: `5JtrVdNLQxF1yKzyPCjh8h6jkdEHMYQSwjFagkirE2YQsnNtpDEd`.
+  - CLI second withdrawal validation on key 0 matched SDK behavior and processed existing queue work only:
+    - It observed/completed the SDK-finalized withdrawal `10543`.
+    - It then finalized withdrawal `10544` with final hash `5JuGL47hs3DhutYSpNecKLd3wYi14NnZWFY3y4kwD6vpPJHDeH89`.
+    - It then finalized withdrawal `10546` with final hash `5Jte8aj26GJkBWC5PFGZ6umxy3am2gp7xSC4ygwHhHbzxbQGex5P`.
+    - The local CLI process was terminated after successful CLI withdrawal proof to avoid draining unrelated historical key-0 backlog; no bridge cancellation feature was used.
+- Deployed-validator preparation on 2026-06-09:
+  - Added a validator-service timing regression so the Workflow keeps the first sandbox command inspection at 30 seconds, then polls long-running bridge commands every 10 minutes.
+  - `moon run bridge-validator:test -f`: 4 files passed, 36 tests passed.
+  - `moon run bridge-validator:typecheck -f`: passed.
+  - `moon run bridge-validator:build -f`: passed with the existing `tsdown` `resolve.tsconfigFilename` deprecation warning.
+  - `pnpm --dir packages/bridge-cli exec vitest run tests/sdk-config.test.ts`: 1 file passed, 3 tests passed.
+  - Dedicated validator wallet remained `B62qmE663JH772AeC3LsSi6BUD6C3BK1KDUkqajtjyWAxaZZddQ2CE4`.
+  - Validator-wallet balances before top-up: Zeko L2 `1.9 MINA`; Mina L1 `0.6 MINA`.
+  - Existing key-0 balances: Zeko L2 `5.2357 MINA`; Mina L1 `3.6293 MINA`.
+  - Sent a native Zeko payment from key 0 to the dedicated validator wallet to fund a fresh 2 MINA validator withdrawal without switching the validator to key 0's historical queue:
+    - Hash: `5Jv871qJnTHskD3WDeA1mCq3MPFauCyPqxeUHhddx9H8CttRHoGV`.
+    - Amount: `2 MINA`; fee: `0.1 MINA`; nonce: `24`.
+  - Validator-wallet balances after top-up: Zeko L2 `3.9 MINA`; Mina L1 `0.6 MINA`.
+  - SDK queue checks before deployed validator trigger:
+    - `canFinalizeDeposit`: `available=false`, `reason="No finalizable deposit found"`.
+    - `canFinalizeWithdrawal`: `available=false`, `reason="Withdrawal already finalised"`, `status="alreadyFinalised"`, `index=10552`.
 
 ## Remaining Work
 
-- Deposit is not currently validated end-to-end on the latest PR-built deployed path because `POST https://testnet.zeko.io/graphql` is returning Cloudflare HTTP 502 for live Zeko GraphQL queries before any transaction can be submitted.
-- Exact live blocker: SDK runtime initialization cannot complete `query FetchConfig { circuitsConfig { ... } }` or `query SequencerPK { sequencerPk }` against `https://testnet.zeko.io/graphql`.
-- Once `https://testnet.zeko.io/graphql` returns HTTP 200 for `FetchConfig` and `SequencerPK`, trigger exactly one source-built Cloudflare deposit and capture `operation_id`, final hash, log path, Slack output, and cleanup evidence.
-- After deposit succeeds, trigger exactly one source-built Cloudflare withdrawal and capture the same evidence.
+- Local SDK/CLI deposit verification succeeded.
+- Local SDK/CLI withdrawal verification succeeded against existing key-0 queue work.
+- Deployed validator withdrawal and deposit validation remain to be run with the dedicated validator wallet.
