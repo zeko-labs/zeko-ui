@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-06-09T16:19:52Z
+updated_at: 2026-06-09T17:27:20Z
 ---
 
 ## Requirements
@@ -375,9 +375,41 @@ updated_at: 2026-06-09T16:19:52Z
   - SDK queue checks before deployed validator trigger:
     - `canFinalizeDeposit`: `available=false`, `reason="No finalizable deposit found"`.
     - `canFinalizeWithdrawal`: `available=false`, `reason="Withdrawal already finalised"`, `status="alreadyFinalised"`, `index=10552`.
+- Deployed-validator revalidation on 2026-06-09:
+  - Pushed commit `b1633e2` to `branch/feature-web-397-bridge-validator-e2e` so the Cloudflare Sandbox source-build path could clone the same CLI defaults validated locally.
+  - Deployed Worker version `748b0b08-d3eb-4f71-b5ce-65da98c2afc6`.
+  - `moon run bridge-validator:sync-secrets -f`: synced `WALLET_PRIVATE_KEY`, `WALLET_PUBLIC_KEY`, `SLACK_BOT_TOKEN`, `SLACK_CHANNEL_ID`, and `VALIDATOR_API_TOKEN` from the main worktree `.env`.
+  - Started exactly one deployed withdrawal workflow: `bridge-validator-manual-zeko-to-mina-1781023340577`.
+  - The workflow cloned the pushed PR branch, built the PR source, and started bridge command PID `285`.
+  - The Workflow poll cadence was verified in production: first inspection after 30 seconds, second inspection after 10 minutes.
+  - The bridge command exited with code `0` but returned `success=false` before submitting any withdrawal transaction:
+    - `operation_id=8ca3465c-f14b-445d-a81d-30b5f4ecf0d9`.
+    - `submitted_transactions=[]`.
+    - `final_transaction=null`.
+    - `log_path=/workspace/state/zeko-bridge/logs/8ca3465c-f14b-445d-a81d-30b5f4ecf0d9.jsonl`.
+    - Endpoint error: HTTP 200 GraphQL error at `provingResult`, path `src/lib/transaction_logic/zkapp_command_logic.ml`, line 2009, `Overflow`.
+  - Slack failure reporting succeeded via `notify slack validation failure-1`.
+  - Sandbox cleanup succeeded via `destroy bridge sandbox-1`.
+  - Additional native top-up was sent to the dedicated validator wallet after the failed deployed run:
+    - Zeko L2 top-up hash `5JvR7Ra3EfY461LszxFQV7QFijpM1qtzxHuzdgUuUqMUh4CDrUtd`, amount `2.5 MINA`, fee `0.1 MINA`, from key 0 nonce `25`.
+    - Validator-wallet Zeko L2 balance after top-up: `6.4 MINA`.
+  - SDK `submitWithdrawal` example retried against the dedicated validator wallet with `6.4 MINA` L2 balance and failed before producing a hash with the same HTTP 200 GraphQL `provingResult` `Overflow`.
+  - After a 10 minute wait, SDK `submitWithdrawal` was retried again and failed before producing a hash with the same endpoint error.
+  - CLI second check matched SDK behavior:
+    - `node packages/bridge-cli/dist/cli.js bridge --from zeko:testnet --to mina:testnet --amount 2 --json --verbose`.
+    - `operation_id=fd90cf4b-8482-406c-898f-e88f84088861`.
+    - `submitted_transactions=[]`.
+    - `final_transaction=null`.
+    - Same HTTP 200 GraphQL `provingResult` `Overflow`.
+  - Deposit side was also checked after an L1 top-up:
+    - Mina L1 top-up hash `5JuNz1yuPRU9kMAsMbnoK9xcH5bCxbhdefJz83qVvFYRufBG9jpt`, amount `2.5 MINA`, fee `0.1 MINA`, from key 0 nonce `50`.
+    - SDK `canFinalizeDeposit` before the top-up returned `available=false`, `reason="No finalizable deposit found"`.
+    - SDK `submitDeposit` failed before producing a hash with the same HTTP 200 GraphQL `provingResult` `Overflow`.
+    - After a 10 minute wait, SDK `submitDeposit` was retried and failed before producing a hash with the same endpoint error.
+  - No SDK source changes or CLI changes were made in response to this endpoint error because SDK and CLI behavior match.
 
 ## Remaining Work
 
 - Local SDK/CLI deposit verification succeeded.
 - Local SDK/CLI withdrawal verification succeeded against existing key-0 queue work.
-- Deployed validator withdrawal and deposit validation remain to be run with the dedicated validator wallet.
+- Deployed validator withdrawal and deposit validation are blocked by the testnet proving endpoint returning HTTP 200 GraphQL `Overflow` for SDK `submitWithdrawal`, SDK `submitDeposit`, CLI withdrawal, and the deployed validator withdrawal path before any bridge transaction hash is created.
