@@ -1,5 +1,5 @@
 ---
-id: T299
+id: T300
 title: "Restore proxy alias fallbacks"
 status: done
 blockedBy: []
@@ -10,8 +10,8 @@ updated_at: 2026-06-10T13:20:10Z
 
 ## Requirements
 
-- Restore the Mina proxy Worker `backupUrls` aliases that were removed in T298.
-- Keep the consumer-facing endpoint updates from T298 unchanged.
+- Restore the Mina proxy Worker `backupUrls` aliases that were removed in T299.
+- Keep the consumer-facing endpoint updates from T299 unchanged.
 - Limit source edits to the four Mina proxy Worker files and required Ataski tracking.
 
 ## Test Plan

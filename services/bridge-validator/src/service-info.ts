@@ -12,7 +12,7 @@ export const BRIDGE_VALIDATOR_SERVICE_INFO = {
 		ref: "BRIDGE_VALIDATOR_SOURCE_REF"
 	},
 	scheduledRoutes: {
-		mode: "alternating",
+		mode: "both-per-event",
 		deposit: "mina-to-zeko",
 		withdrawal: "zeko-to-mina"
 	},

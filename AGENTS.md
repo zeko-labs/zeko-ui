@@ -29,6 +29,13 @@ To install everything, run `pnpm i` from the root.
 - You can disable moon caching by passing the `-f` flag to any `moon run` command that has cached results.
 - If you need to run a command not specified in `moon.yml`, use `pnpm exec <command>`.
 
+## Linear and PRs
+
+- To connect a Linear issue to a GitHub PR, use a closing magic word in the PR description, for example `Fixes WEB-123`.
+- The Linear/GitHub integration will auto-close the Linear issue after the PR merges when the PR body uses a closing magic word. This automatic close after merge is the only required Linear progress signal.
+- Do not add Linear comments, update the Linear issue description, or otherwise log implementation progress in Linear unless the user explicitly asks for that. Keep progress and validation details in the PR body or the chat.
+- Do not use non-closing references such as `Refs WEB-123` when the issue should close on merge.
+
 ## Cloudflare Workers Builds
 
 - `workers-build.jsonc` files are the source of truth for Cloudflare Workers Builds trigger configuration.

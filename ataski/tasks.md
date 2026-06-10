@@ -295,6 +295,7 @@
 - T295 | done | avoid-final-proxy-request-clone | done/T295-avoid-final-proxy-request-clone.md
 - T296 | done | make-proxy-response-cancel-null-safe | done/T296-make-proxy-response-cancel-null-safe.md
 - T297 | done | automate-bridge-validator-workers-build | done/T297-automate-bridge-validator-workers-build.md
-- T298 | done | standardize-gateway-endpoint-urls | done/T298-standardize-gateway-endpoint-urls.md
-- T299 | done | restore-proxy-alias-fallbacks | done/T299-restore-proxy-alias-fallbacks.md
-- T300 | in-progress | resolve-pr-198-conflicts | in-progress/T300-resolve-pr-198-conflicts.md
+- T298 | done | bridge-validator-scheduled-both-routes | done/T298-bridge-validator-scheduled-both-routes.md
+- T299 | done | standardize-gateway-endpoint-urls | done/T299-standardize-gateway-endpoint-urls.md
+- T300 | done | restore-proxy-alias-fallbacks | done/T300-restore-proxy-alias-fallbacks.md
+- T301 | done | resolve-pr-198-conflicts | done/T301-resolve-pr-198-conflicts.md
