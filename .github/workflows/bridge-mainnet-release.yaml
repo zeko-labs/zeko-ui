@@ -3,6 +3,9 @@ name: Bridge Mainnet Release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   release-mainnet:
     name: Release Mainnet
@@ -15,6 +18,8 @@ jobs:
       NORTHFLANK_STAGE: ${{ vars.NORTHFLANK_STAGE || 'Production' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: moonrepo/setup-toolchain@v0
         with:
@@ -90,3 +95,13 @@ jobs:
             sleep 10
           done
           exit 1
+
+      - name: Record Linear mainnet promotion
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_BRIDGE_MAINNET_PROMOTION_KEY }}
+          name: bridge-mainnet-${{ github.run_number }}
+          version: ${{ github.sha }}
+          include_paths: services/actions/api/**,services/actions/indexer/**,apps/bridge-ui/**
+          links: |
+            GitHub workflow=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
