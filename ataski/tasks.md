@@ -295,3 +295,4 @@
 - T295 | done | avoid-final-proxy-request-clone | done/T295-avoid-final-proxy-request-clone.md
 - T296 | done | make-proxy-response-cancel-null-safe | done/T296-make-proxy-response-cancel-null-safe.md
 - T297 | done | automate-bridge-validator-workers-build | done/T297-automate-bridge-validator-workers-build.md
+- T298 | done | bridge-validator-scheduled-both-routes | done/T298-bridge-validator-scheduled-both-routes.md

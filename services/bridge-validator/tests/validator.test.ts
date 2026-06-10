@@ -19,7 +19,6 @@ import {
 	BRIDGE_COMMAND_STDERR_PATH,
 	BRIDGE_COMMAND_STDOUT_PATH,
 	BRIDGE_COMMAND_TIMEOUT_MS,
-	BRIDGE_VALIDATOR_ROUTE_ALTERNATION_INTERVAL_MS,
 	BRIDGE_SANDBOX_OPTIONS,
 	BRIDGE_SANDBOX_PREPARE_TIMEOUT_MS,
 	BRIDGE_WORKSPACE_ROOT,
@@ -374,21 +373,21 @@ describe("bridge validator", () => {
 		})
 	})
 
-	it("alternates scheduled deposit and withdrawal validations", () => {
-		expect(buildScheduledValidations({ scheduledTime: 0 })).toEqual([
+	it("builds independent scheduled deposit and withdrawal validations", () => {
+		const scheduledTime = Date.UTC(2026, 5, 10, 9, 0, 0)
+		const validations = buildScheduledValidations({ scheduledTime })
+
+		expect(validations).toEqual([
 			{
-				id: "bridge-validator-mina-to-zeko-0",
+				id: `bridge-validator-mina-to-zeko-${scheduledTime}`,
 				params: { routeKey: "mina-to-zeko" }
-			}
-		])
-		expect(
-			buildScheduledValidations({ scheduledTime: BRIDGE_VALIDATOR_ROUTE_ALTERNATION_INTERVAL_MS })
-		).toEqual([
+			},
 			{
-				id: `bridge-validator-zeko-to-mina-${BRIDGE_VALIDATOR_ROUTE_ALTERNATION_INTERVAL_MS}`,
+				id: `bridge-validator-zeko-to-mina-${scheduledTime}`,
 				params: { routeKey: "zeko-to-mina" }
 			}
 		])
+		expect(new Set(validations.map(({ id }) => id)).size).toBe(validations.length)
 	})
 
 	it("builds Cloudflare-compatible sandbox ids for long workflow ids", () => {
