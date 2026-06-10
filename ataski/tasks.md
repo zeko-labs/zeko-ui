@@ -306,3 +306,5 @@
 - T306 | done | preserve-dashboard-state-during-loading | done/T306-preserve-dashboard-state-during-loading.md
 - T307 | done | deploy-dashboard-access | done/T307-deploy-dashboard-access.md
 - T308 | done | fix-access-idp-login | done/T308-fix-access-idp-login.md
+- T309 | done | fix-dashboard-data-path | done/T309-fix-dashboard-data-path.md
+- T310 | in-progress | restore-github-access | in-progress/T310-restore-github-access.md

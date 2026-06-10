@@ -1,6 +1,7 @@
 export type ServiceKind = "actions-indexer" | "archive" | "daemon"
 export type ServiceStatus = "ok" | "warn" | "error" | "unknown"
 export type OpsNetwork = "mainnet" | "testnet"
+export type OpsEnv = Record<string, unknown>
 
 export interface OpsEndpointConfig {
 	network: OpsNetwork
@@ -63,8 +64,9 @@ const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
 	}
 }
 
-const readEnv = (key: string): string | undefined => {
-	const value = process.env[key]?.trim()
+const readEnv = (env: OpsEnv, key: string): string | undefined => {
+	const rawValue = env[key]
+	const value = typeof rawValue === "string" ? rawValue.trim() : undefined
 	return value ? value : undefined
 }
 
@@ -86,33 +88,46 @@ const publicKeyEnvKeys = {
 export const resolveOpsNetwork = (value: unknown): OpsNetwork =>
 	value === "testnet" || value === "mainnet" ? value : "mainnet"
 
-const readNetworkEndpoint = (network: OpsNetwork, key: keyof typeof endpointEnvKeys): string => {
+const defaultEnv = (): OpsEnv => process.env
+
+const readNetworkEndpoint = (
+	network: OpsNetwork,
+	key: keyof typeof endpointEnvKeys,
+	env: OpsEnv
+): string => {
 	const envKey = endpointEnvKeys[key]
 	const networkEnvKey = `${network.toUpperCase()}_${envKey}`
 	const defaultValue = opsDefaults[network][key]
-	const globalOverride = network === "mainnet" ? readEnv(envKey) : undefined
-	return normalizeEndpoint(readEnv(networkEnvKey) ?? globalOverride ?? defaultValue)
+	const globalOverride = network === "mainnet" ? readEnv(env, envKey) : undefined
+	return normalizeEndpoint(readEnv(env, networkEnvKey) ?? globalOverride ?? defaultValue)
 }
 
-const readNetworkPublicKey = (network: OpsNetwork, key: keyof typeof publicKeyEnvKeys): string => {
+const readNetworkPublicKey = (
+	network: OpsNetwork,
+	key: keyof typeof publicKeyEnvKeys,
+	env: OpsEnv
+): string => {
 	const envKey = publicKeyEnvKeys[key]
 	const networkEnvKey = `${network.toUpperCase()}_${envKey}`
 	const defaultValue = opsDefaults[network][key]
-	const globalOverride = network === "mainnet" ? readEnv(envKey) : undefined
-	return readEnv(networkEnvKey) ?? globalOverride ?? defaultValue
+	const globalOverride = network === "mainnet" ? readEnv(env, envKey) : undefined
+	return readEnv(env, networkEnvKey) ?? globalOverride ?? defaultValue
 }
 
-export const getOpsConfig = (networkInput?: unknown): OpsEndpointConfig => {
+export const getOpsConfig = (
+	networkInput?: unknown,
+	env: OpsEnv = defaultEnv()
+): OpsEndpointConfig => {
 	const network = resolveOpsNetwork(networkInput)
 	return {
 		network,
-		actionsIndexerUrl: readNetworkEndpoint(network, "actionsIndexerUrl"),
-		l1ArchiveUrl: readNetworkEndpoint(network, "l1ArchiveUrl"),
-		l2ArchiveUrl: readNetworkEndpoint(network, "l2ArchiveUrl"),
-		l1DaemonUrl: readNetworkEndpoint(network, "l1DaemonUrl"),
-		l2DaemonUrl: readNetworkEndpoint(network, "l2DaemonUrl"),
-		outerActionsPublicKey: readNetworkPublicKey(network, "outerActionsPublicKey"),
-		innerActionsPublicKey: readNetworkPublicKey(network, "innerActionsPublicKey")
+		actionsIndexerUrl: readNetworkEndpoint(network, "actionsIndexerUrl", env),
+		l1ArchiveUrl: readNetworkEndpoint(network, "l1ArchiveUrl", env),
+		l2ArchiveUrl: readNetworkEndpoint(network, "l2ArchiveUrl", env),
+		l1DaemonUrl: readNetworkEndpoint(network, "l1DaemonUrl", env),
+		l2DaemonUrl: readNetworkEndpoint(network, "l2DaemonUrl", env),
+		outerActionsPublicKey: readNetworkPublicKey(network, "outerActionsPublicKey", env),
+		innerActionsPublicKey: readNetworkPublicKey(network, "innerActionsPublicKey", env)
 	}
 }
 
@@ -249,6 +264,7 @@ const timedFetch = async (url: string, init?: RequestInit, timeoutMs = requestTi
 		try {
 			const response = await fetch(url, {
 				...init,
+				redirect: "manual",
 				signal: controller.signal
 			})
 			if (attempt < retryDelaysMs.length - 1 && shouldRetryResponse(response)) {
@@ -648,7 +664,10 @@ export const probeActionsIndexer = async ({
 	const id = "actions-indexer"
 	const label = "Zeko action-indexer"
 	try {
-		const health = await timedFetch(`${endpoint}/health`)
+		const authHeaders = token === undefined ? undefined : { authorization: `Bearer ${token}` }
+		const health = await timedFetch(`${endpoint}/health`, {
+			...(authHeaders && { headers: authHeaders })
+		})
 		const healthPayload = await readJson(health.response)
 		const healthRecord = getRecord(healthPayload)
 		const healthStatus = getString(healthRecord.status)
@@ -658,7 +677,7 @@ export const probeActionsIndexer = async ({
 		let statusError: string | undefined
 		if (token) {
 			const status = await timedFetch(`${endpoint}/status`, {
-				headers: { authorization: `Bearer ${token}` }
+				headers: authHeaders
 			})
 			statusHttp = status.response.status
 			statusPayload = await readJson(status.response)
@@ -698,12 +717,19 @@ export const probeActionsIndexer = async ({
 	}
 }
 
-export const readActionsIndexerToken = (network: OpsNetwork): string | undefined =>
-	readEnv(`${network.toUpperCase()}_ACTIONS_INDEXER_TOKEN`) ?? readEnv("ACTIONS_INDEXER_TOKEN")
+export const readActionsIndexerToken = (
+	network: OpsNetwork,
+	env: OpsEnv = defaultEnv()
+): string | undefined =>
+	readEnv(env, `${network.toUpperCase()}_ACTIONS_INDEXER_TOKEN`) ??
+	readEnv(env, "ACTIONS_INDEXER_TOKEN")
 
-export const createOpsSnapshot = async (networkInput?: unknown): Promise<OpsSnapshot> => {
-	const config = getOpsConfig(networkInput)
-	const token = readActionsIndexerToken(config.network)
+export const createOpsSnapshot = async (
+	networkInput?: unknown,
+	env: OpsEnv = defaultEnv()
+): Promise<OpsSnapshot> => {
+	const config = getOpsConfig(networkInput, env)
+	const token = readActionsIndexerToken(config.network, env)
 	const [indexer, l1Archive, l2Archive, l1Daemon, l2Daemon] = await Promise.all([
 		probeActionsIndexer({ endpoint: config.actionsIndexerUrl, token }),
 		probeArchive({ id: "l1-archive", label: "L1 archive", endpoint: config.l1ArchiveUrl }),
@@ -766,10 +792,11 @@ export const createOpsSnapshot = async (networkInput?: unknown): Promise<OpsSnap
 
 export const runIndexerControl = async (
 	action: ControlAction,
-	networkInput?: unknown
+	networkInput?: unknown,
+	env: OpsEnv = defaultEnv()
 ): Promise<unknown> => {
-	const config = getOpsConfig(networkInput)
-	const token = readActionsIndexerToken(config.network)
+	const config = getOpsConfig(networkInput, env)
+	const token = readActionsIndexerToken(config.network, env)
 	if (!token) {
 		throw new Error(
 			`${config.network.toUpperCase()}_ACTIONS_INDEXER_TOKEN or ACTIONS_INDEXER_TOKEN is required for indexer control actions`

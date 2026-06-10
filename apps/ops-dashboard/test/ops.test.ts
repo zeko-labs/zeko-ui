@@ -9,10 +9,13 @@ import {
 	tailState
 } from "../app/utils/ops-insights"
 import {
+	createOpsSnapshot,
 	extractActionsIndexerDetails,
 	getOpsConfig,
 	normalizeEndpoint,
+	readActionsIndexerToken,
 	resolveOpsNetwork,
+	runIndexerControl,
 	summarizeActionCoverage,
 	summarizeServices,
 	type ServiceProbe
@@ -79,6 +82,115 @@ describe("ops dashboard utilities", () => {
 			outerActionsPublicKey: "B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2",
 			innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 		})
+	})
+
+	it("prefers request-scoped Cloudflare env bindings over process env", () => {
+		expect(
+			getOpsConfig("testnet", {
+				TESTNET_ACTIONS_INDEXER_URL: "https://private.testnet-indexer.example",
+				TESTNET_L1_ARCHIVE_URL: "https://private.l1-archive.example/graphql",
+				TESTNET_L2_ARCHIVE_URL: "https://private.l2-archive.example/graphql",
+				TESTNET_L1_DAEMON_URL: "https://private.l1-daemon.example/graphql",
+				TESTNET_L2_DAEMON_URL: "https://private.l2-daemon.example/graphql",
+				TESTNET_OUTER_ACTIONS_PUBLIC_KEY: "testnet-outer",
+				TESTNET_INNER_ACTIONS_PUBLIC_KEY: "testnet-inner"
+			})
+		).toMatchObject({
+			actionsIndexerUrl: "https://private.testnet-indexer.example",
+			l1ArchiveUrl: "https://private.l1-archive.example/graphql",
+			l2ArchiveUrl: "https://private.l2-archive.example/graphql",
+			l1DaemonUrl: "https://private.l1-daemon.example/graphql",
+			l2DaemonUrl: "https://private.l2-daemon.example/graphql",
+			outerActionsPublicKey: "testnet-outer",
+			innerActionsPublicKey: "testnet-inner"
+		})
+	})
+
+	it("reads network-specific indexer tokens from request-scoped env bindings", () => {
+		expect(
+			readActionsIndexerToken("testnet", {
+				ACTIONS_INDEXER_TOKEN: "global-token",
+				TESTNET_ACTIONS_INDEXER_TOKEN: "testnet-token"
+			})
+		).toBe("testnet-token")
+		expect(
+			readActionsIndexerToken("mainnet", {
+				ACTIONS_INDEXER_TOKEN: "global-token"
+			})
+		).toBe("global-token")
+	})
+
+	it("uses request-scoped indexer token for status probes and controls", async () => {
+		const originalFetch = globalThis.fetch
+		const calls: Array<{ url: string; authorization: string | null; method: string }> = []
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input)
+			const headers = new Headers(init?.headers)
+			calls.push({
+				url,
+				authorization: headers.get("authorization"),
+				method: init?.method ?? "GET"
+			})
+			if (url.endsWith("/health")) {
+				return Response.json({
+					status: "healthy",
+					service: { environment: "testnet" },
+					database: { status: "up" },
+					indexer: {
+						status: "running",
+						lastFetchedBlock: { outer: 10, inner: 20 },
+						consecutiveErrors: 0,
+						canonicalProgress: {}
+					}
+				})
+			}
+			if (url.endsWith("/status")) {
+				return Response.json({ isRunning: true })
+			}
+			if (url.endsWith("/reset")) {
+				return Response.json({ success: true })
+			}
+			return Response.json({
+				data: {
+					networkState: {
+						maxBlockHeight: {
+							canonicalMaxBlockHeight: 20,
+							pendingMaxBlockHeight: 20
+						}
+					},
+					syncStatus: "SYNCED"
+				}
+			})
+		}) as typeof fetch
+
+		try {
+			await createOpsSnapshot("testnet", {
+				TESTNET_ACTIONS_INDEXER_TOKEN: "testnet-token"
+			})
+			await runIndexerControl("reset", "testnet", {
+				TESTNET_ACTIONS_INDEXER_TOKEN: "testnet-token"
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+
+		expect(calls.filter((call) => call.url.includes("testnet.indexer.actions.zeko.io"))).toEqual([
+			expect.objectContaining({
+				url: "https://testnet.indexer.actions.zeko.io/health",
+				authorization: "Bearer testnet-token",
+				method: "GET"
+			}),
+			expect.objectContaining({
+				url: "https://testnet.indexer.actions.zeko.io/status",
+				authorization: "Bearer testnet-token",
+				method: "GET"
+			}),
+			expect.objectContaining({
+				url: "https://testnet.indexer.actions.zeko.io/reset",
+				authorization: "Bearer testnet-token",
+				method: "POST"
+			})
+		])
 	})
 
 	it("summarizes archive action coverage after the indexed head", () => {

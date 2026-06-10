@@ -61,7 +61,7 @@ const requiredEnv = (key: string, fallbackKey?: string) => {
 const optionalEnv = (key: string, fallback: string) => process.env[key]?.trim() || fallback
 
 const resolveProvider = (): AccessProvider => {
-	const value = optionalEnv("OPS_DASHBOARD_ACCESS_PROVIDER", "cloudflare")
+	const value = optionalEnv("OPS_DASHBOARD_ACCESS_PROVIDER", "github")
 	if (value === "cloudflare" || value === "github") return value
 	throw new Error("OPS_DASHBOARD_ACCESS_PROVIDER must be cloudflare or github")
 }

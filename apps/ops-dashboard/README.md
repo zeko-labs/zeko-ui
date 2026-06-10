@@ -40,9 +40,11 @@ export CLOUDFLARE_ACCOUNT_ID=...
 moon run ops-dashboard:configure-access
 ```
 
-The default provider is Cloudflare account membership. To force GitHub org
-membership instead, set `OPS_DASHBOARD_ACCESS_PROVIDER=github`. If more than
-one GitHub identity provider exists, also set `OPS_DASHBOARD_GITHUB_IDP_ID`.
+The default provider is GitHub org membership for `zeko-labs`. The GitHub login
+method must be backed by a GitHub OAuth App with the callback URL from
+Cloudflare Access. If more than one GitHub identity provider exists, also set
+`OPS_DASHBOARD_GITHUB_IDP_ID`. To use Cloudflare account membership as an
+explicit fallback, set `OPS_DASHBOARD_ACCESS_PROVIDER=cloudflare`.
 
 Deploy through Moon:
 
