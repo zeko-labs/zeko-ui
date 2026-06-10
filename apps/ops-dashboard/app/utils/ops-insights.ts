@@ -9,13 +9,18 @@ export interface ChainInsight {
 	id: "l1" | "l2"
 	label: string
 	indexerLabel: string
-	indexerHeight: number | null
-	indexerFinalHeight: number | null
+	lastActionBlockHeight: number | null
+	finalActionBlockHeight: number | null
+	nonCanonicalTailCount: number | null
 	archiveHeight: number | null
 	archiveCanonicalHeight: number | null
 	daemonHeight: number | null
-	indexerArchiveLag: number | null
+	archiveFinalityGap: number | null
+	canonicalActionGap: number | null
+	lastActionGap: number | null
 	archiveDaemonGap: number | null
+	expectedFinalityBlocks: number | null
+	daemonBlockHeightSupported: boolean
 }
 
 export const toNumber = (value: DetailValue | undefined): number | null => {
@@ -51,6 +56,35 @@ export const gapLabel = (gap: number | null, aheadLabel: string, behindLabel: st
 const detailNumber = (service: InsightService | undefined, key: string): number | null =>
 	toNumber(service?.details[key])
 
+export const finalityState = (
+	gap: number | null,
+	expectedFinalityBlocks: number | null
+): "ok" | "warn" | "error" | "unknown" => {
+	if (gap === null) return "unknown"
+	if (gap < 0) return "warn"
+	if (expectedFinalityBlocks === null) return gapState(gap)
+	if (gap <= expectedFinalityBlocks) return "ok"
+	if (gap <= expectedFinalityBlocks * 2) return "warn"
+	return "error"
+}
+
+export const actionGapState = (gap: number | null): "ok" | "warn" | "error" | "unknown" => {
+	if (gap === null) return "unknown"
+	if (gap <= 0) return "ok"
+	return "warn"
+}
+
+export const tailState = (
+	tailCount: number | null,
+	expectedFinalityBlocks: number | null
+): "ok" | "warn" | "error" | "unknown" => {
+	if (tailCount === null) return "unknown"
+	if (expectedFinalityBlocks === null) return gapState(tailCount)
+	if (tailCount <= expectedFinalityBlocks) return "ok"
+	if (tailCount <= expectedFinalityBlocks * 2) return "warn"
+	return "error"
+}
+
 export const buildChainInsight = ({
 	id,
 	label,
@@ -59,7 +93,10 @@ export const buildChainInsight = ({
 	archive,
 	daemon,
 	indexerHeightKey,
-	indexerFinalHeightKey
+	indexerFinalHeightKey,
+	nonCanonicalTailKey,
+	expectedFinalityBlocks,
+	daemonBlockHeightSupported
 }: {
 	id: "l1" | "l2"
 	label: string
@@ -69,25 +106,34 @@ export const buildChainInsight = ({
 	daemon?: InsightService
 	indexerHeightKey: string
 	indexerFinalHeightKey: string
+	nonCanonicalTailKey: string
+	expectedFinalityBlocks: number | null
+	daemonBlockHeightSupported: boolean
 }): ChainInsight => {
-	const indexerHeight = detailNumber(indexer, indexerHeightKey)
-	const indexerFinalHeight = detailNumber(indexer, indexerFinalHeightKey)
+	const lastActionBlockHeight = detailNumber(indexer, indexerHeightKey)
+	const finalActionBlockHeight = detailNumber(indexer, indexerFinalHeightKey)
+	const nonCanonicalTailCount = detailNumber(indexer, nonCanonicalTailKey)
 	const archiveHeight =
 		detailNumber(archive, "pendingMaxBlockHeight") ??
 		detailNumber(archive, "canonicalMaxBlockHeight")
 	const archiveCanonicalHeight = detailNumber(archive, "canonicalMaxBlockHeight")
-	const daemonHeight = detailNumber(daemon, "blockHeight")
+	const daemonHeight = daemonBlockHeightSupported ? detailNumber(daemon, "blockHeight") : null
 
 	return {
 		id,
 		label,
 		indexerLabel,
-		indexerHeight,
-		indexerFinalHeight,
+		lastActionBlockHeight,
+		finalActionBlockHeight,
+		nonCanonicalTailCount,
 		archiveHeight,
 		archiveCanonicalHeight,
 		daemonHeight,
-		indexerArchiveLag: blockGap(archiveHeight, indexerHeight),
-		archiveDaemonGap: blockGap(daemonHeight, archiveHeight)
+		archiveFinalityGap: blockGap(archiveHeight, archiveCanonicalHeight),
+		canonicalActionGap: blockGap(archiveCanonicalHeight, finalActionBlockHeight),
+		lastActionGap: blockGap(archiveHeight, lastActionBlockHeight),
+		archiveDaemonGap: daemonBlockHeightSupported ? blockGap(daemonHeight, archiveHeight) : null,
+		expectedFinalityBlocks,
+		daemonBlockHeightSupported
 	}
 }

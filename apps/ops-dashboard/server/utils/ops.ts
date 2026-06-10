@@ -207,10 +207,10 @@ export const summarizeServices = (services: ServiceProbe[]): Record<ServiceStatu
 		{ ok: 0, warn: 0, error: 0, unknown: 0 }
 	)
 
-const timedFetch = async (url: string, init?: RequestInit) => {
+const timedFetch = async (url: string, init?: RequestInit, timeoutMs = requestTimeoutMs) => {
 	const controller = new AbortController()
 	const startedAt = performance.now()
-	const timeout = setTimeout(() => controller.abort(), requestTimeoutMs)
+	const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
 	try {
 		const response = await fetch(url, {
@@ -290,12 +290,16 @@ const makeProbeError = ({
 	error: error instanceof Error ? error.message : String(error)
 })
 
-const graphQlRequest = async (endpoint: string, query: string) => {
-	const { response, latencyMs } = await timedFetch(endpoint, {
-		method: "POST",
-		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ query })
-	})
+const graphQlRequest = async (endpoint: string, query: string, timeoutMs?: number) => {
+	const { response, latencyMs } = await timedFetch(
+		endpoint,
+		{
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ query })
+		},
+		timeoutMs
+	)
 	const payload = await readJson(response)
 	return { response, latencyMs, payload }
 }
@@ -353,19 +357,23 @@ export const probeArchive = async ({
 export const probeDaemon = async ({
 	id,
 	label,
-	endpoint
+	endpoint,
+	supportsBestChain
 }: {
 	id: string
 	label: string
 	endpoint: string
+	supportsBestChain: boolean
 }): Promise<ServiceProbe> => {
 	try {
+		const daemonTimeoutMs = 5_000
 		const statusResult = await graphQlRequest(
 			endpoint,
 			`query OpsDaemonState {
 				syncStatus
 				daemonStatus
-			}`
+			}`,
+			daemonTimeoutMs
 		)
 		const statusError = getFirstError(statusResult.payload)
 		const statusData = getRecord(getRecord(statusResult.payload).data)
@@ -373,14 +381,11 @@ export const probeDaemon = async ({
 		const daemonStatus = getDisplayString(statusData.daemonStatus)
 		const details: ServiceProbe["details"] = {
 			syncStatus,
-			daemonStatus,
-			blockHeight: null,
-			slotSinceGenesis: null,
-			stateHash: null
+			daemonStatus
 		}
 
 		let chainError: string | undefined
-		if (statusResult.response.ok && statusError == null) {
+		if (supportsBestChain && statusResult.response.ok && statusError == null) {
 			try {
 				const chainResult = await graphQlRequest(
 					endpoint,
@@ -394,7 +399,8 @@ export const probeDaemon = async ({
 						}
 					}
 				}
-			}`
+			}`,
+					daemonTimeoutMs
 				)
 				chainError = getFirstError(chainResult.payload)
 				const chainData = getRecord(getRecord(chainResult.payload).data)
@@ -409,6 +415,9 @@ export const probeDaemon = async ({
 			} catch (error) {
 				chainError = error instanceof Error ? error.message : String(error)
 			}
+		} else if (!supportsBestChain) {
+			details.blockModel = "1 block = 1 transaction"
+			details.blockHeightSource = "archive"
 		}
 
 		const isSynced = syncStatus === null || syncStatus.toUpperCase() === "SYNCED"
@@ -442,7 +451,7 @@ export const probeActionsIndexer = async ({
 	token?: string
 }): Promise<ServiceProbe> => {
 	const id = "actions-indexer"
-	const label = "Actions indexer"
+	const label = "Zeko action-indexer"
 	try {
 		const health = await timedFetch(`${endpoint}/health`)
 		const healthPayload = await readJson(health.response)
@@ -504,8 +513,18 @@ export const createOpsSnapshot = async (networkInput?: unknown): Promise<OpsSnap
 		probeActionsIndexer({ endpoint: config.actionsIndexerUrl, token }),
 		probeArchive({ id: "l1-archive", label: "L1 archive", endpoint: config.l1ArchiveUrl }),
 		probeArchive({ id: "l2-archive", label: "L2 archive", endpoint: config.l2ArchiveUrl }),
-		probeDaemon({ id: "l1-daemon", label: "L1 daemon", endpoint: config.l1DaemonUrl }),
-		probeDaemon({ id: "l2-daemon", label: "L2 daemon", endpoint: config.l2DaemonUrl })
+		probeDaemon({
+			id: "l1-daemon",
+			label: "L1 daemon",
+			endpoint: config.l1DaemonUrl,
+			supportsBestChain: true
+		}),
+		probeDaemon({
+			id: "l2-daemon",
+			label: "L2 daemon",
+			endpoint: config.l2DaemonUrl,
+			supportsBestChain: false
+		})
 	])
 
 	return {

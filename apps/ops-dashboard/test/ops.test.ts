@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest"
-import { blockGap, buildChainInsight, gapLabel, gapState } from "../app/utils/ops-insights"
+import {
+	actionGapState,
+	blockGap,
+	buildChainInsight,
+	finalityState,
+	gapLabel,
+	gapState,
+	tailState
+} from "../app/utils/ops-insights"
 import {
 	extractActionsIndexerDetails,
 	getOpsConfig,
@@ -139,9 +147,14 @@ describe("ops dashboard utilities", () => {
 		expect(gapState(50)).toBe("warn")
 		expect(gapState(500)).toBe("error")
 		expect(gapState(null)).toBe("unknown")
+		expect(finalityState(290, 290)).toBe("ok")
+		expect(finalityState(291, 290)).toBe("warn")
+		expect(actionGapState(1_000)).toBe("warn")
+		expect(actionGapState(0)).toBe("ok")
+		expect(tailState(280, 290)).toBe("ok")
 	})
 
-	it("builds chain insights from indexer, archive, and daemon probes", () => {
+	it("builds L1 chain insights from action-indexer, archive, and daemon probes", () => {
 		expect(
 			buildChainInsight({
 				id: "l1",
@@ -151,7 +164,8 @@ describe("ops dashboard utilities", () => {
 					id: "actions-indexer",
 					details: {
 						lastFetchedOuter: 990,
-						outerLastFinalBlockHeight: 980
+						outerLastFinalBlockHeight: 980,
+						outerNonCanonicalTailCount: 10
 					}
 				},
 				archive: {
@@ -166,16 +180,59 @@ describe("ops dashboard utilities", () => {
 					details: { blockHeight: 1_002 }
 				},
 				indexerHeightKey: "lastFetchedOuter",
-				indexerFinalHeightKey: "outerLastFinalBlockHeight"
+				indexerFinalHeightKey: "outerLastFinalBlockHeight",
+				nonCanonicalTailKey: "outerNonCanonicalTailCount",
+				expectedFinalityBlocks: 290,
+				daemonBlockHeightSupported: true
 			})
 		).toMatchObject({
-			indexerHeight: 990,
-			indexerFinalHeight: 980,
+			lastActionBlockHeight: 990,
+			finalActionBlockHeight: 980,
+			nonCanonicalTailCount: 10,
 			archiveHeight: 1_000,
 			archiveCanonicalHeight: 995,
 			daemonHeight: 1_002,
-			indexerArchiveLag: 10,
+			archiveFinalityGap: 5,
+			canonicalActionGap: 15,
+			lastActionGap: 10,
 			archiveDaemonGap: 2
+		})
+	})
+
+	it("does not invent an L2 daemon block height", () => {
+		expect(
+			buildChainInsight({
+				id: "l2",
+				label: "L2 Zeko",
+				indexerLabel: "Inner",
+				indexer: {
+					id: "actions-indexer",
+					details: {
+						lastFetchedInner: 1_000,
+						innerLastFinalBlockHeight: 990,
+						innerNonCanonicalTailCount: 2
+					}
+				},
+				archive: {
+					id: "l2-archive",
+					details: {
+						canonicalMaxBlockHeight: 1_010,
+						pendingMaxBlockHeight: 1_010
+					}
+				},
+				daemon: {
+					id: "l2-daemon",
+					details: { blockHeight: 1_010 }
+				},
+				indexerHeightKey: "lastFetchedInner",
+				indexerFinalHeightKey: "innerLastFinalBlockHeight",
+				nonCanonicalTailKey: "innerNonCanonicalTailCount",
+				expectedFinalityBlocks: null,
+				daemonBlockHeightSupported: false
+			})
+		).toMatchObject({
+			daemonHeight: null,
+			archiveDaemonGap: null
 		})
 	})
 })

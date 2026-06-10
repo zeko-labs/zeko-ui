@@ -11,9 +11,12 @@ import {
 } from "lucide-vue-next"
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import {
+	actionGapState,
 	buildChainInsight,
+	finalityState,
 	gapLabel,
 	gapState,
+	tailState,
 	type ChainInsight
 } from "~/utils/ops-insights"
 
@@ -105,7 +108,10 @@ const chainRows = computed<ChainRow[]>(() => {
 				archive: l1Archive,
 				daemon: l1Daemon,
 				indexerHeightKey: "lastFetchedOuter",
-				indexerFinalHeightKey: "outerLastFinalBlockHeight"
+				indexerFinalHeightKey: "outerLastFinalBlockHeight",
+				nonCanonicalTailKey: "outerNonCanonicalTailCount",
+				expectedFinalityBlocks: 290,
+				daemonBlockHeightSupported: true
 			}),
 			archive: l1Archive,
 			daemon: l1Daemon
@@ -119,7 +125,10 @@ const chainRows = computed<ChainRow[]>(() => {
 				archive: l2Archive,
 				daemon: l2Daemon,
 				indexerHeightKey: "lastFetchedInner",
-				indexerFinalHeightKey: "innerLastFinalBlockHeight"
+				indexerFinalHeightKey: "innerLastFinalBlockHeight",
+				nonCanonicalTailKey: "innerNonCanonicalTailCount",
+				expectedFinalityBlocks: null,
+				daemonBlockHeightSupported: false
 			}),
 			archive: l2Archive,
 			daemon: l2Daemon
@@ -154,10 +163,26 @@ const formatValue = (value: string | number | boolean | null) => {
 
 const formatBlock = (value: number | null) =>
 	value === null ? "-" : value.toLocaleString()
-const indexerLagLabel = (gap: number | null) =>
-	gapLabel(gap, "ahead of archive", "behind archive")
+const actionGapLabel = (row: ChainRow) => {
+	if (row.canonicalActionGap === null) return "unavailable"
+	if (row.canonicalActionGap === 0) return "aligned"
+	if (row.canonicalActionGap < 0)
+		return `${Math.abs(row.canonicalActionGap).toLocaleString()} ahead of canonical archive`
+	const unit = row.id === "l2" ? "txs" : "blocks"
+	return `${row.canonicalActionGap.toLocaleString()} ${unit} since final action`
+}
+const finalityGapLabel = (row: ChainRow) => {
+	if (row.archiveFinalityGap === null) return "pending/canonical unknown"
+	const gap = row.archiveFinalityGap.toLocaleString()
+	if (row.expectedFinalityBlocks === null) return `${gap} pending txs`
+	return `${gap} pending blocks`
+}
 const archiveDaemonGapLabel = (gap: number | null) =>
 	gapLabel(gap, "archive ahead", "daemon ahead")
+const archiveDaemonSummary = (row: ChainRow) =>
+	row.daemonBlockHeightSupported
+		? archiveDaemonGapLabel(row.archiveDaemonGap)
+		: "L2 exposes tx height through archive"
 const rowServices = (row: ChainRow): ServiceProbe[] =>
 	[row.archive, row.daemon].filter((service): service is ServiceProbe =>
 		Boolean(service)
@@ -198,7 +223,8 @@ const detailEntries = (service: ServiceProbe) =>
 			isDatabase: key.startsWith("database")
 		}))
 
-const refresh = async () => {
+const refresh = async ({ force = false }: { force?: boolean } = {}) => {
+	if (isRefreshing.value && !force) return
 	const sequence = ++refreshSequence
 	const network = selectedNetwork.value
 	isRefreshing.value = true
@@ -266,7 +292,7 @@ onMounted(() => {
 			}
 		})
 	}
-	void refresh()
+	void refresh({ force: true })
 	refreshTimer = setInterval(() => {
 		if (document.visibilityState === "visible") void refresh()
 	}, refreshIntervalMs)
@@ -284,7 +310,7 @@ watch(
 		selectedNetwork.value = network
 		snapshot.value = null
 		actionMessage.value = null
-		void refresh()
+		void refresh({ force: true })
 	}
 )
 </script>
@@ -294,7 +320,7 @@ watch(
     <header class="OpsHeader">
       <div>
         <p class="Kicker">Zeko infrastructure</p>
-        <h1>Actions Ops</h1>
+        <h1>Action Indexer Ops</h1>
       </div>
       <div class="HeaderStatus">
         <span class="NetworkPill">{{ currentNetwork }}</span>
@@ -337,7 +363,7 @@ watch(
         class="IconButton Primary"
         type="button"
         :disabled="isRefreshing"
-        @click="refresh">
+        @click="() => refresh({ force: true })">
         <RefreshCcw :size="17" :class="{ Spinning: isRefreshing }" />
         Refresh
       </button>
@@ -411,26 +437,41 @@ watch(
     <section class="InsightGrid" aria-label="Operational gaps">
       <article
         v-for="row in chainRows"
-        :key="`${row.id}-indexer-gap`"
+        :key="`${row.id}-finality-gap`"
         class="InsightCard"
-        :data-state="gapState(row.indexerArchiveLag)">
-        <span>{{ row.label }} indexer</span>
-        <strong>{{ indexerLagLabel(row.indexerArchiveLag) }}</strong>
-        <small>{{ row.indexerLabel }}
-          {{ formatBlock(row.indexerHeight) }} vs archive {{
-            formatBlock(row.archiveHeight)
+        :data-state="finalityState(row.archiveFinalityGap, row.expectedFinalityBlocks)">
+        <span>{{ row.label }} finality window</span>
+        <strong>{{ finalityGapLabel(row) }}</strong>
+        <small>Pending {{ formatBlock(row.archiveHeight) }} vs canonical {{
+            formatBlock(row.archiveCanonicalHeight)
           }}</small>
+      </article>
+      <article
+        v-for="row in chainRows"
+        :key="`${row.id}-action-gap`"
+        class="InsightCard"
+        :data-state="actionGapState(row.canonicalActionGap)">
+        <span>Zeko action-indexer {{ row.indexerLabel }} stream</span>
+        <strong>{{ actionGapLabel(row) }}</strong>
+        <small>Final action block {{ formatBlock(row.finalActionBlockHeight) }}
+          vs canonical {{ formatBlock(row.archiveCanonicalHeight) }}</small>
       </article>
       <article
         v-for="row in chainRows"
         :key="`${row.id}-daemon-gap`"
         class="InsightCard"
-        :data-state="gapState(row.archiveDaemonGap)">
+        :data-state='
+          row.daemonBlockHeightSupported
+          ? gapState(row.archiveDaemonGap)
+          : "ok"
+        '>
         <span>{{ row.label }} archive / daemon</span>
-        <strong>{{ archiveDaemonGapLabel(row.archiveDaemonGap) }}</strong>
-        <small>Archive {{ formatBlock(row.archiveHeight) }} vs daemon {{
-            formatBlock(row.daemonHeight)
-          }}</small>
+        <strong>{{ archiveDaemonSummary(row) }}</strong>
+        <small v-if="row.daemonBlockHeightSupported">Archive {{
+            formatBlock(row.archiveHeight)
+          }} vs daemon {{ formatBlock(row.daemonHeight) }}</small>
+        <small v-else>One L2 block is one transaction; no daemon block
+          head.</small>
       </article>
     </section>
 
@@ -452,10 +493,12 @@ watch(
 
         <div class="IndexerHighlights">
           <div v-for="row in chainRows" :key="`${row.id}-indexer`">
-            <span>{{ row.indexerLabel }} indexed</span>
-            <strong>{{ formatBlock(row.indexerHeight) }}</strong>
-            <small :data-state="gapState(row.indexerArchiveLag)">
-              {{ indexerLagLabel(row.indexerArchiveLag) }}
+            <span>{{ row.indexerLabel }} last action block</span>
+            <strong>{{ formatBlock(row.lastActionBlockHeight) }}</strong>
+            <small :data-state="actionGapState(row.canonicalActionGap)">
+              final {{ formatBlock(row.finalActionBlockHeight) }}; tail {{
+                formatBlock(row.nonCanonicalTailCount)
+              }}
             </small>
           </div>
           <div>
@@ -470,7 +513,7 @@ watch(
               }} ms latency</small>
           </div>
           <div>
-            <span>Loop</span>
+            <span>Indexer loop</span>
             <strong>{{
               formatValue(detailValue(indexerService, "running"))
             }}</strong>
@@ -518,24 +561,48 @@ watch(
       <section v-for="row in chainRows" :key="row.id" class="ChainBand">
         <header class="ChainHeader">
           <div>
-            <p class="Kicker">{{ row.indexerLabel }} stream</p>
+            <p class="Kicker">
+              Zeko action-indexer {{ row.indexerLabel }} stream
+            </p>
             <h2>{{ row.label }}</h2>
           </div>
           <div class="ChainBadges">
-            <span :data-state="gapState(row.indexerArchiveLag)">
-              Indexer {{ indexerLagLabel(row.indexerArchiveLag) }}
+            <span
+              :data-state="
+                finalityState(
+                	row.archiveFinalityGap,
+                	row.expectedFinalityBlocks
+                )
+              ">
+              {{ finalityGapLabel(row) }}
             </span>
-            <span :data-state="gapState(row.archiveDaemonGap)">
-              {{ archiveDaemonGapLabel(row.archiveDaemonGap) }}
+            <span
+              :data-state="
+                tailState(
+                	row.nonCanonicalTailCount,
+                	row.expectedFinalityBlocks
+                )
+              ">
+              non-canonical tail {{ formatBlock(row.nonCanonicalTailCount) }}
+            </span>
+            <span
+              :data-state='
+                row.daemonBlockHeightSupported
+                ? gapState(row.archiveDaemonGap)
+                : "ok"
+              '>
+              {{ archiveDaemonSummary(row) }}
             </span>
           </div>
         </header>
 
         <div class="HeightStrip">
           <div>
-            <span>Indexer fetched</span>
-            <strong>{{ formatBlock(row.indexerHeight) }}</strong>
-            <small>final {{ formatBlock(row.indexerFinalHeight) }}</small>
+            <span>Last action block</span>
+            <strong>{{ formatBlock(row.lastActionBlockHeight) }}</strong>
+            <small>final action block {{
+                formatBlock(row.finalActionBlockHeight)
+              }}</small>
           </div>
           <div>
             <span>Archive pending</span>
@@ -544,10 +611,16 @@ watch(
                 formatBlock(row.archiveCanonicalHeight)
               }}</small>
           </div>
-          <div>
+          <div v-if="row.daemonBlockHeightSupported">
             <span>Daemon head</span>
             <strong>{{ formatBlock(row.daemonHeight) }}</strong>
             <small>{{ archiveDaemonGapLabel(row.archiveDaemonGap) }}</small>
+          </div>
+          <div v-else>
+            <span>L2 block model</span>
+            <strong>1 tx</strong>
+            <small>One block is one transaction; daemon head is not
+              exposed.</small>
           </div>
         </div>
 
