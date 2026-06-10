@@ -192,7 +192,9 @@ export function createProxyHandler(
 		}
 
 		const cancelResponseBody = (response: Response) => {
-			void response.body?.cancel().catch(() => undefined)
+			if (response.body) {
+				void response.body.cancel().catch(() => undefined)
+			}
 		}
 
 		let lastUnavailableResponse: Response | undefined
