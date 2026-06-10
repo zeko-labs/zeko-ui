@@ -61,6 +61,7 @@ describe("ops dashboard utilities", () => {
 		expect(getOpsConfig("testnet")).toMatchObject({
 			network: "testnet",
 			actionsIndexerUrl: "https://testnet.indexer.actions.zeko.io",
+			l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
 			l2DaemonUrl: "https://testnet.zeko.io/graphql"
 		})
 	})

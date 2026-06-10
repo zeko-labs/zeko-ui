@@ -47,7 +47,7 @@ const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
 	testnet: {
 		network: "testnet",
 		actionsIndexerUrl: "https://testnet.indexer.actions.zeko.io",
-		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
+		l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
 		l2ArchiveUrl: "https://archive.testnet.zeko.io/graphql",
 		l1DaemonUrl: "https://api.minascan.io/node/devnet/v1/graphql",
 		l2DaemonUrl: "https://testnet.zeko.io/graphql"
