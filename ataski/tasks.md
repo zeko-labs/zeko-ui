@@ -296,3 +296,4 @@
 - T296 | done | make-proxy-response-cancel-null-safe | done/T296-make-proxy-response-cancel-null-safe.md
 - T297 | done | automate-bridge-validator-workers-build | done/T297-automate-bridge-validator-workers-build.md
 - T298 | done | standardize-gateway-endpoint-urls | done/T298-standardize-gateway-endpoint-urls.md
+- T299 | done | restore-proxy-alias-fallbacks | done/T299-restore-proxy-alias-fallbacks.md
