@@ -9,7 +9,7 @@
 	"preview_urls": true,
 	"vars": {
 		"BRIDGE_VALIDATOR_BASE_URL": "https://bridge-validator.zeko-labs.workers.dev",
-		"BRIDGE_VALIDATOR_ENABLED": "false"
+		"BRIDGE_VALIDATOR_ENABLED": "true"
 	},
 	"observability": {
 		"traces": {
@@ -24,7 +24,7 @@
 		}
 	},
 	"triggers": {
-		"crons": ["0 */12 * * *"]
+		"crons": ["0 */3 * * *"]
 	},
 	"workflows": [
 		{

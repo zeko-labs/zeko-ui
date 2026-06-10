@@ -285,3 +285,4 @@
 - T285 | done | fix-leading-index-hole-detection | done/T285-fix-leading-index-hole-detection.md
 - T286 | done | block-indexing-after-repair-failure | done/T286-block-indexing-after-repair-failure.md
 - T287 | done | bridge-validator-service-only | done/T287-bridge-validator-service-only.md
+- T288 | done | enable-bridge-validator-cron | done/T288-enable-bridge-validator-cron.md

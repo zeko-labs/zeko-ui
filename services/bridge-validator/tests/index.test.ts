@@ -5,7 +5,12 @@ vi.mock("@cloudflare/sandbox", () => ({
 	Sandbox: class Sandbox {}
 }))
 
+vi.mock("cloudflare:workers", () => ({
+	WorkflowEntrypoint: class WorkflowEntrypoint {}
+}))
+
 import { getSandbox } from "@cloudflare/sandbox"
+import worker from "../src/index"
 import { handleBridgeValidatorRequest } from "../src/request"
 import { BRIDGE_VALIDATOR_SERVICE_INFO } from "../src/service-info"
 import {
@@ -26,7 +31,7 @@ describe("bridge-validator worker", () => {
 			workflow: "bridge-validator",
 			trigger: {
 				type: "cron",
-				schedule: "0 */12 * * *",
+				configuredIn: "wrangler.jsonc triggers.crons",
 				enabledBy: "BRIDGE_VALIDATOR_ENABLED"
 			},
 			sourceBuild: {
@@ -88,6 +93,31 @@ describe("bridge-validator worker", () => {
 
 		expect(hasValidBearerToken({ request: authorized, env })).toBe(true)
 		expect(hasValidBearerToken({ request: unauthorized, env })).toBe(false)
+	})
+
+	it("rejects unauthenticated admin HTTP routes before route handling", async () => {
+		const env = { VALIDATOR_API_TOKEN: "validator-token" } as ValidatorEnv
+		const requests = [
+			new Request("https://bridge-validator.zeko-labs.workers.dev"),
+			new Request("https://bridge-validator.zeko-labs.workers.dev/bridge-start", {
+				method: "POST"
+			}),
+			new Request(
+				"https://bridge-validator.zeko-labs.workers.dev/bridge-status?instanceId=workflow-1&attempt=1"
+			),
+			new Request(
+				"https://bridge-validator.zeko-labs.workers.dev/bridge-cleanup?instanceId=workflow-1&attempt=1",
+				{ method: "POST" }
+			)
+		]
+		const fetchHandler = worker.fetch as NonNullable<typeof worker.fetch>
+
+		for (const request of requests) {
+			const response = await fetchHandler(request as never, env, {} as never)
+			expect(response.status).toBe(401)
+			await expect(response.json()).resolves.toEqual({ ok: false, error: "Unauthorized" })
+		}
+		expect(getSandbox).not.toHaveBeenCalled()
 	})
 
 	it("allows scheduled runs to be disabled by environment config", () => {

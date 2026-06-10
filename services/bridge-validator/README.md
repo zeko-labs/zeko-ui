@@ -4,9 +4,9 @@ Cloudflare Worker service that validates the published bridge CLI through the de
 
 ## Schedule
 
-- Cron: `0 */12 * * *`.
-- Cadence: one workflow every 12 hours.
-- Route choice: alternating by scheduled timestamp, so deposit runs roughly once per day and withdrawal runs roughly once per day.
+- Cron cadence is configured only in `wrangler.jsonc` under `triggers.crons`.
+- Each scheduled event starts one workflow.
+- Route choice alternates by scheduled timestamp, so adjacent scheduled runs use different routes when the route alternation interval matches the cron cadence.
 - Disable automatic cron work with `BRIDGE_VALIDATOR_ENABLED=false`. Authenticated manual starts still work.
 
 ## Runtime Contract

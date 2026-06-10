@@ -4,7 +4,7 @@ export const BRIDGE_VALIDATOR_SERVICE_INFO = {
 	workflow: "bridge-validator",
 	trigger: {
 		type: "cron",
-		schedule: "0 */12 * * *",
+		configuredIn: "wrangler.jsonc triggers.crons",
 		enabledBy: "BRIDGE_VALIDATOR_ENABLED"
 	},
 	sourceBuild: {

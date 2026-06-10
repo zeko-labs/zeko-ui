@@ -18,7 +18,7 @@ updated_at: 2026-06-10T06:29:39Z
 - Destroy the sandbox on success, validation failure, command failure, callback timeout, or runtime failure.
 - Protect all Worker HTTP surfaces with bearer-token authentication.
 - Keep runtime documentation and Moon tasks aligned with the actual operational commands.
-- Reduce the scheduled validator frequency to one route every 12 hours.
+- Keep the scheduled validator cadence controlled by Wrangler configuration.
 - Align bridge deposit and withdrawal retry behavior: retry recoverable setup, status, capability, and mutation failures with exponential backoff for 5 retries, then exit with a useful error.
 - Treat `Circuits config not found` and `No key returned from mutation` as bounded-retry failures, not infinite waits or immediate hard exits.
 - Avoid growing the bridge queue by clearing exactly one existing queued operation for the route/account before submitting a new operation, and return success once that queued operation is resolved.
@@ -170,7 +170,7 @@ updated_at: 2026-06-10T06:29:39Z
   - Workflow cleanup step `destroy bridge sandbox-1` succeeded.
   - The deposit command ran from `2026-05-26T16:29:15.898Z` to `2026-05-26T17:57:36.946Z`.
 - Current reliability cleanup:
-  - Reduced the validator cron cadence from every 6 hours to every 12 hours.
+  - Moved the validator cron cadence into Wrangler configuration.
   - Added a bounded exponential retry helper for bridge CLI setup/status/capability/mutation operations: 5 retries, 6 total attempts, then a concrete failure.
   - Aligned deposit and withdrawal behavior for `Circuits config not found` and `No key returned from mutation` so they do not retry indefinitely or hard-exit inconsistently.
   - Changed the high-level withdrawal flow to inspect the queue before submitting, matching deposit behavior.

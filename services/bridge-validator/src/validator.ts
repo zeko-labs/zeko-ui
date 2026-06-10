@@ -39,7 +39,7 @@ export const BRIDGE_SANDBOX_CONTROL_TIMEOUT_MS = 2 * 60 * 1000
 export const BRIDGE_SANDBOX_START_ATTEMPT_TIMEOUT_MS = 30_000
 export const BRIDGE_SANDBOX_START_LAUNCH_TIMEOUT_MS = 60_000
 export const BRIDGE_SANDBOX_START_ATTEMPTS = 6
-export const BRIDGE_VALIDATOR_CRON_INTERVAL_MS = 12 * 60 * 60 * 1000
+export const BRIDGE_VALIDATOR_ROUTE_ALTERNATION_INTERVAL_MS = 3 * 60 * 60 * 1000
 
 export type BridgeCommandResult = {
 	exitCode: number
@@ -657,7 +657,7 @@ export const buildScheduledValidations = ({
 	scheduledTime: number
 }): ScheduledValidation[] => {
 	const routeKey =
-		Math.floor(scheduledTime / BRIDGE_VALIDATOR_CRON_INTERVAL_MS) % 2 === 0
+		Math.floor(scheduledTime / BRIDGE_VALIDATOR_ROUTE_ALTERNATION_INTERVAL_MS) % 2 === 0
 			? "mina-to-zeko"
 			: "zeko-to-mina"
 

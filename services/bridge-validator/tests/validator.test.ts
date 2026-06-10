@@ -19,6 +19,7 @@ import {
 	BRIDGE_COMMAND_STDERR_PATH,
 	BRIDGE_COMMAND_STDOUT_PATH,
 	BRIDGE_COMMAND_TIMEOUT_MS,
+	BRIDGE_VALIDATOR_ROUTE_ALTERNATION_INTERVAL_MS,
 	BRIDGE_SANDBOX_OPTIONS,
 	BRIDGE_SANDBOX_PREPARE_TIMEOUT_MS,
 	BRIDGE_WORKSPACE_ROOT,
@@ -380,9 +381,11 @@ describe("bridge validator", () => {
 				params: { routeKey: "mina-to-zeko" }
 			}
 		])
-		expect(buildScheduledValidations({ scheduledTime: 12 * 60 * 60 * 1000 })).toEqual([
+		expect(
+			buildScheduledValidations({ scheduledTime: BRIDGE_VALIDATOR_ROUTE_ALTERNATION_INTERVAL_MS })
+		).toEqual([
 			{
-				id: "bridge-validator-zeko-to-mina-43200000",
+				id: `bridge-validator-zeko-to-mina-${BRIDGE_VALIDATOR_ROUTE_ALTERNATION_INTERVAL_MS}`,
 				params: { routeKey: "zeko-to-mina" }
 			}
 		])
