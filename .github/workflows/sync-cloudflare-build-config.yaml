@@ -85,5 +85,9 @@ jobs:
 
           while IFS= read -r config_path; do
             [[ -n "$config_path" ]] || continue
-            moon run "cloudflare-build-config:$task" -- "$config_path"
+            if [[ "$DRY_RUN" == "true" ]]; then
+              moon run "cloudflare-build-config:$task" -- "$config_path"
+            else
+              moon run "cloudflare-build-config:$task" -- "$config_path" --trigger-builds
+            fi
           done <<< "${{ steps.configs.outputs.files }}"

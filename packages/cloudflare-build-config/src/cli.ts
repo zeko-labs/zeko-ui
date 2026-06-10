@@ -69,6 +69,11 @@ type CloudflareApiResult<T> = {
 	errors?: unknown
 }
 
+type TriggerBuildPayload = {
+	branch: string
+	commit_hash?: string
+}
+
 export type RemoteTrigger = {
 	trigger_uuid?: string
 	trigger_name?: string
@@ -93,6 +98,10 @@ export type CloudflareBuildClient = {
 	getExternalScriptId: (scriptName: string) => Promise<string>
 	listTriggers: (scriptName: string) => Promise<RemoteTrigger[]>
 	patchTrigger: (triggerUuid: string, payload: TriggerPayload) => Promise<unknown>
+	triggerBuild: (
+		triggerUuid: string,
+		payload: TriggerBuildPayload
+	) => Promise<CloudflareApiResult<{ build_uuid: string }>>
 	upsertEnvironmentVariables: (
 		triggerUuid: string,
 		payload: Record<string, { is_secret: boolean; value: string }>
@@ -107,12 +116,18 @@ export type TriggerCreateCredentials = {
 export type SyncOptions = {
 	dryRun: boolean
 	createCredentials?: TriggerCreateCredentials
+	triggerBuilds?: boolean
+	build?: {
+		branch: string
+		commitHash?: string
+	}
 }
 
 export type CliArgs =
 	| {
 			command: "sync"
 			dryRun: boolean
+			triggerBuilds: boolean
 			paths: string[]
 	  }
 	| {
@@ -227,6 +242,23 @@ const requireCreateCredentials = (credentials: TriggerCreateCredentials | undefi
 	}
 
 	return credentials
+}
+
+const branchMatchesPattern = (branch: string, pattern: string) => {
+	if (pattern === "*") {
+		return true
+	}
+
+	return branch === pattern
+}
+
+const branchMatchesTrigger = (trigger: DesiredTrigger, branch: string) => {
+	const included =
+		trigger.branchIncludes.length === 0 ||
+		trigger.branchIncludes.some((pattern) => branchMatchesPattern(branch, pattern))
+	const excluded = trigger.branchExcludes.some((pattern) => branchMatchesPattern(branch, pattern))
+
+	return included && !excluded
 }
 
 const readJsonFile = async (filePath: string): Promise<unknown> => {
@@ -413,6 +445,12 @@ export const createClient = (token: string, accountId: string): CloudflareBuildC
 			body: JSON.stringify(payload)
 		})
 
+	const triggerBuild = async (triggerUuid: string, payload: TriggerBuildPayload) =>
+		request<{ build_uuid: string }>(`/builds/triggers/${triggerUuid}/builds`, {
+			method: "POST",
+			body: JSON.stringify(payload)
+		})
+
 	const deleteTrigger = async (triggerUuid: string) =>
 		request(`/builds/triggers/${triggerUuid}`, {
 			method: "DELETE"
@@ -433,6 +471,7 @@ export const createClient = (token: string, accountId: string): CloudflareBuildC
 		getExternalScriptId,
 		listTriggers,
 		patchTrigger,
+		triggerBuild,
 		upsertEnvironmentVariables
 	}
 }
@@ -499,8 +538,9 @@ export const syncProject = async (
 		const existingTrigger = remoteTriggers.find((remote) => remote.trigger_name === trigger.name)
 		const desiredPayload = createDesiredPayload(trigger)
 		const environmentVariableNames = Object.keys(trigger.environmentVariables)
+		let triggerUuid = existingTrigger?.trigger_uuid
 
-		if (!existingTrigger?.trigger_uuid) {
+		if (!triggerUuid) {
 			if (options.dryRun) {
 				console.log(`+ ${projectConfig.scriptName}: would create ${trigger.name}`)
 				if (environmentVariableNames.length > 0) {
@@ -519,31 +559,21 @@ export const syncProject = async (
 				build_token_uuid: createCredentials.buildTokenUuid,
 				repo_connection_uuid: createCredentials.repoConnectionUuid
 			})
+			triggerUuid = createdTrigger.result.trigger_uuid
 			console.log(`+ ${projectConfig.scriptName}: created ${trigger.name}`)
-
-			if (environmentVariableNames.length > 0) {
-				await client.upsertEnvironmentVariables(
-					createdTrigger.result.trigger_uuid,
-					createEnvironmentVariablesPayload(trigger)
-				)
-				console.log(`+ ${projectConfig.scriptName}: synced env vars for ${trigger.name}`)
-			}
-			continue
-		}
-
-		if (!needsUpdate(existingTrigger, desiredPayload)) {
+		} else if (existingTrigger && !needsUpdate(existingTrigger, desiredPayload)) {
 			console.log(
 				`= ${projectConfig.scriptName}: ${trigger.name} already matches ${projectConfig.configPath}`
 			)
 		} else if (options.dryRun) {
 			console.log(`~ ${projectConfig.scriptName}: would update ${trigger.name}`)
 			continue
-		} else {
-			await client.patchTrigger(existingTrigger.trigger_uuid, desiredPayload)
+		} else if (existingTrigger) {
+			await client.patchTrigger(triggerUuid, desiredPayload)
 			console.log(`+ ${projectConfig.scriptName}: updated ${trigger.name}`)
 		}
 
-		if (environmentVariableNames.length > 0) {
+		if (triggerUuid && environmentVariableNames.length > 0) {
 			if (options.dryRun) {
 				console.log(
 					`~ ${projectConfig.scriptName}: would sync env vars for ${trigger.name}: ${environmentVariableNames.join(", ")}`
@@ -552,10 +582,26 @@ export const syncProject = async (
 			}
 
 			await client.upsertEnvironmentVariables(
-				existingTrigger.trigger_uuid,
+				triggerUuid,
 				createEnvironmentVariablesPayload(trigger)
 			)
 			console.log(`+ ${projectConfig.scriptName}: synced env vars for ${trigger.name}`)
+		}
+
+		if (
+			triggerUuid &&
+			options.triggerBuilds === true &&
+			!options.dryRun &&
+			options.build &&
+			branchMatchesTrigger(trigger, options.build.branch)
+		) {
+			await client.triggerBuild(triggerUuid, {
+				branch: options.build.branch,
+				...(options.build.commitHash ? { commit_hash: options.build.commitHash } : {})
+			})
+			console.log(
+				`+ ${projectConfig.scriptName}: triggered build for ${trigger.name} on ${options.build.branch}`
+			)
 		}
 	}
 
@@ -646,11 +692,13 @@ export const parseArgs = (args: string[]): CliArgs => {
 
 	const syncArgs = args[0] === "sync" ? args.slice(1) : args
 	const dryRun = syncArgs.includes("--dry-run")
+	const triggerBuilds = syncArgs.includes("--trigger-builds")
 
 	return {
 		command: "sync",
 		dryRun,
-		paths: syncArgs.filter((arg) => arg !== "--dry-run")
+		triggerBuilds,
+		paths: syncArgs.filter((arg) => arg !== "--dry-run" && arg !== "--trigger-builds")
 	}
 }
 
@@ -675,6 +723,8 @@ export const run = async (args: string[]) => {
 		configPaths.map((configPath) => readWorkersBuildConfig(configPath))
 	)
 	const createCredentials = getCreateCredentialsFromEnv()
+	const branch = process.env.GITHUB_REF_NAME?.trim()
+	const commitHash = process.env.GITHUB_SHA?.trim()
 
 	for (const projectConfig of projectConfigs) {
 		if (!projectConfig.enabled) {
@@ -683,8 +733,15 @@ export const run = async (args: string[]) => {
 		}
 
 		await syncProject(client, projectConfig, {
+			build: branch
+				? {
+						branch,
+						commitHash: commitHash || undefined
+					}
+				: undefined,
 			createCredentials,
-			dryRun: parsedArgs.dryRun
+			dryRun: parsedArgs.dryRun,
+			triggerBuilds: parsedArgs.triggerBuilds
 		})
 	}
 }

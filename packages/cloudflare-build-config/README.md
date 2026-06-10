@@ -18,6 +18,8 @@ For every enabled config file, it:
 5. Patches the mutable trigger settings so they match the file.
 6. Deletes moved trigger names from `pruneScriptNames` when configured.
 7. Upserts configured trigger build environment variables.
+8. When requested with `--trigger-builds`, starts matching Workers Builds for
+   the current `GITHUB_REF_NAME` and `GITHUB_SHA`.
 
 It updates these trigger fields:
 
@@ -163,6 +165,16 @@ Run the package sync task through Moon:
 moon run cloudflare-build-config:sync -- apps/faucet/workers-build.jsonc
 moon run cloudflare-build-config:sync-dry-run -- apps/faucet/workers-build.jsonc
 ```
+
+Trigger matching Workers Builds after a successful sync:
+
+```bash
+GITHUB_REF_NAME=main GITHUB_SHA=<commit-sha> moon run cloudflare-build-config:sync -- apps/faucet/workers-build.jsonc --trigger-builds
+```
+
+The GitHub Actions sync workflow uses this mode for non-dry-run syncs so config
+changes that do not match the Worker's own path filters still start the affected
+build.
 
 Dump token UUIDs through the package Moon task:
 

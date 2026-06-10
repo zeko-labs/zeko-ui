@@ -296,3 +296,4 @@
 - T296 | done | make-proxy-response-cancel-null-safe | done/T296-make-proxy-response-cancel-null-safe.md
 - T297 | done | automate-bridge-validator-workers-build | done/T297-automate-bridge-validator-workers-build.md
 - T298 | done | rewrite-cloudflare-build-config-cli | done/T298-rewrite-cloudflare-build-config-cli.md
+- T299 | done | trigger-workers-builds-after-sync | done/T299-trigger-workers-builds-after-sync.md

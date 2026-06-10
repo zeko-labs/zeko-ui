@@ -23,6 +23,7 @@ const createClient = (overrides: Partial<CloudflareBuildClient> = {}): Cloudflar
 	getExternalScriptId: vi.fn(async () => "script-external-id"),
 	listTriggers: vi.fn(async () => []),
 	patchTrigger: vi.fn(async () => ({})),
+	triggerBuild: vi.fn(async () => ({ result: { build_uuid: "build-uuid" } })),
 	upsertEnvironmentVariables: vi.fn(async () => ({})),
 	...overrides
 })
@@ -32,7 +33,17 @@ describe("parseArgs", () => {
 		expect(parseArgs(["sync", "--dry-run", "apps/faucet/workers-build.jsonc"])).toEqual({
 			command: "sync",
 			dryRun: true,
-			paths: ["apps/faucet/workers-build.jsonc"]
+			paths: ["apps/faucet/workers-build.jsonc"],
+			triggerBuilds: false
+		})
+	})
+
+	it("parses sync build triggering separately from paths", () => {
+		expect(parseArgs(["sync", "apps/faucet/workers-build.jsonc", "--trigger-builds"])).toEqual({
+			command: "sync",
+			dryRun: false,
+			paths: ["apps/faucet/workers-build.jsonc"],
+			triggerBuilds: true
 		})
 	})
 
@@ -121,6 +132,109 @@ describe("syncProject", () => {
 			root_directory: "",
 			trigger_name: "main"
 		})
+	})
+
+	it("triggers matching builds after syncing when requested", async () => {
+		const client = createClient({
+			listTriggers: vi.fn(async () => [
+				{
+					trigger_uuid: "main-trigger",
+					trigger_name: "main",
+					build_command: "",
+					deploy_command: "pnpm deploy",
+					root_directory: "",
+					branch_includes: ["main"],
+					branch_excludes: [],
+					path_includes: [],
+					path_excludes: []
+				},
+				{
+					trigger_uuid: "preview-trigger",
+					trigger_name: "preview",
+					build_command: "",
+					deploy_command: "pnpm deploy-preview",
+					root_directory: "",
+					branch_includes: ["*"],
+					branch_excludes: ["main"],
+					path_includes: [],
+					path_excludes: []
+				}
+			])
+		})
+		const config = await readWorkersBuildConfig(
+			await createConfigFile({
+				scriptName: "actions-api-testnet",
+				triggers: [
+					{
+						name: "main",
+						deployCommand: "pnpm deploy",
+						branchIncludes: ["main"]
+					},
+					{
+						name: "preview",
+						deployCommand: "pnpm deploy-preview",
+						branchIncludes: ["*"],
+						branchExcludes: ["main"]
+					}
+				]
+			})
+		)
+
+		await syncProject(client, config, {
+			build: {
+				branch: "main",
+				commitHash: "abc123"
+			},
+			dryRun: false,
+			triggerBuilds: true
+		})
+
+		expect(client.triggerBuild).toHaveBeenCalledTimes(1)
+		expect(client.triggerBuild).toHaveBeenCalledWith("main-trigger", {
+			branch: "main",
+			commit_hash: "abc123"
+		})
+	})
+
+	it("does not trigger builds during dry-run syncs", async () => {
+		const client = createClient({
+			listTriggers: vi.fn(async () => [
+				{
+					trigger_uuid: "main-trigger",
+					trigger_name: "main",
+					build_command: "",
+					deploy_command: "pnpm deploy",
+					root_directory: "",
+					branch_includes: ["main"],
+					branch_excludes: [],
+					path_includes: [],
+					path_excludes: []
+				}
+			])
+		})
+		const config = await readWorkersBuildConfig(
+			await createConfigFile({
+				scriptName: "actions-api-testnet",
+				triggers: [
+					{
+						name: "main",
+						deployCommand: "pnpm deploy",
+						branchIncludes: ["main"]
+					}
+				]
+			})
+		)
+
+		await syncProject(client, config, {
+			build: {
+				branch: "main",
+				commitHash: "abc123"
+			},
+			dryRun: true,
+			triggerBuilds: true
+		})
+
+		expect(client.triggerBuild).not.toHaveBeenCalled()
 	})
 })
 
