@@ -9,9 +9,7 @@
 	"preview_urls": true,
 	"vars": {
 		"BRIDGE_VALIDATOR_BASE_URL": "https://bridge-validator.zeko-labs.workers.dev",
-		"BRIDGE_VALIDATOR_ENABLED": "false",
-		"BRIDGE_VALIDATOR_SOURCE_REPOSITORY": "https://github.com/zeko-labs/zeko-ui.git",
-		"BRIDGE_VALIDATOR_SOURCE_REF": "branch/feature-web-397-bridge-validator-e2e"
+		"BRIDGE_VALIDATOR_ENABLED": "false"
 	},
 	"observability": {
 		"traces": {

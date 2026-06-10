@@ -158,7 +158,7 @@ updated_at: 2026-06-10T06:29:39Z
   - Deployed Worker version `1be80707-903f-478b-8b5a-4f92494a6f2d`.
   - Added application-level Sandbox control timeouts, HTTP status timeouts, and an authenticated `/bridge-cleanup` route after Cloudflare Sandbox startup/control calls were observed hanging during terminated attempts.
   - Added `BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY` support so Cloudflare validation uses a dedicated funded wallet instead of implicitly selecting shared numbered bridge test keys with unrelated queues.
-  - Synced Cloudflare secrets from `/Users/hebilicious/GitHub/zeko-ui/.env` through `moon run bridge-validator:sync-secrets -f`.
+  - Synced Cloudflare secrets from the repo-root `.env` through `moon run bridge-validator:sync-secrets -f`.
   - Destroyed stale Sandboxes for terminated attempts with `moon run bridge-validator:cleanup -f`.
   - Triggered exactly one clean dedicated-wallet deposit workflow after cleanup: `7ccba267-7e54-41d7-9722-70919e0aec62`.
   - Workflow `7ccba267-7e54-41d7-9722-70919e0aec62` completed successfully through Cloudflare Worker, Workflow, and Sandbox.
@@ -213,7 +213,7 @@ updated_at: 2026-06-10T06:29:39Z
   - `git diff --check`: passed.
 - Slack stdout/stderr file upload cleanup:
   - Replaced the remaining inline stdout / stderr snippet behavior with Slack-hosted text file uploads for both `stdout.log` and `stderr.log`, posted in the failure message thread through `files.getUploadURLExternal` and `files.completeUploadExternal`.
-  - Added the required Slack `files:write` bot scope to `services/bridge-validator/slack-app-manifest.json`.
+  - Verified the configured Slack app needed the `files:write` bot scope for diagnostic uploads.
   - Updated README and AGENTS runtime notes so operators expect stdout/stderr Slack files instead of inline stdout or stderr snippets.
   - `moon run bridge-validator:test -f`: 4 files passed, 35 tests passed.
   - `moon run bridge-validator:typecheck -f`: passed.
