@@ -1,10 +1,12 @@
 import { createProxyHandler } from "@zeko/proxy-handler"
 
-const hostnames = ["https://api.minascan.io/node/devnet/v1/graphql"]
+const primaryUrl = "https://api.minascan.io/node/devnet/v1/graphql"
+const backupUrls: readonly string[] = ["https://mina.devnet.zeko.io/graphql"]
 
 export default {
 	fetch: createProxyHandler({
-		hostnames,
+		primaryUrl,
+		backupUrls,
 		options: {
 			cors: {
 				origins: ["*"]

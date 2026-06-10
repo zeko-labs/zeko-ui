@@ -1,10 +1,12 @@
 import { createProxyHandler } from "@zeko/proxy-handler"
 
-const hostnames = ["https://archive-node-api.gcp.o1test.net"]
+const primaryUrl = "https://archive-node-api.gcp.o1test.net"
+const backupUrls: readonly string[] = ["https://mina-archive.mainnet.zeko.io/graphql"]
 
 export default {
 	fetch: createProxyHandler({
-		hostnames,
+		primaryUrl,
+		backupUrls,
 		options: {
 			cors: {
 				origins: ["*"]

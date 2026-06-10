@@ -9,3 +9,7 @@ tasks:
       - tsdown.config.ts
     outputs:
       - dist
+  test:
+    command: vitest run
+    inputs:
+      - src/**/*

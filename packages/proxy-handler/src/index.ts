@@ -6,14 +6,8 @@ export interface CorsOptions {
 }
 
 export interface ProxyHandlerOptions {
-	/** Delay in milliseconds before starting the backup request (default: 2000) */
-	backupDelay?: number
 	/** CORS configuration. If not provided, CORS is disabled */
 	cors?: CorsOptions
-}
-
-function getRandomInt(max: number): number {
-	return Math.floor(Math.random() * max)
 }
 
 function isOriginAllowed(params: {
@@ -111,20 +105,27 @@ function responseWithCors(params: {
 	})
 }
 
+type ProxyHandlerParams = {
+	primaryUrl: string
+	backupUrls?: readonly string[]
+	options?: ProxyHandlerOptions
+}
+
 /**
- * Creates a proxy request handler that forwards requests to backend hostnames
- * with automatic failover support.
+ * Creates a proxy request handler that forwards requests to a primary backend URL
+ * and sequentially tries backup URLs when a backend fails or returns 5xx.
  *
- * @param hostnames - Array of backend URLs to proxy requests to
+ * @param primaryUrl - Primary backend URL to proxy requests to
+ * @param backupUrls - Ordered backup backend URLs to try after primary failures
  * @param options - Configuration options for the proxy handler
  * @returns A function that accepts a Request and returns a Promise<Response>
  */
-export function createProxyHandler(params: {
-	hostnames: readonly string[]
-	options?: ProxyHandlerOptions
-}): (request: Request) => Promise<Response> {
-	const { hostnames, options = {} } = params
-	const { backupDelay = 2000, cors } = options
+export function createProxyHandler(
+	params: ProxyHandlerParams
+): (request: Request) => Promise<Response> {
+	const { primaryUrl, backupUrls = [], options = {} } = params
+	const { cors } = options
+	const backendUrls = [primaryUrl, ...backupUrls]
 
 	return async (request: Request): Promise<Response> => {
 		const requestOrigin = request.headers.get("Origin")
@@ -139,15 +140,6 @@ export function createProxyHandler(params: {
 		// Preserve original URL
 		const sourceUrl = new URL(request.url)
 
-		// Pick primary and backup hosts once
-		const primaryIndex = getRandomInt(hostnames.length)
-		let backupIndex = primaryIndex
-		if (hostnames.length > 1) {
-			do {
-				backupIndex = getRandomInt(hostnames.length)
-			} while (backupIndex === primaryIndex)
-		}
-
 		// Combine backend base URL + original path + query
 		const makeTargetUrl = (base: string) => {
 			const baseUrl = new URL(base)
@@ -157,34 +149,7 @@ export function createProxyHandler(params: {
 			return baseUrl
 		}
 
-		const primaryUrl = makeTargetUrl(hostnames[primaryIndex])
-		const backupUrl = makeTargetUrl(hostnames[backupIndex])
-
-		// Handle Websocket upgrade requests
-		const upgradeHeader = request.headers.get("Upgrade")
-		if (upgradeHeader?.toLowerCase() === "websocket") {
-			return fetch(new Request(primaryUrl.toString(), request))
-		}
-
-		try {
-			// Create requests using original request as template
-			const primaryRequest = new Request(primaryUrl.toString(), request)
-			const backupRequest = new Request(backupUrl.toString(), request)
-			console.log(`primary req: ${primaryUrl}`)
-			console.log(`backup  req: ${backupUrl}`)
-
-			const fetches = [fetch(primaryRequest)]
-			if (hostnames.length > 1) {
-				fetches.push(
-					(async () => {
-						await new Promise((r) => setTimeout(r, backupDelay))
-						return fetch(backupRequest)
-					})()
-				)
-			}
-
-			const response = await Promise.race(fetches)
-
+		const applyResponseTransforms = async (response: Response): Promise<Response> => {
 			// Websocket HTTPS fix
 			// TODO: Remove this when upstream is fixed.
 			const contentType = response.headers.get("content-type")
@@ -195,27 +160,72 @@ export function createProxyHandler(params: {
 				const fixedText =
 					workerUrl.protocol === "https:" ? text.replace(/ws:\/\//g, "wss://") : text
 
-				const fixedResponse = new Response(fixedText, {
+				return new Response(fixedText, {
 					status: response.status,
 					statusText: response.statusText,
 					headers: response.headers
 				})
-
-				return cors
-					? responseWithCors({ response: fixedResponse, requestOrigin, corsConfig: cors })
-					: fixedResponse
 			}
 
-			return cors ? responseWithCors({ response, requestOrigin, corsConfig: cors }) : response
-		} catch (err) {
-			const errorResponse =
-				err instanceof Error
-					? new Response(`Origin fetch error: ${err.message}`, { status: 502 })
-					: new Response("Unknown origin error", { status: 502 })
-
-			return cors
-				? responseWithCors({ response: errorResponse, requestOrigin, corsConfig: cors })
-				: errorResponse
+			return response
 		}
+
+		const finalizeResponse = async (response: Response): Promise<Response> => {
+			const transformedResponse = await applyResponseTransforms(response)
+			return cors
+				? responseWithCors({
+						response: transformedResponse,
+						requestOrigin,
+						corsConfig: cors
+					})
+				: transformedResponse
+		}
+
+		const createProxyErrorResponse = (err: unknown): Response =>
+			err instanceof Error
+				? new Response(`Origin fetch error: ${err.message}`, { status: 502 })
+				: new Response("Unknown origin error", { status: 502 })
+
+		const upgradeHeader = request.headers.get("Upgrade")
+		if (upgradeHeader?.toLowerCase() === "websocket") {
+			return fetch(new Request(makeTargetUrl(primaryUrl).toString(), request))
+		}
+
+		let lastUnavailableResponse: Response | undefined
+		let lastError: unknown
+
+		for (const [index, backendUrl] of backendUrls.entries()) {
+			const targetUrl = makeTargetUrl(backendUrl)
+
+			if (index > 0) {
+				console.log(`Trying backup backend ${index}: ${targetUrl}`)
+			}
+
+			try {
+				const response = await fetch(new Request(targetUrl.toString(), request.clone()))
+
+				if (response.status >= 500) {
+					lastUnavailableResponse = response
+					console.log(`Backend unavailable (${response.status}): ${targetUrl}`)
+					continue
+				}
+
+				return finalizeResponse(response)
+			} catch (err) {
+				lastError = err
+				console.log(`Backend fetch failed: ${targetUrl}`, err)
+			}
+		}
+
+		console.log("All proxy backends failed")
+
+		if (lastUnavailableResponse) {
+			return finalizeResponse(lastUnavailableResponse)
+		}
+
+		const errorResponse = createProxyErrorResponse(lastError)
+		return cors
+			? responseWithCors({ response: errorResponse, requestOrigin, corsConfig: cors })
+			: errorResponse
 	}
 }

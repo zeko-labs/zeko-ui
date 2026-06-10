@@ -1,14 +1,12 @@
 import { createProxyHandler } from "@zeko/proxy-handler"
 
-// TODO: Staketab archive is not working somehow
-const hostnames = [
-	// "https://zeko-mina-archive.staketab.com",
-	"https://devnet-archive-node-api.gcp.o1test.net"
-]
+const primaryUrl = "https://devnet-archive-node-api.gcp.o1test.net"
+const backupUrls: readonly string[] = ["https://mina-archive.devnet.zeko.io/graphql"]
 
 export default {
 	fetch: createProxyHandler({
-		hostnames,
+		primaryUrl,
+		backupUrls,
 		options: {
 			cors: {
 				origins: ["*"]

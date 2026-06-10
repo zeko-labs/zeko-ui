@@ -286,3 +286,8 @@
 - T286 | done | block-indexing-after-repair-failure | done/T286-block-indexing-after-repair-failure.md
 - T287 | done | bridge-validator-service-only | done/T287-bridge-validator-service-only.md
 - T288 | done | enable-bridge-validator-cron | done/T288-enable-bridge-validator-cron.md
+- T289 | done | mina-proxy-primary-backup-api | done/T289-mina-proxy-primary-backup-api.md
+- T290 | done | remove-proxy-hostnames-compat | done/T290-remove-proxy-hostnames-compat.md
+- T291 | done | update-mina-worker-proxy-config | done/T291-update-mina-worker-proxy-config.md
+- T292 | done | add-proxy-handler-failover-tests | done/T292-add-proxy-handler-failover-tests.md
+- T293 | done | finalize-mina-proxy-failover | done/T293-finalize-mina-proxy-failover.md
