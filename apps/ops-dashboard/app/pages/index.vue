@@ -190,6 +190,20 @@ const coverageState = (row: ChainRow): ServiceStatus => {
 	if (row.actionCoverageStatus === "partial") return "warn"
 	return "unknown"
 }
+const emptySummary = (): Record<ServiceStatus, number> => ({
+	ok: 0,
+	warn: 0,
+	error: 0,
+	unknown: 0
+})
+const summarizeStates = (states: ServiceStatus[]) =>
+	states.reduce<Record<ServiceStatus, number>>(
+		(summary, state) => ({
+			...summary,
+			[state]: summary[state] + 1
+		}),
+		emptySummary()
+	)
 const indexerHeaderState = computed<ServiceStatus>(() => {
 	const serviceState = indexerService.value?.status ?? "unknown"
 	if (serviceState === "error" || serviceState === "warn") return serviceState
@@ -204,15 +218,30 @@ const indexerHeaderLabel = computed(() => {
 	if (indexerHeaderState.value === "warn") return "Indexer needs review"
 	return `Indexer ${indexerService.value.status}`
 })
-const displayedSummary = computed(
-	() =>
-		snapshot.value?.summary ?? {
-			ok: 0,
-			warn: 0,
-			error: 0,
-			unknown: 0
-		}
+const dashboardCheckStates = computed<ServiceStatus[]>(() => {
+	if (snapshot.value === null) return []
+	return [
+		...services.value.map((service) => service.status),
+		...chainRows.value.flatMap((row) => [
+			finalityState(row.archiveFinalityGap, row.expectedFinalityBlocks),
+			coverageState(row),
+			tailState(row.nonCanonicalTailCount, row.expectedFinalityBlocks),
+			row.daemonBlockHeightSupported ? gapState(row.archiveDaemonGap) : "ok"
+		])
+	]
+})
+const displayedSummary = computed(() =>
+	summarizeStates(dashboardCheckStates.value)
 )
+const lagUnit = (row: ChainRow, value: number) => {
+	const noun = row.id === "l2" ? "tx" : "block"
+	return value === 1 ? noun : `${noun}s`
+}
+const indexerLagLabel = (row: ChainRow) => {
+	if (row.lastActionGap === null) return "indexer lag unknown"
+	if (row.lastActionGap <= 0) return "indexer at archive head"
+	return `${row.lastActionGap.toLocaleString()} ${lagUnit(row, row.lastActionGap)} behind archive head`
+}
 const coverageLabel = (row: ChainRow) => {
 	if (row.actionCoverageStatus === "missing") {
 		const count = row.missingActionCount ?? row.missingActionBlockCount ?? 0
@@ -221,16 +250,15 @@ const coverageLabel = (row: ChainRow) => {
 	}
 	if (row.actionCoverageStatus === "current")
 		return "DB has latest archive actions"
-	if (row.actionCoverageStatus === "partial") return "coverage scan partial"
+	if (row.actionCoverageStatus === "partial")
+		return "indexer behind archive head"
 	return "coverage unknown"
 }
 const coverageDetail = (row: ChainRow) => {
 	if (row.actionCoverageError) return row.actionCoverageError
 	if (row.actionCoverageStatus === "missing")
 		return `first missing block ${formatBlock(row.firstMissingActionBlock)}`
-	return `archive action ${formatBlock(row.latestArchiveActionBlock)}; DB action ${formatBlock(
-		row.lastActionBlockHeight
-	)}`
+	return `${indexerLagLabel(row)}; archive head ${formatBlock(row.archiveHeight)}; indexer fetched ${formatBlock(row.lastActionBlockHeight)}`
 }
 const archiveDaemonGapLabel = (gap: number | null) =>
 	gapLabel(gap, "archive ahead", "daemon ahead")
@@ -282,15 +310,6 @@ const detailEntries = (service: ServiceProbe) =>
 			value,
 			isDatabase: key.startsWith("database")
 		}))
-
-const summarizeSnapshotServices = (items: ServiceProbe[]) =>
-	items.reduce<Record<ServiceStatus, number>>(
-		(summary, service) => ({
-			...summary,
-			[service.status]: summary[service.status] + 1
-		}),
-		{ ok: 0, warn: 0, error: 0, unknown: 0 }
-	)
 
 const asRecord = (value: unknown): Record<string, unknown> =>
 	typeof value === "object" && value !== null
@@ -460,7 +479,7 @@ const hydrateIndexerFromBrowser = async (
 	})
 	return {
 		...nextSnapshot,
-		summary: summarizeSnapshotServices(services),
+		summary: summarizeStates(services.map((service) => service.status)),
 		services
 	}
 }

@@ -310,3 +310,4 @@
 - T310 | in-progress | restore-github-access | in-progress/T310-restore-github-access.md
 - T311 | done | fix-production-cloudflare-env | done/T311-fix-production-cloudflare-env.md
 - T312 | done | align-nuxt-cloudflare-env | done/T312-align-nuxt-cloudflare-env.md
+- T313 | done | clarify-ops-dashboard-checks | done/T313-clarify-ops-dashboard-checks.md
