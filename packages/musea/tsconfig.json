@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
+		"skipLibCheck": true,
+		"types": ["vite/client", "@vizejs/vite-plugin"],
+		"paths": {
+			"@zeko/layer/*": ["../layer/*"]
+		}
+	},
+	"include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
+}

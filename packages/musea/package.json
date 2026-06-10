@@ -1,0 +1,20 @@
+{
+	"name": "@zeko/musea",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"@unocss/reset": "catalog:",
+		"@vizejs/vite-plugin": "catalog:",
+		"@vizejs/vite-plugin-musea": "catalog:",
+		"@zeko/layer": "workspace:^",
+		"vite": "catalog:",
+		"vize": "catalog:",
+		"vue": "catalog:"
+	},
+	"devDependencies": {
+		"@csstools/postcss-global-data": "catalog:",
+		"postcss-preset-env": "catalog:",
+		"typescript": "catalog:",
+		"vue-tsc": "catalog:"
+	}
+}

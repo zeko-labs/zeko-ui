@@ -1,0 +1,45 @@
+layer: application
+dependsOn:
+  - design
+  - layer
+fileGroups:
+  sources:
+    - src/**/*
+    - index.html
+    - package.json
+    - tsconfig.json
+    - vite.config.ts
+tasks:
+  format:
+    inputs:
+      - "@group(sources)"
+  format-fix:
+    inputs:
+      - "@group(sources)"
+  lint:
+    command: biome lint --diagnostic-level=error
+    inputs:
+      - "@globs(sources)"
+  lint-fix:
+    command: biome lint --fix --unsafe --diagnostic-level=error
+    inputs:
+      - "@globs(sources)"
+  dev:
+    command: vite --host 127.0.0.1 --port 6077
+    preset: server
+    inputs:
+      - "@group(sources)"
+  build:
+    command: vite build
+    deps:
+      - ^:build
+    inputs:
+      - "@group(sources)"
+      - /packages/layer/app/**/*
+    outputs:
+      - dist/
+  typecheck:
+    command: vue-tsc --noEmit
+    inputs:
+      - "@group(sources)"
+      - /packages/layer/app/**/*

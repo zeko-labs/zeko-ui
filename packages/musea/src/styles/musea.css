@@ -1,0 +1,11 @@
+body {
+	min-width: 320px;
+	margin: 0;
+	background: var(--theme-light-background-primary);
+	color: var(--theme-light-content-primary);
+	font-family: var(--typography-fontFamily-lexend);
+}
+
+#app {
+	min-height: 100vh;
+}

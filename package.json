@@ -9,6 +9,7 @@
 		"@emnapi/runtime": "catalog:",
 		"@moonrepo/cli": "^2.2.6",
 		"@typescript/native-preview": "catalog:",
+		"vize": "catalog:",
 		"dprint": "^0.47.6",
 		"lefthook": "^1.13.6",
 		"typescript": "catalog:"

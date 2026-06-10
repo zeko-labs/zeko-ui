@@ -280,3 +280,7 @@
 - T280 | done | validate-and-open-nuxt-4-4-pr | done/T280-validate-and-open-nuxt-4-4-pr.md
 - T281 | done | align-native-typecheck-followup | done/T281-align-native-typecheck-followup.md
 - T282 | done | upgrade-tooling-and-biome-format | done/T282-upgrade-tooling-and-biome-format.md
+- T283 | done | baseline-vize-migration-and-dev-servers | done/T283-baseline-vize-migration-and-dev-servers.md
+- T284 | done | integrate-vize-nuxt-compiler-trial | done/T284-integrate-vize-nuxt-compiler-trial.md
+- T285 | done | evaluate-musea-project-structure | done/T285-evaluate-musea-project-structure.md
+- T286 | done | validate-vize-production-builds | done/T286-validate-vize-production-builds.md
