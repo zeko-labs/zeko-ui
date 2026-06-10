@@ -305,3 +305,4 @@
 - T305 | done | dashboard-sync-coverage-signals | done/T305-dashboard-sync-coverage-signals.md
 - T306 | done | preserve-dashboard-state-during-loading | done/T306-preserve-dashboard-state-during-loading.md
 - T307 | done | deploy-dashboard-access | done/T307-deploy-dashboard-access.md
+- T308 | done | fix-access-idp-login | done/T308-fix-access-idp-login.md

@@ -4,10 +4,13 @@ type CloudflareEnvelope<T> = {
 	errors: { code: number; message: string }[]
 }
 
+type AccessProvider = "cloudflare" | "github"
+
 type AccessIdentityProvider = {
 	id: string
 	name: string
 	type: string
+	config?: Record<string, unknown>
 }
 
 type AccessPolicy = {
@@ -57,11 +60,21 @@ const requiredEnv = (key: string, fallbackKey?: string) => {
 
 const optionalEnv = (key: string, fallback: string) => process.env[key]?.trim() || fallback
 
+const resolveProvider = (): AccessProvider => {
+	const value = optionalEnv("OPS_DASHBOARD_ACCESS_PROVIDER", "cloudflare")
+	if (value === "cloudflare" || value === "github") return value
+	throw new Error("OPS_DASHBOARD_ACCESS_PROVIDER must be cloudflare or github")
+}
+
 const token = requiredEnv("CLOUDFLARE_API_TOKEN", "CFZT_TOKEN")
 const accountId = requiredEnv("CLOUDFLARE_ACCOUNT_ID")
 const hostname = optionalEnv("OPS_DASHBOARD_HOSTNAME", "ops.zeko.io")
 const appName = optionalEnv("OPS_DASHBOARD_ACCESS_APP_NAME", "Zeko Ops Dashboard")
-const policyName = optionalEnv("OPS_DASHBOARD_ACCESS_POLICY_NAME", "Allow Zeko GitHub org")
+const provider = resolveProvider()
+const policyName = optionalEnv(
+	"OPS_DASHBOARD_ACCESS_POLICY_NAME",
+	provider === "cloudflare" ? "Allow Zeko Cloudflare account" : "Allow Zeko GitHub org"
+)
 const githubOrg = optionalEnv("OPS_DASHBOARD_GITHUB_ORG", "zeko-labs")
 const githubIdpId = process.env.OPS_DASHBOARD_GITHUB_IDP_ID?.trim()
 
@@ -89,6 +102,35 @@ const request = async <T>(path: string, init: RequestInit = {}) => {
 
 const listAll = async <T>(path: string) => request<T[]>(path)
 
+const upsertCloudflareIdp = async () => {
+	const idps = await listAll<AccessIdentityProvider>("identity_providers")
+	const existing = idps.find((idp) => idp.type === "cloudflare")
+	const payload = {
+		name: "Cloudflare",
+		type: "cloudflare",
+		config: {
+			restrict_to_account_members: true
+		}
+	}
+	if (existing === undefined) {
+		const created = await request<AccessIdentityProvider>("identity_providers", {
+			method: "POST",
+			body: JSON.stringify(payload)
+		})
+		console.log(`Created Cloudflare identity provider ${created.name} (${created.id})`)
+		return created
+	}
+	const updated = await request<AccessIdentityProvider>(`identity_providers/${existing.id}`, {
+		method: "PUT",
+		body: JSON.stringify({
+			...payload,
+			id: existing.id
+		})
+	})
+	console.log(`Updated Cloudflare identity provider ${updated.name} (${updated.id})`)
+	return updated
+}
+
 const findGithubIdp = async () => {
 	const idps = await listAll<AccessIdentityProvider>("identity_providers")
 	const githubIdps = idps.filter((idp) => idp.type === "github")
@@ -111,6 +153,9 @@ const findGithubIdp = async () => {
 	return githubIdps[0]
 }
 
+const resolveIdentityProvider = () =>
+	provider === "cloudflare" ? upsertCloudflareIdp() : findGithubIdp()
+
 const accessAppPayload = (identityProviderId: string) => ({
 	name: appName,
 	type: "self_hosted",
@@ -125,15 +170,30 @@ const accessPolicyPayload = (identityProviderId: string) => ({
 	name: policyName,
 	decision: "allow",
 	precedence: 1,
-	include: [
-		{
-			"github-organization": {
-				name: githubOrg,
-				identity_provider_id: identityProviderId
-			}
-		}
-	]
+	include:
+		provider === "cloudflare"
+			? [
+					{
+						cloudflare_account_member: {
+							account_id: accountId
+						}
+					}
+				]
+			: [
+					{
+						"github-organization": {
+							name: githubOrg,
+							identity_provider_id: identityProviderId
+						}
+					}
+				]
 })
+
+const previousPolicyNames = new Set([
+	policyName,
+	"Allow Zeko GitHub org",
+	"Allow Zeko Cloudflare account"
+])
 
 const upsertAccessApp = async (identityProviderId: string) => {
 	const apps = await listAll<AccessApplication>("apps")
@@ -154,26 +214,43 @@ const upsertAccessApp = async (identityProviderId: string) => {
 	return updated
 }
 
-const upsertAccessPolicy = async (app: AccessApplication, identityProviderId: string) => {
-	const policies = await listAll<AccessPolicy>(`apps/${app.id}/policies`)
-	const existing = policies.find((policy) => policy.name === policyName)
-	if (existing === undefined) {
-		const created = await request<AccessPolicy>(`apps/${app.id}/policies`, {
-			method: "POST",
-			body: JSON.stringify(accessPolicyPayload(identityProviderId))
+const deleteSupersededPolicies = async (appId: string, keepPolicyId: string) => {
+	const policies = await listAll<AccessPolicy>(`apps/${appId}/policies`)
+	const stalePolicies = policies.filter(
+		(policy) => policy.id !== keepPolicyId && previousPolicyNames.has(policy.name)
+	)
+	for (const policy of stalePolicies) {
+		await request<AccessPolicy>(`apps/${appId}/policies/${policy.id}`, {
+			method: "DELETE"
 		})
-		console.log(`Created Access policy ${created.name} (${created.id})`)
-		return
+		console.log(`Deleted superseded Access policy ${policy.name} (${policy.id})`)
 	}
-	const updated = await request<AccessPolicy>(`apps/${app.id}/policies/${existing.id}`, {
-		method: "PUT",
-		body: JSON.stringify(accessPolicyPayload(identityProviderId))
-	})
-	console.log(`Updated Access policy ${updated.name} (${updated.id})`)
 }
 
-const githubIdp = await findGithubIdp()
-console.log(`Using GitHub identity provider ${githubIdp.name} (${githubIdp.id})`)
-const app = await upsertAccessApp(githubIdp.id)
-await upsertAccessPolicy(app, githubIdp.id)
-console.log(`Access is configured for ${hostname} with GitHub org ${githubOrg}`)
+const upsertAccessPolicy = async (app: AccessApplication, identityProviderId: string) => {
+	const policies = await listAll<AccessPolicy>(`apps/${app.id}/policies`)
+	const existing = policies.find((policy) => previousPolicyNames.has(policy.name))
+	const policy =
+		existing === undefined
+			? await request<AccessPolicy>(`apps/${app.id}/policies`, {
+					method: "POST",
+					body: JSON.stringify(accessPolicyPayload(identityProviderId))
+				})
+			: await request<AccessPolicy>(`apps/${app.id}/policies/${existing.id}`, {
+					method: "PUT",
+					body: JSON.stringify(accessPolicyPayload(identityProviderId))
+				})
+	console.log(
+		`${existing === undefined ? "Created" : "Updated"} Access policy ${policy.name} (${policy.id})`
+	)
+	await deleteSupersededPolicies(app.id, policy.id)
+}
+
+const formatTarget = () =>
+	provider === "cloudflare" ? `Cloudflare account ${accountId}` : `GitHub organization ${githubOrg}`
+
+const identityProvider = await resolveIdentityProvider()
+console.log(`Using ${provider} identity provider ${identityProvider.name} (${identityProvider.id})`)
+const app = await upsertAccessApp(identityProvider.id)
+await upsertAccessPolicy(app, identityProvider.id)
+console.log(`Access is configured for ${hostname} with ${formatTarget()}`)
