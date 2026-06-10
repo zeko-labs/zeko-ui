@@ -114,11 +114,13 @@ button {
 }
 
 .HealthPill[data-state="warn"],
+.HealthPill[data-state="unknown"],
 .StateBadge[data-state="warn"],
 .StateBadge[data-state="unknown"] {
   color: var(--OpsAmber);
 }
 
+.HealthPill[data-state="error"],
 .StateBadge[data-state="error"] {
   color: var(--OpsRed);
 }

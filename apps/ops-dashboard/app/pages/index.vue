@@ -11,7 +11,6 @@ import {
 } from "lucide-vue-next"
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import {
-	actionGapState,
 	buildChainInsight,
 	finalityState,
 	gapLabel,
@@ -91,6 +90,14 @@ const serviceById = computed(
 	() => new Map(services.value.map((service) => [service.id, service]))
 )
 const indexerService = computed(() => serviceById.value.get("actions-indexer"))
+const indexerHeaderState = computed(
+	() => indexerService.value?.status ?? "unknown"
+)
+const indexerHeaderLabel = computed(() =>
+	indexerService.value === undefined
+		? "Indexer loading"
+		: `Indexer ${indexerService.value.status}`
+)
 const chainRows = computed<ChainRow[]>(() => {
 	const indexer = indexerService.value
 	const l1Archive = serviceById.value.get("l1-archive")
@@ -135,13 +142,6 @@ const chainRows = computed<ChainRow[]>(() => {
 		}
 	]
 })
-const unhealthyCount = computed(
-	() =>
-		services.value.filter(
-			(service) => service.status === "error" || service.status === "warn"
-		).length
-)
-
 const formatDate = (value: string | null | undefined) => {
 	if (!value) return "-"
 	return new Intl.DateTimeFormat("en", {
@@ -163,13 +163,11 @@ const formatValue = (value: string | number | boolean | null) => {
 
 const formatBlock = (value: number | null) =>
 	value === null ? "-" : value.toLocaleString()
-const actionGapLabel = (row: ChainRow) => {
-	if (row.canonicalActionGap === null) return "unavailable"
-	if (row.canonicalActionGap === 0) return "aligned"
-	if (row.canonicalActionGap < 0)
-		return `${Math.abs(row.canonicalActionGap).toLocaleString()} ahead of canonical archive`
-	const unit = row.id === "l2" ? "txs" : "blocks"
-	return `${row.canonicalActionGap.toLocaleString()} ${unit} since final action`
+const pendingActionLabel = (row: ChainRow) => {
+	if (row.nonCanonicalTailCount === null) return "pending actions unknown"
+	if (row.nonCanonicalTailCount === 0) return "no pending actions"
+	const unit = row.nonCanonicalTailCount === 1 ? "action" : "actions"
+	return `${row.nonCanonicalTailCount.toLocaleString()} pending ${unit}`
 }
 const finalityGapLabel = (row: ChainRow) => {
 	if (row.archiveFinalityGap === null) return "pending/canonical unknown"
@@ -326,12 +324,8 @@ watch(
         <span class="NetworkPill">{{ currentNetwork }}</span>
         <span
           class="HealthPill"
-          :data-state='unhealthyCount === 0 ? "ok" : "warn"'>
-          {{
-            unhealthyCount === 0
-            ? "All clear"
-            : `${unhealthyCount} attention`
-          }}
+          :data-state="indexerHeaderState">
+          {{ indexerHeaderLabel }}
         </span>
         <span class="Timestamp">Checked {{
             formatDate(snapshot?.checkedAt)
@@ -450,11 +444,11 @@ watch(
         v-for="row in chainRows"
         :key="`${row.id}-action-gap`"
         class="InsightCard"
-        :data-state="actionGapState(row.canonicalActionGap)">
+        :data-state="tailState(row.nonCanonicalTailCount, row.expectedFinalityBlocks)">
         <span>Zeko action-indexer {{ row.indexerLabel }} stream</span>
-        <strong>{{ actionGapLabel(row) }}</strong>
-        <small>Final action block {{ formatBlock(row.finalActionBlockHeight) }}
-          vs canonical {{ formatBlock(row.archiveCanonicalHeight) }}</small>
+        <strong>{{ pendingActionLabel(row) }}</strong>
+        <small>Last action block {{ formatBlock(row.lastActionBlockHeight) }};
+          final {{ formatBlock(row.finalActionBlockHeight) }}</small>
       </article>
       <article
         v-for="row in chainRows"
@@ -495,7 +489,13 @@ watch(
           <div v-for="row in chainRows" :key="`${row.id}-indexer`">
             <span>{{ row.indexerLabel }} last action block</span>
             <strong>{{ formatBlock(row.lastActionBlockHeight) }}</strong>
-            <small :data-state="actionGapState(row.canonicalActionGap)">
+            <small
+              :data-state="
+                tailState(
+                	row.nonCanonicalTailCount,
+                	row.expectedFinalityBlocks
+                )
+              ">
               final {{ formatBlock(row.finalActionBlockHeight) }}; tail {{
                 formatBlock(row.nonCanonicalTailCount)
               }}

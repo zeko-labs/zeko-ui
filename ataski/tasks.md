@@ -301,3 +301,4 @@
 - T301 | done | align-ops-dashboard-testnet-archive | done/T301-align-ops-dashboard-testnet-archive.md
 - T302 | done | ops-dashboard-url-layout-lag | done/T302-ops-dashboard-url-layout-lag.md
 - T303 | done | clarify-action-indexer-health | done/T303-clarify-action-indexer-health.md
+- T304 | done | stabilize-ops-health-signals | done/T304-stabilize-ops-health-signals.md
