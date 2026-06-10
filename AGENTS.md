@@ -31,6 +31,7 @@ To install everything, run `pnpm i` from the root.
 
 ## Linear and PRs
 
+- For this `zeko-ui` repository, create Linear issues in the `Web` team by default. Use the `ZK` team for the separate `zeko` repository or for work that is explicitly owned by Zeko-core rather than this UI monorepo.
 - To connect a Linear issue to a GitHub PR, use a closing magic word in the PR description, for example `Fixes WEB-123`.
 - The Linear/GitHub integration will auto-close the Linear issue after the PR merges when the PR body uses a closing magic word. This automatic close after merge is the only required Linear progress signal.
 - Do not add Linear comments, update the Linear issue description, or otherwise log implementation progress in Linear unless the user explicitly asks for that. Keep progress and validation details in the PR body or the chat.
