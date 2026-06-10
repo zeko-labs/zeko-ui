@@ -248,6 +248,14 @@ button {
   color: var(--OpsRed);
 }
 
+.ControlNote {
+  margin: 0 0 14px;
+  color: var(--OpsMuted);
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
 .SummaryGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -281,13 +289,57 @@ button {
   }
 }
 
-.ServiceGrid {
+.InsightGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 10px;
+  margin-bottom: 16px;
 
   @media (--Desktop) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.InsightCard {
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--OpsLine);
+  border-left: 5px solid var(--OpsSubtle);
+  background: rgb(255 253 246 / 0.9);
+
+  &[data-state="ok"] {
+    border-left-color: var(--OpsGreen);
+  }
+
+  &[data-state="warn"],
+  &[data-state="unknown"] {
+    border-left-color: var(--OpsAmber);
+  }
+
+  &[data-state="error"] {
+    border-left-color: var(--OpsRed);
+  }
+
+  span,
+  small {
+    display: block;
+    color: var(--OpsMuted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  strong {
+    display: block;
+    margin: 6px 0;
+    font-size: 1.18rem;
+    line-height: 1.1;
+  }
+
+  small {
+    color: var(--OpsSubtle);
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    text-transform: none;
   }
 }
 
@@ -299,6 +351,68 @@ button {
   border-radius: 8px;
   background: rgb(255 253 246 / 0.92);
   overflow: hidden;
+}
+
+.IndexerSection {
+  margin-bottom: 18px;
+}
+
+.IndexerCard {
+  border-top-width: 6px;
+}
+
+.IndexerHighlights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border-bottom: 1px solid var(--OpsLine);
+
+  @media (--Tablet) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  div {
+    min-width: 0;
+    padding: 14px;
+    border-right: 1px solid var(--OpsLine);
+    background: rgb(31 91 153 / 0.06);
+  }
+
+  span,
+  small {
+    display: block;
+    color: var(--OpsMuted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  strong {
+    display: block;
+    margin: 6px 0;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 1.45rem;
+    line-height: 1;
+    overflow-wrap: anywhere;
+  }
+
+  small {
+    color: var(--OpsSubtle);
+    text-transform: none;
+
+    &[data-state="ok"] {
+      color: var(--OpsGreen);
+    }
+
+    &[data-state="warn"],
+    &[data-state="unknown"] {
+      color: var(--OpsAmber);
+    }
+
+    &[data-state="error"] {
+      color: var(--OpsRed);
+    }
+  }
 }
 
 .ServiceCard[data-state="ok"] {
@@ -338,6 +452,118 @@ button {
   }
 }
 
+.ChainGrid {
+  display: grid;
+  gap: 22px;
+}
+
+.ChainBand {
+  min-width: 0;
+  padding-top: 18px;
+  border-top: 2px solid var(--OpsCharcoal);
+}
+
+.ChainHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+
+  h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+}
+
+.ChainBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  span {
+    min-height: 28px;
+    padding: 5px 9px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    color: var(--OpsSubtle);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+
+    &[data-state="ok"] {
+      color: var(--OpsGreen);
+    }
+
+    &[data-state="warn"],
+    &[data-state="unknown"] {
+      color: var(--OpsAmber);
+    }
+
+    &[data-state="error"] {
+      color: var(--OpsRed);
+    }
+  }
+}
+
+.HeightStrip {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-bottom: 10px;
+  border: 1px solid var(--OpsLine);
+  background: rgb(255 253 246 / 0.82);
+
+  @media (--Tablet) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  div {
+    min-width: 0;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--OpsLine);
+
+    @media (--Tablet) {
+      border-right: 1px solid var(--OpsLine);
+      border-bottom: 0;
+    }
+  }
+
+  span,
+  small {
+    display: block;
+    color: var(--OpsMuted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  strong {
+    display: block;
+    margin: 5px 0;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+
+  small {
+    color: var(--OpsSubtle);
+    text-transform: none;
+  }
+}
+
+.LaneColumns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+
+  @media (--Desktop) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .DetailGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -373,6 +599,16 @@ button {
     font-size: 0.88rem;
     font-weight: 700;
     overflow-wrap: anywhere;
+  }
+}
+
+.DetailGrid.Compact {
+  @media (--Tablet) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (--Desktop) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

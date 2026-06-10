@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { blockGap, buildChainInsight, gapLabel, gapState } from "../app/utils/ops-insights"
 import {
 	extractActionsIndexerDetails,
 	getOpsConfig,
@@ -62,6 +63,7 @@ describe("ops dashboard utilities", () => {
 			network: "testnet",
 			actionsIndexerUrl: "https://testnet.indexer.actions.zeko.io",
 			l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
+			l1DaemonUrl: "https://gateway.mina.devnet.zeko.io",
 			l2DaemonUrl: "https://testnet.zeko.io/graphql"
 		})
 	})
@@ -125,6 +127,55 @@ describe("ops dashboard utilities", () => {
 			innerLastFinalIndex: 10_554,
 			innerLastFinalBlockHeight: 1_080_812,
 			innerNonCanonicalTailCount: 2
+		})
+	})
+
+	it("calculates signed archive/indexer and daemon/archive gaps", () => {
+		expect(blockGap(1_050, 1_000)).toBe(50)
+		expect(blockGap(1_000, 1_050)).toBe(-50)
+		expect(gapLabel(50, "ahead", "behind")).toBe("50 behind")
+		expect(gapLabel(-50, "ahead", "behind")).toBe("50 ahead")
+		expect(gapState(4)).toBe("ok")
+		expect(gapState(50)).toBe("warn")
+		expect(gapState(500)).toBe("error")
+		expect(gapState(null)).toBe("unknown")
+	})
+
+	it("builds chain insights from indexer, archive, and daemon probes", () => {
+		expect(
+			buildChainInsight({
+				id: "l1",
+				label: "L1 Mina",
+				indexerLabel: "Outer",
+				indexer: {
+					id: "actions-indexer",
+					details: {
+						lastFetchedOuter: 990,
+						outerLastFinalBlockHeight: 980
+					}
+				},
+				archive: {
+					id: "l1-archive",
+					details: {
+						canonicalMaxBlockHeight: 995,
+						pendingMaxBlockHeight: 1_000
+					}
+				},
+				daemon: {
+					id: "l1-daemon",
+					details: { blockHeight: 1_002 }
+				},
+				indexerHeightKey: "lastFetchedOuter",
+				indexerFinalHeightKey: "outerLastFinalBlockHeight"
+			})
+		).toMatchObject({
+			indexerHeight: 990,
+			indexerFinalHeight: 980,
+			archiveHeight: 1_000,
+			archiveCanonicalHeight: 995,
+			daemonHeight: 1_002,
+			indexerArchiveLag: 10,
+			archiveDaemonGap: 2
 		})
 	})
 })

@@ -9,7 +9,13 @@ import {
 	Square,
 	Zap
 } from "lucide-vue-next"
-import { computed, onBeforeUnmount, onMounted, ref } from "vue"
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
+import {
+	buildChainInsight,
+	gapLabel,
+	gapState,
+	type ChainInsight
+} from "~/utils/ops-insights"
 
 type ServiceStatus = "ok" | "warn" | "error" | "unknown"
 type ServiceKind = "actions-indexer" | "archive" | "daemon"
@@ -43,13 +49,26 @@ interface OpsSnapshot {
 }
 
 type ControlAction = "start" | "stop" | "rebuild" | "reset"
+type ChainRow = ChainInsight & {
+	archive?: ServiceProbe
+	daemon?: ServiceProbe
+}
+
+const route = useRoute()
+const router = useRouter()
+const resolveNetworkFromQuery = (value: unknown): OpsNetwork => {
+	const raw = Array.isArray(value) ? value[0] : value
+	return raw === "testnet" || raw === "mainnet" ? raw : "mainnet"
+}
 
 const snapshot = ref<OpsSnapshot | null>(null)
 const isRefreshing = ref(false)
 const activeAction = ref<ControlAction | null>(null)
 const errorMessage = ref<string | null>(null)
 const actionMessage = ref<string | null>(null)
-const selectedNetwork = ref<OpsNetwork>("mainnet")
+const selectedNetwork = ref<OpsNetwork>(
+	resolveNetworkFromQuery(route.query.network)
+)
 const refreshIntervalMs = 5_000
 const lastRefreshStartedAt = ref<string | null>(null)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
@@ -65,6 +84,48 @@ const services = computed(() => snapshot.value?.services ?? [])
 const currentNetwork = computed(
 	() => snapshot.value?.config.network ?? selectedNetwork.value
 )
+const serviceById = computed(
+	() => new Map(services.value.map((service) => [service.id, service]))
+)
+const indexerService = computed(() => serviceById.value.get("actions-indexer"))
+const chainRows = computed<ChainRow[]>(() => {
+	const indexer = indexerService.value
+	const l1Archive = serviceById.value.get("l1-archive")
+	const l1Daemon = serviceById.value.get("l1-daemon")
+	const l2Archive = serviceById.value.get("l2-archive")
+	const l2Daemon = serviceById.value.get("l2-daemon")
+
+	return [
+		{
+			...buildChainInsight({
+				id: "l1",
+				label: "L1 Mina",
+				indexerLabel: "Outer",
+				indexer,
+				archive: l1Archive,
+				daemon: l1Daemon,
+				indexerHeightKey: "lastFetchedOuter",
+				indexerFinalHeightKey: "outerLastFinalBlockHeight"
+			}),
+			archive: l1Archive,
+			daemon: l1Daemon
+		},
+		{
+			...buildChainInsight({
+				id: "l2",
+				label: "L2 Zeko",
+				indexerLabel: "Inner",
+				indexer,
+				archive: l2Archive,
+				daemon: l2Daemon,
+				indexerHeightKey: "lastFetchedInner",
+				indexerFinalHeightKey: "innerLastFinalBlockHeight"
+			}),
+			archive: l2Archive,
+			daemon: l2Daemon
+		}
+	]
+})
 const unhealthyCount = computed(
 	() =>
 		services.value.filter(
@@ -90,6 +151,19 @@ const formatValue = (value: string | number | boolean | null) => {
 		return Number.isInteger(value) ? value.toLocaleString() : value.toFixed(2)
 	return value
 }
+
+const formatBlock = (value: number | null) =>
+	value === null ? "-" : value.toLocaleString()
+const indexerLagLabel = (gap: number | null) =>
+	gapLabel(gap, "ahead of archive", "behind archive")
+const archiveDaemonGapLabel = (gap: number | null) =>
+	gapLabel(gap, "archive ahead", "daemon ahead")
+const rowServices = (row: ChainRow): ServiceProbe[] =>
+	[row.archive, row.daemon].filter((service): service is ServiceProbe =>
+		Boolean(service)
+	)
+const detailValue = (service: ServiceProbe, key: string) =>
+	service.details[key] ?? null
 
 const formatDetailKey = (key: string) =>
 	key
@@ -174,14 +248,24 @@ const runControl = async (action: ControlAction) => {
 }
 
 const switchNetwork = (network: OpsNetwork) => {
-	if (selectedNetwork.value === network) return
-	selectedNetwork.value = network
-	snapshot.value = null
-	actionMessage.value = null
-	void refresh()
+	if (resolveNetworkFromQuery(route.query.network) === network) return
+	void router.replace({
+		query: {
+			...route.query,
+			network
+		}
+	})
 }
 
 onMounted(() => {
+	if (route.query.network !== selectedNetwork.value) {
+		void router.replace({
+			query: {
+				...route.query,
+				network: selectedNetwork.value
+			}
+		})
+	}
 	void refresh()
 	refreshTimer = setInterval(() => {
 		if (document.visibilityState === "visible") void refresh()
@@ -191,6 +275,18 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	if (refreshTimer !== null) clearInterval(refreshTimer)
 })
+
+watch(
+	() => route.query.network,
+	(value) => {
+		const network = resolveNetworkFromQuery(value)
+		if (selectedNetwork.value === network) return
+		selectedNetwork.value = network
+		snapshot.value = null
+		actionMessage.value = null
+		void refresh()
+	}
+)
 </script>
 
 <template>
@@ -287,6 +383,12 @@ onBeforeUnmount(() => {
     <p v-if="actionMessage" class="Notice">{{ actionMessage }}</p>
     <p v-if="errorMessage" class="Notice Error">{{ errorMessage }}</p>
 
+    <p class="ControlNote">
+      Rebuild repopulates indexed rows from the archive sources and resumes from
+      the rebuilt heads; resync/reset clears indexed state and starts indexing
+      again from scratch.
+    </p>
+
     <section class="SummaryGrid" aria-label="Status summary">
       <div class="Metric">
         <span>OK</span>
@@ -306,40 +408,99 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <section class="ServiceGrid" aria-label="Service status">
+    <section class="InsightGrid" aria-label="Operational gaps">
       <article
-        v-for="service in services"
-        :key="service.id"
-        class="ServiceCard"
-        :data-state="service.status">
+        v-for="row in chainRows"
+        :key="`${row.id}-indexer-gap`"
+        class="InsightCard"
+        :data-state="gapState(row.indexerArchiveLag)">
+        <span>{{ row.label }} indexer</span>
+        <strong>{{ indexerLagLabel(row.indexerArchiveLag) }}</strong>
+        <small>{{ row.indexerLabel }}
+          {{ formatBlock(row.indexerHeight) }} vs archive {{
+            formatBlock(row.archiveHeight)
+          }}</small>
+      </article>
+      <article
+        v-for="row in chainRows"
+        :key="`${row.id}-daemon-gap`"
+        class="InsightCard"
+        :data-state="gapState(row.archiveDaemonGap)">
+        <span>{{ row.label }} archive / daemon</span>
+        <strong>{{ archiveDaemonGapLabel(row.archiveDaemonGap) }}</strong>
+        <small>Archive {{ formatBlock(row.archiveHeight) }} vs daemon {{
+            formatBlock(row.daemonHeight)
+          }}</small>
+      </article>
+    </section>
+
+    <section class="IndexerSection" aria-label="Actions indexer status">
+      <article
+        v-if="indexerService"
+        class="ServiceCard IndexerCard"
+        :data-state="indexerService.status">
         <header class="ServiceHeader">
-          <component :is="serviceIcon(service)" :size="19" />
+          <component :is="serviceIcon(indexerService)" :size="19" />
           <div>
-            <h2>{{ service.label }}</h2>
-            <p>{{ service.endpoint }}</p>
+            <h2>{{ indexerService.label }}</h2>
+            <p>{{ indexerService.endpoint }}</p>
           </div>
-          <span class="StateBadge" :data-state="service.status">{{
-            service.status
+          <span class="StateBadge" :data-state="indexerService.status">{{
+            indexerService.status
           }}</span>
         </header>
+
+        <div class="IndexerHighlights">
+          <div v-for="row in chainRows" :key="`${row.id}-indexer`">
+            <span>{{ row.indexerLabel }} indexed</span>
+            <strong>{{ formatBlock(row.indexerHeight) }}</strong>
+            <small :data-state="gapState(row.indexerArchiveLag)">
+              {{ indexerLagLabel(row.indexerArchiveLag) }}
+            </small>
+          </div>
+          <div>
+            <span>DB</span>
+            <strong>{{
+              formatValue(detailValue(indexerService, "databaseStatus"))
+            }}</strong>
+            <small>{{
+                formatValue(
+                	detailValue(indexerService, "databaseLatencyMs")
+                )
+              }} ms latency</small>
+          </div>
+          <div>
+            <span>Loop</span>
+            <strong>{{
+              formatValue(detailValue(indexerService, "running"))
+            }}</strong>
+            <small>{{
+                formatValue(detailValue(indexerService, "intervalSeconds"))
+              }}s interval</small>
+          </div>
+        </div>
 
         <dl class="DetailGrid">
           <div>
             <dt>HTTP</dt>
-            <dd>{{ service.httpStatus ?? "-" }}</dd>
+            <dd>{{ indexerService.httpStatus ?? "-" }}</dd>
           </div>
           <div>
             <dt>Latency</dt>
             <dd>
-              {{ service.latencyMs === null ? "-" : `${service.latencyMs} ms` }}
+              {{
+                indexerService.latencyMs === null
+                ? "-"
+                : `${indexerService.latencyMs} ms`
+              }}
             </dd>
           </div>
           <div>
             <dt>Checked</dt>
-            <dd>{{ formatDate(service.checkedAt) }}</dd>
+            <dd>{{ formatDate(indexerService.checkedAt) }}</dd>
           </div>
           <div
-            v-for="entry in detailEntries(service)"
+            v-for="entry in detailEntries(indexerService)"
             :key="entry.key"
             :data-database="entry.isDatabase">
             <dt>{{ entry.label }}</dt>
@@ -347,8 +508,95 @@ onBeforeUnmount(() => {
           </div>
         </dl>
 
-        <p v-if="service.error" class="ServiceError">{{ service.error }}</p>
+        <p v-if="indexerService.error" class="ServiceError">
+          {{ indexerService.error }}
+        </p>
       </article>
+    </section>
+
+    <section class="ChainGrid" aria-label="Archive and daemon alignment">
+      <section v-for="row in chainRows" :key="row.id" class="ChainBand">
+        <header class="ChainHeader">
+          <div>
+            <p class="Kicker">{{ row.indexerLabel }} stream</p>
+            <h2>{{ row.label }}</h2>
+          </div>
+          <div class="ChainBadges">
+            <span :data-state="gapState(row.indexerArchiveLag)">
+              Indexer {{ indexerLagLabel(row.indexerArchiveLag) }}
+            </span>
+            <span :data-state="gapState(row.archiveDaemonGap)">
+              {{ archiveDaemonGapLabel(row.archiveDaemonGap) }}
+            </span>
+          </div>
+        </header>
+
+        <div class="HeightStrip">
+          <div>
+            <span>Indexer fetched</span>
+            <strong>{{ formatBlock(row.indexerHeight) }}</strong>
+            <small>final {{ formatBlock(row.indexerFinalHeight) }}</small>
+          </div>
+          <div>
+            <span>Archive pending</span>
+            <strong>{{ formatBlock(row.archiveHeight) }}</strong>
+            <small>canonical {{
+                formatBlock(row.archiveCanonicalHeight)
+              }}</small>
+          </div>
+          <div>
+            <span>Daemon head</span>
+            <strong>{{ formatBlock(row.daemonHeight) }}</strong>
+            <small>{{ archiveDaemonGapLabel(row.archiveDaemonGap) }}</small>
+          </div>
+        </div>
+
+        <div class="LaneColumns">
+          <article
+            v-for="service in rowServices(row)"
+            :key="service.id"
+            class="ServiceCard"
+            :data-state="service.status">
+            <header class="ServiceHeader">
+              <component :is="serviceIcon(service)" :size="19" />
+              <div>
+                <h2>{{ service.label }}</h2>
+                <p>{{ service.endpoint }}</p>
+              </div>
+              <span class="StateBadge" :data-state="service.status">{{
+                service.status
+              }}</span>
+            </header>
+
+            <dl class="DetailGrid Compact">
+              <div>
+                <dt>HTTP</dt>
+                <dd>{{ service.httpStatus ?? "-" }}</dd>
+              </div>
+              <div>
+                <dt>Latency</dt>
+                <dd>
+                  {{
+                    service.latencyMs === null
+                    ? "-"
+                    : `${service.latencyMs} ms`
+                  }}
+                </dd>
+              </div>
+              <div>
+                <dt>Checked</dt>
+                <dd>{{ formatDate(service.checkedAt) }}</dd>
+              </div>
+              <div v-for="entry in detailEntries(service)" :key="entry.key">
+                <dt>{{ entry.label }}</dt>
+                <dd>{{ formatValue(entry.value) }}</dd>
+              </div>
+            </dl>
+
+            <p v-if="service.error" class="ServiceError">{{ service.error }}</p>
+          </article>
+        </div>
+      </section>
     </section>
   </main>
 </template>
