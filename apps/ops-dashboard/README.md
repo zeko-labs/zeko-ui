@@ -27,6 +27,22 @@ Endpoint overrides:
 
 ## Deployment
 
+Configure Cloudflare Access before deploying the custom domain. The task expects
+an API token scoped to the Zeko Cloudflare account with:
+
+- `Access: Apps and Policies Edit`
+- `Access: Identity Providers Read`
+
+```sh
+export CLOUDFLARE_API_TOKEN=...
+export CLOUDFLARE_ACCOUNT_ID=...
+moon run ops-dashboard:configure-access
+```
+
+If more than one GitHub identity provider exists, also set
+`OPS_DASHBOARD_GITHUB_IDP_ID`. The task expects an existing GitHub identity
+provider and configures an allow policy for GitHub organization `zeko-labs`.
+
 Deploy through Moon:
 
 ```sh

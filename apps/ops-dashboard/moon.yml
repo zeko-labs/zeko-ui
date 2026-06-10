@@ -7,6 +7,7 @@ fileGroups:
     - app/**
     - public/**
     - server/**
+    - scripts/**
     - test/**
     - .env.example
     - README.md
@@ -73,6 +74,12 @@ tasks:
     command: wrangler versions upload
     deps:
       - build
+  configure-access:
+    command: node --experimental-strip-types scripts/configure-access.ts
+    inputs:
+      - scripts/configure-access.ts
+    options:
+      cache: false
   publish-cf-build-config:
     description: Publish the checked-in Cloudflare Workers Build config for this project.
     script: pnpm exec moon run cloudflare-build-config:sync -- apps/ops-dashboard/workers-build.jsonc
