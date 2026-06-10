@@ -1,9 +1,7 @@
 # Community & Support
 
-:::warning
-WIP: This section is under construction. Content is for illustrative purposes only.
-:::
+Use the community channels for support, ecosystem discussion, and project updates.
 
-- Discord [**Zeko Discord Server**](https://discord.com/invite/vSDxqAchUY) - Join our community to ask questions, share ideas, and get support from other Zeko users and developers.
-- Telegram [**Zeko Telegram Group**](https://t.me/zekoprotocol) - For real-time discussions and updates.
-- Twitter [**@ZekoLabs**](https://x.com/ZekoLabs) - Follow us for the latest news and updates.
+- [Zeko Discord Server](https://discord.com/invite/vSDxqAchUY) - ask questions, share ideas, and get support from Zeko users and developers.
+- [Zeko Telegram Group](https://t.me/zekoprotocol) - follow real-time discussions and updates.
+- [@ZekoLabs on X](https://x.com/ZekoLabs) - follow public announcements and news.

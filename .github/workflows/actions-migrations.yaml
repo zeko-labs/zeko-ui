@@ -1,4 +1,4 @@
-name: Actions Indexer Migrations
+name: Actions API Testnet Migrations
 
 on:
   push:
@@ -10,14 +10,14 @@ on:
       - "services/actions/api/src/helpers/utils.ts"
 
 jobs:
-  migrate-production:
-    name: Migrate Production
+  migrate-testnet:
+    name: Migrate Testnet
     runs-on: warp-ubuntu-latest-x64-2x
     concurrency:
-      group: actions-migrate-production
+      group: actions-migrate-testnet
       cancel-in-progress: false
     env:
-      DATABASE_URL: ${{ secrets.ACTIONS_DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.ACTIONS_TESTNET_DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
 

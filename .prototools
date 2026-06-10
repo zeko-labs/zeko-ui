@@ -5,3 +5,7 @@ pnpm = "10.16.1"
 bun = "1.2.22"
 rust = "1.93.1"
 proto = "0.55.3"
+nu = "0.112.2"
+
+[plugins.tools]
+nu = "https://github.com/Hebilicious/proto-nu/releases/download/v0.1.0/nu_plugin.wasm"

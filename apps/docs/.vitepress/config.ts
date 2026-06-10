@@ -78,7 +78,6 @@ export default defineConfig({
 				collapsed: true,
 				items: [
 					{ text: "Getting Started", link: "/developers/getting-started" },
-					{ text: "Core Developer Concepts", link: "/developers/core-developer-concepts" },
 					{
 						text: "Guides & Tutorials",
 						link: "/developers/guides-tutorials",
@@ -139,8 +138,7 @@ export default defineConfig({
 							{ text: "Rollup on Phala", link: "/operators/guides/rollup-on-phala.md" }
 						]
 					},
-					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" },
-					{ text: "Troubleshooting", link: "/operators/troubleshooting" }
+					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" }
 				]
 			},
 			{

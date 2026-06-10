@@ -12,6 +12,8 @@ Enabled routes:
 | -------------- | -------------- | ---------- |
 | `mina:testnet` | `zeko:testnet` | Deposit    |
 | `zeko:testnet` | `mina:testnet` | Withdrawal |
+| `mina:mainnet` | `zeko:mainnet` | Deposit    |
+| `zeko:mainnet` | `mina:mainnet` | Withdrawal |
 
 ## Installation
 
@@ -25,6 +27,7 @@ Then run:
 
 ```bash
 zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
+zeko-bridge bridge --from mina:mainnet --to zeko:mainnet --amount 1
 ```
 
 Or run without a global install:
@@ -37,9 +40,9 @@ npx -y @zeko-labs/bridge-cli bridge --from mina:testnet --to zeko:testnet --amou
 
 The currently enabled routes use one Mina-compatible private key:
 
-| Variable           | Required | Description                                                                   |
-| ------------------ | -------- | ----------------------------------------------------------------------------- |
-| `MINA_PRIVATE_KEY` | Yes      | Private key used to sign supported Mina and Zeko testnet bridge transactions. |
+| Variable           | Required | Description                                                           |
+| ------------------ | -------- | --------------------------------------------------------------------- |
+| `MINA_PRIVATE_KEY` | Yes      | Private key used to sign supported Mina and Zeko bridge transactions. |
 
 You can export it in your shell:
 
@@ -93,6 +96,8 @@ Use `bridge` for normal bridging. It submits the bridge transaction, waits for n
 ```bash
 zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
 zeko-bridge bridge --from zeko:testnet --to mina:testnet --amount 3 --recipient B62q...
+zeko-bridge bridge --from mina:mainnet --to zeko:mainnet --amount 1
+zeko-bridge bridge --from zeko:mainnet --to mina:mainnet --amount 3 --recipient B62q...
 zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1 --json
 zeko-bridge bridge --from zeko:testnet --to mina:testnet --amount 3 --json
 ```
@@ -238,7 +243,7 @@ Check local configuration:
 zeko-bridge doctor
 ```
 
-`doctor` prints the data, state, log, and cache directories, signer configuration status, and known bridge routes.
+`doctor` prints the data, state, log, and cache directories, signer configuration status, known bridge route status, SDK endpoint mapping, and Actions API health/readiness URLs.
 
 ## Logs And State
 

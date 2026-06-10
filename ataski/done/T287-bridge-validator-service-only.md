@@ -1,5 +1,5 @@
 ---
-id: T253
+id: T287
 title: "Bridge validator service only"
 status: done
 blockedBy: []

@@ -23,7 +23,7 @@ const isGraphQlEndpoint = (url: string) =>
 	url.includes("gateway.mina.archive.mainnet.zeko.io") ||
 	url === "https://testnet.zeko.io"
 
-export const externalLinkPattern = /https:\/\/[^\s)`"'<>]+/g
+export const externalLinkPattern = /https:\/\/[^\s)`"'<>]*[^\s)`"'<>:.,;!?]/g
 
 const extractExternalLinks = () => {
 	const urls = new Set<string>()

@@ -49,7 +49,7 @@ zkApps are zero-knowledge programs that are **Turing complete**, and offer enhan
 > For Mina-native or ZK-adjacent devs
 
 - [**Write and Deploy a zkApp Today**](https://docs.o1labs.org/o1js/zkapps/intro)
-- Make sure to **[get a wallet & faucet tMINA](https://zeko.io/faucet) on Zeko** or **[Bridge tMINA](https://alpha.bridge.zeko.io) from Mina to Zeko**, and check your activity on **[ZekoScan testnet explorer](https://zekoscan.io/testnet/home)**. _(Auro wallet browser extension v2.4.1 or mobile app v2.2.0 or later are required)_
+- Make sure to **[get a wallet & faucet tMINA](https://zeko.io/faucet) on Zeko** or **[Bridge tMINA](https://testnet.bridge.zeko.io) from Mina to Zeko**, and check your activity on **[ZekoScan testnet explorer](https://zekoscan.io/testnet/home)**. _(Auro wallet browser extension v2.4.1 or mobile app v2.2.0 or later are required)_
 - Mina devnet [faucet](https://minascan.io/devnet/home) and [MinaScan](https://minascan.io/mainnet/home) explorer may also be helpful resources
 - **Write your smart contract using the [zkApp CLI](https://github.com/o1-labs/zkapp-cli)**
 

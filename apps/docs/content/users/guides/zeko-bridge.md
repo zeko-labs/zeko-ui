@@ -4,7 +4,8 @@ The Zeko Bridge moves assets between Mina (L1) and Zeko (L2).
 
 Use the interface that matches your job:
 
-- [Bridge UI](https://bridge.zeko.io) for interactive bridging in the browser
+- [Mainnet Bridge UI](https://bridge.zeko.io) for interactive mainnet bridging in the browser
+- [Testnet Bridge UI](https://testnet.bridge.zeko.io) for interactive testnet bridging in the browser
 - [Bridge CLI](/developers/tools/bridge-cli) for unattended and agent-driven bridging
 - [Bridge SDK](/developers/tools/bridge-sdk) for custom applications and automation
 
@@ -68,6 +69,6 @@ The Bridge UI, Bridge CLI, and Bridge SDK all model the same protocol:
 
 The main difference is the signing model:
 
-- the [Bridge UI](https://bridge.zeko.io) waits for interactive wallet approvals
+- the Bridge UI waits for interactive wallet approvals on [mainnet](https://bridge.zeko.io) or [testnet](https://testnet.bridge.zeko.io)
 - the [Bridge CLI](/developers/tools/bridge-cli) is designed for unattended execution with local keys
 - the [Bridge SDK](/developers/tools/bridge-sdk) exposes the underlying operations so other applications can build their own orchestration

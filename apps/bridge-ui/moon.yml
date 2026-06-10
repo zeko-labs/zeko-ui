@@ -81,15 +81,45 @@ tasks:
     command: nuxt analyze
     preset: server
   deploy:
-    description: Run the CI deploy flow, including the Sentry release and Cloudflare deploy logic.
-    command: ./deploy-ci.sh
+    description: Run the CI deploy flow for the default testnet target, including Sentry release and Cloudflare deploy logic.
+    command: nu
+    args:
+      - ./deploy-ci.nu
+    env:
+      BRIDGE_UI_DEPLOY_TARGET: testnet
     options:
       cache: false
+      runInCI: false
+  deploy-testnet:
+    description: Run the CI deploy flow for the testnet target.
+    command: nu
+    args:
+      - ./deploy-ci.nu
+    env:
+      BRIDGE_UI_DEPLOY_TARGET: testnet
+    options:
+      cache: false
+      runInCI: false
+  deploy-mainnet:
+    description: Run the CI deploy flow for the mainnet target.
+    command: nu
+    args:
+      - ./deploy-ci.nu
+    env:
+      BRIDGE_UI_DEPLOY_TARGET: mainnet
+    options:
+      cache: false
+      runInCI: false
   deploy-preview:
     description: Run the CI deploy flow for non-production branches.
-    command: ./deploy-ci.sh
+    command: nu
+    args:
+      - ./deploy-ci.nu
+    env:
+      BRIDGE_UI_DEPLOY_TARGET: preview
     options:
       cache: false
+      runInCI: false
   deploy-dev:
     description: Build and Deploy to Cloudflare Workers. Use with caution, prefer using CI/CD.
     script: rimraf .output .wrangler .nuxt && nuxt build && wrangler deploy

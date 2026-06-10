@@ -95,12 +95,18 @@ export const endpointChecks: EndpointCheck[] = [
 		deployedSources: ["services/mina-archive-proxy-mainnet/wrangler.jsonc"]
 	},
 	{
-		name: "actions api",
-		documentedUrl: "https://api.actions.zeko.io/graphql",
+		name: "testnet actions api",
+		documentedUrl: "https://testnet.api.actions.zeko.io/graphql",
 		documentedSources: [
 			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
 			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
 		],
+		deployedSources: ["services/actions/api/wrangler.jsonc"]
+	},
+	{
+		name: "mainnet actions api",
+		documentedUrl: "https://api.actions.zeko.io/graphql",
+		documentedSources: ["packages/zeko-skills/zeko/references/40-endpoints-and-curl.md"],
 		deployedSources: ["services/actions/api/wrangler.jsonc"]
 	},
 	{
@@ -117,6 +123,8 @@ export const forbiddenMarkdownPatterns = [
 	/\/Users\//
 ]
 export const skippedExternalLinkChecks = new Set<string>([
+	"https://testnet.api.actions.zeko.io/graphql",
+	"https://testnet.bridge.zeko.io",
 	"https://gateway.mina.devnet.zeko.io",
 	"https://gateway.mina.archive.devnet.zeko.io",
 	"https://gateway.mina.mainnet.zeko.io",

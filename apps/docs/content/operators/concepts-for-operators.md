@@ -1,9 +1,5 @@
 # Concepts for Operators
 
-:::warning
-WIP: This section is under construction.
-:::
-
 This section provides an overview of the key concepts network operators should understand when running infrastructure for Zeko.
 
 ## Network Topology
@@ -33,8 +29,7 @@ The L1 zkApp also plays a role in the bridging process, receiving actions posted
 
 ## Operator Economics
 
-:::warning
-WIP: This section is under construction.
-:::
-
 - **Fees**: Users pay fees in MINA to the sequencer. The fees users pay are based on factors like computational work, DA, networking, and storage. The sequencer is paid fees for batch creation and proof aggregation work.
+- **Costs**: Operators should plan for compute, persistent storage, network bandwidth, and monitoring. The heaviest requirements are usually prover and sequencer workloads, while DA and archive services need reliable storage.
+- **Reliability**: Downtime can delay transaction inclusion, archive indexing, or bridge progress. Runbooks should include backup, log retention, and restart procedures for each service.
+- **Decentralization Roadmap**: Some operator roles are still evolving. The current guides focus on the components that can be run today and call out assumptions where a role is not yet open to multiple independent operators.
