@@ -1,5 +1,11 @@
 # @zeko-labs/bridge-cli
 
+## 0.2.1
+
+### Patch Changes
+
+- 1393724: Preserve withdrawal action indexes while status witnesses are still catching up so long-running bridge commands can keep tracking submitted withdrawals. Mark unwitnessed withdrawals finalised when the helper account has advanced past their index. Use the dedicated testnet Actions API endpoint so testnet bridge validation can resolve deposit and withdrawal witnesses.
+
 ## 0.2.0
 
 ### Minor Changes
