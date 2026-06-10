@@ -52,10 +52,11 @@ Deploy through Moon:
 moon run ops-dashboard:deploy
 ```
 
-Set the indexer control token as a Cloudflare Worker secret:
+Set the indexer control token as Cloudflare Worker secrets:
 
 ```sh
-pnpm --dir apps/ops-dashboard exec wrangler secret put ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
+pnpm --dir apps/ops-dashboard exec wrangler secret put MAINNET_ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
+pnpm --dir apps/ops-dashboard exec wrangler secret put TESTNET_ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
 ```
 
 Publish the Workers Builds trigger config through the project task:

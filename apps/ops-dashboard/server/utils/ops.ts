@@ -264,7 +264,7 @@ const timedFetch = async (url: string, init?: RequestInit, timeoutMs = requestTi
 		try {
 			const response = await fetch(url, {
 				...init,
-				redirect: "manual",
+				redirect: "follow",
 				signal: controller.signal
 			})
 			if (attempt < retryDelaysMs.length - 1 && shouldRetryResponse(response)) {
@@ -316,6 +316,19 @@ const getDisplayString = (value: unknown): string | null => {
 	if (typeof value === "object" && value !== null) return JSON.stringify(value)
 	return null
 }
+
+const indexerHeaders = (token?: string): Record<string, string> => ({
+	"x-forwarded-proto": "https",
+	...(token !== undefined && { authorization: `Bearer ${token}` })
+})
+
+const indexerRequestInit = (token?: string, init: RequestInit = {}): RequestInit => ({
+	...init,
+	headers: {
+		...indexerHeaders(token),
+		...(init.headers ? Object.fromEntries(new Headers(init.headers).entries()) : {})
+	}
+})
 
 const formatUnknownError = (error: unknown, fallback: string): string => {
 	if (error instanceof Error && error.message.trim() !== "") return error.message
@@ -671,10 +684,7 @@ export const probeActionsIndexer = async ({
 	const id = "actions-indexer"
 	const label = "Zeko action-indexer"
 	try {
-		const authHeaders = token === undefined ? undefined : { authorization: `Bearer ${token}` }
-		const health = await timedFetch(`${endpoint}/health`, {
-			...(authHeaders && { headers: authHeaders })
-		})
+		const health = await timedFetch(`${endpoint}/health`, indexerRequestInit(token))
 		const healthPayload = await readJson(health.response)
 		const healthRecord = getRecord(healthPayload)
 		const healthStatus = getString(healthRecord.status)
@@ -687,9 +697,7 @@ export const probeActionsIndexer = async ({
 		let statusPayload: unknown
 		let statusError: string | undefined
 		if (token) {
-			const status = await timedFetch(`${endpoint}/status`, {
-				headers: authHeaders
-			})
+			const status = await timedFetch(`${endpoint}/status`, indexerRequestInit(token))
 			statusHttp = status.response.status
 			statusPayload = await readJson(status.response)
 			if (!status.response.ok)
@@ -745,7 +753,10 @@ export const createOpsSnapshot = async (
 	const config = getOpsConfig(networkInput, env)
 	const token = readActionsIndexerToken(config.network, env)
 	const [indexer, l1Archive, l2Archive, l1Daemon, l2Daemon] = await Promise.all([
-		probeActionsIndexer({ endpoint: config.actionsIndexerUrl, token }),
+		probeActionsIndexer({
+			endpoint: config.actionsIndexerUrl,
+			token
+		}),
 		probeArchive({ id: "l1-archive", label: "L1 archive", endpoint: config.l1ArchiveUrl }),
 		probeArchive({ id: "l2-archive", label: "L2 archive", endpoint: config.l2ArchiveUrl }),
 		probeDaemon({
@@ -818,8 +829,7 @@ export const runIndexerControl = async (
 	}
 
 	const { response } = await timedFetch(`${config.actionsIndexerUrl}/${action}`, {
-		method: "POST",
-		headers: { authorization: `Bearer ${token}` }
+		...indexerRequestInit(token, { method: "POST" })
 	})
 	const payload = await readJson(response)
 

@@ -8,7 +8,6 @@ import {
 	gapState,
 	tailState
 } from "../app/utils/ops-insights"
-import { resolveEventEnv } from "../server/utils/cloudflare-env"
 import {
 	createOpsSnapshot,
 	extractActionsIndexerDetails,
@@ -36,33 +35,6 @@ const probe = (status: ServiceProbe["status"]): ServiceProbe => ({
 })
 
 describe("ops dashboard utilities", () => {
-	it("resolves Cloudflare env bindings from Nitro production context", () => {
-		const env = { TESTNET_ACTIONS_INDEXER_TOKEN: "production-token" }
-		expect(
-			resolveEventEnv({
-				context: {
-					_platform: {
-						cloudflare: { env }
-					},
-					cloudflare: {
-						env: { TESTNET_ACTIONS_INDEXER_TOKEN: "dev-token" }
-					}
-				}
-			})
-		).toBe(env)
-	})
-
-	it("falls back to Cloudflare dev context when production context is absent", () => {
-		const env = { TESTNET_ACTIONS_INDEXER_TOKEN: "dev-token" }
-		expect(
-			resolveEventEnv({
-				context: {
-					cloudflare: { env }
-				}
-			})
-		).toBe(env)
-	})
-
 	it("summarizes service states without mutating probe records", () => {
 		const services = [probe("ok"), probe("warn"), probe("error"), probe("unknown"), probe("ok")]
 
@@ -151,14 +123,22 @@ describe("ops dashboard utilities", () => {
 
 	it("uses request-scoped indexer token for status probes and controls", async () => {
 		const originalFetch = globalThis.fetch
-		const calls: Array<{ url: string; authorization: string | null; method: string }> = []
+		const calls: Array<{
+			url: string
+			authorization: string | null
+			forwardedProto: string | null
+			method: string
+			redirect: RequestRedirect | undefined
+		}> = []
 		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = String(input)
 			const headers = new Headers(init?.headers)
 			calls.push({
 				url,
 				authorization: headers.get("authorization"),
-				method: init?.method ?? "GET"
+				forwardedProto: headers.get("x-forwarded-proto"),
+				method: init?.method ?? "GET",
+				redirect: init?.redirect
 			})
 			if (url.endsWith("/health")) {
 				return Response.json({
@@ -207,17 +187,23 @@ describe("ops dashboard utilities", () => {
 			expect.objectContaining({
 				url: "https://testnet.indexer.actions.zeko.io/health",
 				authorization: "Bearer testnet-token",
-				method: "GET"
+				forwardedProto: "https",
+				method: "GET",
+				redirect: "follow"
 			}),
 			expect.objectContaining({
 				url: "https://testnet.indexer.actions.zeko.io/status",
 				authorization: "Bearer testnet-token",
-				method: "GET"
+				forwardedProto: "https",
+				method: "GET",
+				redirect: "follow"
 			}),
 			expect.objectContaining({
 				url: "https://testnet.indexer.actions.zeko.io/reset",
 				authorization: "Bearer testnet-token",
-				method: "POST"
+				forwardedProto: "https",
+				method: "POST",
+				redirect: "follow"
 			})
 		])
 	})

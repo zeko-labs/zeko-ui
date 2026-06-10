@@ -283,6 +283,188 @@ const detailEntries = (service: ServiceProbe) =>
 			isDatabase: key.startsWith("database")
 		}))
 
+const summarizeSnapshotServices = (items: ServiceProbe[]) =>
+	items.reduce<Record<ServiceStatus, number>>(
+		(summary, service) => ({
+			...summary,
+			[service.status]: summary[service.status] + 1
+		}),
+		{ ok: 0, warn: 0, error: 0, unknown: 0 }
+	)
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+	typeof value === "object" && value !== null
+		? (value as Record<string, unknown>)
+		: {}
+
+const asNumber = (value: unknown): number | null => {
+	if (typeof value === "number" && Number.isFinite(value)) return value
+	if (typeof value === "string" && value.trim() !== "") {
+		const parsed = Number(value)
+		return Number.isFinite(parsed) ? parsed : null
+	}
+	return null
+}
+
+const asString = (value: unknown): string | null =>
+	typeof value === "string" && value.trim() !== "" ? value : null
+
+const directIndexerDetails = (
+	healthPayload: unknown,
+	statusPayload: unknown
+): ServiceProbe["details"] => {
+	const health = asRecord(healthPayload)
+	const service = asRecord(health.service)
+	const database = asRecord(health.database)
+	const indexer = asRecord(health.indexer)
+	const lastFetchedBlock = asRecord(indexer.lastFetchedBlock)
+	const canonicalProgress = asRecord(indexer.canonicalProgress)
+	const outer = asRecord(canonicalProgress.outer)
+	const inner = asRecord(canonicalProgress.inner)
+	const status = asRecord(statusPayload)
+
+	return {
+		health: asString(health.status),
+		environment: asString(service.environment),
+		databaseStatus: asString(database.status),
+		databaseLatencyMs: asNumber(database.latency_ms ?? database.latencyMs),
+		databaseCheckedAt: asString(database.checkedAt),
+		databaseAgeMs: asNumber(database.ageMs),
+		indexer: asString(indexer.status),
+		consecutiveErrors: asNumber(indexer.consecutiveErrors),
+		lastFetchedOuter: asNumber(lastFetchedBlock.outer),
+		lastFetchedInner: asNumber(lastFetchedBlock.inner),
+		running: typeof status.isRunning === "boolean" ? status.isRunning : null,
+		intervalSeconds: asNumber(asRecord(status.config).intervalSeconds),
+		canonicalCheckedAt: asString(canonicalProgress.checkedAt),
+		canonicalAgeMs: asNumber(canonicalProgress.ageMs),
+		canonicalError: asString(canonicalProgress.error),
+		outerLastFinalIndex: asNumber(outer.lastFinalIndex),
+		outerLastFinalBlockHeight: asNumber(outer.lastFinalBlockHeight),
+		outerNonCanonicalTailCount: asNumber(outer.nonCanonicalTailCount),
+		innerLastFinalIndex: asNumber(inner.lastFinalIndex),
+		innerLastFinalBlockHeight: asNumber(inner.lastFinalBlockHeight),
+		innerNonCanonicalTailCount: asNumber(inner.nonCanonicalTailCount)
+	}
+}
+
+const archiveHeightFor = (
+	snapshotValue: OpsSnapshot,
+	id: "l1-archive" | "l2-archive"
+) => {
+	const service = snapshotValue.services.find((item) => item.id === id)
+	return asNumber(
+		service?.details.pendingMaxBlockHeight ??
+			service?.details.canonicalMaxBlockHeight
+	)
+}
+
+const coverageFromHeights = (
+	archiveHeight: number | null,
+	indexedHeight: number | null
+) => {
+	if (archiveHeight === null || indexedHeight === null)
+		return {
+			actionCoverageStatus: "unknown",
+			missingActionCount: null,
+			missingActionBlockCount: null,
+			firstMissingActionBlock: null,
+			latestArchiveActionBlock: null
+		}
+	const gap = archiveHeight - indexedHeight
+	return {
+		actionCoverageStatus: gap <= 0 ? "current" : "partial",
+		missingActionCount: null,
+		missingActionBlockCount: null,
+		firstMissingActionBlock: gap > 0 ? indexedHeight + 1 : null,
+		latestArchiveActionBlock: indexedHeight
+	}
+}
+
+const prefixedCoverage = (
+	prefix: "l1" | "l2",
+	coverage: ReturnType<typeof coverageFromHeights>
+) =>
+	Object.fromEntries(
+		Object.entries(coverage).map(([key, value]) => [
+			`${prefix}${key.charAt(0).toUpperCase()}${key.slice(1)}`,
+			value
+		])
+	)
+
+const indexerToken = (network: OpsNetwork) =>
+	$fetch<{ token: string }>("/api/ops/indexer-token", { query: { network } })
+
+const fetchIndexerJson = async (url: string, token: string) => {
+	const response = await fetch(url, {
+		headers: { authorization: `Bearer ${token}` }
+	})
+	const payload = await response.json().catch(() => null)
+	return { response, payload }
+}
+
+const hydrateIndexerFromBrowser = async (
+	nextSnapshot: OpsSnapshot
+): Promise<OpsSnapshot> => {
+	const token = (await indexerToken(nextSnapshot.config.network)).token
+	const endpoint = nextSnapshot.config.actionsIndexerUrl.replace(/\/+$/, "")
+	const [health, status] = await Promise.all([
+		fetchIndexerJson(`${endpoint}/health`, token),
+		fetchIndexerJson(`${endpoint}/status`, token)
+	])
+	const details: ServiceProbe["details"] = {
+		...directIndexerDetails(health.payload, status.payload),
+		statusHttp: status.response.status
+	}
+	const withCoverage: ServiceProbe["details"] = {
+		...details,
+		...prefixedCoverage(
+			"l1",
+			coverageFromHeights(
+				archiveHeightFor(nextSnapshot, "l1-archive"),
+				asNumber(details.lastFetchedOuter)
+			)
+		),
+		...prefixedCoverage(
+			"l2",
+			coverageFromHeights(
+				archiveHeightFor(nextSnapshot, "l2-archive"),
+				asNumber(details.lastFetchedInner)
+			)
+		)
+	}
+	const indexerStatus: ServiceStatus =
+		health.response.ok &&
+		asString(asRecord(health.payload).status) === "healthy"
+			? status.response.ok
+				? "ok"
+				: "warn"
+			: "error"
+	const error = !health.response.ok
+		? `Health check returned HTTP ${health.response.status}`
+		: !status.response.ok
+			? `Status check returned HTTP ${status.response.status}`
+			: undefined
+	const services = nextSnapshot.services.map((service): ServiceProbe => {
+		if (service.id !== "actions-indexer") return service
+		const { error: _previousError, ...serviceWithoutError } = service
+		return {
+			...serviceWithoutError,
+			status: indexerStatus,
+			checkedAt: new Date().toISOString(),
+			latencyMs: null,
+			httpStatus: health.response.status,
+			details: withCoverage,
+			...(error !== undefined && { error })
+		}
+	})
+	return {
+		...nextSnapshot,
+		summary: summarizeSnapshotServices(services),
+		services
+	}
+}
+
 const refresh = async ({ force = false }: { force?: boolean } = {}) => {
 	if (isRefreshing.value && !force) return
 	const sequence = ++refreshSequence
@@ -294,8 +476,15 @@ const refresh = async ({ force = false }: { force?: boolean } = {}) => {
 		const nextSnapshot = await $fetch<OpsSnapshot>("/api/ops/status", {
 			query: { network }
 		})
+		const hydratedSnapshot = await hydrateIndexerFromBrowser(
+			nextSnapshot
+		).catch((error) => {
+			errorMessage.value =
+				error instanceof Error ? error.message : String(error)
+			return nextSnapshot
+		})
 		if (sequence === refreshSequence && selectedNetwork.value === network) {
-			snapshot.value = nextSnapshot
+			snapshot.value = hydratedSnapshot
 		}
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : String(error)
@@ -316,15 +505,27 @@ const runControl = async (action: ControlAction) => {
 	actionMessage.value = null
 	errorMessage.value = null
 	try {
-		const result = await $fetch<{
-			message?: string
-			result?: { message?: string }
-		}>("/api/ops/control", {
+		const endpoint = snapshot.value?.config.actionsIndexerUrl.replace(
+			/\/+$/,
+			""
+		)
+		if (endpoint === undefined)
+			throw new Error("Load an indexer snapshot before running controls.")
+		const token = (await indexerToken(selectedNetwork.value)).token
+		const response = await fetch(`${endpoint}/${action}`, {
 			method: "POST",
-			body: { action, network: selectedNetwork.value }
+			headers: { authorization: `Bearer ${token}` }
 		})
-		actionMessage.value =
-			result.result?.message ?? result.message ?? `${action} submitted`
+		const result = (await response.json().catch(() => null)) as {
+			message?: string
+		} | null
+		if (!response.ok)
+			throw new Error(
+				`${action} failed with HTTP ${response.status}: ${
+					result?.message ?? response.statusText
+				}`
+			)
+		actionMessage.value = result?.message ?? `${action} submitted`
 		await refresh()
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : String(error)

@@ -309,3 +309,4 @@
 - T309 | done | fix-dashboard-data-path | done/T309-fix-dashboard-data-path.md
 - T310 | in-progress | restore-github-access | in-progress/T310-restore-github-access.md
 - T311 | done | fix-production-cloudflare-env | done/T311-fix-production-cloudflare-env.md
+- T312 | done | align-nuxt-cloudflare-env | done/T312-align-nuxt-cloudflare-env.md
