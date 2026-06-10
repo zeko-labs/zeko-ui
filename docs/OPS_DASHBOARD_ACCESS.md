@@ -39,10 +39,12 @@ Create or reuse a Cloudflare identity provider with `restrict_to_account_members
 
 ## Secrets
 
-Set the actions indexer token as a Worker secret, not as a checked-in variable:
+Set actions indexer control tokens as Worker secrets, not checked-in variables. Use network-specific secrets when mainnet and testnet have different tokens; otherwise `ACTIONS_INDEXER_TOKEN` is still accepted as a shared fallback.
 
 ```sh
 pnpm --dir apps/ops-dashboard exec wrangler secret put ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
+pnpm --dir apps/ops-dashboard exec wrangler secret put MAINNET_ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
+pnpm --dir apps/ops-dashboard exec wrangler secret put TESTNET_ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
 ```
 
 ## Workers Builds

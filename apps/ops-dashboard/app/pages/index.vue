@@ -13,6 +13,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 
 type ServiceStatus = "ok" | "warn" | "error" | "unknown"
 type ServiceKind = "actions-indexer" | "archive" | "daemon"
+type OpsNetwork = "mainnet" | "testnet"
 
 interface ServiceProbe {
 	id: string
@@ -29,6 +30,14 @@ interface ServiceProbe {
 
 interface OpsSnapshot {
 	checkedAt: string
+	config: {
+		network: OpsNetwork
+		actionsIndexerUrl: string
+		l1ArchiveUrl: string
+		l2ArchiveUrl: string
+		l1DaemonUrl: string
+		l2DaemonUrl: string
+	}
 	summary: Record<ServiceStatus, number>
 	services: ServiceProbe[]
 }
@@ -40,7 +49,11 @@ const isRefreshing = ref(false)
 const activeAction = ref<ControlAction | null>(null)
 const errorMessage = ref<string | null>(null)
 const actionMessage = ref<string | null>(null)
+const selectedNetwork = ref<OpsNetwork>("mainnet")
+const refreshIntervalMs = 5_000
+const lastRefreshStartedAt = ref<string | null>(null)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+let refreshSequence = 0
 
 const serviceIcon = (service: ServiceProbe) => {
 	if (service.kind === "actions-indexer") return Activity
@@ -49,6 +62,9 @@ const serviceIcon = (service: ServiceProbe) => {
 }
 
 const services = computed(() => snapshot.value?.services ?? [])
+const currentNetwork = computed(
+	() => snapshot.value?.config.network ?? selectedNetwork.value
+)
 const unhealthyCount = computed(
 	() =>
 		services.value.filter(
@@ -75,26 +91,66 @@ const formatValue = (value: string | number | boolean | null) => {
 	return value
 }
 
-const detailEntries = (service: ServiceProbe) =>
-	Object.entries(service.details).filter(
-		([, value]) => value !== null && value !== ""
+const formatDetailKey = (key: string) =>
+	key
+		.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+		.replace(/_/g, " ")
+		.replace(/\b\w/g, (letter) => letter.toUpperCase())
+
+const detailPriority = (key: string) => {
+	if (key.startsWith("database")) return 0
+	if (
+		key.startsWith("canonical") ||
+		key.startsWith("outer") ||
+		key.startsWith("inner")
 	)
+		return 1
+	if (key.startsWith("lastFetched")) return 2
+	return 3
+}
+
+const detailEntries = (service: ServiceProbe) =>
+	Object.entries(service.details)
+		.filter(([, value]) => value !== null && value !== "")
+		.sort(
+			([leftKey], [rightKey]) =>
+				detailPriority(leftKey) - detailPriority(rightKey) ||
+				leftKey.localeCompare(rightKey)
+		)
+		.map(([key, value]) => ({
+			key,
+			label: formatDetailKey(key),
+			value,
+			isDatabase: key.startsWith("database")
+		}))
 
 const refresh = async () => {
+	const sequence = ++refreshSequence
+	const network = selectedNetwork.value
 	isRefreshing.value = true
 	errorMessage.value = null
+	lastRefreshStartedAt.value = new Date().toISOString()
 	try {
-		snapshot.value = await $fetch<OpsSnapshot>("/api/ops/status")
+		const nextSnapshot = await $fetch<OpsSnapshot>("/api/ops/status", {
+			query: { network }
+		})
+		if (sequence === refreshSequence && selectedNetwork.value === network) {
+			snapshot.value = nextSnapshot
+		}
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : String(error)
 	} finally {
-		isRefreshing.value = false
+		if (sequence === refreshSequence) isRefreshing.value = false
 	}
 }
 
 const runControl = async (action: ControlAction) => {
 	const destructive = action === "rebuild" || action === "reset"
-	if (destructive && !window.confirm(`${action} actions indexer?`)) return
+	if (
+		destructive &&
+		!window.confirm(`${action} ${selectedNetwork.value} actions indexer?`)
+	)
+		return
 
 	activeAction.value = action
 	actionMessage.value = null
@@ -105,7 +161,7 @@ const runControl = async (action: ControlAction) => {
 			result?: { message?: string }
 		}>("/api/ops/control", {
 			method: "POST",
-			body: { action }
+			body: { action, network: selectedNetwork.value }
 		})
 		actionMessage.value =
 			result.result?.message ?? result.message ?? `${action} submitted`
@@ -117,11 +173,19 @@ const runControl = async (action: ControlAction) => {
 	}
 }
 
+const switchNetwork = (network: OpsNetwork) => {
+	if (selectedNetwork.value === network) return
+	selectedNetwork.value = network
+	snapshot.value = null
+	actionMessage.value = null
+	void refresh()
+}
+
 onMounted(() => {
 	void refresh()
 	refreshTimer = setInterval(() => {
 		if (document.visibilityState === "visible") void refresh()
-	}, 15_000)
+	}, refreshIntervalMs)
 })
 
 onBeforeUnmount(() => {
@@ -137,6 +201,7 @@ onBeforeUnmount(() => {
         <h1>Actions Ops</h1>
       </div>
       <div class="HeaderStatus">
+        <span class="NetworkPill">{{ currentNetwork }}</span>
         <span
           class="HealthPill"
           :data-state='unhealthyCount === 0 ? "ok" : "warn"'>
@@ -149,10 +214,29 @@ onBeforeUnmount(() => {
         <span class="Timestamp">Checked {{
             formatDate(snapshot?.checkedAt)
           }}</span>
+        <span class="LiveState" :data-active="!isRefreshing">
+          Live {{ refreshIntervalMs / 1000 }}s
+        </span>
       </div>
     </header>
 
     <section class="ControlBar" aria-label="Actions indexer controls">
+      <div class="NetworkTabs" aria-label="Network selector">
+        <button
+          type="button"
+          :aria-pressed='selectedNetwork === "mainnet"'
+          :data-active='selectedNetwork === "mainnet"'
+          @click='switchNetwork("mainnet")'>
+          Mainnet
+        </button>
+        <button
+          type="button"
+          :aria-pressed='selectedNetwork === "testnet"'
+          :data-active='selectedNetwork === "testnet"'
+          @click='switchNetwork("testnet")'>
+          Testnet
+        </button>
+      </div>
       <button
         class="IconButton Primary"
         type="button"
@@ -194,7 +278,10 @@ onBeforeUnmount(() => {
         Resync
       </button>
       <span v-if="activeAction" class="ActionState">{{ activeAction }}
-        running</span>
+        running on {{ selectedNetwork }}</span>
+      <span v-else class="ActionState">
+        Last requested {{ formatDate(lastRefreshStartedAt) }}
+      </span>
     </section>
 
     <p v-if="actionMessage" class="Notice">{{ actionMessage }}</p>
@@ -251,9 +338,12 @@ onBeforeUnmount(() => {
             <dt>Checked</dt>
             <dd>{{ formatDate(service.checkedAt) }}</dd>
           </div>
-          <div v-for="([key, value]) in detailEntries(service)" :key>
-            <dt>{{ key }}</dt>
-            <dd>{{ formatValue(value) }}</dd>
+          <div
+            v-for="entry in detailEntries(service)"
+            :key="entry.key"
+            :data-database="entry.isDatabase">
+            <dt>{{ entry.label }}</dt>
+            <dd>{{ formatValue(entry.value) }}</dd>
           </div>
         </dl>
 

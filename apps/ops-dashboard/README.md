@@ -10,15 +10,20 @@ Run from the repository root:
 moon run ops-dashboard:dev
 ```
 
-The dashboard defaults to mainnet Zeko-operated endpoints. To enable authenticated indexer status and controls locally, set `ACTIONS_INDEXER_TOKEN` in the shell or in an untracked `.env` file before starting the dev server.
+The dashboard defaults to mainnet and can switch to testnet from the page header. To enable authenticated indexer status and controls locally, set `ACTIONS_INDEXER_TOKEN` for both networks or `MAINNET_ACTIONS_INDEXER_TOKEN` / `TESTNET_ACTIONS_INDEXER_TOKEN` for network-specific control tokens in the shell or in an untracked `.env` file before starting the dev server.
 
 Endpoint overrides:
 
-- `ACTIONS_INDEXER_URL`
-- `L1_ARCHIVE_URL`
-- `L2_ARCHIVE_URL`
-- `L1_DAEMON_URL`
-- `L2_DAEMON_URL`
+- `MAINNET_ACTIONS_INDEXER_URL`
+- `MAINNET_L1_ARCHIVE_URL`
+- `MAINNET_L2_ARCHIVE_URL`
+- `MAINNET_L1_DAEMON_URL`
+- `MAINNET_L2_DAEMON_URL`
+- `TESTNET_ACTIONS_INDEXER_URL`
+- `TESTNET_L1_ARCHIVE_URL`
+- `TESTNET_L2_ARCHIVE_URL`
+- `TESTNET_L1_DAEMON_URL`
+- `TESTNET_L2_DAEMON_URL`
 
 ## Deployment
 

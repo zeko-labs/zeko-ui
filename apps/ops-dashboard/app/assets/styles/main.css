@@ -69,7 +69,9 @@ button {
 }
 
 .HealthPill,
-.StateBadge {
+.StateBadge,
+.NetworkPill,
+.LiveState {
   display: inline-flex;
   align-items: center;
   min-height: 28px;
@@ -79,6 +81,31 @@ button {
   font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.NetworkPill {
+  border-color: var(--OpsCharcoal);
+  background: var(--OpsCharcoal);
+  color: var(--OpsPanel);
+}
+
+.LiveState {
+  position: relative;
+  border-color: var(--OpsBlue);
+  color: var(--OpsBlue);
+
+  &::before {
+    width: 7px;
+    height: 7px;
+    margin-right: 7px;
+    border-radius: 999px;
+    background: currentColor;
+    content: "";
+  }
+}
+
+.LiveState[data-active="true"]::before {
+  animation: pulse 1.2s ease-in-out infinite;
 }
 
 .HealthPill[data-state="ok"],
@@ -109,6 +136,38 @@ button {
   align-items: center;
   gap: 8px;
   margin: 18px 0;
+}
+
+.NetworkTabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(84px, 1fr));
+  min-height: 38px;
+  border: 1px solid var(--OpsCharcoal);
+  border-radius: 6px;
+  background: var(--OpsPanel);
+  overflow: hidden;
+
+  button {
+    min-width: 0;
+    padding: 0 12px;
+    border: 0;
+    border-right: 1px solid var(--OpsCharcoal);
+    background: transparent;
+    color: var(--OpsCharcoal);
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    cursor: pointer;
+
+    &:last-child {
+      border-right: 0;
+    }
+
+    &[data-active="true"] {
+      background: var(--OpsCharcoal);
+      color: var(--OpsPanel);
+    }
+  }
 }
 
 .IconButton {
@@ -158,6 +217,19 @@ button {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.78);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -281,6 +353,10 @@ button {
     padding: 11px 14px;
     border-right: 1px solid var(--OpsLine);
     border-bottom: 1px solid var(--OpsLine);
+
+    &[data-database="true"] {
+      background: rgb(31 91 153 / 0.08);
+    }
   }
 
   dt {

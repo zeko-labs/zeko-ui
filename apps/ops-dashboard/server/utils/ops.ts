@@ -1,7 +1,9 @@
 export type ServiceKind = "actions-indexer" | "archive" | "daemon"
 export type ServiceStatus = "ok" | "warn" | "error" | "unknown"
+export type OpsNetwork = "mainnet" | "testnet"
 
 export interface OpsEndpointConfig {
+	network: OpsNetwork
 	actionsIndexerUrl: string
 	l1ArchiveUrl: string
 	l2ArchiveUrl: string
@@ -33,12 +35,23 @@ export type ControlAction = "start" | "stop" | "rebuild" | "reset"
 
 const requestTimeoutMs = 12_000
 
-const mainnetDefaults: OpsEndpointConfig = {
-	actionsIndexerUrl: "https://indexer.actions.zeko.io",
-	l1ArchiveUrl: "https://gateway.mina.archive.mainnet.zeko.io",
-	l2ArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
-	l1DaemonUrl: "https://gateway.mina.mainnet.zeko.io",
-	l2DaemonUrl: "https://mainnet.zeko.io/graphql"
+const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
+	mainnet: {
+		network: "mainnet",
+		actionsIndexerUrl: "https://indexer.actions.zeko.io",
+		l1ArchiveUrl: "https://gateway.mina.archive.mainnet.zeko.io",
+		l2ArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
+		l1DaemonUrl: "https://gateway.mina.mainnet.zeko.io",
+		l2DaemonUrl: "https://mainnet.zeko.io/graphql"
+	},
+	testnet: {
+		network: "testnet",
+		actionsIndexerUrl: "https://testnet.indexer.actions.zeko.io",
+		l1ArchiveUrl: "https://api.minascan.io/archive/devnet/v1/graphql",
+		l2ArchiveUrl: "https://archive.testnet.zeko.io/graphql",
+		l1DaemonUrl: "https://api.minascan.io/node/devnet/v1/graphql",
+		l2DaemonUrl: "https://testnet.zeko.io/graphql"
+	}
 }
 
 const readEnv = (key: string): string | undefined => {
@@ -48,15 +61,142 @@ const readEnv = (key: string): string | undefined => {
 
 export const normalizeEndpoint = (url: string): string => url.replace(/\/+$/, "")
 
-export const getOpsConfig = (): OpsEndpointConfig => ({
-	actionsIndexerUrl: normalizeEndpoint(
-		readEnv("ACTIONS_INDEXER_URL") ?? mainnetDefaults.actionsIndexerUrl
-	),
-	l1ArchiveUrl: normalizeEndpoint(readEnv("L1_ARCHIVE_URL") ?? mainnetDefaults.l1ArchiveUrl),
-	l2ArchiveUrl: normalizeEndpoint(readEnv("L2_ARCHIVE_URL") ?? mainnetDefaults.l2ArchiveUrl),
-	l1DaemonUrl: normalizeEndpoint(readEnv("L1_DAEMON_URL") ?? mainnetDefaults.l1DaemonUrl),
-	l2DaemonUrl: normalizeEndpoint(readEnv("L2_DAEMON_URL") ?? mainnetDefaults.l2DaemonUrl)
-})
+const endpointEnvKeys = {
+	actionsIndexerUrl: "ACTIONS_INDEXER_URL",
+	l1ArchiveUrl: "L1_ARCHIVE_URL",
+	l2ArchiveUrl: "L2_ARCHIVE_URL",
+	l1DaemonUrl: "L1_DAEMON_URL",
+	l2DaemonUrl: "L2_DAEMON_URL"
+} as const
+
+export const resolveOpsNetwork = (value: unknown): OpsNetwork =>
+	value === "testnet" || value === "mainnet" ? value : "mainnet"
+
+const readNetworkEndpoint = (network: OpsNetwork, key: keyof typeof endpointEnvKeys): string => {
+	const envKey = endpointEnvKeys[key]
+	const networkEnvKey = `${network.toUpperCase()}_${envKey}`
+	const defaultValue = opsDefaults[network][key]
+	const globalOverride = network === "mainnet" ? readEnv(envKey) : undefined
+	return normalizeEndpoint(readEnv(networkEnvKey) ?? globalOverride ?? defaultValue)
+}
+
+export const getOpsConfig = (networkInput?: unknown): OpsEndpointConfig => {
+	const network = resolveOpsNetwork(networkInput)
+	return {
+		network,
+		actionsIndexerUrl: readNetworkEndpoint(network, "actionsIndexerUrl"),
+		l1ArchiveUrl: readNetworkEndpoint(network, "l1ArchiveUrl"),
+		l2ArchiveUrl: readNetworkEndpoint(network, "l2ArchiveUrl"),
+		l1DaemonUrl: readNetworkEndpoint(network, "l1DaemonUrl"),
+		l2DaemonUrl: readNetworkEndpoint(network, "l2DaemonUrl")
+	}
+}
+
+const toPascal = (key: string): string => {
+	const normalized = key.replace(/[^a-zA-Z0-9]+(.)/g, (_, character: string) =>
+		character.toUpperCase()
+	)
+	return normalized.charAt(0).toUpperCase() + normalized.slice(1)
+}
+
+const flattenPrimitiveLeaves = (
+	value: unknown,
+	prefix: string,
+	depth = 0
+): ServiceProbe["details"] => {
+	if (depth > 4) return {}
+	if (
+		value === null ||
+		typeof value === "string" ||
+		typeof value === "number" ||
+		typeof value === "boolean"
+	) {
+		return { [prefix]: value }
+	}
+	if (Array.isArray(value)) return { [`${prefix}Count`]: value.length }
+	if (typeof value !== "object") return {}
+
+	return Object.entries(value as Record<string, unknown>).reduce<ServiceProbe["details"]>(
+		(details, [key, child]) => ({
+			...details,
+			...flattenPrimitiveLeaves(child, `${prefix}${toPascal(key)}`, depth + 1)
+		}),
+		{}
+	)
+}
+
+const mergeRecords = (
+	base: Record<string, unknown>,
+	override: Record<string, unknown>
+): Record<string, unknown> =>
+	Array.from(new Set([...Object.keys(base), ...Object.keys(override)])).reduce<
+		Record<string, unknown>
+	>((merged, key) => {
+		const baseValue = base[key]
+		const overrideValue = override[key]
+		return {
+			...merged,
+			[key]:
+				typeof baseValue === "object" &&
+				baseValue !== null &&
+				!Array.isArray(baseValue) &&
+				typeof overrideValue === "object" &&
+				overrideValue !== null &&
+				!Array.isArray(overrideValue)
+					? mergeRecords(
+							baseValue as Record<string, unknown>,
+							overrideValue as Record<string, unknown>
+						)
+					: overrideValue ?? baseValue
+		}
+	}, {})
+
+export const extractActionsIndexerDetails = ({
+	healthPayload,
+	statusPayload
+}: {
+	healthPayload: unknown
+	statusPayload?: unknown
+}): ServiceProbe["details"] => {
+	const healthRecord = getRecord(healthPayload)
+	const service = getRecord(healthRecord.service)
+	const database = getRecord(healthRecord.database)
+	const indexer = getRecord(healthRecord.indexer)
+	const statusRecord = getRecord(statusPayload)
+	const healthCanonicalProgress = getRecord(indexer.canonicalProgress)
+	const statusCanonicalProgress = getRecord(statusRecord.canonicalProgress)
+	const canonicalProgress = mergeRecords(healthCanonicalProgress, statusCanonicalProgress)
+	const outerProgress = getRecord(canonicalProgress.outer)
+	const innerProgress = getRecord(canonicalProgress.inner)
+	const lastFetchedBlock = getRecord(indexer.lastFetchedBlock)
+
+	return {
+		...flattenPrimitiveLeaves(database, "database"),
+		...flattenPrimitiveLeaves(statusRecord, "status"),
+		health: getString(healthRecord.status),
+		environment: getString(service.environment),
+		databaseStatus: getString(database.status),
+		databaseLatencyMs: getNumber(database.latency_ms ?? database.latencyMs),
+		databaseCheckedAt: getString(database.checkedAt),
+		databaseAgeMs: getNumber(database.ageMs),
+		databaseError: getString(database.error),
+		indexer: getString(indexer.status),
+		consecutiveErrors: getNumber(indexer.consecutiveErrors),
+		lastFetchedOuter: getNumber(lastFetchedBlock.outer),
+		lastFetchedInner: getNumber(lastFetchedBlock.inner),
+		running: typeof statusRecord.isRunning === "boolean" ? statusRecord.isRunning : null,
+		intervalSeconds: getNumber(getRecord(statusRecord.config).intervalSeconds),
+		canonicalCheckedAt: getString(canonicalProgress.checkedAt),
+		canonicalAgeMs: getNumber(canonicalProgress.ageMs),
+		canonicalError: getString(canonicalProgress.error),
+		outerLastFinalIndex: getNumber(outerProgress.lastFinalIndex),
+		outerLastFinalBlockHeight: getNumber(outerProgress.lastFinalBlockHeight),
+		outerNonCanonicalTailCount: getNumber(outerProgress.nonCanonicalTailCount),
+		innerLastFinalIndex: getNumber(innerProgress.lastFinalIndex),
+		innerLastFinalBlockHeight: getNumber(innerProgress.lastFinalBlockHeight),
+		innerNonCanonicalTailCount: getNumber(innerProgress.nonCanonicalTailCount)
+	}
+}
 
 export const summarizeServices = (services: ServiceProbe[]): Record<ServiceStatus, number> =>
 	services.reduce<Record<ServiceStatus, number>>(
@@ -307,33 +447,25 @@ export const probeActionsIndexer = async ({
 		const health = await timedFetch(`${endpoint}/health`)
 		const healthPayload = await readJson(health.response)
 		const healthRecord = getRecord(healthPayload)
-		const indexer = getRecord(healthRecord.indexer)
-		const database = getRecord(healthRecord.database)
 		const healthStatus = getString(healthRecord.status)
-		const details: ServiceProbe["details"] = {
-			health: healthStatus,
-			database: getString(database.status),
-			indexer: getString(indexer.status),
-			consecutiveErrors: getNumber(indexer.consecutiveErrors),
-			lastFetchedOuter: getNumber(getRecord(indexer.lastFetchedBlock).outer),
-			lastFetchedInner: getNumber(getRecord(indexer.lastFetchedBlock).inner)
-		}
 
+		let statusHttp: number | null = null
+		let statusPayload: unknown
 		let statusError: string | undefined
 		if (token) {
 			const status = await timedFetch(`${endpoint}/status`, {
 				headers: { authorization: `Bearer ${token}` }
 			})
-			const statusPayload = await readJson(status.response)
-			const statusRecord = getRecord(statusPayload)
-			details.running = typeof statusRecord.isRunning === "boolean" ? statusRecord.isRunning : null
-			details.intervalSeconds = getNumber(getRecord(statusRecord.config).intervalSeconds)
-			details.statusHttp = status.response.status
+			statusHttp = status.response.status
+			statusPayload = await readJson(status.response)
 			if (!status.response.ok) statusError = JSON.stringify(statusPayload)
 		} else {
-			details.running = null
 			statusError =
 				"ACTIONS_INDEXER_TOKEN is not set; authenticated status and controls are disabled."
+		}
+		const details = {
+			...extractActionsIndexerDetails({ healthPayload, statusPayload }),
+			statusHttp
 		}
 
 		const status =
@@ -362,11 +494,12 @@ export const probeActionsIndexer = async ({
 	}
 }
 
-export const readActionsIndexerToken = (): string | undefined => readEnv("ACTIONS_INDEXER_TOKEN")
+export const readActionsIndexerToken = (network: OpsNetwork): string | undefined =>
+	readEnv(`${network.toUpperCase()}_ACTIONS_INDEXER_TOKEN`) ?? readEnv("ACTIONS_INDEXER_TOKEN")
 
-export const createOpsSnapshot = async (): Promise<OpsSnapshot> => {
-	const config = getOpsConfig()
-	const token = readActionsIndexerToken()
+export const createOpsSnapshot = async (networkInput?: unknown): Promise<OpsSnapshot> => {
+	const config = getOpsConfig(networkInput)
+	const token = readActionsIndexerToken(config.network)
 	const services = await Promise.all([
 		probeActionsIndexer({ endpoint: config.actionsIndexerUrl, token }),
 		probeArchive({ id: "l1-archive", label: "L1 archive", endpoint: config.l1ArchiveUrl }),
@@ -383,14 +516,19 @@ export const createOpsSnapshot = async (): Promise<OpsSnapshot> => {
 	}
 }
 
-export const runIndexerControl = async (action: ControlAction): Promise<unknown> => {
-	const token = readActionsIndexerToken()
+export const runIndexerControl = async (
+	action: ControlAction,
+	networkInput?: unknown
+): Promise<unknown> => {
+	const config = getOpsConfig(networkInput)
+	const token = readActionsIndexerToken(config.network)
 	if (!token) {
-		throw new Error("ACTIONS_INDEXER_TOKEN is required for indexer control actions")
+		throw new Error(
+			`${config.network.toUpperCase()}_ACTIONS_INDEXER_TOKEN or ACTIONS_INDEXER_TOKEN is required for indexer control actions`
+		)
 	}
 
-	const endpoint = getOpsConfig().actionsIndexerUrl
-	const { response } = await timedFetch(`${endpoint}/${action}`, {
+	const { response } = await timedFetch(`${config.actionsIndexerUrl}/${action}`, {
 		method: "POST",
 		headers: { authorization: `Bearer ${token}` }
 	})

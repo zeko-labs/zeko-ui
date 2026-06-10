@@ -1,3 +1,6 @@
-import { createOpsSnapshot } from "../../utils/ops"
+import { createOpsSnapshot, resolveOpsNetwork } from "../../utils/ops"
 
-export default defineEventHandler(async () => createOpsSnapshot())
+export default defineEventHandler(async (event) => {
+	const query = getQuery(event)
+	return createOpsSnapshot(resolveOpsNetwork(query.network))
+})
