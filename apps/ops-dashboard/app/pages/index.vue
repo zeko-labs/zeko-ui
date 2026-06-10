@@ -45,6 +45,8 @@ interface OpsSnapshot {
 		l2ArchiveUrl: string
 		l1DaemonUrl: string
 		l2DaemonUrl: string
+		outerActionsPublicKey: string
+		innerActionsPublicKey: string
 	}
 	summary: Record<ServiceStatus, number>
 	services: ServiceProbe[]
@@ -71,7 +73,7 @@ const actionMessage = ref<string | null>(null)
 const selectedNetwork = ref<OpsNetwork>(
 	resolveNetworkFromQuery(route.query.network)
 )
-const refreshIntervalMs = 5_000
+const refreshIntervalMs = 30_000
 const lastRefreshStartedAt = ref<string | null>(null)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 let refreshSequence = 0
@@ -90,14 +92,6 @@ const serviceById = computed(
 	() => new Map(services.value.map((service) => [service.id, service]))
 )
 const indexerService = computed(() => serviceById.value.get("actions-indexer"))
-const indexerHeaderState = computed(
-	() => indexerService.value?.status ?? "unknown"
-)
-const indexerHeaderLabel = computed(() =>
-	indexerService.value === undefined
-		? "Indexer loading"
-		: `Indexer ${indexerService.value.status}`
-)
 const chainRows = computed<ChainRow[]>(() => {
 	const indexer = indexerService.value
 	const l1Archive = serviceById.value.get("l1-archive")
@@ -109,8 +103,8 @@ const chainRows = computed<ChainRow[]>(() => {
 		{
 			...buildChainInsight({
 				id: "l1",
-				label: "L1 Mina",
-				indexerLabel: "Outer",
+				label: "L1 Mina actions",
+				indexerLabel: "L1",
 				indexer,
 				archive: l1Archive,
 				daemon: l1Daemon,
@@ -126,8 +120,8 @@ const chainRows = computed<ChainRow[]>(() => {
 		{
 			...buildChainInsight({
 				id: "l2",
-				label: "L2 Zeko",
-				indexerLabel: "Inner",
+				label: "L2 Zeko actions",
+				indexerLabel: "L2",
 				indexer,
 				archive: l2Archive,
 				daemon: l2Daemon,
@@ -167,13 +161,55 @@ const pendingActionLabel = (row: ChainRow) => {
 	if (row.nonCanonicalTailCount === null) return "pending actions unknown"
 	if (row.nonCanonicalTailCount === 0) return "no pending actions"
 	const unit = row.nonCanonicalTailCount === 1 ? "action" : "actions"
-	return `${row.nonCanonicalTailCount.toLocaleString()} pending ${unit}`
+	return `${row.nonCanonicalTailCount.toLocaleString()} ${unit} waiting finality`
 }
 const finalityGapLabel = (row: ChainRow) => {
-	if (row.archiveFinalityGap === null) return "pending/canonical unknown"
-	const gap = row.archiveFinalityGap.toLocaleString()
-	if (row.expectedFinalityBlocks === null) return `${gap} pending txs`
-	return `${gap} pending blocks`
+	if (row.id === "l2") return "72h action finality"
+	if (row.archiveFinalityGap === null) return "finality unknown"
+	return `${row.archiveFinalityGap.toLocaleString()} blocks not final`
+}
+const finalityDetail = (row: ChainRow) => {
+	if (row.id === "l1") return "L1 finality target: 290 blocks"
+	return "L2 actions finalize after 72 hours"
+}
+const coverageState = (row: ChainRow): ServiceStatus => {
+	if (row.actionCoverageStatus === "missing") return "error"
+	if (row.actionCoverageStatus === "current") return "ok"
+	if (row.actionCoverageStatus === "partial") return "warn"
+	return "unknown"
+}
+const indexerHeaderState = computed<ServiceStatus>(() => {
+	const serviceState = indexerService.value?.status ?? "unknown"
+	if (serviceState === "error" || serviceState === "warn") return serviceState
+	if (chainRows.value.some((row) => coverageState(row) === "error"))
+		return "error"
+	if (chainRows.value.some((row) => coverageState(row) !== "ok")) return "warn"
+	return serviceState
+})
+const indexerHeaderLabel = computed(() => {
+	if (indexerService.value === undefined) return "Indexer loading"
+	if (indexerHeaderState.value === "error") return "Indexer missing data"
+	if (indexerHeaderState.value === "warn") return "Indexer needs review"
+	return `Indexer ${indexerService.value.status}`
+})
+const coverageLabel = (row: ChainRow) => {
+	if (row.actionCoverageStatus === "missing") {
+		const count = row.missingActionCount ?? row.missingActionBlockCount ?? 0
+		const unit = count === 1 ? "action" : "actions"
+		return `${count.toLocaleString()} missing archive ${unit}`
+	}
+	if (row.actionCoverageStatus === "current")
+		return "DB has latest archive actions"
+	if (row.actionCoverageStatus === "partial") return "coverage scan partial"
+	return "coverage unknown"
+}
+const coverageDetail = (row: ChainRow) => {
+	if (row.actionCoverageError) return row.actionCoverageError
+	if (row.actionCoverageStatus === "missing")
+		return `first missing block ${formatBlock(row.firstMissingActionBlock)}`
+	return `archive action ${formatBlock(row.latestArchiveActionBlock)}; DB action ${formatBlock(
+		row.lastActionBlockHeight
+	)}`
 }
 const archiveDaemonGapLabel = (gap: number | null) =>
 	gapLabel(gap, "archive ahead", "daemon ahead")
@@ -187,6 +223,11 @@ const rowServices = (row: ChainRow): ServiceProbe[] =>
 	)
 const detailValue = (service: ServiceProbe, key: string) =>
 	service.details[key] ?? null
+
+const indexerDbAgeSeconds = computed(() => {
+	const value = indexerService.value?.details.canonicalAgeMs
+	return typeof value === "number" ? Math.round(value / 1000) : null
+})
 
 const formatDetailKey = (key: string) =>
 	key
@@ -434,21 +475,29 @@ watch(
         :key="`${row.id}-finality-gap`"
         class="InsightCard"
         :data-state="finalityState(row.archiveFinalityGap, row.expectedFinalityBlocks)">
-        <span>{{ row.label }} finality window</span>
+        <span>{{ row.label }} finality</span>
         <strong>{{ finalityGapLabel(row) }}</strong>
-        <small>Pending {{ formatBlock(row.archiveHeight) }} vs canonical {{
-            formatBlock(row.archiveCanonicalHeight)
-          }}</small>
+        <small>{{ finalityDetail(row) }}</small>
       </article>
       <article
         v-for="row in chainRows"
-        :key="`${row.id}-action-gap`"
+        :key="`${row.id}-coverage`"
+        class="InsightCard"
+        :data-state="coverageState(row)">
+        <span>{{ row.indexerLabel }} archive coverage</span>
+        <strong>{{ coverageLabel(row) }}</strong>
+        <small>{{ coverageDetail(row) }}</small>
+      </article>
+      <article
+        v-for="row in chainRows"
+        :key="`${row.id}-pending-actions`"
         class="InsightCard"
         :data-state="tailState(row.nonCanonicalTailCount, row.expectedFinalityBlocks)">
-        <span>Zeko action-indexer {{ row.indexerLabel }} stream</span>
+        <span>{{ row.indexerLabel }} actions in DB awaiting finality</span>
         <strong>{{ pendingActionLabel(row) }}</strong>
-        <small>Last action block {{ formatBlock(row.lastActionBlockHeight) }};
-          final {{ formatBlock(row.finalActionBlockHeight) }}</small>
+        <small>final action block {{
+            formatBlock(row.finalActionBlockHeight)
+          }}</small>
       </article>
       <article
         v-for="row in chainRows"
@@ -487,26 +536,18 @@ watch(
 
         <div class="IndexerHighlights">
           <div v-for="row in chainRows" :key="`${row.id}-indexer`">
-            <span>{{ row.indexerLabel }} last action block</span>
-            <strong>{{ formatBlock(row.lastActionBlockHeight) }}</strong>
-            <small
-              :data-state="
-                tailState(
-                	row.nonCanonicalTailCount,
-                	row.expectedFinalityBlocks
-                )
-              ">
-              final {{ formatBlock(row.finalActionBlockHeight) }}; tail {{
-                formatBlock(row.nonCanonicalTailCount)
-              }}
-            </small>
+            <span>{{ row.indexerLabel }} archive coverage</span>
+            <strong>{{ coverageLabel(row) }}</strong>
+            <small :data-state="coverageState(row)">{{
+              coverageDetail(row)
+            }}</small>
           </div>
           <div>
             <span>DB</span>
             <strong>{{
               formatValue(detailValue(indexerService, "databaseStatus"))
             }}</strong>
-            <small>{{
+            <small>{{ indexerDbAgeSeconds ?? "-" }}s status age; {{
                 formatValue(
                 	detailValue(indexerService, "databaseLatencyMs")
                 )
@@ -518,38 +559,12 @@ watch(
               formatValue(detailValue(indexerService, "running"))
             }}</strong>
             <small>{{
-                formatValue(detailValue(indexerService, "intervalSeconds"))
-              }}s interval</small>
+                formatValue(
+                	detailValue(indexerService, "consecutiveErrors")
+                )
+              }} consecutive errors</small>
           </div>
         </div>
-
-        <dl class="DetailGrid">
-          <div>
-            <dt>HTTP</dt>
-            <dd>{{ indexerService.httpStatus ?? "-" }}</dd>
-          </div>
-          <div>
-            <dt>Latency</dt>
-            <dd>
-              {{
-                indexerService.latencyMs === null
-                ? "-"
-                : `${indexerService.latencyMs} ms`
-              }}
-            </dd>
-          </div>
-          <div>
-            <dt>Checked</dt>
-            <dd>{{ formatDate(indexerService.checkedAt) }}</dd>
-          </div>
-          <div
-            v-for="entry in detailEntries(indexerService)"
-            :key="entry.key"
-            :data-database="entry.isDatabase">
-            <dt>{{ entry.label }}</dt>
-            <dd>{{ formatValue(entry.value) }}</dd>
-          </div>
-        </dl>
 
         <p v-if="indexerService.error" class="ServiceError">
           {{ indexerService.error }}
@@ -562,7 +577,7 @@ watch(
         <header class="ChainHeader">
           <div>
             <p class="Kicker">
-              Zeko action-indexer {{ row.indexerLabel }} stream
+              Zeko action-indexer {{ row.indexerLabel }} actions
             </p>
             <h2>{{ row.label }}</h2>
           </div>
@@ -576,14 +591,8 @@ watch(
               ">
               {{ finalityGapLabel(row) }}
             </span>
-            <span
-              :data-state="
-                tailState(
-                	row.nonCanonicalTailCount,
-                	row.expectedFinalityBlocks
-                )
-              ">
-              non-canonical tail {{ formatBlock(row.nonCanonicalTailCount) }}
+            <span :data-state="coverageState(row)">
+              {{ coverageLabel(row) }}
             </span>
             <span
               :data-state='
@@ -598,18 +607,16 @@ watch(
 
         <div class="HeightStrip">
           <div>
-            <span>Last action block</span>
+            <span>DB latest action block</span>
             <strong>{{ formatBlock(row.lastActionBlockHeight) }}</strong>
             <small>final action block {{
                 formatBlock(row.finalActionBlockHeight)
               }}</small>
           </div>
           <div>
-            <span>Archive pending</span>
+            <span>Archive head</span>
             <strong>{{ formatBlock(row.archiveHeight) }}</strong>
-            <small>canonical {{
-                formatBlock(row.archiveCanonicalHeight)
-              }}</small>
+            <small>{{ coverageDetail(row) }}</small>
           </div>
           <div v-if="row.daemonBlockHeightSupported">
             <span>Daemon head</span>

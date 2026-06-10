@@ -13,6 +13,7 @@ import {
 	getOpsConfig,
 	normalizeEndpoint,
 	resolveOpsNetwork,
+	summarizeActionCoverage,
 	summarizeServices,
 	type ServiceProbe
 } from "../server/utils/ops"
@@ -65,14 +66,51 @@ describe("ops dashboard utilities", () => {
 		expect(getOpsConfig("mainnet")).toMatchObject({
 			network: "mainnet",
 			actionsIndexerUrl: "https://indexer.actions.zeko.io",
-			l2DaemonUrl: "https://mainnet.zeko.io/graphql"
+			l2DaemonUrl: "https://mainnet.zeko.io/graphql",
+			outerActionsPublicKey: "B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC",
+			innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 		})
 		expect(getOpsConfig("testnet")).toMatchObject({
 			network: "testnet",
 			actionsIndexerUrl: "https://testnet.indexer.actions.zeko.io",
 			l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
 			l1DaemonUrl: "https://gateway.mina.devnet.zeko.io",
-			l2DaemonUrl: "https://testnet.zeko.io/graphql"
+			l2DaemonUrl: "https://testnet.zeko.io/graphql",
+			outerActionsPublicKey: "B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2",
+			innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
+		})
+	})
+
+	it("summarizes archive action coverage after the indexed head", () => {
+		expect(
+			summarizeActionCoverage({
+				archiveHeight: 1_100,
+				lastFetchedBlock: 1_000,
+				actionBlocks: [],
+				scanComplete: true
+			})
+		).toMatchObject({
+			actionCoverageStatus: "current",
+			missingActionCount: 0,
+			missingActionBlockCount: 0,
+			latestArchiveActionBlock: 1_000
+		})
+		expect(
+			summarizeActionCoverage({
+				archiveHeight: 1_100,
+				lastFetchedBlock: 1_000,
+				actionBlocks: [
+					{ height: 1_020, actionCount: 2 },
+					{ height: 1_050, actionCount: 1 }
+				],
+				scanComplete: true
+			})
+		).toMatchObject({
+			actionCoverageStatus: "missing",
+			missingActionCount: 3,
+			missingActionBlockCount: 2,
+			firstMissingActionBlock: 1_020,
+			latestArchiveActionBlock: 1_050
 		})
 	})
 

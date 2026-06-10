@@ -9,6 +9,8 @@ export interface OpsEndpointConfig {
 	l2ArchiveUrl: string
 	l1DaemonUrl: string
 	l2DaemonUrl: string
+	outerActionsPublicKey: string
+	innerActionsPublicKey: string
 }
 
 export interface ServiceProbe {
@@ -34,6 +36,9 @@ export interface OpsSnapshot {
 export type ControlAction = "start" | "stop" | "rebuild" | "reset"
 
 const requestTimeoutMs = 12_000
+const retryDelaysMs = [0, 350, 1_000]
+const actionScanRangeSize = 10_000
+const maxActionScanRanges = 6
 
 const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
 	mainnet: {
@@ -42,7 +47,9 @@ const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
 		l1ArchiveUrl: "https://gateway.mina.archive.mainnet.zeko.io",
 		l2ArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
 		l1DaemonUrl: "https://gateway.mina.mainnet.zeko.io",
-		l2DaemonUrl: "https://mainnet.zeko.io/graphql"
+		l2DaemonUrl: "https://mainnet.zeko.io/graphql",
+		outerActionsPublicKey: "B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC",
+		innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 	},
 	testnet: {
 		network: "testnet",
@@ -50,7 +57,9 @@ const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
 		l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
 		l2ArchiveUrl: "https://archive.testnet.zeko.io/graphql",
 		l1DaemonUrl: "https://gateway.mina.devnet.zeko.io",
-		l2DaemonUrl: "https://testnet.zeko.io/graphql"
+		l2DaemonUrl: "https://testnet.zeko.io/graphql",
+		outerActionsPublicKey: "B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2",
+		innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 	}
 }
 
@@ -69,6 +78,11 @@ const endpointEnvKeys = {
 	l2DaemonUrl: "L2_DAEMON_URL"
 } as const
 
+const publicKeyEnvKeys = {
+	outerActionsPublicKey: "OUTER_ACTIONS_PUBLIC_KEY",
+	innerActionsPublicKey: "INNER_ACTIONS_PUBLIC_KEY"
+} as const
+
 export const resolveOpsNetwork = (value: unknown): OpsNetwork =>
 	value === "testnet" || value === "mainnet" ? value : "mainnet"
 
@@ -80,6 +94,14 @@ const readNetworkEndpoint = (network: OpsNetwork, key: keyof typeof endpointEnvK
 	return normalizeEndpoint(readEnv(networkEnvKey) ?? globalOverride ?? defaultValue)
 }
 
+const readNetworkPublicKey = (network: OpsNetwork, key: keyof typeof publicKeyEnvKeys): string => {
+	const envKey = publicKeyEnvKeys[key]
+	const networkEnvKey = `${network.toUpperCase()}_${envKey}`
+	const defaultValue = opsDefaults[network][key]
+	const globalOverride = network === "mainnet" ? readEnv(envKey) : undefined
+	return readEnv(networkEnvKey) ?? globalOverride ?? defaultValue
+}
+
 export const getOpsConfig = (networkInput?: unknown): OpsEndpointConfig => {
 	const network = resolveOpsNetwork(networkInput)
 	return {
@@ -88,7 +110,9 @@ export const getOpsConfig = (networkInput?: unknown): OpsEndpointConfig => {
 		l1ArchiveUrl: readNetworkEndpoint(network, "l1ArchiveUrl"),
 		l2ArchiveUrl: readNetworkEndpoint(network, "l2ArchiveUrl"),
 		l1DaemonUrl: readNetworkEndpoint(network, "l1DaemonUrl"),
-		l2DaemonUrl: readNetworkEndpoint(network, "l2DaemonUrl")
+		l2DaemonUrl: readNetworkEndpoint(network, "l2DaemonUrl"),
+		outerActionsPublicKey: readNetworkPublicKey(network, "outerActionsPublicKey"),
+		innerActionsPublicKey: readNetworkPublicKey(network, "innerActionsPublicKey")
 	}
 }
 
@@ -207,23 +231,42 @@ export const summarizeServices = (services: ServiceProbe[]): Record<ServiceStatu
 		{ ok: 0, warn: 0, error: 0, unknown: 0 }
 	)
 
-const timedFetch = async (url: string, init?: RequestInit, timeoutMs = requestTimeoutMs) => {
-	const controller = new AbortController()
-	const startedAt = performance.now()
-	const timeout = setTimeout(() => controller.abort(), timeoutMs)
+const wait = (delayMs: number): Promise<void> =>
+	new Promise((resolve) => setTimeout(resolve, delayMs))
 
-	try {
-		const response = await fetch(url, {
-			...init,
-			signal: controller.signal
-		})
-		return {
-			response,
-			latencyMs: Math.round(performance.now() - startedAt)
+const shouldRetryResponse = (response: Response): boolean =>
+	response.status === 429 || (response.status >= 500 && response.status <= 599)
+
+const timedFetch = async (url: string, init?: RequestInit, timeoutMs = requestTimeoutMs) => {
+	const startedAt = performance.now()
+	let lastError: unknown
+
+	for (const [attempt, delayMs] of retryDelaysMs.entries()) {
+		if (delayMs > 0) await wait(delayMs)
+		const controller = new AbortController()
+		const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+		try {
+			const response = await fetch(url, {
+				...init,
+				signal: controller.signal
+			})
+			if (attempt < retryDelaysMs.length - 1 && shouldRetryResponse(response)) {
+				continue
+			}
+			return {
+				response,
+				latencyMs: Math.round(performance.now() - startedAt)
+			}
+		} catch (error) {
+			lastError = error
+			if (attempt === retryDelaysMs.length - 1) throw error
+		} finally {
+			clearTimeout(timeout)
 		}
-	} finally {
-		clearTimeout(timeout)
 	}
+
+	throw lastError instanceof Error ? lastError : new Error(String(lastError))
 }
 
 const readJson = async (response: Response): Promise<unknown> => {
@@ -290,13 +333,21 @@ const makeProbeError = ({
 	error: error instanceof Error ? error.message : String(error)
 })
 
-const graphQlRequest = async (endpoint: string, query: string, timeoutMs?: number) => {
+const graphQlRequest = async (
+	endpoint: string,
+	query: string,
+	timeoutMs?: number,
+	variables?: Record<string, string | number>
+) => {
 	const { response, latencyMs } = await timedFetch(
 		endpoint,
 		{
 			method: "POST",
 			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ query })
+			body: JSON.stringify({
+				query,
+				...(variables && { variables })
+			})
 		},
 		timeoutMs
 	)
@@ -351,6 +402,150 @@ export const probeArchive = async ({
 		}
 	} catch (error) {
 		return makeProbeError({ id, label, kind: "archive", endpoint, error })
+	}
+}
+
+export interface ArchiveActionBlock {
+	height: number
+	actionCount: number
+}
+
+export const summarizeActionCoverage = ({
+	archiveHeight,
+	actionBlocks,
+	lastFetchedBlock,
+	scanComplete
+}: {
+	archiveHeight: number | null
+	actionBlocks: ArchiveActionBlock[]
+	lastFetchedBlock: number | null
+	scanComplete: boolean
+}): ServiceProbe["details"] => {
+	if (archiveHeight === null || lastFetchedBlock === null) {
+		return {
+			actionCoverageStatus: "unknown",
+			missingActionCount: null,
+			missingActionBlockCount: null,
+			firstMissingActionBlock: null,
+			latestArchiveActionBlock: null
+		}
+	}
+
+	const missingActionCount = actionBlocks.reduce((total, block) => total + block.actionCount, 0)
+	const heights = actionBlocks.map((block) => block.height)
+	return {
+		actionCoverageStatus: missingActionCount > 0 ? "missing" : scanComplete ? "current" : "partial",
+		missingActionCount,
+		missingActionBlockCount: actionBlocks.length,
+		firstMissingActionBlock: heights.length === 0 ? null : Math.min(...heights),
+		latestArchiveActionBlock: heights.length === 0 ? lastFetchedBlock : Math.max(...heights),
+		actionScanComplete: scanComplete
+	}
+}
+
+const prefixDetails = (
+	prefix: "l1" | "l2",
+	details: ServiceProbe["details"]
+): ServiceProbe["details"] =>
+	Object.fromEntries(
+		Object.entries(details).map(([key, value]) => [`${prefix}${toPascal(key)}`, value])
+	)
+
+const readArchiveActionBlocks = async ({
+	endpoint,
+	from,
+	publicKey,
+	to
+}: {
+	endpoint: string
+	from: number
+	publicKey: string
+	to: number
+}): Promise<ArchiveActionBlock[]> => {
+	const { response, payload } = await graphQlRequest(
+		endpoint,
+		`query OpsActionCoverage($pk: String!, $from: Int, $to: Int) {
+			actions(input: { address: $pk, from: $from, to: $to }) {
+				blockInfo {
+					height
+				}
+				actionData {
+					data
+				}
+			}
+		}`,
+		requestTimeoutMs,
+		{ pk: publicKey, from, to }
+	)
+	const error = getFirstError(payload)
+	if (!response.ok || error) {
+		throw new Error(error ?? `Archive actions query failed with HTTP ${response.status}`)
+	}
+
+	const data = getRecord(getRecord(payload).data)
+	const actions = Array.isArray(data.actions) ? data.actions : []
+	return actions.flatMap((item) => {
+		const record = getRecord(item)
+		const height = getNumber(getRecord(record.blockInfo).height)
+		if (height === null) return []
+		const actionData = Array.isArray(record.actionData) ? record.actionData : []
+		return [{ height, actionCount: Math.max(1, actionData.length) }]
+	})
+}
+
+const probeArchiveActionCoverage = async ({
+	archiveHeight,
+	endpoint,
+	lastFetchedBlock,
+	publicKey
+}: {
+	archiveHeight: number | null
+	endpoint: string
+	lastFetchedBlock: number | null
+	publicKey: string
+}): Promise<ServiceProbe["details"]> => {
+	if (archiveHeight === null || lastFetchedBlock === null) {
+		return summarizeActionCoverage({
+			archiveHeight,
+			lastFetchedBlock,
+			actionBlocks: [],
+			scanComplete: false
+		})
+	}
+
+	const scanFrom = lastFetchedBlock + 1
+	if (scanFrom > archiveHeight) {
+		return {
+			...summarizeActionCoverage({
+				archiveHeight,
+				lastFetchedBlock,
+				actionBlocks: [],
+				scanComplete: true
+			}),
+			actionScanFrom: scanFrom,
+			actionScanTo: archiveHeight
+		}
+	}
+
+	const blocks: ArchiveActionBlock[] = []
+	let from = scanFrom
+	let ranges = 0
+	while (from <= archiveHeight && ranges < maxActionScanRanges) {
+		const to = Math.min(from + actionScanRangeSize, archiveHeight + 1)
+		blocks.push(...(await readArchiveActionBlocks({ endpoint, from, publicKey, to })))
+		from = to
+		ranges++
+	}
+
+	return {
+		...summarizeActionCoverage({
+			archiveHeight,
+			lastFetchedBlock,
+			actionBlocks: blocks,
+			scanComplete: from > archiveHeight
+		}),
+		actionScanFrom: scanFrom,
+		actionScanTo: Math.min(from - 1, archiveHeight)
 	}
 }
 
@@ -509,7 +704,7 @@ export const readActionsIndexerToken = (network: OpsNetwork): string | undefined
 export const createOpsSnapshot = async (networkInput?: unknown): Promise<OpsSnapshot> => {
 	const config = getOpsConfig(networkInput)
 	const token = readActionsIndexerToken(config.network)
-	const services = await Promise.all([
+	const [indexer, l1Archive, l2Archive, l1Daemon, l2Daemon] = await Promise.all([
 		probeActionsIndexer({ endpoint: config.actionsIndexerUrl, token }),
 		probeArchive({ id: "l1-archive", label: "L1 archive", endpoint: config.l1ArchiveUrl }),
 		probeArchive({ id: "l2-archive", label: "L2 archive", endpoint: config.l2ArchiveUrl }),
@@ -526,6 +721,40 @@ export const createOpsSnapshot = async (networkInput?: unknown): Promise<OpsSnap
 			supportsBestChain: false
 		})
 	])
+	const [l1Coverage, l2Coverage] = await Promise.all([
+		probeArchiveActionCoverage({
+			archiveHeight: getNumber(l1Archive.details.pendingMaxBlockHeight),
+			endpoint: config.l1ArchiveUrl,
+			lastFetchedBlock: getNumber(indexer.details.lastFetchedOuter),
+			publicKey: config.outerActionsPublicKey
+		}).catch((error) => ({
+			actionCoverageStatus: "unknown",
+			actionCoverageError: error instanceof Error ? error.message : String(error)
+		})),
+		probeArchiveActionCoverage({
+			archiveHeight: getNumber(l2Archive.details.pendingMaxBlockHeight),
+			endpoint: config.l2ArchiveUrl,
+			lastFetchedBlock: getNumber(indexer.details.lastFetchedInner),
+			publicKey: config.innerActionsPublicKey
+		}).catch((error) => ({
+			actionCoverageStatus: "unknown",
+			actionCoverageError: error instanceof Error ? error.message : String(error)
+		}))
+	])
+	const services = [
+		{
+			...indexer,
+			details: {
+				...indexer.details,
+				...prefixDetails("l1", l1Coverage),
+				...prefixDetails("l2", l2Coverage)
+			}
+		},
+		l1Archive,
+		l2Archive,
+		l1Daemon,
+		l2Daemon
+	]
 
 	return {
 		checkedAt: new Date().toISOString(),

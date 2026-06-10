@@ -12,6 +12,14 @@ export interface ChainInsight {
 	lastActionBlockHeight: number | null
 	finalActionBlockHeight: number | null
 	nonCanonicalTailCount: number | null
+	actionCoverageStatus: string | null
+	actionCoverageError: string | null
+	missingActionCount: number | null
+	missingActionBlockCount: number | null
+	firstMissingActionBlock: number | null
+	latestArchiveActionBlock: number | null
+	actionScanFrom: number | null
+	actionScanTo: number | null
 	archiveHeight: number | null
 	archiveCanonicalHeight: number | null
 	daemonHeight: number | null
@@ -55,6 +63,11 @@ export const gapLabel = (gap: number | null, aheadLabel: string, behindLabel: st
 
 const detailNumber = (service: InsightService | undefined, key: string): number | null =>
 	toNumber(service?.details[key])
+
+const detailString = (service: InsightService | undefined, key: string): string | null => {
+	const value = service?.details[key]
+	return typeof value === "string" && value.trim() !== "" ? value : null
+}
 
 export const finalityState = (
 	gap: number | null,
@@ -113,6 +126,7 @@ export const buildChainInsight = ({
 	const lastActionBlockHeight = detailNumber(indexer, indexerHeightKey)
 	const finalActionBlockHeight = detailNumber(indexer, indexerFinalHeightKey)
 	const nonCanonicalTailCount = detailNumber(indexer, nonCanonicalTailKey)
+	const detailPrefix = id
 	const archiveHeight =
 		detailNumber(archive, "pendingMaxBlockHeight") ??
 		detailNumber(archive, "canonicalMaxBlockHeight")
@@ -126,6 +140,14 @@ export const buildChainInsight = ({
 		lastActionBlockHeight,
 		finalActionBlockHeight,
 		nonCanonicalTailCount,
+		actionCoverageStatus: detailString(indexer, `${detailPrefix}ActionCoverageStatus`),
+		actionCoverageError: detailString(indexer, `${detailPrefix}ActionCoverageError`),
+		missingActionCount: detailNumber(indexer, `${detailPrefix}MissingActionCount`),
+		missingActionBlockCount: detailNumber(indexer, `${detailPrefix}MissingActionBlockCount`),
+		firstMissingActionBlock: detailNumber(indexer, `${detailPrefix}FirstMissingActionBlock`),
+		latestArchiveActionBlock: detailNumber(indexer, `${detailPrefix}LatestArchiveActionBlock`),
+		actionScanFrom: detailNumber(indexer, `${detailPrefix}ActionScanFrom`),
+		actionScanTo: detailNumber(indexer, `${detailPrefix}ActionScanTo`),
 		archiveHeight,
 		archiveCanonicalHeight,
 		daemonHeight,
