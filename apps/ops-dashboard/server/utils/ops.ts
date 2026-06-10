@@ -317,6 +317,13 @@ const getDisplayString = (value: unknown): string | null => {
 	return null
 }
 
+const formatUnknownError = (error: unknown, fallback: string): string => {
+	if (error instanceof Error && error.message.trim() !== "") return error.message
+	if (typeof error === "string" && error.trim() !== "") return error
+	if (error === null || error === undefined) return fallback
+	return String(error)
+}
+
 const getFirstError = (payload: unknown): string | undefined => {
 	const errors = getRecord(payload).errors
 	if (!Array.isArray(errors)) return
@@ -346,7 +353,7 @@ const makeProbeError = ({
 	latencyMs: null,
 	httpStatus: null,
 	details: {},
-	error: error instanceof Error ? error.message : String(error)
+	error: formatUnknownError(error, `Unknown error probing ${label}`)
 })
 
 const graphQlRequest = async (
@@ -671,6 +678,10 @@ export const probeActionsIndexer = async ({
 		const healthPayload = await readJson(health.response)
 		const healthRecord = getRecord(healthPayload)
 		const healthStatus = getString(healthRecord.status)
+		const healthError =
+			health.response.ok || healthStatus !== null
+				? undefined
+				: `Health check returned HTTP ${health.response.status}`
 
 		let statusHttp: number | null = null
 		let statusPayload: unknown
@@ -681,7 +692,10 @@ export const probeActionsIndexer = async ({
 			})
 			statusHttp = status.response.status
 			statusPayload = await readJson(status.response)
-			if (!status.response.ok) statusError = JSON.stringify(statusPayload)
+			if (!status.response.ok)
+				statusError = `Status check returned HTTP ${status.response.status}: ${
+					typeof statusPayload === "string" ? statusPayload : JSON.stringify(statusPayload)
+				}`
 		} else {
 			statusError =
 				"ACTIONS_INDEXER_TOKEN is not set; authenticated status and controls are disabled."
@@ -710,7 +724,7 @@ export const probeActionsIndexer = async ({
 			latencyMs: health.latencyMs,
 			httpStatus: health.response.status,
 			details,
-			...(statusError && { error: statusError })
+			...(healthError || statusError ? { error: healthError ?? statusError } : {})
 		}
 	} catch (error) {
 		return makeProbeError({ id, label, kind: "actions-indexer", endpoint, error })

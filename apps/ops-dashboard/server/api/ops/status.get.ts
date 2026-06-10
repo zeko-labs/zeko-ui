@@ -1,11 +1,7 @@
-import { createOpsSnapshot, type OpsEnv, resolveOpsNetwork } from "../../utils/ops"
-
-const getEventEnv = (event: { context: unknown }): OpsEnv => {
-	const context = event.context as { cloudflare?: { env?: OpsEnv } }
-	return context.cloudflare?.env ?? process.env
-}
+import { resolveEventEnv } from "../../utils/cloudflare-env"
+import { createOpsSnapshot, resolveOpsNetwork } from "../../utils/ops"
 
 export default defineEventHandler(async (event) => {
 	const query = getQuery(event)
-	return createOpsSnapshot(resolveOpsNetwork(query.network), getEventEnv(event))
+	return createOpsSnapshot(resolveOpsNetwork(query.network), resolveEventEnv(event))
 })

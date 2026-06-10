@@ -1,16 +1,7 @@
-import {
-	type ControlAction,
-	type OpsEnv,
-	resolveOpsNetwork,
-	runIndexerControl
-} from "../../utils/ops"
+import { resolveEventEnv } from "../../utils/cloudflare-env"
+import { type ControlAction, resolveOpsNetwork, runIndexerControl } from "../../utils/ops"
 
 const allowedActions = new Set<ControlAction>(["start", "stop", "rebuild", "reset"])
-
-const getEventEnv = (event: { context: unknown }): OpsEnv => {
-	const context = event.context as { cloudflare?: { env?: OpsEnv } }
-	return context.cloudflare?.env ?? process.env
-}
 
 export default defineEventHandler(async (event) => {
 	const body = (await readBody(event)) as { action?: unknown; network?: unknown }
@@ -23,7 +14,7 @@ export default defineEventHandler(async (event) => {
 	}
 
 	try {
-		const result = await runIndexerControl(action as ControlAction, network, getEventEnv(event))
+		const result = await runIndexerControl(action as ControlAction, network, resolveEventEnv(event))
 		return { success: true, action, network, result }
 	} catch (error) {
 		setResponseStatus(event, 502)

@@ -8,11 +8,13 @@ import {
 	gapState,
 	tailState
 } from "../app/utils/ops-insights"
+import { resolveEventEnv } from "../server/utils/cloudflare-env"
 import {
 	createOpsSnapshot,
 	extractActionsIndexerDetails,
 	getOpsConfig,
 	normalizeEndpoint,
+	probeActionsIndexer,
 	readActionsIndexerToken,
 	resolveOpsNetwork,
 	runIndexerControl,
@@ -34,6 +36,33 @@ const probe = (status: ServiceProbe["status"]): ServiceProbe => ({
 })
 
 describe("ops dashboard utilities", () => {
+	it("resolves Cloudflare env bindings from Nitro production context", () => {
+		const env = { TESTNET_ACTIONS_INDEXER_TOKEN: "production-token" }
+		expect(
+			resolveEventEnv({
+				context: {
+					_platform: {
+						cloudflare: { env }
+					},
+					cloudflare: {
+						env: { TESTNET_ACTIONS_INDEXER_TOKEN: "dev-token" }
+					}
+				}
+			})
+		).toBe(env)
+	})
+
+	it("falls back to Cloudflare dev context when production context is absent", () => {
+		const env = { TESTNET_ACTIONS_INDEXER_TOKEN: "dev-token" }
+		expect(
+			resolveEventEnv({
+				context: {
+					cloudflare: { env }
+				}
+			})
+		).toBe(env)
+	})
+
 	it("summarizes service states without mutating probe records", () => {
 		const services = [probe("ok"), probe("warn"), probe("error"), probe("unknown"), probe("ok")]
 
@@ -191,6 +220,27 @@ describe("ops dashboard utilities", () => {
 				method: "POST"
 			})
 		])
+	})
+
+	it("reports explicit indexer probe errors when fetch fails without an Error object", async () => {
+		const originalFetch = globalThis.fetch
+		globalThis.fetch = (async () => {
+			throw null
+		}) as typeof fetch
+
+		try {
+			await expect(
+				probeActionsIndexer({
+					endpoint: "https://testnet.indexer.actions.zeko.io",
+					token: "testnet-token"
+				})
+			).resolves.toMatchObject({
+				status: "error",
+				error: "Unknown error probing Zeko action-indexer"
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
 	})
 
 	it("summarizes archive action coverage after the indexed head", () => {
