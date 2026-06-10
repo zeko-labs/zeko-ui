@@ -1,5 +1,11 @@
 # @zeko-labs/bridge-cli
 
+## 0.2.2
+
+### Patch Changes
+
+- d27cbf8: Use the Zeko-hosted Mina mainnet gateway endpoints in Bridge CLI defaults and Bridge SDK examples.
+
 ## 0.2.1
 
 ### Patch Changes
