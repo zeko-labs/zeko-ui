@@ -1,0 +1,23 @@
+{
+	"name": "@zeko/ops-dashboard",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"postinstall": "nuxt prepare"
+	},
+	"dependencies": {
+		"@unhead/vue": "catalog:",
+		"@zeko/layer": "workspace:^",
+		"lucide-vue-next": "catalog:",
+		"nuxt": "catalog:",
+		"vue": "catalog:"
+	},
+	"devDependencies": {
+		"@csstools/postcss-global-data": "catalog:",
+		"@total-typescript/ts-reset": "catalog:",
+		"nitro-cloudflare-dev": "catalog:",
+		"vitest": "catalog:",
+		"vue-tsc": "^3.0.6",
+		"wrangler": "catalog:"
+	}
+}

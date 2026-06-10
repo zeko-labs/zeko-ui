@@ -1,0 +1,38 @@
+{
+	"$schema": "../../packages/cloudflare-build-config/schema/workers-build.schema.json",
+	"scriptName": "ops-dashboard",
+	"triggers": [
+		{
+			"name": "Deploy default branch",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks ops-dashboard:deploy",
+			"branchIncludes": ["main"],
+			"branchExcludes": [],
+			"pathIncludes": [
+				".moon/**",
+				"apps/ops-dashboard/**",
+				"moon.yml",
+				"package.json",
+				"packages/layer/**",
+				"pnpm-lock.yaml",
+				"pnpm-workspace.yaml"
+			],
+			"pathExcludes": []
+		},
+		{
+			"name": "Deploy non-production branches",
+			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks ops-dashboard:deploy-preview",
+			"branchIncludes": ["*"],
+			"branchExcludes": ["main"],
+			"pathIncludes": [
+				".moon/**",
+				"apps/ops-dashboard/**",
+				"moon.yml",
+				"package.json",
+				"packages/layer/**",
+				"pnpm-lock.yaml",
+				"pnpm-workspace.yaml"
+			],
+			"pathExcludes": []
+		}
+	]
+}

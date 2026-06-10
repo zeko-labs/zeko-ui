@@ -1,0 +1,311 @@
+:root {
+  --OpsInk: #151513;
+  --OpsMuted: #62645d;
+  --OpsSubtle: #8a8d83;
+  --OpsPaper: #f7f4ea;
+  --OpsPanel: #fffdf6;
+  --OpsLine: #d8d1bd;
+  --OpsGreen: #1d7a50;
+  --OpsAmber: #a55f04;
+  --OpsRed: #b42318;
+  --OpsBlue: #1f5b99;
+  --OpsCharcoal: #20231f;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background:
+    linear-gradient(90deg, rgb(32 35 31 / 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(32 35 31 / 0.04) 1px, transparent 1px),
+    var(--OpsPaper);
+  background-size: 24px 24px;
+  color: var(--OpsInk);
+  font-family: "IBM Plex Sans", "Lexend", ui-sans-serif, system-ui, sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+.OpsShell {
+  width: min(1480px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 28px 0 40px;
+}
+
+.OpsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--OpsCharcoal);
+
+  h1 {
+    margin: 0;
+    font-size: clamp(2.1rem, 4vw, 4.9rem);
+    line-height: 0.94;
+    letter-spacing: 0;
+  }
+}
+
+.Kicker {
+  margin: 0 0 6px;
+  color: var(--OpsMuted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.HeaderStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.HealthPill,
+.StateBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.HealthPill[data-state="ok"],
+.StateBadge[data-state="ok"] {
+  color: var(--OpsGreen);
+}
+
+.HealthPill[data-state="warn"],
+.StateBadge[data-state="warn"],
+.StateBadge[data-state="unknown"] {
+  color: var(--OpsAmber);
+}
+
+.StateBadge[data-state="error"] {
+  color: var(--OpsRed);
+}
+
+.Timestamp,
+.ActionState {
+  color: var(--OpsMuted);
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.ControlBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.IconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--OpsCharcoal);
+  border-radius: 6px;
+  background: var(--OpsPanel);
+  color: var(--OpsCharcoal);
+  box-shadow: 2px 2px 0 var(--OpsCharcoal);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--OpsCharcoal);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.IconButton.Primary {
+  background: var(--OpsCharcoal);
+  color: var(--OpsPanel);
+}
+
+.IconButton.Warn {
+  border-color: var(--OpsAmber);
+  color: var(--OpsAmber);
+}
+
+.IconButton.Danger {
+  border-color: var(--OpsRed);
+  color: var(--OpsRed);
+}
+
+.Spinning {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.Notice {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--OpsLine);
+  border-left: 5px solid var(--OpsBlue);
+  background: var(--OpsPanel);
+  color: var(--OpsCharcoal);
+  font-weight: 650;
+}
+
+.Notice.Error {
+  border-left-color: var(--OpsRed);
+  color: var(--OpsRed);
+}
+
+.SummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+
+  @media (--Tablet) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.Metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 70px;
+  padding: 12px 14px;
+  border: 1px solid var(--OpsLine);
+  background: rgb(255 253 246 / 0.82);
+
+  span {
+    color: var(--OpsMuted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  strong {
+    font-size: 2rem;
+    line-height: 1;
+  }
+}
+
+.ServiceGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+
+  @media (--Desktop) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ServiceCard {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--OpsLine);
+  border-top: 5px solid var(--OpsSubtle);
+  border-radius: 8px;
+  background: rgb(255 253 246 / 0.92);
+  overflow: hidden;
+}
+
+.ServiceCard[data-state="ok"] {
+  border-top-color: var(--OpsGreen);
+}
+
+.ServiceCard[data-state="warn"],
+.ServiceCard[data-state="unknown"] {
+  border-top-color: var(--OpsAmber);
+}
+
+.ServiceCard[data-state="error"] {
+  border-top-color: var(--OpsRed);
+}
+
+.ServiceHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--OpsLine);
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.15;
+    letter-spacing: 0;
+  }
+
+  p {
+    margin: 3px 0 0;
+    color: var(--OpsMuted);
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.73rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+.DetailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+
+  @media (--Tablet) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  div {
+    min-width: 0;
+    padding: 11px 14px;
+    border-right: 1px solid var(--OpsLine);
+    border-bottom: 1px solid var(--OpsLine);
+  }
+
+  dt {
+    margin-bottom: 5px;
+    color: var(--OpsSubtle);
+    font-size: 0.69rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0;
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.88rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+}
+
+.ServiceError {
+  margin: 0;
+  padding: 12px 14px;
+  background: rgb(180 35 24 / 0.08);
+  color: var(--OpsRed);
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}

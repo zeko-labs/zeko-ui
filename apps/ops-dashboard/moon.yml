@@ -1,0 +1,80 @@
+layer: application
+id: ops-dashboard
+dependsOn:
+  - layer
+fileGroups:
+  sources:
+    - app/**
+    - public/**
+    - server/**
+    - test/**
+    - .env.example
+    - README.md
+    - nuxt.config.ts
+    - tsconfig.json
+    - package.json
+    - wrangler.jsonc
+    - workers-build.jsonc
+tasks:
+  typecheck:
+    command: nuxi typecheck
+    inputs:
+      - "@globs(sources)"
+  test:
+    command: vitest run
+    inputs:
+      - "@globs(sources)"
+  format:
+    inputs:
+      - "@group(sources)"
+  format-fix:
+    inputs:
+      - "@group(sources)"
+  lint:
+    command: biome lint --diagnostic-level=error
+    inputs:
+      - "@globs(sources)"
+  lint-fix:
+    command: biome lint --fix --unsafe --diagnostic-level=error
+    inputs:
+      - "@globs(sources)"
+  dev:
+    command: nuxt dev
+    preset: server
+  build:
+    command: nuxt build
+    deps:
+      - typecheck
+      - test
+    inputs:
+      - "@globs(sources)"
+    outputs:
+      - .nuxt/
+      - .output/
+  dev-cf:
+    command: wrangler dev .output/server/index.mjs --assets .output/public/
+    preset: server
+    deps:
+      - build
+    inputs:
+      - .output/
+  preview:
+    command: nuxt preview
+    preset: server
+  prepare:
+    command: nuxt prepare
+    outputs:
+      - .nuxt/
+  deploy:
+    command: wrangler deploy
+    deps:
+      - build
+  deploy-preview:
+    command: wrangler versions upload
+    deps:
+      - build
+  publish-cf-build-config:
+    description: Publish the checked-in Cloudflare Workers Build config for this project.
+    script: pnpm exec moon run cloudflare-build-config:sync -- apps/ops-dashboard/workers-build.jsonc
+    options:
+      cache: false

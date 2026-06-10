@@ -1,0 +1,39 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "ops-dashboard",
+	"main": "./.output/server/index.mjs",
+	"compatibility_date": "2025-10-21",
+	"compatibility_flags": ["nodejs_compat"],
+	"preview_urls": true,
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./.output/public/"
+	},
+	"observability": {
+		"traces": {
+			"enabled": true,
+			"destinations": ["zeko-traces"],
+			"head_sampling_rate": 1,
+			"persist": true
+		},
+		"logs": {
+			"enabled": true,
+			"destinations": ["zeko-logs"],
+			"head_sampling_rate": 1,
+			"persist": true
+		}
+	},
+	"routes": [
+		{
+			"pattern": "ops.zeko.io",
+			"custom_domain": true
+		}
+	],
+	"vars": {
+		"ACTIONS_INDEXER_URL": "https://indexer.actions.zeko.io",
+		"L1_ARCHIVE_URL": "https://gateway.mina.archive.mainnet.zeko.io",
+		"L2_ARCHIVE_URL": "https://archive.mainnet.zeko.io/graphql",
+		"L1_DAEMON_URL": "https://gateway.mina.mainnet.zeko.io",
+		"L2_DAEMON_URL": "https://mainnet.zeko.io/graphql"
+	}
+}
