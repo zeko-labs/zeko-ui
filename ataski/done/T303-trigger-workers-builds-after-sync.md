@@ -1,5 +1,5 @@
 ---
-id: T299
+id: T303
 title: "Trigger Workers Builds after config sync"
 status: done
 blockedBy: []

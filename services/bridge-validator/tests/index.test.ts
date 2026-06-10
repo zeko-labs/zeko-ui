@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@cloudflare/sandbox", () => ({
@@ -23,6 +26,8 @@ import { BRIDGE_CLI_SPECIFIER, buildBridgeSandboxId } from "../src/validator"
 import { hasValidBearerToken, isValidatorEnabled, type ValidatorEnv } from "../src/env"
 import packageJson from "../package.json"
 
+const projectRoot = dirname(fileURLToPath(import.meta.url))
+
 describe("bridge-validator worker", () => {
 	it("exposes runtime metadata from the status surface", () => {
 		expect(BRIDGE_VALIDATOR_SERVICE_INFO).toMatchObject({
@@ -39,7 +44,7 @@ describe("bridge-validator worker", () => {
 				ref: "BRIDGE_VALIDATOR_SOURCE_REF"
 			},
 			scheduledRoutes: {
-				mode: "alternating",
+				mode: "both-per-event",
 				deposit: "mina-to-zeko",
 				withdrawal: "zeko-to-mina"
 			},
@@ -59,6 +64,15 @@ describe("bridge-validator worker", () => {
 		expect(BRIDGE_CLI_SPECIFIER).toBe(
 			`${packageJson.bridgeCli.package}@${packageJson.bridgeCli.version}`
 		)
+	})
+
+	it("documents scheduled route behavior without encoding the cron schedule", () => {
+		const readme = readFileSync(join(projectRoot, "../README.md"), "utf8")
+
+		expect(readme).toContain("Each scheduled event starts two workflows")
+		expect(readme).toContain("Cron cadence is configured only in `wrangler.jsonc`")
+		expect(readme.toLowerCase()).not.toContain("alternat")
+		expect(readme).not.toMatch(/\b0 \*\/3 \* \* \*\b/)
 	})
 
 	it("caps process runtime to two hours", () => {

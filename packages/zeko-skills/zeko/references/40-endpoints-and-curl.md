@@ -26,8 +26,8 @@ Use this file when you need exact public endpoints, Bridge SDK config values, or
 
 - Zeko GraphQL: `https://mainnet.zeko.io/graphql`
 - Zeko archive: `https://archive.mainnet.zeko.io/graphql`
-- Mina GraphQL: `https://api.minascan.io/node/mainnet/v1/graphql`
-- Mina archive: `https://api.minascan.io/archive/mainnet/v1/graphql`
+- Mina GraphQL: `https://gateway.mina.mainnet.zeko.io`
+- Mina archive: `https://gateway.mina.archive.mainnet.zeko.io`
 - Actions API: `https://api.actions.zeko.io/graphql`
 - Bridge UI: `https://bridge.zeko.io`
 

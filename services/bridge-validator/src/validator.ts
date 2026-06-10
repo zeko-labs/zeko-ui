@@ -39,7 +39,6 @@ export const BRIDGE_SANDBOX_CONTROL_TIMEOUT_MS = 2 * 60 * 1000
 export const BRIDGE_SANDBOX_START_ATTEMPT_TIMEOUT_MS = 30_000
 export const BRIDGE_SANDBOX_START_LAUNCH_TIMEOUT_MS = 60_000
 export const BRIDGE_SANDBOX_START_ATTEMPTS = 6
-export const BRIDGE_VALIDATOR_ROUTE_ALTERNATION_INTERVAL_MS = 3 * 60 * 60 * 1000
 
 export type BridgeCommandResult = {
 	exitCode: number
@@ -655,21 +654,13 @@ export const buildScheduledValidations = ({
 	scheduledTime
 }: {
 	scheduledTime: number
-}): ScheduledValidation[] => {
-	const routeKey =
-		Math.floor(scheduledTime / BRIDGE_VALIDATOR_ROUTE_ALTERNATION_INTERVAL_MS) % 2 === 0
-			? "mina-to-zeko"
-			: "zeko-to-mina"
-
-	return [
-		{
-			id: `bridge-validator-${routeKey}-${scheduledTime}`,
-			params: {
-				routeKey
-			}
+}): ScheduledValidation[] =>
+	(["mina-to-zeko", "zeko-to-mina"] as const).map((routeKey) => ({
+		id: `bridge-validator-${routeKey}-${scheduledTime}`,
+		params: {
+			routeKey
 		}
-	]
-}
+	}))
 
 export const parseBridgeJson = (stdout: string): BridgeCliJsonResult => {
 	const trimmed = stdout.trim()

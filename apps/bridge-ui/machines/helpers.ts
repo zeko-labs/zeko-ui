@@ -6,8 +6,8 @@ const POLL_TIMEOUT = 3_600_000
 const urls = {
 	l1: {
 		mainnet: {
-			l1Url: "https://api.minascan.io/node/mainnet/v1/graphql",
-			l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql"
+			l1Url: "https://gateway.mina.mainnet.zeko.io",
+			l1ArchiveUrl: "https://gateway.mina.archive.mainnet.zeko.io"
 		},
 		testnet: {
 			l1Url: "https://gateway.mina.devnet.zeko.io",

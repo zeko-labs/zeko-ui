@@ -1,13 +1,14 @@
 {
 	"$schema": "../../../packages/cloudflare-build-config/schema/workers-build.schema.json",
 	"scriptName": "mina-archive-proxy-mainnet",
+	"triggerTemplateScriptName": "actions-api-testnet",
 	"triggers": [
 		{
 			"name": "Deploy default branch",
 			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks mina-archive-proxy-mainnet:deploy",
 			"branchIncludes": ["main"],
 			"branchExcludes": [],
-			"pathIncludes": ["services/mina-archive-proxy-mainnet/**"],
+			"pathIncludes": ["services/mina-archive-proxy-mainnet/**", "packages/proxy-handler/**"],
 			"pathExcludes": []
 		},
 		{
@@ -15,7 +16,7 @@
 			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks mina-archive-proxy-mainnet:deploy-preview",
 			"branchIncludes": ["*"],
 			"branchExcludes": ["main"],
-			"pathIncludes": ["services/mina-archive-proxy-mainnet/**"],
+			"pathIncludes": ["services/mina-archive-proxy-mainnet/**", "packages/proxy-handler/**"],
 			"pathExcludes": []
 		}
 	]

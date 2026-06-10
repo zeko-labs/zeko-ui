@@ -17,12 +17,12 @@ const l2Network = readNetworkId("BRIDGE_SDK_L2_NETWORK", "testnet")
 
 const defaultL1Url = (network: BridgeNetworkId): string =>
 	network === "mainnet"
-		? "https://api.minascan.io/node/mainnet/v1/graphql"
+		? "https://gateway.mina.mainnet.zeko.io"
 		: "https://gateway.mina.devnet.zeko.io"
 
 const defaultL1ArchiveUrl = (network: BridgeNetworkId): string =>
 	network === "mainnet"
-		? "https://api.minascan.io/archive/mainnet/v1/graphql"
+		? "https://gateway.mina.archive.mainnet.zeko.io"
 		: "https://gateway.mina.archive.devnet.zeko.io"
 
 const defaultL2Url = (network: BridgeNetworkId): string =>
