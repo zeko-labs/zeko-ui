@@ -10,9 +10,6 @@
 		"scriptName": {
 			"type": "string"
 		},
-		"triggerTemplateScriptName": {
-			"type": "string"
-		},
 		"pruneScriptNames": {
 			"type": "array",
 			"items": {

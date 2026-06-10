@@ -1,0 +1,95 @@
+name: Sync Cloudflare Workers Builds
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "**/workers-build.jsonc"
+  workflow_dispatch:
+    inputs:
+      config_path:
+        description: "Optional workers-build.jsonc path to sync. Leave blank to sync changed files when available."
+        required: false
+        type: string
+      dry_run:
+        description: "Preview changes without mutating Cloudflare."
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  sync:
+    name: Sync Workers Build configs
+    runs-on: warp-ubuntu-latest-x64-2x
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_BUILD_TOKEN_UUID: ${{ secrets.CLOUDFLARE_BUILD_TOKEN_UUID }}
+      CLOUDFLARE_REPO_CONNECTION_UUID: ${{ secrets.CLOUDFLARE_REPO_CONNECTION_UUID }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_DSN_PUBLIC: ${{ secrets.SENTRY_DSN_PUBLIC }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: "moonrepo/setup-toolchain@v0"
+        with:
+          auto-install: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve configs
+        id: configs
+        shell: bash
+        env:
+          CONFIG_PATH: ${{ github.event_name == 'workflow_dispatch' && inputs.config_path || '' }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          files_file="$(mktemp)"
+
+          if [[ -n "$CONFIG_PATH" ]]; then
+            printf '%s\n' "$CONFIG_PATH" > "$files_file"
+          elif [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+              git ls-tree -r --name-only "$GITHUB_SHA" | grep -E '(^|/)workers-build\.jsonc$' > "$files_file" || true
+            else
+              git diff --name-only --diff-filter=AM "$BEFORE_SHA" "$GITHUB_SHA" | grep -E '(^|/)workers-build\.jsonc$' > "$files_file" || true
+            fi
+          else
+            git diff --name-only --diff-filter=AM "origin/main...$GITHUB_SHA" | grep -E '(^|/)workers-build\.jsonc$' > "$files_file" || true
+          fi
+
+          sort -u "$files_file" -o "$files_file"
+
+          {
+            echo "files<<EOF"
+            cat "$files_file"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Sync configs
+        if: steps.configs.outputs.files != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          task="sync"
+          if [[ "$DRY_RUN" == "true" ]]; then
+            task="sync-dry-run"
+          fi
+
+          while IFS= read -r config_path; do
+            [[ -n "$config_path" ]] || continue
+            if [[ "$DRY_RUN" == "true" ]]; then
+              moon exec --ignore-ci-checks "cloudflare-build-config:$task" -- "$config_path"
+            else
+              moon exec --ignore-ci-checks "cloudflare-build-config:$task" -- "$config_path" --trigger-builds
+            fi
+          done <<< "${{ steps.configs.outputs.files }}"

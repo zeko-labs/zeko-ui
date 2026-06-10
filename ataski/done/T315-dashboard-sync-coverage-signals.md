@@ -1,5 +1,5 @@
 ---
-id: T305
+id: T315
 title: "Dashboard sync coverage signals"
 status: done
 blockedBy: []

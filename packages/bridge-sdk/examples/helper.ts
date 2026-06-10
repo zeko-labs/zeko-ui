@@ -28,8 +28,8 @@ const NETWORK_DEFAULTS = {
 	},
 	mainnet: {
 		actionsApi: "https://api.actions.zeko.io/graphql",
-		l1Url: "https://api.minascan.io/node/mainnet/v1/graphql",
-		l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql",
+		l1Url: "https://gateway.mina.mainnet.zeko.io",
+		l1ArchiveUrl: "https://gateway.mina.archive.mainnet.zeko.io",
 		l2Url: "https://mainnet.zeko.io/graphql",
 		l2ArchiveUrl: "https://archive.mainnet.zeko.io/graphql"
 	}

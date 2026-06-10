@@ -1,0 +1,12 @@
+{
+	"compilerOptions": {
+		"allowImportingTsExtensions": true,
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"noEmit": true,
+		"strict": true,
+		"target": "es2024",
+		"types": ["node", "vitest"]
+	},
+	"include": ["src/**/*.ts", "tests/**/*.ts"]
+}

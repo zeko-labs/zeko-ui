@@ -1,5 +1,5 @@
 ---
-id: T308
+id: T318
 title: "Fix Access IdP login"
 status: done
 blockedBy: []
@@ -38,7 +38,7 @@ updated_at: 2026-06-10T15:27:09Z
 
 ## Validation
 
-- `pnpm exec dprint fmt apps/ops-dashboard/scripts/configure-access.ts apps/ops-dashboard/README.md ataski/done/T308-fix-access-idp-login.md ataski/tasks.md`
+- `pnpm exec dprint fmt apps/ops-dashboard/scripts/configure-access.ts apps/ops-dashboard/README.md ataski/done/T318-fix-access-idp-login.md ataski/tasks.md`
 - `moon run ops-dashboard:lint`
 - `moon run ops-dashboard:typecheck`
 - `moon run ops-dashboard:configure-access`
