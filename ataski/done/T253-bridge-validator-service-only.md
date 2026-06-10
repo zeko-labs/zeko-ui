@@ -1,11 +1,11 @@
 ---
 id: T253
 title: "Bridge validator service only"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-05-25T21:28:00Z
-updated_at: 2026-06-09T17:27:20Z
+updated_at: 2026-06-10T06:29:39Z
 ---
 
 ## Requirements
@@ -407,9 +407,60 @@ updated_at: 2026-06-09T17:27:20Z
     - SDK `submitDeposit` failed before producing a hash with the same HTTP 200 GraphQL `provingResult` `Overflow`.
     - After a 10 minute wait, SDK `submitDeposit` was retried and failed before producing a hash with the same endpoint error.
   - No SDK source changes or CLI changes were made in response to this endpoint error because SDK and CLI behavior match.
+- Final sequencer-fix revalidation on 2026-06-10:
+  - SDK-example-first local deposit finalization succeeded for the validator wallet's existing 2 MINA deposit before the CLI second check:
+    - Submit hash: `5JtthdEUsGPN9mvbYn9VbHcm8EGvLppPM5HU9GtmkiMEW49zc3DW`.
+    - Final hash: `5JuUHMngqipejCKxVBBkR7L9j4ujiqQmThE3dzTQHQwaheDYUZE1`.
+    - CLI second check, `operation resume-all --from mina:testnet --to zeko:testnet`, returned `operations_found=0`, `operations_resolved=0`.
+  - Fresh local CLI 2 MINA deposit completed after the SDK checks without growing the queue:
+    - Operation id: `442166bb-9f66-410f-bd93-e2a95ec4a0ed`.
+    - Route: `mina:testnet->zeko:testnet`.
+    - Submit hash: `5JtXRLqEwnNis9E98sWnJ33d4a18FrFYiRi2YgfRM69QMTmgoRfE`.
+    - Target deposit index: `74643`.
+    - Final hash: `5JuL8qqWSZBzGr4b15CXwpWYvLGgWsLR2isDzMjagWFzmqFdU4f2`.
+    - Final explorer URL: `https://zekoscan.io/testnet/tx/5JuL8qqWSZBzGr4b15CXwpWYvLGgWsLR2isDzMjagWFzmqFdU4f2`.
+  - SDK-example-first local 2 MINA withdrawal completed before the CLI second check:
+    - SDK `submitWithdrawal` hash: `5Juaw1fWLAtrKXSaY867ULM1qWa7RVCsvWZimxrqY616LvAHMS7r`.
+    - Target withdrawal index: `10555`.
+    - Initial SDK `finalizeWithdrawal` readiness error, before the queue was ready: `Did not find any withdrawal to finalize`.
+    - Later SDK `finalizeWithdrawal` final hash: `5JuGscin3gqWD2WDpJHZ5cDHVM5GUotaCmnHhnawpfiMkikezi3d`.
+    - CLI second check, `operation resume-all --from zeko:testnet --to mina:testnet`, returned `operations_found=0`, `operations_resolved=0`.
+  - Deployed validator 2 MINA deposit completed through Worker, Workflow, Sandbox, CLI, and Slack:
+    - Worker version id: `9deff852-8bf7-4084-97b1-6440fbd99b1e`.
+    - Workflow instance: `bridge-validator-manual-mina-to-zeko-1781061813476`.
+    - Sandbox id: `bridge-validator-bridge-validator-manual-1-1qricne`.
+    - Operation id: `f993cdfc-54ea-42bc-83ec-67508599e284`.
+    - Route: `mina:testnet->zeko:testnet`.
+    - Submit hash: `5JuQMDYkzq7FCFSWpQGYVsEHDfxeiVy75LHi8SiDUVbVaa9qitKY`.
+    - Target deposit index: `74678`.
+    - Final hash: `5JuvWNLEFVqgGN1gukvineBQwXhyzpNB4Sn9ocSLEDqhMCsWjkBE`.
+    - Final explorer URL: `https://zekoscan.io/testnet/tx/5JuvWNLEFVqgGN1gukvineBQwXhyzpNB4Sn9ocSLEDqhMCsWjkBE`.
+    - Validator log path: `/workspace/state/zeko-bridge/logs/f993cdfc-54ea-42bc-83ec-67508599e284.jsonl`.
+    - Workflow success reporting step `report bridge validation success-1` succeeded.
+    - Workflow cleanup step `destroy bridge sandbox-1` succeeded.
+  - Deployed validator 2 MINA withdrawal completed through Worker, Workflow, Sandbox, CLI, and Slack:
+    - Worker version id: `9deff852-8bf7-4084-97b1-6440fbd99b1e`.
+    - Workflow instance: `bridge-validator-manual-zeko-to-mina-1781067008607`.
+    - Sandbox id: `bridge-validator-bridge-validator-manual-1-0mqwasy`.
+    - Operation id: `b702ac01-2d66-4b4e-97a6-cfa33f19f69b`.
+    - Route: `zeko:testnet->mina:testnet`.
+    - Submit hash: `5JvAD6CkYfVYhxsdz8pEbXVFcxjtgXXsTFdaaUhJLdZL4tweQ4yX`.
+    - Target withdrawal index: `10556`.
+    - Final hash: `5JvKfpZ7ncnNkWv6XEjKmdUL5wPG2s64zeAwG5buTakrvCHz77f4`.
+    - Final explorer URL: `https://minascan.io/devnet/tx/5JvKfpZ7ncnNkWv6XEjKmdUL5wPG2s64zeAwG5buTakrvCHz77f4`.
+    - Validator log path: `/workspace/state/zeko-bridge/logs/b702ac01-2d66-4b4e-97a6-cfa33f19f69b.jsonl`.
+    - Workflow command status step returned `status="completed"`, `exitCode=0`.
+    - Workflow validation output returned `submittedTransactionCount=2`, `queueAdvanceCount=0`, and `historyEventCount=72`.
+    - Workflow success reporting step `report bridge validation success-1` succeeded.
+    - Workflow cleanup step `destroy bridge sandbox-1` succeeded.
+  - Post-run SDK queue checks for the dedicated validator wallet:
+    - `canFinalizeDeposit`: `available=false`, `reason="No finalizable deposit found"`.
+    - `canFinalizeWithdrawal`: `available=false`, `reason="Withdrawal already finalised"`, `status="alreadyFinalised"`, `index=10556`.
+  - Post-run CLI queue-only checks for the dedicated validator wallet matched SDK behavior and did not submit fresh operations:
+    - `operation resume-all --from mina:testnet --to zeko:testnet`: `operations_found=0`, `operations_resolved=0`.
+    - `operation resume-all --from zeko:testnet --to mina:testnet`: `operations_found=0`, `operations_resolved=0`.
+  - No SDK source changes were retained. The temporary SDK example timeout edit and generated SDK example logs were removed.
 
 ## Remaining Work
 
-- Local SDK/CLI deposit verification succeeded.
-- Local SDK/CLI withdrawal verification succeeded against existing key-0 queue work.
-- Deployed validator withdrawal and deposit validation are blocked by the testnet proving endpoint returning HTTP 200 GraphQL `Overflow` for SDK `submitWithdrawal`, SDK `submitDeposit`, CLI withdrawal, and the deployed validator withdrawal path before any bridge transaction hash is created.
+- Done. The local SDK/CLI path and deployed validator path both completed 2 MINA deposit and withdrawal validation, with clean post-run SDK and CLI queue checks.
