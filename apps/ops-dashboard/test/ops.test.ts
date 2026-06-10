@@ -9,6 +9,7 @@ import {
 	tailState
 } from "../app/utils/ops-insights"
 import {
+	createActionCoverageSnapshot,
 	createOpsSnapshot,
 	extractActionsIndexerDetails,
 	getOpsConfig,
@@ -260,6 +261,69 @@ describe("ops dashboard utilities", () => {
 			firstMissingActionBlock: 1_020,
 			latestArchiveActionBlock: 1_050
 		})
+	})
+
+	it("treats L2 archive head distance as current when no newer action rows exist", async () => {
+		const originalFetch = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input)
+			const body = JSON.parse(String(init?.body ?? "{}")) as {
+				query?: string
+				variables?: Record<string, unknown>
+			}
+
+			if (body.query?.includes("OpsArchiveState")) {
+				return Response.json({
+					data: {
+						networkState: {
+							maxBlockHeight: {
+								canonicalMaxBlockHeight: url.includes("l2") ? 1_095_396 : 526_837,
+								pendingMaxBlockHeight: url.includes("l2") ? 1_095_396 : 526_837
+							}
+						}
+					}
+				})
+			}
+
+			if (body.query?.includes("OpsActionCoverage")) {
+				return Response.json({
+					data: {
+						actions: body.variables?.pk === "inner-pk" ? [] : []
+					}
+				})
+			}
+
+			return Response.json({ data: {} })
+		}) as typeof fetch
+
+		try {
+			await expect(
+				createActionCoverageSnapshot(
+					"testnet",
+					{
+						lastFetchedOuter: 526_837,
+						lastFetchedInner: 1_095_349
+					},
+					{
+						TESTNET_L1_ARCHIVE_URL: "https://l1.example/graphql",
+						TESTNET_L2_ARCHIVE_URL: "https://l2.example/graphql",
+						TESTNET_OUTER_ACTIONS_PUBLIC_KEY: "outer-pk",
+						TESTNET_INNER_ACTIONS_PUBLIC_KEY: "inner-pk"
+					}
+				)
+			).resolves.toMatchObject({
+				l2: {
+					actionCoverageStatus: "current",
+					missingActionCount: 0,
+					missingActionBlockCount: 0,
+					latestArchiveActionBlock: 1_095_349,
+					actionScanFrom: 1_095_350,
+					actionScanTo: 1_095_396
+				}
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
 	})
 
 	it("flattens actions indexer database and canonical progress details", () => {

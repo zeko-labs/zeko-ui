@@ -34,6 +34,11 @@ export interface OpsSnapshot {
 	services: ServiceProbe[]
 }
 
+export interface ActionCoverageSnapshot {
+	l1: ServiceProbe["details"]
+	l2: ServiceProbe["details"]
+}
+
 export type ControlAction = "start" | "stop" | "rebuild" | "reset"
 
 const requestTimeoutMs = 12_000
@@ -585,6 +590,45 @@ const probeArchiveActionCoverage = async ({
 	}
 }
 
+const coverageProbeError = (error: unknown): ServiceProbe["details"] => ({
+	actionCoverageStatus: "unknown",
+	actionCoverageError: error instanceof Error ? error.message : String(error)
+})
+
+export const createActionCoverageSnapshot = async (
+	networkInput: unknown,
+	{
+		lastFetchedOuter,
+		lastFetchedInner
+	}: {
+		lastFetchedOuter: number | null
+		lastFetchedInner: number | null
+	},
+	env: OpsEnv = defaultEnv()
+): Promise<ActionCoverageSnapshot> => {
+	const config = getOpsConfig(networkInput, env)
+	const [l1Archive, l2Archive] = await Promise.all([
+		probeArchive({ id: "l1-archive", label: "L1 archive", endpoint: config.l1ArchiveUrl }),
+		probeArchive({ id: "l2-archive", label: "L2 archive", endpoint: config.l2ArchiveUrl })
+	])
+	const [l1, l2] = await Promise.all([
+		probeArchiveActionCoverage({
+			archiveHeight: getNumber(l1Archive.details.pendingMaxBlockHeight),
+			endpoint: config.l1ArchiveUrl,
+			lastFetchedBlock: lastFetchedOuter,
+			publicKey: config.outerActionsPublicKey
+		}).catch(coverageProbeError),
+		probeArchiveActionCoverage({
+			archiveHeight: getNumber(l2Archive.details.pendingMaxBlockHeight),
+			endpoint: config.l2ArchiveUrl,
+			lastFetchedBlock: lastFetchedInner,
+			publicKey: config.innerActionsPublicKey
+		}).catch(coverageProbeError)
+	])
+
+	return { l1, l2 }
+}
+
 export const probeDaemon = async ({
 	id,
 	label,
@@ -772,26 +816,14 @@ export const createOpsSnapshot = async (
 			supportsBestChain: false
 		})
 	])
-	const [l1Coverage, l2Coverage] = await Promise.all([
-		probeArchiveActionCoverage({
-			archiveHeight: getNumber(l1Archive.details.pendingMaxBlockHeight),
-			endpoint: config.l1ArchiveUrl,
-			lastFetchedBlock: getNumber(indexer.details.lastFetchedOuter),
-			publicKey: config.outerActionsPublicKey
-		}).catch((error) => ({
-			actionCoverageStatus: "unknown",
-			actionCoverageError: error instanceof Error ? error.message : String(error)
-		})),
-		probeArchiveActionCoverage({
-			archiveHeight: getNumber(l2Archive.details.pendingMaxBlockHeight),
-			endpoint: config.l2ArchiveUrl,
-			lastFetchedBlock: getNumber(indexer.details.lastFetchedInner),
-			publicKey: config.innerActionsPublicKey
-		}).catch((error) => ({
-			actionCoverageStatus: "unknown",
-			actionCoverageError: error instanceof Error ? error.message : String(error)
-		}))
-	])
+	const { l1: l1Coverage, l2: l2Coverage } = await createActionCoverageSnapshot(
+		config.network,
+		{
+			lastFetchedOuter: getNumber(indexer.details.lastFetchedOuter),
+			lastFetchedInner: getNumber(indexer.details.lastFetchedInner)
+		},
+		env
+	)
 	const services = [
 		{
 			...indexer,

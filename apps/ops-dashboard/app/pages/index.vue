@@ -52,6 +52,11 @@ interface OpsSnapshot {
 	services: ServiceProbe[]
 }
 
+interface ActionCoverageSnapshot {
+	l1: ServiceProbe["details"]
+	l2: ServiceProbe["details"]
+}
+
 type ControlAction = "start" | "stop" | "rebuild" | "reset"
 type ChainRow = ChainInsight & {
 	archive?: ServiceProbe
@@ -209,7 +214,8 @@ const indexerHeaderState = computed<ServiceStatus>(() => {
 	if (serviceState === "error" || serviceState === "warn") return serviceState
 	if (chainRows.value.some((row) => coverageState(row) === "error"))
 		return "error"
-	if (chainRows.value.some((row) => coverageState(row) !== "ok")) return "warn"
+	if (chainRows.value.some((row) => coverageState(row) === "warn"))
+		return "warn"
 	return serviceState
 })
 const indexerHeaderLabel = computed(() => {
@@ -242,22 +248,40 @@ const indexerLagLabel = (row: ChainRow) => {
 	if (row.lastActionGap <= 0) return "indexer at archive head"
 	return `${row.lastActionGap.toLocaleString()} ${lagUnit(row, row.lastActionGap)} behind archive head`
 }
+const coverageScanLabel = (row: ChainRow) => {
+	if (row.actionScanFrom === null || row.actionScanTo === null)
+		return "coverage scan unavailable"
+	return `scanned ${formatBlock(row.actionScanFrom)}-${formatBlock(row.actionScanTo)}`
+}
 const coverageLabel = (row: ChainRow) => {
 	if (row.actionCoverageStatus === "missing") {
 		const count = row.missingActionCount ?? row.missingActionBlockCount ?? 0
 		const unit = count === 1 ? "action" : "actions"
 		return `${count.toLocaleString()} missing archive ${unit}`
 	}
+	if (
+		row.actionCoverageStatus === "current" &&
+		row.id === "l2" &&
+		(row.lastActionGap ?? 0) > 0
+	)
+		return "no missing L2 actions found"
 	if (row.actionCoverageStatus === "current")
 		return "DB has latest archive actions"
-	if (row.actionCoverageStatus === "partial")
-		return "indexer behind archive head"
+	if (row.actionCoverageStatus === "partial") return "coverage scan incomplete"
 	return "coverage unknown"
 }
 const coverageDetail = (row: ChainRow) => {
 	if (row.actionCoverageError) return row.actionCoverageError
 	if (row.actionCoverageStatus === "missing")
 		return `first missing block ${formatBlock(row.firstMissingActionBlock)}`
+	if (
+		row.actionCoverageStatus === "current" &&
+		row.id === "l2" &&
+		(row.lastActionGap ?? 0) > 0
+	)
+		return `archive head is ${formatBlock(row.archiveHeight)}; latest indexed L2 action is ${formatBlock(row.lastActionBlockHeight)}; ${coverageScanLabel(row)} found no newer actions`
+	if (row.actionCoverageStatus === "partial")
+		return `${coverageScanLabel(row)}; latest archive action ${formatBlock(row.latestArchiveActionBlock)}`
 	return `${indexerLagLabel(row)}; archive head ${formatBlock(row.archiveHeight)}; indexer fetched ${formatBlock(row.lastActionBlockHeight)}`
 }
 const archiveDaemonGapLabel = (gap: number | null) =>
@@ -367,42 +391,9 @@ const directIndexerDetails = (
 	}
 }
 
-const archiveHeightFor = (
-	snapshotValue: OpsSnapshot,
-	id: "l1-archive" | "l2-archive"
-) => {
-	const service = snapshotValue.services.find((item) => item.id === id)
-	return asNumber(
-		service?.details.pendingMaxBlockHeight ??
-			service?.details.canonicalMaxBlockHeight
-	)
-}
-
-const coverageFromHeights = (
-	archiveHeight: number | null,
-	indexedHeight: number | null
-) => {
-	if (archiveHeight === null || indexedHeight === null)
-		return {
-			actionCoverageStatus: "unknown",
-			missingActionCount: null,
-			missingActionBlockCount: null,
-			firstMissingActionBlock: null,
-			latestArchiveActionBlock: null
-		}
-	const gap = archiveHeight - indexedHeight
-	return {
-		actionCoverageStatus: gap <= 0 ? "current" : "partial",
-		missingActionCount: null,
-		missingActionBlockCount: null,
-		firstMissingActionBlock: gap > 0 ? indexedHeight + 1 : null,
-		latestArchiveActionBlock: indexedHeight
-	}
-}
-
 const prefixedCoverage = (
 	prefix: "l1" | "l2",
-	coverage: ReturnType<typeof coverageFromHeights>
+	coverage: ServiceProbe["details"]
 ) =>
 	Object.fromEntries(
 		Object.entries(coverage).map(([key, value]) => [
@@ -411,8 +402,36 @@ const prefixedCoverage = (
 		])
 	)
 
+const existingCoverageDetails = (
+	snapshotValue: OpsSnapshot
+): ServiceProbe["details"] => {
+	const details =
+		snapshotValue.services.find((service) => service.id === "actions-indexer")
+			?.details ?? {}
+	return Object.fromEntries(
+		Object.entries(details).filter(([key]) =>
+			/^l[12](ActionCoverage|MissingAction|FirstMissingAction|LatestArchiveAction|ActionScan)/.test(
+				key
+			)
+		)
+	)
+}
+
 const indexerToken = (network: OpsNetwork) =>
 	$fetch<{ token: string }>("/api/ops/indexer-token", { query: { network } })
+
+const actionCoverage = (
+	network: OpsNetwork,
+	lastFetchedOuter: number | null,
+	lastFetchedInner: number | null
+) =>
+	$fetch<ActionCoverageSnapshot>("/api/ops/action-coverage", {
+		query: {
+			network,
+			...(lastFetchedOuter !== null && { lastFetchedOuter }),
+			...(lastFetchedInner !== null && { lastFetchedInner })
+		}
+	})
 
 const fetchIndexerJson = async (url: string, token: string) => {
 	const response = await fetch(url, {
@@ -435,22 +454,19 @@ const hydrateIndexerFromBrowser = async (
 		...directIndexerDetails(health.payload, status.payload),
 		statusHttp: status.response.status
 	}
+	const scannedCoverage = await actionCoverage(
+		nextSnapshot.config.network,
+		asNumber(details.lastFetchedOuter),
+		asNumber(details.lastFetchedInner)
+	).catch(() => null)
 	const withCoverage: ServiceProbe["details"] = {
 		...details,
-		...prefixedCoverage(
-			"l1",
-			coverageFromHeights(
-				archiveHeightFor(nextSnapshot, "l1-archive"),
-				asNumber(details.lastFetchedOuter)
-			)
-		),
-		...prefixedCoverage(
-			"l2",
-			coverageFromHeights(
-				archiveHeightFor(nextSnapshot, "l2-archive"),
-				asNumber(details.lastFetchedInner)
-			)
-		)
+		...(scannedCoverage === null
+			? existingCoverageDetails(nextSnapshot)
+			: {
+					...prefixedCoverage("l1", scannedCoverage.l1),
+					...prefixedCoverage("l2", scannedCoverage.l2)
+				})
 	}
 	const indexerStatus: ServiceStatus =
 		health.response.ok &&
