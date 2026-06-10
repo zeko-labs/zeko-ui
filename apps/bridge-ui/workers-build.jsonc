@@ -1,7 +1,6 @@
 {
 	"$schema": "../../packages/cloudflare-build-config/schema/workers-build.schema.json",
 	"scriptName": "bridge-testnet",
-	"triggerTemplateScriptName": "bridge",
 	"pruneScriptNames": ["bridge"],
 	"environmentVariables": {
 		"CLOUDFLARE_ACCOUNT_ID": {

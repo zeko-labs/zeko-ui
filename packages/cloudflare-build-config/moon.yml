@@ -3,10 +3,12 @@ layer: tool
 fileGroups:
   src:
     - src/**/*
+    - tests/**/*
     - schema/**/*
     - README.md
     - moon.yml
     - package.json
+    - tsconfig.json
 tasks:
   format:
     inputs:
@@ -15,22 +17,30 @@ tasks:
     inputs:
       - "@group(src)"
   lint:
-    command: biome check --formatter-enabled=false src/cli.js
+    command: biome check --formatter-enabled=false src tests
     inputs:
       - "@group(src)"
   lint-fix:
-    command: biome check --formatter-enabled=false --write src/cli.js
+    command: biome check --formatter-enabled=false --write src tests
+    inputs:
+      - "@group(src)"
+  test:
+    command: vitest run
     inputs:
       - "@group(src)"
   typecheck:
-    command: tsc --allowJs --checkJs --noEmit --types node --module nodenext --moduleResolution nodenext src/cli.js
+    command: tsc --noEmit -p tsconfig.json
     inputs:
       - "@group(src)"
   sync:
-    command: node src/cli.js
+    command: node src/cli.ts
     options:
       cache: false
   sync-dry-run:
-    command: node src/cli.js --dry-run
+    command: node src/cli.ts --dry-run
+    options:
+      cache: false
+  dump-tokens:
+    command: node src/cli.ts dump-tokens
     options:
       cache: false

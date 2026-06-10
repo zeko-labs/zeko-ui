@@ -4,9 +4,10 @@
 	"private": true,
 	"type": "module",
 	"bin": {
-		"zeko-cloudflare-build-config": "./src/cli.js"
+		"zeko-cloudflare-build-config": "./src/cli.ts"
 	},
 	"devDependencies": {
-		"@types/node": "^20.8.10"
+		"@types/node": "^25.4.0",
+		"vitest": "catalog:"
 	}
 }
