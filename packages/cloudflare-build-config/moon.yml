@@ -9,6 +9,10 @@ fileGroups:
     - moon.yml
     - package.json
     - tsconfig.json
+    - "/scripts/check-workflow-moon-run.ts"
+  workflows:
+    - "/.github/workflows/*.yaml"
+    - "/.github/workflows/*.yml"
 tasks:
   format:
     inputs:
@@ -17,17 +21,18 @@ tasks:
     inputs:
       - "@group(src)"
   lint:
-    command: biome check --formatter-enabled=false src tests
+    command: biome check --formatter-enabled=false src tests ../../scripts/check-workflow-moon-run.ts
     inputs:
       - "@group(src)"
   lint-fix:
-    command: biome check --formatter-enabled=false --write src tests
+    command: biome check --formatter-enabled=false --write src tests ../../scripts/check-workflow-moon-run.ts
     inputs:
       - "@group(src)"
   test:
     command: vitest run
     inputs:
       - "@group(src)"
+      - "@group(workflows)"
   typecheck:
     command: tsc --noEmit -p tsconfig.json
     inputs:

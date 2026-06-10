@@ -303,3 +303,5 @@
 - T303 | done | trigger-workers-builds-after-sync | done/T303-trigger-workers-builds-after-sync.md
 - T304 | done | fix-cloudflare-sync-workflow-ci-invocation | done/T304-fix-cloudflare-sync-workflow-ci-invocation.md
 - T305 | done | expose-sentry-secrets-to-cloudflare-sync-workflow | done/T305-expose-sentry-secrets-to-cloudflare-sync-workflow.md
+- T306 | done | add-workflow-moon-run-guard | done/T306-add-workflow-moon-run-guard.md
+- T307 | done | simplify-workflow-moon-run-guard | done/T307-simplify-workflow-moon-run-guard.md
