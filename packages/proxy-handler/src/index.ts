@@ -191,6 +191,10 @@ export function createProxyHandler(
 			return fetch(new Request(makeTargetUrl(primaryUrl).toString(), request))
 		}
 
+		const cancelResponseBody = (response: Response) => {
+			void response.body?.cancel().catch(() => undefined)
+		}
+
 		let lastUnavailableResponse: Response | undefined
 		let lastError: unknown
 
@@ -202,9 +206,13 @@ export function createProxyHandler(
 			}
 
 			try {
-				const response = await fetch(new Request(targetUrl.toString(), request.clone()))
+				const requestBodySource = index < backendUrls.length - 1 ? request.clone() : request
+				const response = await fetch(new Request(targetUrl.toString(), requestBodySource))
 
 				if (response.status >= 500) {
+					if (lastUnavailableResponse) {
+						cancelResponseBody(lastUnavailableResponse)
+					}
 					lastUnavailableResponse = response
 					console.log(`Backend unavailable (${response.status}): ${targetUrl}`)
 					continue

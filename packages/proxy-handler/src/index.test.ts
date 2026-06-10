@@ -39,6 +39,43 @@ describe("createProxyHandler", () => {
 		expectRequestedUrls(fetchMock, ["https://primary.example/api/graphql?query=blocks"])
 	})
 
+	it("does not clone single-primary requests", async () => {
+		const cloneSpy = vi.spyOn(Request.prototype, "clone")
+		const fetchMock = vi
+			.fn<[Request], Promise<Response>>()
+			.mockResolvedValueOnce(new Response("primary", { status: 200 }))
+		vi.stubGlobal("fetch", fetchMock)
+
+		const response = await createProxyHandler({
+			primaryUrl: "https://primary.example/api"
+		})(new Request(requestUrl))
+
+		expect(response.status).toBe(200)
+		expect(cloneSpy).not.toHaveBeenCalled()
+		expectRequestedUrls(fetchMock, ["https://primary.example/api/graphql?query=blocks"])
+	})
+
+	it("clones only attempts with remaining failover targets", async () => {
+		const cloneSpy = vi.spyOn(Request.prototype, "clone")
+		const fetchMock = vi
+			.fn<[Request], Promise<Response>>()
+			.mockResolvedValueOnce(new Response("primary error", { status: 503 }))
+			.mockResolvedValueOnce(new Response("backup one", { status: 200 }))
+		vi.stubGlobal("fetch", fetchMock)
+
+		const response = await createProxyHandler({
+			primaryUrl: "https://primary.example/api",
+			backupUrls: ["https://backup-one.example/api"]
+		})(new Request(requestUrl))
+
+		expect(response.status).toBe(200)
+		expect(cloneSpy).toHaveBeenCalledTimes(1)
+		expectRequestedUrls(fetchMock, [
+			"https://primary.example/api/graphql?query=blocks",
+			"https://backup-one.example/api/graphql?query=blocks"
+		])
+	})
+
 	it("tries the first backup after a primary network failure", async () => {
 		const fetchMock = vi
 			.fn<[Request], Promise<Response>>()
@@ -108,6 +145,35 @@ describe("createProxyHandler", () => {
 			"https://primary.example/api/graphql?query=blocks",
 			"https://backup-one.example/api/graphql?query=blocks",
 			"https://backup-two.example/api/graphql?query=blocks"
+		])
+	})
+
+	it("cancels superseded 5xx response bodies", async () => {
+		const cancelFirstBody = vi.fn()
+		const firstUnavailableResponse = new Response(
+			new ReadableStream({
+				cancel: cancelFirstBody
+			}),
+			{ status: 503 }
+		)
+		const finalUnavailableResponse = new Response("backup two error", { status: 502 })
+		const fetchMock = vi
+			.fn<[Request], Promise<Response>>()
+			.mockResolvedValueOnce(firstUnavailableResponse)
+			.mockResolvedValueOnce(finalUnavailableResponse)
+		vi.stubGlobal("fetch", fetchMock)
+
+		const response = await createProxyHandler({
+			primaryUrl: "https://primary.example/api",
+			backupUrls: ["https://backup-one.example/api"]
+		})(new Request(requestUrl))
+
+		expect(cancelFirstBody).toHaveBeenCalledTimes(1)
+		expect(response.status).toBe(502)
+		expect(await response.text()).toBe("backup two error")
+		expectRequestedUrls(fetchMock, [
+			"https://primary.example/api/graphql?query=blocks",
+			"https://backup-one.example/api/graphql?query=blocks"
 		])
 	})
 
