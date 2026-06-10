@@ -15,8 +15,8 @@ const TESTNET_CONFIG = {
 } as const satisfies Config
 
 const MAINNET_CONFIG = {
-	l1Url: "https://api.minascan.io/node/mainnet/v1/graphql",
-	l1ArchiveUrl: "https://api.minascan.io/archive/mainnet/v1/graphql",
+	l1Url: "https://gateway.mina.mainnet.zeko.io",
+	l1ArchiveUrl: "https://gateway.mina.archive.mainnet.zeko.io",
 	zekoUrl: "https://mainnet.zeko.io/graphql",
 	zekoArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
 	actionsApi: "https://api.actions.zeko.io/graphql",
