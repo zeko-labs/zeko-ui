@@ -26,15 +26,38 @@ type AccessApplication = {
 	policies?: AccessPolicy[]
 }
 
-const requiredEnv = (key: string) => {
+const readDotEnv = async (path: string) => {
+	const { readFile } = await import("node:fs/promises")
+	try {
+		const content = await readFile(path, "utf8")
+		for (const line of content.split(/\r?\n/)) {
+			const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/)
+			if (match === null) continue
+			const [, key, rawValue] = match
+			if (process.env[key] !== undefined) continue
+			process.env[key] = rawValue.replace(/^['"]|['"]$/g, "")
+		}
+	} catch (error) {
+		if (error instanceof Error && "code" in error && error.code === "ENOENT") return
+		throw error
+	}
+}
+
+await readDotEnv("../../.env")
+
+const requiredEnv = (key: string, fallbackKey?: string) => {
 	const value = process.env[key]?.trim()
-	if (value === undefined || value === "") throw new Error(`${key} is required`)
-	return value
+	if (value !== undefined && value !== "") return value
+	const fallbackValue = fallbackKey === undefined ? undefined : process.env[fallbackKey]?.trim()
+	if (fallbackValue !== undefined && fallbackValue !== "") return fallbackValue
+	throw new Error(
+		fallbackKey === undefined ? `${key} is required` : `${key} or ${fallbackKey} is required`
+	)
 }
 
 const optionalEnv = (key: string, fallback: string) => process.env[key]?.trim() || fallback
 
-const token = requiredEnv("CLOUDFLARE_API_TOKEN")
+const token = requiredEnv("CLOUDFLARE_API_TOKEN", "CFZT_TOKEN")
 const accountId = requiredEnv("CLOUDFLARE_ACCOUNT_ID")
 const hostname = optionalEnv("OPS_DASHBOARD_HOSTNAME", "ops.zeko.io")
 const appName = optionalEnv("OPS_DASHBOARD_ACCESS_APP_NAME", "Zeko Ops Dashboard")

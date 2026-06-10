@@ -34,7 +34,7 @@ an API token scoped to the Zeko Cloudflare account with:
 - `Access: Identity Providers Read`
 
 ```sh
-export CLOUDFLARE_API_TOKEN=...
+export CLOUDFLARE_API_TOKEN=... # or CFZT_TOKEN
 export CLOUDFLARE_ACCOUNT_ID=...
 moon run ops-dashboard:configure-access
 ```

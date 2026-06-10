@@ -1,11 +1,11 @@
 ---
 id: T307
 title: "Deploy dashboard behind Cloudflare Access"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-10T14:20:00Z
-updated_at: 2026-06-10T14:20:00Z
+updated_at: 2026-06-10T15:14:09Z
 ---
 
 ## Requirements
@@ -38,13 +38,23 @@ updated_at: 2026-06-10T14:20:00Z
 - 2026-06-10T14:27:00Z: `moon run ops-dashboard:configure-access` fails safely without `CLOUDFLARE_API_TOKEN`.
 - 2026-06-10T14:28:00Z: Running `ops-dashboard:configure-access` with the current Wrangler OAuth token reaches Cloudflare but fails on `GET identity_providers` with `403 Authentication error`; the current token cannot manage/read Access.
 - 2026-06-10T14:28:00Z: Did not run `ops-dashboard:deploy`, because deploying the `ops.zeko.io` custom domain before Access is configured would risk exposing the dashboard.
+- 2026-06-10T15:10:00Z: Confirmed `CFZT_TOKEN` exists in the root `.env` without printing the token value.
+- 2026-06-10T15:10:00Z: Ran `ops-dashboard:configure-access` with `CFZT_TOKEN` mapped to the Cloudflare API token; Cloudflare accepted it.
+- 2026-06-10T15:10:00Z: Access configuration created app `Zeko Ops Dashboard` for `ops.zeko.io` with GitHub identity provider `GitHub` and created policy `Allow Zeko GitHub org` for GitHub organization `zeko-labs`.
+- 2026-06-10T15:11:00Z: Ran `moon run ops-dashboard:deploy`; build/test passed, static assets uploaded, Worker `ops-dashboard` deployed, and custom domain `ops.zeko.io` attached.
+- 2026-06-10T15:12:00Z: Verified `https://ops.zeko.io` resolves and unauthenticated requests return Cloudflare Access `302` with `WWW-Authenticate: Cloudflare-Access`.
+- 2026-06-10T15:12:00Z: Verified Access API shows `ops.zeko.io` app bound to GitHub IdP and policy includes GitHub organization `zeko-labs`.
+- 2026-06-10T15:13:00Z: Updated `configure-access` to accept `CFZT_TOKEN` as a fallback token name and validated idempotent Access updates with that fallback.
 
 ## Blocker
 
-- Need a Cloudflare API token scoped to the Zeko account with `Access: Apps and Policies Edit` and `Access: Identity Providers Read`. The current Wrangler OAuth token only has Workers/zone-oriented scopes and receives `403 Authentication error` from the Access API.
+- Resolved. `CFZT_TOKEN` has the needed Cloudflare Access permissions.
 
 ## GREEN Evidence
 
 - `moon run ops-dashboard:lint` passed.
 - `moon run ops-dashboard:typecheck` passed.
 - `moon run ops-dashboard:build` passed. Build emitted only existing Browserslist/baseline data age warnings.
+- `moon run ops-dashboard:configure-access` passed with `CFZT_TOKEN`.
+- `moon run ops-dashboard:deploy` passed and published Worker version `6b7e9d35-dc94-415f-ab5b-276526d2f7f0`.
+- `curl -I https://ops.zeko.io` returns Cloudflare Access protection instead of the dashboard HTML.
