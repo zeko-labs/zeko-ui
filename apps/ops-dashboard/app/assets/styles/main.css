@@ -71,6 +71,7 @@ button {
 .HealthPill,
 .StateBadge,
 .NetworkPill,
+.TransitionPill,
 .LiveState {
   display: inline-flex;
   align-items: center;
@@ -87,6 +88,12 @@ button {
   border-color: var(--OpsCharcoal);
   background: var(--OpsCharcoal);
   color: var(--OpsPanel);
+}
+
+.TransitionPill {
+  border-color: var(--OpsBlue);
+  background: rgb(31 91 153 / 0.08);
+  color: var(--OpsBlue);
 }
 
 .LiveState {

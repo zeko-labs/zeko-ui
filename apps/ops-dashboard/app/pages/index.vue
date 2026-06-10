@@ -88,6 +88,18 @@ const services = computed(() => snapshot.value?.services ?? [])
 const currentNetwork = computed(
 	() => snapshot.value?.config.network ?? selectedNetwork.value
 )
+const pendingNetwork = computed(() =>
+	snapshot.value !== null && currentNetwork.value !== selectedNetwork.value
+		? selectedNetwork.value
+		: null
+)
+const loadingLabel = computed(() => {
+	if (!isRefreshing.value) return null
+	if (pendingNetwork.value !== null)
+		return `Loading ${pendingNetwork.value} snapshot`
+	if (snapshot.value === null) return "Loading snapshot"
+	return "Refreshing snapshot"
+})
 const serviceById = computed(
 	() => new Map(services.value.map((service) => [service.id, service]))
 )
@@ -192,6 +204,15 @@ const indexerHeaderLabel = computed(() => {
 	if (indexerHeaderState.value === "warn") return "Indexer needs review"
 	return `Indexer ${indexerService.value.status}`
 })
+const displayedSummary = computed(
+	() =>
+		snapshot.value?.summary ?? {
+			ok: 0,
+			warn: 0,
+			error: 0,
+			unknown: 0
+		}
+)
 const coverageLabel = (row: ChainRow) => {
 	if (row.actionCoverageStatus === "missing") {
 		const count = row.missingActionCount ?? row.missingActionBlockCount ?? 0
@@ -347,7 +368,6 @@ watch(
 		const network = resolveNetworkFromQuery(value)
 		if (selectedNetwork.value === network) return
 		selectedNetwork.value = network
-		snapshot.value = null
 		actionMessage.value = null
 		void refresh({ force: true })
 	}
@@ -363,6 +383,9 @@ watch(
       </div>
       <div class="HeaderStatus">
         <span class="NetworkPill">{{ currentNetwork }}</span>
+        <span v-if="pendingNetwork" class="TransitionPill">
+          Next {{ pendingNetwork }}
+        </span>
         <span
           class="HealthPill"
           :data-state="indexerHeaderState">
@@ -372,7 +395,7 @@ watch(
             formatDate(snapshot?.checkedAt)
           }}</span>
         <span class="LiveState" :data-active="!isRefreshing">
-          Live {{ refreshIntervalMs / 1000 }}s
+          {{ loadingLabel ?? `Live ${refreshIntervalMs / 1000}s` }}
         </span>
       </div>
     </header>
@@ -453,19 +476,19 @@ watch(
     <section class="SummaryGrid" aria-label="Status summary">
       <div class="Metric">
         <span>OK</span>
-        <strong>{{ snapshot?.summary.ok ?? 0 }}</strong>
+        <strong>{{ displayedSummary.ok }}</strong>
       </div>
       <div class="Metric">
         <span>Warn</span>
-        <strong>{{ snapshot?.summary.warn ?? 0 }}</strong>
+        <strong>{{ displayedSummary.warn }}</strong>
       </div>
       <div class="Metric">
         <span>Error</span>
-        <strong>{{ snapshot?.summary.error ?? 0 }}</strong>
+        <strong>{{ displayedSummary.error }}</strong>
       </div>
       <div class="Metric">
         <span>Unknown</span>
-        <strong>{{ snapshot?.summary.unknown ?? 0 }}</strong>
+        <strong>{{ displayedSummary.unknown }}</strong>
       </div>
     </section>
 
