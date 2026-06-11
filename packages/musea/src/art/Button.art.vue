@@ -24,12 +24,24 @@ defineArt("../../../layer/app/components/Button.vue", {
     <Button variant="cta3">Claim</Button>
   </variant>
 
+  <variant name="Auro">
+    <Button variant="auro">Connect Auro</Button>
+  </variant>
+
+  <variant name="Black">
+    <Button variant="black">Bridge</Button>
+  </variant>
+
   <variant name="Main">
     <Button variant="main">Main</Button>
   </variant>
 
   <variant name="Cancel">
     <Button variant="cancel">Cancel</Button>
+  </variant>
+
+  <variant name="Add token">
+    <Button>Add Token</Button>
   </variant>
 
   <variant name="Disabled">

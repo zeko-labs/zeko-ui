@@ -285,3 +285,4 @@
 - T285 | done | evaluate-musea-project-structure | done/T285-evaluate-musea-project-structure.md
 - T286 | done | validate-vize-production-builds | done/T286-validate-vize-production-builds.md
 - T287 | done | restore-bridge-cfb-config | done/T287-restore-bridge-cfb-config.md
+- T288 | done | expand-musea-layer-coverage | done/T288-expand-musea-layer-coverage.md
