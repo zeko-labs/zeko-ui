@@ -3,7 +3,9 @@ import { Field } from "@ark-ui/vue/field"
 import { createListCollection, Select } from "@ark-ui/vue/select"
 import { ChevronDownIcon } from "lucide-vue-next"
 
-const { loading = false } = defineProps<{ loading?: boolean }>()
+const props = withDefaults(defineProps<{ loading?: boolean }>(), {
+	loading: false
+})
 const modelValue = defineModel({ required: true })
 const collection = createListCollection({
 	items: ["MINA", "ZEKO"] as const
@@ -13,7 +15,7 @@ const collection = createListCollection({
 <template>
   <div class="SelectWrapper">
     <Field.Root>
-      <LoadingInput v-if="loading" />
+      <LoadingInput v-if="props.loading" />
       <Field.Input
         type="number"
         step="0.01"
@@ -21,8 +23,8 @@ const collection = createListCollection({
         @wheel.prevent="() => {}"
         v-model="modelValue"
         v-bind="$attrs"
-        :disabled="loading"
-        :placeholder='loading ? "" : "Enter Amount"'
+        :disabled="props.loading"
+        :placeholder='props.loading ? "" : "Enter Amount"'
       />
     </Field.Root>
     <Field.Root>

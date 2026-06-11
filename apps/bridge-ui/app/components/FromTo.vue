@@ -1,15 +1,13 @@
 <script lang="ts" setup>
 import type { Networks } from "@lumina-dex/sdk"
 
-const {
-	source,
-	destination,
-	loading = false
-} = defineProps<{
+const props = withDefaults(defineProps<{
 	source: Networks
 	destination: Networks
 	loading?: boolean
-}>()
+}>(), {
+	loading: false
+})
 
 const bs = useBridgeStore()
 </script>
@@ -17,14 +15,14 @@ const bs = useBridgeStore()
   <div class="FromTo">
     <div class="InputBox">
       <h4>From</h4>
-      <NetworkSelector target="source" :current-value="[source]" :loading />
+      <NetworkSelector target="source" :current-value="[props.source]" :loading="props.loading" />
     </div>
     <!-- Divider -->
     <div class="divider">
       <input
         type="checkbox"
         id="toggle"
-        :disabled="loading"
+        :disabled="props.loading"
         class="toggle-checkbox"
         @change='bs.bridge.send({ type: "InvertDirection" })'>
       <label for="toggle" class="circle-button">
@@ -51,8 +49,8 @@ const bs = useBridgeStore()
       <h4>To</h4>
       <NetworkSelector
         target="destination"
-        :current-value="[destination]"
-        :loading
+        :current-value="[props.destination]"
+        :loading="props.loading"
       />
     </div>
   </div>

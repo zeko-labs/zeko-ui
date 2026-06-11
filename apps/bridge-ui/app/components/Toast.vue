@@ -8,7 +8,7 @@ import {
 	X
 } from "lucide-vue-next"
 
-const { toaster } = defineProps<{
+const props = defineProps<{
 	toaster: ReturnType<typeof createToaster>
 }>()
 
@@ -66,7 +66,7 @@ const iconMap = {
       </button>
     </div> -->
 
-    <Toaster :toaster #default="toast">
+    <Toaster :toaster="props.toaster" #default="toast">
       <Toast.Root>
         <div class="Layout">
           <div class="Top">

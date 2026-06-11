@@ -1,23 +1,23 @@
 <script lang="ts" setup>
-const { is } = defineProps<{
+const props = defineProps<{
 	is: "pending" | "complete" | "cancelled" | "error"
 }>()
 </script>
 <template>
-  <div class="Label" :class="is">
-    <template v-if='is === "pending"'>
+  <div class="Label" :class="props.is">
+    <template v-if='props.is === "pending"'>
       <SvgPendingClock />
       <span>Pending</span>
     </template>
-    <template v-else-if='is === "complete"'>
+    <template v-else-if='props.is === "complete"'>
       <SvgCompletedCircle />
       <span>Completed</span>
     </template>
-    <template v-else-if='is === "cancelled"'>
+    <template v-else-if='props.is === "cancelled"'>
       <SvgCancelledCircle />
       <span>Cancelled</span>
     </template>
-    <template v-else-if='is === "error"'>
+    <template v-else-if='props.is === "error"'>
       <SvgErrorCircle />
       <span>Error</span>
     </template>

@@ -1,17 +1,17 @@
 <script setup lang="ts">
-const { steps, step } = defineProps<{
+const props = defineProps<{
 	steps: readonly string[]
 	step: number
 }>()
 
 const currentStepIndex = computed(() =>
-	Math.min(Math.max(step, 0), steps.length)
+	Math.min(Math.max(props.step, 0), props.steps.length)
 )
 
 const progressClass = (index: number) => {
 	const completed =
 		index < currentStepIndex.value ||
-		(index === steps.length && currentStepIndex.value === steps.length)
+		(index === props.steps.length && currentStepIndex.value === props.steps.length)
 	const current = index === currentStepIndex.value
 	return { completed, current, future: !completed && !current }
 }
@@ -37,7 +37,7 @@ const nodeSize = {
   </svg>
   <div class="progress-bar">
     <div class="progress-track">
-      <template v-for="(stepText, index) in steps" :key="index">
+      <template v-for="(stepText, index) in props.steps" :key="index">
         <div class="node-wrapper">
           <svg
             class="progress-node"
@@ -52,19 +52,19 @@ const nodeSize = {
             />
           </svg>
           <SvgCheck
-            :class="{ check: true, completed: currentStepIndex === steps.length }"
-            v-if="index + 1 === steps.length"
+            :class="{ check: true, completed: currentStepIndex === props.steps.length }"
+            v-if="index + 1 === props.steps.length"
           />
           <span
-            v-if="index === steps.length - 1"
+            v-if="index === props.steps.length - 1"
             class="last-label step-label"
-            :class="progressClass(steps.length - 1)">
-            {{ steps.at(-1) }}
+            :class="progressClass(props.steps.length - 1)">
+            {{ props.steps.at(-1) }}
           </span>
         </div>
 
         <div
-          v-if="index < steps.length - 1"
+          v-if="index < props.steps.length - 1"
           class="progress-line"
           :class="{ completed: progressClass(index).completed }">
           <span

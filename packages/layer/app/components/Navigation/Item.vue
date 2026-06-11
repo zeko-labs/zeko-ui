@@ -6,7 +6,7 @@ interface NavigationSection {
 	children: { name: string; url: string }[]
 }
 
-const { navigation } = defineProps<{ navigation: NavigationSection }>()
+const props = defineProps<{ navigation: NavigationSection }>()
 const isExternal = (url: string) => url.startsWith("http")
 </script>
 
@@ -15,7 +15,7 @@ const isExternal = (url: string) => url.startsWith("http")
     <ClientOnly>
       <Menu.Root>
         <Menu.Trigger>
-          <span>{{ navigation.name }}</span>
+          <span>{{ props.navigation.name }}</span>
           <Menu.Indicator as-child>
             <SvgCaretDown />
           </Menu.Indicator>
@@ -23,7 +23,7 @@ const isExternal = (url: string) => url.startsWith("http")
         <Menu.Positioner>
           <Menu.Content>
             <Menu.Item
-              v-for="item in navigation.children"
+              v-for="item in props.navigation.children"
               :key="item.name"
               :value="item.name">
               <NuxtLink

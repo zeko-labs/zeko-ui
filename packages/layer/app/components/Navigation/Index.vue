@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { Dialog, useDialog } from "@ark-ui/vue/dialog"
 
-const { logo = true } = defineProps<{ logo?: boolean }>()
+const props = withDefaults(defineProps<{ logo?: boolean }>(), {
+	logo: true
+})
 
 const {
 	links: { zekoFaucet, zekoBridge, docs, zekoBoom },
@@ -42,7 +44,7 @@ const openMenu = () => {
   <div class="Header">
     <div class="Container">
       <NuxtLink to="/" class="LogoLink">
-        <SvgZekoLogoRings v-if="logo" />
+        <SvgZekoLogoRings v-if="props.logo" />
       </NuxtLink>
 
       <!-- Desktop Navigation -->

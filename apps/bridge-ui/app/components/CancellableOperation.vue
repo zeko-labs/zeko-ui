@@ -5,19 +5,17 @@ import { formatQueueMetadata, statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
-const {
-	operation,
-	index = 0,
-	currentSlot,
-	disabled = false
-} = defineProps<{
+const props = withDefaults(defineProps<{
 	currentSlot?: string
 	index: number
 	disabled?: boolean
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
-}>()
+}>(), {
+	index: 0,
+	disabled: false
+})
 
-const machine = useSelector(operation, (state) => state)
+const machine = useSelector(toRef(props, "operation"), (state) => state)
 
 const status = computed(() =>
 	statusFromState(machine.value.value, machine.value.context.direction, {
@@ -29,7 +27,7 @@ const metadata = computed(() =>
 	formatQueueMetadata({
 		cancellable: machine.value.context.canCancel,
 		direction: machine.value.context.direction,
-		currentSlot,
+		currentSlot: props.currentSlot,
 		timeoutSlot: machine.value.context.timeoutSlot,
 		timeoutSlots: machine.value.context.timeoutSlots,
 		transaction: machine.value.context.transaction
@@ -70,9 +68,9 @@ const message = computed(() => {
 </script>
 
 <template>
-  <div class="Wrapper" :class="{ disabled }">
+  <div class="Wrapper" :class="{ disabled: props.disabled }">
     <div class="Top">
-      <div class="Index">#{{ index + 1 }}</div>
+      <div class="Index">#{{ props.index + 1 }}</div>
       <Label :is="status.kind">{{ status.text }}</Label>
     </div>
     <div class="Middle">
@@ -93,8 +91,8 @@ const message = computed(() => {
       </div>
       <Button
         variant="cancel"
-        :disabled="disabled || !readyToCancel || cancelling"
-        @click='operation.send({ type: "Cancel" })'>
+        :disabled="props.disabled || !readyToCancel || cancelling"
+        @click='props.operation.send({ type: "Cancel" })'>
         {{ cancelling ? "Cancelling" : "Cancel" }}
       </Button>
     </div>

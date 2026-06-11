@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import type { Networks } from "@lumina-dex/sdk"
 
-const { network, icon = false } = defineProps<{
+const props = withDefaults(defineProps<{
 	network: Networks
 	icon?: boolean
-}>()
+}>(), {
+	icon: false
+})
 const friendlyNetwork = (n: string) => {
 	const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 	const words = n.split(":") as [string, string]
@@ -13,11 +15,11 @@ const friendlyNetwork = (n: string) => {
 </script>
 <template>
   <div class="NetworkBadge">
-    <template v-if="icon">
-      <SvgMinaLogo v-if='network.includes("mina")' />
+    <template v-if="props.icon">
+      <SvgMinaLogo v-if='props.network.includes("mina")' />
       <SvgZekoToken v-else />
     </template>
-    <span class="network"> {{ friendlyNetwork(network) }}</span>
+    <span class="network"> {{ friendlyNetwork(props.network) }}</span>
   </div>
 </template>
 <style lang="postcss" scoped>

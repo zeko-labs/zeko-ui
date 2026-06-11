@@ -7,17 +7,15 @@ import { ChevronDownIcon } from "lucide-vue-next"
 
 const emit = defineEmits(["select:network"])
 
-const {
-	currentValue,
-	target,
-	enabled = "testnet",
-	loading = false
-} = defineProps<{
+const props = withDefaults(defineProps<{
 	currentValue: [Networks]
 	target: "source" | "destination"
 	enabled?: "testnet" | "mainnet" | "all"
 	loading?: boolean
-}>()
+}>(), {
+	enabled: "testnet",
+	loading: false
+})
 
 const bs = useBridgeStore()
 
@@ -30,18 +28,18 @@ const collection = createListCollection({
 			"zeko:mainnet"
 		] as Networks[]
 	).filter((item) => {
-		if (enabled === "testnet") return !item.includes("mainnet")
-		if (enabled === "mainnet") return item.includes("mainnet")
+		if (props.enabled === "testnet") return !item.includes("mainnet")
+		if (props.enabled === "mainnet") return item.includes("mainnet")
 		return true
 	})
 })
 
 const onValueChange = (details: Select.ValueChangeDetails) => {
-	if (target === "source") {
+	if (props.target === "source") {
 		const sourceNetwork = details.value[0] as Networks
 		bs.bridge.send({ type: "SetSource", sourceNetwork })
 	}
-	if (target === "destination") {
+	if (props.target === "destination") {
 		const destinationNetwork = details.value[0] as Networks
 		bs.bridge.send({ type: "SetDestination", destinationNetwork })
 	}
@@ -49,14 +47,14 @@ const onValueChange = (details: Select.ValueChangeDetails) => {
 
 const select = useSelect({
 	collection,
-	defaultValue: currentValue,
+	defaultValue: props.currentValue,
 	multiple: false,
 	disabled: true,
 	onValueChange
 })
 
 watch(
-	() => currentValue,
+	() => props.currentValue,
 	(newValue) => {
 		select.value.setValue(newValue)
 	}
@@ -66,15 +64,15 @@ watch(
 <template>
   <div class="NetworkSelector">
     <!-- <div class="debug">
-      {{ { currentValue, target, isMina, currentLogo: currentLogo.__name } }}
+      {{ { currentValue: props.currentValue, target: props.target, isMina, currentLogo: currentLogo.__name } }}
     </div> -->
     <Field.Root>
       <Select.RootProvider :value="select">
         <Select.Control asChild>
-          <div :class="{ TriggerWrapper: true, isLoading: loading }">
-            <LoadingInput v-if="loading" />
+          <div :class="{ TriggerWrapper: true, isLoading: props.loading }">
+            <LoadingInput v-if="props.loading" />
             <Select.Trigger>
-              <div class="TriggerContent" v-show="!loading">
+              <div class="TriggerContent" v-show="!props.loading">
                 <Select.ValueText placeholder="Placeholder" as-child>
                   <NetworkBadge
                     :icon="true"

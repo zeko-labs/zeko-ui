@@ -15,9 +15,11 @@ interface Props {
 
 defineOptions({ inheritAttrs: false })
 
-const { variant = "default" } = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+	variant: "default"
+})
 
-const isCta = computed(() => variant !== "default")
+const isCta = computed(() => props.variant !== "default")
 
 const plus = computed(
 	() => useSlots().default?.()?.[0]?.children === "Add Token" && !isCta.value
@@ -36,7 +38,7 @@ const className = computed(
 				cancel: "ZekoButtonCancel",
 				default: "ZekoButtonDefault"
 			}) as const
-		)[variant]
+		)[props.variant]
 )
 </script>
 
@@ -46,7 +48,7 @@ const className = computed(
     class="ZekoButton"
     :class="className"
     v-bind="$attrs">
-    <SvgAuro v-if='variant === "auro"' />
+    <SvgAuro v-if='props.variant === "auro"' />
     <span>
       <slot></slot>
     </span>

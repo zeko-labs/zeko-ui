@@ -2,7 +2,7 @@
 import { XIcon } from "lucide-vue-next"
 import type { BridgeTimeoutHours } from "../composables/useBridgeSettings"
 
-const { isOpen } = defineProps<{ isOpen: boolean }>()
+const props = defineProps<{ isOpen: boolean }>()
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -22,7 +22,7 @@ const selectTimeout = (hours: BridgeTimeoutHours) => {
   <Teleport to="body">
     <Transition name="fade">
       <div
-        v-if="isOpen"
+        v-if="props.isOpen"
         class="BridgeSettingsOverlay"
         @click.self='emit("close")'>
         <div class="BridgeSettingsPopup">

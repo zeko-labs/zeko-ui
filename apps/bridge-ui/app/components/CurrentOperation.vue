@@ -11,10 +11,10 @@ import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import type { transactionMachine } from "~~/machines/transaction"
 import { useSelector } from "~~/machines/vue-xstate"
 
-const { operation } = defineProps<{
+const props = defineProps<{
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 }>()
-const machine = useSelector(operation, (state) => state)
+const machine = useSelector(toRef(props, "operation"), (state) => state)
 const transactionActor = computed(
 	() =>
 		machine.value.children.transaction as
@@ -130,7 +130,7 @@ watch(machine.value.context.errors, (newErrors) => {
             v-else
             variant="main"
             :disabled="!toFinalize"
-            @click='operation.send({ type: "Finalize" })'>
+            @click='props.operation.send({ type: "Finalize" })'>
             Claim
           </Button>
         </div>

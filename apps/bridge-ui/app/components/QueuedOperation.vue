@@ -5,16 +5,14 @@ import { formatQueueMetadata, statusFromState } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
-const {
-	operation,
-	index = 0,
-	currentSlot
-} = defineProps<{
+const props = withDefaults(defineProps<{
 	currentSlot?: string
 	index: number
 	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
-}>()
-const machine = useSelector(operation, (state) => state)
+}>(), {
+	index: 0
+})
+const machine = useSelector(toRef(props, "operation"), (state) => state)
 
 const status = computed(() =>
 	statusFromState(machine.value.value, machine.value.context.direction, {
@@ -26,7 +24,7 @@ const metadata = computed(() =>
 	formatQueueMetadata({
 		cancellable: machine.value.context.canCancel,
 		direction: machine.value.context.direction,
-		currentSlot,
+		currentSlot: props.currentSlot,
 		timeoutSlot: machine.value.context.timeoutSlot,
 		timeoutSlots: machine.value.context.timeoutSlots,
 		transaction: machine.value.context.transaction
@@ -47,7 +45,7 @@ const shortTransactionHash = computed(() => {
       <div v-if="transactionHash" class="Hash" :title="transactionHash">
         {{ shortTransactionHash }}
       </div>
-      <div class="Index">#{{ index + 1 }}</div>
+      <div class="Index">#{{ props.index + 1 }}</div>
     </div>
     <div class="Middle">
       <NetworkBadge :icon="true" :network="machine.context.source" />

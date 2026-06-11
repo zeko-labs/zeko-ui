@@ -23,7 +23,7 @@ import {
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { useSelector } from "~~/machines/vue-xstate"
 
-const { operations } = defineProps<{
+const props = defineProps<{
 	operations: {
 		id: string
 		operation: ActorRefFromLogic<typeof bridgeOperationMachine>
@@ -34,12 +34,12 @@ const bs = useBridgeStore()
 const loading = computed(() =>
 	shouldShowCompletedOperationsLoading({
 		bridgeReady: bs.bridge.snapshot.matches("READY"),
-		operationCount: operations.length
+		operationCount: props.operations.length
 	})
 )
 
 const data = computed<BridgeOperationRow[]>(() =>
-	operations
+	props.operations
 		.map(({ id, operation }) => {
 			const state = useSelector(operation, (state) => state)
 			const { text, kind } = statusFromState(

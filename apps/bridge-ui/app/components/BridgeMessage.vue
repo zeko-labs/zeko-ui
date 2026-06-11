@@ -5,16 +5,16 @@ import type { BridgeOperationContext } from "~~/machines/bridgeOperation"
 type Transactions = BridgeOperationContext["transactions"]
 type MessageKey = keyof typeof bridgeMessages
 
-const { transactions, messageKey, transactionKey } = defineProps<{
+const props = defineProps<{
 	transactions?: Transactions
 	messageKey: MessageKey
 	transactionKey?: keyof Transactions
 }>()
 
-const message = computed(() => bridgeMessages[messageKey])
+const message = computed(() => bridgeMessages[props.messageKey])
 const url = computed(() =>
-	transactions && transactionKey
-		? transactions[transactionKey]?.result?.url
+	props.transactions && props.transactionKey
+		? props.transactions[props.transactionKey]?.result?.url
 		: undefined
 )
 const scan = computed(() =>
