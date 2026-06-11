@@ -284,3 +284,4 @@
 - T284 | done | integrate-vize-nuxt-compiler-trial | done/T284-integrate-vize-nuxt-compiler-trial.md
 - T285 | done | evaluate-musea-project-structure | done/T285-evaluate-musea-project-structure.md
 - T286 | done | validate-vize-production-builds | done/T286-validate-vize-production-builds.md
+- T287 | done | restore-bridge-cfb-config | done/T287-restore-bridge-cfb-config.md
