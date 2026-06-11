@@ -286,3 +286,4 @@
 - T286 | done | validate-vize-production-builds | done/T286-validate-vize-production-builds.md
 - T287 | done | restore-bridge-cfb-config | done/T287-restore-bridge-cfb-config.md
 - T288 | done | expand-musea-layer-coverage | done/T288-expand-musea-layer-coverage.md
+- T289 | done | fix-musea-component-path-guard | done/T289-fix-musea-component-path-guard.md

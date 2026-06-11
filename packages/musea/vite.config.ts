@@ -8,7 +8,7 @@ export default defineConfig({
 	plugins: [
 		vize(),
 		musea({
-			include: ["src/**/*.art.vue"],
+			include: ["src/**/*.art.vue", "../layer/app/components/**/*.vue"],
 			basePath: "/__musea__",
 			previewCss: [
 				"../layer/app/assets/styles/cssforge.css",
