@@ -2,6 +2,11 @@ name: Bridge Mainnet Release
 
 on:
   workflow_dispatch:
+    inputs:
+      linear_base_ref:
+        description: "Optional previous mainnet release SHA/ref for Linear release bootstrap"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -96,12 +101,22 @@ jobs:
           done
           exit 1
 
+      - name: Build Linear release name
+        id: linear-release-name
+        run: |
+          release_name="bridge-mainnet-$(date -u +%Y-%m-%d)"
+          if [ "${GITHUB_RUN_ATTEMPT}" != "1" ]; then
+            release_name="${release_name}.${GITHUB_RUN_ATTEMPT}"
+          fi
+          echo "name=${release_name}" >> "$GITHUB_OUTPUT"
+
       - name: Record Linear mainnet promotion
         uses: linear/linear-release-action@v0
         with:
           access_key: ${{ secrets.LINEAR_BRIDGE_MAINNET_PROMOTION_KEY }}
-          name: bridge-mainnet-${{ github.run_number }}
+          name: ${{ steps.linear-release-name.outputs.name }}
           version: ${{ github.sha }}
+          base_ref: ${{ inputs.linear_base_ref }}
           include_paths: services/actions/api/**,services/actions/indexer/**,apps/bridge-ui/**
           links: |
             GitHub workflow=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
