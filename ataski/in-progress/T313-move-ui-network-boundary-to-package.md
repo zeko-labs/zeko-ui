@@ -24,4 +24,9 @@ updated_at: 2026-06-12T10:52:15Z
 
 ## RED Evidence
 
+- `pnpm install` was required in the task worktree before the test runner was available.
+- `pnpm exec moon run networks:test -f` failed as expected: `isMinaBridgeNetwork` and `walletNetworkToBridgeNetwork` were not exported from `@zeko/networks`.
+- `pnpm exec moon run bridge-ui:test -f -- --run test/unit/network-nomenclature.test.ts` failed as expected: `apps/bridge-ui/machines/networks.ts` still imported `@lumina-dex/sdk`.
+- Lumina SDK source checked at `~/GitHub/lumina/monorepo/packages/sdk`: wallet networks are currently `mina:mainnet`, `mina:devnet`, `zeko:testnet`, and `zeko:mainnet`; Zeko mainnet endpoints remain `NOT_IMPLEMENTED` there. The `{ custom: "zeko-mainnet" }` value is a bridge backend SDK network object, not Lumina wallet network nomenclature.
+
 ## GREEN Evidence
