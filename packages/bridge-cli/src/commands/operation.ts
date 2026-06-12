@@ -414,7 +414,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 				},
 				args: {
 					from: { type: "string", default: "mina:testnet" },
-					to: { type: "string", default: "zeko:testnet" },
+					to: { type: "string", default: "zeko-m-devnet" },
 					account: { type: "string", required: false },
 					pollIntervalMs: { type: "string", required: false, alias: ["poll-interval-ms"] },
 					retryDelayMs: { type: "string", required: false, alias: ["retry-delay-ms"] },
@@ -423,7 +423,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 				},
 				async run({ args }) {
 					const from = parseChainArg(args.from, "mina:testnet", "--from")
-					const to = parseChainArg(args.to, "zeko:testnet", "--to")
+					const to = parseChainArg(args.to, "zeko-m-devnet", "--to")
 					const json = readBooleanArg(args, "json")
 					const verbose = readBooleanArg(args, "verbose")
 					const account = deriveAccount(from, readOptionalStringArg(args, "account"))

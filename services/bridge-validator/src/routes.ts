@@ -2,9 +2,9 @@ export type BridgeValidatorRouteKey = "mina-to-zeko" | "zeko-to-mina"
 
 export type BridgeValidatorRoute = {
 	key: BridgeValidatorRouteKey
-	from: "mina:testnet" | "zeko:testnet"
-	to: "mina:testnet" | "zeko:testnet"
-	route: "mina:testnet->zeko:testnet" | "zeko:testnet->mina:testnet"
+	from: "mina:testnet" | "zeko-m-devnet"
+	to: "mina:testnet" | "zeko-m-devnet"
+	route: "mina:testnet->zeko-m-devnet" | "zeko-m-devnet->mina:testnet"
 	direction: "deposit" | "withdrawal"
 }
 
@@ -12,15 +12,15 @@ export const validatorRoutes = {
 	minaToZeko: {
 		key: "mina-to-zeko",
 		from: "mina:testnet",
-		to: "zeko:testnet",
-		route: "mina:testnet->zeko:testnet",
+		to: "zeko-m-devnet",
+		route: "mina:testnet->zeko-m-devnet",
 		direction: "deposit"
 	},
 	zekoToMina: {
 		key: "zeko-to-mina",
-		from: "zeko:testnet",
+		from: "zeko-m-devnet",
 		to: "mina:testnet",
-		route: "zeko:testnet->mina:testnet",
+		route: "zeko-m-devnet->mina:testnet",
 		direction: "withdrawal"
 	}
 } satisfies Record<string, BridgeValidatorRoute>

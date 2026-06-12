@@ -64,12 +64,12 @@ const main = defineCommand({
 	meta: {
 		name: "zeko-faucet",
 		version: "1.0.0",
-		description: "CLI to deploy and manage the Mina Faucet on zeko Testnet"
+		description: "CLI to deploy and manage the Mina Faucet on Zeko-M devnet"
 	},
 	args: {
 		network: {
 			type: "string",
-			description: "One of mina:devnet, zeko:testnet, mina:mainnet, zeko:mainnet",
+			description: "One of mina:devnet, zeko-m-devnet, mina:mainnet, zeko-m-mainnet",
 			default: "mina:devnet",
 			required: true
 		},

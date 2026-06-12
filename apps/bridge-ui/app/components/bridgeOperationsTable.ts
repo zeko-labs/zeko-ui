@@ -1,13 +1,13 @@
-import type { Networks } from "@lumina-dex/sdk"
 import type { ColumnDef } from "@tanstack/vue-table"
+import type { BridgeNetwork } from "~~/machines/networks"
 
 export type BridgeOperationRow = {
 	id: string
 	status: unknown
 	statusText: string
 	statusKind: "complete" | "cancelled" | "pending" | "error"
-	source: Networks
-	destination: Networks
+	source: BridgeNetwork
+	destination: BridgeNetwork
 	amount: number | string
 	hash: string
 	timestampMs: number | null

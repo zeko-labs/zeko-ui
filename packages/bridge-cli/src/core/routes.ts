@@ -2,8 +2,10 @@ export type ChainFamily = "mina" | "zeko" | "eth"
 export type ChainRef =
 	| "mina:testnet"
 	| "mina:mainnet"
-	| "zeko:testnet"
-	| "zeko:zeko-mainnet"
+	| "zeko-m-devnet"
+	| "zeko-m-mainnet"
+	| "zeko-e-testnet"
+	| "zeko-e-mainnet"
 	| "eth:testnet"
 	| "eth:mainnet"
 export type Direction = "deposit" | "withdrawal"
@@ -20,62 +22,62 @@ export type RouteDescriptor = {
 export const KNOWN_ROUTES: RouteDescriptor[] = [
 	{
 		from: "mina:testnet",
-		to: "zeko:testnet",
+		to: "zeko-m-devnet",
 		enabled: true,
 		direction: "deposit",
-		label: "Mina testnet -> Zeko testnet"
+		label: "Mina testnet -> Zeko-M devnet"
 	},
 	{
-		from: "zeko:testnet",
+		from: "zeko-m-devnet",
 		to: "mina:testnet",
 		enabled: true,
 		direction: "withdrawal",
-		label: "Zeko testnet -> Mina testnet"
+		label: "Zeko-M devnet -> Mina testnet"
 	},
 	{
 		from: "mina:mainnet",
-		to: "zeko:zeko-mainnet",
+		to: "zeko-m-mainnet",
 		enabled: true,
 		direction: "deposit",
-		label: "Mina mainnet -> Zeko mainnet"
+		label: "Mina mainnet -> Zeko-M mainnet"
 	},
 	{
-		from: "zeko:zeko-mainnet",
+		from: "zeko-m-mainnet",
 		to: "mina:mainnet",
 		enabled: true,
 		direction: "withdrawal",
-		label: "Zeko mainnet -> Mina mainnet"
+		label: "Zeko-M mainnet -> Mina mainnet"
 	},
 	{
 		from: "eth:testnet",
-		to: "zeko:testnet",
+		to: "zeko-e-testnet",
 		enabled: false,
 		direction: "deposit",
-		label: "Ethereum testnet -> Zeko testnet",
+		label: "Ethereum testnet -> Zeko-E testnet",
 		reason: "Known route, not enabled yet."
 	},
 	{
-		from: "zeko:testnet",
+		from: "zeko-e-testnet",
 		to: "eth:testnet",
 		enabled: false,
 		direction: "withdrawal",
-		label: "Zeko testnet -> Ethereum testnet",
+		label: "Zeko-E testnet -> Ethereum testnet",
 		reason: "Known route, not enabled yet."
 	},
 	{
 		from: "eth:mainnet",
-		to: "zeko:zeko-mainnet",
+		to: "zeko-e-mainnet",
 		enabled: false,
 		direction: "deposit",
-		label: "Ethereum mainnet -> Zeko mainnet",
+		label: "Ethereum mainnet -> Zeko-E mainnet",
 		reason: "Known route, not enabled yet."
 	},
 	{
-		from: "zeko:zeko-mainnet",
+		from: "zeko-e-mainnet",
 		to: "eth:mainnet",
 		enabled: false,
 		direction: "withdrawal",
-		label: "Zeko mainnet -> Ethereum mainnet",
+		label: "Zeko-E mainnet -> Ethereum mainnet",
 		reason: "Known route, not enabled yet."
 	}
 ]

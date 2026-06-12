@@ -1,10 +1,10 @@
 import type { ZkappCommand } from "@aurowallet/mina-provider"
-import type { Networks } from "@lumina-dex/sdk"
 import { assign, fromPromise, setup } from "xstate"
 import { toQuietIfWalletRejection } from "~/errors"
 import { createLogger } from "./debug"
 import { createExplorerUrl } from "./helpers"
 import { sendMetric } from "./metrics"
+import type { BridgeNetwork } from "./networks"
 import type { SdkSignatureRequest } from "./operations.worker"
 
 const { act, logger } = createLogger("[TRANSACTION]", { metrics: true })
@@ -62,7 +62,7 @@ const normalizeWalletTransaction = (transaction: string): string => {
 
 const isFeeTooLowError = (error: unknown): boolean => String(error).includes("Fee is too low")
 
-const resultFromHash = ({ network, hash }: { network: Networks; hash: string }): Result => ({
+const resultFromHash = ({ network, hash }: { network: BridgeNetwork; hash: string }): Result => ({
 	hash,
 	url: createExplorerUrl({ network, hash })
 })
@@ -114,7 +114,7 @@ export type TransactionMachineInput = {
 	id: string
 	key: string
 	user: string
-	network: Networks
+	network: BridgeNetwork
 	initialFeeNanomina?: number
 	createSdkSignature: (input: { feeNanomina: number }) => Promise<SdkSignatureRequest>
 	completeSdkSignature: (input: {

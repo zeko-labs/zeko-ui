@@ -74,7 +74,7 @@ describe("cli skeleton", () => {
 				args: {
 					_: [],
 					from: "mina:testnet",
-					to: "zeko:testnet",
+					to: "zeko-m-devnet",
 					amount: "",
 					account: "B62test",
 					recipient: "B62test",
@@ -98,7 +98,7 @@ describe("cli skeleton", () => {
 					success: true,
 					direction: "deposit",
 					action: "submit",
-					route: "mina:testnet->zeko:testnet",
+					route: "mina:testnet->zeko-m-devnet",
 					hash: "deposit-submit",
 					explorerUrl: "https://example.test/deposit-submit",
 					included: true
@@ -157,7 +157,7 @@ describe("cli skeleton", () => {
 			args: {
 				_: [],
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m-devnet",
 				amount: "2",
 				account: "B62test",
 				recipient: "B62test",
@@ -183,7 +183,7 @@ describe("cli skeleton", () => {
 			id: "resume-poll-delay",
 			status: "running",
 			phase: "submitted",
-			route: "zeko:testnet->mina:testnet",
+			route: "zeko-m-devnet->mina:testnet",
 			direction: "withdrawal",
 			account: "B62test",
 			recipient: "B62test",
@@ -278,7 +278,7 @@ describe("cli skeleton", () => {
 					success: true,
 					direction: "deposit",
 					action: "submit",
-					route: "mina:testnet->zeko:testnet",
+					route: "mina:testnet->zeko-m-devnet",
 					hash: "deposit-submit",
 					explorerUrl: "https://example.test/deposit-submit",
 					included: true
@@ -342,7 +342,7 @@ describe("cli skeleton", () => {
 			args: {
 				_: [],
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m-devnet",
 				amount: "2",
 				account: "B62test",
 				recipient: "B62test",
@@ -374,7 +374,7 @@ describe("cli skeleton", () => {
 					success: true,
 					direction: "deposit",
 					action: "submit",
-					route: "mina:testnet->zeko:testnet",
+					route: "mina:testnet->zeko-m-devnet",
 					hash: "deposit-submit",
 					explorerUrl: "https://example.test/deposit-submit",
 					included: true
@@ -452,7 +452,7 @@ describe("cli skeleton", () => {
 			args: {
 				_: [],
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m-devnet",
 				amount: "2",
 				account: "B62test",
 				recipient: "B62test",

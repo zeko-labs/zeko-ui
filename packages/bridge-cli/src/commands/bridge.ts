@@ -228,7 +228,7 @@ const deriveAccount = (from: ChainRef, explicit?: string): string => {
 
 const parseBridgeCommandArgs = (args: Record<string, unknown>) => ({
 	from: parseChainRef(readOptionalStringArg(args, "from") ?? "mina:testnet", "--from"),
-	to: parseChainRef(readOptionalStringArg(args, "to") ?? "zeko:testnet", "--to"),
+	to: parseChainRef(readOptionalStringArg(args, "to") ?? "zeko-m-devnet", "--to"),
 	amount: readRequiredStringArg(args, "amount", "Missing required --amount"),
 	account: readOptionalStringArg(args, "account"),
 	recipient: readOptionalStringArg(args, "recipient"),
@@ -2002,7 +2002,7 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 		},
 		args: {
 			from: { type: "string", default: "mina:testnet" },
-			to: { type: "string", default: "zeko:testnet" },
+			to: { type: "string", default: "zeko-m-devnet" },
 			amount: { type: "string", required: true },
 			account: { type: "string", required: false },
 			recipient: { type: "string", required: false },

@@ -6,7 +6,7 @@ const session = {
 	id: "op-service",
 	status: "running",
 	phase: "submitted",
-	route: "mina:testnet->zeko:testnet",
+	route: "mina:testnet->zeko-m-devnet",
 	direction: "deposit",
 	account: "B62account",
 	recipient: "B62recipient",
@@ -61,7 +61,7 @@ describe("operation services", () => {
 			id: "op-service",
 			status: "running",
 			phase: "ready-finalization",
-			route: "mina:testnet->zeko:testnet",
+			route: "mina:testnet->zeko-m-devnet",
 			direction: "deposit",
 			account: "B62account",
 			recipient: "B62recipient",
@@ -85,12 +85,12 @@ describe("operation services", () => {
 			...session,
 			id: "existing-withdrawal",
 			direction: "withdrawal",
-			route: "zeko:testnet->mina:testnet",
+			route: "zeko-m-devnet->mina:testnet",
 			submittedTransactions: [{ action: "submit", hash: "withdrawal-0" }]
 		}
 
 		const queue = createResumeQueue({
-			from: "zeko:testnet",
+			from: "zeko-m-devnet",
 			to: "mina:testnet",
 			account: "B62account",
 			persistedSessions: [persisted],
@@ -108,12 +108,12 @@ describe("operation services", () => {
 			id: "wrong-account-withdrawal",
 			account: "B62other",
 			direction: "withdrawal",
-			route: "zeko:testnet->mina:testnet",
+			route: "zeko-m-devnet->mina:testnet",
 			submittedTransactions: [{ action: "submit", hash: "withdrawal-0" }]
 		}
 
 		const queue = createResumeQueue({
-			from: "zeko:testnet",
+			from: "zeko-m-devnet",
 			to: "mina:testnet",
 			account: "B62account",
 			persistedSessions: [persisted],

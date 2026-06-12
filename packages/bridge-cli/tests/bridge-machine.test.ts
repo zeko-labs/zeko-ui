@@ -10,7 +10,7 @@ const createSession = (patch: Partial<OperationSession> = {}): OperationSession 
 	id: "operation-1",
 	status: "running",
 	phase: "submitted",
-	route: "mina:testnet->zeko:testnet",
+	route: "mina:testnet->zeko-m-devnet",
 	direction: "deposit",
 	account: "B62qaccount",
 	recipient: "B62qrecipient",
@@ -27,7 +27,7 @@ const createContext = (session = createSession()) => ({
 	input: {
 		id: session.id,
 		from: parseChainRef("mina:testnet", "--from"),
-		to: parseChainRef("zeko:testnet", "--to"),
+		to: parseChainRef("zeko-m-devnet", "--to"),
 		amount: session.amount,
 		account: session.account,
 		recipient: session.recipient
