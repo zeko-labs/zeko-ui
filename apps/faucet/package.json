@@ -9,6 +9,7 @@
 	},
 	"dependencies": {
 		"@cloudflare/containers": "^0.0.13",
+		"@zeko/networks": "workspace:*",
 		"hono": "^4.7.6",
 		"o1js": "catalog:"
 	},

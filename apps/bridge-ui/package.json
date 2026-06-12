@@ -22,6 +22,7 @@
 		"@zeko-labs/bridge-sdk": "workspace:^",
 		"@zeko/design": "workspace:^",
 		"@zeko/layer": "workspace:^",
+		"@zeko/networks": "workspace:*",
 		"comlink": "^4.4.2",
 		"consola": "^3.4.2",
 		"immer": "^10.1.1",

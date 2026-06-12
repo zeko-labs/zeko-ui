@@ -27,8 +27,8 @@ Agent-specific rules on top of that procedure:
 
 If you split work across subagents:
 
-- one subagent owns `mina:testnet -> zeko-m-devnet`
-- one subagent owns `zeko-m-devnet -> mina:testnet`
+- one subagent owns `mina:testnet -> zeko-m:testnet`
+- one subagent owns `zeko-m:testnet -> mina:testnet`
 
 For real network validation:
 

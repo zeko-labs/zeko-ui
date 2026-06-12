@@ -31,5 +31,5 @@ Zeko-M mainnet is not yet available. Stay tuned for updates on the mainnet launc
 
 To perform transactions and interact with dApps on Zeko, you will need tMINA tokens.
 
-- **Testnet**: For testing purposes on the Zeko-M devnet, you can obtain tMina tokens from the [Zeko Faucet](https://zeko.io/faucet).
+- **Testnet**: For testing purposes on the Zeko-M testnet, you can obtain tMina tokens from the [Zeko Faucet](https://zeko.io/faucet).
 - **Mainnet**: Obtain Mina from a cryptocurrency exchange that supports MINA, or from other users.
