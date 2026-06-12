@@ -71,10 +71,7 @@ export default defineNuxtConfig({
 	vite: {
 		build: { minify: true },
 		server: { headers },
-		optimizeDeps: {
-			include: ["@lumina-dex/sdk > react"],
-			exclude: ["@lumina-dex/sdk", "@urql/vue"]
-		},
+		optimizeDeps: { exclude: ["@urql/vue"] },
 		worker: {
 			format: "es",
 			plugins: () => [...sentryPlugin]

@@ -2,6 +2,8 @@ id: bridge-validator
 layer: application
 language: typescript
 stack: backend
+dependsOn:
+  - networks
 fileGroups:
   sources:
     - src/**/*
@@ -26,11 +28,15 @@ tasks:
     preset: server
   build:
     command: tsdown
+    deps:
+      - ^:build
     inputs:
       - "@group(sources)"
     outputs:
       - dist/**
   typecheck:
+    deps:
+      - ^:build
     command: tsc --noEmit
     inputs:
       - "@group(sources)"

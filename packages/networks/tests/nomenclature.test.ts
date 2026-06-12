@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+	AURO_ZEKO_NETWORKS,
 	BRIDGE_CLI_ROUTES,
 	BRIDGE_SDK_CONFIG_BY_ZEKO_M_NETWORK,
 	BRIDGE_UI_NETWORKS,
@@ -9,7 +10,6 @@ import {
 	isMainnetBridgeNetwork,
 	isMinaBridgeNetwork,
 	isZekoBridgeNetwork,
-	LUMINA_ZEKO_NETWORKS,
 	NETWORK_LABELS,
 	walletNetworkToBridgeNetwork,
 	ZEKO_M_NETWORKS,
@@ -53,12 +53,12 @@ describe("network nomenclature", () => {
 		expect(isMainnetBridgeNetwork("mina:devnet")).toBe(false)
 	})
 
-	it("owns Lumina wallet compatibility network conversion", () => {
-		expect(walletNetworkToBridgeNetwork(LUMINA_ZEKO_NETWORKS.testnet)).toBe(ZEKO_M_NETWORKS.testnet)
-		expect(walletNetworkToBridgeNetwork(LUMINA_ZEKO_NETWORKS.mainnet)).toBe(ZEKO_M_NETWORKS.mainnet)
+	it("owns Auro wallet compatibility network conversion", () => {
+		expect(walletNetworkToBridgeNetwork(AURO_ZEKO_NETWORKS.testnet)).toBe(ZEKO_M_NETWORKS.testnet)
+		expect(walletNetworkToBridgeNetwork(AURO_ZEKO_NETWORKS.mainnet)).toBe(ZEKO_M_NETWORKS.mainnet)
 		expect(walletNetworkToBridgeNetwork("mina:devnet")).toBe("mina:devnet")
-		expect(bridgeNetworkToWalletNetwork(ZEKO_M_NETWORKS.testnet)).toBe(LUMINA_ZEKO_NETWORKS.testnet)
-		expect(bridgeNetworkToWalletNetwork(ZEKO_M_NETWORKS.mainnet)).toBe(LUMINA_ZEKO_NETWORKS.mainnet)
+		expect(bridgeNetworkToWalletNetwork(ZEKO_M_NETWORKS.testnet)).toBe(AURO_ZEKO_NETWORKS.testnet)
+		expect(bridgeNetworkToWalletNetwork(ZEKO_M_NETWORKS.mainnet)).toBe(AURO_ZEKO_NETWORKS.mainnet)
 		expect(bridgeNetworkToWalletNetwork("mina:mainnet")).toBe("mina:mainnet")
 	})
 

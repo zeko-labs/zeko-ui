@@ -1,0 +1,33 @@
+{
+	"name": "@zeko/sdk",
+	"version": "0.1.0",
+	"description": "Zeko TypeScript SDK.",
+	"type": "module",
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": ["dist"],
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"dependencies": {
+		"@zeko/networks": "workspace:*",
+		"consola": "catalog:",
+		"immer": "^10.1.1",
+		"o1js": "catalog:",
+		"xstate": "catalog:"
+	},
+	"devDependencies": {
+		"@aurowallet/mina-provider": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

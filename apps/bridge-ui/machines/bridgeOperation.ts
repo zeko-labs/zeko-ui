@@ -1,4 +1,4 @@
-import type { walletMachine } from "@lumina-dex/sdk"
+import type { walletMachine } from "@zeko/sdk"
 import { produce } from "immer"
 import {
 	type ActorRef,

@@ -21,7 +21,7 @@ export const ZEKO_E_NETWORKS = {
 	mainnet: "zeko-e:mainnet"
 } as const
 
-export const LUMINA_ZEKO_NETWORKS = {
+export const AURO_ZEKO_NETWORKS = {
 	testnet: "zeko:testnet",
 	mainnet: "zeko:mainnet"
 } as const
@@ -31,10 +31,10 @@ export type MinaNetwork = ObjectValue<typeof MINA_NETWORKS>
 export type EthereumNetwork = ObjectValue<typeof ETHEREUM_NETWORKS>
 export type ZekoMNetwork = ObjectValue<typeof ZEKO_M_NETWORKS>
 export type ZekoENetwork = ObjectValue<typeof ZEKO_E_NETWORKS>
-export type LuminaZekoNetwork = ObjectValue<typeof LUMINA_ZEKO_NETWORKS>
+export type AuroZekoNetwork = ObjectValue<typeof AURO_ZEKO_NETWORKS>
 export type ZekoNetwork = ZekoMNetwork | ZekoENetwork
 export type ChainNetwork = MinaNetwork | EthereumNetwork | ZekoNetwork
-export type WalletZekoNetwork = LuminaZekoNetwork
+export type WalletZekoNetwork = AuroZekoNetwork
 export type DisplayNetwork = ChainNetwork | WalletZekoNetwork
 
 export type ZekoMBridgeNetwork = typeof ZEKO_M_NETWORKS.testnet | typeof ZEKO_M_NETWORKS.mainnet
@@ -42,10 +42,10 @@ export type BridgeUiNetwork =
 	| typeof MINA_NETWORKS.devnet
 	| typeof MINA_NETWORKS.mainnet
 	| ZekoMBridgeNetwork
-export type LuminaWalletNetwork =
+export type AuroWalletNetwork =
 	| typeof MINA_NETWORKS.devnet
 	| typeof MINA_NETWORKS.mainnet
-	| LuminaZekoNetwork
+	| AuroZekoNetwork
 export type BridgeCliNetwork =
 	| typeof MINA_NETWORKS.testnet
 	| typeof MINA_NETWORKS.mainnet
@@ -79,8 +79,8 @@ export const NETWORK_LABELS = {
 	[ZEKO_M_NETWORKS.mainnet]: "Zeko-M Mainnet",
 	[ZEKO_E_NETWORKS.testnet]: "Zeko-E Testnet",
 	[ZEKO_E_NETWORKS.mainnet]: "Zeko-E Mainnet",
-	[LUMINA_ZEKO_NETWORKS.testnet]: "Zeko-M Testnet",
-	[LUMINA_ZEKO_NETWORKS.mainnet]: "Zeko-M Mainnet"
+	[AURO_ZEKO_NETWORKS.testnet]: "Zeko-M Testnet",
+	[AURO_ZEKO_NETWORKS.mainnet]: "Zeko-M Mainnet"
 } as const satisfies Record<DisplayNetwork, string>
 
 export const BRIDGE_UI_NETWORKS = [
@@ -252,21 +252,21 @@ export const BRIDGE_UI_CONFIG_BY_ROUTE: Partial<
 } as const
 
 export const WALLET_ZEKO_NETWORK_TO_BRIDGE_NETWORK = {
-	[LUMINA_ZEKO_NETWORKS.testnet]: ZEKO_M_NETWORKS.testnet,
-	[LUMINA_ZEKO_NETWORKS.mainnet]: ZEKO_M_NETWORKS.mainnet
+	[AURO_ZEKO_NETWORKS.testnet]: ZEKO_M_NETWORKS.testnet,
+	[AURO_ZEKO_NETWORKS.mainnet]: ZEKO_M_NETWORKS.mainnet
 } as const satisfies Record<WalletZekoNetwork, ZekoMBridgeNetwork>
 
 export const BRIDGE_NETWORK_TO_WALLET_ZEKO_NETWORK = {
-	[ZEKO_M_NETWORKS.testnet]: LUMINA_ZEKO_NETWORKS.testnet,
-	[ZEKO_M_NETWORKS.mainnet]: LUMINA_ZEKO_NETWORKS.mainnet
+	[ZEKO_M_NETWORKS.testnet]: AURO_ZEKO_NETWORKS.testnet,
+	[ZEKO_M_NETWORKS.mainnet]: AURO_ZEKO_NETWORKS.mainnet
 } as const satisfies Record<ZekoMBridgeNetwork, WalletZekoNetwork>
 
-export const walletNetworkToBridgeNetwork = (network: LuminaWalletNetwork): BridgeUiNetwork =>
-	network === LUMINA_ZEKO_NETWORKS.testnet || network === LUMINA_ZEKO_NETWORKS.mainnet
+export const walletNetworkToBridgeNetwork = (network: AuroWalletNetwork): BridgeUiNetwork =>
+	network === AURO_ZEKO_NETWORKS.testnet || network === AURO_ZEKO_NETWORKS.mainnet
 		? WALLET_ZEKO_NETWORK_TO_BRIDGE_NETWORK[network]
 		: network
 
-export const bridgeNetworkToWalletNetwork = (network: BridgeUiNetwork): LuminaWalletNetwork =>
+export const bridgeNetworkToWalletNetwork = (network: BridgeUiNetwork): AuroWalletNetwork =>
 	network === ZEKO_M_NETWORKS.testnet || network === ZEKO_M_NETWORKS.mainnet
 		? BRIDGE_NETWORK_TO_WALLET_ZEKO_NETWORK[network]
 		: network
