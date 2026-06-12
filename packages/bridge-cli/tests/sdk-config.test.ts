@@ -25,7 +25,7 @@ describe("sdk config", () => {
 	})
 
 	it("maps the supported mainnet route to bridge-sdk endpoints", () => {
-		const config = createSdkConfig(resolveRoute("mina:mainnet", "zeko:mainnet"))
+		const config = createSdkConfig(resolveRoute("mina:mainnet", "zeko:zeko-mainnet"))
 
 		expect(config.l1Url).toBe("https://gateway.mina.mainnet.zeko.io")
 		expect(config.l1ArchiveUrl).toBe("https://gateway.mina.archive.mainnet.zeko.io")
@@ -33,7 +33,7 @@ describe("sdk config", () => {
 		expect(config.zekoArchiveUrl).toBe("https://archive.mainnet.zeko.io/graphql")
 		expect(config.actionsApi).toBe("https://api.actions.zeko.io/graphql")
 		expect(config.l1Network).toBe("mainnet")
-		expect(config.l2Network).toBe("mainnet")
+		expect(config.l2Network).toEqual({ custom: "zeko-mainnet" })
 		expect(config.verbose).toBe(false)
 	})
 })

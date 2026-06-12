@@ -35,12 +35,12 @@ describe("doctor command", () => {
 		expect(writes[0]).toContain("mina:testnet->zeko:testnet")
 		expect(writes[0]).toContain("Route status:")
 		expect(writes[0]).toContain("mina:testnet->zeko:testnet: enabled")
-		expect(writes[0]).toContain("mina:mainnet->zeko:mainnet: enabled")
+		expect(writes[0]).toContain("mina:mainnet->zeko:zeko-mainnet: enabled")
 		expect(writes[0]).toContain(
 			"actionsApi=https://testnet.api.actions.zeko.io/graphql; l1=testnet; l2=testnet"
 		)
 		expect(writes[0]).toContain(
-			"actionsApi=https://api.actions.zeko.io/graphql; l1=mainnet; l2=mainnet"
+			"actionsApi=https://api.actions.zeko.io/graphql; l1=mainnet; l2=zeko-mainnet"
 		)
 		expect(writes[0]).toContain("https://testnet.api.actions.zeko.io/health -> 200 OK")
 		expect(writes[0]).toContain("https://api.actions.zeko.io/health -> 200 OK")

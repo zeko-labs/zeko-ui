@@ -1,6 +1,11 @@
 export type ChainFamily = "mina" | "zeko" | "eth"
-export type NetworkTier = "testnet" | "mainnet"
-export type ChainRef = `${ChainFamily}:${NetworkTier}`
+export type ChainRef =
+	| "mina:testnet"
+	| "mina:mainnet"
+	| "zeko:testnet"
+	| "zeko:zeko-mainnet"
+	| "eth:testnet"
+	| "eth:mainnet"
 export type Direction = "deposit" | "withdrawal"
 
 export type RouteDescriptor = {
@@ -29,13 +34,13 @@ export const KNOWN_ROUTES: RouteDescriptor[] = [
 	},
 	{
 		from: "mina:mainnet",
-		to: "zeko:mainnet",
+		to: "zeko:zeko-mainnet",
 		enabled: true,
 		direction: "deposit",
 		label: "Mina mainnet -> Zeko mainnet"
 	},
 	{
-		from: "zeko:mainnet",
+		from: "zeko:zeko-mainnet",
 		to: "mina:mainnet",
 		enabled: true,
 		direction: "withdrawal",
@@ -59,14 +64,14 @@ export const KNOWN_ROUTES: RouteDescriptor[] = [
 	},
 	{
 		from: "eth:mainnet",
-		to: "zeko:mainnet",
+		to: "zeko:zeko-mainnet",
 		enabled: false,
 		direction: "deposit",
 		label: "Ethereum mainnet -> Zeko mainnet",
 		reason: "Known route, not enabled yet."
 	},
 	{
-		from: "zeko:mainnet",
+		from: "zeko:zeko-mainnet",
 		to: "eth:mainnet",
 		enabled: false,
 		direction: "withdrawal",

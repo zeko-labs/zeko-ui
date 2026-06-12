@@ -1,6 +1,6 @@
 {
 	"name": "@zeko-labs/bridge-cli",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"description": "Agent-first CLI for the Zeko bridge.",
 	"type": "module",
 	"bin": {

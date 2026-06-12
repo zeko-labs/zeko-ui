@@ -1,5 +1,5 @@
 ---
-id: T327
+id: T330
 title: "Group finality with chain window"
 status: done
 blockedBy: []
