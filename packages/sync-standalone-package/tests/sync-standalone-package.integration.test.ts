@@ -60,8 +60,10 @@ describe("prepareStandalonePackage", () => {
 			rootDir,
 			packageDir: "packages/sync-target",
 			projectId: "sync-target",
+			projectPaths: [],
 			workspacePackages: [".", "npm/*"],
 			extraWorkspaceVersionSources: ["packages/shared/package.json"],
+			preserveWorkspaceDependencies: [],
 			pinDevCatalogVersions: true
 		})
 
@@ -119,6 +121,49 @@ projects:
 tasks:
   build:
     command: echo build
+`
+		)
+	})
+
+	it("prepares a source monorepo mirror while preserving included workspace packages", () => {
+		const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "sync-source-monorepo-test-"))
+		tempDirs.push(rootDir)
+		fs.cpSync(fixtureRoot, rootDir, { recursive: true })
+		materializeFixtureFiles(rootDir)
+
+		prepareStandalonePackage({
+			rootDir,
+			packageDir: ".",
+			projectId: "sync-target",
+			projectPaths: ["sync-target=packages/sync-target", "shared=packages/shared"],
+			workspacePackages: ["packages/*"],
+			extraWorkspaceVersionSources: [],
+			preserveWorkspaceDependencies: ["@scope/shared"],
+			pinDevCatalogVersions: true
+		})
+
+		const mainPackage = JSON.parse(
+			fs.readFileSync(path.join(rootDir, "packages", "sync-target", "package.json"), "utf8")
+		) as Record<string, unknown>
+
+		expect(mainPackage.dependencies).toEqual({
+			"@scope/catalog-dep": "^1.4.0",
+			"@scope/shared": "workspace:^"
+		})
+		expect(mainPackage.devDependencies).toEqual({
+			typescript: "5.9.2",
+			tsdown: "0.13.4"
+		})
+
+		expect(fs.readFileSync(path.join(rootDir, "pnpm-workspace.yaml"), "utf8")).toBe(
+			"packages:\n  - packages/*\n"
+		)
+		expect(fs.readFileSync(path.join(rootDir, ".moon", "workspace.yml"), "utf8")).toBe(
+			`# yaml-language-server: $schema=./cache/schemas/workspace.json
+
+projects:
+  sync-target: "packages/sync-target"
+  shared: "packages/shared"
 `
 		)
 	})

@@ -569,6 +569,9 @@ importers:
       '@zeko-labs/bridge-sdk':
         specifier: workspace:^
         version: link:../bridge-sdk
+      '@zeko/networks':
+        specifier: workspace:*
+        version: link:../networks
       tsdown:
         specifier: 'catalog:'
         version: 0.13.4(typescript@5.9.3)(vue-tsc@3.0.6(typescript@5.9.3))

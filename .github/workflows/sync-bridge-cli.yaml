@@ -6,21 +6,83 @@ on:
 
 jobs:
   sync:
-    uses: ./.github/workflows/sync-package-repo.yaml
-    with:
-      package-path: packages/bridge-cli
-      standalone-repo: bridge-cli
-      project-id: bridge-cli
-      workspace-packages: .
-      extra-workspace-version-sources: |
-        packages/bridge-sdk/package.json
-        packages/graphql/package.json
-      pre-sync-task: bridge-cli:build
-      sync-paths: |
-        package.json
-        README.md
-        RELEASE.md
-        CHANGELOG.md
-        .env.example
-        dist
-    secrets: inherit
+    permissions:
+      contents: read
+    runs-on: warp-ubuntu-latest-x64-4x
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build sync tooling package
+        run: pnpm exec moon run sync-standalone-package:build
+
+      - name: Assemble public source monorepo
+        run: |
+          export SYNC_ROOT=$(mktemp -d)
+          echo "SYNC_ROOT=${SYNC_ROOT}" >> "$GITHUB_ENV"
+
+          mkdir -p "${SYNC_ROOT}/packages"
+          cp -a packages/bridge-cli "${SYNC_ROOT}/packages/bridge-cli"
+          cp -a packages/networks "${SYNC_ROOT}/packages/networks"
+          rm -rf "${SYNC_ROOT}/packages/bridge-cli/dist" "${SYNC_ROOT}/packages/networks/dist"
+          cp packages/bridge-cli/README.md "${SYNC_ROOT}/README.md"
+
+          node --input-type=module <<'NODE'
+          import fs from "node:fs"
+
+          const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"))
+          fs.writeFileSync(
+            `${process.env.SYNC_ROOT}/package.json`,
+            `${JSON.stringify(
+              {
+                name: "@zeko-labs/bridge-cli-source",
+                private: true,
+                packageManager: packageJson.packageManager
+              },
+              null,
+              "\t"
+            )}\n`
+          )
+          NODE
+
+          node packages/sync-standalone-package/dist/cli.js \
+            --root-dir "$GITHUB_WORKSPACE" \
+            --package-dir "$SYNC_ROOT" \
+            --project-id bridge-cli \
+            --project-paths "bridge-cli=packages/bridge-cli,networks=packages/networks" \
+            --workspace-packages "packages/*" \
+            --extra-workspace-version-sources "packages/bridge-sdk/package.json,packages/graphql/package.json" \
+            --preserve-workspace-dependencies "@zeko/networks"
+
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ZEKO_LABS_GH_APP_ID }}
+          private-key: ${{ secrets.ZEKO_LABS_GH_APP_PRIVATE_KEY }}
+          owner: zeko-labs
+          repositories: bridge-cli
+
+      - name: Force-push clean source commit to standalone repo
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          REMOTE_URL="https://x-access-token:${GH_TOKEN}@github.com/zeko-labs/bridge-cli.git"
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+
+          cd "$SYNC_ROOT"
+          git init
+          git add -A
+          git config user.name "github-actions[bot]"
+          # 41898282 is the immutable GitHub user id for github-actions[bot].
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: sync source from monorepo (${COMMIT_SHA})"
+          git push --force "$REMOTE_URL" "HEAD:main"

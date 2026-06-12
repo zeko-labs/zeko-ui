@@ -42,14 +42,21 @@ describe("published package boundary", () => {
 		expect(existsSync(path.join(packageRoot, "src/core/entrypoint.ts"))).toBe(false)
 	})
 
-	it("syncs the built package boundary to the public mirror", () => {
+	it("syncs the CLI source and internal network package source to the public mirror", () => {
 		const workflow = readFileSync(
 			path.join(repositoryRoot, ".github", "workflows", "sync-bridge-cli.yaml"),
 			"utf8"
 		)
+		const packageJson = readJson("package.json")
 
-		expect(workflow).toContain("pre-sync-task: bridge-cli:build")
-		expect(workflow).toContain("dist")
-		expect(workflow).not.toContain("src")
+		expect(packageJson.devDependencies).toMatchObject({
+			"@zeko/networks": "workspace:*"
+		})
+		expect(packageJson.dependencies).not.toHaveProperty("@zeko/networks")
+		expect(workflow).toContain("packages/bridge-cli")
+		expect(workflow).toContain("packages/networks")
+		expect(workflow).toContain("packages/*")
+		expect(workflow).not.toContain("sync-paths")
+		expect(workflow).not.toContain("bridge-cli:build")
 	})
 })

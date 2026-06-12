@@ -313,3 +313,4 @@
 - T313 | done | move-ui-network-boundary-to-package | done/T313-move-ui-network-boundary-to-package.md
 - T314 | done | own-wallet-sdk-and-auro-mainnet | done/T314-own-wallet-sdk-and-auro-mainnet.md
 - T315 | done | internal-sdk-cleanup-and-review | done/T315-internal-sdk-cleanup-and-review.md
+- T316 | done | source-monorepo-bridge-cli-sync | done/T316-source-monorepo-bridge-cli-sync.md

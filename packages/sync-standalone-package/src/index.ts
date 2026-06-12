@@ -35,16 +35,21 @@ type PrepareStandalonePackageOptions = {
 	rootDir?: string
 	packageDir: string
 	projectId: string
+	projectPaths: string[]
 	workspacePackages: string[]
 	extraWorkspaceVersionSources: string[]
+	preserveWorkspaceDependencies: string[]
 	pinDevCatalogVersions: boolean
 }
 
 export type CliOptions = {
+	rootDir: string
 	packageDir: string
 	projectId: string
+	projectPaths: string[]
 	workspacePackages: string[]
 	extraWorkspaceVersionSources: string[]
+	preserveWorkspaceDependencies: string[]
 	pinDevCatalogVersions: boolean
 }
 
@@ -64,10 +69,13 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
 	}
 
 	return {
+		rootDir: getArg("root-dir"),
 		packageDir: getArg("package-dir"),
 		projectId: getArg("project-id"),
+		projectPaths: parseList(getArg("project-paths")),
 		workspacePackages: parseList(getArg("workspace-packages", ".")),
 		extraWorkspaceVersionSources: parseList(getArg("extra-workspace-version-sources")),
+		preserveWorkspaceDependencies: parseList(getArg("preserve-workspace-dependencies")),
 		pinDevCatalogVersions: getArg("pin-dev-catalog-versions", "true") !== "false"
 	}
 }
@@ -229,13 +237,19 @@ const resolveCatalogSpecifier = ({
 const resolveWorkspaceSpecifier = ({
 	name,
 	specifier,
-	localVersions
+	localVersions,
+	preservedWorkspaceDependencies
 }: {
 	name: string
 	specifier: string
 	localVersions: Record<string, string>
+	preservedWorkspaceDependencies: ReadonlySet<string>
 }) => {
 	if (!specifier.startsWith("workspace:")) {
+		return specifier
+	}
+
+	if (preservedWorkspaceDependencies.has(name)) {
 		return specifier
 	}
 
@@ -259,6 +273,15 @@ const resolveWorkspaceSpecifier = ({
 	}
 
 	return range
+}
+
+const parseProjectPath = (entry: string) => {
+	const [id, projectPath] = entry.split("=", 2).map((part) => part.trim())
+	if (!id || !projectPath) {
+		throw new Error(`Invalid project path mapping: ${entry}`)
+	}
+
+	return { id, path: projectPath }
 }
 
 const stripMonorepoDependsOn = (moonConfigPath: string) => {
@@ -298,6 +321,7 @@ const stripMonorepoDependsOn = (moonConfigPath: string) => {
 export const prepareStandalonePackage = (options: PrepareStandalonePackageOptions) => {
 	const rootDir = options.rootDir ? path.resolve(options.rootDir) : process.cwd()
 	const packageDir = path.resolve(rootDir, options.packageDir)
+	const preservedWorkspaceDependencies = new Set(options.preserveWorkspaceDependencies)
 
 	const { defaultCatalog, namedCatalogs } = parseCatalogs(path.join(rootDir, "pnpm-workspace.yaml"))
 	const targetPackageJsonFiles = collectPackageJsonFiles(packageDir)
@@ -341,7 +365,12 @@ export const prepareStandalonePackage = (options: PrepareStandalonePackageOption
 					resolved = resolveCatalogSpecifier({ name, specifier, defaultCatalog, namedCatalogs })
 					wasCatalogResolved = true
 				} else if (specifier.startsWith("workspace:")) {
-					resolved = resolveWorkspaceSpecifier({ name, specifier, localVersions })
+					resolved = resolveWorkspaceSpecifier({
+						name,
+						specifier,
+						localVersions,
+						preservedWorkspaceDependencies
+					})
 				}
 
 				if (options.pinDevCatalogVersions && section === "devDependencies" && wasCatalogResolved) {
@@ -378,10 +407,14 @@ export const prepareStandalonePackage = (options: PrepareStandalonePackageOption
 	const moonDir = path.join(packageDir, ".moon")
 	fs.mkdirSync(moonDir, { recursive: true })
 
+	const projectEntries =
+		options.projectPaths.length > 0
+			? options.projectPaths.map(parseProjectPath)
+			: [{ id: options.projectId, path: "." }]
 	const standaloneWorkspaceConfig = `# yaml-language-server: $schema=./cache/schemas/workspace.json
 
 projects:
-  ${options.projectId}: "."
+${projectEntries.map((entry) => `  ${entry.id}: "${entry.path}"`).join("\n")}
 `
 
 	fs.writeFileSync(path.join(moonDir, "workspace.yml"), standaloneWorkspaceConfig)
@@ -399,10 +432,13 @@ export const runFromCli = (argv: string[]) => {
 	const parsed = parseCliArgs(argv)
 	ensureRequiredArgs(parsed)
 	prepareStandalonePackage({
+		rootDir: parsed.rootDir || undefined,
 		packageDir: parsed.packageDir,
 		projectId: parsed.projectId,
+		projectPaths: parsed.projectPaths,
 		workspacePackages: parsed.workspacePackages,
 		extraWorkspaceVersionSources: parsed.extraWorkspaceVersionSources,
+		preserveWorkspaceDependencies: parsed.preserveWorkspaceDependencies,
 		pinDevCatalogVersions: parsed.pinDevCatalogVersions
 	})
 }
