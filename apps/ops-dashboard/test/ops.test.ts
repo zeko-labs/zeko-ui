@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { indexerControlCopy } from "../app/utils/indexer-control-copy"
 import {
 	actionGapState,
 	blockGap,
@@ -36,6 +37,16 @@ const probe = (status: ServiceProbe["status"]): ServiceProbe => ({
 })
 
 describe("ops dashboard utilities", () => {
+	it("uses canonical actions-indexer control names and explains rebuild versus reset", () => {
+		expect(indexerControlCopy.reset.label).toBe("Reset")
+		expect(indexerControlCopy.note).toContain("Rebuild")
+		expect(indexerControlCopy.note).toContain("Reset")
+		expect(indexerControlCopy.note).toContain("indexed rows")
+		expect(indexerControlCopy.note).toContain("starts from scratch")
+		expect(indexerControlCopy.rebuild.whenToUse).toContain("archive data is trusted")
+		expect(indexerControlCopy.reset.whenToUse).toContain("cannot be trusted")
+	})
+
 	it("summarizes service states without mutating probe records", () => {
 		const services = [probe("ok"), probe("warn"), probe("error"), probe("unknown"), probe("ok")]
 

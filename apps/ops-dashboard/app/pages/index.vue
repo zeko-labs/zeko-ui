@@ -18,6 +18,7 @@ import {
 	tailState,
 	type ChainInsight
 } from "~/utils/ops-insights"
+import { indexerControlCopy } from "~/utils/indexer-control-copy"
 
 type ServiceStatus = "ok" | "warn" | "error" | "unknown"
 type ServiceKind = "actions-indexer" | "archive" | "daemon"
@@ -87,6 +88,11 @@ const serviceIcon = (service: ServiceProbe) => {
 	if (service.kind === "actions-indexer") return Activity
 	if (service.kind === "archive") return Database
 	return Server
+}
+const controlLabel = (action: ControlAction) => {
+	if (action === "rebuild") return indexerControlCopy.rebuild.label
+	if (action === "reset") return indexerControlCopy.reset.label
+	return action === "start" ? "Start" : "Stop"
 }
 
 const services = computed(() => snapshot.value?.services ?? [])
@@ -681,18 +687,18 @@ watch(
         class="IconButton Warn"
         :disabled="activeAction !== null"
         @click='runControl("rebuild")'>
-        <RotateCcw :size="16" />
-        Rebuild
+        <RotateCcw :size="16" /> {{ indexerControlCopy.rebuild.label }}
       </button>
       <button
         type="button"
         class="IconButton Danger"
         :disabled="activeAction !== null"
         @click='runControl("reset")'>
-        <Zap :size="16" />
-        Resync
+        <Zap :size="16" /> {{ indexerControlCopy.reset.label }}
       </button>
-      <span v-if="activeAction" class="ActionState">{{ activeAction }}
+      <span v-if="activeAction" class="ActionState">{{
+          controlLabel(activeAction)
+        }}
         running on {{ selectedNetwork }}</span>
       <span v-else class="ActionState">
         Last requested {{ formatDate(lastRefreshStartedAt) }}
@@ -703,9 +709,13 @@ watch(
     <p v-if="errorMessage" class="Notice Error">{{ errorMessage }}</p>
 
     <p class="ControlNote">
-      Rebuild repopulates indexed rows from the archive sources and resumes from
-      the rebuilt heads; resync/reset clears indexed state and starts indexing
-      again from scratch.
+      <strong>{{ indexerControlCopy.rebuild.label }}</strong>: {{
+        indexerControlCopy.rebuild.whenToUse
+      }}
+      <strong>{{ indexerControlCopy.reset.label }}</strong>: {{
+        indexerControlCopy.reset.whenToUse
+      }}
+      {{ indexerControlCopy.note }}
     </p>
 
     <section class="SummaryGrid" aria-label="Status summary">
