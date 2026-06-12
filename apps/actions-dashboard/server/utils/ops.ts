@@ -52,6 +52,10 @@ const requestTimeoutMs = 12_000
 const retryDelaysMs = [0, 350, 1_000]
 const actionScanRangeSize = 10_000
 const maxActionScanRanges = 6
+const actionsIndexerOriginDefaults: Record<OpsNetwork, string> = {
+	mainnet: "https://p01--actions-indexer-mainnet-deployment--4vlk5mt6rn88.code.run",
+	testnet: "https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run"
+}
 
 const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
 	mainnet: {
@@ -91,6 +95,8 @@ const endpointEnvKeys = {
 	l1DaemonUrl: "L1_DAEMON_URL",
 	l2DaemonUrl: "L2_DAEMON_URL"
 } as const
+
+const actionsIndexerOriginEnvKey = "ACTIONS_INDEXER_ORIGIN_URL"
 
 const publicKeyEnvKeys = {
 	outerActionsPublicKey: "OUTER_ACTIONS_PUBLIC_KEY",
@@ -179,6 +185,18 @@ export const getOpsConfig = (
 		outerActionsPublicKey: readNetworkPublicKey(network, "outerActionsPublicKey", env),
 		innerActionsPublicKey: readNetworkPublicKey(network, "innerActionsPublicKey", env)
 	}
+}
+
+export const getActionsIndexerRequestUrl = (
+	networkInput?: unknown,
+	env: OpsEnv = defaultEnv()
+): string => {
+	const network = resolveOpsNetwork(networkInput)
+	return normalizeEndpoint(
+		readEnv(env, `${network.toUpperCase()}_${actionsIndexerOriginEnvKey}`) ??
+			(network === "mainnet" ? readEnv(env, actionsIndexerOriginEnvKey) : undefined) ??
+			actionsIndexerOriginDefaults[network]
+	)
 }
 
 const toPascal = (key: string): string => {
@@ -375,7 +393,6 @@ const getDisplayString = (value: unknown): string | null => {
 }
 
 const indexerHeaders = (token?: string): Record<string, string> => ({
-	"x-forwarded-proto": "https",
 	...(token !== undefined && { authorization: `Bearer ${token}` })
 })
 
@@ -776,15 +793,17 @@ export const probeDaemon = async ({
 
 export const probeActionsIndexer = async ({
 	endpoint,
+	requestEndpoint = endpoint,
 	token
 }: {
 	endpoint: string
+	requestEndpoint?: string
 	token?: string
 }): Promise<ServiceProbe> => {
 	const id = "actions-indexer"
 	const label = "Zeko action-indexer"
 	try {
-		const health = await timedFetch(`${endpoint}/health`, indexerRequestInit(token))
+		const health = await timedFetch(`${requestEndpoint}/health`)
 		const healthPayload = await readJson(health.response)
 		const healthRecord = getRecord(healthPayload)
 		const healthStatus = getString(healthRecord.status)
@@ -797,7 +816,7 @@ export const probeActionsIndexer = async ({
 		let statusPayload: unknown
 		let statusError: string | undefined
 		if (token) {
-			const status = await timedFetch(`${endpoint}/status`, indexerRequestInit(token))
+			const status = await timedFetch(`${requestEndpoint}/status`, indexerRequestInit(token))
 			statusHttp = status.response.status
 			statusPayload = await readJson(status.response)
 			if (!status.response.ok)
@@ -849,10 +868,12 @@ export const createOpsSnapshot = async (
 	env: OpsEnv = defaultEnv()
 ): Promise<OpsSnapshot> => {
 	const config = getOpsConfig(networkInput, env)
+	const actionsIndexerRequestUrl = getActionsIndexerRequestUrl(config.network, env)
 	const token = readActionsIndexerToken(config.network, env)
 	const [indexer, l1Archive, l2Archive, l1Daemon, l2Daemon] = await Promise.all([
 		probeActionsIndexer({
 			endpoint: config.actionsIndexerUrl,
+			requestEndpoint: actionsIndexerRequestUrl,
 			token
 		}),
 		probeArchive({ id: "l1-archive", label: "L1 archive", endpoint: config.l1ArchiveUrl }),
@@ -907,6 +928,7 @@ export const runIndexerControl = async (
 	env: OpsEnv = defaultEnv()
 ): Promise<unknown> => {
 	const config = getOpsConfig(networkInput, env)
+	const actionsIndexerRequestUrl = getActionsIndexerRequestUrl(config.network, env)
 	const token = readActionsIndexerToken(config.network, env)
 	if (!token) {
 		throw new Error(
@@ -915,7 +937,7 @@ export const runIndexerControl = async (
 	}
 
 	const { response } = await timedFetch(
-		`${config.actionsIndexerUrl}/${action}`,
+		`${actionsIndexerRequestUrl}/${action}`,
 		{
 			...indexerRequestInit(token, { method: "POST" })
 		},

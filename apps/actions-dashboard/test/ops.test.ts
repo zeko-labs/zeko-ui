@@ -16,6 +16,7 @@ import {
 	createActionCoverageSnapshot,
 	createOpsSnapshot,
 	extractActionsIndexerDetails,
+	getActionsIndexerRequestUrl,
 	getOpsConfig,
 	isControlRequestAllowed,
 	normalizeEndpoint,
@@ -166,12 +167,19 @@ describe("actions dashboard utilities", () => {
 			outerActionsPublicKey: "B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2",
 			innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 		})
+		expect(getActionsIndexerRequestUrl("mainnet")).toBe(
+			"https://p01--actions-indexer-mainnet-deployment--4vlk5mt6rn88.code.run"
+		)
+		expect(getActionsIndexerRequestUrl("testnet")).toBe(
+			"https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run"
+		)
 	})
 
 	it("prefers request-scoped Cloudflare env bindings over process env", () => {
 		expect(
 			getOpsConfig("testnet", {
 				TESTNET_ACTIONS_INDEXER_URL: "https://private.testnet-indexer.example",
+				TESTNET_ACTIONS_INDEXER_ORIGIN_URL: "https://origin.testnet-indexer.example",
 				TESTNET_L1_ARCHIVE_URL: "https://private.l1-archive.example/graphql",
 				TESTNET_L2_ARCHIVE_URL: "https://private.l2-archive.example/graphql",
 				TESTNET_L1_DAEMON_URL: "https://private.l1-daemon.example/graphql",
@@ -188,6 +196,11 @@ describe("actions dashboard utilities", () => {
 			outerActionsPublicKey: "testnet-outer",
 			innerActionsPublicKey: "testnet-inner"
 		})
+		expect(
+			getActionsIndexerRequestUrl("testnet", {
+				TESTNET_ACTIONS_INDEXER_ORIGIN_URL: "https://origin.testnet-indexer.example"
+			})
+		).toBe("https://origin.testnet-indexer.example")
 	})
 
 	it("merges process env for local route execution while preserving Cloudflare precedence", () => {
@@ -226,6 +239,9 @@ describe("actions dashboard utilities", () => {
 		const calls: Array<{
 			url: string
 			authorization: string | null
+			forwarded: string | null
+			forwardedHost: string | null
+			forwardedPort: string | null
 			forwardedProto: string | null
 			method: string
 			redirect: RequestRedirect | undefined
@@ -236,6 +252,9 @@ describe("actions dashboard utilities", () => {
 			calls.push({
 				url,
 				authorization: headers.get("authorization"),
+				forwarded: headers.get("forwarded"),
+				forwardedHost: headers.get("x-forwarded-host"),
+				forwardedPort: headers.get("x-forwarded-port"),
 				forwardedProto: headers.get("x-forwarded-proto"),
 				method: init?.method ?? "GET",
 				redirect: init?.redirect
@@ -283,25 +302,38 @@ describe("actions dashboard utilities", () => {
 			globalThis.fetch = originalFetch
 		}
 
-		expect(calls.filter((call) => call.url.includes("testnet.indexer.actions.zeko.io"))).toEqual([
+		expect(
+			calls.filter((call) =>
+				call.url.includes("p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run")
+			)
+		).toEqual([
 			expect.objectContaining({
-				url: "https://testnet.indexer.actions.zeko.io/health",
-				authorization: "Bearer testnet-token",
-				forwardedProto: "https",
+				url: "https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run/health",
+				authorization: null,
+				forwarded: null,
+				forwardedHost: null,
+				forwardedPort: null,
+				forwardedProto: null,
 				method: "GET",
 				redirect: "follow"
 			}),
 			expect.objectContaining({
-				url: "https://testnet.indexer.actions.zeko.io/status",
+				url: "https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run/status",
 				authorization: "Bearer testnet-token",
-				forwardedProto: "https",
+				forwarded: null,
+				forwardedHost: null,
+				forwardedPort: null,
+				forwardedProto: null,
 				method: "GET",
 				redirect: "follow"
 			}),
 			expect.objectContaining({
-				url: "https://testnet.indexer.actions.zeko.io/reset",
+				url: "https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run/reset",
 				authorization: "Bearer testnet-token",
-				forwardedProto: "https",
+				forwarded: null,
+				forwardedHost: null,
+				forwardedPort: null,
+				forwardedProto: null,
 				method: "POST",
 				redirect: "follow"
 			})
