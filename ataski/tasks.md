@@ -312,3 +312,4 @@
 - T341 | done | rename-actions-dashboard-and-clean-board | done/T341-rename-actions-dashboard-and-clean-board.md
 - T342 | done | cloudflare-access-provider | done/T342-cloudflare-access-provider.md
 - T343 | done | indexer-health-probe-redirects | done/T343-indexer-health-probe-redirects.md
+- T344 | done | investigate-dashboard-indexer-routing | done/T344-investigate-dashboard-indexer-routing.md

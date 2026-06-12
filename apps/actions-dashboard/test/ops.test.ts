@@ -167,12 +167,8 @@ describe("actions dashboard utilities", () => {
 			outerActionsPublicKey: "B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2",
 			innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 		})
-		expect(getActionsIndexerRequestUrl("mainnet")).toBe(
-			"https://p01--actions-indexer-mainnet-deployment--4vlk5mt6rn88.code.run"
-		)
-		expect(getActionsIndexerRequestUrl("testnet")).toBe(
-			"https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run"
-		)
+		expect(getActionsIndexerRequestUrl("mainnet")).toBe("https://indexer.actions.zeko.io")
+		expect(getActionsIndexerRequestUrl("testnet")).toBe("https://testnet.indexer.actions.zeko.io")
 	})
 
 	it("prefers request-scoped Cloudflare env bindings over process env", () => {
@@ -302,13 +298,9 @@ describe("actions dashboard utilities", () => {
 			globalThis.fetch = originalFetch
 		}
 
-		expect(
-			calls.filter((call) =>
-				call.url.includes("p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run")
-			)
-		).toEqual([
+		expect(calls.filter((call) => call.url.includes("testnet.indexer.actions.zeko.io"))).toEqual([
 			expect.objectContaining({
-				url: "https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run/health",
+				url: "https://testnet.indexer.actions.zeko.io/health",
 				authorization: null,
 				forwarded: null,
 				forwardedHost: null,
@@ -318,7 +310,7 @@ describe("actions dashboard utilities", () => {
 				redirect: "follow"
 			}),
 			expect.objectContaining({
-				url: "https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run/status",
+				url: "https://testnet.indexer.actions.zeko.io/status",
 				authorization: "Bearer testnet-token",
 				forwarded: null,
 				forwardedHost: null,
@@ -328,7 +320,7 @@ describe("actions dashboard utilities", () => {
 				redirect: "follow"
 			}),
 			expect.objectContaining({
-				url: "https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run/reset",
+				url: "https://testnet.indexer.actions.zeko.io/reset",
 				authorization: "Bearer testnet-token",
 				forwarded: null,
 				forwardedHost: null,

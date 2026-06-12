@@ -15,15 +15,23 @@ The dashboard defaults to mainnet and can switch to testnet from the page header
 Endpoint overrides:
 
 - `MAINNET_ACTIONS_INDEXER_URL`
+- `MAINNET_ACTIONS_INDEXER_ORIGIN_URL`
 - `MAINNET_L1_ARCHIVE_URL`
 - `MAINNET_L2_ARCHIVE_URL`
 - `MAINNET_L1_DAEMON_URL`
 - `MAINNET_L2_DAEMON_URL`
 - `TESTNET_ACTIONS_INDEXER_URL`
+- `TESTNET_ACTIONS_INDEXER_ORIGIN_URL`
 - `TESTNET_L1_ARCHIVE_URL`
 - `TESTNET_L2_ARCHIVE_URL`
 - `TESTNET_L1_DAEMON_URL`
 - `TESTNET_L2_DAEMON_URL`
+
+`*_ACTIONS_INDEXER_URL` is the public URL shown in the dashboard.
+`*_ACTIONS_INDEXER_ORIGIN_URL` is optional and only affects server-side
+dashboard requests. Production sets it because same-zone Cloudflare Worker
+custom-domain subrequests to the public `zeko.io` indexer host can be handled
+as an HTTP origin request and loop on the indexer's HTTPS redirect.
 
 ## Deployment
 

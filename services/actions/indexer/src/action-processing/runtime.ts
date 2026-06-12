@@ -96,21 +96,25 @@ async function runInDedicatedProcess(blocks: ArchiveAction[]): Promise<ActionPro
 
 		subprocess.on("close", (code) => {
 			settle(() => {
-				if (code !== 0) {
-					reject(new Error(stderr.trim() || `action-processing process exited with code ${code}`))
-					return
-				}
-
 				let parsed: ProcessResponse
 				try {
 					parsed = parseProcessResponse(stdout)
 				} catch (error) {
+					if (code !== 0) {
+						reject(new Error(stderr.trim() || `action-processing process exited with code ${code}`))
+						return
+					}
 					reject(error)
 					return
 				}
 
 				if (!parsed.ok) {
 					reject(new Error(parsed.error))
+					return
+				}
+
+				if (code !== 0) {
+					reject(new Error(stderr.trim() || `action-processing process exited with code ${code}`))
 					return
 				}
 

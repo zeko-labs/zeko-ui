@@ -218,6 +218,29 @@ describe("action-processing runtime", () => {
 		).rejects.toThrow("worker exploded")
 	})
 
+	it("surfaces structured worker errors from stdout on non-zero exit", async () => {
+		const { runActionProcessing } = await loadRuntime({
+			onSpawn: (process) => {
+				process.stdout.emit(
+					"data",
+					JSON.stringify({
+						ok: false,
+						error: "invalid actions chain at index=2"
+					})
+				)
+				process.emit("close", 1)
+			}
+		})
+
+		await expect(
+			runActionProcessing({
+				blocks: makeBlocks(),
+				preferWorker: true,
+				workerThreads: 1
+			})
+		).rejects.toThrow("invalid actions chain at index=2")
+	})
+
 	it("rejects cleanly when the subprocess returns invalid JSON", async () => {
 		const { runActionProcessing } = await loadRuntime({
 			onSpawn: (process) => {

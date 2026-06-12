@@ -52,10 +52,6 @@ const requestTimeoutMs = 12_000
 const retryDelaysMs = [0, 350, 1_000]
 const actionScanRangeSize = 10_000
 const maxActionScanRanges = 6
-const actionsIndexerOriginDefaults: Record<OpsNetwork, string> = {
-	mainnet: "https://p01--actions-indexer-mainnet-deployment--4vlk5mt6rn88.code.run",
-	testnet: "https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run"
-}
 
 const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
 	mainnet: {
@@ -192,10 +188,11 @@ export const getActionsIndexerRequestUrl = (
 	env: OpsEnv = defaultEnv()
 ): string => {
 	const network = resolveOpsNetwork(networkInput)
+	const publicEndpoint = getOpsConfig(network, env).actionsIndexerUrl
 	return normalizeEndpoint(
 		readEnv(env, `${network.toUpperCase()}_${actionsIndexerOriginEnvKey}`) ??
 			(network === "mainnet" ? readEnv(env, actionsIndexerOriginEnvKey) : undefined) ??
-			actionsIndexerOriginDefaults[network]
+			publicEndpoint
 	)
 }
 

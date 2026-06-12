@@ -193,6 +193,8 @@ const finalityDetail = (row: ChainRow) => {
 	return "L2 actions finalize after 72 hours"
 }
 const coverageState = (row: ChainRow): ServiceStatus => {
+	if (row.lastActionBlockHeight === null && row.archiveHeight !== null)
+		return "error"
 	if (row.actionCoverageStatus === "missing") return "error"
 	if (row.actionCoverageStatus === "current") return "ok"
 	if (row.actionCoverageStatus === "partial") return "warn"
@@ -256,6 +258,8 @@ const coverageScanLabel = (row: ChainRow) => {
 	return `scanned ${formatBlock(row.actionScanFrom)}-${formatBlock(row.actionScanTo)}`
 }
 const coverageLabel = (row: ChainRow) => {
+	if (row.lastActionBlockHeight === null && row.archiveHeight !== null)
+		return `${row.indexerLabel} indexer has no fetched height`
 	if (row.actionCoverageStatus === "missing") {
 		const count = row.missingActionCount ?? row.missingActionBlockCount ?? 0
 		const unit = count === 1 ? "action" : "actions"
@@ -273,6 +277,8 @@ const coverageLabel = (row: ChainRow) => {
 	return "coverage unknown"
 }
 const coverageDetail = (row: ChainRow) => {
+	if (row.lastActionBlockHeight === null && row.archiveHeight !== null)
+		return `archive head ${formatBlock(row.archiveHeight)}; ${row.indexerLabel} indexing has not completed a successful run`
 	if (row.actionCoverageError) return row.actionCoverageError
 	if (row.actionCoverageStatus === "missing")
 		return `first missing block ${formatBlock(row.firstMissingActionBlock)}`
