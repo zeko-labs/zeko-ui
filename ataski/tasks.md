@@ -332,3 +332,4 @@
 - T332 | done | clarify-indexer-reset-controls | done/T332-clarify-indexer-reset-controls.md
 - T333 | done | keep-indexer-token-server-side | done/T333-keep-indexer-token-server-side.md
 - T334 | done | fix-codex-review-p2s | done/T334-fix-codex-review-p2s.md
+- T335 | done | ignore-stale-refresh-errors | done/T335-ignore-stale-refresh-errors.md

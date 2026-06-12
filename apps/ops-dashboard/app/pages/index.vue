@@ -301,6 +301,18 @@ const indexerDbAgeSeconds = computed(() => {
 	const value = indexerService.value?.details.canonicalAgeMs
 	return typeof value === "number" ? Math.round(value / 1000) : null
 })
+const indexerDbLatencyLabel = computed(() =>
+	indexerService.value === undefined
+		? "-"
+		: formatValue(detailValue(indexerService.value, "databaseLatencyMs"))
+)
+const indexerConsecutiveErrorsLabel = computed(() =>
+	indexerService.value === undefined
+		? "-"
+		: formatValue(detailValue(indexerService.value, "consecutiveErrors"))
+)
+const chainFinalityState = (row: ChainRow) =>
+	finalityState(row.archiveFinalityGap, row.expectedFinalityBlocks)
 
 const formatDetailKey = (key: string) =>
 	key
@@ -339,6 +351,8 @@ const refresh = async ({ force = false }: { force?: boolean } = {}) => {
 	if (isRefreshing.value && !force) return
 	const sequence = ++refreshSequence
 	const network = selectedNetwork.value
+	const isCurrentRequest = () =>
+		sequence === refreshSequence && selectedNetwork.value === network
 	isRefreshing.value = true
 	errorMessage.value = null
 	lastRefreshStartedAt.value = new Date().toISOString()
@@ -346,11 +360,14 @@ const refresh = async ({ force = false }: { force?: boolean } = {}) => {
 		const nextSnapshot = await $fetch<OpsSnapshot>("/api/ops/status", {
 			query: { network }
 		})
-		if (sequence === refreshSequence && selectedNetwork.value === network) {
+		if (isCurrentRequest()) {
 			snapshot.value = nextSnapshot
 		}
 	} catch (error) {
-		errorMessage.value = error instanceof Error ? error.message : String(error)
+		if (isCurrentRequest()) {
+			errorMessage.value =
+				error instanceof Error ? error.message : String(error)
+		}
 	} finally {
 		if (sequence === refreshSequence) isRefreshing.value = false
 	}
@@ -628,9 +645,7 @@ watch(
               formatValue(detailValue(indexerService, "databaseStatus"))
             }}</strong>
             <small>{{ indexerDbAgeSeconds ?? "-" }}s status age; {{
-                formatValue(
-                	detailValue(indexerService, "databaseLatencyMs")
-                )
+                indexerDbLatencyLabel
               }} ms latency</small>
           </div>
           <div>
@@ -638,11 +653,8 @@ watch(
             <strong>{{
               formatValue(detailValue(indexerService, "running"))
             }}</strong>
-            <small>{{
-                formatValue(
-                	detailValue(indexerService, "consecutiveErrors")
-                )
-              }} consecutive errors</small>
+            <small>{{ indexerConsecutiveErrorsLabel }} consecutive
+              errors</small>
           </div>
         </div>
 
@@ -662,13 +674,7 @@ watch(
             <h2>{{ row.label }}</h2>
           </div>
           <div class="ChainBadges">
-            <span
-              :data-state="
-                finalityState(
-                	row.archiveFinalityGap,
-                	row.expectedFinalityBlocks
-                )
-              ">
+            <span :data-state="chainFinalityState(row)">
               {{ finalityGapLabel(row) }}
             </span>
             <span :data-state="coverageState(row)">
