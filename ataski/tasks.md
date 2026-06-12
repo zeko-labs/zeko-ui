@@ -330,3 +330,4 @@
 - T330 | done | group-finality-with-chain-window | done/T330-group-finality-with-chain-window.md
 - T331 | done | fix-mainnet-outer-action-pk | done/T331-fix-mainnet-outer-action-pk.md
 - T332 | done | clarify-indexer-reset-controls | done/T332-clarify-indexer-reset-controls.md
+- T333 | done | keep-indexer-token-server-side | done/T333-keep-indexer-token-server-side.md

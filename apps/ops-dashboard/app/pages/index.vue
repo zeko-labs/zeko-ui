@@ -53,11 +53,6 @@ interface OpsSnapshot {
 	services: ServiceProbe[]
 }
 
-interface ActionCoverageSnapshot {
-	l1: ServiceProbe["details"]
-	l2: ServiceProbe["details"]
-}
-
 type ControlAction = "start" | "stop" | "rebuild" | "reset"
 type ChainRow = ChainInsight & {
 	archive?: ServiceProbe
@@ -340,171 +335,6 @@ const detailEntries = (service: ServiceProbe) =>
 			isDatabase: key.startsWith("database")
 		}))
 
-const asRecord = (value: unknown): Record<string, unknown> =>
-	typeof value === "object" && value !== null
-		? (value as Record<string, unknown>)
-		: {}
-
-const asNumber = (value: unknown): number | null => {
-	if (typeof value === "number" && Number.isFinite(value)) return value
-	if (typeof value === "string" && value.trim() !== "") {
-		const parsed = Number(value)
-		return Number.isFinite(parsed) ? parsed : null
-	}
-	return null
-}
-
-const asString = (value: unknown): string | null =>
-	typeof value === "string" && value.trim() !== "" ? value : null
-
-const directIndexerDetails = (
-	healthPayload: unknown,
-	statusPayload: unknown
-): ServiceProbe["details"] => {
-	const health = asRecord(healthPayload)
-	const service = asRecord(health.service)
-	const database = asRecord(health.database)
-	const indexer = asRecord(health.indexer)
-	const lastFetchedBlock = asRecord(indexer.lastFetchedBlock)
-	const canonicalProgress = asRecord(indexer.canonicalProgress)
-	const outer = asRecord(canonicalProgress.outer)
-	const inner = asRecord(canonicalProgress.inner)
-	const status = asRecord(statusPayload)
-
-	return {
-		health: asString(health.status),
-		environment: asString(service.environment),
-		databaseStatus: asString(database.status),
-		databaseLatencyMs: asNumber(database.latency_ms ?? database.latencyMs),
-		databaseCheckedAt: asString(database.checkedAt),
-		databaseAgeMs: asNumber(database.ageMs),
-		indexer: asString(indexer.status),
-		consecutiveErrors: asNumber(indexer.consecutiveErrors),
-		lastFetchedOuter: asNumber(lastFetchedBlock.outer),
-		lastFetchedInner: asNumber(lastFetchedBlock.inner),
-		running: typeof status.isRunning === "boolean" ? status.isRunning : null,
-		intervalSeconds: asNumber(asRecord(status.config).intervalSeconds),
-		canonicalCheckedAt: asString(canonicalProgress.checkedAt),
-		canonicalAgeMs: asNumber(canonicalProgress.ageMs),
-		canonicalError: asString(canonicalProgress.error),
-		outerLastFinalIndex: asNumber(outer.lastFinalIndex),
-		outerLastFinalBlockHeight: asNumber(outer.lastFinalBlockHeight),
-		outerNonCanonicalTailCount: asNumber(outer.nonCanonicalTailCount),
-		innerLastFinalIndex: asNumber(inner.lastFinalIndex),
-		innerLastFinalBlockHeight: asNumber(inner.lastFinalBlockHeight),
-		innerNonCanonicalTailCount: asNumber(inner.nonCanonicalTailCount)
-	}
-}
-
-const prefixedCoverage = (
-	prefix: "l1" | "l2",
-	coverage: ServiceProbe["details"]
-) =>
-	Object.fromEntries(
-		Object.entries(coverage).map(([key, value]) => [
-			`${prefix}${key.charAt(0).toUpperCase()}${key.slice(1)}`,
-			value
-		])
-	)
-
-const existingCoverageDetails = (
-	snapshotValue: OpsSnapshot
-): ServiceProbe["details"] => {
-	const details =
-		snapshotValue.services.find((service) => service.id === "actions-indexer")
-			?.details ?? {}
-	return Object.fromEntries(
-		Object.entries(details).filter(([key]) =>
-			/^l[12](ActionCoverage|MissingAction|FirstMissingAction|LatestArchiveAction|ActionScan)/.test(
-				key
-			)
-		)
-	)
-}
-
-const indexerToken = (network: OpsNetwork) =>
-	$fetch<{ token: string }>("/api/ops/indexer-token", { query: { network } })
-
-const actionCoverage = (
-	network: OpsNetwork,
-	lastFetchedOuter: number | null,
-	lastFetchedInner: number | null
-) =>
-	$fetch<ActionCoverageSnapshot>("/api/ops/action-coverage", {
-		query: {
-			network,
-			...(lastFetchedOuter !== null && { lastFetchedOuter }),
-			...(lastFetchedInner !== null && { lastFetchedInner })
-		}
-	})
-
-const fetchIndexerJson = async (url: string, token: string) => {
-	const response = await fetch(url, {
-		headers: { authorization: `Bearer ${token}` }
-	})
-	const payload = await response.json().catch(() => null)
-	return { response, payload }
-}
-
-const hydrateIndexerFromBrowser = async (
-	nextSnapshot: OpsSnapshot
-): Promise<OpsSnapshot> => {
-	const token = (await indexerToken(nextSnapshot.config.network)).token
-	const endpoint = nextSnapshot.config.actionsIndexerUrl.replace(/\/+$/, "")
-	const [health, status] = await Promise.all([
-		fetchIndexerJson(`${endpoint}/health`, token),
-		fetchIndexerJson(`${endpoint}/status`, token)
-	])
-	const details: ServiceProbe["details"] = {
-		...directIndexerDetails(health.payload, status.payload),
-		statusHttp: status.response.status
-	}
-	const scannedCoverage = await actionCoverage(
-		nextSnapshot.config.network,
-		asNumber(details.lastFetchedOuter),
-		asNumber(details.lastFetchedInner)
-	).catch(() => null)
-	const withCoverage: ServiceProbe["details"] = {
-		...details,
-		...(scannedCoverage === null
-			? existingCoverageDetails(nextSnapshot)
-			: {
-					...prefixedCoverage("l1", scannedCoverage.l1),
-					...prefixedCoverage("l2", scannedCoverage.l2)
-				})
-	}
-	const indexerStatus: ServiceStatus =
-		health.response.ok &&
-		asString(asRecord(health.payload).status) === "healthy"
-			? status.response.ok
-				? "ok"
-				: "warn"
-			: "error"
-	const error = !health.response.ok
-		? `Health check returned HTTP ${health.response.status}`
-		: !status.response.ok
-			? `Status check returned HTTP ${status.response.status}`
-			: undefined
-	const services = nextSnapshot.services.map((service): ServiceProbe => {
-		if (service.id !== "actions-indexer") return service
-		const { error: _previousError, ...serviceWithoutError } = service
-		return {
-			...serviceWithoutError,
-			status: indexerStatus,
-			checkedAt: new Date().toISOString(),
-			latencyMs: null,
-			httpStatus: health.response.status,
-			details: withCoverage,
-			...(error !== undefined && { error })
-		}
-	})
-	return {
-		...nextSnapshot,
-		summary: summarizeStates(services.map((service) => service.status)),
-		services
-	}
-}
-
 const refresh = async ({ force = false }: { force?: boolean } = {}) => {
 	if (isRefreshing.value && !force) return
 	const sequence = ++refreshSequence
@@ -516,15 +346,8 @@ const refresh = async ({ force = false }: { force?: boolean } = {}) => {
 		const nextSnapshot = await $fetch<OpsSnapshot>("/api/ops/status", {
 			query: { network }
 		})
-		const hydratedSnapshot = await hydrateIndexerFromBrowser(
-			nextSnapshot
-		).catch((error) => {
-			errorMessage.value =
-				error instanceof Error ? error.message : String(error)
-			return nextSnapshot
-		})
 		if (sequence === refreshSequence && selectedNetwork.value === network) {
-			snapshot.value = hydratedSnapshot
+			snapshot.value = nextSnapshot
 		}
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : String(error)
@@ -537,7 +360,9 @@ const runControl = async (action: ControlAction) => {
 	const destructive = action === "rebuild" || action === "reset"
 	if (
 		destructive &&
-		!window.confirm(`${action} ${selectedNetwork.value} actions indexer?`)
+		!window.confirm(
+			`${controlLabel(action)} ${selectedNetwork.value} actions indexer?`
+		)
 	)
 		return
 
@@ -545,27 +370,23 @@ const runControl = async (action: ControlAction) => {
 	actionMessage.value = null
 	errorMessage.value = null
 	try {
-		const endpoint = snapshot.value?.config.actionsIndexerUrl.replace(
-			/\/+$/,
-			""
-		)
-		if (endpoint === undefined)
+		if (snapshot.value === null)
 			throw new Error("Load an indexer snapshot before running controls.")
-		const token = (await indexerToken(selectedNetwork.value)).token
-		const response = await fetch(`${endpoint}/${action}`, {
-			method: "POST",
-			headers: { authorization: `Bearer ${token}` }
-		})
-		const result = (await response.json().catch(() => null)) as {
+		const response = await $fetch<{
+			success: boolean
 			message?: string
-		} | null
-		if (!response.ok)
-			throw new Error(
-				`${action} failed with HTTP ${response.status}: ${
-					result?.message ?? response.statusText
-				}`
-			)
-		actionMessage.value = result?.message ?? `${action} submitted`
+			result?: { message?: string }
+		}>("/api/ops/control", {
+			method: "POST",
+			body: {
+				action,
+				network: selectedNetwork.value
+			}
+		})
+		actionMessage.value =
+			response.result?.message ??
+			response.message ??
+			`${controlLabel(action)} submitted`
 		await refresh()
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : String(error)

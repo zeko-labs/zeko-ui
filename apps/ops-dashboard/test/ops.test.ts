@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { indexerControlCopy } from "../app/utils/indexer-control-copy"
 import {
@@ -45,6 +46,12 @@ describe("ops dashboard utilities", () => {
 		expect(indexerControlCopy.note).toContain("starts from scratch")
 		expect(indexerControlCopy.rebuild.whenToUse).toContain("archive data is trusted")
 		expect(indexerControlCopy.reset.whenToUse).toContain("cannot be trusted")
+	})
+
+	it("does not expose an indexer token API endpoint to the browser", () => {
+		expect(existsSync(new URL("../server/api/ops/indexer-token.get.ts", import.meta.url))).toBe(
+			false
+		)
 	})
 
 	it("summarizes service states without mutating probe records", () => {
