@@ -1,5 +1,4 @@
 export type ChainFamily = "mina" | "zeko" | "eth"
-export type NetworkTier = "testnet" | "mainnet" | "zeko-mainnet"
 export type ChainRef =
 	| "mina:testnet"
 	| "mina:mainnet"

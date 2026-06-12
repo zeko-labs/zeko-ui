@@ -306,3 +306,4 @@
 - T306 | done | add-workflow-moon-run-guard | done/T306-add-workflow-moon-run-guard.md
 - T307 | done | simplify-workflow-moon-run-guard | done/T307-simplify-workflow-moon-run-guard.md
 - T308 | done | configure-bridge-cli-zeko-mainnet-network | done/T308-configure-bridge-cli-zeko-mainnet-network.md
+- T309 | done | address-bridge-cli-doctor-network-id-review | done/T309-address-bridge-cli-doctor-network-id-review.md

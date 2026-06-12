@@ -19,8 +19,14 @@ const healthUrlFromGraphqlUrl = (graphqlUrl: string): string => {
 	return url.toString()
 }
 
-const formatNetworkId = (networkId: unknown): string =>
-	typeof networkId === "string" ? networkId : JSON.stringify(networkId)
+const formatNetworkId = (networkId: unknown): string => {
+	if (typeof networkId === "string") return networkId
+	if (networkId && typeof networkId === "object" && "custom" in networkId) {
+		const custom = (networkId as { custom: unknown }).custom
+		if (typeof custom === "string") return custom
+	}
+	return JSON.stringify(networkId)
+}
 
 const checkBackendHealth = async ({
 	fetchImpl,
