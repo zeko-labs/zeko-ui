@@ -26,4 +26,7 @@ updated_at: 2026-06-12T10:00:18Z
 
 ## RED Evidence
 
+- `pnpm exec moon run bridge-ui:test -f -- --run test/unit/network-nomenclature.test.ts` failed after updating expectations to colon-form IDs. `supportedNetworks` still returned `zeko-m-devnet`/`zeko-m-mainnet`, and explorer lookup for `zeko-m:testnet` produced `undefined/tx/5Jhash`.
+- `pnpm exec moon run bridge-cli:test -f -- --run tests/routes.test.ts tests/sdk-config.test.ts` failed after updating route expectations to colon-form IDs. `resolveRoute` rejected `zeko-m:testnet`, `zeko-m:mainnet`, and `zeko-e:testnet` as unknown routes.
+
 ## GREEN Evidence
