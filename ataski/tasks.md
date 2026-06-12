@@ -309,4 +309,4 @@
 - T309 | done | address-bridge-cli-doctor-network-id-review | done/T309-address-bridge-cli-doctor-network-id-review.md
 - T310 | done | harden-bridge-cli-doctor-network-id-formatting | done/T310-harden-bridge-cli-doctor-network-id-formatting.md
 - T311 | done | update-network-nomenclature | done/T311-update-network-nomenclature.md
-- T312 | in-progress | centralize-network-nomenclature | in-progress/T312-centralize-network-nomenclature.md
+- T312 | done | centralize-network-nomenclature | done/T312-centralize-network-nomenclature.md

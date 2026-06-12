@@ -1,11 +1,11 @@
 ---
 id: T312
 title: "Centralize network nomenclature"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-12T09:59:03Z
-updated_at: 2026-06-12T10:00:18Z
+updated_at: 2026-06-12T10:20:10Z
 ---
 
 ## Requirements
@@ -30,3 +30,22 @@ updated_at: 2026-06-12T10:00:18Z
 - `pnpm exec moon run bridge-cli:test -f -- --run tests/routes.test.ts tests/sdk-config.test.ts` failed after updating route expectations to colon-form IDs. `resolveRoute` rejected `zeko-m:testnet`, `zeko-m:mainnet`, and `zeko-e:testnet` as unknown routes.
 
 ## GREEN Evidence
+
+- `pnpm exec moon run networks:test -f` passed.
+- `pnpm exec moon run networks:typecheck -f` passed.
+- `pnpm exec moon run bridge-ui:test -f -- --run test/unit/network-nomenclature.test.ts` passed.
+- `pnpm exec moon run bridge-cli:test -f -- --run tests/routes.test.ts tests/sdk-config.test.ts` passed.
+- `pnpm exec moon run bridge-ui:typecheck -f` passed.
+- `pnpm exec moon run bridge-cli:typecheck -f` passed.
+- `pnpm exec moon run bridge-validator:typecheck -f` passed.
+- `pnpm exec moon run bridge-ui:test -f` passed.
+- `pnpm exec moon run bridge-cli:test -f` passed.
+- `pnpm exec moon run faucet:test -f` passed.
+- `pnpm exec moon run bridge-validator:test -f` passed.
+- `pnpm exec moon run faucet-ui:typecheck -f` passed.
+- `pnpm exec moon run faucet-cli:check -f` passed.
+- `pnpm exec moon run faucet-cli:test -f` passed.
+- `pnpm exec moon run zeko-skills:test -f` passed.
+- `pnpm exec moon run docs:test -f` passed.
+- `pnpm exec moon run :format-all-fix -f`, `pnpm exec moon run networks:lint-fix -f`, `pnpm exec moon run bridge-cli:lint-fix -f`, and `pnpm exec moon run bridge-ui:lint-fix -f` passed.
+- Commit hook ran `pnpm exec moon run :lint-fix`, `pnpm exec moon run :format-all-fix`, and `pnpm exec moon run bridge-ui:typecheck`. Lint reported existing unrelated warnings but completed successfully.
