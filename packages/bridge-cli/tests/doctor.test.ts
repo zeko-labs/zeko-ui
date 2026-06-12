@@ -40,7 +40,7 @@ describe("doctor command", () => {
 			"actionsApi=https://testnet.api.actions.zeko.io/graphql; l1=testnet; l2=testnet"
 		)
 		expect(writes[0]).toContain(
-			'actionsApi=https://api.actions.zeko.io/graphql; l1=mainnet; l2={"custom":"zeko-mainnet"}'
+			"actionsApi=https://api.actions.zeko.io/graphql; l1=mainnet; l2=zeko-mainnet"
 		)
 		expect(writes[0]).toContain("https://testnet.api.actions.zeko.io/health -> 200 OK")
 		expect(writes[0]).toContain("https://api.actions.zeko.io/health -> 200 OK")
