@@ -7,6 +7,7 @@ owner: codex
 created_at: 2026-06-12T08:51:04Z
 updated_at: 2026-06-12T08:52:30Z
 ---
+
 ## Requirements
 
 - Update repo network IDs to the new canonical naming where applicable:
@@ -27,5 +28,9 @@ updated_at: 2026-06-12T08:52:30Z
 - After implementation, run the same focused tests and at least the relevant project test/typecheck tasks through Moon from the repo root.
 
 ## RED Evidence
+
+- `pnpm exec moon run bridge-ui:test -f -- --run test/unit/network-nomenclature.test.ts` failed after adding the RED assertions: `supportedNetworks` still returned `zeko:testnet`/`zeko:mainnet`, mainnet UI SDK config returned `l2Network: "mainnet"` instead of `{ custom: "zeko-mainnet" }`, and Zeko-M explorer URLs resolved to `undefined/tx/...`.
+- `pnpm exec moon run bridge-cli:test -f -- --run tests/routes.test.ts` failed after updating route expectations: `resolveRoute` rejected `zeko-m-devnet`, `zeko-m-mainnet`, and `zeko-e-testnet` as unknown routes.
+- `pnpm exec moon run faucet:test -f -- --run test/worker.test.ts` failed after updating expected claim chain IDs: valid claims using `zeko-m-devnet` were rejected as `invalid_chain`.
 
 ## GREEN Evidence
