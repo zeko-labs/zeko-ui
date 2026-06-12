@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { indexerControlCopy } from "../app/utils/indexer-control-copy"
+import { postControlRefreshOptions } from "../app/utils/refresh-options"
 import {
 	actionGapState,
 	blockGap,
@@ -16,6 +17,7 @@ import {
 	createOpsSnapshot,
 	extractActionsIndexerDetails,
 	getOpsConfig,
+	isControlRequestAllowed,
 	normalizeEndpoint,
 	probeDaemon,
 	probeActionsIndexer,
@@ -42,6 +44,38 @@ const probe = (status: ServiceProbe["status"]): ServiceProbe => ({
 })
 
 describe("ops dashboard utilities", () => {
+	it("rejects cross-site or form-encoded control requests", () => {
+		expect(
+			isControlRequestAllowed({
+				contentType: "application/json",
+				origin: "https://ops.zeko.io",
+				requestOrigin: "https://ops.zeko.io",
+				secFetchSite: "same-origin"
+			})
+		).toBe(true)
+
+		expect(
+			isControlRequestAllowed({
+				contentType: "application/x-www-form-urlencoded",
+				origin: "https://evil.example",
+				requestOrigin: "https://ops.zeko.io",
+				secFetchSite: "cross-site"
+			})
+		).toBe(false)
+		expect(
+			isControlRequestAllowed({
+				contentType: "application/json",
+				origin: "https://evil.example",
+				requestOrigin: "https://ops.zeko.io",
+				secFetchSite: "cross-site"
+			})
+		).toBe(false)
+	})
+
+	it("forces the dashboard refresh after control actions", () => {
+		expect(postControlRefreshOptions).toEqual({ force: true })
+	})
+
 	it("does not enable public Worker hostnames for control routes", () => {
 		const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8")
 

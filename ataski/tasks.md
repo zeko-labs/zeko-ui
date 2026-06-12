@@ -337,3 +337,4 @@
 - T337 | done | disable-ops-workers-dev | done/T337-disable-ops-workers-dev.md
 - T338 | done | fix-codex-review-env-and-daemon-health | done/T338-fix-codex-review-env-and-daemon-health.md
 - T339 | done | fix-codex-review-daemon-and-control-retry | done/T339-fix-codex-review-daemon-and-control-retry.md
+- T340 | done | fix-codex-review-control-csrf-and-refresh | done/T340-fix-codex-review-control-csrf-and-refresh.md

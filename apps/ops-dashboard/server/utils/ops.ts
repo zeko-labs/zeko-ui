@@ -41,6 +41,13 @@ export interface ActionCoverageSnapshot {
 
 export type ControlAction = "start" | "stop" | "rebuild" | "reset"
 
+export interface ControlRequestSecurity {
+	contentType?: string | null
+	origin?: string | null
+	requestOrigin?: string | null
+	secFetchSite?: string | null
+}
+
 const requestTimeoutMs = 12_000
 const retryDelaysMs = [0, 350, 1_000]
 const actionScanRangeSize = 10_000
@@ -96,6 +103,34 @@ export const resolveOpsNetwork = (value: unknown): OpsNetwork =>
 export const resolveControlNetwork = (value: unknown): OpsNetwork => {
 	if (value === "testnet" || value === "mainnet") return value
 	throw new Error("Unsupported control network")
+}
+
+const normalizeOrigin = (value?: string | null): string | null => {
+	if (!value) return null
+	try {
+		return new URL(value).origin
+	} catch {
+		return null
+	}
+}
+
+export const isControlRequestAllowed = ({
+	contentType,
+	origin,
+	requestOrigin,
+	secFetchSite
+}: ControlRequestSecurity): boolean => {
+	const mediaType = contentType?.split(";")[0]?.trim().toLowerCase()
+	if (mediaType !== "application/json") return false
+
+	const fetchSite = secFetchSite?.trim().toLowerCase()
+	if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") return false
+
+	const normalizedOrigin = normalizeOrigin(origin)
+	if (!normalizedOrigin) return true
+
+	const normalizedRequestOrigin = normalizeOrigin(requestOrigin)
+	return normalizedRequestOrigin !== null && normalizedOrigin === normalizedRequestOrigin
 }
 
 const defaultEnv = (): OpsEnv => process.env

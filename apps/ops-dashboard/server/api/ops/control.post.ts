@@ -1,5 +1,6 @@
 import {
 	type ControlAction,
+	isControlRequestAllowed,
 	type OpsEnv,
 	resolveControlNetwork,
 	resolveRouteEnv,
@@ -9,7 +10,39 @@ import {
 const allowedActions = new Set<ControlAction>(["start", "stop", "rebuild", "reset"])
 type CloudflareContext = { env?: OpsEnv }
 
+const readHeader = (
+	headers: Record<string, string | string[] | undefined>,
+	name: string
+): string | null => {
+	const value = headers[name]
+	if (Array.isArray(value)) return value[0] ?? null
+	return value ?? null
+}
+
+const resolveRequestOrigin = (
+	headers: Record<string, string | string[] | undefined>
+): string | null => {
+	const host = readHeader(headers, "x-forwarded-host") ?? readHeader(headers, "host")
+	if (!host) return null
+
+	const proto = readHeader(headers, "x-forwarded-proto")?.split(",")[0]?.trim() ?? "https"
+	return `${proto}://${host}`
+}
+
 export default defineEventHandler(async (event) => {
+	const headers = event.node.req.headers
+	if (
+		!isControlRequestAllowed({
+			contentType: readHeader(headers, "content-type"),
+			origin: readHeader(headers, "origin"),
+			requestOrigin: resolveRequestOrigin(headers),
+			secFetchSite: readHeader(headers, "sec-fetch-site")
+		})
+	) {
+		setResponseStatus(event, 403)
+		return { success: false, message: "Control requests must be same-origin JSON." }
+	}
+
 	const cloudflare = event.context.cloudflare as CloudflareContext | undefined
 	const env = resolveRouteEnv(cloudflare?.env)
 	const body = (await readBody(event)) as { action?: unknown; network?: unknown }

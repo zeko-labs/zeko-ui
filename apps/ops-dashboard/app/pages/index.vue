@@ -20,6 +20,7 @@ import {
 	type ChainInsight
 } from "~/utils/ops-insights"
 import { indexerControlCopy } from "~/utils/indexer-control-copy"
+import { postControlRefreshOptions } from "~/utils/refresh-options"
 
 type ServiceStatus = "ok" | "warn" | "error" | "unknown"
 type ServiceKind = "actions-indexer" | "archive" | "daemon"
@@ -404,7 +405,7 @@ const runControl = async (action: ControlAction) => {
 			response.result?.message ??
 			response.message ??
 			`${controlLabel(action)} submitted`
-		await refresh()
+		await refresh(postControlRefreshOptions)
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : String(error)
 	} finally {
