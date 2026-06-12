@@ -5,7 +5,7 @@ status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-13T00:00:00Z
-updated_at: 2026-06-13T02:22:00Z
+updated_at: 2026-06-13T02:33:00Z
 ---
 
 ## Requirements
@@ -33,10 +33,13 @@ updated_at: 2026-06-13T02:22:00Z
 - `moon run -f actions-dashboard:typecheck actions-dashboard:lint actions-dashboard:build && git diff origin/main --check` passed.
 - `moon run -f actions-dashboard:configure-access` created the GitHub-backed Cloudflare Access app for `actions.dashboard.zeko.io`.
 - `moon run -f actions-dashboard:deploy` deployed Worker version `331e2672-0b1b-4239-8cd2-757b6c1297e3` to `actions.dashboard.zeko.io`.
+- `MAINNET_ACTIONS_INDEXER_TOKEN` and `TESTNET_ACTIONS_INDEXER_TOKEN` were copied from the matching Northflank indexer service `AUTH_TOKEN` runtime variables into the `actions-dashboard` Worker secrets.
+- `moon run -f actions-dashboard:publish-cf-build-config` created the Cloudflare Workers Builds default-branch and non-production branch triggers for the renamed Worker.
+- `curl -I https://actions.dashboard.zeko.io` returns the expected Cloudflare Access redirect for the protected dashboard hostname.
 - Ataski dashboard task history was squashed into T311 and no stale in-progress task remains.
 
-## Remaining External State
+## External State
 
-- `actions-dashboard` is a new Cloudflare Worker script and does not inherit the old `ops-dashboard` secret values. `wrangler secret list` currently returns no secrets for `actions-dashboard`; set `MAINNET_ACTIONS_INDEXER_TOKEN` and `TESTNET_ACTIONS_INDEXER_TOKEN` before relying on authenticated indexer probes or controls.
-- `actions.dashboard.zeko.io` currently returns a TLS handshake failure. This hostname is a second-level subdomain and needs Cloudflare edge certificate coverage, for example Advanced Certificate Manager or Total TLS, before Access can serve it.
-- `actions-dashboard:publish-cf-build-config` is blocked because the available `CFZT_TOKEN` can configure Access but is rejected by the Workers Builds API. A Cloudflare API token with the Workers Builds permissions is needed to publish the renamed trigger config.
+- The dashboard is deployed at `https://actions.dashboard.zeko.io` behind Cloudflare Access.
+- The new Worker has the required mainnet and testnet action-indexer tokens.
+- Cloudflare Workers Builds is configured for the renamed Worker and should survive future CI redeploys.
