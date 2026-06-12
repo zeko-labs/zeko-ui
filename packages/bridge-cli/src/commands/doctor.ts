@@ -25,7 +25,11 @@ const formatNetworkId = (networkId: unknown): string => {
 		const custom = (networkId as { custom: unknown }).custom
 		if (typeof custom === "string") return custom
 	}
-	return JSON.stringify(networkId)
+	try {
+		return JSON.stringify(networkId) ?? String(networkId)
+	} catch {
+		return String(networkId)
+	}
 }
 
 const checkBackendHealth = async ({
