@@ -229,7 +229,6 @@ const dashboardCheckStates = computed<ServiceStatus[]>(() => {
 	return [
 		...services.value.map((service) => service.status),
 		...chainRows.value.flatMap((row) => [
-			finalityState(row.archiveFinalityGap, row.expectedFinalityBlocks),
 			coverageState(row),
 			tailState(row.nonCanonicalTailCount, row.expectedFinalityBlocks),
 			row.daemonBlockHeightSupported ? gapState(row.archiveDaemonGap) : "ok"
@@ -729,15 +728,6 @@ watch(
     </section>
 
     <section class="InsightGrid" aria-label="Operational gaps">
-      <article
-        v-for="row in chainRows"
-        :key="`${row.id}-finality-gap`"
-        class="InsightCard"
-        :data-state="finalityState(row.archiveFinalityGap, row.expectedFinalityBlocks)">
-        <span>{{ row.label }} finality</span>
-        <strong>{{ finalityGapLabel(row) }}</strong>
-        <small>{{ finalityDetail(row) }}</small>
-      </article>
       <article
         v-for="row in chainRows"
         :key="`${row.id}-coverage`"
