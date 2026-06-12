@@ -1,11 +1,11 @@
 ---
 id: T315
 title: "internal-sdk-cleanup-and-review"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-12T12:29:27Z
-updated_at: 2026-06-12T17:17:15Z
+updated_at: 2026-06-12T17:46:59Z
 ---
 
 ## Requirements
@@ -94,3 +94,15 @@ updated_at: 2026-06-12T17:17:15Z
   - `git diff --check origin/main`
   - `pnpm --dir packages/bridge-cli pack --pack-destination "$pack_dir"`
 - Repacked `@zeko-labs/bridge-cli@0.2.3` still contains no `@zeko/networks` dependency in `package/package.json`, and the bundled CLI still contains the `BRIDGE_CLI_NETWORK_KINDS`, `LEGACY_NETWORK_ALIASES`, `zeko-m:mainnet`, and `zeko-mainnet` markers.
+- Reran `.agents/skills/codex-review/scripts/codex-review --mode branch`; accepted two additional findings:
+  - Direct CLI chain flags still rejected legacy aliases such as `--to zeko:testnet`.
+  - The public bridge CLI mirror would still sync source files, making standalone source builds rely on private workspace package source.
+- Fixed by normalizing direct CLI chain flag aliases before route validation and by changing the bridge CLI mirror workflow to build first, then sync the built `dist` artifact instead of source.
+- Final validation passed:
+  - `pnpm exec moon run bridge-cli:test -f`
+  - `pnpm exec moon run sync-standalone-package:test -f`
+  - `pnpm exec moon run bridge-cli:build -f`
+  - `git diff --check`
+  - `pnpm --dir packages/bridge-cli pack --pack-destination "$pack_dir"`
+  - `.agents/skills/codex-review/scripts/codex-review --mode branch`
+- Final `codex-review` completed clean with no accepted/actionable findings. The packed `@zeko-labs/bridge-cli@0.2.3` package still has no `@zeko/networks` dependency or runtime import, and `package/dist/cli.js` contains the canonical network data, legacy aliases, and `{ custom: "zeko-mainnet" }` marker.
