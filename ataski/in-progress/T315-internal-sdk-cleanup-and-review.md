@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-06-12T12:29:27Z
-updated_at: 2026-06-12T12:29:27Z
+updated_at: 2026-06-12T15:16:17Z
 ---
 
 ## Requirements
@@ -46,3 +46,21 @@ updated_at: 2026-06-12T12:29:27Z
 ## Blocked Evidence
 
 - `codex-review` was run for PR #208 with `.agents/skills/codex-review/scripts/codex-review --mode branch`, but it exited before producing findings because the Codex usage limit was reached. The tool reported retry availability at 8:49 PM local time.
+
+## Review Evidence
+
+- Reran `.agents/skills/codex-review/scripts/codex-review --mode branch`; accepted two actionable findings:
+  - `@zeko-labs/bridge-cli` could not publish while `@zeko/networks` appeared as a private workspace package dependency.
+  - CLI route polling still classified Zeko networks with `startsWith("zeko:")`, which missed the new `zeko-m:*` nomenclature.
+- Fixed by keeping `@zeko/networks` as the single source of truth, adding a typed `isZekoBridgeCliNetwork` dictionary predicate there, and bundling the package into the CLI through build/test aliases rather than exposing it in `packages/bridge-cli/package.json`.
+- Follow-up validation passed:
+  - `pnpm exec moon run networks:test -f`
+  - `pnpm exec moon run networks:typecheck -f`
+  - `pnpm exec moon run bridge-cli:typecheck -f`
+  - `pnpm exec moon run bridge-cli:test -f`
+  - `pnpm exec moon run bridge-cli:build -f`
+  - `pnpm exec moon run bridge-ui:typecheck -f`
+  - `pnpm exec moon run bridge-ui:test -f`
+  - `git diff --check`
+  - `pnpm --dir packages/bridge-cli pack --pack-destination "$pack_dir" --json`
+- Packed `@zeko-labs/bridge-cli@0.2.3` contains no `@zeko/networks` dependency in `package/package.json`, and `package/dist/cli.js` includes the bundled `BRIDGE_CLI_NETWORK_KINDS`, `zeko-m:testnet`, and `{ custom: "zeko-mainnet" }` markers.

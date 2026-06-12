@@ -6,12 +6,15 @@ import {
 	BRIDGE_UI_NETWORKS,
 	bridgeNetworkToWalletNetwork,
 	createExplorerUrl,
+	ETHEREUM_NETWORKS,
 	formatBridgeRoute,
 	isMainnetBridgeNetwork,
 	isMinaBridgeNetwork,
+	isZekoBridgeCliNetwork,
 	isZekoBridgeNetwork,
 	NETWORK_LABELS,
 	walletNetworkToBridgeNetwork,
+	ZEKO_E_NETWORKS,
 	ZEKO_M_NETWORKS,
 	ZEKO_MAINNET_SDK_NETWORK
 } from "../src"
@@ -51,6 +54,13 @@ describe("network nomenclature", () => {
 		expect(isZekoBridgeNetwork("mina:mainnet")).toBe(false)
 		expect(isMainnetBridgeNetwork(ZEKO_M_NETWORKS.mainnet)).toBe(true)
 		expect(isMainnetBridgeNetwork("mina:devnet")).toBe(false)
+	})
+
+	it("owns the bridge CLI Zeko network predicate", () => {
+		expect(isZekoBridgeCliNetwork(ZEKO_M_NETWORKS.testnet)).toBe(true)
+		expect(isZekoBridgeCliNetwork(ZEKO_E_NETWORKS.mainnet)).toBe(true)
+		expect(isZekoBridgeCliNetwork(ETHEREUM_NETWORKS.testnet)).toBe(false)
+		expect(isZekoBridgeCliNetwork("mina:testnet")).toBe(false)
 	})
 
 	it("owns Auro wallet compatibility network conversion", () => {

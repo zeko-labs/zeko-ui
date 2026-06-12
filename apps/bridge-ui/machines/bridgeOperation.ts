@@ -18,7 +18,12 @@ import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
 import type { BridgeNetwork } from "./networks"
-import { bridgeNetworkToWalletNetwork, walletNetworkToBridgeNetwork } from "./networks"
+import {
+	bridgeNetworkToWalletNetwork,
+	isMinaBridgeNetwork,
+	isZekoBridgeNetwork,
+	walletNetworkToBridgeNetwork
+} from "./networks"
 import type { ActionState } from "./operations.worker"
 import {
 	DEFAULT_TRANSACTION_FEE_NANOMINA,
@@ -395,8 +400,8 @@ export const bridgeOperationMachine = setup({
 			finalizeWithdrawal: null
 		},
 		canCancel: cancellable ?? false,
-		l1: source.includes("mina") ? source : destination,
-		l2: source.includes("zeko") ? source : destination
+		l1: isMinaBridgeNetwork(source) ? source : destination,
+		l2: isZekoBridgeNetwork(source) ? source : destination
 	}),
 	on: {
 		Destroy: {

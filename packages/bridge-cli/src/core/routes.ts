@@ -1,6 +1,7 @@
 import {
 	BRIDGE_CLI_ROUTES,
 	formatBridgeRoute,
+	isZekoBridgeCliNetwork,
 	type BridgeCliNetwork,
 	type BridgeDirection,
 	type BridgeRouteDescriptor
@@ -17,6 +18,8 @@ export const CHAIN_REFS = [...new Set(KNOWN_ROUTES.flatMap(({ from, to }) => [fr
 
 export const isChainRef = (value: string): value is ChainRef =>
 	CHAIN_REFS.includes(value as ChainRef)
+
+export const isZekoChainRef = isZekoBridgeCliNetwork
 
 export const parseChainRef = (value: unknown, flag: string): ChainRef => {
 	if (typeof value !== "string" || !isChainRef(value)) {

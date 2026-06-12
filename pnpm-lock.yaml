@@ -544,9 +544,6 @@ importers:
       '@opentui/core':
         specifier: ^0.1.87
         version: 0.1.87(stage-js@1.0.1)(typescript@5.9.3)(web-tree-sitter@0.25.10)
-      '@zeko/networks':
-        specifier: workspace:*
-        version: link:../networks
       bun:
         specifier: ^1.3.10
         version: 1.3.10

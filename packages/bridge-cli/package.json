@@ -23,7 +23,6 @@
 	},
 	"dependencies": {
 		"@opentui/core": "^0.1.87",
-		"@zeko/networks": "workspace:*",
 		"bun": "^1.3.10",
 		"citty": "^0.1.6",
 		"dotenv": "^17.2.3",

@@ -189,6 +189,20 @@ export const BRIDGE_CLI_ROUTES = [
 	})
 ] as const satisfies readonly BridgeRouteDescriptor<BridgeCliNetwork>[]
 
+export const BRIDGE_CLI_NETWORK_KINDS = {
+	[MINA_NETWORKS.testnet]: "mina",
+	[MINA_NETWORKS.mainnet]: "mina",
+	[ETHEREUM_NETWORKS.testnet]: "ethereum",
+	[ETHEREUM_NETWORKS.mainnet]: "ethereum",
+	[ZEKO_M_NETWORKS.testnet]: "zeko-m",
+	[ZEKO_M_NETWORKS.mainnet]: "zeko-m",
+	[ZEKO_E_NETWORKS.testnet]: "zeko-e",
+	[ZEKO_E_NETWORKS.mainnet]: "zeko-e"
+} as const satisfies Record<BridgeCliNetwork, "mina" | "ethereum" | "zeko-m" | "zeko-e">
+
+export const isZekoBridgeCliNetwork = (network: BridgeCliNetwork) =>
+	BRIDGE_CLI_NETWORK_KINDS[network] === "zeko-m" || BRIDGE_CLI_NETWORK_KINDS[network] === "zeko-e"
+
 export const EXPLORER_BASE_URLS = {
 	[MINA_NETWORKS.devnet]: "https://minascan.io/devnet",
 	[MINA_NETWORKS.testnet]: "https://minascan.io/devnet",
