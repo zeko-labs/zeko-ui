@@ -30,9 +30,7 @@ jobs:
           echo "SYNC_ROOT=${SYNC_ROOT}" >> "$GITHUB_ENV"
 
           mkdir -p "${SYNC_ROOT}/packages"
-          cp -a packages/bridge-cli "${SYNC_ROOT}/packages/bridge-cli"
-          cp -a packages/networks "${SYNC_ROOT}/packages/networks"
-          rm -rf "${SYNC_ROOT}/packages/bridge-cli/dist" "${SYNC_ROOT}/packages/networks/dist"
+          git archive HEAD packages/bridge-cli packages/networks | tar -x -C "$SYNC_ROOT"
           cp packages/bridge-cli/README.md "${SYNC_ROOT}/README.md"
 
           node --input-type=module <<'NODE'

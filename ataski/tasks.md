@@ -314,3 +314,4 @@
 - T314 | done | own-wallet-sdk-and-auro-mainnet | done/T314-own-wallet-sdk-and-auro-mainnet.md
 - T315 | done | internal-sdk-cleanup-and-review | done/T315-internal-sdk-cleanup-and-review.md
 - T316 | done | source-monorepo-bridge-cli-sync | done/T316-source-monorepo-bridge-cli-sync.md
+- T317 | done | fix-codex-review-deploy-gaps | done/T317-fix-codex-review-deploy-gaps.md

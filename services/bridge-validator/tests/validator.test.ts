@@ -117,8 +117,11 @@ describe("bridge validator", () => {
 		expect(command).toContain("timeout -k 30s -s TERM 6900s")
 		expect(command).toContain(`bridge_command=('${BRIDGE_CLI_BINARY}')`)
 		expect(command).toContain("\"${bridge_command[@]}\" 'bridge'")
-		expect(command).toContain("'--from' 'mina:testnet' '--to' 'zeko-m:testnet'")
+		expect(command).toContain("'--from' 'mina:testnet' '--to' 'zeko:testnet'")
 		expect(command).toContain("'--amount' '2' '--json' '--verbose'")
+		expect(buildBridgeCommand({ routeKey: "zeko-to-mina" })).toContain(
+			"'--from' 'zeko:testnet' '--to' 'mina:testnet'"
+		)
 		expect(buildBridgeCommand({ routeKey: "zeko-to-mina" })).toContain(
 			"'--amount' '2' '--json' '--verbose'"
 		)
@@ -447,6 +450,25 @@ describe("bridge validator", () => {
 			queueAdvanceCount: 0,
 			historyEventCount: 3
 		})
+	})
+
+	it("accepts legacy CLI route output while reporting the canonical route", () => {
+		const summary = validateBridgeCompletion({
+			route: {
+				key: "mina-to-zeko",
+				from: "mina:testnet",
+				to: "zeko-m:testnet",
+				route: "mina:testnet->zeko-m:testnet",
+				cliFrom: "mina:testnet",
+				cliTo: "zeko:testnet",
+				acceptedResultRoutes: ["mina:testnet->zeko-m:testnet", "mina:testnet->zeko:testnet"],
+				direction: "deposit"
+			},
+			result: { ...completedDepositResult, route: "mina:testnet->zeko:testnet" },
+			historyLog: completedHistoryLog
+		})
+
+		expect(summary.route).toBe("mina:testnet->zeko-m:testnet")
 	})
 
 	it("keeps a completed bridge result successful when the CLI preserves a retry warning", () => {
@@ -781,6 +803,9 @@ describe("bridge validator", () => {
 				from: "mina:testnet",
 				to: "zeko-m:testnet",
 				route: "mina:testnet->zeko-m:testnet",
+				cliFrom: "mina:testnet",
+				cliTo: "zeko:testnet",
+				acceptedResultRoutes: ["mina:testnet->zeko-m:testnet", "mina:testnet->zeko:testnet"],
 				direction: "deposit"
 			},
 			result: completedDepositResult,
