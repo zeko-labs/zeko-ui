@@ -1,6 +1,7 @@
 import type { walletMachine } from "@lumina-dex/sdk"
 import { detectWalletChange, type WalletEmit } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
+import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
 import * as Comlink from "comlink"
 import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
@@ -262,10 +263,10 @@ const syncRecoveredOperations = ({
 }
 
 const bridgeDirections = {
-	"zeko-m-mainnet": "mina:mainnet",
-	"mina:mainnet": "zeko-m-mainnet",
-	"zeko-m-devnet": "mina:devnet",
-	"mina:devnet": "zeko-m-devnet"
+	[ZEKO_M_NETWORKS.mainnet]: MINA_NETWORKS.mainnet,
+	[MINA_NETWORKS.mainnet]: ZEKO_M_NETWORKS.mainnet,
+	[ZEKO_M_NETWORKS.testnet]: MINA_NETWORKS.devnet,
+	[MINA_NETWORKS.devnet]: ZEKO_M_NETWORKS.testnet
 } as const satisfies Record<BridgeNetwork, BridgeNetwork>
 
 // Parent Bridge Machine

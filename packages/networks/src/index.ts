@@ -1,0 +1,229 @@
+export const MINA_NETWORKS = {
+	devnet: "mina:devnet",
+	testnet: "mina:testnet",
+	mainnet: "mina:mainnet"
+} as const
+
+export const ETHEREUM_NETWORKS = {
+	testnet: "eth:testnet",
+	mainnet: "eth:mainnet"
+} as const
+
+export const ZEKO_M_NETWORKS = {
+	local: "zeko-m:local",
+	testnet: "zeko-m:testnet",
+	alphanet: "zeko-m:alphanet",
+	mainnet: "zeko-m:mainnet"
+} as const
+
+export const ZEKO_E_NETWORKS = {
+	testnet: "zeko-e:testnet",
+	mainnet: "zeko-e:mainnet"
+} as const
+
+export type ObjectValue<T> = T[keyof T]
+export type MinaNetwork = ObjectValue<typeof MINA_NETWORKS>
+export type EthereumNetwork = ObjectValue<typeof ETHEREUM_NETWORKS>
+export type ZekoMNetwork = ObjectValue<typeof ZEKO_M_NETWORKS>
+export type ZekoENetwork = ObjectValue<typeof ZEKO_E_NETWORKS>
+export type ZekoNetwork = ZekoMNetwork | ZekoENetwork
+export type ChainNetwork = MinaNetwork | EthereumNetwork | ZekoNetwork
+export type WalletZekoNetwork = "zeko:testnet" | "zeko:mainnet"
+export type DisplayNetwork = ChainNetwork | WalletZekoNetwork
+
+export type ZekoMBridgeNetwork = typeof ZEKO_M_NETWORKS.testnet | typeof ZEKO_M_NETWORKS.mainnet
+export type BridgeUiNetwork =
+	| typeof MINA_NETWORKS.devnet
+	| typeof MINA_NETWORKS.mainnet
+	| ZekoMBridgeNetwork
+export type BridgeCliNetwork =
+	| typeof MINA_NETWORKS.testnet
+	| typeof MINA_NETWORKS.mainnet
+	| typeof ETHEREUM_NETWORKS.testnet
+	| typeof ETHEREUM_NETWORKS.mainnet
+	| ZekoMBridgeNetwork
+	| typeof ZEKO_E_NETWORKS.testnet
+	| typeof ZEKO_E_NETWORKS.mainnet
+export type BridgeRouteKey<Network extends string = ChainNetwork> = `${Network}->${Network}`
+export type BridgeDirection = "deposit" | "withdrawal"
+
+export type BridgeRouteDescriptor<Network extends string = ChainNetwork> = {
+	from: Network
+	to: Network
+	route: BridgeRouteKey<Network>
+	enabled: boolean
+	direction: BridgeDirection
+	label: string
+	reason?: string
+}
+
+export const NETWORK_LABELS = {
+	[MINA_NETWORKS.devnet]: "Mina Devnet",
+	[MINA_NETWORKS.testnet]: "Mina Testnet",
+	[MINA_NETWORKS.mainnet]: "Mina Mainnet",
+	[ETHEREUM_NETWORKS.testnet]: "Ethereum Testnet",
+	[ETHEREUM_NETWORKS.mainnet]: "Ethereum Mainnet",
+	[ZEKO_M_NETWORKS.local]: "Zeko-M Local",
+	[ZEKO_M_NETWORKS.testnet]: "Zeko-M Testnet",
+	[ZEKO_M_NETWORKS.alphanet]: "Zeko-M Alphanet",
+	[ZEKO_M_NETWORKS.mainnet]: "Zeko-M Mainnet",
+	[ZEKO_E_NETWORKS.testnet]: "Zeko-E Testnet",
+	[ZEKO_E_NETWORKS.mainnet]: "Zeko-E Mainnet",
+	"zeko:testnet": "Zeko-M Testnet",
+	"zeko:mainnet": "Zeko-M Mainnet"
+} as const satisfies Record<DisplayNetwork, string>
+
+export const BRIDGE_UI_NETWORKS = [
+	MINA_NETWORKS.devnet,
+	ZEKO_M_NETWORKS.testnet,
+	MINA_NETWORKS.mainnet,
+	ZEKO_M_NETWORKS.mainnet
+] as const satisfies readonly BridgeUiNetwork[]
+
+export const formatBridgeRoute = <From extends string, To extends string>(
+	from: From,
+	to: To
+): `${From}->${To}` => `${from}->${to}`
+
+const bridgeRoute = <Network extends string>({
+	from,
+	to,
+	enabled,
+	direction,
+	reason
+}: Omit<BridgeRouteDescriptor<Network>, "route" | "label">): BridgeRouteDescriptor<Network> => ({
+	from,
+	to,
+	route: formatBridgeRoute(from, to),
+	enabled,
+	direction,
+	label: `${NETWORK_LABELS[from as DisplayNetwork]} -> ${NETWORK_LABELS[to as DisplayNetwork]}`,
+	...(reason === undefined ? {} : { reason })
+})
+
+export const BRIDGE_CLI_ROUTES = [
+	bridgeRoute({
+		from: MINA_NETWORKS.testnet,
+		to: ZEKO_M_NETWORKS.testnet,
+		enabled: true,
+		direction: "deposit"
+	}),
+	bridgeRoute({
+		from: ZEKO_M_NETWORKS.testnet,
+		to: MINA_NETWORKS.testnet,
+		enabled: true,
+		direction: "withdrawal"
+	}),
+	bridgeRoute({
+		from: MINA_NETWORKS.mainnet,
+		to: ZEKO_M_NETWORKS.mainnet,
+		enabled: true,
+		direction: "deposit"
+	}),
+	bridgeRoute({
+		from: ZEKO_M_NETWORKS.mainnet,
+		to: MINA_NETWORKS.mainnet,
+		enabled: true,
+		direction: "withdrawal"
+	}),
+	bridgeRoute({
+		from: ETHEREUM_NETWORKS.testnet,
+		to: ZEKO_E_NETWORKS.testnet,
+		enabled: false,
+		direction: "deposit",
+		reason: "Known route, not enabled yet."
+	}),
+	bridgeRoute({
+		from: ZEKO_E_NETWORKS.testnet,
+		to: ETHEREUM_NETWORKS.testnet,
+		enabled: false,
+		direction: "withdrawal",
+		reason: "Known route, not enabled yet."
+	}),
+	bridgeRoute({
+		from: ETHEREUM_NETWORKS.mainnet,
+		to: ZEKO_E_NETWORKS.mainnet,
+		enabled: false,
+		direction: "deposit",
+		reason: "Known route, not enabled yet."
+	}),
+	bridgeRoute({
+		from: ZEKO_E_NETWORKS.mainnet,
+		to: ETHEREUM_NETWORKS.mainnet,
+		enabled: false,
+		direction: "withdrawal",
+		reason: "Known route, not enabled yet."
+	})
+] as const satisfies readonly BridgeRouteDescriptor<BridgeCliNetwork>[]
+
+export const EXPLORER_BASE_URLS = {
+	[MINA_NETWORKS.devnet]: "https://minascan.io/devnet",
+	[MINA_NETWORKS.testnet]: "https://minascan.io/devnet",
+	[MINA_NETWORKS.mainnet]: "https://minascan.io/mainnet",
+	[ZEKO_M_NETWORKS.testnet]: "https://zekoscan.io/testnet",
+	[ZEKO_M_NETWORKS.mainnet]: "https://zekoscan.io/mainnet",
+	[ZEKO_E_NETWORKS.testnet]: "https://zekoscan.io/testnet",
+	[ZEKO_E_NETWORKS.mainnet]: "https://zekoscan.io/mainnet",
+	[ETHEREUM_NETWORKS.testnet]: "https://sepolia.etherscan.io",
+	[ETHEREUM_NETWORKS.mainnet]: "https://etherscan.io"
+} as const satisfies Partial<Record<ChainNetwork, string>>
+
+export const createExplorerUrl = (network: keyof typeof EXPLORER_BASE_URLS, hash: string): string =>
+	`${EXPLORER_BASE_URLS[network]}/tx/${hash}`
+
+export type BridgeSdkNetworkId = "testnet" | "mainnet" | { custom: "zeko-mainnet" }
+export type BridgeSdkConfig = {
+	l1Url: string
+	l1ArchiveUrl: string
+	zekoUrl: string
+	zekoArchiveUrl: string
+	actionsApi: string
+	l1Network: BridgeSdkNetworkId
+	l2Network: BridgeSdkNetworkId
+}
+
+export const ZEKO_MAINNET_SDK_NETWORK = { custom: "zeko-mainnet" } as const
+
+export const BRIDGE_SDK_CONFIG_BY_ZEKO_M_NETWORK = {
+	[ZEKO_M_NETWORKS.testnet]: {
+		l1Url: "https://gateway.mina.devnet.zeko.io",
+		l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
+		zekoUrl: "https://testnet.zeko.io/graphql",
+		zekoArchiveUrl: "https://archive.testnet.zeko.io/graphql",
+		actionsApi: "https://testnet.api.actions.zeko.io/graphql",
+		l1Network: "testnet",
+		l2Network: "testnet"
+	},
+	[ZEKO_M_NETWORKS.mainnet]: {
+		l1Url: "https://gateway.mina.mainnet.zeko.io",
+		l1ArchiveUrl: "https://gateway.mina.archive.mainnet.zeko.io",
+		zekoUrl: "https://mainnet.zeko.io/graphql",
+		zekoArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
+		actionsApi: "https://api.actions.zeko.io/graphql",
+		l1Network: "mainnet",
+		l2Network: ZEKO_MAINNET_SDK_NETWORK
+	}
+} as const satisfies Record<ZekoMBridgeNetwork, BridgeSdkConfig>
+
+export const BRIDGE_UI_CONFIG_BY_ROUTE: Partial<
+	Record<BridgeRouteKey<BridgeUiNetwork>, BridgeSdkConfig>
+> = {
+	[formatBridgeRoute(MINA_NETWORKS.devnet, ZEKO_M_NETWORKS.testnet)]:
+		BRIDGE_SDK_CONFIG_BY_ZEKO_M_NETWORK[ZEKO_M_NETWORKS.testnet],
+	[formatBridgeRoute(ZEKO_M_NETWORKS.testnet, MINA_NETWORKS.devnet)]:
+		BRIDGE_SDK_CONFIG_BY_ZEKO_M_NETWORK[ZEKO_M_NETWORKS.testnet],
+	[formatBridgeRoute(MINA_NETWORKS.mainnet, ZEKO_M_NETWORKS.mainnet)]:
+		BRIDGE_SDK_CONFIG_BY_ZEKO_M_NETWORK[ZEKO_M_NETWORKS.mainnet],
+	[formatBridgeRoute(ZEKO_M_NETWORKS.mainnet, MINA_NETWORKS.mainnet)]:
+		BRIDGE_SDK_CONFIG_BY_ZEKO_M_NETWORK[ZEKO_M_NETWORKS.mainnet]
+} as const
+
+export const WALLET_ZEKO_NETWORK_TO_BRIDGE_NETWORK = {
+	"zeko:testnet": ZEKO_M_NETWORKS.testnet,
+	"zeko:mainnet": ZEKO_M_NETWORKS.mainnet
+} as const satisfies Record<WalletZekoNetwork, ZekoMBridgeNetwork>
+
+export const BRIDGE_NETWORK_TO_WALLET_ZEKO_NETWORK = {
+	[ZEKO_M_NETWORKS.testnet]: "zeko:testnet",
+	[ZEKO_M_NETWORKS.mainnet]: "zeko:mainnet"
+} as const satisfies Record<ZekoMBridgeNetwork, WalletZekoNetwork>

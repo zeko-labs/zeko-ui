@@ -125,7 +125,7 @@ const createClaimRequest = ({
 	headers,
 	body = {
 		address: VALID_ADDRESS,
-		chain: "zeko-m-devnet"
+		chain: "zeko-m:testnet"
 	}
 }: {
 	headers?: HeadersInit
@@ -197,7 +197,7 @@ describe("faucet worker claim safeguards", () => {
 			createClaimRequest({
 				body: {
 					address: "abc123",
-					chain: "zeko-m-devnet"
+					chain: "zeko-m:testnet"
 				}
 			}),
 			env as never,
@@ -232,7 +232,7 @@ describe("faucet worker claim safeguards", () => {
 		)
 
 		env.FAUCET_CLAIM.get.mockImplementation(async (key: string) => {
-			if (key === `claim:zeko-m-devnet:${VALID_ADDRESS}`) return null
+			if (key === `claim:zeko-m:testnet:${VALID_ADDRESS}`) return null
 			if (key === VALID_ADDRESS) return "2026-02-26T00:00:00.000Z"
 			return null
 		})
@@ -244,7 +244,7 @@ describe("faucet worker claim safeguards", () => {
 		const entrypoint = new TurnstileClaimsEntrypoint(ctx as never, env as never)
 		const result = await entrypoint.claimWithTurnstile({
 			address: VALID_ADDRESS,
-			chain: "zeko-m-devnet",
+			chain: "zeko-m:testnet",
 			clientIp: "127.0.0.1"
 		})
 
@@ -255,7 +255,7 @@ describe("faucet worker claim safeguards", () => {
 		})
 		expect(env.RATE_LIMIT_FAUCET.limit).toHaveBeenCalledWith({ key: "127.0.0.1" })
 		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledTimes(1)
-		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith(`claim:zeko-m-devnet:${VALID_ADDRESS}`)
+		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith(`claim:zeko-m:testnet:${VALID_ADDRESS}`)
 	})
 
 	it("maps GitHub API rate limits to the public rate-limited error", async () => {
@@ -352,7 +352,7 @@ describe("faucet worker claim safeguards", () => {
 
 		const putCalls = env.FAUCET_CLAIM.put.mock.calls as KvPutCall[]
 		expect(putCalls).toHaveLength(2)
-		expect(putCalls[0]?.[0]).toBe(`claim:zeko-m-devnet:${VALID_ADDRESS}`)
+		expect(putCalls[0]?.[0]).toBe(`claim:zeko-m:testnet:${VALID_ADDRESS}`)
 		expect(putCalls[0]?.[1]).toEqual(expect.any(String))
 		expect(putCalls[1]).toEqual([
 			"github:42",

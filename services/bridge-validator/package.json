@@ -15,6 +15,7 @@
 	},
 	"dependencies": {
 		"@cloudflare/sandbox": "0.7.21",
+		"@zeko/networks": "workspace:*",
 		"valibot": "catalog:"
 	},
 	"devDependencies": {

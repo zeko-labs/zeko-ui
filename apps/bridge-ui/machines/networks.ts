@@ -1,38 +1,44 @@
 import type { Networks as WalletNetwork } from "@lumina-dex/sdk"
+import {
+	BRIDGE_NETWORK_TO_WALLET_ZEKO_NETWORK,
+	BRIDGE_UI_NETWORKS,
+	MINA_NETWORKS,
+	type BridgeUiNetwork,
+	WALLET_ZEKO_NETWORK_TO_BRIDGE_NETWORK,
+	ZEKO_M_NETWORKS
+} from "@zeko/networks"
 
-export type BridgeNetwork = "mina:devnet" | "mina:mainnet" | "zeko-m-devnet" | "zeko-m-mainnet"
+export type BridgeNetwork = BridgeUiNetwork
 
-export const supportedNetworks = [
-	"mina:devnet",
-	"zeko-m-devnet",
-	"mina:mainnet",
-	"zeko-m-mainnet"
-] as const satisfies readonly BridgeNetwork[]
+export const supportedNetworks = BRIDGE_UI_NETWORKS
 
-export const isMainnetBridgeNetwork = (network: BridgeNetwork) => network.includes("mainnet")
-export const isMinaBridgeNetwork = (network: BridgeNetwork) => network.startsWith("mina:")
-export const isZekoBridgeNetwork = (network: BridgeNetwork) => network.startsWith("zeko-")
+export const isMainnetBridgeNetwork = (network: BridgeNetwork) =>
+	network === MINA_NETWORKS.mainnet || network === ZEKO_M_NETWORKS.mainnet
+export const isMinaBridgeNetwork = (network: BridgeNetwork) =>
+	network === MINA_NETWORKS.devnet || network === MINA_NETWORKS.mainnet
+export const isZekoBridgeNetwork = (network: BridgeNetwork) =>
+	network === ZEKO_M_NETWORKS.testnet || network === ZEKO_M_NETWORKS.mainnet
 
 export const walletNetworkToBridgeNetwork = (network: WalletNetwork): BridgeNetwork => {
 	switch (network) {
-		case "mina:devnet":
-		case "mina:mainnet":
+		case MINA_NETWORKS.devnet:
+		case MINA_NETWORKS.mainnet:
 			return network
 		case "zeko:testnet":
-			return "zeko-m-devnet"
+			return WALLET_ZEKO_NETWORK_TO_BRIDGE_NETWORK[network]
 		case "zeko:mainnet":
-			return "zeko-m-mainnet"
+			return WALLET_ZEKO_NETWORK_TO_BRIDGE_NETWORK[network]
 	}
 }
 
 export const bridgeNetworkToWalletNetwork = (network: BridgeNetwork): WalletNetwork => {
 	switch (network) {
-		case "mina:devnet":
-		case "mina:mainnet":
+		case MINA_NETWORKS.devnet:
+		case MINA_NETWORKS.mainnet:
 			return network
-		case "zeko-m-devnet":
-			return "zeko:testnet"
-		case "zeko-m-mainnet":
-			return "zeko:mainnet"
+		case ZEKO_M_NETWORKS.testnet:
+			return BRIDGE_NETWORK_TO_WALLET_ZEKO_NETWORK[network]
+		case ZEKO_M_NETWORKS.mainnet:
+			return BRIDGE_NETWORK_TO_WALLET_ZEKO_NETWORK[network]
 	}
 }
