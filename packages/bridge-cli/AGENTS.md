@@ -6,8 +6,11 @@ Use [TESTING.md](./TESTING.md) for the maintainer/operator live-validation proce
 
 ## Default Path
 
-- Use `zeko-bridge bridge` by default.
-- Treat `deposit`, `withdrawal`, `operation`, and `tui` as advanced/debug/recovery tools.
+- Use `zeko-bridge bridge` by default for every normal bridge request.
+- Interpret "use the Bridge CLI" as "run the high-level `zeko-bridge bridge` command" unless the user explicitly asks for a specific low-level subcommand.
+- For a Mina-to-Zeko deposit request, still run `zeko-bridge bridge --from mina:testnet --to zeko:testnet ...`; do not run `zeko-bridge deposit submit`.
+- For a Zeko-to-Mina withdrawal request, still run `zeko-bridge bridge --from zeko:testnet --to mina:testnet ...`; do not run `zeko-bridge withdrawal submit`.
+- Treat `deposit`, `withdrawal`, `operation`, and `tui` as advanced/debug/recovery tools, not default bridge execution paths.
 - Keep `README.md` public-facing. Agent-only workflow guidance belongs here, not in the public package README.
 - Keep `TESTING.md` procedure-focused. Do not duplicate the full validation checklist here; reference it and add only agent-specific constraints.
 

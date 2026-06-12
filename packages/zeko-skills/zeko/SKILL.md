@@ -35,6 +35,8 @@ Use this skill when the user wants to use Zeko, inspect the network, bridge asse
 Defaults:
 
 - For non-browser automation, prefer explicit key-based CLI or HTTP flows over wallet UI steps.
+- When this skill says to use Bridge CLI for bridging, that means run the high-level `zeko-bridge bridge` command.
+- Do not use `deposit submit`, `withdrawal submit`, or other low-level Bridge CLI subcommands for ordinary bridge requests unless the user explicitly asks for debugging or recovery.
 - Only discuss Auro Wallet when the agent is actively driving a browser with extension access.
 - Start with the smallest relevant reference file in this skill instead of a broad docs dump.
 - Use the public docs pages behind `https://docs.zeko.io` through the targeted references below.

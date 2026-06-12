@@ -11,7 +11,8 @@ Use this file for unattended bridge execution, programmatic bridge integrations,
 
 ## Agent defaults
 
-- Unattended bridge execution: prefer Bridge CLI first.
+- Unattended bridge execution: prefer Bridge CLI first, and use its high-level `bridge` command.
+- In this skill, "use Bridge CLI" or "bridge with Bridge CLI" means run `zeko-bridge bridge`, not `deposit submit` or `withdrawal submit`.
 - Embedded bridge logic inside code: use Bridge SDK.
 - Browser-led bridge walkthrough: use the user bridge guide.
 - Bridge CLI signing: `MINA_PRIVATE_KEY`
@@ -24,9 +25,11 @@ Use this file for unattended bridge execution, programmatic bridge integrations,
 ## Bridge CLI quick take
 
 - Use `bridge` by default. It signs, submits, waits, retries transient checks, advances queued claims in order, and keeps running until the requested bridge reaches a terminal result.
+- For a normal Mina-to-Zeko deposit request, still use `zeko-bridge bridge --from mina:testnet --to zeko:testnet ...`; do not use `zeko-bridge deposit submit`.
+- For a normal Zeko-to-Mina withdrawal request, still use `zeko-bridge bridge --from zeko:testnet --to mina:testnet ...`; do not use `zeko-bridge withdrawal submit`.
 - Current enabled routes are public testnet only: `mina:testnet -> zeko:testnet` and `zeko:testnet -> mina:testnet`.
 - Prefer the CLI when an agent needs a single command that can stay alive through a long bridge wait.
-- Use lower-level CLI commands only for debugging or recovery.
+- Use lower-level CLI commands only when the user explicitly asks for debugging, recovery, or a specific low-level action.
 
 ## Bridge CLI examples
 
@@ -54,6 +57,7 @@ MINA_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli doctor
 ## Bridge CLI practical rules
 
 - Keep the original `bridge` process alive until completion; `operation status` is for recovery and inspection, not a replacement for the live bridge run.
+- Before running `deposit submit` or `withdrawal submit` for a bridge request, switch to the corresponding `bridge` command unless the user explicitly requested the low-level subcommand.
 - Use `--json` when an agent needs a machine-readable terminal result.
 - Use `doctor` first if the environment or route support looks suspicious.
 - The CLI writes local logs and persisted operation state, so it is the right default for long-running bridge tasks that may need inspection.
@@ -77,7 +81,7 @@ GITHUB_TOKEN=... zeko-faucet claim B62q... --json
 
 ## When to use what
 
-- Use Bridge CLI docs when the user wants a terminal command that bridges end to end with a local key.
+- Use Bridge CLI docs when the user wants a terminal command that bridges end to end with a local key; use the `bridge` command from those docs.
 - Use Bridge SDK docs when the user wants deposits, withdrawals, or finalization logic in code.
 - Use Faucet CLI docs when the user wants testnet funds from a terminal or agent workflow.
 - Use the user bridge guide when the user wants the browser flow instead of code.
