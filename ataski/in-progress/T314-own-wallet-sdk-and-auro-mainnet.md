@@ -25,4 +25,9 @@ updated_at: 2026-06-12T11:14:15Z
 
 ## RED Evidence
 
+- `pnpm install` was required in the task worktree after adding the `packages/sdk` test harness.
+- `pnpm exec moon run sdk:test -f` failed as expected: `bridgeNetworkToAuroNetwork`, `AURO_NETWORKS`, and `switchAuroNetwork` were not implemented/exported from `@zeko/sdk`.
+- `pnpm exec moon run bridge-ui:test -f -- --run test/unit/sdk-boundary.test.ts` failed as expected: bridge UI still contained `@lumina-dex/sdk` in its package/config/source boundary.
+- Checked current Auro provider package metadata: `@aurowallet/mina-provider` latest npm package is `1.0.14`; the user's `2.5.1` mainnet support note appears to refer to Auro wallet app/extension behavior. The provider type still accepts a string `networkID`, so the code must pass Auro's `zeko:mainnet` string while keeping internal bridge IDs as `zeko-m:mainnet`.
+
 ## GREEN Evidence
