@@ -1,6 +1,8 @@
 # yaml-language-server: $schema=../../.moon/cache/schemas/project.json
 
 layer: tool
+dependsOn:
+  - networks
 
 fileGroups:
   src:
@@ -22,6 +24,8 @@ fileGroups:
 tasks:
   build:
     command: tsdown
+    deps:
+      - ^:build
     inputs:
       - "@group(src)"
     outputs:
@@ -35,6 +39,8 @@ tasks:
     inputs:
       - "@group(src)"
   typecheck:
+    deps:
+      - ^:build
     command: tsc --noEmit
     inputs:
       - "@group(src)"

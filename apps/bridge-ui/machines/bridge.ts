@@ -1,7 +1,6 @@
-import type { walletMachine } from "@lumina-dex/sdk"
-import { detectWalletChange, type WalletEmit } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
 import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
+import { detectWalletChange, type WalletEmit, type walletMachine } from "@zeko/sdk"
 import * as Comlink from "comlink"
 import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"

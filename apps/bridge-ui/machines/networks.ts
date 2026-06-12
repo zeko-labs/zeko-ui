@@ -1,6 +1,6 @@
 export type {
 	BridgeUiNetwork as BridgeNetwork,
-	LuminaWalletNetwork as WalletNetwork
+	AuroWalletNetwork as WalletNetwork
 } from "@zeko/networks"
 export {
 	BRIDGE_UI_NETWORKS as supportedNetworks,
