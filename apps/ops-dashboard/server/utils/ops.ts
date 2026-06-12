@@ -758,10 +758,8 @@ export const probeActionsIndexer = async ({
 		}
 
 		const status =
-			health.response.ok && healthStatus === "healthy"
-				? token
-					? "ok"
-					: "warn"
+			health.response.ok && healthStatus === "healthy" && statusError === undefined
+				? "ok"
 				: health.response.ok
 					? "warn"
 					: "error"

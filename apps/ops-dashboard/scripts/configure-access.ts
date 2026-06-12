@@ -2,6 +2,13 @@ type CloudflareEnvelope<T> = {
 	success: boolean
 	result: T
 	errors: { code: number; message: string }[]
+	result_info?: {
+		page?: number
+		per_page?: number
+		count?: number
+		total_count?: number
+		total_pages?: number
+	}
 }
 
 type AccessProvider = "cloudflare" | "github"
@@ -81,7 +88,7 @@ const githubIdpId = process.env.OPS_DASHBOARD_GITHUB_IDP_ID?.trim()
 const apiUrl = (path: string) =>
 	`https://api.cloudflare.com/client/v4/accounts/${accountId}/access/${path}`
 
-const request = async <T>(path: string, init: RequestInit = {}) => {
+const requestEnvelope = async <T>(path: string, init: RequestInit = {}) => {
 	const response = await fetch(apiUrl(path), {
 		...init,
 		headers: {
@@ -97,10 +104,26 @@ const request = async <T>(path: string, init: RequestInit = {}) => {
 			`Cloudflare API ${init.method ?? "GET"} ${path} failed (${response.status}): ${errors}`
 		)
 	}
-	return payload.result
+	return payload
 }
 
-const listAll = async <T>(path: string) => request<T[]>(path)
+const request = async <T>(path: string, init: RequestInit = {}) =>
+	(await requestEnvelope<T>(path, init)).result
+
+const paginatedPath = (path: string, page: number, perPage: number) =>
+	`${path}${path.includes("?") ? "&" : "?"}page=${page}&per_page=${perPage}`
+
+const listAll = async <T>(path: string) => {
+	const perPage = 100
+	const firstPage = await requestEnvelope<T[]>(paginatedPath(path, 1, perPage))
+	const totalPages = firstPage.result_info?.total_pages ?? 1
+	const remainingPages = await Promise.all(
+		Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) =>
+			requestEnvelope<T[]>(paginatedPath(path, index + 2, perPage))
+		)
+	)
+	return [firstPage, ...remainingPages].flatMap((page) => page.result)
+}
 
 const upsertCloudflareIdp = async () => {
 	const idps = await listAll<AccessIdentityProvider>("identity_providers")

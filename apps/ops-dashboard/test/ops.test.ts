@@ -248,6 +248,174 @@ describe("ops dashboard utilities", () => {
 		}
 	})
 
+	it("does not report the indexer as ok when authenticated status fails", async () => {
+		const originalFetch = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL) => {
+			const url = String(input)
+			if (url.endsWith("/health")) {
+				return Response.json({
+					status: "healthy",
+					service: { environment: "testnet" },
+					database: { status: "up" },
+					indexer: {
+						status: "running",
+						lastFetchedBlock: { outer: 10, inner: 20 },
+						consecutiveErrors: 0,
+						canonicalProgress: {}
+					}
+				})
+			}
+			if (url.endsWith("/status")) {
+				return Response.json({ message: "invalid token" }, { status: 401 })
+			}
+			return Response.json({})
+		}) as typeof fetch
+
+		try {
+			await expect(
+				probeActionsIndexer({
+					endpoint: "https://testnet.indexer.actions.zeko.io",
+					token: "bad-token"
+				})
+			).resolves.toMatchObject({
+				status: "warn",
+				httpStatus: 200,
+				details: { statusHttp: 401 },
+				error: 'Status check returned HTTP 401: {"message":"invalid token"}'
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+	})
+
+	it("updates paginated Cloudflare Access resources instead of creating duplicates", async () => {
+		const originalFetch = globalThis.fetch
+		const originalEnv = {
+			CFZT_TOKEN: process.env.CFZT_TOKEN,
+			CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+			OPS_DASHBOARD_ACCESS_PROVIDER: process.env.OPS_DASHBOARD_ACCESS_PROVIDER,
+			OPS_DASHBOARD_GITHUB_ORG: process.env.OPS_DASHBOARD_GITHUB_ORG
+		}
+		const calls: Array<{ method: string; path: string; page: string | null }> = []
+
+		process.env.CFZT_TOKEN = "cf-token"
+		process.env.CLOUDFLARE_ACCOUNT_ID = "account-id"
+		process.env.OPS_DASHBOARD_ACCESS_PROVIDER = "github"
+		process.env.OPS_DASHBOARD_GITHUB_ORG = "zeko-labs"
+
+		const listEnvelope = <T>(result: T[], page: number, totalPages: number) =>
+			Response.json({
+				success: true,
+				result,
+				errors: [],
+				result_info: {
+					page,
+					per_page: 100,
+					count: result.length,
+					total_count: totalPages,
+					total_pages: totalPages
+				}
+			})
+
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = new URL(String(input))
+			const path = url.pathname.split("/access/")[1]
+			const method = init?.method ?? "GET"
+			calls.push({ method, path, page: url.searchParams.get("page") })
+
+			if (method === "GET" && path === "identity_providers")
+				return url.searchParams.get("page") === "1"
+					? listEnvelope([], 1, 2)
+					: listEnvelope([{ id: "github-idp", name: "GitHub", type: "github" }], 2, 2)
+
+			if (method === "GET" && path === "apps")
+				return url.searchParams.get("page") === "1"
+					? listEnvelope([], 1, 2)
+					: listEnvelope(
+							[
+								{
+									id: "app-id",
+									name: "Zeko Ops Dashboard",
+									domain: "ops.zeko.io",
+									type: "self_hosted"
+								}
+							],
+							2,
+							2
+						)
+
+			if (method === "GET" && path === "apps/app-id/policies")
+				return url.searchParams.get("page") === "1"
+					? listEnvelope([], 1, 2)
+					: listEnvelope(
+							[
+								{
+									id: "policy-id",
+									name: "Allow Zeko GitHub org",
+									decision: "allow",
+									precedence: 1
+								}
+							],
+							2,
+							2
+						)
+
+			if (method === "PUT" && path === "apps/app-id")
+				return Response.json({
+					success: true,
+					result: {
+						id: "app-id",
+						name: "Zeko Ops Dashboard",
+						domain: "ops.zeko.io",
+						type: "self_hosted"
+					},
+					errors: []
+				})
+
+			if (method === "PUT" && path === "apps/app-id/policies/policy-id")
+				return Response.json({
+					success: true,
+					result: {
+						id: "policy-id",
+						name: "Allow Zeko GitHub org",
+						decision: "allow",
+						precedence: 1
+					},
+					errors: []
+				})
+
+			return Response.json(
+				{
+					success: false,
+					result: null,
+					errors: [{ code: 1, message: `${method} ${path} was not expected` }]
+				},
+				{ status: 500 }
+			)
+		}) as typeof fetch
+
+		try {
+			await import("../scripts/configure-access")
+		} finally {
+			globalThis.fetch = originalFetch
+			for (const [key, value] of Object.entries(originalEnv)) {
+				if (value === undefined) delete process.env[key]
+				else process.env[key] = value
+			}
+		}
+
+		expect(calls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ method: "GET", path: "identity_providers", page: "2" }),
+				expect.objectContaining({ method: "GET", path: "apps", page: "2" }),
+				expect.objectContaining({ method: "GET", path: "apps/app-id/policies", page: "2" }),
+				expect.objectContaining({ method: "PUT", path: "apps/app-id" }),
+				expect.objectContaining({ method: "PUT", path: "apps/app-id/policies/policy-id" })
+			])
+		)
+		expect(calls.some((call) => call.method === "POST")).toBe(false)
+	})
+
 	it("summarizes archive action coverage after the indexed head", () => {
 		expect(
 			summarizeActionCoverage({
