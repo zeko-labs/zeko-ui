@@ -1,5 +1,11 @@
 # @zeko-labs/bridge-cli
 
+## 0.2.3
+
+### Patch Changes
+
+- deefbf6: Configure mainnet Zeko route to use custom network id zeko-mainnet.
+
 ## 0.2.2
 
 ### Patch Changes
