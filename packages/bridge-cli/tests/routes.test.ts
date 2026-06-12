@@ -7,8 +7,8 @@ describe("routes", () => {
 	})
 
 	it("enables mina and zeko mainnet routes", () => {
-		expect(resolveRoute("mina:mainnet", "zeko:mainnet").enabled).toBe(true)
-		expect(resolveRoute("zeko:mainnet", "mina:mainnet").enabled).toBe(true)
+		expect(resolveRoute("mina:mainnet", "zeko:zeko-mainnet").enabled).toBe(true)
+		expect(resolveRoute("zeko:zeko-mainnet", "mina:mainnet").enabled).toBe(true)
 	})
 
 	it("keeps ethereum routes known but disabled", () => {

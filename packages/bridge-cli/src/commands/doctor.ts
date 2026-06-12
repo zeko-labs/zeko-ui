@@ -19,6 +19,9 @@ const healthUrlFromGraphqlUrl = (graphqlUrl: string): string => {
 	return url.toString()
 }
 
+const formatNetworkId = (networkId: unknown): string =>
+	typeof networkId === "string" ? networkId : JSON.stringify(networkId)
+
 const checkBackendHealth = async ({
 	fetchImpl,
 	url
@@ -59,7 +62,7 @@ export const createDoctorCommand = (deps: DoctorCommandDeps = {}): CommandDef =>
 			)
 			const endpointLines = enabledRoutes.map((route) => {
 				const config = createSdkConfig(route)
-				return `- ${route.from}->${route.to}: actionsApi=${config.actionsApi}; l1=${config.l1Network}; l2=${config.l2Network}`
+				return `- ${route.from}->${route.to}: actionsApi=${config.actionsApi}; l1=${formatNetworkId(config.l1Network)}; l2=${formatNetworkId(config.l2Network)}`
 			})
 			const healthLines = await Promise.all(
 				enabledRoutes.map(async (route) => {

@@ -21,7 +21,7 @@ const MAINNET_CONFIG = {
 	zekoArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
 	actionsApi: "https://api.actions.zeko.io/graphql",
 	l1Network: "mainnet",
-	l2Network: "mainnet"
+	l2Network: { custom: "zeko-mainnet" }
 } as const satisfies Config
 
 export const createSdkConfig = (
