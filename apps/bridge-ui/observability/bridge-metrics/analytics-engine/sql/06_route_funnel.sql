@@ -7,7 +7,19 @@ SELECT
   if(
     startsWith(blob4, 'mina:'),
     'deposit',
-    if(startsWith(blob4, 'zeko:'), 'withdrawal', 'unknown')
+    if(
+      blob4 IN (
+        'zeko:testnet',
+        'zeko:mainnet',
+        'zeko:zeko-mainnet',
+        'zeko-m:testnet',
+        'zeko-m:mainnet',
+        'zeko-e:testnet',
+        'zeko-e:mainnet'
+      ),
+      'withdrawal',
+      'unknown'
+    )
   ) AS direction,
   sumIf(_sample_interval, blob2 = 'started') AS started,
   sumIf(_sample_interval, blob2 = 'completed') AS completed,
