@@ -1,5 +1,5 @@
 {
-	"name": "@zeko/ops-dashboard",
+	"name": "@zeko/actions-dashboard",
 	"private": true,
 	"type": "module",
 	"scripts": {

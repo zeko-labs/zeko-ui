@@ -43,13 +43,13 @@ const probe = (status: ServiceProbe["status"]): ServiceProbe => ({
 	details: {}
 })
 
-describe("ops dashboard utilities", () => {
+describe("actions dashboard utilities", () => {
 	it("rejects cross-site or form-encoded control requests", () => {
 		expect(
 			isControlRequestAllowed({
 				contentType: "application/json",
-				origin: "https://ops.zeko.io",
-				requestOrigin: "https://ops.zeko.io",
+				origin: "https://actions.dashboard.zeko.io",
+				requestOrigin: "https://actions.dashboard.zeko.io",
 				secFetchSite: "same-origin"
 			})
 		).toBe(true)
@@ -58,7 +58,7 @@ describe("ops dashboard utilities", () => {
 			isControlRequestAllowed({
 				contentType: "application/x-www-form-urlencoded",
 				origin: "https://evil.example",
-				requestOrigin: "https://ops.zeko.io",
+				requestOrigin: "https://actions.dashboard.zeko.io",
 				secFetchSite: "cross-site"
 			})
 		).toBe(false)
@@ -66,7 +66,7 @@ describe("ops dashboard utilities", () => {
 			isControlRequestAllowed({
 				contentType: "application/json",
 				origin: "https://evil.example",
-				requestOrigin: "https://ops.zeko.io",
+				requestOrigin: "https://actions.dashboard.zeko.io",
 				secFetchSite: "cross-site"
 			})
 		).toBe(false)
@@ -478,15 +478,15 @@ describe("ops dashboard utilities", () => {
 		const originalEnv = {
 			CFZT_TOKEN: process.env.CFZT_TOKEN,
 			CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
-			OPS_DASHBOARD_ACCESS_PROVIDER: process.env.OPS_DASHBOARD_ACCESS_PROVIDER,
-			OPS_DASHBOARD_GITHUB_ORG: process.env.OPS_DASHBOARD_GITHUB_ORG
+			ACTIONS_DASHBOARD_ACCESS_PROVIDER: process.env.ACTIONS_DASHBOARD_ACCESS_PROVIDER,
+			ACTIONS_DASHBOARD_GITHUB_ORG: process.env.ACTIONS_DASHBOARD_GITHUB_ORG
 		}
 		const calls: Array<{ method: string; path: string; page: string | null }> = []
 
 		process.env.CFZT_TOKEN = "cf-token"
 		process.env.CLOUDFLARE_ACCOUNT_ID = "account-id"
-		process.env.OPS_DASHBOARD_ACCESS_PROVIDER = "github"
-		process.env.OPS_DASHBOARD_GITHUB_ORG = "zeko-labs"
+		process.env.ACTIONS_DASHBOARD_ACCESS_PROVIDER = "github"
+		process.env.ACTIONS_DASHBOARD_GITHUB_ORG = "zeko-labs"
 
 		const listEnvelope = <T>(result: T[], page: number, totalPages: number) =>
 			Response.json({
@@ -520,8 +520,8 @@ describe("ops dashboard utilities", () => {
 							[
 								{
 									id: "app-id",
-									name: "Zeko Ops Dashboard",
-									domain: "ops.zeko.io",
+									name: "Zeko Actions Dashboard",
+									domain: "actions.dashboard.zeko.io",
 									type: "self_hosted"
 								}
 							],
@@ -550,8 +550,8 @@ describe("ops dashboard utilities", () => {
 					success: true,
 					result: {
 						id: "app-id",
-						name: "Zeko Ops Dashboard",
-						domain: "ops.zeko.io",
+						name: "Zeko Actions Dashboard",
+						domain: "actions.dashboard.zeko.io",
 						type: "self_hosted"
 					},
 					errors: []

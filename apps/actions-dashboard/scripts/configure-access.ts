@@ -65,25 +65,36 @@ const requiredEnv = (key: string, fallbackKey?: string) => {
 	)
 }
 
-const optionalEnv = (key: string, fallback: string) => process.env[key]?.trim() || fallback
+const optionalEnv = (keys: readonly string[], fallback: string) => {
+	for (const key of keys) {
+		const value = process.env[key]?.trim()
+		if (value) return value
+	}
+	return fallback
+}
+
+const optionalDashboardEnv = (key: string, fallback: string) =>
+	optionalEnv([`ACTIONS_DASHBOARD_${key}`, `OPS_DASHBOARD_${key}`], fallback)
 
 const resolveProvider = (): AccessProvider => {
-	const value = optionalEnv("OPS_DASHBOARD_ACCESS_PROVIDER", "github")
+	const value = optionalDashboardEnv("ACCESS_PROVIDER", "github")
 	if (value === "cloudflare" || value === "github") return value
-	throw new Error("OPS_DASHBOARD_ACCESS_PROVIDER must be cloudflare or github")
+	throw new Error("ACTIONS_DASHBOARD_ACCESS_PROVIDER must be cloudflare or github")
 }
 
 const token = requiredEnv("CLOUDFLARE_API_TOKEN", "CFZT_TOKEN")
 const accountId = requiredEnv("CLOUDFLARE_ACCOUNT_ID")
-const hostname = optionalEnv("OPS_DASHBOARD_HOSTNAME", "ops.zeko.io")
-const appName = optionalEnv("OPS_DASHBOARD_ACCESS_APP_NAME", "Zeko Ops Dashboard")
+const hostname = optionalDashboardEnv("HOSTNAME", "actions.dashboard.zeko.io")
+const appName = optionalDashboardEnv("ACCESS_APP_NAME", "Zeko Actions Dashboard")
 const provider = resolveProvider()
-const policyName = optionalEnv(
-	"OPS_DASHBOARD_ACCESS_POLICY_NAME",
+const policyName = optionalDashboardEnv(
+	"ACCESS_POLICY_NAME",
 	provider === "cloudflare" ? "Allow Zeko Cloudflare account" : "Allow Zeko GitHub org"
 )
-const githubOrg = optionalEnv("OPS_DASHBOARD_GITHUB_ORG", "zeko-labs")
-const githubIdpId = process.env.OPS_DASHBOARD_GITHUB_IDP_ID?.trim()
+const githubOrg = optionalDashboardEnv("GITHUB_ORG", "zeko-labs")
+const githubIdpId =
+	process.env.ACTIONS_DASHBOARD_GITHUB_IDP_ID?.trim() ||
+	process.env.OPS_DASHBOARD_GITHUB_IDP_ID?.trim()
 
 const apiUrl = (path: string) =>
 	`https://api.cloudflare.com/client/v4/accounts/${accountId}/access/${path}`
@@ -171,7 +182,7 @@ const findGithubIdp = async () => {
 		throw new Error(
 			`Multiple GitHub identity providers found: ${githubIdps
 				.map((idp) => `${idp.name} (${idp.id})`)
-				.join(", ")}. Set OPS_DASHBOARD_GITHUB_IDP_ID.`
+				.join(", ")}. Set ACTIONS_DASHBOARD_GITHUB_IDP_ID.`
 		)
 	return githubIdps[0]
 }

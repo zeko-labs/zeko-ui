@@ -459,7 +459,7 @@ watch(
     <header class="OpsHeader">
       <div>
         <p class="Kicker">Zeko infrastructure</p>
-        <h1>Action Indexer Ops</h1>
+        <h1>Actions Dashboard</h1>
       </div>
       <div class="HeaderStatus">
         <span class="NetworkPill">{{ currentNetwork }}</span>

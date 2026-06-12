@@ -1,5 +1,5 @@
 layer: application
-id: ops-dashboard
+id: actions-dashboard
 dependsOn:
   - layer
 fileGroups:
@@ -82,6 +82,6 @@ tasks:
       cache: false
   publish-cf-build-config:
     description: Publish the checked-in Cloudflare Workers Build config for this project.
-    script: pnpm exec moon run cloudflare-build-config:sync -- apps/ops-dashboard/workers-build.jsonc
+    script: pnpm exec moon run cloudflare-build-config:sync -- apps/actions-dashboard/workers-build.jsonc
     options:
       cache: false
