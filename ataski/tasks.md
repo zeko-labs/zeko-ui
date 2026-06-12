@@ -335,3 +335,4 @@
 - T335 | done | ignore-stale-refresh-errors | done/T335-ignore-stale-refresh-errors.md
 - T336 | done | fix-codex-review-control-safety | done/T336-fix-codex-review-control-safety.md
 - T337 | done | disable-ops-workers-dev | done/T337-disable-ops-workers-dev.md
+- T338 | done | fix-codex-review-env-and-daemon-health | done/T338-fix-codex-review-env-and-daemon-health.md

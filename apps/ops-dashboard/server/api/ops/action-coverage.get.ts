@@ -1,4 +1,9 @@
-import { createActionCoverageSnapshot, type OpsEnv, resolveOpsNetwork } from "../../utils/ops"
+import {
+	createActionCoverageSnapshot,
+	type OpsEnv,
+	resolveOpsNetwork,
+	resolveRouteEnv
+} from "../../utils/ops"
 
 type CloudflareContext = { env?: OpsEnv }
 
@@ -11,12 +16,7 @@ const queryNumber = (value: unknown): number | null => {
 
 export default defineEventHandler((event) => {
 	const cloudflare = event.context.cloudflare as CloudflareContext | undefined
-	if (!cloudflare?.env) {
-		throw createError({
-			statusCode: 500,
-			statusMessage: "Missing Cloudflare env"
-		})
-	}
+	const env = resolveRouteEnv(cloudflare?.env)
 
 	const query = getQuery(event)
 	return createActionCoverageSnapshot(
@@ -25,6 +25,6 @@ export default defineEventHandler((event) => {
 			lastFetchedOuter: queryNumber(query.lastFetchedOuter),
 			lastFetchedInner: queryNumber(query.lastFetchedInner)
 		},
-		cloudflare.env
+		env
 	)
 })

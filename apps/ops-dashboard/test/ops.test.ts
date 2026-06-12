@@ -17,10 +17,12 @@ import {
 	extractActionsIndexerDetails,
 	getOpsConfig,
 	normalizeEndpoint,
+	probeDaemon,
 	probeActionsIndexer,
 	readActionsIndexerToken,
 	resolveControlNetwork,
 	resolveOpsNetwork,
+	resolveRouteEnv,
 	runIndexerControl,
 	summarizeActionCoverage,
 	summarizeServices,
@@ -152,6 +154,23 @@ describe("ops dashboard utilities", () => {
 			outerActionsPublicKey: "testnet-outer",
 			innerActionsPublicKey: "testnet-inner"
 		})
+	})
+
+	it("merges process env for local route execution while preserving Cloudflare precedence", () => {
+		const original = process.env.MAINNET_ACTIONS_INDEXER_TOKEN
+		process.env.MAINNET_ACTIONS_INDEXER_TOKEN = "local-token"
+
+		try {
+			expect(
+				resolveRouteEnv({
+					MAINNET_ACTIONS_INDEXER_TOKEN: "cloudflare-token"
+				}).MAINNET_ACTIONS_INDEXER_TOKEN
+			).toBe("cloudflare-token")
+			expect(resolveRouteEnv().MAINNET_ACTIONS_INDEXER_TOKEN).toBe("local-token")
+		} finally {
+			if (original === undefined) delete process.env.MAINNET_ACTIONS_INDEXER_TOKEN
+			else process.env.MAINNET_ACTIONS_INDEXER_TOKEN = original
+		}
 	})
 
 	it("reads network-specific indexer tokens from request-scoped env bindings", () => {
@@ -310,6 +329,44 @@ describe("ops dashboard utilities", () => {
 				httpStatus: 200,
 				details: { statusHttp: 401 },
 				error: 'Status check returned HTTP 401: {"message":"invalid token"}'
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+	})
+
+	it("downgrades an L1 daemon when the best-chain head probe fails", async () => {
+		const originalFetch = globalThis.fetch
+		globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+			const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string }
+			if (body.query?.includes("OpsDaemonState")) {
+				return Response.json({
+					data: {
+						syncStatus: "SYNCED",
+						daemonStatus: {}
+					}
+				})
+			}
+			return Response.json({
+				errors: [{ message: "bestChain unavailable" }]
+			})
+		}) as typeof fetch
+
+		try {
+			await expect(
+				probeDaemon({
+					id: "l1-daemon",
+					label: "L1 daemon",
+					endpoint: "https://daemon.example/graphql",
+					supportsBestChain: true
+				})
+			).resolves.toMatchObject({
+				status: "warn",
+				details: {
+					syncStatus: "SYNCED",
+					blockHeight: null,
+					chainHead: "bestChain unavailable"
+				}
 			})
 		} finally {
 			globalThis.fetch = originalFetch

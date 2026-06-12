@@ -2,6 +2,7 @@ import {
 	type ControlAction,
 	type OpsEnv,
 	resolveControlNetwork,
+	resolveRouteEnv,
 	runIndexerControl
 } from "../../utils/ops"
 
@@ -10,12 +11,7 @@ type CloudflareContext = { env?: OpsEnv }
 
 export default defineEventHandler(async (event) => {
 	const cloudflare = event.context.cloudflare as CloudflareContext | undefined
-	if (!cloudflare?.env) {
-		throw createError({
-			statusCode: 500,
-			statusMessage: "Missing Cloudflare env"
-		})
-	}
+	const env = resolveRouteEnv(cloudflare?.env)
 	const body = (await readBody(event)) as { action?: unknown; network?: unknown }
 	const action = typeof body.action === "string" ? body.action : ""
 
@@ -37,7 +33,7 @@ export default defineEventHandler(async (event) => {
 	}
 
 	try {
-		const result = await runIndexerControl(action as ControlAction, network, cloudflare.env)
+		const result = await runIndexerControl(action as ControlAction, network, env)
 		return { success: true, action, network, result }
 	} catch (error) {
 		setResponseStatus(event, 502)

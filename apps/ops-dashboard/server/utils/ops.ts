@@ -100,6 +100,11 @@ export const resolveControlNetwork = (value: unknown): OpsNetwork => {
 
 const defaultEnv = (): OpsEnv => process.env
 
+export const resolveRouteEnv = (cloudflareEnv?: OpsEnv): OpsEnv => ({
+	...process.env,
+	...(cloudflareEnv ?? {})
+})
+
 const readNetworkEndpoint = (
 	network: OpsNetwork,
 	key: keyof typeof endpointEnvKeys,
@@ -701,7 +706,9 @@ export const probeDaemon = async ({
 		}
 
 		const isSynced = syncStatus === null || syncStatus.toUpperCase() === "SYNCED"
-		const isOk = statusResult.response.ok && statusError == null && isSynced
+		const hasRequiredHead =
+			!supportsBestChain || (chainError === undefined && details.blockHeight !== null)
+		const isOk = statusResult.response.ok && statusError == null && isSynced && hasRequiredHead
 
 		return {
 			id,
