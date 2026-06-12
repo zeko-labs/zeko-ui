@@ -77,7 +77,7 @@ const optionalDashboardEnv = (key: string, fallback: string) =>
 	optionalEnv([`ACTIONS_DASHBOARD_${key}`, `OPS_DASHBOARD_${key}`], fallback)
 
 const resolveProvider = (): AccessProvider => {
-	const value = optionalDashboardEnv("ACCESS_PROVIDER", "github")
+	const value = optionalDashboardEnv("ACCESS_PROVIDER", "cloudflare")
 	if (value === "cloudflare" || value === "github") return value
 	throw new Error("ACTIONS_DASHBOARD_ACCESS_PROVIDER must be cloudflare or github")
 }

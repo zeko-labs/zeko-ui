@@ -40,11 +40,12 @@ export CLOUDFLARE_ACCOUNT_ID=...
 moon run actions-dashboard:configure-access
 ```
 
-The default provider is GitHub org membership for `zeko-labs`. The GitHub login
-method must be backed by a GitHub OAuth App with the callback URL from
-Cloudflare Access. If more than one GitHub identity provider exists, also set
-`ACTIONS_DASHBOARD_GITHUB_IDP_ID`. To use Cloudflare account membership as an
-explicit fallback, set `ACTIONS_DASHBOARD_ACCESS_PROVIDER=cloudflare`.
+The default provider is Cloudflare account membership for the Zeko Cloudflare
+account. To use GitHub org membership for `zeko-labs` instead, set
+`ACTIONS_DASHBOARD_ACCESS_PROVIDER=github`. The GitHub login method must be
+backed by a GitHub OAuth App with the callback URL from Cloudflare Access. If
+more than one GitHub identity provider exists, also set
+`ACTIONS_DASHBOARD_GITHUB_IDP_ID`.
 
 Deploy through Moon:
 

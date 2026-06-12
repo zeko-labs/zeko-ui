@@ -310,3 +310,4 @@
 - T310 | done | harden-bridge-cli-doctor-network-id-formatting | done/T310-harden-bridge-cli-doctor-network-id-formatting.md
 - T311 | done | actions-dashboard | done/T311-actions-dashboard.md
 - T341 | done | rename-actions-dashboard-and-clean-board | done/T341-rename-actions-dashboard-and-clean-board.md
+- T342 | done | cloudflare-access-provider | done/T342-cloudflare-access-provider.md

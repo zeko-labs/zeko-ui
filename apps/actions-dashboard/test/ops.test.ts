@@ -473,7 +473,7 @@ describe("actions dashboard utilities", () => {
 		expect(controlCalls).toBe(1)
 	})
 
-	it("updates paginated Cloudflare Access resources instead of creating duplicates", async () => {
+	it("defaults Cloudflare Access to account-member auth and updates paginated resources", async () => {
 		const originalFetch = globalThis.fetch
 		const originalEnv = {
 			CFZT_TOKEN: process.env.CFZT_TOKEN,
@@ -485,7 +485,7 @@ describe("actions dashboard utilities", () => {
 
 		process.env.CFZT_TOKEN = "cf-token"
 		process.env.CLOUDFLARE_ACCOUNT_ID = "account-id"
-		process.env.ACTIONS_DASHBOARD_ACCESS_PROVIDER = "github"
+		delete process.env.ACTIONS_DASHBOARD_ACCESS_PROVIDER
 		process.env.ACTIONS_DASHBOARD_GITHUB_ORG = "zeko-labs"
 
 		const listEnvelope = <T>(result: T[], page: number, totalPages: number) =>
@@ -511,7 +511,18 @@ describe("actions dashboard utilities", () => {
 			if (method === "GET" && path === "identity_providers")
 				return url.searchParams.get("page") === "1"
 					? listEnvelope([], 1, 2)
-					: listEnvelope([{ id: "github-idp", name: "GitHub", type: "github" }], 2, 2)
+					: listEnvelope([{ id: "cloudflare-idp", name: "Cloudflare", type: "cloudflare" }], 2, 2)
+
+			if (method === "PUT" && path === "identity_providers/cloudflare-idp")
+				return Response.json({
+					success: true,
+					result: {
+						id: "cloudflare-idp",
+						name: "Cloudflare",
+						type: "cloudflare"
+					},
+					errors: []
+				})
 
 			if (method === "GET" && path === "apps")
 				return url.searchParams.get("page") === "1"
@@ -536,7 +547,7 @@ describe("actions dashboard utilities", () => {
 							[
 								{
 									id: "policy-id",
-									name: "Allow Zeko GitHub org",
+									name: "Allow Zeko Cloudflare account",
 									decision: "allow",
 									precedence: 1
 								}
@@ -562,7 +573,7 @@ describe("actions dashboard utilities", () => {
 					success: true,
 					result: {
 						id: "policy-id",
-						name: "Allow Zeko GitHub org",
+						name: "Allow Zeko Cloudflare account",
 						decision: "allow",
 						precedence: 1
 					},
@@ -592,6 +603,7 @@ describe("actions dashboard utilities", () => {
 		expect(calls).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ method: "GET", path: "identity_providers", page: "2" }),
+				expect.objectContaining({ method: "PUT", path: "identity_providers/cloudflare-idp" }),
 				expect.objectContaining({ method: "GET", path: "apps", page: "2" }),
 				expect.objectContaining({ method: "GET", path: "apps/app-id/policies", page: "2" }),
 				expect.objectContaining({ method: "PUT", path: "apps/app-id" }),

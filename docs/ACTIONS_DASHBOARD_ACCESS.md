@@ -6,6 +6,22 @@ Because `actions.dashboard.zeko.io` is a multi-level subdomain, the hostname als
 
 ## Preferred Policy
 
+Use Cloudflare as the identity provider and restrict authentication to Cloudflare account members.
+
+Create or reuse a Cloudflare identity provider with `restrict_to_account_members` enabled, then create an Access application:
+
+- Type: Self-hosted
+- Application domain: `actions.dashboard.zeko.io`
+- Login method: Cloudflare
+- Policy action: Allow
+- Include selector: Cloudflare account member
+- Account: current Zeko Cloudflare account
+- Session duration: 24h
+
+The checked-in `actions-dashboard:configure-access` task uses this provider by default.
+
+## GitHub Policy
+
 Use GitHub OAuth and restrict access to the `zeko-labs` organization.
 
 Cloudflare's GitHub Access setup requires a GitHub OAuth app with:
@@ -24,20 +40,6 @@ After adding the GitHub identity provider in Cloudflare Zero Trust, create an Ac
 - Session duration: 24h
 
 Cloudflare requests GitHub read-only organization/team and email permissions for this login method. If a newly added org member is blocked after a prior failed login, they need to revoke the OAuth app in GitHub and authenticate again so Access refreshes their organization membership.
-
-## Alternative Policy
-
-Use Cloudflare as the identity provider and restrict authentication to Cloudflare account members.
-
-Create or reuse a Cloudflare identity provider with `restrict_to_account_members` enabled, then create an Access application:
-
-- Type: Self-hosted
-- Application domain: `actions.dashboard.zeko.io`
-- Login method: Cloudflare
-- Policy action: Allow
-- Include selector: Cloudflare account member
-- Account: current Zeko Cloudflare account
-- Session duration: 24h
 
 ## Secrets
 
