@@ -40,9 +40,10 @@ const probe = (status: ServiceProbe["status"]): ServiceProbe => ({
 })
 
 describe("ops dashboard utilities", () => {
-	it("does not enable public Worker preview URLs for control routes", () => {
+	it("does not enable public Worker hostnames for control routes", () => {
 		const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8")
 
+		expect(wranglerConfig).toContain('"workers_dev": false')
 		expect(wranglerConfig).not.toContain('"preview_urls": true')
 	})
 
