@@ -18,13 +18,13 @@ Use this file for unattended bridge execution, programmatic bridge integrations,
 - Bridge SDK signing: `MINA_PRIVATE_KEY`
 - Faucet CLI auth: `GITHUB_TOKEN`
 - Faucet automation: prefer `--json`
-- Faucet funding target: `zeko-testnet`
+- Faucet funding target: `zeko-m-devnet`
 - Bridge endpoint values: use `references/40-endpoints-and-curl.md`
 
 ## Bridge CLI quick take
 
 - Use `bridge` by default. It signs, submits, waits, retries transient checks, advances queued claims in order, and keeps running until the requested bridge reaches a terminal result.
-- Current enabled routes are public testnet only: `mina:testnet -> zeko:testnet` and `zeko:testnet -> mina:testnet`.
+- Current enabled routes are public testnet only: `mina:testnet -> zeko-m-devnet` and `zeko-m-devnet -> mina:testnet`.
 - Prefer the CLI when an agent needs a single command that can stay alive through a long bridge wait.
 - Use lower-level CLI commands only for debugging or recovery.
 
@@ -33,14 +33,14 @@ Use this file for unattended bridge execution, programmatic bridge integrations,
 ```bash
 MINA_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli bridge \
   --from mina:testnet \
-  --to zeko:testnet \
+  --to zeko-m-devnet \
   --amount 1 \
   --json
 ```
 
 ```bash
 MINA_PRIVATE_KEY=... zeko-bridge bridge \
-  --from zeko:testnet \
+  --from zeko-m-devnet \
   --to mina:testnet \
   --amount 3 \
   --recipient B62q... \

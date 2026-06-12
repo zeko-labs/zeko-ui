@@ -8,6 +8,7 @@ import {
 	statusFromState
 } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import { bridgeNetworkToWalletNetwork } from "~~/machines/networks"
 import type { transactionMachine } from "~~/machines/transaction"
 import { useSelector } from "~~/machines/vue-xstate"
 
@@ -121,7 +122,9 @@ watch(machine.value.context.errors, (newErrors) => {
             @click='
               machine.context.wallet.send({
               	type: "RequestNetworkChange",
-              	network: machine.context.changeNetworkTo
+              	network: bridgeNetworkToWalletNetwork(
+              		machine.context.changeNetworkTo
+              	)
               })
             '>
             Change Network

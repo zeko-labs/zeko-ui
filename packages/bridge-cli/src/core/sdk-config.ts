@@ -24,6 +24,12 @@ const MAINNET_CONFIG = {
 	l2Network: { custom: "zeko-mainnet" }
 } as const satisfies Config
 
+const isZekoMDevnetRoute = (route: RouteDescriptor) =>
+	route.from === "zeko-m-devnet" || route.to === "zeko-m-devnet"
+
+const isZekoMMainnetRoute = (route: RouteDescriptor) =>
+	route.from === "zeko-m-mainnet" || route.to === "zeko-m-mainnet"
+
 export const createSdkConfig = (
 	route: RouteDescriptor,
 	options: { verbose?: boolean } = {}
@@ -32,14 +38,17 @@ export const createSdkConfig = (
 		throw new Error(route.reason ?? `Bridge route ${route.label} is not enabled.`)
 	}
 
-	if (route.from.includes("testnet") && route.to.includes("testnet")) {
+	if ((route.from === "mina:testnet" || route.to === "mina:testnet") && isZekoMDevnetRoute(route)) {
 		return {
 			...TESTNET_CONFIG,
 			verbose: options.verbose === true
 		}
 	}
 
-	if (route.from.includes("mainnet") && route.to.includes("mainnet")) {
+	if (
+		(route.from === "mina:mainnet" || route.to === "mina:mainnet") &&
+		isZekoMMainnetRoute(route)
+	) {
 		return {
 			...MAINNET_CONFIG,
 			verbose: options.verbose === true

@@ -1,6 +1,5 @@
 import "reflect-metadata"
 import type { ZkappCommand } from "@aurowallet/mina-provider"
-import type { Networks } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
 import type {
 	BridgeVersion,
@@ -14,6 +13,7 @@ import { PublicKey, Transaction, type Transaction as MinaTransaction, UInt32, UI
 import { filterBridgeVersionOperations } from "./bridgeVersions"
 import { createLogger } from "./debug"
 import { getBridgeConfig } from "./helpers"
+import type { BridgeNetwork } from "./networks"
 import { normalizeOperationTimestamp } from "./operationTimestamps"
 
 function validatePublicKey(address: string): PublicKey {
@@ -39,8 +39,8 @@ export type ActionState = {
 		timestampMs?: number | null
 		hash: string
 	}
-	source: Networks
-	destination: Networks
+	source: BridgeNetwork
+	destination: BridgeNetwork
 }
 
 export type PendingOperations = {
@@ -48,7 +48,7 @@ export type PendingOperations = {
 	withdrawals: ActionState[]
 	currentSlot: string
 }
-type L1L2 = { l1: Networks; l2: Networks }
+type L1L2 = { l1: BridgeNetwork; l2: BridgeNetwork }
 type FeeInput = { feeNanomina?: number }
 type SignSdkTransaction = (
 	transaction: MinaTransaction<boolean, false>
@@ -203,8 +203,8 @@ async function findPendingOperations({
 	}: {
 		transfer: DepositWithState | WithdrawalWithState
 		cancelled: boolean
-		source: Networks
-		destination: Networks
+		source: BridgeNetwork
+		destination: BridgeNetwork
 	}) => ({
 		index: transfer.index,
 		id: transfer.afterActionState.toString(),

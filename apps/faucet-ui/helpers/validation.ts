@@ -1,4 +1,4 @@
-export const FAUCET_CHAIN = "zeko-testnet"
+export const FAUCET_CHAIN = "zeko-m-devnet"
 
 export type FaucetSuccessResponse = {
 	success: true

@@ -1,13 +1,21 @@
 <script lang="ts" setup>
-import type { Networks } from "@lumina-dex/sdk"
+import type { BridgeNetwork } from "~~/machines/networks"
 
 const { network, icon = false } = defineProps<{
-	network: Networks
+	network: BridgeNetwork | "zeko:testnet" | "zeko:mainnet"
 	icon?: boolean
 }>()
 const friendlyNetwork = (n: string) => {
 	const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-	const words = n.split(":") as [string, string]
+	const normalized =
+		n === "zeko:testnet"
+			? "zeko-m-devnet"
+			: n === "zeko:mainnet"
+				? "zeko-m-mainnet"
+				: n
+	if (normalized.startsWith("zeko-m-"))
+		return `Zeko-M ${capitalize(normalized.slice(7))}`
+	const words = normalized.split(":") as [string, string]
 	return `${capitalize(words[0])} ${capitalize(words[1])}`
 }
 </script>
