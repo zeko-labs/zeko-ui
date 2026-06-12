@@ -312,3 +312,4 @@
 - T312 | done | centralize-network-nomenclature | done/T312-centralize-network-nomenclature.md
 - T313 | done | move-ui-network-boundary-to-package | done/T313-move-ui-network-boundary-to-package.md
 - T314 | done | own-wallet-sdk-and-auro-mainnet | done/T314-own-wallet-sdk-and-auro-mainnet.md
+- T315 | in-progress | internal-sdk-cleanup-and-review | in-progress/T315-internal-sdk-cleanup-and-review.md

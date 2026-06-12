@@ -5,16 +5,8 @@ fileGroups:
     - tests/**/*
     - package.json
     - tsconfig.json
-    - tsconfig.build.json
-    - tsdown.config.ts
     - moon.yml
 tasks:
-  build:
-    command: tsdown
-    inputs:
-      - "@group(src)"
-    outputs:
-      - dist/**
   lint:
     command: biome check --formatter-enabled=false src tests
     inputs:
@@ -28,8 +20,6 @@ tasks:
     inputs:
       - "@group(src)"
   test:
-    deps:
-      - build
     command: vitest run
     inputs:
       - "@group(src)"
