@@ -1,11 +1,11 @@
 ---
 id: T314
 title: "own-wallet-sdk-and-auro-mainnet"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-12T11:12:15Z
-updated_at: 2026-06-12T11:14:15Z
+updated_at: 2026-06-12T11:36:29Z
 ---
 
 ## Requirements
@@ -31,3 +31,14 @@ updated_at: 2026-06-12T11:14:15Z
 - Checked current Auro provider package metadata: `@aurowallet/mina-provider` latest npm package is `1.0.14`; the user's `2.5.1` mainnet support note appears to refer to Auro wallet app/extension behavior. The provider type still accepts a string `networkID`, so the code must pass Auro's `zeko:mainnet` string while keeping internal bridge IDs as `zeko-m:mainnet`.
 
 ## GREEN Evidence
+
+- `pnpm exec moon run networks:test -f` passed.
+- `pnpm exec moon run networks:typecheck -f` passed.
+- `pnpm exec moon run sdk:test -f` passed.
+- `pnpm exec moon run sdk:typecheck -f` passed.
+- `pnpm exec moon run bridge-ui:test -f` passed: 19 files, 100 tests.
+- `pnpm exec moon run bridge-ui:typecheck -f` passed.
+- `pnpm exec moon run bridge-cli:typecheck -f` passed after adding the explicit Moon dependency on `networks`.
+- `pnpm exec moon run bridge-validator:typecheck -f` passed after adding the explicit Moon dependency on `networks`.
+- `pnpm exec moon run :format-all-fix -f`, `networks:lint-fix`, `sdk:lint-fix`, and `bridge-ui:lint-fix` passed.
+- Pre-commit passed `:lint-fix`, `:format-all-fix`, and `bridge-ui:typecheck`; it reported only existing warnings in unrelated packages (`bridge-sdk`, leaderboard indexer/API tests).
