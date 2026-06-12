@@ -1,11 +1,11 @@
 ---
 id: T311
 title: "Update network nomenclature"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-12T08:51:04Z
-updated_at: 2026-06-12T08:52:30Z
+updated_at: 2026-06-12T09:24:46Z
 ---
 
 ## Requirements
@@ -34,3 +34,19 @@ updated_at: 2026-06-12T08:52:30Z
 - `pnpm exec moon run faucet:test -f -- --run test/worker.test.ts` failed after updating expected claim chain IDs: valid claims using `zeko-m-devnet` were rejected as `invalid_chain`.
 
 ## GREEN Evidence
+
+- `pnpm exec moon run bridge-ui:test -f -- --run test/unit/network-nomenclature.test.ts` passed.
+- `pnpm exec moon run bridge-cli:test -f -- --run tests/routes.test.ts tests/sdk-config.test.ts` passed.
+- `pnpm exec moon run faucet:test -f -- --run test/worker.test.ts` passed.
+- `pnpm exec moon run bridge-ui:typecheck -f` passed.
+- `pnpm exec moon run bridge-cli:test -f` passed.
+- `pnpm exec moon run faucet:typecheck -f` passed.
+- `pnpm exec moon run faucet-cli:check -f` passed.
+- `pnpm exec moon run faucet-cli:test -f` passed.
+- `pnpm exec moon run bridge-ui:test -f` passed.
+- `pnpm exec moon run bridge-validator:test -f` passed.
+- `pnpm exec moon run bridge-validator:typecheck -f` passed.
+- `pnpm exec moon run faucet-ui:typecheck -f` passed.
+- `pnpm exec moon run zeko-skills:test -f` passed.
+- `pnpm exec moon run docs:test -f` passed.
+- Commit hooks ran `pnpm exec moon run :lint-fix`, `pnpm exec moon run :format-all-fix`, and `pnpm exec moon run bridge-ui:typecheck`. Lint produced existing warnings in unrelated projects but completed successfully.

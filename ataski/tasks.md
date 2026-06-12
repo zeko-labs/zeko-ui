@@ -308,4 +308,4 @@
 - T308 | done | configure-bridge-cli-zeko-mainnet-network | done/T308-configure-bridge-cli-zeko-mainnet-network.md
 - T309 | done | address-bridge-cli-doctor-network-id-review | done/T309-address-bridge-cli-doctor-network-id-review.md
 - T310 | done | harden-bridge-cli-doctor-network-id-formatting | done/T310-harden-bridge-cli-doctor-network-id-formatting.md
-- T311 | in-progress | update-network-nomenclature | in-progress/T311-update-network-nomenclature.md
+- T311 | done | update-network-nomenclature | done/T311-update-network-nomenclature.md
