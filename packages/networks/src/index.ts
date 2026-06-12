@@ -21,14 +21,20 @@ export const ZEKO_E_NETWORKS = {
 	mainnet: "zeko-e:mainnet"
 } as const
 
+export const LUMINA_ZEKO_NETWORKS = {
+	testnet: "zeko:testnet",
+	mainnet: "zeko:mainnet"
+} as const
+
 export type ObjectValue<T> = T[keyof T]
 export type MinaNetwork = ObjectValue<typeof MINA_NETWORKS>
 export type EthereumNetwork = ObjectValue<typeof ETHEREUM_NETWORKS>
 export type ZekoMNetwork = ObjectValue<typeof ZEKO_M_NETWORKS>
 export type ZekoENetwork = ObjectValue<typeof ZEKO_E_NETWORKS>
+export type LuminaZekoNetwork = ObjectValue<typeof LUMINA_ZEKO_NETWORKS>
 export type ZekoNetwork = ZekoMNetwork | ZekoENetwork
 export type ChainNetwork = MinaNetwork | EthereumNetwork | ZekoNetwork
-export type WalletZekoNetwork = "zeko:testnet" | "zeko:mainnet"
+export type WalletZekoNetwork = LuminaZekoNetwork
 export type DisplayNetwork = ChainNetwork | WalletZekoNetwork
 
 export type ZekoMBridgeNetwork = typeof ZEKO_M_NETWORKS.testnet | typeof ZEKO_M_NETWORKS.mainnet
@@ -36,6 +42,10 @@ export type BridgeUiNetwork =
 	| typeof MINA_NETWORKS.devnet
 	| typeof MINA_NETWORKS.mainnet
 	| ZekoMBridgeNetwork
+export type LuminaWalletNetwork =
+	| typeof MINA_NETWORKS.devnet
+	| typeof MINA_NETWORKS.mainnet
+	| LuminaZekoNetwork
 export type BridgeCliNetwork =
 	| typeof MINA_NETWORKS.testnet
 	| typeof MINA_NETWORKS.mainnet
@@ -69,8 +79,8 @@ export const NETWORK_LABELS = {
 	[ZEKO_M_NETWORKS.mainnet]: "Zeko-M Mainnet",
 	[ZEKO_E_NETWORKS.testnet]: "Zeko-E Testnet",
 	[ZEKO_E_NETWORKS.mainnet]: "Zeko-E Mainnet",
-	"zeko:testnet": "Zeko-M Testnet",
-	"zeko:mainnet": "Zeko-M Mainnet"
+	[LUMINA_ZEKO_NETWORKS.testnet]: "Zeko-M Testnet",
+	[LUMINA_ZEKO_NETWORKS.mainnet]: "Zeko-M Mainnet"
 } as const satisfies Record<DisplayNetwork, string>
 
 export const BRIDGE_UI_NETWORKS = [
@@ -79,6 +89,29 @@ export const BRIDGE_UI_NETWORKS = [
 	MINA_NETWORKS.mainnet,
 	ZEKO_M_NETWORKS.mainnet
 ] as const satisfies readonly BridgeUiNetwork[]
+
+export const BRIDGE_UI_NETWORK_KINDS = {
+	[MINA_NETWORKS.devnet]: "mina",
+	[ZEKO_M_NETWORKS.testnet]: "zeko-m",
+	[MINA_NETWORKS.mainnet]: "mina",
+	[ZEKO_M_NETWORKS.mainnet]: "zeko-m"
+} as const satisfies Record<BridgeUiNetwork, "mina" | "zeko-m">
+
+export const BRIDGE_UI_NETWORK_ENVS = {
+	[MINA_NETWORKS.devnet]: "testnet",
+	[ZEKO_M_NETWORKS.testnet]: "testnet",
+	[MINA_NETWORKS.mainnet]: "mainnet",
+	[ZEKO_M_NETWORKS.mainnet]: "mainnet"
+} as const satisfies Record<BridgeUiNetwork, "testnet" | "mainnet">
+
+export const isMinaBridgeNetwork = (network: BridgeUiNetwork) =>
+	BRIDGE_UI_NETWORK_KINDS[network] === "mina"
+
+export const isZekoBridgeNetwork = (network: BridgeUiNetwork) =>
+	BRIDGE_UI_NETWORK_KINDS[network] === "zeko-m"
+
+export const isMainnetBridgeNetwork = (network: BridgeUiNetwork) =>
+	BRIDGE_UI_NETWORK_ENVS[network] === "mainnet"
 
 export const formatBridgeRoute = <From extends string, To extends string>(
 	from: From,
@@ -219,11 +252,21 @@ export const BRIDGE_UI_CONFIG_BY_ROUTE: Partial<
 } as const
 
 export const WALLET_ZEKO_NETWORK_TO_BRIDGE_NETWORK = {
-	"zeko:testnet": ZEKO_M_NETWORKS.testnet,
-	"zeko:mainnet": ZEKO_M_NETWORKS.mainnet
+	[LUMINA_ZEKO_NETWORKS.testnet]: ZEKO_M_NETWORKS.testnet,
+	[LUMINA_ZEKO_NETWORKS.mainnet]: ZEKO_M_NETWORKS.mainnet
 } as const satisfies Record<WalletZekoNetwork, ZekoMBridgeNetwork>
 
 export const BRIDGE_NETWORK_TO_WALLET_ZEKO_NETWORK = {
-	[ZEKO_M_NETWORKS.testnet]: "zeko:testnet",
-	[ZEKO_M_NETWORKS.mainnet]: "zeko:mainnet"
+	[ZEKO_M_NETWORKS.testnet]: LUMINA_ZEKO_NETWORKS.testnet,
+	[ZEKO_M_NETWORKS.mainnet]: LUMINA_ZEKO_NETWORKS.mainnet
 } as const satisfies Record<ZekoMBridgeNetwork, WalletZekoNetwork>
+
+export const walletNetworkToBridgeNetwork = (network: LuminaWalletNetwork): BridgeUiNetwork =>
+	network === LUMINA_ZEKO_NETWORKS.testnet || network === LUMINA_ZEKO_NETWORKS.mainnet
+		? WALLET_ZEKO_NETWORK_TO_BRIDGE_NETWORK[network]
+		: network
+
+export const bridgeNetworkToWalletNetwork = (network: BridgeUiNetwork): LuminaWalletNetwork =>
+	network === ZEKO_M_NETWORKS.testnet || network === ZEKO_M_NETWORKS.mainnet
+		? BRIDGE_NETWORK_TO_WALLET_ZEKO_NETWORK[network]
+		: network

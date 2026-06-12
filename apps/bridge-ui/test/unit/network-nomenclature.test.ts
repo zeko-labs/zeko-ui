@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { supportedNetworks } from "../../machines/bridge"
+import networkMachineSource from "../../machines/networks.ts?raw"
+import { supportedNetworks } from "../../machines/networks"
 import { createExplorerUrl, getBridgeConfig } from "../../machines/helpers"
 
 describe("network nomenclature", () => {
@@ -34,5 +35,9 @@ describe("network nomenclature", () => {
 				hash: "5Jhash"
 			})
 		).toBe("https://zekoscan.io/mainnet/tx/5Jhash")
+	})
+
+	it("keeps the UI network machine independent from Lumina SDK typing", () => {
+		expect(networkMachineSource).not.toContain("@lumina-dex/sdk")
 	})
 })
