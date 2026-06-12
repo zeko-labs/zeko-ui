@@ -2,6 +2,7 @@ layer: application
 dependsOn:
   - design
   - layer
+  - networks
 fileGroups:
   sources:
     - app/**

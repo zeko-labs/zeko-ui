@@ -316,3 +316,4 @@
 - T316 | done | source-monorepo-bridge-cli-sync | done/T316-source-monorepo-bridge-cli-sync.md
 - T317 | done | fix-codex-review-deploy-gaps | done/T317-fix-codex-review-deploy-gaps.md
 - T318 | done | update-bridge-metrics-network-prefixes | done/T318-update-bridge-metrics-network-prefixes.md
+- T319 | done | fix-faucet-review-network-gaps | done/T319-fix-faucet-review-network-gaps.md

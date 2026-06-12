@@ -1,4 +1,5 @@
 import { archiveUrls, urls } from "@lumina-dex/sdk"
+import { ZEKO_M_NETWORKS, normalizeLegacyNetworkId } from "@zeko/networks"
 import { defineCommand, runMain } from "citty"
 import { AccountUpdate, Mina, PrivateKey, UInt64 } from "o1js"
 import * as v from "valibot"
@@ -7,6 +8,13 @@ import { Faucet } from "../src/zkapp"
 type FaucetArgs = {
 	network: keyof typeof urls
 	fee: string
+}
+
+const toLuminaNetwork = (network: string): keyof typeof urls => {
+	const normalized = normalizeLegacyNetworkId(network)
+	if (normalized === ZEKO_M_NETWORKS.testnet) return "zeko:testnet"
+	if (normalized === ZEKO_M_NETWORKS.mainnet) return "zeko:mainnet"
+	return normalized as keyof typeof urls
 }
 
 const setup = ({ network, fee: _fee }: FaucetArgs) => {
@@ -88,7 +96,7 @@ const main = defineCommand({
 			},
 			run({ args }) {
 				console.log("Deploying Faucet contract on network:", args.network)
-				deploy({ network: args.network as keyof typeof urls, fee: args.fee as string })
+				deploy({ network: toLuminaNetwork(args.network as string), fee: args.fee as string })
 			}
 		},
 		"change-amount": {
@@ -106,7 +114,7 @@ const main = defineCommand({
 			run({ args }) {
 				console.log("Changing Faucet contract amount on network:", args.network)
 				changeAmount({
-					network: args.network as keyof typeof urls,
+					network: toLuminaNetwork(args.network as string),
 					fee: args.fee as string,
 					amount: args.amount as string
 				})

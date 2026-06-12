@@ -1,4 +1,6 @@
 layer: application
+dependsOn:
+  - networks
 tasks:
   container-dev:
     command: bun --hot src/index.ts
