@@ -3,6 +3,7 @@ import path from "node:path"
 import { describe, expect, it } from "vitest"
 
 const packageRoot = path.resolve(__dirname, "..")
+const repositoryRoot = path.resolve(packageRoot, "../..")
 
 const readJson = (relativePath: string) =>
 	JSON.parse(readFileSync(path.join(packageRoot, relativePath), "utf8")) as Record<string, unknown>
@@ -39,5 +40,16 @@ describe("published package boundary", () => {
 		expect(cliSource).toContain("await loadBridgeCliEnv()")
 		expect(cliSource).toContain("await runMain(createBridgeCliCommand())")
 		expect(existsSync(path.join(packageRoot, "src/core/entrypoint.ts"))).toBe(false)
+	})
+
+	it("syncs the built package boundary to the public mirror", () => {
+		const workflow = readFileSync(
+			path.join(repositoryRoot, ".github", "workflows", "sync-bridge-cli.yaml"),
+			"utf8"
+		)
+
+		expect(workflow).toContain("pre-sync-task: bridge-cli:build")
+		expect(workflow).toContain("dist")
+		expect(workflow).not.toContain("src")
 	})
 })

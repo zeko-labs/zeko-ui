@@ -15,4 +15,12 @@ jobs:
       extra-workspace-version-sources: |
         packages/bridge-sdk/package.json
         packages/graphql/package.json
+      pre-sync-task: bridge-cli:build
+      sync-paths: |
+        package.json
+        README.md
+        RELEASE.md
+        CHANGELOG.md
+        .env.example
+        dist
     secrets: inherit

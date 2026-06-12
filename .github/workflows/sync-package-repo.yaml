@@ -29,6 +29,11 @@ on:
         required: false
         default: ""
         type: string
+      # Optional Moon task to run before preparing and copying the package.
+      pre-sync-task:
+        required: false
+        default: ""
+        type: string
       # Relative file/directory paths within package-path to copy into the
       # standalone repo. Entries may be "source" or "source:target". When empty,
       # sync the whole prepared package directory.
@@ -60,6 +65,10 @@ on:
         required: false
         default: ""
         type: string
+      pre-sync-task:
+        required: false
+        default: ""
+        type: string
       sync-paths:
         required: false
         default: ""
@@ -88,6 +97,10 @@ jobs:
 
       - name: Build sync tooling package
         run: pnpm exec moon run sync-standalone-package:build
+
+      - name: Run pre-sync task
+        if: ${{ inputs['pre-sync-task'] != '' }}
+        run: pnpm exec moon run "${{ inputs['pre-sync-task'] }}"
 
       - name: Create GitHub App token
         id: app-token
