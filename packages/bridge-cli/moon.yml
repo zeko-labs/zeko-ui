@@ -41,7 +41,7 @@ tasks:
   typecheck:
     deps:
       - ^:build
-    command: tsc --noEmit
+    command: tsgo --noEmit --declaration false --declarationMap false --rootDir ../..
     inputs:
       - "@group(src)"
   test:

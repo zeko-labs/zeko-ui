@@ -35,6 +35,8 @@ type PrepareStandalonePackageOptions = {
 	rootDir?: string
 	packageDir: string
 	projectId: string
+	sourcePackagePaths?: string[]
+	rootPackageName?: string
 	projectPaths: string[]
 	workspacePackages: string[]
 	extraWorkspaceVersionSources: string[]
@@ -46,6 +48,8 @@ export type CliOptions = {
 	rootDir: string
 	packageDir: string
 	projectId: string
+	sourcePackagePaths: string[]
+	rootPackageName: string
 	projectPaths: string[]
 	workspacePackages: string[]
 	extraWorkspaceVersionSources: string[]
@@ -72,6 +76,8 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
 		rootDir: getArg("root-dir"),
 		packageDir: getArg("package-dir"),
 		projectId: getArg("project-id"),
+		sourcePackagePaths: parseList(getArg("source-package-paths")),
+		rootPackageName: getArg("root-package-name"),
 		projectPaths: parseList(getArg("project-paths")),
 		workspacePackages: parseList(getArg("workspace-packages", ".")),
 		extraWorkspaceVersionSources: parseList(getArg("extra-workspace-version-sources")),
@@ -284,7 +290,7 @@ const parseProjectPath = (entry: string) => {
 	return { id, path: projectPath }
 }
 
-const stripMonorepoDependsOn = (moonConfigPath: string) => {
+const stripMonorepoDependsOn = (moonConfigPath: string, keptProjectIds: ReadonlySet<string>) => {
 	if (!fs.existsSync(moonConfigPath)) {
 		return
 	}
@@ -293,6 +299,7 @@ const stripMonorepoDependsOn = (moonConfigPath: string) => {
 	const lines = original.split("\n")
 	const output: string[] = []
 	let skippingDependsOnBlock = false
+	let retainedDependsOnEntries: string[] = []
 	let changed = false
 
 	for (const line of lines) {
@@ -305,7 +312,15 @@ const stripMonorepoDependsOn = (moonConfigPath: string) => {
 		if (skippingDependsOnBlock) {
 			if (/^\S/.test(line)) {
 				skippingDependsOnBlock = false
+				if (retainedDependsOnEntries.length > 0) {
+					output.push("dependsOn:", ...retainedDependsOnEntries)
+					retainedDependsOnEntries = []
+				}
 			} else {
+				const dependency = line.match(/^\s*-\s+(.+?)\s*$/)?.[1]
+				if (dependency && keptProjectIds.has(dependency)) {
+					retainedDependsOnEntries.push(line)
+				}
 				continue
 			}
 		}
@@ -313,14 +328,88 @@ const stripMonorepoDependsOn = (moonConfigPath: string) => {
 		output.push(line)
 	}
 
+	if (skippingDependsOnBlock && retainedDependsOnEntries.length > 0) {
+		output.push("dependsOn:", ...retainedDependsOnEntries)
+	}
+
 	if (changed) {
 		fs.writeFileSync(moonConfigPath, output.join("\n"))
+	}
+}
+
+const assertSafeOutputDirectory = (rootDir: string, packageDir: string) => {
+	const relative = path.relative(rootDir, packageDir)
+	if (!relative.startsWith("..") && relative !== "") {
+		throw new Error(`--package-dir for source mirrors must be outside --root-dir: ${packageDir}`)
+	}
+}
+
+const prepareSourceMonorepo = ({
+	rootDir,
+	packageDir,
+	projectId,
+	rootPackageName,
+	sourcePackagePaths
+}: {
+	rootDir: string
+	packageDir: string
+	projectId: string
+	rootPackageName?: string
+	sourcePackagePaths: string[]
+}) => {
+	assertSafeOutputDirectory(rootDir, packageDir)
+	fs.rmSync(packageDir, { recursive: true, force: true })
+	fs.mkdirSync(packageDir, { recursive: true })
+
+	for (const sourcePackagePath of sourcePackagePaths) {
+		const source = path.resolve(rootDir, sourcePackagePath)
+		const target = path.resolve(packageDir, sourcePackagePath)
+		if (!fs.existsSync(source)) {
+			throw new Error(`Source package path does not exist: ${sourcePackagePath}`)
+		}
+		if (!fs.existsSync(path.join(source, "package.json"))) {
+			throw new Error(`Source package path must contain package.json: ${sourcePackagePath}`)
+		}
+
+		fs.mkdirSync(path.dirname(target), { recursive: true })
+		fs.cpSync(source, target, {
+			recursive: true,
+			filter: (entry) => !entry.split(path.sep).includes("node_modules")
+		})
+	}
+
+	const rootPackageManager = readJson(path.join(rootDir, "package.json")).value.packageManager
+	const mirrorRootPackage: PackageJson & { private: true } = {
+		name: rootPackageName || `@zeko-labs/${projectId}-source`,
+		private: true,
+		...(typeof rootPackageManager === "string" ? { packageManager: rootPackageManager } : {})
+	}
+	fs.writeFileSync(
+		path.join(packageDir, "package.json"),
+		`${JSON.stringify(mirrorRootPackage, null, "\t")}\n`
+	)
+
+	const primaryReadmePath = path.join(rootDir, sourcePackagePaths[0] ?? "", "README.md")
+	if (fs.existsSync(primaryReadmePath)) {
+		fs.copyFileSync(primaryReadmePath, path.join(packageDir, "README.md"))
 	}
 }
 
 export const prepareStandalonePackage = (options: PrepareStandalonePackageOptions) => {
 	const rootDir = options.rootDir ? path.resolve(options.rootDir) : process.cwd()
 	const packageDir = path.resolve(rootDir, options.packageDir)
+	const sourcePackagePaths = options.sourcePackagePaths ?? []
+
+	if (sourcePackagePaths.length > 0) {
+		prepareSourceMonorepo({
+			rootDir,
+			packageDir,
+			projectId: options.projectId,
+			rootPackageName: options.rootPackageName,
+			sourcePackagePaths
+		})
+	}
+
 	const preservedWorkspaceDependencies = new Set(options.preserveWorkspaceDependencies)
 
 	const { defaultCatalog, namedCatalogs } = parseCatalogs(path.join(rootDir, "pnpm-workspace.yaml"))
@@ -410,7 +499,8 @@ export const prepareStandalonePackage = (options: PrepareStandalonePackageOption
 	const projectEntries =
 		options.projectPaths.length > 0
 			? options.projectPaths.map(parseProjectPath)
-			: [{ id: options.projectId, path: "." }]
+			: [{ id: options.projectId, path: sourcePackagePaths[0] ?? "." }]
+	const keptProjectIds = new Set(projectEntries.map((entry) => entry.id))
 	const standaloneWorkspaceConfig = `# yaml-language-server: $schema=./cache/schemas/workspace.json
 
 projects:
@@ -424,7 +514,9 @@ ${projectEntries.map((entry) => `  ${entry.id}: "${entry.path}"`).join("\n")}
 	)
 	console.log(`Generated standalone Moon config in ${path.relative(rootDir, moonDir)}`)
 
-	stripMonorepoDependsOn(path.join(packageDir, "moon.yml"))
+	for (const projectEntry of projectEntries) {
+		stripMonorepoDependsOn(path.join(packageDir, projectEntry.path, "moon.yml"), keptProjectIds)
+	}
 	console.log(`Prepared ${options.packageDir} for standalone sync`)
 }
 
@@ -435,6 +527,8 @@ export const runFromCli = (argv: string[]) => {
 		rootDir: parsed.rootDir || undefined,
 		packageDir: parsed.packageDir,
 		projectId: parsed.projectId,
+		sourcePackagePaths: parsed.sourcePackagePaths,
+		rootPackageName: parsed.rootPackageName || undefined,
 		projectPaths: parsed.projectPaths,
 		workspacePackages: parsed.workspacePackages,
 		extraWorkspaceVersionSources: parsed.extraWorkspaceVersionSources,

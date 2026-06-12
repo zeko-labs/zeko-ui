@@ -36,6 +36,7 @@
 		"@types/node": "^20.8.10",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"@typescript/native-preview": "catalog:"
 	}
 }

@@ -13,7 +13,11 @@
 		"forceConsistentCasingInFileNames": true,
 		"strict": true,
 		"skipLibCheck": true,
-		"types": ["node"]
+		"types": ["node"],
+		"paths": {
+			"@zeko-labs/graphql": ["../../../packages/graphql/src/index.ts"],
+			"@zeko-labs/graphql/*": ["../../../packages/graphql/src/*.ts"]
+		}
 	},
 	"include": ["src", "scripts", "test"]
 }

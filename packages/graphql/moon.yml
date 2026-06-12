@@ -22,7 +22,7 @@ tasks:
     inputs:
       - "@group(src)"
   typecheck:
-    command: tsc --noEmit
+    command: tsgo --noEmit --declaration false --declarationMap false
     inputs:
       - "@globs(src)"
   schema-get-zeko:

@@ -17,6 +17,7 @@
 	"devDependencies": {
 		"@aurowallet/mina-provider": "catalog:",
 		"typescript": "catalog:",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"@typescript/native-preview": "catalog:"
 	}
 }

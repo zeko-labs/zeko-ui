@@ -36,6 +36,7 @@
 		"gql.tada": "catalog:graphql",
 		"tsdown": "catalog:",
 		"type-fest": "catalog:",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"@typescript/native-preview": "catalog:"
 	}
 }

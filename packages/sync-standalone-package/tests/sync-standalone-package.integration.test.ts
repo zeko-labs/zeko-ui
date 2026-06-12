@@ -167,4 +167,45 @@ projects:
 `
 		)
 	})
+
+	it("assembles a source monorepo mirror from selected package paths", () => {
+		const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "sync-source-monorepo-input-test-"))
+		const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "sync-source-monorepo-output-test-"))
+		tempDirs.push(rootDir, outputDir)
+		fs.cpSync(fixtureRoot, rootDir, { recursive: true })
+		materializeFixtureFiles(rootDir)
+
+		prepareStandalonePackage({
+			rootDir,
+			packageDir: outputDir,
+			projectId: "sync-target",
+			sourcePackagePaths: ["packages/sync-target", "packages/shared"],
+			projectPaths: ["sync-target=packages/sync-target", "shared=packages/shared"],
+			workspacePackages: ["packages/*"],
+			extraWorkspaceVersionSources: [],
+			preserveWorkspaceDependencies: ["@scope/shared"],
+			pinDevCatalogVersions: true
+		})
+
+		expect(fs.existsSync(path.join(outputDir, "packages", "sync-target", "package.json"))).toBe(
+			true
+		)
+		expect(fs.existsSync(path.join(outputDir, "packages", "shared", "package.json"))).toBe(true)
+
+		const rootPackage = JSON.parse(
+			fs.readFileSync(path.join(outputDir, "package.json"), "utf8")
+		) as Record<string, unknown>
+		expect(rootPackage).toMatchObject({
+			name: "@zeko-labs/sync-target-source",
+			private: true,
+			packageManager: "pnpm@10.16.1"
+		})
+
+		expect(fs.readFileSync(path.join(outputDir, "pnpm-workspace.yaml"), "utf8")).toBe(
+			"packages:\n  - packages/*\n"
+		)
+		expect(fs.readFileSync(path.join(outputDir, ".moon", "workspace.yml"), "utf8")).toContain(
+			'shared: "packages/shared"'
+		)
+	})
 })

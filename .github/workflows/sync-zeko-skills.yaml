@@ -17,7 +17,7 @@ jobs:
       standalone-repo: zeko-skills
       project-id: zeko-skills
       sync-paths: README.md:README.md,zeko:skills/zeko
-      workspace-packages: .
+      workspace-packages: packages/zeko-skills
     secrets: inherit
 
   validate-public-install:

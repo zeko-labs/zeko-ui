@@ -16,6 +16,7 @@ catalog:
   '@tanstack/vue-table': ^8.21.3
   '@total-typescript/ts-reset': ^0.6.1
   '@types/bun': ^1.2.22
+  '@typescript/native-preview': 7.0.0-dev.20260612.1
   '@unhead/vue': ^2.0.19
   '@unocss/reset': ^0.63.6
   '@vite-pwa/nuxt': ^1.0.4

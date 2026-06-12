@@ -1,29 +1,24 @@
 import { randomUUID } from "node:crypto"
 import path from "node:path"
-import { defineCommand, type CommandDef } from "citty"
-import { isInsufficientFirstWithdrawalAmountError } from "@zeko-labs/bridge-sdk"
 import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
+import { isInsufficientFirstWithdrawalAmountError } from "@zeko-labs/bridge-sdk"
+import { type CommandDef, defineCommand } from "citty"
 import { PrivateKey } from "o1js"
-import { assign, createActor, fromPromise, setup, toPromise } from "xstate"
+import { type AnyStateMachine, assign, createActor, fromPromise, setup, toPromise } from "xstate"
 import type { BridgeAdapter } from "../core/adapter"
-import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
-import { createOperationLogger } from "../core/logger"
-import { isRecoverableMutationError } from "../core/mutation-errors"
-import { resolveAppPaths } from "../core/paths"
+import { type BridgeAdapterFactory, createDefaultBridgeAdapter } from "../core/adapter-factory"
+import type { WithdrawalQueueState } from "../core/bridge-queue"
 import {
 	type DepositQueueState,
 	getSubmitHash,
 	resolveEffectiveDepositClaimableIndex,
 	sortByIndex
 } from "../core/bridge-queue"
-import type { WithdrawalQueueState } from "../core/bridge-queue"
 import {
-	readAliasedNumberArg,
-	readAliasedOptionalNumberArg,
-	readBooleanArg,
-	readOptionalStringArg,
-	readRequiredStringArg
-} from "../core/command-args"
+	type BridgeRuntimeDecision,
+	decideDepositStep,
+	decideWithdrawalStep
+} from "../core/bridge-runtime/decisions"
 import {
 	createInstrumentedBridgeAdapter,
 	createVerboseDiagnostics,
@@ -32,20 +27,25 @@ import {
 	withPhaseTiming
 } from "../core/bridge-runtime/instrumentation"
 import {
-	decideDepositStep,
-	decideWithdrawalStep,
-	type BridgeRuntimeDecision
-} from "../core/bridge-runtime/decisions"
+	readAliasedNumberArg,
+	readAliasedOptionalNumberArg,
+	readBooleanArg,
+	readOptionalStringArg,
+	readRequiredStringArg
+} from "../core/command-args"
+import { createOperationLogger } from "../core/logger"
+import { isRecoverableMutationError } from "../core/mutation-errors"
+import { resolveAppPaths } from "../core/paths"
 import { renderBridgeResult, renderOperationProgress, toBridgeJsonResult } from "../core/reporter"
-import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
+import { DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY_MS, retryWithBackoff } from "../core/retry"
+import { type ChainRef, formatRoute, parseChainRef, resolveRoute } from "../core/routes"
+import { createSessionStore, type SessionStore } from "../core/session-store"
 import { resolveSignerKeys } from "../core/signer"
 import {
 	getWithdrawalStatusSourceSnapshot,
 	toWithdrawalStatusSourceLogDetails
 } from "../core/status-sources"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
-import { createSessionStore, type SessionStore } from "../core/session-store"
-import { DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY_MS, retryWithBackoff } from "../core/retry"
 import type {
 	BridgeCapabilityDiagnostic,
 	BridgeSdkOperation,
@@ -1713,7 +1713,7 @@ const terminalRoutes = [
 
 const actorInput = ({ context }: { context: BridgeRunnerContext }) => context
 
-export const bridgeOperationMachine = setup({
+export const bridgeOperationMachine: AnyStateMachine = setup({
 	types: {
 		context: {} as BridgeRunnerContext,
 		input: {} as BridgeRunnerContext,

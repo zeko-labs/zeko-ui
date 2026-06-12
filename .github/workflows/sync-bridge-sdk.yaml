@@ -11,6 +11,6 @@ jobs:
       package-path: packages/bridge-sdk
       standalone-repo: bridge-sdk
       project-id: bridge-sdk
-      workspace-packages: .
+      workspace-packages: packages/bridge-sdk
       extra-workspace-version-sources: packages/graphql/package.json
     secrets: inherit

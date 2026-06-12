@@ -25,6 +25,7 @@
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
-		"wrangler": "catalog:"
+		"wrangler": "catalog:",
+		"@typescript/native-preview": "catalog:"
 	}
 }

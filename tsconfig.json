@@ -5,9 +5,8 @@
 		"module": "preserve",
 		"moduleResolution": "bundler",
 		"noUncheckedIndexedAccess": false,
-		"baseUrl": ".",
 		"paths": {
-			"@zeko-types-indexer/*": ["services/leaderboard/indexer/src/*"]
+			"@zeko-types-indexer/*": ["./services/leaderboard/indexer/src/*"]
 		}
 	}
 }

@@ -1,5 +1,5 @@
 import { archiveUrls, urls } from "@lumina-dex/sdk"
-import { ZEKO_M_NETWORKS, normalizeLegacyNetworkId } from "@zeko/networks"
+import { ZEKO_M_NETWORKS } from "@zeko/networks"
 import { defineCommand, runMain } from "citty"
 import { AccountUpdate, Mina, PrivateKey, UInt64 } from "o1js"
 import * as v from "valibot"
@@ -10,11 +10,31 @@ type FaucetArgs = {
 	fee: string
 }
 
+const SUPPORTED_FAUCET_NETWORKS = [
+	"mina:devnet",
+	"mina:mainnet",
+	ZEKO_M_NETWORKS.testnet,
+	ZEKO_M_NETWORKS.mainnet
+] as const
+
+type FaucetNetwork = (typeof SUPPORTED_FAUCET_NETWORKS)[number]
+
+const isFaucetNetwork = (network: string): network is FaucetNetwork =>
+	SUPPORTED_FAUCET_NETWORKS.includes(network as FaucetNetwork)
+
+const LUMINA_NETWORK_BY_FAUCET_NETWORK = {
+	[ZEKO_M_NETWORKS.testnet]: "zeko:testnet",
+	[ZEKO_M_NETWORKS.mainnet]: "zeko:mainnet"
+} as const satisfies Partial<Record<FaucetNetwork, keyof typeof urls>>
+
 const toLuminaNetwork = (network: string): keyof typeof urls => {
-	const normalized = normalizeLegacyNetworkId(network)
-	if (normalized === ZEKO_M_NETWORKS.testnet) return "zeko:testnet"
-	if (normalized === ZEKO_M_NETWORKS.mainnet) return "zeko:mainnet"
-	return normalized as keyof typeof urls
+	if (!isFaucetNetwork(network)) {
+		throw new Error(
+			`Unsupported network: ${network}. Expected one of ${SUPPORTED_FAUCET_NETWORKS.join(", ")}`
+		)
+	}
+
+	return LUMINA_NETWORK_BY_FAUCET_NETWORK[network] ?? network
 }
 
 const setup = ({ network, fee: _fee }: FaucetArgs) => {

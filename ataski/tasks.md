@@ -317,3 +317,6 @@
 - T317 | done | fix-codex-review-deploy-gaps | done/T317-fix-codex-review-deploy-gaps.md
 - T318 | done | update-bridge-metrics-network-prefixes | done/T318-update-bridge-metrics-network-prefixes.md
 - T319 | done | fix-faucet-review-network-gaps | done/T319-fix-faucet-review-network-gaps.md
+- T320 | done | make-sync-tooling-monorepo-first | done/T320-make-sync-tooling-monorepo-first.md
+- T321 | done | remove-faucet-legacy-network-compat | done/T321-remove-faucet-legacy-network-compat.md
+- T322 | done | use-tsgo-for-typecheck-tasks | done/T322-use-tsgo-for-typecheck-tasks.md
