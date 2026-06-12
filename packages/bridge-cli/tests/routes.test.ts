@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { KNOWN_ROUTES, resolveRoute } from "../src/core/routes"
+import { KNOWN_ROUTES, parseRouteString, resolveRoute } from "../src/core/routes"
 
 describe("routes", () => {
 	it("marks mina testnet to Zeko-M testnet as supported", () => {
@@ -14,5 +14,16 @@ describe("routes", () => {
 	it("keeps ethereum routes known but disabled", () => {
 		expect(resolveRoute("eth:testnet", "zeko-e:testnet").enabled).toBe(false)
 		expect(KNOWN_ROUTES.length).toBeGreaterThanOrEqual(4)
+	})
+
+	it("normalizes legacy persisted Zeko route IDs", () => {
+		expect(parseRouteString("mina:testnet->zeko:testnet")).toEqual([
+			"mina:testnet",
+			"zeko-m:testnet"
+		])
+		expect(parseRouteString("zeko:zeko-mainnet->mina:mainnet")).toEqual([
+			"zeko-m:mainnet",
+			"mina:mainnet"
+		])
 	})
 })

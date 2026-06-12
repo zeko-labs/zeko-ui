@@ -13,6 +13,7 @@ import {
 	isZekoBridgeCliNetwork,
 	isZekoBridgeNetwork,
 	NETWORK_LABELS,
+	normalizeLegacyNetworkId,
 	walletNetworkToBridgeNetwork,
 	ZEKO_E_NETWORKS,
 	ZEKO_M_NETWORKS,
@@ -45,6 +46,14 @@ describe("network nomenclature", () => {
 	it("keeps finite labels in a dictionary", () => {
 		expect(NETWORK_LABELS[ZEKO_M_NETWORKS.testnet]).toBe("Zeko-M Testnet")
 		expect(NETWORK_LABELS["zeko:testnet"]).toBe("Zeko-M Testnet")
+	})
+
+	it("normalizes legacy Zeko network IDs at compatibility boundaries", () => {
+		expect(normalizeLegacyNetworkId("zeko-testnet")).toBe(ZEKO_M_NETWORKS.testnet)
+		expect(normalizeLegacyNetworkId("zeko:testnet")).toBe(ZEKO_M_NETWORKS.testnet)
+		expect(normalizeLegacyNetworkId("zeko:mainnet")).toBe(ZEKO_M_NETWORKS.mainnet)
+		expect(normalizeLegacyNetworkId("zeko:zeko-mainnet")).toBe(ZEKO_M_NETWORKS.mainnet)
+		expect(normalizeLegacyNetworkId("mina:testnet")).toBe("mina:testnet")
 	})
 
 	it("owns the bridge UI network predicates", () => {

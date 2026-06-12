@@ -213,6 +213,68 @@ describe("faucet worker claim safeguards", () => {
 		expect(env.CLAIM_MUTEX.get).not.toHaveBeenCalled()
 	})
 
+	it("normalizes legacy faucet chain IDs to the new Zeko-M testnet ID", async () => {
+		const env = createEnv()
+		const ctx = createContext()
+		const githubFetch = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					id: 42,
+					login: "zeko",
+					created_at: "2024-01-01T00:00:00.000Z"
+				}),
+				{
+					status: 200,
+					headers: {
+						"Content-Type": "application/json"
+					}
+				}
+			)
+		)
+		const containerFetch = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					success: true,
+					hash: "0xlegacy"
+				}),
+				{
+					status: 200,
+					headers: {
+						"Content-Type": "application/json"
+					}
+				}
+			)
+		)
+
+		vi.stubGlobal("fetch", githubFetch)
+		getRandomMock.mockResolvedValue({
+			fetch: containerFetch
+		})
+
+		const { default: worker } = await import("../worker")
+		const response = await worker.fetch(
+			createClaimRequest({
+				headers: {
+					Authorization: "Bearer ghp_token"
+				},
+				body: {
+					address: VALID_ADDRESS,
+					chain: "zeko-testnet"
+				}
+			}),
+			env as never,
+			ctx as never
+		)
+
+		expect(response.status).toBe(202)
+		await expect(response.json()).resolves.toMatchObject({
+			success: true,
+			hash: "0xlegacy",
+			chain: "zeko-m:testnet"
+		})
+		expect(env.FAUCET_CLAIM.put.mock.calls[0]?.[0]).toBe(`claim:zeko-m:testnet:${VALID_ADDRESS}`)
+	})
+
 	it("supports turnstile claims through the dedicated RPC entrypoint", async () => {
 		const env = createEnv()
 		const ctx = createContext()

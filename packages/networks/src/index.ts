@@ -26,12 +26,21 @@ export const AURO_ZEKO_NETWORKS = {
 	mainnet: "zeko:mainnet"
 } as const
 
+export const LEGACY_NETWORK_ALIASES = {
+	"zeko-testnet": ZEKO_M_NETWORKS.testnet,
+	"zeko-mainnet": ZEKO_M_NETWORKS.mainnet,
+	"zeko:testnet": ZEKO_M_NETWORKS.testnet,
+	"zeko:mainnet": ZEKO_M_NETWORKS.mainnet,
+	"zeko:zeko-mainnet": ZEKO_M_NETWORKS.mainnet
+} as const
+
 export type ObjectValue<T> = T[keyof T]
 export type MinaNetwork = ObjectValue<typeof MINA_NETWORKS>
 export type EthereumNetwork = ObjectValue<typeof ETHEREUM_NETWORKS>
 export type ZekoMNetwork = ObjectValue<typeof ZEKO_M_NETWORKS>
 export type ZekoENetwork = ObjectValue<typeof ZEKO_E_NETWORKS>
 export type AuroZekoNetwork = ObjectValue<typeof AURO_ZEKO_NETWORKS>
+export type LegacyNetwork = keyof typeof LEGACY_NETWORK_ALIASES
 export type ZekoNetwork = ZekoMNetwork | ZekoENetwork
 export type ChainNetwork = MinaNetwork | EthereumNetwork | ZekoNetwork
 export type WalletZekoNetwork = AuroZekoNetwork
@@ -66,6 +75,9 @@ export type BridgeRouteDescriptor<Network extends string = ChainNetwork> = {
 	label: string
 	reason?: string
 }
+
+export const normalizeLegacyNetworkId = (network: string) =>
+	LEGACY_NETWORK_ALIASES[network as LegacyNetwork] ?? network
 
 export const NETWORK_LABELS = {
 	[MINA_NETWORKS.devnet]: "Mina Devnet",

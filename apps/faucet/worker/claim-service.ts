@@ -1,4 +1,5 @@
 import { getRandom } from "@cloudflare/containers"
+import { normalizeLegacyNetworkId } from "@zeko/networks"
 import {
 	DEFAULT_BAN_TTL_SECONDS,
 	DEFAULT_CHAIN,
@@ -50,7 +51,8 @@ const parseClaimBody = (body: unknown): ParsedClaimRequest | ClaimResult => {
 	if (!address || !isMinaAddress(address))
 		return toClaimError(400, "invalid_address", "Address must be a valid Mina public key.")
 
-	const chain = typeof body.chain === "string" ? body.chain.trim() : DEFAULT_CHAIN
+	const requestedChain = typeof body.chain === "string" ? body.chain.trim() : DEFAULT_CHAIN
+	const chain = normalizeLegacyNetworkId(requestedChain)
 	if (chain !== DEFAULT_CHAIN)
 		return toClaimError(400, "invalid_chain", `Only ${DEFAULT_CHAIN} is currently supported.`)
 

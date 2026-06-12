@@ -2,6 +2,7 @@ import {
 	BRIDGE_CLI_ROUTES,
 	formatBridgeRoute,
 	isZekoBridgeCliNetwork,
+	normalizeLegacyNetworkId,
 	type BridgeCliNetwork,
 	type BridgeDirection,
 	type BridgeRouteDescriptor
@@ -30,7 +31,9 @@ export const parseChainRef = (value: unknown, flag: string): ChainRef => {
 }
 
 export const parseRouteString = (value: string): [ChainRef, ChainRef] => {
-	const [from, to] = value.split("->")
+	const [rawFrom, rawTo] = value.split("->")
+	const from = typeof rawFrom === "string" ? normalizeLegacyNetworkId(rawFrom) : rawFrom
+	const to = typeof rawTo === "string" ? normalizeLegacyNetworkId(rawTo) : rawTo
 	if (typeof from !== "string" || typeof to !== "string" || !isChainRef(from) || !isChainRef(to)) {
 		throw new Error(`Invalid persisted route: ${value}`)
 	}

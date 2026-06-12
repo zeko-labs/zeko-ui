@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-06-12T12:29:27Z
-updated_at: 2026-06-12T15:16:17Z
+updated_at: 2026-06-12T17:00:11Z
 ---
 
 ## Requirements
@@ -64,3 +64,19 @@ updated_at: 2026-06-12T15:16:17Z
   - `git diff --check`
   - `pnpm --dir packages/bridge-cli pack --pack-destination "$pack_dir" --json`
 - Packed `@zeko-labs/bridge-cli@0.2.3` contains no `@zeko/networks` dependency in `package/package.json`, and `package/dist/cli.js` includes the bundled `BRIDGE_CLI_NETWORK_KINDS`, `zeko-m:testnet`, and `{ custom: "zeko-mainnet" }` markers.
+- Reran `.agents/skills/codex-review/scripts/codex-review --mode branch`; accepted two additional backwards-compatibility findings:
+  - Existing faucet clients may still send the legacy `zeko-testnet` chain ID.
+  - Existing bridge CLI operation sessions may persist legacy route strings such as `mina:testnet->zeko:testnet` or `zeko:zeko-mainnet->mina:mainnet`.
+- Fixed by adding a finite `LEGACY_NETWORK_ALIASES` dictionary in `@zeko/networks`, normalizing faucet input before validation while returning/storing `zeko-m:testnet`, and normalizing persisted CLI route strings before route validation.
+- Follow-up compatibility validation passed:
+  - `pnpm exec moon run networks:test -f`
+  - `pnpm exec moon run networks:typecheck -f`
+  - `pnpm exec moon run bridge-cli:test -f`
+  - `pnpm exec moon run bridge-cli:typecheck -f`
+  - `pnpm exec moon run bridge-cli:build -f`
+  - `pnpm exec moon run faucet:test -f`
+  - `pnpm exec moon run faucet:typecheck -f`
+  - `git diff --check origin/main`
+  - `git diff --check`
+  - `pnpm --dir packages/bridge-cli pack --pack-destination "$pack_dir" --json`
+- Repacked `@zeko-labs/bridge-cli@0.2.3` still contains no `@zeko/networks` dependency in `package/package.json`, and the bundled CLI contains the legacy alias table for `zeko-testnet` and `zeko:zeko-mainnet`.
