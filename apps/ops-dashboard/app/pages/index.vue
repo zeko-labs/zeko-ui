@@ -12,6 +12,7 @@ import {
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import {
 	buildChainInsight,
+	databaseAgeSeconds,
 	finalityState,
 	gapLabel,
 	gapState,
@@ -297,10 +298,9 @@ const rowServices = (row: ChainRow): ServiceProbe[] =>
 const detailValue = (service: ServiceProbe, key: string) =>
 	service.details[key] ?? null
 
-const indexerDbAgeSeconds = computed(() => {
-	const value = indexerService.value?.details.canonicalAgeMs
-	return typeof value === "number" ? Math.round(value / 1000) : null
-})
+const indexerDbAgeSeconds = computed(() =>
+	databaseAgeSeconds(indexerService.value)
+)
 const indexerDbLatencyLabel = computed(() =>
 	indexerService.value === undefined
 		? "-"

@@ -1,7 +1,7 @@
 import {
 	type ControlAction,
 	type OpsEnv,
-	resolveOpsNetwork,
+	resolveControlNetwork,
 	runIndexerControl
 } from "../../utils/ops"
 
@@ -18,11 +18,22 @@ export default defineEventHandler(async (event) => {
 	}
 	const body = (await readBody(event)) as { action?: unknown; network?: unknown }
 	const action = typeof body.action === "string" ? body.action : ""
-	const network = resolveOpsNetwork(body.network)
 
 	if (!allowedActions.has(action as ControlAction)) {
 		setResponseStatus(event, 400)
 		return { success: false, message: "Unsupported control action" }
+	}
+
+	let network: "mainnet" | "testnet"
+	try {
+		network = resolveControlNetwork(body.network)
+	} catch (error) {
+		setResponseStatus(event, 400)
+		return {
+			success: false,
+			action,
+			message: error instanceof Error ? error.message : String(error)
+		}
 	}
 
 	try {

@@ -64,6 +64,11 @@ export const gapLabel = (gap: number | null, aheadLabel: string, behindLabel: st
 const detailNumber = (service: InsightService | undefined, key: string): number | null =>
 	toNumber(service?.details[key])
 
+export const databaseAgeSeconds = (service: InsightService | undefined): number | null => {
+	const value = detailNumber(service, "databaseAgeMs")
+	return value === null ? null : Math.round(value / 1000)
+}
+
 const detailString = (service: InsightService | undefined, key: string): string | null => {
 	const value = service?.details[key]
 	return typeof value === "string" && value.trim() !== "" ? value : null

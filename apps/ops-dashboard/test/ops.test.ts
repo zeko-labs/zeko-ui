@@ -1,10 +1,11 @@
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { indexerControlCopy } from "../app/utils/indexer-control-copy"
 import {
 	actionGapState,
 	blockGap,
 	buildChainInsight,
+	databaseAgeSeconds,
 	finalityState,
 	gapLabel,
 	gapState,
@@ -18,6 +19,7 @@ import {
 	normalizeEndpoint,
 	probeActionsIndexer,
 	readActionsIndexerToken,
+	resolveControlNetwork,
 	resolveOpsNetwork,
 	runIndexerControl,
 	summarizeActionCoverage,
@@ -38,6 +40,12 @@ const probe = (status: ServiceProbe["status"]): ServiceProbe => ({
 })
 
 describe("ops dashboard utilities", () => {
+	it("does not enable public Worker preview URLs for control routes", () => {
+		const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8")
+
+		expect(wranglerConfig).not.toContain('"preview_urls": true')
+	})
+
 	it("uses canonical actions-indexer control names and explains rebuild versus reset", () => {
 		expect(indexerControlCopy.reset.label).toBe("Reset")
 		expect(indexerControlCopy.note).toContain("Rebuild")
@@ -83,6 +91,25 @@ describe("ops dashboard utilities", () => {
 		expect(resolveOpsNetwork("mainnet")).toBe("mainnet")
 		expect(resolveOpsNetwork("unexpected")).toBe("mainnet")
 		expect(resolveOpsNetwork(undefined)).toBe("mainnet")
+	})
+
+	it("requires an explicit supported network for control requests", () => {
+		expect(resolveControlNetwork("testnet")).toBe("testnet")
+		expect(resolveControlNetwork("mainnet")).toBe("mainnet")
+		expect(() => resolveControlNetwork(undefined)).toThrow("Unsupported control network")
+		expect(() => resolveControlNetwork("devnet")).toThrow("Unsupported control network")
+	})
+
+	it("reads database status age from database health details", () => {
+		expect(
+			databaseAgeSeconds({
+				id: "actions-indexer",
+				details: {
+					databaseAgeMs: 5_000,
+					canonicalAgeMs: 90_000
+				}
+			})
+		).toBe(5)
 	})
 
 	it("uses network-specific endpoint defaults", () => {

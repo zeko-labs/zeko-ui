@@ -93,6 +93,11 @@ const publicKeyEnvKeys = {
 export const resolveOpsNetwork = (value: unknown): OpsNetwork =>
 	value === "testnet" || value === "mainnet" ? value : "mainnet"
 
+export const resolveControlNetwork = (value: unknown): OpsNetwork => {
+	if (value === "testnet" || value === "mainnet") return value
+	throw new Error("Unsupported control network")
+}
+
 const defaultEnv = (): OpsEnv => process.env
 
 const readNetworkEndpoint = (
