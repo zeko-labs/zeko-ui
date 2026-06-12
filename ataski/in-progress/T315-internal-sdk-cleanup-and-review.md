@@ -29,3 +29,20 @@ updated_at: 2026-06-12T12:29:27Z
 - Current `packages/sdk/moon.yml` and `packages/networks/moon.yml` use `tsc --noEmit`.
 
 ## GREEN Evidence
+
+- Removed `.changeset/auro-wallet-sdk.md`; `@zeko/sdk` and `@zeko/networks` are now private workspace packages that export `./src/index.ts` directly instead of public `dist` artifacts.
+- Split `packages/sdk/src/index.ts` into focused `balance`, `events`, `logger`, `networks`, `provider`, and `wallet` modules while preserving the `@zeko/sdk` public barrel exports.
+- `pnpm exec tsgo --version` fails with `Command "tsgo" not found`, so the package tasks stay on the repository-standard `tsc --noEmit` path until the native TypeScript toolchain is added at the workspace level.
+- Validation passed:
+  - `pnpm exec moon run networks:test -f`
+  - `pnpm exec moon run networks:typecheck -f`
+  - `pnpm exec moon run sdk:test -f`
+  - `pnpm exec moon run sdk:typecheck -f`
+  - `pnpm exec moon run bridge-ui:test -f`
+  - `pnpm exec moon run bridge-ui:typecheck -f`
+  - `pnpm exec moon run bridge-cli:typecheck -f`
+  - `pnpm exec moon run bridge-validator:typecheck -f`
+
+## Blocked Evidence
+
+- `codex-review` was run for PR #208 with `.agents/skills/codex-review/scripts/codex-review --mode branch`, but it exited before producing findings because the Codex usage limit was reached. The tool reported retry availability at 8:49 PM local time.
