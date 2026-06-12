@@ -1,0 +1,1443 @@
+{
+	"palette": {
+		"basic": {
+			"white": {
+				"value": "var(--palette-basic-white)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-basic-white",
+					"cssforgePath": "palette.basic.white",
+					"resolvedValue": "oklch(100% 0 0)"
+				}
+			},
+			"black": {
+				"value": "var(--palette-basic-black)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-basic-black",
+					"cssforgePath": "palette.basic.black",
+					"resolvedValue": "oklch(0% 0 0)"
+				}
+			},
+			"space-blue": {
+				"value": "var(--palette-basic-spaceBlue)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-basic-spaceBlue",
+					"cssforgePath": "palette.basic.space-blue",
+					"resolvedValue": "oklch(97.315% 0 0 / 56.00000000000001%)"
+				}
+			}
+		},
+		"alpha": {
+			"soft-gray1": {
+				"value": "var(--palette-alpha-soft-gray1)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-alpha-soft-gray1",
+					"cssforgePath": "palette.alpha.soft-gray1",
+					"resolvedValue": "oklch(14.48% 0 0 / 12%)"
+				}
+			},
+			"soft-gray2": {
+				"value": "var(--palette-alpha-soft-gray2)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-alpha-soft-gray2",
+					"cssforgePath": "palette.alpha.soft-gray2",
+					"resolvedValue": "oklch(14.48% 0 0 / 24%)"
+				}
+			}
+		},
+		"gray": {
+			"50": {
+				"value": "var(--palette-gray-50)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-50",
+					"cssforgePath": "palette.gray.50",
+					"resolvedValue": "oklch(97.315% 0 0)"
+				}
+			},
+			"100": {
+				"value": "var(--palette-gray-100)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-100",
+					"cssforgePath": "palette.gray.100",
+					"resolvedValue": "oklch(92.797% 0 0)"
+				}
+			},
+			"200": {
+				"value": "var(--palette-gray-200)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-200",
+					"cssforgePath": "palette.gray.200",
+					"resolvedValue": "oklch(86.069% 0 0)"
+				}
+			},
+			"300": {
+				"value": "var(--palette-gray-300)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-300",
+					"cssforgePath": "palette.gray.300",
+					"resolvedValue": "oklch(75.7% 0 0)"
+				}
+			},
+			"400": {
+				"value": "var(--palette-gray-400)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-400",
+					"cssforgePath": "palette.gray.400",
+					"resolvedValue": "oklch(62.7% 0 0)"
+				}
+			},
+			"500": {
+				"value": "var(--palette-gray-500)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-500",
+					"cssforgePath": "palette.gray.500",
+					"resolvedValue": "oklch(53.476% 0 0)"
+				}
+			},
+			"600": {
+				"value": "var(--palette-gray-600)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-600",
+					"cssforgePath": "palette.gray.600",
+					"resolvedValue": "oklch(47.8% 0 0)"
+				}
+			},
+			"700": {
+				"value": "var(--palette-gray-700)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-700",
+					"cssforgePath": "palette.gray.700",
+					"resolvedValue": "oklch(42.8% 0 0)"
+				}
+			},
+			"800": {
+				"value": "var(--palette-gray-800)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-800",
+					"cssforgePath": "palette.gray.800",
+					"resolvedValue": "oklch(39.042% 0 0)"
+				}
+			},
+			"900": {
+				"value": "var(--palette-gray-900)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-900",
+					"cssforgePath": "palette.gray.900",
+					"resolvedValue": "oklch(36.002% 0 0)"
+				}
+			},
+			"950": {
+				"value": "var(--palette-gray-950)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-gray-950",
+					"cssforgePath": "palette.gray.950",
+					"resolvedValue": "oklch(14.479% 0 0)"
+				}
+			}
+		},
+		"cosmic-gold": {
+			"50": {
+				"value": "var(--palette-cosmicGold-50)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cosmicGold-50",
+					"cssforgePath": "palette.cosmic-gold.50",
+					"resolvedValue": "oklch(91.642% 0.15696 98.188)"
+				}
+			},
+			"90": {
+				"value": "var(--palette-cosmicGold-90)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cosmicGold-90",
+					"cssforgePath": "palette.cosmic-gold.90",
+					"resolvedValue": "oklch(73.683% 0.13788 73.881)"
+				}
+			},
+			"100": {
+				"value": "var(--palette-cosmicGold-100)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cosmicGold-100",
+					"cssforgePath": "palette.cosmic-gold.100",
+					"resolvedValue": "oklch(72.311% 0.13818 71.166)"
+				}
+			},
+			"200": {
+				"value": "var(--palette-cosmicGold-200)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cosmicGold-200",
+					"cssforgePath": "palette.cosmic-gold.200",
+					"resolvedValue": "oklch(59.222% 0.10877 74.108)"
+				}
+			},
+			"light": {
+				"value": "var(--palette-cosmicGold-light)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cosmicGold-light",
+					"cssforgePath": "palette.cosmic-gold.light",
+					"resolvedValue": "oklch(91.413% 0.1578 97.82074 / 100%)"
+				}
+			},
+			"lightest": {
+				"value": "var(--palette-cosmicGold-lightest)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cosmicGold-lightest",
+					"cssforgePath": "palette.cosmic-gold.lightest",
+					"resolvedValue": "oklch(99.042% 0.01667 96.37158 / 100%)"
+				}
+			},
+			"medium": {
+				"value": "var(--palette-cosmicGold-medium)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cosmicGold-medium",
+					"cssforgePath": "palette.cosmic-gold.medium",
+					"resolvedValue": "oklch(76.296% 0.15537 80.12696 / 100%)"
+				}
+			},
+			"dark": {
+				"value": "var(--palette-cosmicGold-dark)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cosmicGold-dark",
+					"cssforgePath": "palette.cosmic-gold.dark",
+					"resolvedValue": "oklch(59.299% 0.10967 73.11241 / 100%)"
+				}
+			}
+		},
+		"yellow": {
+			"50": {
+				"value": "var(--palette-yellow-50)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-yellow-50",
+					"cssforgePath": "palette.yellow.50",
+					"resolvedValue": "oklch(97.7% 0.016 99)"
+				}
+			},
+			"100": {
+				"value": "var(--palette-yellow-100)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-yellow-100",
+					"cssforgePath": "palette.yellow.100",
+					"resolvedValue": "oklch(94.3% 0.041 98.1)"
+				}
+			},
+			"200": {
+				"value": "var(--palette-yellow-200)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-yellow-200",
+					"cssforgePath": "palette.yellow.200",
+					"resolvedValue": "oklch(88.9% 0.079 96.6)"
+				}
+			},
+			"300": {
+				"value": "var(--palette-yellow-300)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-yellow-300",
+					"cssforgePath": "palette.yellow.300",
+					"resolvedValue": "oklch(81.8% 0.114 93.6)"
+				}
+			},
+			"400": {
+				"value": "var(--palette-yellow-400)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-yellow-400",
+					"cssforgePath": "palette.yellow.400",
+					"resolvedValue": "oklch(75.2% 0.13 87.9)"
+				}
+			},
+			"500": {
+				"value": "var(--palette-yellow-500)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-yellow-500",
+					"cssforgePath": "palette.yellow.500",
+					"resolvedValue": "oklch(69.2% 0.124 83.1)"
+				}
+			},
+			"600": {
+				"value": "var(--palette-yellow-600)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-yellow-600",
+					"cssforgePath": "palette.yellow.600",
+					"resolvedValue": "oklch(59.2% 0.109 74.1)"
+				}
+			},
+			"700": {
+				"value": "var(--palette-yellow-700)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-yellow-700",
+					"cssforgePath": "palette.yellow.700",
+					"resolvedValue": "oklch(49.5% 0.091 64.9)"
+				}
+			}
+		},
+		"blue": {
+			"50": {
+				"value": "var(--palette-blue-50)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-50",
+					"cssforgePath": "palette.blue.50",
+					"resolvedValue": "oklch(97.5% 0.013 244.3)"
+				}
+			},
+			"100": {
+				"value": "var(--palette-blue-100)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-100",
+					"cssforgePath": "palette.blue.100",
+					"resolvedValue": "oklch(94.2% 0.028 248.1)"
+				}
+			},
+			"200": {
+				"value": "var(--palette-blue-200)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-200",
+					"cssforgePath": "palette.blue.200",
+					"resolvedValue": "oklch(90% 0.05 246.5)"
+				}
+			},
+			"300": {
+				"value": "var(--palette-blue-300)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-300",
+					"cssforgePath": "palette.blue.300",
+					"resolvedValue": "oklch(83.8% 0.083 245.6)"
+				}
+			},
+			"400": {
+				"value": "var(--palette-blue-400)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-400",
+					"cssforgePath": "palette.blue.400",
+					"resolvedValue": "oklch(76% 0.121 248.4)"
+				}
+			},
+			"500": {
+				"value": "var(--palette-blue-500)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-500",
+					"cssforgePath": "palette.blue.500",
+					"resolvedValue": "oklch(67.7% 0.157 256)"
+				}
+			},
+			"600": {
+				"value": "var(--palette-blue-600)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-600",
+					"cssforgePath": "palette.blue.600",
+					"resolvedValue": "oklch(59.9% 0.183 261.2)"
+				}
+			},
+			"700": {
+				"value": "var(--palette-blue-700)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-700",
+					"cssforgePath": "palette.blue.700",
+					"resolvedValue": "oklch(51.7% 0.179 263.6)"
+				}
+			},
+			"800": {
+				"value": "var(--palette-blue-800)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-800",
+					"cssforgePath": "palette.blue.800",
+					"resolvedValue": "oklch(46.7% 0.156 264.5)"
+				}
+			},
+			"900": {
+				"value": "var(--palette-blue-900)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-900",
+					"cssforgePath": "palette.blue.900",
+					"resolvedValue": "oklch(41.2% 0.118 263.4)"
+				}
+			},
+			"950": {
+				"value": "var(--palette-blue-950)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-blue-950",
+					"cssforgePath": "palette.blue.950",
+					"resolvedValue": "oklch(30% 0.077 266.7)"
+				}
+			}
+		},
+		"persian-red": {
+			"50": {
+				"value": "var(--palette-persianRed-50)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-50",
+					"cssforgePath": "palette.persian-red.50",
+					"resolvedValue": "oklch(97.1% 0.01 17.3)"
+				}
+			},
+			"100": {
+				"value": "var(--palette-persianRed-100)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-100",
+					"cssforgePath": "palette.persian-red.100",
+					"resolvedValue": "oklch(94% 0.021 21.2)"
+				}
+			},
+			"200": {
+				"value": "var(--palette-persianRed-200)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-200",
+					"cssforgePath": "palette.persian-red.200",
+					"resolvedValue": "oklch(89.1% 0.042 21.6)"
+				}
+			},
+			"300": {
+				"value": "var(--palette-persianRed-300)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-300",
+					"cssforgePath": "palette.persian-red.300",
+					"resolvedValue": "oklch(81.6% 0.073 24)"
+				}
+			},
+			"400": {
+				"value": "var(--palette-persianRed-400)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-400",
+					"cssforgePath": "palette.persian-red.400",
+					"resolvedValue": "oklch(71.1% 0.122 24.3)"
+				}
+			},
+			"500": {
+				"value": "var(--palette-persianRed-500)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-500",
+					"cssforgePath": "palette.persian-red.500",
+					"resolvedValue": "oklch(62.4% 0.161 26.8)"
+				}
+			},
+			"600": {
+				"value": "var(--palette-persianRed-600)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-600",
+					"cssforgePath": "palette.persian-red.600",
+					"resolvedValue": "oklch(55.3% 0.173 28)"
+				}
+			},
+			"700": {
+				"value": "var(--palette-persianRed-700)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-700",
+					"cssforgePath": "palette.persian-red.700",
+					"resolvedValue": "oklch(48.2% 0.153 28.2)"
+				}
+			},
+			"800": {
+				"value": "var(--palette-persianRed-800)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-800",
+					"cssforgePath": "palette.persian-red.800",
+					"resolvedValue": "oklch(42.7% 0.127 28)"
+				}
+			},
+			"900": {
+				"value": "var(--palette-persianRed-900)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-900",
+					"cssforgePath": "palette.persian-red.900",
+					"resolvedValue": "oklch(42.7% 0.127 28)"
+				}
+			},
+			"950": {
+				"value": "var(--palette-persianRed-950)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-persianRed-950",
+					"cssforgePath": "palette.persian-red.950",
+					"resolvedValue": "oklch(24.9% 0.071 26.2)"
+				}
+			}
+		},
+		"pending": {
+			"background": {
+				"value": "var(--palette-pending-background)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-pending-background",
+					"cssforgePath": "palette.pending.background",
+					"resolvedValue": "oklch(94.6% 0.029 67.5)"
+				}
+			},
+			"border": {
+				"value": "var(--palette-pending-border)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-pending-border",
+					"cssforgePath": "palette.pending.border",
+					"resolvedValue": "oklch(87.2% 0.073 67.3)"
+				}
+			},
+			"content": {
+				"value": "var(--palette-pending-content)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-pending-content",
+					"cssforgePath": "palette.pending.content",
+					"resolvedValue": "oklch(64% 0.148 57.8)"
+				}
+			}
+		},
+		"complete": {
+			"background": {
+				"value": "var(--palette-complete-background)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-complete-background",
+					"cssforgePath": "palette.complete.background",
+					"resolvedValue": "oklch(95.9% 0.021 156.8)"
+				}
+			},
+			"border": {
+				"value": "var(--palette-complete-border)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-complete-border",
+					"cssforgePath": "palette.complete.border",
+					"resolvedValue": "oklch(87.5% 0.064 155.7)"
+				}
+			},
+			"content": {
+				"value": "var(--palette-complete-content)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-complete-content",
+					"cssforgePath": "palette.complete.content",
+					"resolvedValue": "oklch(64.1% 0.142 150.6)"
+				}
+			}
+		},
+		"error": {
+			"background": {
+				"value": "var(--palette-error-background)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-error-background",
+					"cssforgePath": "palette.error.background",
+					"resolvedValue": "oklch(89.1% 0.042 21.6)"
+				}
+			},
+			"border": {
+				"value": "var(--palette-error-border)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-error-border",
+					"cssforgePath": "palette.error.border",
+					"resolvedValue": "oklch(81.6% 0.073 24)"
+				}
+			},
+			"content": {
+				"value": "var(--palette-error-content)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-error-content",
+					"cssforgePath": "palette.error.content",
+					"resolvedValue": "oklch(48.2% 0.153 28.2)"
+				}
+			}
+		},
+		"cancelled": {
+			"background": {
+				"value": "var(--palette-cancelled-background)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cancelled-background",
+					"cssforgePath": "palette.cancelled.background",
+					"resolvedValue": "oklch(94.5% 0.012 280)"
+				}
+			},
+			"border": {
+				"value": "var(--palette-cancelled-border)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cancelled-border",
+					"cssforgePath": "palette.cancelled.border",
+					"resolvedValue": "oklch(86% 0.03 280)"
+				}
+			},
+			"content": {
+				"value": "var(--palette-cancelled-content)",
+				"type": "color",
+				"$tier": "primitive",
+				"attributes": {
+					"cssVariable": "--palette-cancelled-content",
+					"cssforgePath": "palette.cancelled.content",
+					"resolvedValue": "oklch(52% 0.06 280)"
+				}
+			}
+		}
+	},
+	"gradients": {
+		"gold-gradient": {
+			"1": {
+				"value": "var(--gradients-goldGradient-1)",
+				"type": "gradient",
+				"$tier": "semantic",
+				"attributes": {
+					"cssVariable": "--gradients-goldGradient-1",
+					"cssforgePath": "gradients.gold-gradient.1",
+					"resolvedValue": "linear-gradient(251deg, var(--palette-cosmicGold-50) 33.63%, var(--palette-cosmicGold-90) 55.54%, var(--palette-cosmicGold-100) 64.51%, var(--palette-cosmicGold-200) 81.94%)",
+					"references": [
+						"palette.cosmic-gold.50",
+						"palette.cosmic-gold.90",
+						"palette.cosmic-gold.100",
+						"palette.cosmic-gold.200"
+					]
+				},
+				"$reference": "palette.cosmic-gold.50"
+			},
+			"2": {
+				"value": "var(--gradients-goldGradient-2)",
+				"type": "gradient",
+				"$tier": "semantic",
+				"attributes": {
+					"cssVariable": "--gradients-goldGradient-2",
+					"cssforgePath": "gradients.gold-gradient.2",
+					"resolvedValue": "linear-gradient(261.78deg, var(--palette-cosmicGold-50) 33.1%, var(--palette-cosmicGold-90) 56.3%, var(--palette-cosmicGold-100) 65.78%, var(--palette-gray-200) 84.23%)",
+					"references": [
+						"palette.cosmic-gold.50",
+						"palette.cosmic-gold.90",
+						"palette.cosmic-gold.100",
+						"palette.gray.200"
+					]
+				},
+				"$reference": "palette.cosmic-gold.50"
+			},
+			"3": {
+				"value": "var(--gradients-goldGradient-3)",
+				"type": "gradient",
+				"$tier": "semantic",
+				"attributes": {
+					"cssVariable": "--gradients-goldGradient-3",
+					"cssforgePath": "gradients.gold-gradient.3",
+					"resolvedValue": "linear-gradient(270.62deg, var(--palette-cosmicGold-50) 2.88%, var(--palette-cosmicGold-90) 79.48%, var(--palette-cosmicGold-100) 98.1%)",
+					"references": [
+						"palette.cosmic-gold.50",
+						"palette.cosmic-gold.90",
+						"palette.cosmic-gold.100"
+					]
+				},
+				"$reference": "palette.cosmic-gold.50"
+			},
+			"3-inversed": {
+				"value": "var(--gradients-goldGradient-3-inversed)",
+				"type": "gradient",
+				"$tier": "semantic",
+				"attributes": {
+					"cssVariable": "--gradients-goldGradient-3-inversed",
+					"cssforgePath": "gradients.gold-gradient.3-inversed",
+					"resolvedValue": "linear-gradient(270.62deg, var(--palette-cosmicGold-100) 2.88%, var(--palette-cosmicGold-90) 79.48%, var(--palette-cosmicGold-50) 98.1%)",
+					"references": [
+						"palette.cosmic-gold.100",
+						"palette.cosmic-gold.90",
+						"palette.cosmic-gold.50"
+					]
+				},
+				"$reference": "palette.cosmic-gold.100"
+			},
+			"brand-logo": {
+				"value": "var(--gradients-goldGradient-brand-logo)",
+				"type": "gradient",
+				"$tier": "semantic",
+				"attributes": {
+					"cssVariable": "--gradients-goldGradient-brand-logo",
+					"cssforgePath": "gradients.gold-gradient.brand-logo",
+					"resolvedValue": "linear-gradient(251deg, var(--palette-cosmicGold-light) 33.63%, var(--palette-cosmicGold-90) 55.54%, var(--palette-cosmicGold-100) 64.51%, var(--palette-cosmicGold-dark) 81.94%)",
+					"references": [
+						"palette.cosmic-gold.light",
+						"palette.cosmic-gold.90",
+						"palette.cosmic-gold.100",
+						"palette.cosmic-gold.dark"
+					]
+				},
+				"$reference": "palette.cosmic-gold.light"
+			},
+			"button-main": {
+				"value": "var(--gradients-goldGradient-button-main)",
+				"type": "gradient",
+				"$tier": "semantic",
+				"attributes": {
+					"cssVariable": "--gradients-goldGradient-button-main",
+					"cssforgePath": "gradients.gold-gradient.button-main",
+					"resolvedValue": "linear-gradient(0deg, var(--palette-cosmicGold-dark) -37.5%, var(--palette-cosmicGold-medium) 50.22%, var(--palette-cosmicGold-light) 121.15%)",
+					"references": [
+						"palette.cosmic-gold.dark",
+						"palette.cosmic-gold.medium",
+						"palette.cosmic-gold.light"
+					]
+				},
+				"$reference": "palette.cosmic-gold.dark"
+			},
+			"button-main-2": {
+				"value": "var(--gradients-goldGradient-button-main-2)",
+				"type": "gradient",
+				"$tier": "semantic",
+				"attributes": {
+					"cssVariable": "--gradients-goldGradient-button-main-2",
+					"cssforgePath": "gradients.gold-gradient.button-main-2",
+					"resolvedValue": "linear-gradient(260deg, var(--palette-cosmicGold-medium) 2.78%, var(--palette-cosmicGold-light) 98.16%)",
+					"references": ["palette.cosmic-gold.medium", "palette.cosmic-gold.light"]
+				},
+				"$reference": "palette.cosmic-gold.medium"
+			},
+			"button-cta-1": {
+				"value": "var(--gradients-goldGradient-button-cta-1)",
+				"type": "gradient",
+				"$tier": "semantic",
+				"attributes": {
+					"cssVariable": "--gradients-goldGradient-button-cta-1",
+					"cssforgePath": "gradients.gold-gradient.button-cta-1",
+					"resolvedValue": "radial-gradient(100% 68.86% at 100% 100%, var(--palette-cosmicGold-50) 0%, var(--palette-cosmicGold-100) 50.19%, var(--palette-cosmicGold-200) 100%)",
+					"references": [
+						"palette.cosmic-gold.50",
+						"palette.cosmic-gold.100",
+						"palette.cosmic-gold.200"
+					]
+				},
+				"$reference": "palette.cosmic-gold.50"
+			},
+			"button-cta-2": {
+				"value": "var(--gradients-goldGradient-button-cta-2)",
+				"type": "gradient",
+				"$tier": "semantic",
+				"attributes": {
+					"cssVariable": "--gradients-goldGradient-button-cta-2",
+					"cssforgePath": "gradients.gold-gradient.button-cta-2",
+					"resolvedValue": "radial-gradient(137.88% 94.94% at 100% 100%, var(--palette-cosmicGold-50) 0%, var(--palette-cosmicGold-100) 50%, var(--palette-cosmicGold-200) 100%), linear-gradient(0deg, var(--palette-alpha-soft-gray1), var(--palette-alpha-soft-gray1))",
+					"references": [
+						"palette.cosmic-gold.50",
+						"palette.cosmic-gold.100",
+						"palette.cosmic-gold.200",
+						"palette.alpha.soft-gray1"
+					]
+				},
+				"$reference": "palette.cosmic-gold.50"
+			},
+			"button-cta-3": {
+				"value": "var(--gradients-goldGradient-button-cta-3)",
+				"type": "gradient",
+				"$tier": "semantic",
+				"attributes": {
+					"cssVariable": "--gradients-goldGradient-button-cta-3",
+					"cssforgePath": "gradients.gold-gradient.button-cta-3",
+					"resolvedValue": "linear-gradient(0deg, var(--palette-alpha-soft-gray2), var(--palette-alpha-soft-gray2)), radial-gradient(172.98% 251.21% at 100% 100%, var(--palette-cosmicGold-50) 0%, var(--palette-cosmicGold-100) 50%, var(--palette-cosmicGold-200) 100%)",
+					"references": [
+						"palette.alpha.soft-gray2",
+						"palette.cosmic-gold.50",
+						"palette.cosmic-gold.100",
+						"palette.cosmic-gold.200"
+					]
+				},
+				"$reference": "palette.alpha.soft-gray2"
+			}
+		}
+	},
+	"theme": {
+		"light": {
+			"border": {
+				"primary": {
+					"value": "var(--theme-light-border-primary)",
+					"type": "color",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--theme-light-border-primary",
+						"cssforgePath": "theme.light.border.primary",
+						"resolvedValue": "var(--palette-gray-200)",
+						"references": ["palette.gray.200"]
+					},
+					"$reference": "palette.gray.200"
+				},
+				"primary-dark": {
+					"value": "var(--theme-light-border-primaryDark)",
+					"type": "color",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--theme-light-border-primaryDark",
+						"cssforgePath": "theme.light.border.primary-dark",
+						"resolvedValue": "var(--palette-gray-700)",
+						"references": ["palette.gray.700"]
+					},
+					"$reference": "palette.gray.700"
+				},
+				"secondary": {
+					"value": "var(--theme-light-border-secondary)",
+					"type": "color",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--theme-light-border-secondary",
+						"cssforgePath": "theme.light.border.secondary",
+						"resolvedValue": "var(--palette-gray-300)",
+						"references": ["palette.gray.300"]
+					},
+					"$reference": "palette.gray.300"
+				}
+			},
+			"background": {
+				"secondary": {
+					"value": "var(--theme-light-background-secondary)",
+					"type": "color",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--theme-light-background-secondary",
+						"cssforgePath": "theme.light.background.secondary",
+						"resolvedValue": "var(--palette-gray-100)",
+						"references": ["palette.gray.100"]
+					},
+					"$reference": "palette.gray.100"
+				}
+			},
+			"content": {
+				"primary": {
+					"value": "var(--theme-light-content-primary)",
+					"type": "color",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--theme-light-content-primary",
+						"cssforgePath": "theme.light.content.primary",
+						"resolvedValue": "var(--palette-gray-950)",
+						"references": ["palette.gray.950"]
+					},
+					"$reference": "palette.gray.950"
+				},
+				"secondary": {
+					"value": "var(--theme-light-content-secondary)",
+					"type": "color",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--theme-light-content-secondary",
+						"cssforgePath": "theme.light.content.secondary",
+						"resolvedValue": "var(--palette-gray-900)",
+						"references": ["palette.gray.900"]
+					},
+					"$reference": "palette.gray.900"
+				},
+				"tertiary": {
+					"value": "var(--theme-light-content-tertiary)",
+					"type": "color",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--theme-light-content-tertiary",
+						"cssforgePath": "theme.light.content.tertiary",
+						"resolvedValue": "var(--palette-gray-700)",
+						"references": ["palette.gray.700"]
+					},
+					"$reference": "palette.gray.700"
+				},
+				"quaternary": {
+					"value": "var(--theme-light-content-quaternary)",
+					"type": "color",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--theme-light-content-quaternary",
+						"cssforgePath": "theme.light.content.quaternary",
+						"resolvedValue": "var(--palette-gray-500)",
+						"references": ["palette.gray.500"]
+					},
+					"$reference": "palette.gray.500"
+				},
+				"light": {
+					"value": "var(--theme-light-content-light)",
+					"type": "color",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--theme-light-content-light",
+						"cssforgePath": "theme.light.content.light",
+						"resolvedValue": "var(--palette-gray-50)",
+						"references": ["palette.gray.50"]
+					},
+					"$reference": "palette.gray.50"
+				}
+			}
+		}
+	},
+	"spacing": {
+		"custom": {
+			"size": {
+				"1": {
+					"value": "var(--spacing-size-1)",
+					"type": "spacing",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--spacing-size-1",
+						"cssforgePath": "spacing.custom.size.1",
+						"resolvedValue": "0.25rem"
+					}
+				},
+				"2": {
+					"value": "var(--spacing-size-2)",
+					"type": "spacing",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--spacing-size-2",
+						"cssforgePath": "spacing.custom.size.2",
+						"resolvedValue": "0.5rem"
+					}
+				},
+				"3": {
+					"value": "var(--spacing-size-3)",
+					"type": "spacing",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--spacing-size-3",
+						"cssforgePath": "spacing.custom.size.3",
+						"resolvedValue": "0.75rem"
+					}
+				},
+				"4": {
+					"value": "var(--spacing-size-4)",
+					"type": "spacing",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--spacing-size-4",
+						"cssforgePath": "spacing.custom.size.4",
+						"resolvedValue": "0.8755rem"
+					}
+				},
+				"5": {
+					"value": "var(--spacing-size-5)",
+					"type": "spacing",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--spacing-size-5",
+						"cssforgePath": "spacing.custom.size.5",
+						"resolvedValue": "1rem"
+					}
+				},
+				"6": {
+					"value": "var(--spacing-size-6)",
+					"type": "spacing",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--spacing-size-6",
+						"cssforgePath": "spacing.custom.size.6",
+						"resolvedValue": "1.25rem"
+					}
+				}
+			}
+		}
+	},
+	"typography": {
+		"fluid": {
+			"lexend": {
+				"h1": {
+					"value": "var(--typography_fluid-lexend-h1)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography_fluid-lexend-h1",
+						"cssforgePath": "typography.fluid.lexend.h1",
+						"resolvedValue": "clamp(4.1723rem, 4.0013rem + 0.8553vw, 4.7684rem)"
+					}
+				},
+				"h2": {
+					"value": "var(--typography_fluid-lexend-h2)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography_fluid-lexend-h2",
+						"cssforgePath": "typography.fluid.lexend.h2",
+						"resolvedValue": "clamp(3.3379rem, 3.201rem + 0.6843vw, 3.8147rem)"
+					}
+				},
+				"h3": {
+					"value": "var(--typography_fluid-lexend-h3)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography_fluid-lexend-h3",
+						"cssforgePath": "typography.fluid.lexend.h3",
+						"resolvedValue": "clamp(2.6703rem, 2.5608rem + 0.5474vw, 3.0518rem)"
+					}
+				},
+				"h4": {
+					"value": "var(--typography_fluid-lexend-h4)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography_fluid-lexend-h4",
+						"cssforgePath": "typography.fluid.lexend.h4",
+						"resolvedValue": "clamp(2.1362rem, 2.0486rem + 0.4379vw, 2.4414rem)"
+					}
+				},
+				"xxl": {
+					"value": "var(--typography_fluid-lexend-xxl)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography_fluid-lexend-xxl",
+						"cssforgePath": "typography.fluid.lexend.xxl",
+						"resolvedValue": "clamp(1.709rem, 1.6389rem + 0.3503vw, 1.9531rem)"
+					}
+				},
+				"xl": {
+					"value": "var(--typography_fluid-lexend-xl)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography_fluid-lexend-xl",
+						"cssforgePath": "typography.fluid.lexend.xl",
+						"resolvedValue": "clamp(1.3672rem, 1.3111rem + 0.2803vw, 1.5625rem)"
+					}
+				},
+				"l": {
+					"value": "var(--typography_fluid-lexend-l)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography_fluid-lexend-l",
+						"cssforgePath": "typography.fluid.lexend.l",
+						"resolvedValue": "clamp(1.0938rem, 1.0489rem + 0.2242vw, 1.25rem)"
+					}
+				},
+				"m": {
+					"value": "var(--typography_fluid-lexend-m)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography_fluid-lexend-m",
+						"cssforgePath": "typography.fluid.lexend.m",
+						"resolvedValue": "clamp(0.875rem, 0.8391rem + 0.1794vw, 1rem)"
+					}
+				},
+				"s": {
+					"value": "var(--typography_fluid-lexend-s)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography_fluid-lexend-s",
+						"cssforgePath": "typography.fluid.lexend.s",
+						"resolvedValue": "clamp(0.7rem, 0.6713rem + 0.1435vw, 0.8rem)"
+					}
+				},
+				"xs": {
+					"value": "var(--typography_fluid-lexend-xs)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography_fluid-lexend-xs",
+						"cssforgePath": "typography.fluid.lexend.xs",
+						"resolvedValue": "clamp(0.56rem, 0.537rem + 0.1148vw, 0.64rem)"
+					}
+				}
+			}
+		},
+		"weight": {
+			"lexend": {
+				"regular": {
+					"value": "var(--typography-weight-lexend-regular)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography-weight-lexend-regular",
+						"cssforgePath": "typography.weight.lexend.regular",
+						"resolvedValue": "400"
+					}
+				},
+				"medium": {
+					"value": "var(--typography-weight-lexend-medium)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography-weight-lexend-medium",
+						"cssforgePath": "typography.weight.lexend.medium",
+						"resolvedValue": "500"
+					}
+				},
+				"semibold": {
+					"value": "var(--typography-weight-lexend-semibold)",
+					"type": "typography",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--typography-weight-lexend-semibold",
+						"cssforgePath": "typography.weight.lexend.semibold",
+						"resolvedValue": "600"
+					}
+				}
+			}
+		}
+	},
+	"primitives": {
+		"border": {
+			"mainnet-era": {
+				"background": {
+					"value": "var(--border-mainnetEra-background)",
+					"type": "gradient",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--border-mainnetEra-background",
+						"cssforgePath": "primitives.border.mainnet-era.background",
+						"resolvedValue": "linear-gradient(white, white) padding-box, linear-gradient(90deg, var(--palette-basic-white) -26.02%, var(--palette-cosmicGold-medium) 19.61%, var(--palette-cosmicGold-50) 48.48%, var(--palette-cosmicGold-50) 81.9%, var(--palette-basic-white) 127.78%) border-box",
+						"references": [
+							"palette.basic.white",
+							"palette.cosmic-gold.medium",
+							"palette.cosmic-gold.50"
+						]
+					},
+					"$reference": "palette.basic.white"
+				},
+				"border": {
+					"value": "var(--border-mainnetEra-border)",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--border-mainnetEra-border",
+						"cssforgePath": "primitives.border.mainnet-era.border",
+						"resolvedValue": "1px solid transparent"
+					}
+				}
+			}
+		},
+		"zeko-token": {
+			"background": {
+				"color": {
+					"value": "var(--zeko-token-background-color)",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--zeko-token-background-color",
+						"cssforgePath": "primitives.zeko-token.background.color",
+						"resolvedValue": "var(--palette-cosmicGold-90)",
+						"references": ["palette.cosmic-gold.90"]
+					},
+					"$reference": "palette.cosmic-gold.90"
+				}
+			},
+			"foreground": {
+				"color": {
+					"value": "var(--zeko-token-foreground-color)",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--zeko-token-foreground-color",
+						"cssforgePath": "primitives.zeko-token.foreground.color",
+						"resolvedValue": "var(--palette-basic-white)",
+						"references": ["palette.basic.white"]
+					},
+					"$reference": "palette.basic.white"
+				}
+			}
+		},
+		"button": {
+			"default": {
+				"width": {
+					"value": "var(--button-default-width)",
+					"type": "dimension",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--button-default-width",
+						"cssforgePath": "primitives.button.default.width",
+						"resolvedValue": "8.4375rem"
+					}
+				},
+				"height": {
+					"value": "var(--button-default-height)",
+					"type": "dimension",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--button-default-height",
+						"cssforgePath": "primitives.button.default.height",
+						"resolvedValue": "2.5rem"
+					}
+				},
+				"font-size": {
+					"value": "var(--button-default-fontSize)",
+					"type": "dimension",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-default-fontSize",
+						"cssforgePath": "primitives.button.default.font-size",
+						"resolvedValue": "var(--typography_fluid-lexend-m)",
+						"references": ["typography.fluid.lexend.m"]
+					},
+					"$reference": "typography.fluid.lexend.m"
+				},
+				"font-weight": {
+					"value": "var(--button-default-fontWeight)",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-default-fontWeight",
+						"cssforgePath": "primitives.button.default.font-weight",
+						"resolvedValue": "var(--typography-weight-lexend-regular)",
+						"references": ["typography.weight.lexend.regular"]
+					},
+					"$reference": "typography.weight.lexend.regular"
+				},
+				"radius": {
+					"value": "var(--button-default-radius)",
+					"type": "dimension",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-default-radius",
+						"cssforgePath": "primitives.button.default.radius",
+						"resolvedValue": "var(--spacing-size-2)",
+						"references": ["spacing.custom.size.2"]
+					},
+					"$reference": "spacing.custom.size.2"
+				},
+				"padding": {
+					"value": "var(--button-default-padding)",
+					"type": "dimension",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-default-padding",
+						"cssforgePath": "primitives.button.default.padding",
+						"resolvedValue": "var(--spacing-size-4) var(--spacing-size-3)",
+						"references": ["spacing.custom.size.4", "spacing.custom.size.3"]
+					},
+					"$reference": "spacing.custom.size.4"
+				}
+			},
+			"cta": {
+				"width": {
+					"value": "var(--button-cta-width)",
+					"type": "dimension",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--button-cta-width",
+						"cssforgePath": "primitives.button.cta.width",
+						"resolvedValue": "10.3125rem"
+					}
+				},
+				"height": {
+					"value": "var(--button-cta-height)",
+					"type": "dimension",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--button-cta-height",
+						"cssforgePath": "primitives.button.cta.height",
+						"resolvedValue": "3.25rem"
+					}
+				},
+				"font-size": {
+					"value": "var(--button-cta-fontSize)",
+					"type": "dimension",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-cta-fontSize",
+						"cssforgePath": "primitives.button.cta.font-size",
+						"resolvedValue": "var(--typography_fluid-lexend-m)",
+						"references": ["typography.fluid.lexend.m"]
+					},
+					"$reference": "typography.fluid.lexend.m"
+				},
+				"font-weight": {
+					"value": "var(--button-cta-fontWeight)",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-cta-fontWeight",
+						"cssforgePath": "primitives.button.cta.font-weight",
+						"resolvedValue": "var(--typography-weight-lexend-medium)",
+						"references": ["typography.weight.lexend.medium"]
+					},
+					"$reference": "typography.weight.lexend.medium"
+				},
+				"radius": {
+					"value": "var(--button-cta-radius)",
+					"type": "dimension",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-cta-radius",
+						"cssforgePath": "primitives.button.cta.radius",
+						"resolvedValue": "var(--spacing-size-2)",
+						"references": ["spacing.custom.size.2"]
+					},
+					"$reference": "spacing.custom.size.2"
+				},
+				"padding": {
+					"value": "var(--button-cta-padding)",
+					"type": "dimension",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-cta-padding",
+						"cssforgePath": "primitives.button.cta.padding",
+						"resolvedValue": "var(--spacing-size-3) var(--spacing-size-5)",
+						"references": ["spacing.custom.size.3", "spacing.custom.size.5"]
+					},
+					"$reference": "spacing.custom.size.3"
+				}
+			},
+			"large": {
+				"width": {
+					"value": "var(--button-large-width)",
+					"type": "dimension",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--button-large-width",
+						"cssforgePath": "primitives.button.large.width",
+						"resolvedValue": "12.5rem"
+					}
+				},
+				"height": {
+					"value": "var(--button-large-height)",
+					"type": "dimension",
+					"$tier": "primitive",
+					"attributes": {
+						"cssVariable": "--button-large-height",
+						"cssforgePath": "primitives.button.large.height",
+						"resolvedValue": "3.75rem"
+					}
+				},
+				"font-size": {
+					"value": "var(--button-large-fontSize)",
+					"type": "dimension",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-large-fontSize",
+						"cssforgePath": "primitives.button.large.font-size",
+						"resolvedValue": "var(--typography_fluid-lexend-xl)",
+						"references": ["typography.fluid.lexend.xl"]
+					},
+					"$reference": "typography.fluid.lexend.xl"
+				},
+				"font-weight": {
+					"value": "var(--button-large-fontWeight)",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-large-fontWeight",
+						"cssforgePath": "primitives.button.large.font-weight",
+						"resolvedValue": "var(--typography-weight-lexend-medium)",
+						"references": ["typography.weight.lexend.medium"]
+					},
+					"$reference": "typography.weight.lexend.medium"
+				},
+				"radius": {
+					"value": "var(--button-large-radius)",
+					"type": "dimension",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-large-radius",
+						"cssforgePath": "primitives.button.large.radius",
+						"resolvedValue": "var(--spacing-size-2)",
+						"references": ["spacing.custom.size.2"]
+					},
+					"$reference": "spacing.custom.size.2"
+				},
+				"padding": {
+					"value": "var(--button-large-padding)",
+					"type": "dimension",
+					"$tier": "semantic",
+					"attributes": {
+						"cssVariable": "--button-large-padding",
+						"cssforgePath": "primitives.button.large.padding",
+						"resolvedValue": "var(--spacing-size-5) var(--spacing-size-6)",
+						"references": ["spacing.custom.size.5", "spacing.custom.size.6"]
+					},
+					"$reference": "spacing.custom.size.5"
+				}
+			}
+		}
+	}
+}

@@ -10,6 +10,7 @@ export default defineConfig({
 		musea({
 			include: ["src/**/*.art.vue", "../layer/app/components/**/*.vue"],
 			basePath: "/__musea__",
+			tokensPath: ".musea/cssforge-tokens.json",
 			previewCss: [
 				"../layer/app/assets/styles/cssforge.css",
 				"../layer/app/assets/styles/layer.css",

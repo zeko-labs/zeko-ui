@@ -19,13 +19,17 @@ tasks:
     inputs:
       - "@group(sources)"
   cssforge:
-    command: node node_modules/@hebilicious/cssforge/src/cli --css app/assets/styles/cssforge.css
+    script: |
+      node node_modules/@hebilicious/cssforge/src/cli --css app/assets/styles/cssforge.css
+      pnpm exec biome format --files-ignore-unknown=true --write .cssforge/output.json .cssforge/output.ts app/assets/styles/cssforge.css
     deps:
       - design:build
+    options:
+      runInCI: true
     inputs:
       - "@group(sources)"
-      - /apps/design/src/**/*
-      - /apps/design/package.json
+      - /packages/design/src/**/*
+      - /packages/design/package.json
     outputs:
       - .cssforge/
       - app/assets/styles/cssforge.css

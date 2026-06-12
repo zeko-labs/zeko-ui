@@ -5,6 +5,8 @@ dependsOn:
 fileGroups:
   sources:
     - src/**/*
+    - scripts/**/*
+    - .musea/cssforge-tokens.json
     - index.html
     - package.json
     - tsconfig.json
@@ -24,14 +26,31 @@ tasks:
     command: biome lint --fix --unsafe --diagnostic-level=error
     inputs:
       - "@globs(sources)"
+  tokens:
+    script: |
+      node --experimental-strip-types scripts/generate-cssforge-tokens.ts
+      pnpm exec biome format --files-ignore-unknown=true --write .musea/cssforge-tokens.json
+    deps:
+      - layer:cssforge
+    options:
+      runInCI: true
+    inputs:
+      - scripts/generate-cssforge-tokens.ts
+      - /packages/design/src/**/*
+      - /packages/layer/.cssforge/output.ts
+    outputs:
+      - .musea/cssforge-tokens.json
   dev:
     command: vite --host 127.0.0.1 --port 6077
     preset: server
+    deps:
+      - tokens
     inputs:
       - "@group(sources)"
   build:
     command: vite build
     deps:
+      - tokens
       - ^:build
     inputs:
       - "@group(sources)"
@@ -40,6 +59,8 @@ tasks:
       - dist/
   typecheck:
     command: vue-tsc --noEmit
+    deps:
+      - tokens
     inputs:
       - "@group(sources)"
       - /packages/layer/app/**/*
