@@ -102,6 +102,25 @@ describe("operation services", () => {
 		expect(queue[0]?.session?.id).toBe("existing-withdrawal")
 	})
 
+	it("matches persisted sessions with legacy route IDs during resume queue creation", () => {
+		const persisted: OperationSession = {
+			...session,
+			id: "legacy-deposit",
+			route: "mina:testnet->zeko:testnet"
+		} as unknown as OperationSession
+
+		const queue = createResumeQueue({
+			from: "mina:testnet",
+			to: "zeko-m:testnet",
+			account: "B62account",
+			persistedSessions: [persisted],
+			depositStatuses: [deposit({ index: 0, hash: "deposit-hash" })],
+			withdrawalStatuses: []
+		})
+
+		expect(queue[0]?.session?.id).toBe("legacy-deposit")
+	})
+
 	it("does not match persisted sessions from another account", () => {
 		const persisted: OperationSession = {
 			...session,

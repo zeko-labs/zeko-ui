@@ -139,6 +139,15 @@ export const resolveResumeQueueRoutes = (from: ChainRef, to: ChainRef) => {
 			}
 }
 
+const normalizeRouteString = (route: string): string | null => {
+	try {
+		const [from, to] = parseRouteString(route)
+		return formatRoute(from, to)
+	} catch {
+		return null
+	}
+}
+
 export const matchesPendingItem = ({
 	session,
 	direction,
@@ -155,7 +164,7 @@ export const matchesPendingItem = ({
 	hash: string
 }): boolean =>
 	session.direction === direction &&
-	session.route === formatRoute(from, to) &&
+	normalizeRouteString(session.route) === formatRoute(from, to) &&
 	session.account === account &&
 	getSubmitHash(session) === hash
 

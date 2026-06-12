@@ -5,7 +5,7 @@ status: in-progress
 blockedBy: []
 owner: codex
 created_at: 2026-06-12T12:29:27Z
-updated_at: 2026-06-12T17:00:11Z
+updated_at: 2026-06-12T17:17:15Z
 ---
 
 ## Requirements
@@ -80,3 +80,17 @@ updated_at: 2026-06-12T17:00:11Z
   - `git diff --check`
   - `pnpm --dir packages/bridge-cli pack --pack-destination "$pack_dir" --json`
 - Repacked `@zeko-labs/bridge-cli@0.2.3` still contains no `@zeko/networks` dependency in `package/package.json`, and the bundled CLI contains the legacy alias table for `zeko-testnet` and `zeko:zeko-mainnet`.
+- Reran `.agents/skills/codex-review/scripts/codex-review --mode branch`; accepted two additional persisted-state compatibility findings:
+  - Existing faucet KV address claim keys are stored under legacy chain IDs such as `claim:zeko-testnet:<address>`, so checking only the canonical `claim:zeko-m:testnet:<address>` key would allow duplicate claims.
+  - CLI `operation resume-all` matched persisted sessions with raw `session.route === formatRoute(from, to)`, so legacy routes such as `mina:testnet->zeko:testnet` would not attach to existing operations.
+- Fixed by deriving legacy faucet address-claim keys from `LEGACY_NETWORK_ALIASES` and by canonicalizing persisted session routes before pending-operation matching.
+- Follow-up persisted-state compatibility validation passed:
+  - `pnpm exec moon run bridge-cli:test -f`
+  - `pnpm exec moon run faucet:test -f`
+  - `pnpm exec moon run bridge-cli:typecheck -f`
+  - `pnpm exec moon run faucet:typecheck -f`
+  - `pnpm exec moon run bridge-cli:build -f`
+  - `git diff --check`
+  - `git diff --check origin/main`
+  - `pnpm --dir packages/bridge-cli pack --pack-destination "$pack_dir"`
+- Repacked `@zeko-labs/bridge-cli@0.2.3` still contains no `@zeko/networks` dependency in `package/package.json`, and the bundled CLI still contains the `BRIDGE_CLI_NETWORK_KINDS`, `LEGACY_NETWORK_ALIASES`, `zeko-m:mainnet`, and `zeko-mainnet` markers.
