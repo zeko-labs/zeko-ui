@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { KNOWN_ROUTES, parseRouteString, resolveRoute } from "../src/core/routes"
+import { KNOWN_ROUTES, parseChainRef, parseRouteString, resolveRoute } from "../src/core/routes"
 
 describe("routes", () => {
 	it("marks mina testnet to Zeko-M testnet as supported", () => {
@@ -25,5 +25,10 @@ describe("routes", () => {
 			"zeko-m:mainnet",
 			"mina:mainnet"
 		])
+	})
+
+	it("normalizes legacy Zeko chain flags", () => {
+		expect(parseChainRef("zeko:testnet", "--to")).toBe("zeko-m:testnet")
+		expect(parseChainRef("zeko:zeko-mainnet", "--from")).toBe("zeko-m:mainnet")
 	})
 })

@@ -23,11 +23,12 @@ export const isChainRef = (value: string): value is ChainRef =>
 export const isZekoChainRef = isZekoBridgeCliNetwork
 
 export const parseChainRef = (value: unknown, flag: string): ChainRef => {
-	if (typeof value !== "string" || !isChainRef(value)) {
+	const chainRef = typeof value === "string" ? normalizeLegacyNetworkId(value) : value
+	if (typeof chainRef !== "string" || !isChainRef(chainRef)) {
 		throw new Error(`Invalid ${flag} chain: ${String(value)}`)
 	}
 
-	return value
+	return chainRef
 }
 
 export const parseRouteString = (value: string): [ChainRef, ChainRef] => {
