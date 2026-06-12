@@ -310,4 +310,4 @@
 - T310 | done | harden-bridge-cli-doctor-network-id-formatting | done/T310-harden-bridge-cli-doctor-network-id-formatting.md
 - T311 | done | update-network-nomenclature | done/T311-update-network-nomenclature.md
 - T312 | done | centralize-network-nomenclature | done/T312-centralize-network-nomenclature.md
-- T313 | in-progress | move-ui-network-boundary-to-package | in-progress/T313-move-ui-network-boundary-to-package.md
+- T313 | done | move-ui-network-boundary-to-package | done/T313-move-ui-network-boundary-to-package.md
