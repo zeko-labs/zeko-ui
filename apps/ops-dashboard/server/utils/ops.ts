@@ -54,7 +54,7 @@ const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
 		l2ArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
 		l1DaemonUrl: "https://gateway.mina.mainnet.zeko.io",
 		l2DaemonUrl: "https://mainnet.zeko.io/graphql",
-		outerActionsPublicKey: "B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC",
+		outerActionsPublicKey: "B62qm46jqHb9HAYiyGJeYkWgqNtPQEiTcssuoiua8VvKJGDStFsRcyC",
 		innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 	},
 	testnet: {

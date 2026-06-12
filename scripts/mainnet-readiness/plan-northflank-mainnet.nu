@@ -2,7 +2,7 @@
 
 const mainnet_l1_archive_url = "https://gateway.mina.archive.mainnet.zeko.io"
 const mainnet_l2_archive_url = "https://archive.mainnet.zeko.io/graphql"
-const mainnet_outer_pk = "B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC"
+const mainnet_outer_pk = "B62qm46jqHb9HAYiyGJeYkWgqNtPQEiTcssuoiua8VvKJGDStFsRcyC"
 const mainnet_inner_pk = "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 
 def required-env [name: string] {

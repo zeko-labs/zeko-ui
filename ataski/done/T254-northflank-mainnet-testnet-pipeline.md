@@ -16,7 +16,7 @@ updated_at: 2026-05-21T11:06:32Z
 - Use Northflank pipelines and release flows, not Northflank Environments/workflows.
 - Keep secrets and concrete values out of the template; use template args, secure overrides, secret groups, or pipeline-stage arguments/variables.
 - Required runtime vars per deployment: `DATABASE_URL`, `AUTH_TOKEN`, `PORT`, `L1_ARCHIVE_URL`, `L2_ARCHIVE_URL`, `OUTER_PK`, `INNER_PK`, `ENVIRONMENT`; optional `L1_FINALITY`, `L2_FINALITY_TIME_H`.
-- Mainnet values: `L1_ARCHIVE_URL=https://api.minascan.io/archive/mainnet/v1/graphql`, `L2_ARCHIVE_URL=https://archive.mainnet.zeko.io/graphql`, `OUTER_PK=B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC`, `INNER_PK=B62qipwmBKAhWoDr19ydyM3jr2Cwr6rVnrWYUUfLam8oCWedPSem4aC`, `ENVIRONMENT=mainnet`.
+- Mainnet values: `L1_ARCHIVE_URL=https://api.minascan.io/archive/mainnet/v1/graphql`, `L2_ARCHIVE_URL=https://archive.mainnet.zeko.io/graphql`, `OUTER_PK=B62qm46jqHb9HAYiyGJeYkWgqNtPQEiTcssuoiua8VvKJGDStFsRcyC`, `INNER_PK=B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1`, `ENVIRONMENT=mainnet`.
 - Figure out the exact Northflank CLI/API invocation for triggering the `Mainnet` pipeline stage from GitHub Actions, encode it in the reviewed workflow and/or Nushell helper script, and do not leave a placeholder command.
 - Record the discovery path and final Northflank invocation in the Implementation Review Log.
 
