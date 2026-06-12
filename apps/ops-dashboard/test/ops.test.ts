@@ -274,6 +274,51 @@ describe("ops dashboard utilities", () => {
 		])
 	})
 
+	it("selects scalar daemonStatus fields in daemon health probes", async () => {
+		const originalFetch = globalThis.fetch
+		const queries: string[] = []
+		globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+			const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string }
+			queries.push(body.query ?? "")
+			if (body.query?.includes("OpsDaemonState")) {
+				return Response.json({
+					data: {
+						syncStatus: "SYNCED",
+						daemonStatus: { syncStatus: "SYNCED", chainId: "zeko-mainnet" }
+					}
+				})
+			}
+			return Response.json({
+				data: {
+					bestChain: [
+						{
+							stateHash: "state",
+							protocolState: {
+								consensusState: {
+									blockHeight: 10,
+									slotSinceGenesis: 20
+								}
+							}
+						}
+					]
+				}
+			})
+		}) as typeof fetch
+
+		try {
+			await probeDaemon({
+				id: "l1-daemon",
+				label: "L1 daemon",
+				endpoint: "https://daemon.example/graphql",
+				supportsBestChain: true
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+
+		expect(queries[0]).toMatch(/daemonStatus\s*\{[^}]*chainId/s)
+	})
+
 	it("reports explicit indexer probe errors when fetch fails without an Error object", async () => {
 		const originalFetch = globalThis.fetch
 		globalThis.fetch = (async () => {
@@ -371,6 +416,27 @@ describe("ops dashboard utilities", () => {
 		} finally {
 			globalThis.fetch = originalFetch
 		}
+	})
+
+	it("does not retry non-idempotent indexer controls", async () => {
+		const originalFetch = globalThis.fetch
+		let controlCalls = 0
+		globalThis.fetch = (async () => {
+			controlCalls += 1
+			return Response.json({ success: false, message: "busy" }, { status: 503 })
+		}) as typeof fetch
+
+		try {
+			await expect(
+				runIndexerControl("reset", "testnet", {
+					TESTNET_ACTIONS_INDEXER_TOKEN: "testnet-token"
+				})
+			).rejects.toThrow("reset failed with HTTP 503")
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+
+		expect(controlCalls).toBe(1)
 	})
 
 	it("updates paginated Cloudflare Access resources instead of creating duplicates", async () => {

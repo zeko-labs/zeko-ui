@@ -264,14 +264,21 @@ export const summarizeServices = (services: ServiceProbe[]): Record<ServiceStatu
 const wait = (delayMs: number): Promise<void> =>
 	new Promise((resolve) => setTimeout(resolve, delayMs))
 
+interface TimedFetchOptions {
+	timeoutMs?: number
+	retryDelays?: readonly number[]
+}
+
 const shouldRetryResponse = (response: Response): boolean =>
 	response.status === 429 || (response.status >= 500 && response.status <= 599)
 
-const timedFetch = async (url: string, init?: RequestInit, timeoutMs = requestTimeoutMs) => {
+const timedFetch = async (url: string, init?: RequestInit, options: TimedFetchOptions = {}) => {
 	const startedAt = performance.now()
 	let lastError: unknown
+	const delays = options.retryDelays ?? retryDelaysMs
+	const timeoutMs = options.timeoutMs ?? requestTimeoutMs
 
-	for (const [attempt, delayMs] of retryDelaysMs.entries()) {
+	for (const [attempt, delayMs] of delays.entries()) {
 		if (delayMs > 0) await wait(delayMs)
 		const controller = new AbortController()
 		const timeout = setTimeout(() => controller.abort(), timeoutMs)
@@ -282,7 +289,7 @@ const timedFetch = async (url: string, init?: RequestInit, timeoutMs = requestTi
 				redirect: "follow",
 				signal: controller.signal
 			})
-			if (attempt < retryDelaysMs.length - 1 && shouldRetryResponse(response)) {
+			if (attempt < delays.length - 1 && shouldRetryResponse(response)) {
 				continue
 			}
 			return {
@@ -291,7 +298,7 @@ const timedFetch = async (url: string, init?: RequestInit, timeoutMs = requestTi
 			}
 		} catch (error) {
 			lastError = error
-			if (attempt === retryDelaysMs.length - 1) throw error
+			if (attempt === delays.length - 1) throw error
 		} finally {
 			clearTimeout(timeout)
 		}
@@ -400,7 +407,7 @@ const graphQlRequest = async (
 				...(variables && { variables })
 			})
 		},
-		timeoutMs
+		{ timeoutMs }
 	)
 	const payload = await readJson(response)
 	return { response, latencyMs, payload }
@@ -655,9 +662,11 @@ export const probeDaemon = async ({
 		const statusResult = await graphQlRequest(
 			endpoint,
 			`query OpsDaemonState {
-				syncStatus
-				daemonStatus
-			}`,
+					syncStatus
+					daemonStatus {
+						chainId
+					}
+				}`,
 			daemonTimeoutMs
 		)
 		const statusError = getFirstError(statusResult.payload)
@@ -870,9 +879,15 @@ export const runIndexerControl = async (
 		)
 	}
 
-	const { response } = await timedFetch(`${config.actionsIndexerUrl}/${action}`, {
-		...indexerRequestInit(token, { method: "POST" })
-	})
+	const { response } = await timedFetch(
+		`${config.actionsIndexerUrl}/${action}`,
+		{
+			...indexerRequestInit(token, { method: "POST" })
+		},
+		{
+			retryDelays: [0]
+		}
+	)
 	const payload = await readJson(response)
 
 	if (!response.ok) {
