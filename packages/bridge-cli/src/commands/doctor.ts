@@ -81,22 +81,22 @@ export const createDoctorCommand = (deps: DoctorCommandDeps = {}): CommandDef =>
 					return `- ${route.from}->${route.to}: ${healthUrl} -> ${status}`
 				})
 			)
-				; (deps.write ?? console.log)(
-					[
-						"bridge doctor",
-						`Data dir: ${paths.dataDir}`,
-						`State dir: ${paths.stateDir}`,
-						`Log dir: ${paths.logDir}`,
-						`Wallet private key: ${keyConfig.ok ? "configured" : keyConfig.message}`,
-						...(keyConfig.ok ? [`Signer public key: ${keyConfig.publicKey}`] : []),
-						`Known routes: ${KNOWN_ROUTES.map((route) => `${route.from}->${route.to}`).join(", ")}`,
-						"Route status:",
-						...routeStatusLines,
-						"SDK endpoint mapping:",
-						...endpointLines,
-						"Backend health:",
-						...healthLines
-					].join("\n")
-				)
+			;(deps.write ?? console.log)(
+				[
+					"bridge doctor",
+					`Data dir: ${paths.dataDir}`,
+					`State dir: ${paths.stateDir}`,
+					`Log dir: ${paths.logDir}`,
+					`Wallet private key: ${keyConfig.ok ? "configured" : keyConfig.message}`,
+					...(keyConfig.ok ? [`Signer public key: ${keyConfig.publicKey}`] : []),
+					`Known routes: ${KNOWN_ROUTES.map((route) => `${route.from}->${route.to}`).join(", ")}`,
+					"Route status:",
+					...routeStatusLines,
+					"SDK endpoint mapping:",
+					...endpointLines,
+					"Backend health:",
+					...healthLines
+				].join("\n")
+			)
 		}
 	})
