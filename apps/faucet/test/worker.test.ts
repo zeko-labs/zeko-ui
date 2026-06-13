@@ -213,43 +213,9 @@ describe("faucet worker claim safeguards", () => {
 		expect(env.CLAIM_MUTEX.get).not.toHaveBeenCalled()
 	})
 
-	it("normalizes legacy faucet chain IDs to the new Zeko-M testnet ID", async () => {
+	it("rejects legacy faucet chain IDs", async () => {
 		const env = createEnv()
 		const ctx = createContext()
-		const githubFetch = vi.fn().mockResolvedValue(
-			new Response(
-				JSON.stringify({
-					id: 42,
-					login: "zeko",
-					created_at: "2024-01-01T00:00:00.000Z"
-				}),
-				{
-					status: 200,
-					headers: {
-						"Content-Type": "application/json"
-					}
-				}
-			)
-		)
-		const containerFetch = vi.fn().mockResolvedValue(
-			new Response(
-				JSON.stringify({
-					success: true,
-					hash: "0xlegacy"
-				}),
-				{
-					status: 200,
-					headers: {
-						"Content-Type": "application/json"
-					}
-				}
-			)
-		)
-
-		vi.stubGlobal("fetch", githubFetch)
-		getRandomMock.mockResolvedValue({
-			fetch: containerFetch
-		})
 
 		const { default: worker } = await import("../worker")
 		const response = await worker.fetch(
@@ -266,13 +232,13 @@ describe("faucet worker claim safeguards", () => {
 			ctx as never
 		)
 
-		expect(response.status).toBe(202)
+		expect(response.status).toBe(400)
 		await expect(response.json()).resolves.toMatchObject({
-			success: true,
-			hash: "0xlegacy",
-			chain: "zeko-m:testnet"
+			success: false,
+			code: "invalid_chain"
 		})
-		expect(env.FAUCET_CLAIM.put.mock.calls[0]?.[0]).toBe(`claim:zeko-m:testnet:${VALID_ADDRESS}`)
+		expect(env.RATE_LIMIT_FAUCET.limit).not.toHaveBeenCalled()
+		expect(env.CLAIM_MUTEX.get).not.toHaveBeenCalled()
 	})
 
 	it("supports turnstile claims through the dedicated RPC entrypoint", async () => {
@@ -312,12 +278,26 @@ describe("faucet worker claim safeguards", () => {
 		})
 		expect(env.RATE_LIMIT_FAUCET.limit).toHaveBeenCalledWith({ key: "127.0.0.1" })
 		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith(`claim:zeko-m:testnet:${VALID_ADDRESS}`)
-		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith(`claim:zeko-testnet:${VALID_ADDRESS}`)
+		expect(env.FAUCET_CLAIM.get).not.toHaveBeenCalledWith(`claim:zeko-testnet:${VALID_ADDRESS}`)
 	})
 
-	it("rejects claims when the address already has a legacy network claim key", async () => {
+	it("does not reject claims when only a legacy network claim key exists", async () => {
 		const env = createEnv()
 		const ctx = createContext()
+		const containerFetch = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					success: true,
+					hash: "0xabc"
+				}),
+				{
+					status: 200,
+					headers: {
+						"Content-Type": "application/json"
+					}
+				}
+			)
+		)
 
 		vi.stubGlobal(
 			"fetch",
@@ -340,6 +320,9 @@ describe("faucet worker claim safeguards", () => {
 		env.FAUCET_CLAIM.get.mockImplementation(async (key: string) =>
 			key === `claim:zeko-testnet:${VALID_ADDRESS}` ? "2026-02-26T00:00:00.000Z" : null
 		)
+		getRandomMock.mockResolvedValue({
+			fetch: containerFetch
+		})
 
 		const { default: worker } = await import("../worker")
 		const response = await worker.fetch(
@@ -352,18 +335,18 @@ describe("faucet worker claim safeguards", () => {
 			ctx as never
 		)
 
-		expect(response.status).toBe(403)
+		expect(response.status).toBe(202)
 		await expect(response.json()).resolves.toMatchObject({
-			success: false,
-			code: "address_already_claimed"
+			success: true,
+			hash: "0xabc"
 		})
 		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith(`claim:zeko-m:testnet:${VALID_ADDRESS}`)
-		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith(`claim:zeko-testnet:${VALID_ADDRESS}`)
-		expect(env.FAUCET_CLAIM.put).not.toHaveBeenCalledWith(
+		expect(env.FAUCET_CLAIM.get).not.toHaveBeenCalledWith(`claim:zeko-testnet:${VALID_ADDRESS}`)
+		expect(env.FAUCET_CLAIM.put).toHaveBeenCalledWith(
 			`claim:zeko-m:testnet:${VALID_ADDRESS}`,
 			expect.any(String)
 		)
-		expect(getRandomMock).not.toHaveBeenCalled()
+		expect(containerFetch).toHaveBeenCalledOnce()
 	})
 
 	it("maps GitHub API rate limits to the public rate-limited error", async () => {

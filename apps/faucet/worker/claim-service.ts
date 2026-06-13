@@ -1,5 +1,4 @@
 import { getRandom } from "@cloudflare/containers"
-import { LEGACY_NETWORK_ALIASES, normalizeLegacyNetworkId } from "@zeko/networks"
 import {
 	DEFAULT_BAN_TTL_SECONDS,
 	DEFAULT_CHAIN,
@@ -23,21 +22,6 @@ import type {
 
 export const getAddressClaimKey = ({ chain, address }: ParsedClaimRequest) =>
 	`claim:${chain}:${address}`
-
-const getLegacyAddressClaimKeys = ({ chain, address }: ParsedClaimRequest) =>
-	Object.entries(LEGACY_NETWORK_ALIASES)
-		.filter(([, canonicalChain]) => canonicalChain === chain)
-		.map(([legacyChain]) => `claim:${legacyChain}:${address}`)
-		.filter((legacyClaimKey) => legacyClaimKey !== getAddressClaimKey({ chain, address }))
-
-const firstExistingClaim = async (env: FaucetWorkerEnv, keys: string[]) => {
-	for (const key of keys) {
-		const value = await env.FAUCET_CLAIM.get(key)
-		if (value) return value
-	}
-
-	return null
-}
 
 const getSpamKey = (ip: string) => `spam:${ip}`
 
@@ -67,8 +51,7 @@ const parseClaimBody = (body: unknown): ParsedClaimRequest | ClaimResult => {
 		return toClaimError(400, "invalid_address", "Address must be a valid Mina public key.")
 
 	const requestedChain = typeof body.chain === "string" ? body.chain.trim() : DEFAULT_CHAIN
-	const chain = normalizeLegacyNetworkId(requestedChain)
-	if (chain !== DEFAULT_CHAIN)
+	if (requestedChain !== DEFAULT_CHAIN)
 		return toClaimError(400, "invalid_chain", `Only ${DEFAULT_CHAIN} is currently supported.`)
 
 	return {
@@ -317,7 +300,6 @@ export const executeClaim = async ({
 }): Promise<ClaimResult> => {
 	const locks: ClaimMutexHandle[] = []
 	const addressClaimKey = getAddressClaimKey(body)
-	const addressClaimKeys = [addressClaimKey, ...getLegacyAddressClaimKeys(body)]
 
 	try {
 		if (claimContext.authMethod === "github") {
@@ -359,7 +341,7 @@ export const executeClaim = async ({
 			locks.push(addressLock)
 		}
 
-		const existingAddressClaim = await firstExistingClaim(env, addressClaimKeys)
+		const existingAddressClaim = await env.FAUCET_CLAIM.get(addressClaimKey)
 		if (existingAddressClaim)
 			return toClaimError(
 				403,
