@@ -13,6 +13,7 @@
 		"@xstate/vue": "catalog:",
 		"@zeko/design": "workspace:^",
 		"@zeko/layer": "workspace:^",
+		"@zeko/networks": "workspace:*",
 		"arktype": "^2.1.0",
 		"lucide-vue-next": "catalog:",
 		"nuxt": "catalog:",

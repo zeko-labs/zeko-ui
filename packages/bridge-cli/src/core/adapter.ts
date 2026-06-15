@@ -9,7 +9,7 @@ import {
 } from "o1js"
 import { createExplorerUrl } from "./explorer"
 import { minaStringToNanomina, nanominaToMinaString } from "./format"
-import type { ChainRef, Direction, RouteDescriptor } from "./routes"
+import { isZekoChainRef, type ChainRef, type Direction, type RouteDescriptor } from "./routes"
 import { createSdkConfig } from "./sdk-config"
 import { assertSignerMatchesAccount, resolveSignerKeys } from "./signer"
 import { resolveDepositTimeoutSlots } from "./timeouts"
@@ -91,7 +91,7 @@ const resolvePublicKey = ({
 	network: ChainRef
 	requireSignerMatch?: boolean
 }): { publicKey: PublicKey; signer: PrivateKey } => {
-	const secret = network.startsWith("zeko:")
+	const secret = isZekoChainRef(network)
 		? keys.zeko
 		: network.startsWith("eth:")
 			? keys.eth
@@ -197,7 +197,7 @@ const graphqlUrlForAction = ({
 	route: RouteDescriptor
 }): string => {
 	const config = createSdkConfig(route)
-	return mapDirectionNetwork({ action, route }).startsWith("zeko:") ? config.zekoUrl : config.l1Url
+	return isZekoChainRef(mapDirectionNetwork({ action, route })) ? config.zekoUrl : config.l1Url
 }
 
 const normalizeTxResult = async ({

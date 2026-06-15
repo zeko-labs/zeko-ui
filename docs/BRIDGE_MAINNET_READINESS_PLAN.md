@@ -624,7 +624,7 @@ Initial log:
 - Added planned `testnet.api.actions.zeko.io/graphql` and `testnet.bridge.zeko.io` to external-link skip lists because those endpoints are introduced by this PR and will not resolve until after reviewed DNS/deploy cutover.
 - Corrected a bad intermediate CI fix that disabled the old Cloudflare Build preview deploy tasks with `echo` commands. Preview deploy tasks remain real preview uploads and now target the testnet Wrangler env so PR branch previews do not touch mainnet config or placeholder mainnet infra.
 - Removed `scripts/run-proto-nu.sh`. Cloudflare Builds bootstrap proto/Nushell in `apps/bridge-ui/workers-build.jsonc`; repo Moon deploy tasks invoke `nu ./deploy-ci.nu` directly.
-- Removed the Bridge UI mainnet wallet block. Bridge hostnames are code channels, and the Bridge machine now accepts Mina/Zeko mainnet and testnet networks.
+- Removed the Bridge UI mainnet wallet block. Bridge hostnames are code channels, and the Bridge machine now accepts Mina/Zeko-M mainnet and testnet networks.
 - Kept `SENTRY_PROJECT` optional in `apps/bridge-ui/deploy-ci.nu`, defaulting to the historical `zeko-bridge` project slug, because the old shell deploy path hardcoded that slug and did not require a runtime `SENTRY_PROJECT` build variable.
 - Added explicit Bridge UI deploy-script exit checks after every external build, Sentry, and Wrangler command because Nushell external commands do not fail the script unless `$env.LAST_EXIT_CODE` is inspected.
 - Changed Bridge UI preview branch hashing to `hash sha256 | encode hex | str substring 0..39` so the reviewable preview environment name is deterministic text instead of relying on raw binary hash output.

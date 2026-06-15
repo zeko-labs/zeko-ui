@@ -1,5 +1,5 @@
 ---
-id: T311
+id: T326
 title: "Actions dashboard"
 status: done
 blockedBy: []
@@ -22,7 +22,7 @@ updated_at: 2026-06-13T00:00:00Z
 
 ## RED Evidence
 
-- Supersedes the prior dashboard micro-tasks T312-T340, including Access setup, network switching, real-time refresh, data-path fixes, outer public key correction, reset/rebuild copy, token security, and Codex review fixes.
+- Supersedes the prior dashboard micro-tasks that were squashed before main advanced, including Access setup, network switching, real-time refresh, data-path fixes, outer public key correction, reset/rebuild copy, token security, and Codex review fixes.
 
 ## GREEN Evidence
 

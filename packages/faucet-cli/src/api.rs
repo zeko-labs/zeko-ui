@@ -7,7 +7,7 @@ const FAUCET_CLAIM_URL: &str = "https://api.faucet.zeko.io/claim";
 const GITHUB_USER_URL: &str = "https://api.github.com/user";
 const GITHUB_ACCEPT: &str = "application/vnd.github+json";
 const GITHUB_USER_AGENT: &str = "zeko-faucet-cli";
-const DEFAULT_CHAIN: &str = "zeko-testnet";
+const DEFAULT_CHAIN: &str = "zeko-m:testnet";
 
 #[derive(Debug, Deserialize)]
 pub struct GitHubUser {

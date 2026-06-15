@@ -1,4 +1,6 @@
-export const FAUCET_CHAIN = "zeko-testnet"
+import { ZEKO_M_NETWORKS } from "@zeko/networks"
+
+export const FAUCET_CHAIN = ZEKO_M_NETWORKS.testnet
 
 export type FaucetSuccessResponse = {
 	success: true

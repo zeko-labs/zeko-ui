@@ -4,7 +4,7 @@ import { createSdkConfig } from "../src/core/sdk-config"
 
 describe("sdk config", () => {
 	it("maps the supported testnet route to bridge-sdk endpoints", () => {
-		const config = createSdkConfig(resolveRoute("mina:testnet", "zeko:testnet"))
+		const config = createSdkConfig(resolveRoute("mina:testnet", "zeko-m:testnet"))
 
 		expect(config.l1Url).toBe("https://gateway.mina.devnet.zeko.io")
 		expect(config.l1ArchiveUrl).toBe("https://gateway.mina.archive.devnet.zeko.io")
@@ -17,7 +17,7 @@ describe("sdk config", () => {
 	})
 
 	it("can enable verbose sdk logging explicitly", () => {
-		const config = createSdkConfig(resolveRoute("mina:testnet", "zeko:testnet"), {
+		const config = createSdkConfig(resolveRoute("mina:testnet", "zeko-m:testnet"), {
 			verbose: true
 		})
 
@@ -25,7 +25,7 @@ describe("sdk config", () => {
 	})
 
 	it("maps the supported mainnet route to bridge-sdk endpoints", () => {
-		const config = createSdkConfig(resolveRoute("mina:mainnet", "zeko:zeko-mainnet"))
+		const config = createSdkConfig(resolveRoute("mina:mainnet", "zeko-m:mainnet"))
 
 		expect(config.l1Url).toBe("https://gateway.mina.mainnet.zeko.io")
 		expect(config.l1ArchiveUrl).toBe("https://gateway.mina.archive.mainnet.zeko.io")

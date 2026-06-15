@@ -7,7 +7,7 @@ const session = {
 	id: "op-instrumentation",
 	status: "running",
 	phase: "submitted",
-	route: "mina:testnet->zeko:testnet",
+	route: "mina:testnet->zeko-m:testnet",
 	direction: "deposit",
 	account: "B62account",
 	recipient: "B62recipient",

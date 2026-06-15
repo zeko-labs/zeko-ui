@@ -1,102 +1,40 @@
+import {
+	BRIDGE_CLI_ROUTES,
+	formatBridgeRoute,
+	isZekoBridgeCliNetwork,
+	normalizeLegacyNetworkId,
+	type BridgeCliNetwork,
+	type BridgeDirection,
+	type BridgeRouteDescriptor
+} from "@zeko/networks"
+
 export type ChainFamily = "mina" | "zeko" | "eth"
-export type ChainRef =
-	| "mina:testnet"
-	| "mina:mainnet"
-	| "zeko:testnet"
-	| "zeko:zeko-mainnet"
-	| "eth:testnet"
-	| "eth:mainnet"
-export type Direction = "deposit" | "withdrawal"
+export type ChainRef = BridgeCliNetwork
+export type Direction = BridgeDirection
+export type RouteDescriptor = BridgeRouteDescriptor<ChainRef>
 
-export type RouteDescriptor = {
-	from: ChainRef
-	to: ChainRef
-	enabled: boolean
-	direction: Direction
-	label: string
-	reason?: string
-}
+export const KNOWN_ROUTES = [...BRIDGE_CLI_ROUTES] as const satisfies readonly RouteDescriptor[]
 
-export const KNOWN_ROUTES: RouteDescriptor[] = [
-	{
-		from: "mina:testnet",
-		to: "zeko:testnet",
-		enabled: true,
-		direction: "deposit",
-		label: "Mina testnet -> Zeko testnet"
-	},
-	{
-		from: "zeko:testnet",
-		to: "mina:testnet",
-		enabled: true,
-		direction: "withdrawal",
-		label: "Zeko testnet -> Mina testnet"
-	},
-	{
-		from: "mina:mainnet",
-		to: "zeko:zeko-mainnet",
-		enabled: true,
-		direction: "deposit",
-		label: "Mina mainnet -> Zeko mainnet"
-	},
-	{
-		from: "zeko:zeko-mainnet",
-		to: "mina:mainnet",
-		enabled: true,
-		direction: "withdrawal",
-		label: "Zeko mainnet -> Mina mainnet"
-	},
-	{
-		from: "eth:testnet",
-		to: "zeko:testnet",
-		enabled: false,
-		direction: "deposit",
-		label: "Ethereum testnet -> Zeko testnet",
-		reason: "Known route, not enabled yet."
-	},
-	{
-		from: "zeko:testnet",
-		to: "eth:testnet",
-		enabled: false,
-		direction: "withdrawal",
-		label: "Zeko testnet -> Ethereum testnet",
-		reason: "Known route, not enabled yet."
-	},
-	{
-		from: "eth:mainnet",
-		to: "zeko:zeko-mainnet",
-		enabled: false,
-		direction: "deposit",
-		label: "Ethereum mainnet -> Zeko mainnet",
-		reason: "Known route, not enabled yet."
-	},
-	{
-		from: "zeko:zeko-mainnet",
-		to: "eth:mainnet",
-		enabled: false,
-		direction: "withdrawal",
-		label: "Zeko mainnet -> Ethereum mainnet",
-		reason: "Known route, not enabled yet."
-	}
-]
-
-export const CHAIN_REFS: ChainRef[] = [
-	...new Set(KNOWN_ROUTES.flatMap(({ from, to }) => [from, to]))
-]
+export const CHAIN_REFS = [...new Set(KNOWN_ROUTES.flatMap(({ from, to }) => [from, to]))]
 
 export const isChainRef = (value: string): value is ChainRef =>
 	CHAIN_REFS.includes(value as ChainRef)
 
+export const isZekoChainRef = isZekoBridgeCliNetwork
+
 export const parseChainRef = (value: unknown, flag: string): ChainRef => {
-	if (typeof value !== "string" || !isChainRef(value)) {
+	const chainRef = typeof value === "string" ? normalizeLegacyNetworkId(value) : value
+	if (typeof chainRef !== "string" || !isChainRef(chainRef)) {
 		throw new Error(`Invalid ${flag} chain: ${String(value)}`)
 	}
 
-	return value
+	return chainRef
 }
 
 export const parseRouteString = (value: string): [ChainRef, ChainRef] => {
-	const [from, to] = value.split("->")
+	const [rawFrom, rawTo] = value.split("->")
+	const from = typeof rawFrom === "string" ? normalizeLegacyNetworkId(rawFrom) : rawFrom
+	const to = typeof rawTo === "string" ? normalizeLegacyNetworkId(rawTo) : rawTo
 	if (typeof from !== "string" || typeof to !== "string" || !isChainRef(from) || !isChainRef(to)) {
 		throw new Error(`Invalid persisted route: ${value}`)
 	}
@@ -105,7 +43,7 @@ export const parseRouteString = (value: string): [ChainRef, ChainRef] => {
 }
 
 export const formatRoute = (from: ChainRef, to: ChainRef): `${ChainRef}->${ChainRef}` =>
-	`${from}->${to}`
+	formatBridgeRoute(from, to)
 
 export class UnknownRouteError extends Error {
 	constructor(from: ChainRef, to: ChainRef) {

@@ -136,7 +136,7 @@ describe("bridgeOperationMachine", () => {
 				input: {
 					bridge: bridge as never,
 					wallet: wallet as never,
-					source: "zeko:testnet",
+					source: "zeko-m:testnet",
 					destination: "mina:devnet",
 					direction: "withdrawal",
 					amount: "0.2"
@@ -177,7 +177,7 @@ describe("bridgeOperationMachine", () => {
 				bridge: bridge as never,
 				wallet: wallet as never,
 				source: "mina:devnet",
-				destination: "zeko:testnet",
+				destination: "zeko-m:testnet",
 				direction: "deposit",
 				amount: "1"
 			}
@@ -210,7 +210,7 @@ describe("bridgeOperationMachine", () => {
 			input: {
 				bridge: bridge as never,
 				wallet: wallet as never,
-				source: "zeko:testnet",
+				source: "zeko-m:testnet",
 				destination: "mina:devnet",
 				direction: "withdrawal",
 				amount: "1"
@@ -262,7 +262,7 @@ describe("bridgeOperationMachine", () => {
 					bridge: bridge as never,
 					wallet: wallet as never,
 					source: "mina:devnet",
-					destination: "zeko:testnet",
+					destination: "zeko-m:testnet",
 					direction: "deposit",
 					amount: "1"
 				}
@@ -304,7 +304,7 @@ describe("bridgeOperationMachine", () => {
 					bridge: bridge as never,
 					wallet: wallet as never,
 					source: "mina:devnet",
-					destination: "zeko:testnet",
+					destination: "zeko-m:testnet",
 					direction: "deposit",
 					amount: "1",
 					transaction: { date: new Date("2026-03-24T00:00:00Z"), hash: "RECOVERED" },
@@ -347,7 +347,7 @@ describe("bridgeOperationMachine", () => {
 					bridge: bridge as never,
 					wallet: wallet as never,
 					source: "mina:devnet",
-					destination: "zeko:testnet",
+					destination: "zeko-m:testnet",
 					direction: "deposit",
 					amount: "1",
 					transaction: { date: new Date("2026-03-24T00:00:00Z"), hash: "RECOVERED" },
@@ -387,7 +387,7 @@ describe("bridgeOperationMachine", () => {
 				bridge: bridge as never,
 				wallet: wallet as never,
 				source: "mina:devnet",
-				destination: "zeko:testnet",
+				destination: "zeko-m:testnet",
 				direction: "deposit",
 				amount: "1",
 				transaction: { date: new Date("2026-03-24T00:00:00Z"), hash: "RECOVERED" },
@@ -418,7 +418,7 @@ describe("bridgeOperationMachine", () => {
 				bridge: bridge as never,
 				wallet: wallet as never,
 				source: "mina:devnet",
-				destination: "zeko:testnet",
+				destination: "zeko-m:testnet",
 				direction: "deposit",
 				amount: "1",
 				transaction: { date: new Date("2026-03-24T00:00:00Z"), hash: "RECOVERED" }
@@ -452,7 +452,7 @@ describe("bridgeOperationMachine", () => {
 				bridge: bridge as never,
 				wallet: wallet as never,
 				source: "mina:devnet",
-				destination: "zeko:testnet",
+				destination: "zeko-m:testnet",
 				direction: "deposit",
 				amount: "1"
 			}
@@ -484,7 +484,7 @@ describe("bridgeOperationMachine", () => {
 				bridge: bridge as never,
 				wallet: wallet as never,
 				source: "mina:devnet",
-				destination: "zeko:testnet",
+				destination: "zeko-m:testnet",
 				direction: "deposit",
 				amount: "1"
 			}
@@ -521,7 +521,7 @@ describe("bridgeOperationMachine", () => {
 				bridge: bridge as never,
 				wallet: wallet as never,
 				source: "mina:devnet",
-				destination: "zeko:testnet",
+				destination: "zeko-m:testnet",
 				direction: "deposit",
 				amount: "1"
 			}
@@ -548,7 +548,7 @@ describe("bridgeOperationMachine", () => {
 				bridge: bridge as never,
 				wallet: wallet as never,
 				source: "mina:devnet",
-				destination: "zeko:testnet",
+				destination: "zeko-m:testnet",
 				direction: "deposit",
 				amount: "1"
 			}
@@ -582,7 +582,7 @@ describe("bridgeOperationMachine", () => {
 				bridge: bridge as never,
 				wallet: wallet as never,
 				source: "mina:devnet",
-				destination: "zeko:testnet",
+				destination: "zeko-m:testnet",
 				direction: "deposit",
 				amount: "1"
 			}
@@ -627,7 +627,7 @@ describe("bridgeOperationMachine", () => {
 					bridge: bridge as never,
 					wallet: wallet as never,
 					source: "mina:devnet",
-					destination: "zeko:testnet",
+					destination: "zeko-m:testnet",
 					direction: "deposit",
 					amount: "1"
 				}
@@ -689,7 +689,7 @@ describe("bridgeOperationMachine", () => {
 				bridge: bridge as never,
 				wallet: wallet as never,
 				source: "mina:devnet",
-				destination: "zeko:testnet",
+				destination: "zeko-m:testnet",
 				direction: "deposit",
 				amount: "1"
 			}
@@ -704,7 +704,7 @@ describe("bridgeOperationMachine", () => {
 
 		expect(finalizeDeposit).toHaveBeenCalledWith({
 			l1: "mina:devnet",
-			l2: "zeko:testnet",
+			l2: "zeko-m:testnet",
 			user,
 			feeNanomina: 1 * 10e8
 		})
@@ -730,7 +730,7 @@ describe("bridgeOperationMachine", () => {
 			input: {
 				bridge: bridge as never,
 				wallet: wallet as never,
-				source: "zeko:testnet",
+				source: "zeko-m:testnet",
 				destination: "mina:devnet",
 				direction: "withdrawal",
 				amount: "1"
@@ -776,7 +776,7 @@ describe("bridgeOperationMachine", () => {
 				input: {
 					bridge: bridge as never,
 					wallet: wallet as never,
-					source: "zeko:testnet",
+					source: "zeko-m:testnet",
 					destination: "mina:devnet",
 					direction: "withdrawal",
 					amount: "1"

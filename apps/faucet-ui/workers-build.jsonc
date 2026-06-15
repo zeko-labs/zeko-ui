@@ -7,7 +7,7 @@
 			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks faucet-ui:deploy",
 			"branchIncludes": ["main"],
 			"branchExcludes": [],
-			"pathIncludes": ["apps/faucet-ui/**"],
+			"pathIncludes": ["apps/faucet-ui/**", "packages/networks/**"],
 			"pathExcludes": []
 		},
 		{
@@ -15,7 +15,7 @@
 			"deployCommand": "./node_modules/.bin/moon exec --ignore-ci-checks faucet-ui:deploy-preview",
 			"branchIncludes": ["*"],
 			"branchExcludes": ["main"],
-			"pathIncludes": ["apps/faucet-ui/**"],
+			"pathIncludes": ["apps/faucet-ui/**", "packages/networks/**"],
 			"pathExcludes": []
 		}
 	]

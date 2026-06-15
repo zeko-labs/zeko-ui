@@ -56,7 +56,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                     </div>
                   </div>
                   <p class="SprintDescription">
-                    Setup a new wallet & faucet funds on Zeko testnet
+                    Setup a new wallet & faucet funds on Zeko-M testnet
                   </p>
                 </div>
                 <SvgToggleCaret :class="{ expanded: sprints === 1 }" />
@@ -177,7 +177,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                     </div>
                   </div>
                   <p class="SprintDescription">
-                    Bridge MINA from Mina devnet to Zeko testnet
+                    Bridge MINA from Mina devnet to Zeko-M testnet
                   </p>
                 </div>
                 <SvgToggleCaret :class="{ expanded: sprints === 2 }" />
@@ -231,7 +231,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                           <div class="StepText">
                             <p>
                               Now that you have MINA on Mina devnet, Bridge
-                              funds from Mina devnet to Zeko testnet
+                              funds from Mina devnet to Zeko-M testnet
                             </p>
                             <ul>
                               <li>
@@ -312,7 +312,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                     </div>
                   </div>
                   <p class="SprintDescription">
-                    Swap using Solis on Zeko testnet
+                    Swap using Solis on Zeko-M testnet
                   </p>
                 </div>
 
@@ -554,7 +554,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                     </div>
                   </div>
                   <p class="SprintDescription">
-                    Bridge from Zeko testnet to Mina devnet
+                    Bridge from Zeko-M testnet to Mina devnet
                   </p>
                 </div>
 
@@ -565,7 +565,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
                 <div class="SprintDetails">
                   <p class="DetailsIntro">
                     To complete Sprint 5 and earn Leaderboard points, Bridge
-                    MINA from Zeko testnet to Mina devnet
+                    MINA from Zeko-M testnet to Mina devnet
                     <br>
                     (Easy tip: Sprint 5 bridges in the reverse direction as
                     Sprint 2)
@@ -593,7 +593,7 @@ const toggleSprint = (sprintNumber: 1 | 2 | 3 | 4 | 5) => {
 
                           <ul class="StepInstructions">
                             <li>
-                              Enter an amount to bridge from Zeko testnet to
+                              Enter an amount to bridge from Zeko-M testnet to
                               Mina devnet, and follow the Bridge page
                               instructions to completion.
                             </li>

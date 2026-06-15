@@ -1,4 +1,6 @@
 layer: application
+dependsOn:
+  - networks
 tasks:
   container-dev:
     command: bun --hot src/index.ts
@@ -19,7 +21,7 @@ tasks:
       - test/tsconfig.json
       - vitest.config.ts
   typecheck:
-    command: tsc --noEmit -p test/tsconfig.json
+    command: tsgo --noEmit --declaration false --declarationMap false -p test/tsconfig.json
     inputs:
       - tsconfig.json
       - worker.ts

@@ -56,7 +56,7 @@ afterEach(() => {
 const completedDepositResult: BridgeCliJsonResult = {
 	success: true,
 	operation_id: "bridge-op-1",
-	route: "mina:testnet->zeko:testnet",
+	route: "mina:testnet->zeko-m:testnet",
 	direction: "deposit",
 	status: "completed",
 	amount: "1",
@@ -119,6 +119,9 @@ describe("bridge validator", () => {
 		expect(command).toContain("\"${bridge_command[@]}\" 'bridge'")
 		expect(command).toContain("'--from' 'mina:testnet' '--to' 'zeko:testnet'")
 		expect(command).toContain("'--amount' '2' '--json' '--verbose'")
+		expect(buildBridgeCommand({ routeKey: "zeko-to-mina" })).toContain(
+			"'--from' 'zeko:testnet' '--to' 'mina:testnet'"
+		)
 		expect(buildBridgeCommand({ routeKey: "zeko-to-mina" })).toContain(
 			"'--amount' '2' '--json' '--verbose'"
 		)
@@ -428,8 +431,8 @@ describe("bridge validator", () => {
 				route: {
 					key: "mina-to-zeko",
 					from: "mina:testnet",
-					to: "zeko:testnet",
-					route: "mina:testnet->zeko:testnet",
+					to: "zeko-m:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit"
 				},
 				result: completedDepositResult,
@@ -437,7 +440,7 @@ describe("bridge validator", () => {
 			})
 		).toEqual({
 			operationId: "bridge-op-1",
-			route: "mina:testnet->zeko:testnet",
+			route: "mina:testnet->zeko-m:testnet",
 			direction: "deposit",
 			amount: "1",
 			finalHash: "hash-finalize",
@@ -449,6 +452,25 @@ describe("bridge validator", () => {
 		})
 	})
 
+	it("accepts legacy CLI route output while reporting the canonical route", () => {
+		const summary = validateBridgeCompletion({
+			route: {
+				key: "mina-to-zeko",
+				from: "mina:testnet",
+				to: "zeko-m:testnet",
+				route: "mina:testnet->zeko-m:testnet",
+				cliFrom: "mina:testnet",
+				cliTo: "zeko:testnet",
+				acceptedResultRoutes: ["mina:testnet->zeko-m:testnet", "mina:testnet->zeko:testnet"],
+				direction: "deposit"
+			},
+			result: { ...completedDepositResult, route: "mina:testnet->zeko:testnet" },
+			historyLog: completedHistoryLog
+		})
+
+		expect(summary.route).toBe("mina:testnet->zeko-m:testnet")
+	})
+
 	it("keeps a completed bridge result successful when the CLI preserves a retry warning", () => {
 		const result = {
 			...completedDepositResult,
@@ -458,8 +480,8 @@ describe("bridge validator", () => {
 			route: {
 				key: "mina-to-zeko",
 				from: "mina:testnet",
-				to: "zeko:testnet",
-				route: "mina:testnet->zeko:testnet",
+				to: "zeko-m:testnet",
+				route: "mina:testnet->zeko-m:testnet",
 				direction: "deposit"
 			},
 			result,
@@ -473,8 +495,8 @@ describe("bridge validator", () => {
 				route: {
 					key: "mina-to-zeko",
 					from: "mina:testnet",
-					to: "zeko:testnet",
-					route: "mina:testnet->zeko:testnet",
+					to: "zeko-m:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -490,8 +512,8 @@ describe("bridge validator", () => {
 					route: {
 						key: "mina-to-zeko",
 						from: "mina:testnet",
-						to: "zeko:testnet",
-						route: "mina:testnet->zeko:testnet",
+						to: "zeko-m:testnet",
+						route: "mina:testnet->zeko-m:testnet",
 						direction: "deposit"
 					},
 					cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -511,8 +533,8 @@ describe("bridge validator", () => {
 				route: {
 					key: "mina-to-zeko",
 					from: "mina:testnet",
-					to: "zeko:testnet",
-					route: "mina:testnet->zeko:testnet",
+					to: "zeko-m:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit"
 				},
 				result: completedDepositResult,
@@ -537,8 +559,8 @@ describe("bridge validator", () => {
 				route: {
 					key: "mina-to-zeko",
 					from: "mina:testnet",
-					to: "zeko:testnet",
-					route: "mina:testnet->zeko:testnet",
+					to: "zeko-m:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit"
 				},
 				result: failedResult,
@@ -554,8 +576,8 @@ describe("bridge validator", () => {
 			route: {
 				key: "mina-to-zeko",
 				from: "mina:testnet",
-				to: "zeko:testnet",
-				route: "mina:testnet->zeko:testnet",
+				to: "zeko-m:testnet",
+				route: "mina:testnet->zeko-m:testnet",
 				direction: "deposit"
 			},
 			result: completedDepositResult,
@@ -568,8 +590,8 @@ describe("bridge validator", () => {
 				route: {
 					key: "mina-to-zeko",
 					from: "mina:testnet",
-					to: "zeko:testnet",
-					route: "mina:testnet->zeko:testnet",
+					to: "zeko-m:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -584,8 +606,8 @@ describe("bridge validator", () => {
 				route: {
 					key: "mina-to-zeko",
 					from: "mina:testnet",
-					to: "zeko:testnet",
-					route: "mina:testnet->zeko:testnet",
+					to: "zeko-m:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -600,8 +622,8 @@ describe("bridge validator", () => {
 				route: {
 					key: "mina-to-zeko",
 					from: "mina:testnet",
-					to: "zeko:testnet",
-					route: "mina:testnet->zeko:testnet",
+					to: "zeko-m:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -617,8 +639,8 @@ describe("bridge validator", () => {
 					route: {
 						key: "mina-to-zeko",
 						from: "mina:testnet",
-						to: "zeko:testnet",
-						route: "mina:testnet->zeko:testnet",
+						to: "zeko-m:testnet",
+						route: "mina:testnet->zeko-m:testnet",
 						direction: "deposit"
 					},
 					cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -635,8 +657,8 @@ describe("bridge validator", () => {
 				route: {
 					key: "mina-to-zeko",
 					from: "mina:testnet",
-					to: "zeko:testnet",
-					route: "mina:testnet->zeko:testnet",
+					to: "zeko-m:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -655,8 +677,8 @@ describe("bridge validator", () => {
 				route: {
 					key: "mina-to-zeko",
 					from: "mina:testnet",
-					to: "zeko:testnet",
-					route: "mina:testnet->zeko:testnet",
+					to: "zeko-m:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -675,8 +697,8 @@ describe("bridge validator", () => {
 				route: {
 					key: "mina-to-zeko",
 					from: "mina:testnet",
-					to: "zeko:testnet",
-					route: "mina:testnet->zeko:testnet",
+					to: "zeko-m:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit"
 				},
 				cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -696,8 +718,8 @@ describe("bridge validator", () => {
 					route: {
 						key: "mina-to-zeko",
 						from: "mina:testnet",
-						to: "zeko:testnet",
-						route: "mina:testnet->zeko:testnet",
+						to: "zeko-m:testnet",
+						route: "mina:testnet->zeko-m:testnet",
 						direction: "deposit"
 					},
 					cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -718,8 +740,8 @@ describe("bridge validator", () => {
 					route: {
 						key: "mina-to-zeko",
 						from: "mina:testnet",
-						to: "zeko:testnet",
-						route: "mina:testnet->zeko:testnet",
+						to: "zeko-m:testnet",
+						route: "mina:testnet->zeko-m:testnet",
 						direction: "deposit"
 					},
 					cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -740,8 +762,8 @@ describe("bridge validator", () => {
 					route: {
 						key: "mina-to-zeko",
 						from: "mina:testnet",
-						to: "zeko:testnet",
-						route: "mina:testnet->zeko:testnet",
+						to: "zeko-m:testnet",
+						route: "mina:testnet->zeko-m:testnet",
 						direction: "deposit"
 					},
 					cliVersion: BRIDGE_CLI_SPECIFIER,
@@ -779,8 +801,11 @@ describe("bridge validator", () => {
 			route: {
 				key: "mina-to-zeko",
 				from: "mina:testnet",
-				to: "zeko:testnet",
-				route: "mina:testnet->zeko:testnet",
+				to: "zeko-m:testnet",
+				route: "mina:testnet->zeko-m:testnet",
+				cliFrom: "mina:testnet",
+				cliTo: "zeko:testnet",
+				acceptedResultRoutes: ["mina:testnet->zeko-m:testnet", "mina:testnet->zeko:testnet"],
 				direction: "deposit"
 			},
 			result: completedDepositResult,
@@ -886,8 +911,8 @@ describe("bridge validator", () => {
 			route: {
 				key: "mina-to-zeko",
 				from: "mina:testnet",
-				to: "zeko:testnet",
-				route: "mina:testnet->zeko:testnet",
+				to: "zeko-m:testnet",
+				route: "mina:testnet->zeko-m:testnet",
 				direction: "deposit"
 			},
 			result: completedDepositResult,

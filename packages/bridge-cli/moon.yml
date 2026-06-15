@@ -1,6 +1,8 @@
 # yaml-language-server: $schema=../../.moon/cache/schemas/project.json
 
 layer: tool
+dependsOn:
+  - networks
 
 fileGroups:
   src:
@@ -22,6 +24,8 @@ fileGroups:
 tasks:
   build:
     command: tsdown
+    deps:
+      - ^:build
     inputs:
       - "@group(src)"
     outputs:
@@ -35,7 +39,9 @@ tasks:
     inputs:
       - "@group(src)"
   typecheck:
-    command: tsc --noEmit
+    deps:
+      - ^:build
+    command: tsgo --noEmit --declaration false --declarationMap false --rootDir ../..
     inputs:
       - "@group(src)"
   test:
@@ -45,20 +51,20 @@ tasks:
     inputs:
       - "@group(src)"
   live-bridge-mina-to-zeko:
-    description: Manual real-network validation of the single long-lived bridge command from Mina testnet to Zeko testnet.
+    description: Manual real-network validation of the single long-lived bridge command from Mina testnet to Zeko-M testnet.
     deps:
       - build
-    command: node ./dist/cli.js bridge --from mina:testnet --to zeko:testnet --amount 1 --json --verbose
+    command: node ./dist/cli.js bridge --from mina:testnet --to zeko-m:testnet --amount 1 --json --verbose
     options:
       cache: false
       runInCI: false
     inputs:
       - "@group(src)"
   live-bridge-zeko-to-mina:
-    description: Manual real-network validation of the single long-lived bridge command from Zeko testnet to Mina testnet.
+    description: Manual real-network validation of the single long-lived bridge command from Zeko-M testnet to Mina testnet.
     deps:
       - build
-    command: node ./dist/cli.js bridge --from zeko:testnet --to mina:testnet --amount 1 --json --verbose
+    command: node ./dist/cli.js bridge --from zeko-m:testnet --to mina:testnet --amount 1 --json --verbose
     options:
       cache: false
       runInCI: false

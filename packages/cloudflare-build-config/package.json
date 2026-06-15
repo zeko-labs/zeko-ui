@@ -8,6 +8,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^25.4.0",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"@typescript/native-preview": "catalog:"
 	}
 }

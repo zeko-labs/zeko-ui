@@ -25,7 +25,7 @@ The skill is designed for real Zeko user and builder workflows:
 
 ## Example Uses
 
-- `How do I get tMINA on Zeko testnet?`
+- `How do I get tMINA on Zeko-M testnet?`
 - `Bridge 2 MINA from Mina to Zeko using the Bridge CLI.`
 - `Which endpoints should I use for live data and archive data?`
 - `Show me a curl example to send 1.25 MINA from one address to another.`

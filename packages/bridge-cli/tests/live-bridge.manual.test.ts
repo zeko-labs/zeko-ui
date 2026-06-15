@@ -67,16 +67,16 @@ const assertSuccessfulBridge = ({
 
 describe.sequential("manual live bridge validation", () => {
 	it(
-		"validates mina:testnet -> zeko:testnet through the single bridge command",
+		"validates mina:testnet -> zeko-m:testnet through the single bridge command",
 		async () => {
 			const result = await runLiveBridge({
 				from: "mina:testnet",
-				to: "zeko:testnet"
+				to: "zeko-m:testnet"
 			})
 
 			assertSuccessfulBridge({
 				result,
-				route: "mina:testnet->zeko:testnet",
+				route: "mina:testnet->zeko-m:testnet",
 				direction: "deposit"
 			})
 		},
@@ -84,16 +84,16 @@ describe.sequential("manual live bridge validation", () => {
 	)
 
 	it(
-		"validates zeko:testnet -> mina:testnet through the single bridge command",
+		"validates zeko-m:testnet -> mina:testnet through the single bridge command",
 		async () => {
 			const result = await runLiveBridge({
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet"
 			})
 
 			assertSuccessfulBridge({
 				result,
-				route: "zeko:testnet->mina:testnet",
+				route: "zeko-m:testnet->mina:testnet",
 				direction: "withdrawal"
 			})
 		},

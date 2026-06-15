@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { defineCommand, type CommandDef } from "citty"
+import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
 import { PrivateKey } from "o1js"
 import { runBridgeOperation } from "./bridge"
 import type { BridgeAdapter } from "../core/adapter"
@@ -86,6 +87,9 @@ type CompletedOperationJsonResult = {
 	operations: BridgeCommandJsonResult[]
 }
 
+const DEFAULT_FROM_CHAIN = MINA_NETWORKS.testnet
+const DEFAULT_TO_CHAIN = ZEKO_M_NETWORKS.testnet
+
 const parseChainArg = (value: unknown, fallback: ChainRef, flag: "--from" | "--to"): ChainRef =>
 	parseChainRef(typeof value === "string" ? value : fallback, flag)
 
@@ -93,7 +97,8 @@ const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	if (explicit) return explicit
 
 	const keys = resolveSignerKeys()
-	const secret = from.startsWith("zeko:") ? keys.zeko : keys.mina
+	const secret =
+		from === ZEKO_M_NETWORKS.testnet || from === ZEKO_M_NETWORKS.mainnet ? keys.zeko : keys.mina
 	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
 }
 
@@ -413,8 +418,8 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					description: "Discover and sequentially resume pending bridge operations for an account."
 				},
 				args: {
-					from: { type: "string", default: "mina:testnet" },
-					to: { type: "string", default: "zeko:testnet" },
+					from: { type: "string", default: DEFAULT_FROM_CHAIN },
+					to: { type: "string", default: DEFAULT_TO_CHAIN },
 					account: { type: "string", required: false },
 					pollIntervalMs: { type: "string", required: false, alias: ["poll-interval-ms"] },
 					retryDelayMs: { type: "string", required: false, alias: ["retry-delay-ms"] },
@@ -422,8 +427,8 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					verbose: { type: "boolean", default: false }
 				},
 				async run({ args }) {
-					const from = parseChainArg(args.from, "mina:testnet", "--from")
-					const to = parseChainArg(args.to, "zeko:testnet", "--to")
+					const from = parseChainArg(args.from, DEFAULT_FROM_CHAIN, "--from")
+					const to = parseChainArg(args.to, DEFAULT_TO_CHAIN, "--to")
 					const json = readBooleanArg(args, "json")
 					const verbose = readBooleanArg(args, "verbose")
 					const account = deriveAccount(from, readOptionalStringArg(args, "account"))

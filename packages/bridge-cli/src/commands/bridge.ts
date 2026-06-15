@@ -1,28 +1,24 @@
 import { randomUUID } from "node:crypto"
 import path from "node:path"
-import { defineCommand, type CommandDef } from "citty"
+import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
 import { isInsufficientFirstWithdrawalAmountError } from "@zeko-labs/bridge-sdk"
+import { type CommandDef, defineCommand } from "citty"
 import { PrivateKey } from "o1js"
-import { assign, createActor, fromPromise, setup, toPromise } from "xstate"
+import { type AnyStateMachine, assign, createActor, fromPromise, setup, toPromise } from "xstate"
 import type { BridgeAdapter } from "../core/adapter"
-import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
-import { createOperationLogger } from "../core/logger"
-import { isRecoverableMutationError } from "../core/mutation-errors"
-import { resolveAppPaths } from "../core/paths"
+import { type BridgeAdapterFactory, createDefaultBridgeAdapter } from "../core/adapter-factory"
+import type { WithdrawalQueueState } from "../core/bridge-queue"
 import {
 	type DepositQueueState,
 	getSubmitHash,
 	resolveEffectiveDepositClaimableIndex,
 	sortByIndex
 } from "../core/bridge-queue"
-import type { WithdrawalQueueState } from "../core/bridge-queue"
 import {
-	readAliasedNumberArg,
-	readAliasedOptionalNumberArg,
-	readBooleanArg,
-	readOptionalStringArg,
-	readRequiredStringArg
-} from "../core/command-args"
+	type BridgeRuntimeDecision,
+	decideDepositStep,
+	decideWithdrawalStep
+} from "../core/bridge-runtime/decisions"
 import {
 	createInstrumentedBridgeAdapter,
 	createVerboseDiagnostics,
@@ -31,20 +27,25 @@ import {
 	withPhaseTiming
 } from "../core/bridge-runtime/instrumentation"
 import {
-	decideDepositStep,
-	decideWithdrawalStep,
-	type BridgeRuntimeDecision
-} from "../core/bridge-runtime/decisions"
+	readAliasedNumberArg,
+	readAliasedOptionalNumberArg,
+	readBooleanArg,
+	readOptionalStringArg,
+	readRequiredStringArg
+} from "../core/command-args"
+import { createOperationLogger } from "../core/logger"
+import { isRecoverableMutationError } from "../core/mutation-errors"
+import { resolveAppPaths } from "../core/paths"
 import { renderBridgeResult, renderOperationProgress, toBridgeJsonResult } from "../core/reporter"
-import { formatRoute, parseChainRef, type ChainRef, resolveRoute } from "../core/routes"
+import { DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY_MS, retryWithBackoff } from "../core/retry"
+import { type ChainRef, formatRoute, parseChainRef, resolveRoute } from "../core/routes"
+import { createSessionStore, type SessionStore } from "../core/session-store"
 import { resolveSignerKeys } from "../core/signer"
 import {
 	getWithdrawalStatusSourceSnapshot,
 	toWithdrawalStatusSourceLogDetails
 } from "../core/status-sources"
 import { resolveDepositTimeoutSlots } from "../core/timeouts"
-import { createSessionStore, type SessionStore } from "../core/session-store"
-import { DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY_MS, retryWithBackoff } from "../core/retry"
 import type {
 	BridgeCapabilityDiagnostic,
 	BridgeSdkOperation,
@@ -113,8 +114,8 @@ type BridgeCommandDeps = {
 }
 
 type BridgeCommandArgs = {
-	from: { type: "string"; default: string }
-	to: { type: "string"; default: string }
+	from: { type: "string"; default: typeof DEFAULT_FROM_CHAIN }
+	to: { type: "string"; default: typeof DEFAULT_TO_CHAIN }
 	amount: { type: "string"; required: true }
 	account: { type: "string"; required: false }
 	recipient: { type: "string"; required: false }
@@ -144,6 +145,8 @@ type WaitStateTracker = {
 }
 
 const HEARTBEAT_INTERVAL_MS = 30_000
+const DEFAULT_FROM_CHAIN = MINA_NETWORKS.testnet
+const DEFAULT_TO_CHAIN = ZEKO_M_NETWORKS.testnet
 
 const OPERATION_STATE_BY_EVENT = {
 	MARK_SUBMITTED: { phase: "submitted", status: "running" },
@@ -222,13 +225,14 @@ const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	if (explicit) return explicit
 
 	const keys = resolveSignerKeys()
-	const secret = from.startsWith("zeko:") ? keys.zeko : keys.mina
+	const secret =
+		from === ZEKO_M_NETWORKS.testnet || from === ZEKO_M_NETWORKS.mainnet ? keys.zeko : keys.mina
 	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
 }
 
 const parseBridgeCommandArgs = (args: Record<string, unknown>) => ({
-	from: parseChainRef(readOptionalStringArg(args, "from") ?? "mina:testnet", "--from"),
-	to: parseChainRef(readOptionalStringArg(args, "to") ?? "zeko:testnet", "--to"),
+	from: parseChainRef(readOptionalStringArg(args, "from") ?? DEFAULT_FROM_CHAIN, "--from"),
+	to: parseChainRef(readOptionalStringArg(args, "to") ?? DEFAULT_TO_CHAIN, "--to"),
 	amount: readRequiredStringArg(args, "amount", "Missing required --amount"),
 	account: readOptionalStringArg(args, "account"),
 	recipient: readOptionalStringArg(args, "recipient"),
@@ -1709,7 +1713,7 @@ const terminalRoutes = [
 
 const actorInput = ({ context }: { context: BridgeRunnerContext }) => context
 
-export const bridgeOperationMachine = setup({
+export const bridgeOperationMachine: AnyStateMachine = setup({
 	types: {
 		context: {} as BridgeRunnerContext,
 		input: {} as BridgeRunnerContext,
@@ -2001,8 +2005,8 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			description: "Run a full bridge flow from source to destination."
 		},
 		args: {
-			from: { type: "string", default: "mina:testnet" },
-			to: { type: "string", default: "zeko:testnet" },
+			from: { type: "string", default: DEFAULT_FROM_CHAIN },
+			to: { type: "string", default: DEFAULT_TO_CHAIN },
 			amount: { type: "string", required: true },
 			account: { type: "string", required: false },
 			recipient: { type: "string", required: false },

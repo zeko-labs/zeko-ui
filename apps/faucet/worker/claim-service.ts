@@ -50,8 +50,8 @@ const parseClaimBody = (body: unknown): ParsedClaimRequest | ClaimResult => {
 	if (!address || !isMinaAddress(address))
 		return toClaimError(400, "invalid_address", "Address must be a valid Mina public key.")
 
-	const chain = typeof body.chain === "string" ? body.chain.trim() : DEFAULT_CHAIN
-	if (chain !== DEFAULT_CHAIN)
+	const requestedChain = typeof body.chain === "string" ? body.chain.trim() : DEFAULT_CHAIN
+	if (requestedChain !== DEFAULT_CHAIN)
 		return toClaimError(400, "invalid_chain", `Only ${DEFAULT_CHAIN} is currently supported.`)
 
 	return {

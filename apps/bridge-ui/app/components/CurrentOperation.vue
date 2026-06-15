@@ -8,6 +8,7 @@ import {
 	statusFromState
 } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import { bridgeNetworkToWalletNetwork } from "~~/machines/networks"
 import type { transactionMachine } from "~~/machines/transaction"
 import { useSelector } from "~~/machines/vue-xstate"
 
@@ -60,6 +61,12 @@ const transactionIsComplete = (
 	transaction.value?.matches("COMPLETE") === true
 const isLoading = computed(() => machine.value.hasTag("loading"))
 const hasCTA = computed(() => machine.value.hasTag("cta"))
+const requestNetworkChange = () => {
+	machine.value.context.wallet.send({
+		type: "RequestNetworkChange",
+		network: bridgeNetworkToWalletNetwork(machine.value.context.changeNetworkTo)
+	})
+}
 
 watch(machine.value.context.errors, (newErrors) => {
 	if (newErrors) {
@@ -118,12 +125,7 @@ watch(machine.value.context.errors, (newErrors) => {
           <Button
             v-if='machine.matches("WAITING_FOR_NETWORK")'
             variant="main"
-            @click='
-              machine.context.wallet.send({
-              	type: "RequestNetworkChange",
-              	network: machine.context.changeNetworkTo
-              })
-            '>
+            @click="requestNetworkChange">
             Change Network
           </Button>
           <Button

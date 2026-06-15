@@ -1,4 +1,5 @@
 import { defineCommand, type CommandDef } from "citty"
+import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
 import { PrivateKey } from "o1js"
 import type { BridgeAdapter } from "../core/adapter"
 import { createDefaultBridgeAdapter, type BridgeAdapterFactory } from "../core/adapter-factory"
@@ -69,11 +70,15 @@ type DirectCommandDeps = {
 	write?: (message: string) => void
 }
 
+const MINA_TO_ZEKO_ROUTE = { from: MINA_NETWORKS.testnet, to: ZEKO_M_NETWORKS.testnet } as const
+const ZEKO_TO_MINA_ROUTE = { from: ZEKO_M_NETWORKS.testnet, to: MINA_NETWORKS.testnet } as const
+
 const deriveAccount = (from: ChainRef, explicit?: string): string => {
 	if (explicit) return explicit
 
 	const keys = resolveSignerKeys()
-	const secret = from.startsWith("zeko:") ? keys.zeko : keys.mina
+	const secret =
+		from === ZEKO_M_NETWORKS.testnet || from === ZEKO_M_NETWORKS.mainnet ? keys.zeko : keys.mina
 	return PrivateKey.fromBase58(secret).toPublicKey().toBase58()
 }
 
@@ -361,7 +366,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					description: "Submit a deposit transaction."
 				},
 				args: {
-					...routeArgs({ from: "mina:testnet", to: "zeko:testnet" }),
+					...routeArgs(MINA_TO_ZEKO_ROUTE),
 					account: { type: "string", required: false },
 					amount: { type: "string", required: true },
 					timeoutSlots: { type: "string", required: false, alias: ["timeout-slots"] },
@@ -388,7 +393,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					description: "Finalize the next eligible deposit."
 				},
 				args: {
-					...routeArgs({ from: "mina:testnet", to: "zeko:testnet" }),
+					...routeArgs(MINA_TO_ZEKO_ROUTE),
 					account: { type: "string", required: false },
 					wait: { type: "boolean", default: true }
 				},
@@ -409,7 +414,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					description: "Cancel the next eligible deposit."
 				},
 				args: {
-					...routeArgs({ from: "mina:testnet", to: "zeko:testnet" }),
+					...routeArgs(MINA_TO_ZEKO_ROUTE),
 					account: { type: "string", required: false },
 					wait: { type: "boolean", default: true }
 				},
@@ -430,7 +435,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					description: "List deposit operations for an account."
 				},
 				args: {
-					...routeArgs({ from: "mina:testnet", to: "zeko:testnet" }),
+					...routeArgs(MINA_TO_ZEKO_ROUTE),
 					account: { type: "string", required: false },
 					latest: { type: "boolean", default: true }
 				},
@@ -461,7 +466,7 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					description: "Submit a withdrawal transaction."
 				},
 				args: {
-					...routeArgs({ from: "zeko:testnet", to: "mina:testnet" }),
+					...routeArgs(ZEKO_TO_MINA_ROUTE),
 					account: { type: "string", required: false },
 					amount: { type: "string", required: true },
 					wait: { type: "boolean", default: true }
@@ -487,7 +492,7 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					description: "Finalize the next eligible withdrawal."
 				},
 				args: {
-					...routeArgs({ from: "zeko:testnet", to: "mina:testnet" }),
+					...routeArgs(ZEKO_TO_MINA_ROUTE),
 					account: { type: "string", required: false },
 					wait: { type: "boolean", default: true }
 				},
@@ -508,7 +513,7 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					description: "List withdrawal operations for an account."
 				},
 				args: {
-					...routeArgs({ from: "zeko:testnet", to: "mina:testnet" }),
+					...routeArgs(ZEKO_TO_MINA_ROUTE),
 					account: { type: "string", required: false },
 					latest: { type: "boolean", default: true }
 				},

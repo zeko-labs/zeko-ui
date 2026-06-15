@@ -1,6 +1,6 @@
 # Faucet CLI
 
-Command-line client for the Zeko testnet faucet. Claim testnet tokens and verify your GitHub authentication from the terminal.
+Command-line client for the Zeko-M testnet faucet. Claim devnet tokens and verify your GitHub authentication from the terminal.
 
 Written in Rust for fast startup and single-binary distribution. Distributed via npm with platform-specific packages.
 
@@ -74,7 +74,7 @@ Token source: env
 
 ### `claim <address>`
 
-Submit a faucet claim for the given Mina address on the `zeko-testnet` chain.
+Submit a faucet claim for the given Mina address on the `zeko-m:testnet` chain.
 
 ```bash
 GITHUB_TOKEN=ghp_xxx zeko-faucet claim B62qexample
@@ -86,7 +86,7 @@ GITHUB_TOKEN=ghp_xxx zeko-faucet claim B62qexample --json
 
 ```
 Claim submitted for B62qexample.
-Chain: zeko-testnet
+Chain: zeko-m:testnet
 Amount: 100
 Transaction: 5Jtxxx
 Explorer: https://zekoscan.io/devnet/tx/5Jtxxx
@@ -134,7 +134,7 @@ Pass `--json` to any command for machine-readable output suitable for piping int
 {
 	"success": true,
 	"address": "B62qexample",
-	"chain": "zeko-testnet",
+	"chain": "zeko-m:testnet",
 	"amount": "100",
 	"hash": "5Jtxxx",
 	"explorer_url": "https://zekoscan.io/devnet/tx/5Jtxxx"

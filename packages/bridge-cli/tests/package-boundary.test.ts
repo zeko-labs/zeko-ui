@@ -3,6 +3,7 @@ import path from "node:path"
 import { describe, expect, it } from "vitest"
 
 const packageRoot = path.resolve(__dirname, "..")
+const repositoryRoot = path.resolve(packageRoot, "../..")
 
 const readJson = (relativePath: string) =>
 	JSON.parse(readFileSync(path.join(packageRoot, relativePath), "utf8")) as Record<string, unknown>
@@ -39,5 +40,27 @@ describe("published package boundary", () => {
 		expect(cliSource).toContain("await loadBridgeCliEnv()")
 		expect(cliSource).toContain("await runMain(createBridgeCliCommand())")
 		expect(existsSync(path.join(packageRoot, "src/core/entrypoint.ts"))).toBe(false)
+	})
+
+	it("syncs the CLI source and internal network package source to the public mirror", () => {
+		const workflow = readFileSync(
+			path.join(repositoryRoot, ".github", "workflows", "sync-bridge-cli.yaml"),
+			"utf8"
+		)
+		const packageJson = readJson("package.json")
+
+		expect(packageJson.devDependencies).toMatchObject({
+			"@zeko/networks": "workspace:*"
+		})
+		expect(packageJson.dependencies).not.toHaveProperty("@zeko/networks")
+		expect(workflow).toContain("uses: ./.github/workflows/sync-package-repo.yaml")
+		expect(workflow).toContain("package-path: packages/bridge-cli")
+		expect(workflow).toContain("additional-package-paths: packages/networks")
+		expect(workflow).not.toContain("git archive HEAD packages/bridge-cli packages/networks")
+		expect(workflow).not.toContain("cp packages/bridge-cli/README.md")
+		expect(workflow).not.toContain("node_modules")
+		expect(workflow).toContain("packages/*")
+		expect(workflow).not.toContain("sync-paths")
+		expect(workflow).not.toContain("bridge-cli:build")
 	})
 })

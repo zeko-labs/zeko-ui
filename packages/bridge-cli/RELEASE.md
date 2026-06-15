@@ -1,6 +1,6 @@
 # Release Process
 
-The bridge CLI is developed in the private `zeko-ui` monorepo. Changesets, versioning, building, npm publishing, GitHub releases, and public-repo syncing all run from the monorepo. The standalone `zeko-labs/bridge-cli` repo is a public source mirror.
+The bridge CLI is developed in the private `zeko-ui` monorepo. Changesets, versioning, building, npm publishing, GitHub releases, and public-repo syncing all run from the monorepo. The standalone `zeko-labs/bridge-cli` repo is a public source mirror for the CLI and the internal source packages it needs.
 
 ## Architecture
 
@@ -8,12 +8,16 @@ The bridge CLI is developed in the private `zeko-ui` monorepo. Changesets, versi
 zeko-ui (monorepo)                              zeko-labs/bridge-cli (public mirror)
 ┌────────────────────────────┐                  ┌──────────────────────────┐
 │ .changeset/config.json     │                  │ /                        │
-│   └── bridge-cli release   │                  │ ├── src/                 │
-│                            │                  │ ├── README.md            │
-│ packages/bridge-cli/       │──── sync ────▶   │ ├── RELEASE.md           │
-│   ├── src/                 │  force-push      │ └── package.json         │
-│   ├── dist/ (built in CI)  │  clean commit    │                          │
-│   ├── README.md            │                  │ No release CI            │
+│   └── bridge-cli release   │                  │ ├── packages/bridge-cli/ │
+│                            │                  │ │   ├── src/             │
+│ packages/bridge-cli/       │──── sync ────▶   │ │   └── package.json     │
+│   ├── src/                 │  force-push      │ ├── packages/networks/   │
+│   ├── dist/ (built in CI)  │  clean commit    │ │   ├── src/             │
+│   ├── README.md            │                  │ │   └── package.json     │
+│   └── package.json         │                  │ ├── pnpm-workspace.yaml  │
+│                            │                  │ └── .moon/workspace.yml  │
+│ packages/networks/         │                  │                          │
+│   ├── src/                 │                  │ No release CI            │
 │   └── package.json         │                  │ No .changeset/           │
 │                            │                  └──────────────────────────┘
 │ .github/workflows/         │
@@ -35,7 +39,7 @@ zeko-ui (monorepo)                              zeko-labs/bridge-cli (public mir
                              → moon run bridge-cli:build
                              → pnpm pack packages/bridge-cli
                              → npm publish <tarball> via OIDC
-                           → sync-bridge-cli.yaml force-pushes source to mirror
+                           → sync-bridge-cli.yaml force-pushes the source mirror
                            → github-release-bridge-cli.yaml creates/releases tarball on mirror
 ```
 
@@ -53,7 +57,7 @@ zeko-ui (monorepo)                              zeko-labs/bridge-cli (public mir
 Runs `changesets/action@v1` with `version` only. When `hasChangesets` is `false`, it fans out bridge-cli release steps as separate downstream jobs:
 
 - `release-bridge-cli` for version-check, build, pack, and npm publish
-- `sync-bridge-cli` for force-pushing the standalone mirror
+- `sync-bridge-cli` for force-pushing the standalone source mirror
 - `github-release-bridge-cli` for the standalone GitHub release after sync completes
 
 ### `release-bridge-cli.yaml` — build, pack, and publish
@@ -64,14 +68,15 @@ This package does not use platform subpackages. The published artifact is the bu
 
 ### `github-release-bridge-cli.yaml` — GitHub release
 
-Creates a GitHub release on `zeko-labs/bridge-cli` and attaches the packaged npm tarball from the monorepo release run after the mirror sync finishes, so the release tag points at the synced standalone source. On reruns, it re-uploads assets to an existing release instead of failing on an existing tag.
+Creates a GitHub release on `zeko-labs/bridge-cli` and attaches the packaged npm tarball from the monorepo release run after the mirror sync finishes, so the release tag points at the synced standalone source files. On reruns, it re-uploads assets to an existing release instead of failing on an existing tag.
 
-### `sync-bridge-cli.yaml` — public mirror
+### `sync-bridge-cli.yaml` — public source mirror
 
-Force-pushes `packages/bridge-cli` to the standalone public repo via the shared `sync-package-repo.yaml` helper after resolving monorepo-only metadata:
+Assembles a temporary public source monorepo, then force-pushes it to `zeko-labs/bridge-cli`. The mirror includes `packages/bridge-cli` and `packages/networks` so the CLI source keeps importing the shared network nomenclature package instead of duplicating it. npm publication remains separate: `release-bridge-cli.yaml` builds `packages/bridge-cli`, packs the generated `dist/cli.js`, and publishes that tarball from the private monorepo.
 
 - resolves `catalog:` versions
 - resolves `workspace:` versions using the bridge-sdk and graphql package manifests
+- preserves the local `@zeko/networks` workspace dependency because that package is included in the mirror
 - injects the root `packageManager`
 - writes a standalone `pnpm-workspace.yaml`
 

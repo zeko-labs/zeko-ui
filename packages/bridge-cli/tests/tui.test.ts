@@ -9,7 +9,7 @@ describe("tui snapshot", () => {
 				id: "op-new",
 				status: "running",
 				phase: "waiting-finalization",
-				route: "mina:testnet->zeko:testnet",
+				route: "mina:testnet->zeko-m:testnet",
 				direction: "deposit",
 				account: "B62new",
 				recipient: "B62new",
@@ -23,7 +23,7 @@ describe("tui snapshot", () => {
 				id: "op-old",
 				status: "completed",
 				phase: "completed",
-				route: "zeko:testnet->mina:testnet",
+				route: "zeko-m:testnet->mina:testnet",
 				direction: "withdrawal",
 				account: "B62old",
 				recipient: "B62old",
@@ -42,9 +42,9 @@ describe("tui snapshot", () => {
 		})
 
 		expect(output).toContain("Active operations:")
-		expect(output).toContain("> op-new running mina:testnet->zeko:testnet amount=2")
+		expect(output).toContain("> op-new running mina:testnet->zeko-m:testnet amount=2")
 		expect(output).toContain("Completed operations:")
-		expect(output).toContain("op-old completed zeko:testnet->mina:testnet amount=1")
+		expect(output).toContain("op-old completed zeko-m:testnet->mina:testnet amount=1")
 		expect(output).toContain("Recent log lines:")
 		expect(output).toContain('{"event":"waiting"}')
 	})

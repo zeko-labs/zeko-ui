@@ -32,10 +32,10 @@ describe("doctor command", () => {
 		expect(writes[0]).toContain("Wallet private key: configured")
 		expect(writes[0]).toContain(`Signer public key: ${signer.toPublicKey().toBase58()}`)
 		expect(writes[0]).toContain("Known routes:")
-		expect(writes[0]).toContain("mina:testnet->zeko:testnet")
+		expect(writes[0]).toContain("mina:testnet->zeko-m:testnet")
 		expect(writes[0]).toContain("Route status:")
-		expect(writes[0]).toContain("mina:testnet->zeko:testnet: enabled")
-		expect(writes[0]).toContain("mina:mainnet->zeko:zeko-mainnet: enabled")
+		expect(writes[0]).toContain("mina:testnet->zeko-m:testnet: enabled")
+		expect(writes[0]).toContain("mina:mainnet->zeko-m:mainnet: enabled")
 		expect(writes[0]).toContain(
 			"actionsApi=https://testnet.api.actions.zeko.io/graphql; l1=testnet; l2=testnet"
 		)

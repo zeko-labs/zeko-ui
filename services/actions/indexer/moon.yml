@@ -148,7 +148,7 @@ tasks:
   typecheck:
     deps:
       - ^:build
-    command: tsc --noEmit -p tsconfig.json
+    command: tsgo --noEmit --declaration false --declarationMap false -p tsconfig.json
     inputs:
       - "@group(sources)"
       - "@group(tests)"

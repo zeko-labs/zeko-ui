@@ -9,10 +9,11 @@ jobs:
     uses: ./.github/workflows/sync-package-repo.yaml
     with:
       package-path: packages/bridge-cli
+      additional-package-paths: packages/networks
       standalone-repo: bridge-cli
       project-id: bridge-cli
-      workspace-packages: .
-      extra-workspace-version-sources: |
-        packages/bridge-sdk/package.json
-        packages/graphql/package.json
+      project-paths: bridge-cli=packages/bridge-cli,networks=packages/networks
+      workspace-packages: packages/*
+      extra-workspace-version-sources: packages/bridge-sdk/package.json,packages/graphql/package.json
+      preserve-workspace-dependencies: "@zeko/networks"
     secrets: inherit

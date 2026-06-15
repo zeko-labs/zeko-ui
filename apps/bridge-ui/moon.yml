@@ -3,6 +3,7 @@ dependsOn:
   - design
   - layer
   - bridge-sdk
+  - sdk
 fileGroups:
   sources:
     - app/**/*

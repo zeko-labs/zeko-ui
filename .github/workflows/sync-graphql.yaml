@@ -11,5 +11,5 @@ jobs:
       package-path: packages/graphql
       standalone-repo: graphql
       project-id: graphql
-      workspace-packages: .
+      workspace-packages: packages/graphql
     secrets: inherit

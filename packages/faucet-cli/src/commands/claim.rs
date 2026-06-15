@@ -5,7 +5,7 @@ use crate::errors::{CliError, EXIT_SUCCESS};
 use crate::output::{print_error, print_success_human, print_success_json};
 use crate::validation::parse_address;
 
-const DEFAULT_CHAIN: &str = "zeko-testnet";
+const DEFAULT_CHAIN: &str = "zeko-m:testnet";
 
 pub async fn run(address: &str, token: &str, as_json: bool) -> i32 {
     match execute(address, token, as_json).await {

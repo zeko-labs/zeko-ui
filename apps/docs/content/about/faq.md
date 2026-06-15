@@ -69,7 +69,7 @@ Here are answers to common questions about Zeko, Mina, and related concepts.
 
 ## User Information
 
-- **Is there a faucet for Zeko testnet?**
+- **Is there a faucet for Zeko-M testnet?**
   Yes, there is a faucet available at https://zeko.io/faucet.
 
 ## Transaction Flow on Zeko

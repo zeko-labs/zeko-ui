@@ -10,7 +10,7 @@ const baseSession = (overrides: Partial<OperationSession> = {}): OperationSessio
 	id: "op-1",
 	status: "running",
 	phase: "submitted",
-	route: "mina:testnet->zeko:testnet",
+	route: "mina:testnet->zeko-m:testnet",
 	direction: "deposit",
 	account: "B62test",
 	recipient: "B62test",
@@ -107,7 +107,7 @@ describe("bridge queue analysis", () => {
 
 	it("treats an unseen submitted withdrawal as waiting for submission instead of rebinding to another item", () => {
 		const session = baseSession({
-			route: "zeko:testnet->mina:testnet",
+			route: "zeko-m:testnet->mina:testnet",
 			direction: "withdrawal"
 		})
 		const result = analyzeWithdrawalQueue({
@@ -199,7 +199,7 @@ describe("bridge queue analysis", () => {
 
 	it("treats an unseen submitted withdrawal as waiting for submission instead of rebinding to an older same-amount item", () => {
 		const session = baseSession({
-			route: "zeko:testnet->mina:testnet",
+			route: "zeko-m:testnet->mina:testnet",
 			direction: "withdrawal"
 		})
 		const result = analyzeWithdrawalQueue({

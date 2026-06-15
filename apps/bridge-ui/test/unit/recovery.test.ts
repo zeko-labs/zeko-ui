@@ -13,7 +13,7 @@ const actionState = ({
 	cancelled = false,
 	cancellable = false,
 	source = "mina:devnet",
-	destination = "zeko:testnet"
+	destination = "zeko-m:testnet"
 }: {
 	id: string
 	index: number
@@ -21,8 +21,8 @@ const actionState = ({
 	finalised?: boolean
 	cancelled?: boolean
 	cancellable?: boolean
-	source?: "mina:devnet" | "zeko:testnet"
-	destination?: "mina:devnet" | "zeko:testnet"
+	source?: "mina:devnet" | "zeko-m:testnet"
+	destination?: "mina:devnet" | "zeko-m:testnet"
 }) => ({
 	id,
 	index,
@@ -66,7 +66,7 @@ describe("classifyRecoveredOperations", () => {
 					id: "withdrawal-1",
 					index: 1,
 					date: "2026-03-24T00:00:00Z",
-					source: "zeko:testnet",
+					source: "zeko-m:testnet",
 					destination: "mina:devnet"
 				})
 			],
@@ -125,7 +125,7 @@ describe("classifyRecoveredOperations", () => {
 					index: 2,
 					date: "2026-03-24T00:05:00Z",
 					finalised: true,
-					source: "zeko:testnet",
+					source: "zeko-m:testnet",
 					destination: "mina:devnet"
 				})
 			],
@@ -150,7 +150,7 @@ describe("classifyRecoveredOperations", () => {
 					id: "withdrawal",
 					index: 2,
 					date: "2026-03-24T00:00:00Z",
-					source: "zeko:testnet",
+					source: "zeko-m:testnet",
 					destination: "mina:devnet"
 				})
 			],

@@ -3,12 +3,14 @@ import { defineConfig } from "vitest/config"
 
 const bridgeSdkSource = fileURLToPath(new URL("../bridge-sdk/src/index.ts", import.meta.url))
 const graphqlSource = fileURLToPath(new URL("../graphql/src/index.ts", import.meta.url))
+const networksSource = fileURLToPath(new URL("../networks/src/index.ts", import.meta.url))
 
 export default defineConfig({
 	resolve: {
 		alias: {
 			"@zeko-labs/bridge-sdk": bridgeSdkSource,
-			"@zeko-labs/graphql": graphqlSource
+			"@zeko-labs/graphql": graphqlSource,
+			"@zeko/networks": networksSource
 		}
 	},
 	test: {

@@ -14,12 +14,12 @@
 		"declarationMap": true,
 		"sourceMap": true,
 		"outDir": "./dist",
-		"baseUrl": ".",
 		"paths": {
 			"@zeko-labs/bridge-sdk": ["../bridge-sdk/src/index.ts"],
 			"@zeko-labs/graphql": ["../graphql/src/index.ts"],
 			"@zeko-labs/graphql/mina": ["../graphql/src/mina.ts"],
-			"@zeko-labs/graphql/zeko": ["../graphql/src/zeko.ts"]
+			"@zeko-labs/graphql/zeko": ["../graphql/src/zeko.ts"],
+			"@zeko/networks": ["../networks/src/index.ts"]
 		},
 		"resolveJsonModule": true,
 		"esModuleInterop": true,

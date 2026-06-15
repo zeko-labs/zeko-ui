@@ -39,6 +39,8 @@
 				"packages/graphql/**",
 				"packages/design/**",
 				"packages/layer/**",
+				"packages/networks/**",
+				"packages/sdk/**",
 				"pnpm-lock.yaml",
 				"pnpm-workspace.yaml"
 			],
@@ -60,6 +62,8 @@
 				"packages/graphql/**",
 				"packages/design/**",
 				"packages/layer/**",
+				"packages/networks/**",
+				"packages/sdk/**",
 				"pnpm-lock.yaml",
 				"pnpm-workspace.yaml"
 			],

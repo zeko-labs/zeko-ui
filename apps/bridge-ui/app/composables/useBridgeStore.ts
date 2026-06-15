@@ -1,4 +1,4 @@
-import { walletMachine } from "@lumina-dex/sdk"
+import { walletMachine } from "@zeko/sdk"
 import { defineStore } from "pinia"
 import { bridgeMachine } from "~~/machines/bridge"
 import { useMachine } from "~~/machines/vue-xstate"

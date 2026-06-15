@@ -125,7 +125,7 @@ const createClaimRequest = ({
 	headers,
 	body = {
 		address: VALID_ADDRESS,
-		chain: "zeko-testnet"
+		chain: "zeko-m:testnet"
 	}
 }: {
 	headers?: HeadersInit
@@ -197,7 +197,7 @@ describe("faucet worker claim safeguards", () => {
 			createClaimRequest({
 				body: {
 					address: "abc123",
-					chain: "zeko-testnet"
+					chain: "zeko-m:testnet"
 				}
 			}),
 			env as never,
@@ -208,6 +208,34 @@ describe("faucet worker claim safeguards", () => {
 		await expect(response.json()).resolves.toMatchObject({
 			success: false,
 			code: "invalid_address"
+		})
+		expect(env.RATE_LIMIT_FAUCET.limit).not.toHaveBeenCalled()
+		expect(env.CLAIM_MUTEX.get).not.toHaveBeenCalled()
+	})
+
+	it("rejects legacy faucet chain IDs", async () => {
+		const env = createEnv()
+		const ctx = createContext()
+
+		const { default: worker } = await import("../worker")
+		const response = await worker.fetch(
+			createClaimRequest({
+				headers: {
+					Authorization: "Bearer ghp_token"
+				},
+				body: {
+					address: VALID_ADDRESS,
+					chain: "zeko-testnet"
+				}
+			}),
+			env as never,
+			ctx as never
+		)
+
+		expect(response.status).toBe(400)
+		await expect(response.json()).resolves.toMatchObject({
+			success: false,
+			code: "invalid_chain"
 		})
 		expect(env.RATE_LIMIT_FAUCET.limit).not.toHaveBeenCalled()
 		expect(env.CLAIM_MUTEX.get).not.toHaveBeenCalled()
@@ -231,11 +259,6 @@ describe("faucet worker claim safeguards", () => {
 			)
 		)
 
-		env.FAUCET_CLAIM.get.mockImplementation(async (key: string) => {
-			if (key === `claim:zeko-testnet:${VALID_ADDRESS}`) return null
-			if (key === VALID_ADDRESS) return "2026-02-26T00:00:00.000Z"
-			return null
-		})
 		getRandomMock.mockResolvedValue({
 			fetch: containerFetch
 		})
@@ -244,7 +267,7 @@ describe("faucet worker claim safeguards", () => {
 		const entrypoint = new TurnstileClaimsEntrypoint(ctx as never, env as never)
 		const result = await entrypoint.claimWithTurnstile({
 			address: VALID_ADDRESS,
-			chain: "zeko-testnet",
+			chain: "zeko-m:testnet",
 			clientIp: "127.0.0.1"
 		})
 
@@ -254,8 +277,76 @@ describe("faucet worker claim safeguards", () => {
 			hash: "0xlegacy"
 		})
 		expect(env.RATE_LIMIT_FAUCET.limit).toHaveBeenCalledWith({ key: "127.0.0.1" })
-		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledTimes(1)
-		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith(`claim:zeko-testnet:${VALID_ADDRESS}`)
+		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith(`claim:zeko-m:testnet:${VALID_ADDRESS}`)
+		expect(env.FAUCET_CLAIM.get).not.toHaveBeenCalledWith(`claim:zeko-testnet:${VALID_ADDRESS}`)
+	})
+
+	it("does not reject claims when only a legacy network claim key exists", async () => {
+		const env = createEnv()
+		const ctx = createContext()
+		const containerFetch = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					success: true,
+					hash: "0xabc"
+				}),
+				{
+					status: 200,
+					headers: {
+						"Content-Type": "application/json"
+					}
+				}
+			)
+		)
+
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						id: 42,
+						login: "zeko",
+						created_at: "2024-01-01T00:00:00.000Z"
+					}),
+					{
+						status: 200,
+						headers: {
+							"Content-Type": "application/json"
+						}
+					}
+				)
+			)
+		)
+		env.FAUCET_CLAIM.get.mockImplementation(async (key: string) =>
+			key === `claim:zeko-testnet:${VALID_ADDRESS}` ? "2026-02-26T00:00:00.000Z" : null
+		)
+		getRandomMock.mockResolvedValue({
+			fetch: containerFetch
+		})
+
+		const { default: worker } = await import("../worker")
+		const response = await worker.fetch(
+			createClaimRequest({
+				headers: {
+					Authorization: "Bearer ghp_token"
+				}
+			}),
+			env as never,
+			ctx as never
+		)
+
+		expect(response.status).toBe(202)
+		await expect(response.json()).resolves.toMatchObject({
+			success: true,
+			hash: "0xabc"
+		})
+		expect(env.FAUCET_CLAIM.get).toHaveBeenCalledWith(`claim:zeko-m:testnet:${VALID_ADDRESS}`)
+		expect(env.FAUCET_CLAIM.get).not.toHaveBeenCalledWith(`claim:zeko-testnet:${VALID_ADDRESS}`)
+		expect(env.FAUCET_CLAIM.put).toHaveBeenCalledWith(
+			`claim:zeko-m:testnet:${VALID_ADDRESS}`,
+			expect.any(String)
+		)
+		expect(containerFetch).toHaveBeenCalledOnce()
 	})
 
 	it("maps GitHub API rate limits to the public rate-limited error", async () => {
@@ -352,7 +443,7 @@ describe("faucet worker claim safeguards", () => {
 
 		const putCalls = env.FAUCET_CLAIM.put.mock.calls as KvPutCall[]
 		expect(putCalls).toHaveLength(2)
-		expect(putCalls[0]?.[0]).toBe(`claim:zeko-testnet:${VALID_ADDRESS}`)
+		expect(putCalls[0]?.[0]).toBe(`claim:zeko-m:testnet:${VALID_ADDRESS}`)
 		expect(putCalls[0]?.[1]).toEqual(expect.any(String))
 		expect(putCalls[1]).toEqual([
 			"github:42",

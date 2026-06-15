@@ -13,13 +13,13 @@
 	},
 	{
 		"id": "bridge-cli",
-		"prompt": "I want an unattended agent-friendly way to bridge between Mina testnet and Zeko testnet with a local private key. Should I use the bridge CLI, and how?",
+		"prompt": "I want an unattended agent-friendly way to bridge between Mina testnet and Zeko-M testnet with a local private key. Should I use the bridge CLI, and how?",
 		"expectedReferences": ["30-bridge-and-faucet.md"],
 		"expectedFragments": [
 			"MINA_PRIVATE_KEY",
 			"zeko-bridge bridge",
 			"--from mina:testnet",
-			"--to zeko:testnet",
+			"--to zeko-m:testnet",
 			"--json"
 		]
 	},
@@ -30,7 +30,7 @@
 		"expectedFragments": [
 			"GITHUB_TOKEN",
 			"--json",
-			"zeko-testnet",
+			"zeko-m:testnet",
 			"https://docs.zeko.io/developers/guides/faucet-cli"
 		]
 	},

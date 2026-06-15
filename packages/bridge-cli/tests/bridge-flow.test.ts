@@ -11,7 +11,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-sdk-driven-finalize",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62test",
 				timeoutSlots: 10
@@ -24,7 +24,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-current",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
 							included: true
@@ -66,7 +66,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "finalize-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/finalize-current",
 							included: true
@@ -97,7 +97,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-sdk-selected-prior-deposit",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62test",
 				timeoutSlots: 10
@@ -110,7 +110,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-current",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
 							included: true
@@ -195,7 +195,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "finalize-prior",
 							explorerUrl: "https://zekoscan.io/testnet/tx/finalize-prior",
 							included: true
@@ -238,7 +238,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-drain-before-submit-visible",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62test",
 				timeoutSlots: 10
@@ -294,7 +294,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash,
 							explorerUrl: `https://zekoscan.io/testnet/tx/${hash}`,
 							included: true
@@ -337,7 +337,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-queued",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62test",
 				timeoutSlots: 10
@@ -350,7 +350,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-current",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
 							included: true
@@ -458,7 +458,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash,
 							explorerUrl: `https://zekoscan.io/testnet/tx/${hash}`,
 							included: true
@@ -493,7 +493,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-finalize-retry",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62retry"
 			},
@@ -505,7 +505,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-submit-retry",
 							explorerUrl: "https://minascan.io/devnet/tx/deposit-submit-retry",
 							included: true
@@ -562,7 +562,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-finalize-retry",
 							explorerUrl: "https://zekoscan.io/testnet/tx/deposit-finalize-retry",
 							included: true
@@ -602,7 +602,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-deposit-invalid-key",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62invalid"
 			},
@@ -614,7 +614,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-submit-invalid-key",
 							explorerUrl: "https://minascan.io/devnet/tx/deposit-submit-invalid-key",
 							included: true
@@ -674,7 +674,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-deposit-claim-pending",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "1",
 				account: "B62claim"
 			},
@@ -685,7 +685,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-submit-current",
 							explorerUrl: "https://minascan.io/devnet/tx/deposit-submit-current",
 							included: false
@@ -780,7 +780,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-finalize-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/deposit-finalize-current",
 							included: false
@@ -817,14 +817,14 @@ describe("bridge flow", () => {
 			{
 				id: "op-rebind",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "1",
 				account: "B62test",
 				session: {
 					id: "op-rebind",
 					status: "running",
 					phase: "waiting-finalization",
-					route: "mina:testnet->zeko:testnet",
+					route: "mina:testnet->zeko-m:testnet",
 					direction: "deposit",
 					account: "B62test",
 					recipient: "B62test",
@@ -904,7 +904,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "finalize-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/finalize-current",
 							included: true
@@ -937,7 +937,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-prior-cancel",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "1",
 				account: "B62test",
 				timeoutSlots: 10
@@ -950,7 +950,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-current",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
 							included: true
@@ -1064,7 +1064,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "cancel",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "cancel-older",
 							explorerUrl: "https://minascan.io/devnet/tx/cancel-older",
 							included: true
@@ -1081,7 +1081,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "finalize-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/finalize-current",
 							included: true
@@ -1115,7 +1115,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-cancel-before-finalize",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "1",
 				account: "B62test"
 			},
@@ -1127,7 +1127,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-current",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
 							included: true
@@ -1244,7 +1244,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "cancel",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "cancel-older",
 							explorerUrl: "https://minascan.io/devnet/tx/cancel-older",
 							included: true
@@ -1256,7 +1256,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "finalize-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/finalize-current",
 							included: true
@@ -1301,7 +1301,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-heartbeat",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62test",
 				timeoutSlots: 10
@@ -1313,7 +1313,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-hash",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-hash",
 							included: true
@@ -1384,7 +1384,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-stalled-submission",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "1",
 				account: "B62test"
@@ -1396,7 +1396,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-submit",
 							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit",
 							included: false
@@ -1470,7 +1470,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-drain-withdrawals-before-submit-visible",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "2",
 				account: "B62test"
@@ -1519,7 +1519,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "finalize",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash,
 							explorerUrl: `https://minascan.io/devnet/tx/${hash}`,
 							included: true
@@ -1558,7 +1558,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-withdrawal-already-finalised",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "3",
 				account: "B62test"
@@ -1571,7 +1571,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-submit-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
 							included: true
@@ -1631,7 +1631,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-withdrawal-finalize-status-lag",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "1.9",
 				account: "B62test"
@@ -1644,7 +1644,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-submit-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
 							included: true
@@ -1679,7 +1679,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "finalize",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: `withdraw-finalize-current-${finalizeCalls}`,
 							explorerUrl: `https://minascan.io/devnet/tx/withdraw-finalize-current-${finalizeCalls}`,
 							included: true
@@ -1713,7 +1713,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-withdrawal-already-finalised-other-index",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "3",
 				account: "B62test"
@@ -1726,7 +1726,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-submit-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
 							included: true
@@ -1793,7 +1793,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-withdrawal-wait-commit-before-finalize-check",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "3",
 				account: "B62test"
@@ -1806,7 +1806,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-submit-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
 							included: true
@@ -1865,7 +1865,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-stalled-prior",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "1",
 				account: "B62test"
 			},
@@ -1876,7 +1876,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-submit",
 							explorerUrl: "https://minascan.io/devnet/tx/deposit-submit",
 							included: false
@@ -1999,7 +1999,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-1",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62test",
 				timeoutSlots: 10
@@ -2013,7 +2013,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-hash",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-hash",
 							included: true
@@ -2084,7 +2084,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "finalize-hash",
 							explorerUrl: "https://zekoscan.io/testnet/tx/finalize-hash",
 							included: true
@@ -2123,7 +2123,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-retry",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "1",
 				account: "B62retry"
 			},
@@ -2134,7 +2134,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "retry-submit",
 							explorerUrl: "https://minascan.io/devnet/tx/retry-submit",
 							included: true
@@ -2190,7 +2190,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-heartbeat",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "1",
 				account: "B62heartbeat"
 			},
@@ -2201,7 +2201,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "heartbeat-submit",
 							explorerUrl: "https://minascan.io/devnet/tx/heartbeat-submit",
 							included: true
@@ -2268,7 +2268,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-verbose-diagnostics",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "1",
 				account: "B62verbose"
 			},
@@ -2279,7 +2279,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "verbose-submit",
 							explorerUrl: "https://minascan.io/devnet/tx/verbose-submit",
 							included: true
@@ -2373,7 +2373,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-queued-deposit",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62queued"
 			},
@@ -2385,7 +2385,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-submit-current",
 							explorerUrl: "https://minascan.io/devnet/tx/deposit-submit-current",
 							included: true
@@ -2492,7 +2492,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: submitCalls === 0 ? "deposit-finalize-earlier" : "deposit-finalize-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/deposit-finalize-current",
 							included: true
@@ -2522,7 +2522,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-queued-withdrawal",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "2",
 				account: "B62queued"
@@ -2534,7 +2534,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdrawal-submit-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/withdrawal-submit-current",
 							included: true
@@ -2617,7 +2617,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "finalize",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash:
 								finalizeCalls === 1 ? "withdrawal-finalize-earlier" : "withdrawal-finalize-current",
 							explorerUrl: "https://minascan.io/devnet/tx/withdrawal-finalize-current",
@@ -2648,7 +2648,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-withdrawal-submit-retry",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "3",
 				account: "B62submitretry"
@@ -2665,7 +2665,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdrawal-submit-retry",
 							explorerUrl: "https://zekoscan.io/testnet/tx/withdrawal-submit-retry",
 							included: true
@@ -2692,7 +2692,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "finalize",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdrawal-finalize-retry",
 							explorerUrl: "https://minascan.io/devnet/tx/withdrawal-finalize-retry",
 							included: true
@@ -2729,7 +2729,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-withdrawal-status-diagnostics",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "3",
 				account: "B62status"
@@ -2757,7 +2757,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdrawal-submit-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/withdrawal-submit-current",
 							included: false
@@ -2817,7 +2817,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-withdrawal-too-small",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "0.2",
 				account: "B62submitretry"
@@ -2864,7 +2864,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-submit-failure",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "1",
 				account: "B62submitfail"
 			},
@@ -2902,7 +2902,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-current-deposit-cancel",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62cancel"
 			},
@@ -2914,7 +2914,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-current",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
 							included: false
@@ -2970,7 +2970,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "cancel",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "cancel-current",
 							explorerUrl: "https://minascan.io/devnet/tx/cancel-current",
 							included: false
@@ -3008,7 +3008,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-waits-without-cancel-ready",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62timeout",
 				timeoutSlots: 480
@@ -3020,7 +3020,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-pending",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-pending",
 							included: false
@@ -3087,7 +3087,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-avoid-duplicate-cancel",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62cancel"
 			},
@@ -3098,7 +3098,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-current",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
 							included: false
@@ -3146,7 +3146,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "cancel",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: `cancel-${cancelCalls.length}`,
 							explorerUrl: "https://minascan.io/devnet/tx/cancel-older",
 							included: false
@@ -3179,7 +3179,7 @@ describe("bridge flow", () => {
 			{
 				id: "op-retry-stale-finalize",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				amount: "2",
 				account: "B62finalize"
 			},
@@ -3190,7 +3190,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "submit-current",
 							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
 							included: false
@@ -3244,7 +3244,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash,
 							explorerUrl: `https://zekoscan.io/testnet/tx/${hash}`,
 							included: false
@@ -3280,7 +3280,7 @@ describe("bridge flow", () => {
 		const result = await runBridgeOperation(
 			{
 				id: "op-withdrawal-claim-pending",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				amount: "1",
 				account: "B62claim"
@@ -3292,7 +3292,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-submit-current",
 							explorerUrl: "https://zekoscan.io/testnet/tx/withdraw-submit-current",
 							included: false
@@ -3372,7 +3372,7 @@ describe("bridge flow", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "finalize",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-finalize-current",
 							explorerUrl: "https://minascan.io/devnet/tx/withdraw-finalize-current",
 							included: false

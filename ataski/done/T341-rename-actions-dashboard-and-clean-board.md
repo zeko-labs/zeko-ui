@@ -36,7 +36,7 @@ updated_at: 2026-06-13T02:33:00Z
 - `MAINNET_ACTIONS_INDEXER_TOKEN` and `TESTNET_ACTIONS_INDEXER_TOKEN` were copied from the matching Northflank indexer service `AUTH_TOKEN` runtime variables into the `actions-dashboard` Worker secrets.
 - `moon run -f actions-dashboard:publish-cf-build-config` created the Cloudflare Workers Builds default-branch and non-production branch triggers for the renamed Worker.
 - `curl -I https://actions.dashboard.zeko.io` returns the expected Cloudflare Access redirect for the protected dashboard hostname.
-- Ataski dashboard task history was squashed into T311 and no stale in-progress task remains.
+- Ataski dashboard task history was squashed into T326 and no stale in-progress task remains.
 
 ## External State
 

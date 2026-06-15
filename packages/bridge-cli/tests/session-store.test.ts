@@ -21,7 +21,7 @@ describe("session store", () => {
 			id: "op-1",
 			status: "running",
 			phase: "submitted",
-			route: "mina:testnet->zeko:testnet",
+			route: "mina:testnet->zeko-m:testnet",
 			direction: "deposit",
 			account: "B62test",
 			amount: "1.5",

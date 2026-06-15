@@ -2,8 +2,9 @@
 import { Field } from "@ark-ui/vue/field"
 // biome-ignore lint/style/useImportType: vue/biome issue
 import { createListCollection, Select, useSelect } from "@ark-ui/vue/select"
-import type { Networks } from "@lumina-dex/sdk"
 import { ChevronDownIcon } from "lucide-vue-next"
+import type { BridgeNetwork } from "~~/machines/networks"
+import { supportedNetworks } from "~~/machines/networks"
 
 const emit = defineEmits(["select:network"])
 
@@ -13,7 +14,7 @@ const {
 	enabled = "testnet",
 	loading = false
 } = defineProps<{
-	currentValue: [Networks]
+	currentValue: [BridgeNetwork]
 	target: "source" | "destination"
 	enabled?: "testnet" | "mainnet" | "all"
 	loading?: boolean
@@ -22,14 +23,7 @@ const {
 const bs = useBridgeStore()
 
 const collection = createListCollection({
-	items: (
-		[
-			"mina:devnet",
-			"zeko:testnet",
-			"mina:mainnet",
-			"zeko:mainnet"
-		] as Networks[]
-	).filter((item) => {
+	items: supportedNetworks.filter((item) => {
 		if (enabled === "testnet") return !item.includes("mainnet")
 		if (enabled === "mainnet") return item.includes("mainnet")
 		return true
@@ -38,11 +32,11 @@ const collection = createListCollection({
 
 const onValueChange = (details: Select.ValueChangeDetails) => {
 	if (target === "source") {
-		const sourceNetwork = details.value[0] as Networks
+		const sourceNetwork = details.value[0] as BridgeNetwork
 		bs.bridge.send({ type: "SetSource", sourceNetwork })
 	}
 	if (target === "destination") {
-		const destinationNetwork = details.value[0] as Networks
+		const destinationNetwork = details.value[0] as BridgeNetwork
 		bs.bridge.send({ type: "SetDestination", destinationNetwork })
 	}
 }
@@ -78,7 +72,7 @@ watch(
                 <Select.ValueText placeholder="Placeholder" as-child>
                   <NetworkBadge
                     :icon="true"
-                    :network="select.value[0] as Networks"
+                    :network="select.value[0] as BridgeNetwork"
                   />
                 </Select.ValueText>
                 <Select.Indicator style="display: none">

@@ -1,4 +1,4 @@
-import type { Networks, walletMachine } from "@lumina-dex/sdk"
+import type { walletMachine } from "@zeko/sdk"
 import { produce } from "immer"
 import {
 	type ActorRef,
@@ -17,6 +17,13 @@ import { isTerminalBridgeError } from "../app/errors"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
+import type { BridgeNetwork } from "./networks"
+import {
+	bridgeNetworkToWalletNetwork,
+	isMinaBridgeNetwork,
+	isZekoBridgeNetwork,
+	walletNetworkToBridgeNetwork
+} from "./networks"
 import type { ActionState } from "./operations.worker"
 import {
 	DEFAULT_TRANSACTION_FEE_NANOMINA,
@@ -98,7 +105,7 @@ type WalletTransaction = { transaction: string; result: Result | null } | null
 type TransactionKey = keyof BridgeOperationContext["transactions"]
 
 type BridgeOperationEvents =
-	| { type: "SetCurrentNetwork"; network: Networks }
+	| { type: "SetCurrentNetwork"; network: BridgeNetwork }
 	| { type: "StartBridgeOperation" }
 	| { type: "CompleteBridgeOperation" }
 	| { type: "CompleteBridgeOperationCancelled" }
@@ -120,10 +127,10 @@ export interface BridgeOperationContext {
 	wallet: Wallet
 	user: string
 	direction: Direction
-	source: Networks
-	destination: Networks
-	l1: Networks
-	l2: Networks
+	source: BridgeNetwork
+	destination: BridgeNetwork
+	l1: BridgeNetwork
+	l2: BridgeNetwork
 	amount: string
 	timeoutSlots?: number
 	timeoutSlot?: string
@@ -139,16 +146,16 @@ export interface BridgeOperationContext {
 		finalizeWithdrawal: WalletTransaction
 	}
 	returnTo: ReturnTo
-	changeNetworkTo: Networks
+	changeNetworkTo: BridgeNetwork
 	canCancel: boolean
 }
 const currentNetwork = (context: BridgeOperationContext) =>
-	context.wallet.getSnapshot().context.currentNetwork
+	walletNetworkToBridgeNetwork(context.wallet.getSnapshot().context.currentNetwork)
 
-const fetchMina = ({ network }: { network: Networks }) =>
+const fetchMina = ({ network }: { network: BridgeNetwork }) =>
 	({
 		type: "FetchBalance",
-		network,
+		network: bridgeNetworkToWalletNetwork(network),
 		tokens: [] as []
 	}) as const
 
@@ -173,11 +180,11 @@ type BridgeWorker = {
 	bridge: Bridge
 	id: string
 	wallet: Wallet
-	l1: Networks
-	l2: Networks
+	l1: BridgeNetwork
+	l2: BridgeNetwork
 	user: string
-	source: Networks
-	destination: Networks
+	source: BridgeNetwork
+	destination: BridgeNetwork
 	direction: Direction
 }
 
@@ -244,8 +251,8 @@ export const bridgeOperationMachine = setup({
 			bridge: Bridge
 			wallet: Wallet
 			direction: Direction
-			source: Networks
-			destination: Networks
+			source: BridgeNetwork
+			destination: BridgeNetwork
 			amount: string
 			timeoutSlots?: number
 			timeoutSlot?: string
@@ -393,8 +400,8 @@ export const bridgeOperationMachine = setup({
 			finalizeWithdrawal: null
 		},
 		canCancel: cancellable ?? false,
-		l1: source.includes("mina") ? source : destination,
-		l2: source.includes("zeko") ? source : destination
+		l1: isMinaBridgeNetwork(source) ? source : destination,
+		l2: isZekoBridgeNetwork(source) ? source : destination
 	}),
 	on: {
 		Destroy: {
@@ -411,7 +418,10 @@ export const bridgeOperationMachine = setup({
 						//If we are still on the wrong network, we need to request a change
 						enqueue.sendTo(
 							({ context }) => context.wallet,
-							({ context }) => ({ type: "RequestNetworkChange", network: context.changeNetworkTo })
+							({ context }) => ({
+								type: "RequestNetworkChange",
+								network: bridgeNetworkToWalletNetwork(context.changeNetworkTo)
+							})
 						)
 					}
 				}
@@ -554,7 +564,10 @@ export const bridgeOperationMachine = setup({
 				"When the network is incorrect, we request a network change and return to the previous action.",
 			entry: sendTo(
 				({ context }) => context.wallet,
-				({ context }) => ({ type: "RequestNetworkChange", network: context.changeNetworkTo })
+				({ context }) => ({
+					type: "RequestNetworkChange",
+					network: bridgeNetworkToWalletNetwork(context.changeNetworkTo)
+				})
 			),
 			on: {
 				Pause: {

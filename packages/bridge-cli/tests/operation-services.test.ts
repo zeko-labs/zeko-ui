@@ -6,7 +6,7 @@ const session = {
 	id: "op-service",
 	status: "running",
 	phase: "submitted",
-	route: "mina:testnet->zeko:testnet",
+	route: "mina:testnet->zeko-m:testnet",
 	direction: "deposit",
 	account: "B62account",
 	recipient: "B62recipient",
@@ -61,7 +61,7 @@ describe("operation services", () => {
 			id: "op-service",
 			status: "running",
 			phase: "ready-finalization",
-			route: "mina:testnet->zeko:testnet",
+			route: "mina:testnet->zeko-m:testnet",
 			direction: "deposit",
 			account: "B62account",
 			recipient: "B62recipient",
@@ -85,12 +85,12 @@ describe("operation services", () => {
 			...session,
 			id: "existing-withdrawal",
 			direction: "withdrawal",
-			route: "zeko:testnet->mina:testnet",
+			route: "zeko-m:testnet->mina:testnet",
 			submittedTransactions: [{ action: "submit", hash: "withdrawal-0" }]
 		}
 
 		const queue = createResumeQueue({
-			from: "zeko:testnet",
+			from: "zeko-m:testnet",
 			to: "mina:testnet",
 			account: "B62account",
 			persistedSessions: [persisted],
@@ -102,18 +102,37 @@ describe("operation services", () => {
 		expect(queue[0]?.session?.id).toBe("existing-withdrawal")
 	})
 
+	it("matches persisted sessions with legacy route IDs during resume queue creation", () => {
+		const persisted: OperationSession = {
+			...session,
+			id: "legacy-deposit",
+			route: "mina:testnet->zeko:testnet"
+		} as unknown as OperationSession
+
+		const queue = createResumeQueue({
+			from: "mina:testnet",
+			to: "zeko-m:testnet",
+			account: "B62account",
+			persistedSessions: [persisted],
+			depositStatuses: [deposit({ index: 0, hash: "deposit-hash" })],
+			withdrawalStatuses: []
+		})
+
+		expect(queue[0]?.session?.id).toBe("legacy-deposit")
+	})
+
 	it("does not match persisted sessions from another account", () => {
 		const persisted: OperationSession = {
 			...session,
 			id: "wrong-account-withdrawal",
 			account: "B62other",
 			direction: "withdrawal",
-			route: "zeko:testnet->mina:testnet",
+			route: "zeko-m:testnet->mina:testnet",
 			submittedTransactions: [{ action: "submit", hash: "withdrawal-0" }]
 		}
 
 		const queue = createResumeQueue({
-			from: "zeko:testnet",
+			from: "zeko-m:testnet",
 			to: "mina:testnet",
 			account: "B62account",
 			persistedSessions: [persisted],

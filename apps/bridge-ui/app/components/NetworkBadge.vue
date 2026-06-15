@@ -1,23 +1,26 @@
 <script lang="ts" setup>
-import type { Networks } from "@lumina-dex/sdk"
+import {
+	MINA_NETWORKS,
+	NETWORK_LABELS,
+	type WalletZekoNetwork
+} from "@zeko/networks"
+import type { BridgeNetwork } from "~~/machines/networks"
 
 const { network, icon = false } = defineProps<{
-	network: Networks
+	network: BridgeNetwork | WalletZekoNetwork
 	icon?: boolean
 }>()
-const friendlyNetwork = (n: string) => {
-	const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-	const words = n.split(":") as [string, string]
-	return `${capitalize(words[0])} ${capitalize(words[1])}`
-}
+
+const isMinaNetwork = (value: BridgeNetwork | WalletZekoNetwork) =>
+	value === MINA_NETWORKS.devnet || value === MINA_NETWORKS.mainnet
 </script>
 <template>
   <div class="NetworkBadge">
     <template v-if="icon">
-      <SvgMinaLogo v-if='network.includes("mina")' />
+      <SvgMinaLogo v-if="isMinaNetwork(network)" />
       <SvgZekoToken v-else />
     </template>
-    <span class="network"> {{ friendlyNetwork(network) }}</span>
+    <span class="network"> {{ NETWORK_LABELS[network] }}</span>
   </div>
 </template>
 <style lang="postcss" scoped>

@@ -10,7 +10,7 @@ const session: OperationSession = {
 	id: "op-1",
 	status: "completed",
 	phase: "completed",
-	route: "mina:testnet->zeko:testnet",
+	route: "mina:testnet->zeko-m:testnet",
 	direction: "deposit",
 	account: "B62account",
 	recipient: "B62recipient",
@@ -35,7 +35,7 @@ describe("reporter", () => {
 		expect(toBridgeJsonResult(session)).toEqual({
 			success: true,
 			operation_id: "op-1",
-			route: "mina:testnet->zeko:testnet",
+			route: "mina:testnet->zeko-m:testnet",
 			direction: "deposit",
 			status: "completed",
 			amount: "5",

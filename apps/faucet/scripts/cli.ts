@@ -1,4 +1,5 @@
 import { archiveUrls, urls } from "@lumina-dex/sdk"
+import { ZEKO_M_NETWORKS } from "@zeko/networks"
 import { defineCommand, runMain } from "citty"
 import { AccountUpdate, Mina, PrivateKey, UInt64 } from "o1js"
 import * as v from "valibot"
@@ -7,6 +8,33 @@ import { Faucet } from "../src/zkapp"
 type FaucetArgs = {
 	network: keyof typeof urls
 	fee: string
+}
+
+const SUPPORTED_FAUCET_NETWORKS = [
+	"mina:devnet",
+	"mina:mainnet",
+	ZEKO_M_NETWORKS.testnet,
+	ZEKO_M_NETWORKS.mainnet
+] as const
+
+type FaucetNetwork = (typeof SUPPORTED_FAUCET_NETWORKS)[number]
+
+const isFaucetNetwork = (network: string): network is FaucetNetwork =>
+	SUPPORTED_FAUCET_NETWORKS.includes(network as FaucetNetwork)
+
+const LUMINA_NETWORK_BY_FAUCET_NETWORK = {
+	[ZEKO_M_NETWORKS.testnet]: "zeko:testnet",
+	[ZEKO_M_NETWORKS.mainnet]: "zeko:mainnet"
+} as const satisfies Partial<Record<FaucetNetwork, keyof typeof urls>>
+
+const toLuminaNetwork = (network: string): keyof typeof urls => {
+	if (!isFaucetNetwork(network)) {
+		throw new Error(
+			`Unsupported network: ${network}. Expected one of ${SUPPORTED_FAUCET_NETWORKS.join(", ")}`
+		)
+	}
+
+	return LUMINA_NETWORK_BY_FAUCET_NETWORK[network] ?? network
 }
 
 const setup = ({ network, fee: _fee }: FaucetArgs) => {
@@ -64,12 +92,12 @@ const main = defineCommand({
 	meta: {
 		name: "zeko-faucet",
 		version: "1.0.0",
-		description: "CLI to deploy and manage the Mina Faucet on zeko Testnet"
+		description: "CLI to deploy and manage the Mina Faucet on Zeko-M testnet"
 	},
 	args: {
 		network: {
 			type: "string",
-			description: "One of mina:devnet, zeko:testnet, mina:mainnet, zeko:mainnet",
+			description: "One of mina:devnet, zeko-m:testnet, mina:mainnet, zeko-m:mainnet",
 			default: "mina:devnet",
 			required: true
 		},
@@ -88,7 +116,7 @@ const main = defineCommand({
 			},
 			run({ args }) {
 				console.log("Deploying Faucet contract on network:", args.network)
-				deploy({ network: args.network as keyof typeof urls, fee: args.fee as string })
+				deploy({ network: toLuminaNetwork(args.network as string), fee: args.fee as string })
 			}
 		},
 		"change-amount": {
@@ -106,7 +134,7 @@ const main = defineCommand({
 			run({ args }) {
 				console.log("Changing Faucet contract amount on network:", args.network)
 				changeAmount({
-					network: args.network as keyof typeof urls,
+					network: toLuminaNetwork(args.network as string),
 					fee: args.fee as string,
 					amount: args.amount as string
 				})

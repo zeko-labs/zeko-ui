@@ -34,7 +34,7 @@ tasks:
       - "@group(src)"
       - "@group(workflows)"
   typecheck:
-    command: tsc --noEmit -p tsconfig.json
+    command: tsgo --noEmit --declaration false --declarationMap false -p tsconfig.json
     inputs:
       - "@group(src)"
   sync:

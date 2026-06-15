@@ -8,12 +8,12 @@ Use the `zeko-bridge` binary from the npm package.
 
 Enabled routes:
 
-| From           | To             | Direction  |
-| -------------- | -------------- | ---------- |
-| `mina:testnet` | `zeko:testnet` | Deposit    |
-| `zeko:testnet` | `mina:testnet` | Withdrawal |
-| `mina:mainnet` | `zeko:mainnet` | Deposit    |
-| `zeko:mainnet` | `mina:mainnet` | Withdrawal |
+| From             | To               | Direction  |
+| ---------------- | ---------------- | ---------- |
+| `mina:testnet`   | `zeko-m:testnet` | Deposit    |
+| `zeko-m:testnet` | `mina:testnet`   | Withdrawal |
+| `mina:mainnet`   | `zeko-m:mainnet` | Deposit    |
+| `zeko-m:mainnet` | `mina:mainnet`   | Withdrawal |
 
 ## Installation
 
@@ -26,14 +26,14 @@ npm install -g @zeko-labs/bridge-cli
 Then run:
 
 ```bash
-zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
-zeko-bridge bridge --from mina:mainnet --to zeko:mainnet --amount 1
+zeko-bridge bridge --from mina:testnet --to zeko-m:testnet --amount 1
+zeko-bridge bridge --from mina:mainnet --to zeko-m:mainnet --amount 1
 ```
 
 Or run without a global install:
 
 ```bash
-npx -y @zeko-labs/bridge-cli bridge --from mina:testnet --to zeko:testnet --amount 1
+npx -y @zeko-labs/bridge-cli bridge --from mina:testnet --to zeko-m:testnet --amount 1
 ```
 
 ## Configuration
@@ -53,7 +53,7 @@ export MINA_PRIVATE_KEY="<wallet private key>"
 For local CLI use, `zeko-bridge` also loads dotenv files. Inline or exported environment variables take precedence over every dotenv file:
 
 ```bash
-MINA_PRIVATE_KEY="<wallet private key>" zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
+MINA_PRIVATE_KEY="<wallet private key>" zeko-bridge bridge --from mina:testnet --to zeko-m:testnet --amount 1
 ```
 
 For keys that are not already set in the shell, the first readable dotenv file that provides the key wins. The recommended dotenv file is:
@@ -94,12 +94,12 @@ MINA_PRIVATE_KEY=
 Use `bridge` for normal bridging. It submits the bridge transaction, waits for network state to become claimable, performs the required finalize or cancel action, persists progress, and prints the final result.
 
 ```bash
-zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1
-zeko-bridge bridge --from zeko:testnet --to mina:testnet --amount 3 --recipient B62q...
-zeko-bridge bridge --from mina:mainnet --to zeko:mainnet --amount 1
-zeko-bridge bridge --from zeko:mainnet --to mina:mainnet --amount 3 --recipient B62q...
-zeko-bridge bridge --from mina:testnet --to zeko:testnet --amount 1 --json
-zeko-bridge bridge --from zeko:testnet --to mina:testnet --amount 3 --json
+zeko-bridge bridge --from mina:testnet --to zeko-m:testnet --amount 1
+zeko-bridge bridge --from zeko-m:testnet --to mina:testnet --amount 3 --recipient B62q...
+zeko-bridge bridge --from mina:mainnet --to zeko-m:mainnet --amount 1
+zeko-bridge bridge --from zeko-m:mainnet --to mina:mainnet --amount 3 --recipient B62q...
+zeko-bridge bridge --from mina:testnet --to zeko-m:testnet --amount 1 --json
+zeko-bridge bridge --from zeko-m:testnet --to mina:testnet --amount 3 --json
 ```
 
 Both directions can take a long time. A bridge command staying open for many minutes or even hours is normal: the CLI is waiting for chain visibility, bridge queue state, and finalization readiness. Keep the process running until it prints the final result.
@@ -109,7 +109,7 @@ Flags:
 | Flag                 | Default                                   | Description                                                                                  |
 | -------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `--from`             | `mina:testnet`                            | Source chain.                                                                                |
-| `--to`               | `zeko:testnet`                            | Destination chain.                                                                           |
+| `--to`               | `zeko-m:testnet`                          | Destination chain.                                                                           |
 | `--amount`           | Required                                  | Amount in MINA units.                                                                        |
 | `--account`          | Optional, derived from `MINA_PRIVATE_KEY` | Source account to use for bridge status and transaction requests. Most users should omit it. |
 | `--recipient`        | Source account                            | Destination account.                                                                         |
@@ -131,7 +131,7 @@ Example `bridge --json` result:
 {
 	"success": true,
 	"operation_id": "f3d3d12a-8a1c-4b8b-9a1e-2a6e6bc7a1d7",
-	"route": "mina:testnet->zeko:testnet",
+	"route": "mina:testnet->zeko-m:testnet",
 	"direction": "deposit",
 	"status": "completed",
 	"amount": "1",
@@ -192,7 +192,7 @@ zeko-bridge operation completed
 zeko-bridge operation status <operation-id>
 zeko-bridge operation logs <operation-id>
 zeko-bridge operation resume <operation-id>
-zeko-bridge operation resume-all --from mina:testnet --to zeko:testnet
+zeko-bridge operation resume-all --from mina:testnet --to zeko-m:testnet
 ```
 
 Commands:
@@ -211,7 +211,7 @@ Commands:
 | Flag                 | Default                                   | Description                                           |
 | -------------------- | ----------------------------------------- | ----------------------------------------------------- |
 | `--from`             | `mina:testnet`                            | Route source used for queue discovery.                |
-| `--to`               | `zeko:testnet`                            | Route destination used for queue discovery.           |
+| `--to`               | `zeko-m:testnet`                          | Route destination used for queue discovery.           |
 | `--account`          | Optional, derived from `MINA_PRIVATE_KEY` | Account whose pending bridge queue should be resumed. |
 | `--poll-interval-ms` | `20000`                                   | Delay between status polls.                           |
 | `--retry-delay-ms`   | `5000`                                    | Delay before retrying transient errors.               |

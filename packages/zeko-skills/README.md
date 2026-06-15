@@ -27,7 +27,7 @@ The skill is tuned for:
 
 ## Example Prompts
 
-- `How do I get tMINA on Zeko testnet?`
+- `How do I get tMINA on Zeko-M testnet?`
 - `Bridge 2 MINA from Mina to Zeko using the Bridge CLI.`
 - `Which GraphQL endpoints should I use for Zeko live data and archive data?`
 - `Show me a curl example to send 1.25 MINA from one address to another.`

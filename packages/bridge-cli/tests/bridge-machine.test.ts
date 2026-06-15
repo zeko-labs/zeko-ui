@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { createActor, fromPromise, toPromise } from "xstate"
+import { bridgeOperationMachine } from "../src/commands/bridge"
 import { parseChainRef } from "../src/core/routes"
 import type { OperationSession } from "../src/core/types"
-import { bridgeOperationMachine } from "../src/commands/bridge"
 
 const now = () => "2026-05-13T00:00:00.000Z"
 
@@ -10,7 +10,7 @@ const createSession = (patch: Partial<OperationSession> = {}): OperationSession 
 	id: "operation-1",
 	status: "running",
 	phase: "submitted",
-	route: "mina:testnet->zeko:testnet",
+	route: "mina:testnet->zeko-m:testnet",
 	direction: "deposit",
 	account: "B62qaccount",
 	recipient: "B62qrecipient",
@@ -27,7 +27,7 @@ const createContext = (session = createSession()) => ({
 	input: {
 		id: session.id,
 		from: parseChainRef("mina:testnet", "--from"),
-		to: parseChainRef("zeko:testnet", "--to"),
+		to: parseChainRef("zeko-m:testnet", "--to"),
 		amount: session.amount,
 		account: session.account,
 		recipient: session.recipient
@@ -71,11 +71,18 @@ describe("bridge operation state machine", () => {
 		const machine = bridgeOperationMachine.provide({
 			actors: {
 				inspectDeposit: fromPromise(async ({ input }) => ({
-					session: { ...input.session, phase: "waiting-prior-claims" as const },
+					session: {
+						...(input as ReturnType<typeof createContext>).session,
+						phase: "waiting-prior-claims" as const
+					},
 					next: "wait-deposit" as const
 				})),
 				waitDeposit: fromPromise(async ({ input }) => ({
-					session: { ...input.session, status: "completed" as const, phase: "completed" as const },
+					session: {
+						...(input as ReturnType<typeof createContext>).session,
+						status: "completed" as const,
+						phase: "completed" as const
+					},
 					next: "completed" as const
 				}))
 			}

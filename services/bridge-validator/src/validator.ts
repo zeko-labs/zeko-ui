@@ -491,9 +491,9 @@ export const buildBridgeCommand = ({ routeKey }: { routeKey: BridgeValidatorRout
 	const args = [
 		"bridge",
 		"--from",
-		route.from,
+		route.cliFrom ?? route.from,
 		"--to",
-		route.to,
+		route.cliTo ?? route.to,
 		"--amount",
 		getValidatorRouteAmount(route.key),
 		"--json",
@@ -774,9 +774,10 @@ export const validateBridgeCompletion = ({
 		)
 	}
 
-	if (result.route !== route.route) {
+	const acceptedResultRoutes = route.acceptedResultRoutes ?? [route.route]
+	if (!acceptedResultRoutes.includes(String(result.route))) {
 		throw new BridgeValidationError(
-			`Bridge result route ${String(result.route)} did not match expected route ${route.route}`,
+			`Bridge result route ${String(result.route)} did not match expected routes ${acceptedResultRoutes.join(", ")}`,
 			"result"
 		)
 	}

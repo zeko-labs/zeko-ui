@@ -1,12 +1,19 @@
-import type { walletMachine } from "@lumina-dex/sdk"
-import { detectWalletChange, type Networks, type WalletEmit } from "@lumina-dex/sdk"
 import * as Sentry from "@sentry/nuxt"
+import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
+import { detectWalletChange, type WalletEmit, type walletMachine } from "@zeko/sdk"
 import * as Comlink from "comlink"
 import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
 import { createLogger } from "./debug"
 import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
+import type { BridgeNetwork } from "./networks"
+import {
+	isMinaBridgeNetwork,
+	isZekoBridgeNetwork,
+	supportedNetworks,
+	walletNetworkToBridgeNetwork
+} from "./networks"
 import type { RecoveredOperations, RecoveryLane } from "./recovery"
 import {
 	buildRecoverySyncState,
@@ -14,6 +21,8 @@ import {
 	matchRecoveryOperationIds
 } from "./recovery"
 import workerUrl from "./operations.worker?worker&url"
+
+export { supportedNetworks } from "./networks"
 
 const worker = new Worker(new URL(workerUrl, import.meta.url), { type: "module" })
 if (import.meta.client) {
@@ -45,8 +54,8 @@ type StartOperationSettings = {
 	state?: {
 		id?: string
 		status: OperationStatus
-		source: Networks
-		destination: Networks
+		source: BridgeNetwork
+		destination: BridgeNetwork
 		transaction: ActionState["transaction"]
 		cancellable?: boolean
 		timeoutSlot?: string
@@ -56,8 +65,8 @@ type StartOperationSettings = {
 type PendingOperationsInput = {
 	wallet: Wallet
 	worker: OperationWorker
-	sourceNetwork: Networks
-	destinationNetwork: Networks
+	sourceNetwork: BridgeNetwork
+	destinationNetwork: BridgeNetwork
 }
 
 export type BridgeEvents =
@@ -68,12 +77,12 @@ export type BridgeEvents =
 	| { type: "ActivateCancellationOperation"; id: string }
 	| { type: "ReleaseCancellationOperation"; id: string }
 	| { type: "InvertDirection" }
-	| { type: "SetSource"; sourceNetwork: Networks }
-	| { type: "SetDestination"; destinationNetwork: Networks }
+	| { type: "SetSource"; sourceNetwork: BridgeNetwork }
+	| { type: "SetDestination"; destinationNetwork: BridgeNetwork }
 
 export interface BridgeContext {
-	sourceNetwork: Networks
-	destinationNetwork: Networks
+	sourceNetwork: BridgeNetwork
+	destinationNetwork: BridgeNetwork
 	operations: Operations
 	wallet: Wallet
 	walletReady: boolean
@@ -84,9 +93,6 @@ export interface BridgeContext {
 	currentSlot?: string
 	worker: OperationWorker
 }
-
-const _currentNetwork = (context: BridgeContext) =>
-	context.wallet.getSnapshot().context.currentNetwork
 
 const directionPriority = (operation: ActorRefFromLogic<typeof bridgeOperationMachine>) =>
 	operation.getSnapshot().context.direction === "deposit" ? 0 : 1
@@ -102,13 +108,6 @@ const pausedMainQueueIds = (operations: Operations) =>
 		.map(([id]) => id)
 
 const operationId = () => `bridgeOperation-${Date.now()}-${nanoid(8)}`
-export const supportedNetworks = [
-	"mina:devnet",
-	"zeko:testnet",
-	"mina:mainnet",
-	"zeko:mainnet"
-] as const
-
 type StartArgs = {
 	status: OperationStatus
 	actionState: ActionState
@@ -263,11 +262,11 @@ const syncRecoveredOperations = ({
 }
 
 const bridgeDirections = {
-	"zeko:mainnet": "mina:mainnet",
-	"mina:mainnet": "zeko:mainnet",
-	"zeko:testnet": "mina:devnet",
-	"mina:devnet": "zeko:testnet"
-} as const
+	[ZEKO_M_NETWORKS.mainnet]: MINA_NETWORKS.mainnet,
+	[MINA_NETWORKS.mainnet]: ZEKO_M_NETWORKS.mainnet,
+	[ZEKO_M_NETWORKS.testnet]: MINA_NETWORKS.devnet,
+	[MINA_NETWORKS.devnet]: ZEKO_M_NETWORKS.testnet
+} as const satisfies Record<BridgeNetwork, BridgeNetwork>
 
 // Parent Bridge Machine
 export const bridgeMachine = setup({
@@ -292,8 +291,8 @@ export const bridgeMachine = setup({
 				"findPendingOperation",
 				async () => {
 					if (account.length === 0) throw new Error("No account found in the wallet")
-					const l1 = sourceNetwork.includes("mina") ? sourceNetwork : destinationNetwork
-					const l2 = sourceNetwork.includes("zeko") ? sourceNetwork : destinationNetwork
+					const l1 = isMinaBridgeNetwork(sourceNetwork) ? sourceNetwork : destinationNetwork
+					const l2 = isZekoBridgeNetwork(sourceNetwork) ? sourceNetwork : destinationNetwork
 
 					const result = await worker.findPendingOperations({ account, l1, l2 })
 					console.log(
@@ -310,9 +309,9 @@ export const bridgeMachine = setup({
 			logger.info("Starting an operation with settings", settings)
 			const { amount, command, state, timeoutSlots, lane = "main" } = settings
 			const { wallet } = context
-			const source = state?.source ?? (context.sourceNetwork as Networks)
-			const destination = state?.destination ?? (context.destinationNetwork as Networks)
-			const regularDirection = source.includes("mina") ? "deposit" : "withdrawal"
+			const source = state?.source ?? context.sourceNetwork
+			const destination = state?.destination ?? context.destinationNetwork
+			const regularDirection = isMinaBridgeNetwork(source) ? "deposit" : "withdrawal"
 			const direction = (
 				{
 					start: regularDirection,
@@ -435,7 +434,7 @@ export const bridgeMachine = setup({
 	id: "bridge",
 	initial: "IDLE",
 	context: ({ input: { wallet } }) => {
-		const sourceNetwork = wallet.getSnapshot().context.currentNetwork
+		const sourceNetwork = walletNetworkToBridgeNetwork(wallet.getSnapshot().context.currentNetwork)
 		const destinationNetwork = bridgeDirections[sourceNetwork]
 		return {
 			wallet,
@@ -484,8 +483,8 @@ export const bridgeMachine = setup({
 					"This is taken automatically for the first time as Auro will send the event on page load.",
 				guard: ({ context }) => !context.walletReady,
 				actions: enqueueActions(({ enqueue, event }) => {
-					const sourceNetwork = event.network
-					const destinationNetwork = bridgeDirections[event.network]
+					const sourceNetwork = walletNetworkToBridgeNetwork(event.network)
+					const destinationNetwork = bridgeDirections[sourceNetwork]
 					enqueue.assign({ walletReady: true, sourceNetwork, destinationNetwork })
 				})
 			},
@@ -493,8 +492,8 @@ export const bridgeMachine = setup({
 				description:
 					"Change the network of all operations and invert direction if the network is different.",
 				actions: enqueueActions(({ context, event, enqueue }) => {
-					const sourceNetwork = event.network
-					const destinationNetwork = bridgeDirections[event.network]
+					const sourceNetwork = walletNetworkToBridgeNetwork(event.network)
+					const destinationNetwork = bridgeDirections[sourceNetwork]
 					for (const { status, operation } of context.operations.values()) {
 						if (status === "started" || status === "paused") {
 							operation.send({

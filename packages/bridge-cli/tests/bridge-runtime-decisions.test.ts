@@ -10,7 +10,7 @@ const baseSession = {
 	id: "op-1",
 	status: "running",
 	phase: "submitted",
-	route: "mina:testnet->zeko:testnet",
+	route: "mina:testnet->zeko-m:testnet",
 	direction: "deposit",
 	account: "B62account",
 	recipient: "B62recipient",
@@ -131,7 +131,7 @@ describe("bridge runtime decisions", () => {
 			session: {
 				...baseSession,
 				direction: "withdrawal",
-				route: "zeko:testnet->mina:testnet",
+				route: "zeko-m:testnet->mina:testnet",
 				submittedTransactions: [{ action: "submit", hash: "withdrawal-submit" }]
 			},
 			statuses: [withdrawal({ index: 0, hash: "withdrawal-submit", committed: false })],
@@ -147,7 +147,7 @@ describe("bridge runtime decisions", () => {
 			session: {
 				...baseSession,
 				direction: "withdrawal",
-				route: "zeko:testnet->mina:testnet",
+				route: "zeko-m:testnet->mina:testnet",
 				submittedTransactions: [{ action: "submit", hash: "withdrawal-submit" }]
 			},
 			statuses: [withdrawal({ index: 0, hash: "withdrawal-submit", committed: true })],
@@ -163,7 +163,7 @@ describe("bridge runtime decisions", () => {
 			session: {
 				...baseSession,
 				direction: "withdrawal",
-				route: "zeko:testnet->mina:testnet",
+				route: "zeko-m:testnet->mina:testnet",
 				submittedTransactions: [{ action: "submit", hash: "withdrawal-submit" }]
 			},
 			statuses: [withdrawal({ index: 1, hash: "withdrawal-submit", committed: true })],

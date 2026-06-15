@@ -12,6 +12,7 @@
 				"moon.yml",
 				"package.json",
 				"patches/**",
+				"packages/networks/**",
 				"pnpm-lock.yaml",
 				"pnpm-workspace.yaml",
 				"services/bridge-validator/**"

@@ -108,7 +108,7 @@ describe("direct commands", () => {
 		const result = await runDepositSubmit(
 			{
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				json: false,
 				account: "B62test",
 				amount: "1",
@@ -122,7 +122,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-submit",
 							explorerUrl: "https://example.test/deposit-submit",
 							included: true
@@ -142,7 +142,7 @@ describe("direct commands", () => {
 		await runDepositSubmit(
 			{
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				json: false,
 				account: "B62test",
 				amount: "1",
@@ -156,7 +156,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-submit-default-timeout",
 							explorerUrl: "https://example.test/deposit-submit-default-timeout",
 							included: true
@@ -180,7 +180,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-submit-kebab-timeout",
 							explorerUrl: "https://example.test/deposit-submit-kebab-timeout",
 							included: false
@@ -214,7 +214,7 @@ describe("direct commands", () => {
 		const result = await runDepositSubmit(
 			{
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				json: false,
 				account: "B62test",
 				amount: "1",
@@ -233,7 +233,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-submit-retried",
 							explorerUrl: "https://example.test/deposit-submit-retried",
 							included: false
@@ -260,7 +260,7 @@ describe("direct commands", () => {
 			runDepositSubmit(
 				{
 					from: "mina:testnet",
-					to: "zeko:testnet",
+					to: "zeko-m:testnet",
 					json: false,
 					account: "B62test",
 					amount: "1",
@@ -293,7 +293,7 @@ describe("direct commands", () => {
 			runDepositSubmit(
 				{
 					from: "mina:testnet",
-					to: "zeko:testnet",
+					to: "zeko-m:testnet",
 					json: false,
 					account: "B62test",
 					amount: "1",
@@ -320,7 +320,7 @@ describe("direct commands", () => {
 		const result = await runDepositFinalize(
 			{
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				json: false,
 				account: "B62test",
 				wait: true
@@ -332,7 +332,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-finalize",
 							explorerUrl: "https://example.test/deposit-finalize",
 							included: true
@@ -350,7 +350,7 @@ describe("direct commands", () => {
 		const result = await runDepositCancel(
 			{
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				json: false,
 				account: "B62test",
 				wait: true
@@ -362,7 +362,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "deposit",
 							action: "cancel",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-cancel",
 							explorerUrl: "https://example.test/deposit-cancel",
 							included: true
@@ -381,7 +381,7 @@ describe("direct commands", () => {
 			{
 				account: "B62test",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				latest: true
 			},
 			{
@@ -426,7 +426,7 @@ describe("direct commands", () => {
 	it("submits a withdrawal", async () => {
 		const result = await runWithdrawalSubmit(
 			{
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				json: false,
 				account: "B62test",
@@ -440,7 +440,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-submit",
 							explorerUrl: "https://example.test/withdraw-submit",
 							included: true
@@ -460,7 +460,7 @@ describe("direct commands", () => {
 
 		const result = await runWithdrawalSubmit(
 			{
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				json: false,
 				account: "B62test",
@@ -479,7 +479,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-submit-retried",
 							explorerUrl: "https://example.test/withdraw-submit-retried",
 							included: false
@@ -501,7 +501,7 @@ describe("direct commands", () => {
 	it("finalizes a withdrawal", async () => {
 		const result = await runWithdrawalFinalize(
 			{
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				json: false,
 				account: "B62test",
@@ -514,7 +514,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "finalize",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-finalize",
 							explorerUrl: "https://example.test/withdraw-finalize",
 							included: true
@@ -532,7 +532,7 @@ describe("direct commands", () => {
 		const result = await runWithdrawalStatus(
 			{
 				account: "B62test",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				latest: false
 			},
@@ -580,7 +580,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "deposit",
 							action: "submit",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-submit-command",
 							explorerUrl: "https://example.test/deposit-submit-command",
 							included: true
@@ -592,7 +592,7 @@ describe("direct commands", () => {
 
 		await subCommands.submit?.run?.({
 			rawArgs: [],
-			args: { _: [], amount: "1", account: "B62test", from: "mina:testnet", to: "zeko:testnet" },
+			args: { _: [], amount: "1", account: "B62test", from: "mina:testnet", to: "zeko-m:testnet" },
 			cmd: subCommands.submit
 		})
 
@@ -611,7 +611,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "deposit",
 							action: "finalize",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-finalize-command",
 							explorerUrl: "https://example.test/deposit-finalize-command",
 							included: true
@@ -623,7 +623,7 @@ describe("direct commands", () => {
 
 		await subCommands.finalize?.run?.({
 			rawArgs: [],
-			args: { _: [], account: "B62test", from: "mina:testnet", to: "zeko:testnet" },
+			args: { _: [], account: "B62test", from: "mina:testnet", to: "zeko-m:testnet" },
 			cmd: subCommands.finalize
 		})
 
@@ -642,7 +642,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "deposit",
 							action: "cancel",
-							route: "mina:testnet->zeko:testnet",
+							route: "mina:testnet->zeko-m:testnet",
 							hash: "deposit-cancel-command",
 							explorerUrl: "https://example.test/deposit-cancel-command",
 							included: true
@@ -654,7 +654,7 @@ describe("direct commands", () => {
 
 		await subCommands.cancel?.run?.({
 			rawArgs: [],
-			args: { _: [], account: "B62test", from: "mina:testnet", to: "zeko:testnet" },
+			args: { _: [], account: "B62test", from: "mina:testnet", to: "zeko-m:testnet" },
 			cmd: subCommands.cancel
 		})
 
@@ -694,7 +694,7 @@ describe("direct commands", () => {
 				_: [],
 				account: "B62test",
 				from: "mina:testnet",
-				to: "zeko:testnet",
+				to: "zeko-m:testnet",
 				latest: true
 			},
 			cmd: subCommands.status
@@ -726,7 +726,7 @@ describe("direct commands", () => {
 				args: {
 					_: [],
 					from: "mina:testnet",
-					to: "zeko:testnet",
+					to: "zeko-m:testnet",
 					latest: true
 				},
 				cmd: subCommands.status
@@ -748,7 +748,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "submit",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-submit-command",
 							explorerUrl: "https://example.test/withdraw-submit-command",
 							included: true
@@ -760,7 +760,7 @@ describe("direct commands", () => {
 
 		await subCommands.submit?.run?.({
 			rawArgs: [],
-			args: { _: [], amount: "3", account: "B62test", from: "zeko:testnet", to: "mina:testnet" },
+			args: { _: [], amount: "3", account: "B62test", from: "zeko-m:testnet", to: "mina:testnet" },
 			cmd: subCommands.submit
 		})
 
@@ -779,7 +779,7 @@ describe("direct commands", () => {
 							success: true,
 							direction: "withdrawal",
 							action: "finalize",
-							route: "zeko:testnet->mina:testnet",
+							route: "zeko-m:testnet->mina:testnet",
 							hash: "withdraw-finalize-command",
 							explorerUrl: "https://example.test/withdraw-finalize-command",
 							included: true
@@ -791,7 +791,7 @@ describe("direct commands", () => {
 
 		await subCommands.finalize?.run?.({
 			rawArgs: [],
-			args: { _: [], account: "B62test", from: "zeko:testnet", to: "mina:testnet" },
+			args: { _: [], account: "B62test", from: "zeko-m:testnet", to: "mina:testnet" },
 			cmd: subCommands.finalize
 		})
 
@@ -827,7 +827,7 @@ describe("direct commands", () => {
 			args: {
 				_: [],
 				account: "B62test",
-				from: "zeko:testnet",
+				from: "zeko-m:testnet",
 				to: "mina:testnet",
 				latest: true
 			},
@@ -859,7 +859,7 @@ describe("direct commands", () => {
 				rawArgs: [],
 				args: {
 					_: [],
-					from: "zeko:testnet",
+					from: "zeko-m:testnet",
 					to: "mina:testnet",
 					latest: true
 				},

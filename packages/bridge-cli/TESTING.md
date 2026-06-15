@@ -26,8 +26,8 @@ MINA_PRIVATE_KEY="<wallet private key>" zeko-bridge doctor
 
 Bridge validation is not complete until these three tasks have been run in this exact order:
 
-1. one single-command deposit from `mina:testnet` to `zeko:testnet`
-2. one single-command withdrawal from `zeko:testnet` to `mina:testnet`
+1. one single-command deposit from `mina:testnet` to `zeko-m:testnet`
+2. one single-command withdrawal from `zeko-m:testnet` to `mina:testnet`
 3. one simultaneous run where a deposit command and a withdrawal command are both active at the same time and both progress in parallel
 
 Pass criteria:
@@ -82,11 +82,11 @@ Those tasks:
 Exact one-command equivalents:
 
 ```bash
-node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko:testnet --amount 1 --json --verbose
+node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko-m:testnet --amount 1 --json --verbose
 ```
 
 ```bash
-node ./packages/bridge-cli/dist/cli.js bridge --from zeko:testnet --to mina:testnet --amount 1 --json --verbose
+node ./packages/bridge-cli/dist/cli.js bridge --from zeko-m:testnet --to mina:testnet --amount 1 --json --verbose
 ```
 
 For the simultaneous validation, open two dedicated terminals and keep both alive:
@@ -94,13 +94,13 @@ For the simultaneous validation, open two dedicated terminals and keep both aliv
 Terminal A:
 
 ```bash
-node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko:testnet --amount 1 --json --verbose
+node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko-m:testnet --amount 1 --json --verbose
 ```
 
 Terminal B:
 
 ```bash
-node ./packages/bridge-cli/dist/cli.js bridge --from zeko:testnet --to mina:testnet --amount 1 --json --verbose
+node ./packages/bridge-cli/dist/cli.js bridge --from zeko-m:testnet --to mina:testnet --amount 1 --json --verbose
 ```
 
 Start the second command while the first command is still running so the two bridge processes overlap in time.

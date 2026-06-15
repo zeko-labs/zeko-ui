@@ -10,6 +10,12 @@ on:
       package-path:
         required: true
         type: string
+      # Additional package paths to include in the exported source monorepo.
+      # Accepts newline or comma separated values.
+      additional-package-paths:
+        required: false
+        default: ""
+        type: string
       # Target standalone repository name under the zeko-labs org.
       standalone-repo:
         required: true
@@ -17,6 +23,12 @@ on:
       # Project id to write in standalone .moon/workspace.yml.
       project-id:
         required: true
+        type: string
+      # Project id/path mappings for standalone .moon/workspace.yml.
+      # Accepts newline or comma separated entries like "bridge-cli=packages/bridge-cli".
+      project-paths:
+        required: false
+        default: ""
         type: string
       # Packages stanza to write in standalone pnpm-workspace.yaml.
       # Accepts newline or comma separated values.
@@ -26,6 +38,11 @@ on:
         type: string
       # Extra package.json files (outside package-path) used to resolve workspace: versions.
       extra-workspace-version-sources:
+        required: false
+        default: ""
+        type: string
+      # Workspace dependencies to keep as workspace: ranges when included in the source mirror.
+      preserve-workspace-dependencies:
         required: false
         default: ""
         type: string
@@ -46,17 +63,29 @@ on:
       package-path:
         required: true
         type: string
+      additional-package-paths:
+        required: false
+        default: ""
+        type: string
       standalone-repo:
         required: true
         type: string
       project-id:
         required: true
         type: string
+      project-paths:
+        required: false
+        default: ""
+        type: string
       workspace-packages:
         required: false
         default: "."
         type: string
       extra-workspace-version-sources:
+        required: false
+        default: ""
+        type: string
+      preserve-workspace-dependencies:
         required: false
         default: ""
         type: string
@@ -100,11 +129,20 @@ jobs:
 
       - name: Prepare package for standalone sync
         run: |
+          export SYNC_ROOT=$(mktemp -d)
+          echo "SYNC_ROOT=${SYNC_ROOT}" >> "$GITHUB_ENV"
+
+          SOURCE_PACKAGE_PATHS=$(printf '%s\n%s\n' "${{ inputs.package-path }}" "${{ inputs.additional-package-paths }}" | tr ',' '\n' | sed '/^[[:space:]]*$/d')
+
           node packages/sync-standalone-package/dist/cli.js \
-            --package-dir "${{ inputs.package-path }}" \
+            --root-dir "$GITHUB_WORKSPACE" \
+            --package-dir "$SYNC_ROOT" \
             --project-id "${{ inputs.project-id }}" \
+            --source-package-paths "$SOURCE_PACKAGE_PATHS" \
+            --project-paths "${{ inputs.project-paths }}" \
             --workspace-packages "${{ inputs.workspace-packages }}" \
-            --extra-workspace-version-sources "${{ inputs.extra-workspace-version-sources }}"
+            --extra-workspace-version-sources "${{ inputs.extra-workspace-version-sources }}" \
+            --preserve-workspace-dependencies "${{ inputs.preserve-workspace-dependencies }}"
 
       - name: Force-push clean commit to standalone repo
         env:
@@ -114,11 +152,11 @@ jobs:
           COMMIT_SHA=$(git rev-parse --short HEAD)
           SYNC_PATHS="${{ inputs.sync-paths }}"
 
-          tmp=$(mktemp -d)
-          git init "$tmp"
+          PUSH_ROOT="$SYNC_ROOT"
           if [ -z "$SYNC_PATHS" ]; then
-            cp -a "${{ inputs.package-path }}/." "$tmp/"
+            :
           else
+            PUSH_ROOT=$(mktemp -d)
             while IFS= read -r REL_PATH; do
               REL_PATH=$(printf '%s' "$REL_PATH" | xargs)
               if [ -z "$REL_PATH" ]; then
@@ -132,8 +170,8 @@ jobs:
                 TARGET_REL_PATH="${REL_PATH#*:}"
               fi
 
-              SOURCE_PATH="${{ inputs.package-path }}/$SOURCE_REL_PATH"
-              TARGET_PATH="$tmp/$TARGET_REL_PATH"
+              SOURCE_PATH="$SYNC_ROOT/${{ inputs.package-path }}/$SOURCE_REL_PATH"
+              TARGET_PATH="$PUSH_ROOT/$TARGET_REL_PATH"
 
               if [ ! -e "$SOURCE_PATH" ]; then
                 echo "Missing sync path: $SOURCE_PATH" >&2
@@ -144,7 +182,8 @@ jobs:
               cp -a "$SOURCE_PATH" "$TARGET_PATH"
             done <<< "$(printf '%s' "$SYNC_PATHS" | tr ',' '\n')"
           fi
-          cd "$tmp"
+          cd "$PUSH_ROOT"
+          git init
           git add -A
           git config user.name "github-actions[bot]"
           # 41898282 is the immutable GitHub user id for github-actions[bot].

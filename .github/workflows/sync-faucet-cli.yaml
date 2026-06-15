@@ -12,6 +12,6 @@ jobs:
       standalone-repo: faucet-cli
       project-id: faucet-cli
       workspace-packages: |
-        .
-        npm/*
+        packages/faucet-cli
+        packages/faucet-cli/npm/*
     secrets: inherit

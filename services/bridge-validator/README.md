@@ -11,7 +11,7 @@ Cloudflare Worker service that validates the published bridge CLI through the de
 
 ## Runtime Contract
 
-- Each run executes one route for `2 MINA`: `mina:testnet -> zeko:testnet` deposit or `zeko:testnet -> mina:testnet` withdrawal.
+- Each run executes one route for `2 MINA`: `mina:testnet -> zeko-m:testnet` deposit or `zeko-m:testnet -> mina:testnet` withdrawal.
 - The sandbox runs `zeko-bridge bridge --json --verbose` from the published CLI package in `package.json`.
 - PR validation can set `BRIDGE_VALIDATOR_SOURCE_REPOSITORY` and `BRIDGE_VALIDATOR_SOURCE_REF`; the sandbox then clones that source, builds `bridge-cli`, and runs the built entrypoint.
 - Workflow timeout is 2 hours. The sandbox command is capped at 115 minutes, leaving 5 minutes for diagnostics, Slack reporting, and cleanup.

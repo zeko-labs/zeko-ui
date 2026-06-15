@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import type { Networks } from "@lumina-dex/sdk"
+import type { BridgeNetwork } from "~~/machines/networks"
 
 const {
 	source,
 	destination,
 	loading = false
 } = defineProps<{
-	source: Networks
-	destination: Networks
+	source: BridgeNetwork
+	destination: BridgeNetwork
 	loading?: boolean
 }>()
 
