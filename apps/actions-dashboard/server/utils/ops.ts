@@ -48,6 +48,8 @@ export interface ControlRequestSecurity {
 	secFetchSite?: string | null
 }
 
+type HeaderMap = Record<string, string | string[] | undefined>
+
 const requestTimeoutMs = 12_000
 const retryDelaysMs = [0, 350, 1_000]
 const actionScanRangeSize = 10_000
@@ -112,6 +114,25 @@ const normalizeOrigin = (value?: string | null): string | null => {
 	} catch {
 		return null
 	}
+}
+
+const readHeader = (headers: HeaderMap, name: string): string | null => {
+	const value = headers[name]
+	if (Array.isArray(value)) return value[0] ?? null
+	return value ?? null
+}
+
+export const resolveControlRequestOrigin = (headers: HeaderMap): string | null => {
+	const host = readHeader(headers, "x-forwarded-host") ?? readHeader(headers, "host")
+	if (!host) return null
+
+	const forwardedProto = readHeader(headers, "x-forwarded-proto")?.split(",")[0]?.trim()
+	const origin = normalizeOrigin(readHeader(headers, "origin"))
+	const originUrl = origin === null ? null : new URL(origin)
+	const proto =
+		forwardedProto ??
+		(originUrl !== null && originUrl.host === host ? originUrl.protocol.replace(/:$/, "") : "https")
+	return `${proto}://${host}`
 }
 
 export const isControlRequestAllowed = ({

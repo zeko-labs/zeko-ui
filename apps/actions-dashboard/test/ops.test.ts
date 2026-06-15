@@ -23,6 +23,7 @@ import {
 	probeDaemon,
 	probeActionsIndexer,
 	readActionsIndexerToken,
+	resolveControlRequestOrigin,
 	resolveControlNetwork,
 	resolveOpsNetwork,
 	resolveRouteEnv,
@@ -71,6 +72,23 @@ describe("actions dashboard utilities", () => {
 				secFetchSite: "cross-site"
 			})
 		).toBe(false)
+	})
+
+	it("preserves localhost HTTP origins for local control requests", () => {
+		expect(
+			resolveControlRequestOrigin({
+				host: "localhost:3092",
+				origin: "http://localhost:3092"
+			})
+		).toBe("http://localhost:3092")
+
+		expect(
+			resolveControlRequestOrigin({
+				host: "localhost:3092",
+				"x-forwarded-host": "actions.dashboard.zeko.io",
+				"x-forwarded-proto": "https"
+			})
+		).toBe("https://actions.dashboard.zeko.io")
 	})
 
 	it("forces the dashboard refresh after control actions", () => {

@@ -332,3 +332,4 @@
 - T346 | done | bridge-sdk-canonical-chain-filter | done/T346-bridge-sdk-canonical-chain-filter.md
 - T347 | done | fix-actions-dashboard-same-zone-fetch | done/T347-fix-actions-dashboard-same-zone-fetch.md
 - T348 | done | filter-orphaned-dashboard-coverage | done/T348-filter-orphaned-dashboard-coverage.md
+- T349 | done | preserve-local-control-origin | done/T349-preserve-local-control-origin.md
