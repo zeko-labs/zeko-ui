@@ -1,30 +1,54 @@
 # syntax = docker/dockerfile:1
 
-# Adjust bun version as desired
-FROM oven/bun:latest AS base
+#### BASE STAGE
+#### Installs proto and the pinned toolchain from .prototools.
 
-# Node.js app lives here
+FROM node:24.5.0-bookworm-slim AS base
 WORKDIR /app
 
-# Set production environment
-ENV NODE_ENV="production"
+COPY .prototools ./.prototools
 
-RUN bun install -g pnpm
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends bash ca-certificates curl git xz-utils \
+	&& rm -rf /var/lib/apt/lists/*
 
-# Throw-away build stage to reduce size of final image
+RUN curl -fsSL https://moonrepo.dev/install/proto.sh | bash -s -- 0.55.3 --yes
+ENV PROTO_HOME="/root/.proto"
+ENV PATH="$PROTO_HOME/bin:$PROTO_HOME/shims:$PATH"
+
+RUN proto install --yes moon
+RUN proto install --yes node
+RUN proto install --yes npm
+RUN proto install --yes pnpm
+RUN moon --version
+
+#### SKELETON STAGE
+#### Scaffolds repository skeleton structures.
+
+FROM base AS skeleton
+
+COPY . .
+RUN moon docker scaffold faucet
+
+#### BUILD STAGE
+#### Installs and prunes the faucet workspace with the pinned toolchain.
+
 FROM base AS build
 
-# Install node modules
-COPY . .
-RUN pnpm install --production --filter faucet
+COPY --from=skeleton /app/.moon/docker/configs .
+COPY --from=skeleton /app/patches ./patches
+RUN moon docker setup
 
-# Final stage for app image
-FROM base
+COPY --from=skeleton /app/.moon/docker/sources .
+RUN moon docker prune
 
-# Copy built application
-COPY --from=build /app /app
+#### START STAGE
+#### Runs the faucet container service.
 
-# Start the server by default, this can be overwritten at runtime
-WORKDIR /app/apps/faucet
+FROM oven/bun:1.2.22 AS start
+WORKDIR /app
+
+COPY --from=build /app .
 EXPOSE 3000
-CMD [ "bun", "run", "start" ]
+ENV NODE_ENV=production
+CMD ["bun", "run", "--cwd", "apps/faucet", "start"]
