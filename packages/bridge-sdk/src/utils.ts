@@ -311,12 +311,14 @@ export async function fetchActions(
 
 	const output = await fetchActionsRecursive(networkTip)
 
-	return mapParsedActions(output)
+	return mapParsedActions(selectCanonicalActionOutputs(output))
 }
+
+const ORPHANED_CHAIN_STATUS = "orphaned"
 
 const ActionOutputsSchema = v.array(
 	v.object({
-		blockInfo: v.object({ timestamp: v.string(), height: v.number() }),
+		blockInfo: v.object({ timestamp: v.string(), height: v.number(), chainStatus: v.string() }),
 		actionState: v.object({
 			actionStateOne: v.string(),
 			actionStateTwo: v.string()
@@ -343,7 +345,8 @@ const parseActionOutputs = (actions: unknown): v.InferOutput<typeof ActionOutput
 			: [],
 		blockInfo: {
 			timestamp: String(action?.blockInfo?.timestamp ?? "0"),
-			height: Number(action?.blockInfo?.height ?? 0)
+			height: Number(action?.blockInfo?.height ?? 0),
+			chainStatus: String(action?.blockInfo?.chainStatus ?? "canonical")
 		}
 	}))
 
@@ -351,6 +354,19 @@ const parseActionOutputs = (actions: unknown): v.InferOutput<typeof ActionOutput
 	if (!result.success) throw new Error("Invalid actions data")
 	return result.output
 }
+
+/**
+ * Selects the live chain from archive action outputs by dropping orphaned
+ * dead-fork blocks. The Mina archive can return blocks from more than one chain
+ * instance (for example after an L2 re-genesis that reused the archive database).
+ * Orphaned blocks are dead forks; mapping their actions would surface phantom
+ * deposits/withdrawals that are not on the live chain. Canonical and pending
+ * blocks are kept, preserving order.
+ */
+export const selectCanonicalActionOutputs = (
+	outputs: v.InferOutput<typeof ActionOutputsSchema>
+): v.InferOutput<typeof ActionOutputsSchema> =>
+	outputs.filter((output) => output.blockInfo.chainStatus !== ORPHANED_CHAIN_STATUS)
 
 const mapParsedActions = (output: v.InferOutput<typeof ActionOutputsSchema>): Action[] =>
 	output.flatMap(
