@@ -321,3 +321,4 @@
 - T321 | done | remove-faucet-legacy-network-compat | done/T321-remove-faucet-legacy-network-compat.md
 - T322 | done | use-tsgo-for-typecheck-tasks | done/T322-use-tsgo-for-typecheck-tasks.md
 - T323 | done | remove-claim-service-legacy-network-compat | done/T323-remove-claim-service-legacy-network-compat.md
+- T324 | done | resolve-network-nomenclature-conflicts | done/T324-resolve-network-nomenclature-conflicts.md
