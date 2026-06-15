@@ -331,3 +331,4 @@
 - T345 | done | actions-indexer-canonical-chain-filter | done/T345-actions-indexer-canonical-chain-filter.md
 - T346 | done | bridge-sdk-canonical-chain-filter | done/T346-bridge-sdk-canonical-chain-filter.md
 - T347 | done | fix-actions-dashboard-same-zone-fetch | done/T347-fix-actions-dashboard-same-zone-fetch.md
+- T348 | done | filter-orphaned-dashboard-coverage | done/T348-filter-orphaned-dashboard-coverage.md

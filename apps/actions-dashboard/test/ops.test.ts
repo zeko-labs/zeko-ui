@@ -734,6 +734,80 @@ describe("actions dashboard utilities", () => {
 		}
 	})
 
+	it("ignores orphaned archive actions when probing missing dashboard coverage", async () => {
+		const originalFetch = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input)
+			const body = JSON.parse(String(init?.body ?? "{}")) as {
+				query?: string
+				variables?: Record<string, unknown>
+			}
+
+			if (body.query?.includes("OpsArchiveState")) {
+				return Response.json({
+					data: {
+						networkState: {
+							maxBlockHeight: {
+								canonicalMaxBlockHeight: url.includes("l2") ? 1_100 : 600,
+								pendingMaxBlockHeight: url.includes("l2") ? 1_100 : 600
+							}
+						}
+					}
+				})
+			}
+
+			if (body.query?.includes("OpsActionCoverage")) {
+				return Response.json({
+					data: {
+						actions:
+							body.variables?.pk === "inner-pk"
+								? [
+										{
+											blockInfo: { height: 1_020, chainStatus: "orphaned" },
+											actionData: [{ data: ["orphaned"] }]
+										},
+										{
+											blockInfo: { height: 1_050, chainStatus: "pending" },
+											actionData: [{ data: ["pending"] }]
+										}
+									]
+								: []
+					}
+				})
+			}
+
+			return Response.json({ data: {} })
+		}) as typeof fetch
+
+		try {
+			await expect(
+				createActionCoverageSnapshot(
+					"testnet",
+					{
+						lastFetchedOuter: 600,
+						lastFetchedInner: 1_000
+					},
+					{
+						TESTNET_L1_ARCHIVE_URL: "https://l1.example/graphql",
+						TESTNET_L2_ARCHIVE_URL: "https://l2.example/graphql",
+						TESTNET_OUTER_ACTIONS_PUBLIC_KEY: "outer-pk",
+						TESTNET_INNER_ACTIONS_PUBLIC_KEY: "inner-pk"
+					}
+				)
+			).resolves.toMatchObject({
+				l2: {
+					actionCoverageStatus: "missing",
+					missingActionCount: 1,
+					missingActionBlockCount: 1,
+					firstMissingActionBlock: 1_050,
+					latestArchiveActionBlock: 1_050
+				}
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+	})
+
 	it("flattens actions indexer database and canonical progress details", () => {
 		expect(
 			extractActionsIndexerDetails({

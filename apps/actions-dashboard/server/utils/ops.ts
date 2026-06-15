@@ -568,6 +568,7 @@ const readArchiveActionBlocks = async ({
 			actions(input: { address: $pk, from: $from, to: $to }) {
 				blockInfo {
 					height
+					chainStatus
 				}
 				actionData {
 					data
@@ -586,8 +587,11 @@ const readArchiveActionBlocks = async ({
 	const actions = Array.isArray(data.actions) ? data.actions : []
 	return actions.flatMap((item) => {
 		const record = getRecord(item)
-		const height = getNumber(getRecord(record.blockInfo).height)
+		const blockInfo = getRecord(record.blockInfo)
+		const height = getNumber(blockInfo.height)
+		const chainStatus = getString(blockInfo.chainStatus)
 		if (height === null) return []
+		if (chainStatus === "orphaned") return []
 		const actionData = Array.isArray(record.actionData) ? record.actionData : []
 		return [{ height, actionCount: Math.max(1, actionData.length) }]
 	})
