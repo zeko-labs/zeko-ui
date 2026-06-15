@@ -4,6 +4,7 @@ import { fetchActionsQuery, networkStateQuery } from "@zeko-labs/graphql/mina-ar
 import { createConsola } from "consola"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import * as v from "valibot"
+import { selectCanonicalBlocks } from "./action-processing/core"
 import { runActionProcessing } from "./action-processing/runtime"
 import type { ArchiveAction, ArchiveEvent } from "./action-processing/types"
 import { env } from "./env"
@@ -93,7 +94,8 @@ export async function fetchActions({
 			blockInfo: {
 				timestamp: String(a.blockInfo?.timestamp ?? "0"),
 				height: Number(a.blockInfo?.height ?? 0),
-				distanceFromMaxBlockHeight: Number(a.blockInfo?.distanceFromMaxBlockHeight ?? 0)
+				distanceFromMaxBlockHeight: Number(a.blockInfo?.distanceFromMaxBlockHeight ?? 0),
+				chainStatus: a.blockInfo?.chainStatus ?? "canonical"
 			},
 			actionState: {
 				actionStateOne: a.actionState?.actionStateOne ?? "",
@@ -111,7 +113,8 @@ export async function fetchActions({
 				blockInfo: v.object({
 					timestamp: v.string(),
 					height: v.number(),
-					distanceFromMaxBlockHeight: v.number()
+					distanceFromMaxBlockHeight: v.number(),
+					chainStatus: v.string()
 				}),
 				actionState: v.object({ actionStateOne: v.string(), actionStateTwo: v.string() }),
 				actionData: v.array(
@@ -131,7 +134,12 @@ export async function fetchActions({
 		from = to
 	}
 
-	const output = blocks
+	const output = selectCanonicalBlocks(blocks)
+	const droppedOrphanedCount = blocks.length - output.length
+	if (droppedOrphanedCount > 0)
+		logger.warn(
+			`[fetchActions ${client.label}] dropped ${droppedOrphanedCount} orphaned block(s) from a non-canonical chain branch`
+		)
 	logger.info(
 		`[fetchActions ${client.label}] total blocks collected: ${output.length}, start=${start}, tip=${maxHeight}`
 	)

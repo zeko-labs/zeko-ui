@@ -46,7 +46,8 @@ export function generateSyntheticArchiveBlocks({
 			blockInfo: {
 				timestamp: String(Date.now()),
 				height: blockIndex + 1,
-				distanceFromMaxBlockHeight: blockCount - blockIndex
+				distanceFromMaxBlockHeight: blockCount - blockIndex,
+				chainStatus: "canonical"
 			},
 			actionState: {
 				actionStateOne: chainState.toString(),

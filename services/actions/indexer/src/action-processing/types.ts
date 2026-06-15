@@ -4,7 +4,12 @@ export interface ArchiveActionData {
 }
 
 export interface ArchiveAction {
-	blockInfo: { timestamp: string; height: number; distanceFromMaxBlockHeight: number }
+	blockInfo: {
+		timestamp: string
+		height: number
+		distanceFromMaxBlockHeight: number
+		chainStatus: string
+	}
 	actionState: { actionStateOne: string; actionStateTwo: string }
 	actionData: ArchiveActionData[]
 }

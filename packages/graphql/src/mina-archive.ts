@@ -15,6 +15,7 @@ export const fetchActionsQuery = graphql(`
         timestamp
         height
         distanceFromMaxBlockHeight
+        chainStatus
       }
       actionState {
         actionStateOne
