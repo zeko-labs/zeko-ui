@@ -29,12 +29,10 @@ updated_at: 2026-06-13T04:19:00Z
 ## GREEN Evidence
 
 - `https://indexer.actions.zeko.io/health` and authenticated `/status` are healthy when called directly, but the deployed `actions-dashboard` Worker received `301 Location: https://indexer.actions.zeko.io/...` for same-zone subrequests and followed that into a redirect loop.
-- Northflank live service metadata reports usable service DNS origins:
-  - mainnet: `https://p01--actions-indexer-mainnet-deployment--4vlk5mt6rn88.code.run`
-  - testnet: `https://p01--actions-indexer-testnet-deployment--4vlk5mt6rn88.code.run`
-- Direct curls to both `code.run` origins returned HTTP 200 healthy action-indexer responses with no redirects.
+- Northflank live service metadata reported usable service DNS origins, but T345 supersedes that direct-origin workaround with public same-zone `.zeko.io` fetches.
+- Direct curls to both temporary origins returned HTTP 200 healthy action-indexer responses with no redirects.
 - `moon run -f actions-dashboard:test actions-dashboard:typecheck actions-dashboard:lint actions-dashboard:build`: passed.
 - `env -u CLOUDFLARE_API_TOKEN moon run -f actions-dashboard:deploy`: passed, deployed `actions-dashboard` version `494505cd-03c9-408f-9dda-ea808e4ff99f`.
 - `wrangler deployments status --name actions-dashboard`: confirmed version `494505cd-03c9-408f-9dda-ea808e4ff99f` is active.
-- Built and deployed Worker artifact contains `ACTIONS_INDEXER_ORIGIN_URL` routing to `code.run` origins and does not include the temporary `fetch-debug` route.
+- Built and deployed Worker artifact contained temporary direct-origin routing and did not include the temporary `fetch-debug` route. T345 supersedes this with public `.zeko.io` fetches.
 - Temporary Cloudflare Access bypass policies and the throwaway `codex-actions-fetch-test` Worker were deleted after validation attempts.

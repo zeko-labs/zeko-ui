@@ -82,6 +82,8 @@ describe("actions dashboard utilities", () => {
 
 		expect(wranglerConfig).toContain('"workers_dev": false')
 		expect(wranglerConfig).not.toContain('"preview_urls": true')
+		expect(wranglerConfig).toContain('"global_fetch_strictly_public"')
+		expect(wranglerConfig).not.toContain("_ORIGIN_")
 	})
 
 	it("uses canonical actions-indexer control names and explains rebuild versus reset", () => {
@@ -175,7 +177,6 @@ describe("actions dashboard utilities", () => {
 		expect(
 			getOpsConfig("testnet", {
 				TESTNET_ACTIONS_INDEXER_URL: "https://private.testnet-indexer.example",
-				TESTNET_ACTIONS_INDEXER_ORIGIN_URL: "https://origin.testnet-indexer.example",
 				TESTNET_L1_ARCHIVE_URL: "https://private.l1-archive.example/graphql",
 				TESTNET_L2_ARCHIVE_URL: "https://private.l2-archive.example/graphql",
 				TESTNET_L1_DAEMON_URL: "https://private.l1-daemon.example/graphql",
@@ -194,9 +195,9 @@ describe("actions dashboard utilities", () => {
 		})
 		expect(
 			getActionsIndexerRequestUrl("testnet", {
-				TESTNET_ACTIONS_INDEXER_ORIGIN_URL: "https://origin.testnet-indexer.example"
+				TESTNET_L1_ARCHIVE_URL: "https://private.l1-archive.example/graphql"
 			})
-		).toBe("https://origin.testnet-indexer.example")
+		).toBe("https://testnet.indexer.actions.zeko.io")
 	})
 
 	it("merges process env for local route execution while preserving Cloudflare precedence", () => {

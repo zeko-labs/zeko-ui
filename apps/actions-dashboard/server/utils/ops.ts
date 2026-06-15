@@ -92,8 +92,6 @@ const endpointEnvKeys = {
 	l2DaemonUrl: "L2_DAEMON_URL"
 } as const
 
-const actionsIndexerOriginEnvKey = "ACTIONS_INDEXER_ORIGIN_URL"
-
 const publicKeyEnvKeys = {
 	outerActionsPublicKey: "OUTER_ACTIONS_PUBLIC_KEY",
 	innerActionsPublicKey: "INNER_ACTIONS_PUBLIC_KEY"
@@ -188,12 +186,7 @@ export const getActionsIndexerRequestUrl = (
 	env: OpsEnv = defaultEnv()
 ): string => {
 	const network = resolveOpsNetwork(networkInput)
-	const publicEndpoint = getOpsConfig(network, env).actionsIndexerUrl
-	return normalizeEndpoint(
-		readEnv(env, `${network.toUpperCase()}_${actionsIndexerOriginEnvKey}`) ??
-			(network === "mainnet" ? readEnv(env, actionsIndexerOriginEnvKey) : undefined) ??
-			publicEndpoint
-	)
+	return getOpsConfig(network, env).actionsIndexerUrl
 }
 
 const toPascal = (key: string): string => {
