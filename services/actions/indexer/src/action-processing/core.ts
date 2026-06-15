@@ -2,6 +2,20 @@ import { Actions, fromList } from "@zeko-labs/bridge-sdk"
 import { Field } from "o1js"
 import type { ActionProcessingResult, ArchiveAction, ArchiveEvent } from "./types"
 
+const ORPHANED_CHAIN_STATUS = "orphaned"
+
+/**
+ * Selects the live chain from archive blocks by dropping orphaned dead-fork
+ * blocks. The Mina archive can return blocks from more than one chain instance
+ * (for example after an L2 re-genesis that reused the archive database), in which
+ * case the actions for an address span multiple branches that do not form a
+ * single linear chain. Orphaned blocks are the dead forks; canonical and pending
+ * blocks belong to the live chain and are kept, preserving order.
+ */
+export function selectCanonicalBlocks(blocks: ArchiveAction[]): ArchiveAction[] {
+	return blocks.filter((block) => block.blockInfo.chainStatus !== ORPHANED_CHAIN_STATUS)
+}
+
 export function validateEventChain(events: ArchiveEvent[]): void {
 	for (let index = 1; index < events.length; index++) {
 		const previous = events[index - 1]

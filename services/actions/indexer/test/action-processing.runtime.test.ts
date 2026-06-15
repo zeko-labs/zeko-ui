@@ -52,7 +52,8 @@ const makeBlocks = (): ArchiveAction[] => {
 			blockInfo: {
 				timestamp: String(1_700_000_000_000 + blockIndex),
 				height: blockIndex + 1,
-				distanceFromMaxBlockHeight: 2 - blockIndex
+				distanceFromMaxBlockHeight: 2 - blockIndex,
+				chainStatus: "canonical"
 			},
 			actionState: {
 				actionStateOne: chainState,

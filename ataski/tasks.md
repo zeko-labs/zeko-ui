@@ -313,3 +313,5 @@
 - T342 | done | cloudflare-access-provider | done/T342-cloudflare-access-provider.md
 - T343 | done | indexer-health-probe-redirects | done/T343-indexer-health-probe-redirects.md
 - T344 | done | investigate-dashboard-indexer-routing | done/T344-investigate-dashboard-indexer-routing.md
+- T345 | done | actions-indexer-canonical-chain-filter | done/T345-actions-indexer-canonical-chain-filter.md
+- T346 | done | bridge-sdk-canonical-chain-filter | done/T346-bridge-sdk-canonical-chain-filter.md

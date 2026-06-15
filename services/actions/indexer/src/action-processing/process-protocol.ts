@@ -21,7 +21,8 @@ const ArchiveActionSchema = v.object({
 	blockInfo: v.object({
 		timestamp: v.string(),
 		height: v.number(),
-		distanceFromMaxBlockHeight: v.number()
+		distanceFromMaxBlockHeight: v.number(),
+		chainStatus: v.string()
 	}),
 	actionState: v.object({
 		actionStateOne: v.string(),
