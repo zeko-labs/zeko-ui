@@ -27,6 +27,7 @@
 		"@zeko/leaderboard-ui",
 		"@zeko/docs",
 		"@zeko/faucet-ui",
+		"@zeko/actions-dashboard",
 		"@zeko/mina-archive-proxy-devnet",
 		"@zeko/mina-archive-proxy-mainnet",
 		"@zeko/mina-proxy-devnet",
