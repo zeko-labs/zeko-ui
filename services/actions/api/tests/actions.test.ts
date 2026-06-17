@@ -145,6 +145,10 @@ describe("Actions API - schema queries", () => {
 	})
 
 	describe("queryOuterWitnessesFromAuxes", () => {
+		it("returns an empty array for empty aux input", async () => {
+			await expect(queryOuterWitnessesFromAuxes(testDb, [])).resolves.toEqual([])
+		})
+
 		it("returns the witness corresponding to aux", async () => {
 			const result = await queryOuterWitnessesFromAuxes(testDb, ["aux-1"])
 
@@ -157,6 +161,10 @@ describe("Actions API - schema queries", () => {
 	})
 
 	describe("queryInnerWitnessesFromAuxes", () => {
+		it("returns an empty array for empty aux input", async () => {
+			await expect(queryInnerWitnessesFromAuxes(testDb, [])).resolves.toEqual([])
+		})
+
 		it("returns inner witness row by aux", async () => {
 			const result = await queryInnerWitnessesFromAuxes(testDb, ["iaux-1"])
 

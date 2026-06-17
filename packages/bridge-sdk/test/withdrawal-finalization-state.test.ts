@@ -71,7 +71,7 @@ const buildInnerWitness = (withdrawal: Withdrawal, index: number): InnerWitness 
 	action: [Field(index + 1), Field(index + 101)],
 	afterActionState: Field(index + 201),
 	beforeActionState: Field(index + 200),
-	hash: `withdrawal-witness-${index}`,
+	hash: `withdrawal-action-${index}`,
 	index,
 	timestamp: `${1700000000000 + index}`,
 	aux: withdrawalAux(withdrawal)
@@ -79,9 +79,9 @@ const buildInnerWitness = (withdrawal: Withdrawal, index: number): InnerWitness 
 
 const buildWitnessForWithdrawalAction = (withdrawal: Action & Withdrawal): InnerWitness => ({
 	action: withdrawal.action,
-	afterActionState: withdrawal.afterActionState,
-	beforeActionState: withdrawal.beforeActionState,
-	hash: `withdrawal-witness-${withdrawal.index}`,
+	afterActionState: Field(withdrawal.index + 901),
+	beforeActionState: Field(withdrawal.index + 900),
+	hash: withdrawal.hash,
 	index: withdrawal.index,
 	timestamp: `${1700000001000 + withdrawal.index}`,
 	aux: withdrawalAux(withdrawal)

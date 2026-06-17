@@ -73,11 +73,11 @@ const buildWithdrawalAction = ({
 
 const buildWitnessForWithdrawalAction = (withdrawal: Action & Withdrawal): InnerWitness => ({
 	action: withdrawal.action,
-	beforeActionState: withdrawal.beforeActionState,
-	afterActionState: withdrawal.afterActionState,
+	beforeActionState: Field(withdrawal.index + 901),
+	afterActionState: Field(withdrawal.index + 902),
 	index: withdrawal.index,
 	timestamp: `${Number(withdrawal.timestamp) + 1000}`,
-	hash: `withdrawal-witness-${withdrawal.index}`,
+	hash: withdrawal.hash,
 	aux: utils.withdrawalAux(withdrawal)
 })
 
@@ -140,11 +140,11 @@ describe("withdrawal state", () => {
 		}
 		const witness: InnerWitness = {
 			action: withdrawal.action,
-			beforeActionState: withdrawal.beforeActionState,
-			afterActionState: withdrawal.afterActionState,
+			beforeActionState: Field(401),
+			afterActionState: Field(402),
 			index: 0,
 			timestamp: "0",
-			hash: "withdrawal-witness",
+			hash: withdrawal.hash,
 			aux: utils.withdrawalAux(withdrawal)
 		}
 
@@ -253,7 +253,7 @@ describe("withdrawal state", () => {
 		const result = await bridge.fetchWithdrawalsWithStates(recipient)
 
 		expect(result.withdrawals.map((withdrawal) => withdrawal.hash)).toEqual([
-			oldWitness.hash,
+			oldWithdrawal.hash,
 			newWithdrawal.hash
 		])
 		expect(result.withdrawals.map((withdrawal) => withdrawal.finalised)).toEqual([true, false])

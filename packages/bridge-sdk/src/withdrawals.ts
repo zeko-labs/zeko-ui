@@ -326,12 +326,14 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		return { ok: false, msg: "No withdrawal witnesses found" }
 	}
 
-	const findMatchingWithdrawal = (action: InnerWitness) =>
-		withdrawals.find(
-			(withdrawal) =>
-				withdrawal.action.afterActionState.equals(action.afterActionState).toBoolean() &&
-				withdrawal.aux.equals(action.aux).toBoolean()
-		)
+	const withdrawalByHash = new Map(
+		withdrawals.map((withdrawal) => [withdrawal.action.hash, withdrawal])
+	)
+	const findMatchingWithdrawal = (action: InnerWitness) => {
+		const withdrawal = withdrawalByHash.get(action.hash)
+		if (!withdrawal || !withdrawal.aux.equals(action.aux).toBoolean()) return undefined
+		return withdrawal
+	}
 
 	const matchingWitnesses = withdrawalWitnesses.filter((witness) =>
 		Boolean(findMatchingWithdrawal(witness))
@@ -404,13 +406,9 @@ export async function fetchWithdrawalFinalizationWitnesses(
 	let unfinalisedMatchCount = 0
 
 	const minWithdrawalIndex = uint32Max(runtime.V2_WITHDRAWALS_START_INDEX, prevNextWithdrawal)
-	const matchingWitnessAfterStates = new Set(
-		matchingWitnesses.map((witness) => witness.afterActionState.toString())
-	)
+	const matchingWitnessHashes = new Set(matchingWitnesses.map((witness) => witness.hash))
 	const hasUnwitnessedPendingWithdrawal = withdrawals.some(
-		(withdrawal) =>
-			!matchingWitnessAfterStates.has(withdrawal.action.afterActionState.toString()) &&
-			!minWithdrawalIndex.greaterThan(UInt32.from(withdrawal.action.index)).toBoolean()
+		(withdrawal) => !matchingWitnessHashes.has(withdrawal.action.hash)
 	)
 
 	const myWithdrawalIndex = innerActions.findIndex((action) => {
@@ -773,11 +771,9 @@ export async function fetchWithdrawalsWithStates(
 			? false
 			: lastCommit.innerActionStateLength.greaterThan(UInt32.from(index)).toBoolean())
 
-	const withdrawalByAfterState = new Map(
-		withdrawals.map((withdrawal) => [withdrawal.afterActionState.toString(), withdrawal])
-	)
+	const withdrawalByHash = new Map(withdrawals.map((withdrawal) => [withdrawal.hash, withdrawal]))
 	const findWithdrawalForWitness = (witness: InnerWitness) => {
-		const withdrawal = withdrawalByAfterState.get(witness.afterActionState.toString())
+		const withdrawal = withdrawalByHash.get(witness.hash)
 		if (!withdrawal || !withdrawalAux(withdrawal).equals(witness.aux).toBoolean()) return null
 		return withdrawal
 	}
@@ -799,10 +795,10 @@ export async function fetchWithdrawalsWithStates(
 		})
 	)
 	const witnessedActionStates = new Set(
-		witnessedWithdrawalStatuses.map((withdrawal) => withdrawal.afterActionState.toString())
+		witnessedWithdrawalStatuses.map((withdrawal) => withdrawal.hash)
 	)
 	const provisionalWithdrawals = withdrawals
-		.filter((withdrawal) => !witnessedActionStates.has(withdrawal.afterActionState.toString()))
+		.filter((withdrawal) => !witnessedActionStates.has(withdrawal.hash))
 		.map((withdrawal) => ({
 			...withdrawal,
 			timestamp: normalizeTimestamp(withdrawal.timestamp),

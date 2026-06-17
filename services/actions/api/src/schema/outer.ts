@@ -41,6 +41,8 @@ export async function queryOuterWitnessesFromAuxes(
 	db: DatabaseInstance,
 	auxes: string[]
 ): Promise<Witness[]> {
+	if (auxes.length === 0) return []
+
 	const witnesses = await db.drizzle
 		.select()
 		.from(witnessActions)

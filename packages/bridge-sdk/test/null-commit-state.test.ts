@@ -94,9 +94,9 @@ const buildWithdrawalAction = (withdrawal: Withdrawal): Action & Withdrawal => (
 
 const buildWithdrawalWitness = (withdrawal: Withdrawal): InnerWitness => ({
 	action: [Field(21), Field(22)],
-	afterActionState: buildWithdrawalAction(withdrawal).afterActionState,
-	beforeActionState: buildWithdrawalAction(withdrawal).beforeActionState,
-	hash: "withdrawal-witness",
+	afterActionState: Field(23),
+	beforeActionState: Field(24),
+	hash: buildWithdrawalAction(withdrawal).hash,
 	index: 0,
 	timestamp: "1700000002000",
 	aux: withdrawalAux(withdrawal)

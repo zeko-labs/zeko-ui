@@ -23,6 +23,8 @@ export async function queryInnerWitnessesFromAuxes(
 	db: DatabaseInstance,
 	auxes: string[]
 ): Promise<InnerAction[]> {
+	if (auxes.length === 0) return []
+
 	const witnesses = await db.drizzle
 		.select()
 		.from(innerActions)
