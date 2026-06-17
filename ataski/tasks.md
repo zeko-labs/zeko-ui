@@ -345,3 +345,4 @@
 - T359 | done | key-withdrawal-finality-sets-by-identity | done/T359-key-withdrawal-finality-sets-by-identity.md
 - T360 | done | surface-l2-finality-stall | done/T360-surface-l2-finality-stall.md
 - T361 | done | promote-inner-actions-by-archive-canonical-status | done/T361-promote-inner-actions-by-archive-canonical-status.md
+- T362 | done | resolve-dashboard-finality-review | done/T362-resolve-dashboard-finality-review.md

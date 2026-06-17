@@ -111,10 +111,9 @@ const hasCanonicalL2FinalityStall = (row: ChainInsight): boolean =>
 	row.id === "l2" &&
 	row.nonCanonicalTailCount !== null &&
 	row.nonCanonicalTailCount > 0 &&
-	row.finalActionBlockHeight !== null &&
 	row.lastActionBlockHeight !== null &&
 	row.archiveCanonicalHeight !== null &&
-	row.finalActionBlockHeight < row.lastActionBlockHeight &&
+	(row.finalActionBlockHeight === null || row.finalActionBlockHeight < row.lastActionBlockHeight) &&
 	row.lastActionBlockHeight <= row.archiveCanonicalHeight
 
 export const actionFinalityState = (row: ChainInsight): ServiceStatus => {

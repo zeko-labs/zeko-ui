@@ -945,6 +945,42 @@ describe("actions dashboard utilities", () => {
 		expect(actionFinalityDetail(stalledL2)).toContain("indexed 1,097,358")
 	})
 
+	it("reports L2 action finality stalls before any DB action is finalized", () => {
+		const stalledL2 = buildChainInsight({
+			id: "l2",
+			label: "L2 Zeko",
+			indexerLabel: "Inner",
+			indexer: {
+				id: "actions-indexer",
+				details: {
+					lastFetchedInner: 1_097_358,
+					innerLastFinalBlockHeight: null,
+					innerNonCanonicalTailCount: 17
+				}
+			},
+			archive: {
+				id: "l2-archive",
+				details: {
+					canonicalMaxBlockHeight: 1_097_396,
+					pendingMaxBlockHeight: 1_097_396
+				}
+			},
+			daemon: {
+				id: "l2-daemon",
+				details: {}
+			},
+			indexerHeightKey: "lastFetchedInner",
+			indexerFinalHeightKey: "innerLastFinalBlockHeight",
+			nonCanonicalTailKey: "innerNonCanonicalTailCount",
+			expectedFinalityBlocks: null,
+			daemonBlockHeightSupported: false
+		})
+
+		expect(actionFinalityState(stalledL2)).toBe("error")
+		expect(actionFinalityLabel(stalledL2)).toBe("17 canonical actions not finalized in DB")
+		expect(actionFinalityDetail(stalledL2)).toContain("DB final -")
+	})
+
 	it("builds L1 chain insights from action-indexer, archive, and daemon probes", () => {
 		expect(
 			buildChainInsight({

@@ -183,7 +183,7 @@ const finalityGapLabel = (row: ChainRow) => {
 	if (row.id === "l2") {
 		if (row.archiveFinalityGap === null) return "finality unknown"
 		if (row.archiveFinalityGap === 0) return "archive canonical head current"
-		return `${row.archiveFinalityGap.toLocaleString()} txs not canonical`
+		return `${row.archiveFinalityGap.toLocaleString()} blocks not canonical`
 	}
 	if (row.archiveFinalityGap === null) return "finality unknown"
 	return `${row.archiveFinalityGap.toLocaleString()} blocks not final`
