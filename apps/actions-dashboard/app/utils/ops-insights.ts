@@ -116,8 +116,17 @@ const hasCanonicalL2FinalityStall = (row: ChainInsight): boolean =>
 	(row.finalActionBlockHeight === null || row.finalActionBlockHeight < row.lastActionBlockHeight) &&
 	row.lastActionBlockHeight <= row.archiveCanonicalHeight
 
+const hasL1DepositFinalityRisk = (row: ChainInsight): boolean =>
+	row.id === "l1" &&
+	row.nonCanonicalTailCount !== null &&
+	row.nonCanonicalTailCount > 0 &&
+	row.actionCoverageStatus === "current" &&
+	row.lastActionBlockHeight !== null &&
+	(row.finalActionBlockHeight === null || row.finalActionBlockHeight < row.lastActionBlockHeight)
+
 export const actionFinalityState = (row: ChainInsight): ServiceStatus => {
 	if (hasCanonicalL2FinalityStall(row)) return "error"
+	if (hasL1DepositFinalityRisk(row)) return "warn"
 	return tailState(row.nonCanonicalTailCount, row.expectedFinalityBlocks)
 }
 
@@ -126,6 +135,11 @@ export const actionFinalityLabel = (row: ChainInsight): string => {
 		const count = row.nonCanonicalTailCount ?? 0
 		const unit = count === 1 ? "action" : "actions"
 		return `${count.toLocaleString()} canonical ${unit} not finalized in DB`
+	}
+	if (hasL1DepositFinalityRisk(row)) {
+		const count = row.nonCanonicalTailCount ?? 0
+		const unit = count === 1 ? "action" : "actions"
+		return `${count.toLocaleString()} L1 ${unit} not final; deposits may be blocked`
 	}
 	if (row.nonCanonicalTailCount === null) return "pending actions unknown"
 	if (row.nonCanonicalTailCount === 0) return "no pending actions"
@@ -136,6 +150,8 @@ export const actionFinalityLabel = (row: ChainInsight): string => {
 export const actionFinalityDetail = (row: ChainInsight): string => {
 	if (hasCanonicalL2FinalityStall(row))
 		return `archive canonical ${formatBlock(row.archiveCanonicalHeight)}; DB final ${formatBlock(row.finalActionBlockHeight)}; indexed ${formatBlock(row.lastActionBlockHeight)}`
+	if (hasL1DepositFinalityRisk(row))
+		return `DB final ${formatBlock(row.finalActionBlockHeight)}; indexed ${formatBlock(row.lastActionBlockHeight)}; coverage ${row.actionCoverageStatus ?? "unknown"}`
 	return `final action block ${formatBlock(row.finalActionBlockHeight)}`
 }
 

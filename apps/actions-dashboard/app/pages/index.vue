@@ -25,7 +25,7 @@ import { indexerControlCopy } from "~/utils/indexer-control-copy"
 import { postControlRefreshOptions } from "~/utils/refresh-options"
 
 type ServiceStatus = "ok" | "warn" | "error" | "unknown"
-type ServiceKind = "actions-indexer" | "archive" | "daemon"
+type ServiceKind = "actions-indexer" | "actions-api" | "archive" | "daemon"
 type OpsNetwork = "mainnet" | "testnet"
 
 interface ServiceProbe {
@@ -46,6 +46,7 @@ interface OpsSnapshot {
 	config: {
 		network: OpsNetwork
 		actionsIndexerUrl: string
+		actionsApiUrl: string
 		l1ArchiveUrl: string
 		l2ArchiveUrl: string
 		l1DaemonUrl: string
@@ -85,6 +86,7 @@ let refreshSequence = 0
 
 const serviceIcon = (service: ServiceProbe) => {
 	if (service.kind === "actions-indexer") return Activity
+	if (service.kind === "actions-api") return Zap
 	if (service.kind === "archive") return Database
 	return Server
 }

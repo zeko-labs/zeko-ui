@@ -1,4 +1,4 @@
-export type ServiceKind = "actions-indexer" | "archive" | "daemon"
+export type ServiceKind = "actions-indexer" | "actions-api" | "archive" | "daemon"
 export type ServiceStatus = "ok" | "warn" | "error" | "unknown"
 export type OpsNetwork = "mainnet" | "testnet"
 export type OpsEnv = Record<string, unknown>
@@ -6,6 +6,7 @@ export type OpsEnv = Record<string, unknown>
 export interface OpsEndpointConfig {
 	network: OpsNetwork
 	actionsIndexerUrl: string
+	actionsApiUrl: string
 	l1ArchiveUrl: string
 	l2ArchiveUrl: string
 	l1DaemonUrl: string
@@ -59,6 +60,7 @@ const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
 	mainnet: {
 		network: "mainnet",
 		actionsIndexerUrl: "https://indexer.actions.zeko.io",
+		actionsApiUrl: "https://api.actions.zeko.io/graphql",
 		l1ArchiveUrl: "https://gateway.mina.archive.mainnet.zeko.io",
 		l2ArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
 		l1DaemonUrl: "https://gateway.mina.mainnet.zeko.io",
@@ -69,6 +71,7 @@ const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
 	testnet: {
 		network: "testnet",
 		actionsIndexerUrl: "https://testnet.indexer.actions.zeko.io",
+		actionsApiUrl: "https://testnet.api.actions.zeko.io/graphql",
 		l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
 		l2ArchiveUrl: "https://archive.testnet.zeko.io/graphql",
 		l1DaemonUrl: "https://gateway.mina.devnet.zeko.io",
@@ -88,6 +91,7 @@ export const normalizeEndpoint = (url: string): string => url.replace(/\/+$/, ""
 
 const endpointEnvKeys = {
 	actionsIndexerUrl: "ACTIONS_INDEXER_URL",
+	actionsApiUrl: "ACTIONS_API_URL",
 	l1ArchiveUrl: "L1_ARCHIVE_URL",
 	l2ArchiveUrl: "L2_ARCHIVE_URL",
 	l1DaemonUrl: "L1_DAEMON_URL",
@@ -193,6 +197,7 @@ export const getOpsConfig = (
 	return {
 		network,
 		actionsIndexerUrl: readNetworkEndpoint(network, "actionsIndexerUrl", env),
+		actionsApiUrl: readNetworkEndpoint(network, "actionsApiUrl", env),
 		l1ArchiveUrl: readNetworkEndpoint(network, "l1ArchiveUrl", env),
 		l2ArchiveUrl: readNetworkEndpoint(network, "l2ArchiveUrl", env),
 		l1DaemonUrl: readNetworkEndpoint(network, "l1DaemonUrl", env),
@@ -871,6 +876,77 @@ export const probeActionsIndexer = async ({
 	}
 }
 
+const typeHasFinalityMetadata = (
+	payload: unknown,
+	alias: "outerAction" | "innerAction"
+): boolean => {
+	const data = getRecord(getRecord(payload).data)
+	const typeInfo = getRecord(data[alias])
+	const fields = Array.isArray(typeInfo.fields) ? typeInfo.fields : []
+	const fieldNames = new Set(
+		fields.flatMap((field) => {
+			const name = getString(getRecord(field).name)
+			return name === null ? [] : [name]
+		})
+	)
+	return fieldNames.has("markedAsCanonicalAt") && fieldNames.has("finalityStatus")
+}
+
+export const probeActionsApi = async ({
+	endpoint
+}: { endpoint: string }): Promise<ServiceProbe> => {
+	const id = "actions-api"
+	const label = "Zeko actions API"
+	try {
+		const { response, latencyMs, payload } = await graphQlRequest(
+			endpoint,
+			`query OpsActionsApiSchema {
+				outerAction: __type(name: "OuterAction") {
+					fields {
+						name
+					}
+				}
+				innerAction: __type(name: "InnerAction") {
+					fields {
+						name
+					}
+				}
+			}`,
+			requestTimeoutMs
+		)
+		const error = getFirstError(payload)
+		const outerActionFinalityMetadata = response.ok
+			? typeHasFinalityMetadata(payload, "outerAction")
+			: false
+		const innerActionFinalityMetadata = response.ok
+			? typeHasFinalityMetadata(payload, "innerAction")
+			: false
+		const hasFinalityMetadata = outerActionFinalityMetadata && innerActionFinalityMetadata
+		const status: ServiceStatus =
+			!response.ok || error ? "error" : hasFinalityMetadata ? "ok" : "warn"
+		const compatibilityError =
+			error ?? (hasFinalityMetadata ? undefined : "Actions API schema is missing finality metadata")
+
+		return {
+			id,
+			label,
+			kind: "actions-api",
+			status,
+			endpoint,
+			checkedAt: new Date().toISOString(),
+			latencyMs,
+			httpStatus: response.status,
+			details: {
+				outerActionFinalityMetadata,
+				innerActionFinalityMetadata
+			},
+			...(compatibilityError && { error: compatibilityError })
+		}
+	} catch (error) {
+		return makeProbeError({ id, label, kind: "actions-api", endpoint, error })
+	}
+}
+
 export const readActionsIndexerToken = (
 	network: OpsNetwork,
 	env: OpsEnv = defaultEnv()
@@ -885,12 +961,13 @@ export const createOpsSnapshot = async (
 	const config = getOpsConfig(networkInput, env)
 	const actionsIndexerRequestUrl = getActionsIndexerRequestUrl(config.network, env)
 	const token = readActionsIndexerToken(config.network, env)
-	const [indexer, l1Archive, l2Archive, l1Daemon, l2Daemon] = await Promise.all([
+	const [indexer, actionsApi, l1Archive, l2Archive, l1Daemon, l2Daemon] = await Promise.all([
 		probeActionsIndexer({
 			endpoint: config.actionsIndexerUrl,
 			requestEndpoint: actionsIndexerRequestUrl,
 			token
 		}),
+		probeActionsApi({ endpoint: config.actionsApiUrl }),
 		probeArchive({ id: "l1-archive", label: "L1 archive", endpoint: config.l1ArchiveUrl }),
 		probeArchive({ id: "l2-archive", label: "L2 archive", endpoint: config.l2ArchiveUrl }),
 		probeDaemon({
@@ -923,6 +1000,7 @@ export const createOpsSnapshot = async (
 				...prefixDetails("l2", l2Coverage)
 			}
 		},
+		actionsApi,
 		l1Archive,
 		l2Archive,
 		l1Daemon,
