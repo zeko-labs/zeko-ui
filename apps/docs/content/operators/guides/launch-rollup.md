@@ -68,6 +68,9 @@ project-root/
 | `keys_data`       | `faucet-pk`                          | Public key                                     |
 | `keys_data`       | `da-node-sk`                         | Private key of the DA node                     |
 | `keys_data`       | `da-node-pk`                         | Public key of the DA node (used by sequencer)  |
+| `keys_data`       | `da-signer/signer-auth-token`        | Auth token shared by DA layer and signer       |
+| `keys_data`       | `da-signer/signer-tls.crt`           | TLS certificate for DA layer signer            |
+| `keys_data`       | `da-signer/signer-tls.key`           | TLS private key for DA layer signer            |
 | `keys_data`       | `sequencer-signer/signer-auth-token` | Auth token shared by sequencer and signer      |
 | `keys_data`       | `sequencer-signer/signer-tls.crt`    | TLS certificate for sequencer signer           |
 | `keys_data`       | `sequencer-signer/signer-tls.key`    | TLS private key for sequencer signer           |
@@ -218,10 +221,13 @@ project-root/
       entrypoint: bash -c
       command: |
         "export MINA_PRIVATE_KEY=$(cat /keys/da-layer-sk) && \\
+        export ZEKO_SIGNER_AUTH_TOKEN=$(cat /keys/da-signer/signer-auth-token) && \\
         exec zeko-signer \\
         run \\
         --port 9001 \\
-        --allow-field-signing"
+        --allow-field-signing \\
+        --tls-cert-file /keys/da-signer/signer-tls.crt \\
+        --tls-key-file /keys/da-signer/signer-tls.key"
       volumes:
         - keys_data:/keys:ro
       restart: always
@@ -237,7 +243,9 @@ project-root/
         ZEKO_SIGNATURE_KIND: "testnet"
       entrypoint: bash -c
       command: |
-        "exec zeko-da \\
+        "export ZEKO_SIGNER_AUTH_TOKEN=$(cat /keys/da-signer/signer-auth-token) && \\
+        export ZEKO_SIGNER_TLS_CA_FILE=/keys/da-signer/signer-tls.crt && \\
+        exec zeko-da \\
         run-node \\
         --port 1924 \\
         --db-dir /data/db \\
@@ -245,6 +253,7 @@ project-root/
         --network-id testnet"
       volumes:
         - da-layer_data:/data
+        - keys_data:/keys:ro
       restart: always
     prover:
       image: docker.io/zekolabs/zeko:latest
@@ -352,13 +361,16 @@ project-root/
   > - `/data/keys/faucet-sk`
   > - `/data/keys/da-layer-pk`
   > - `/data/keys/da-layer-sk`
+  > - `/data/keys/da-signer/signer-auth-token`
+  > - `/data/keys/da-signer/signer-tls.crt`
+  > - `/data/keys/da-signer/signer-tls.key`
   > - `/data/keys/sequencer-signer/signer-auth-token`
   > - `/data/keys/sequencer-signer/signer-tls.crt`
   > - `/data/keys/sequencer-signer/signer-tls.key`
 
-  `sequencer-signer/signer-auth-token` is the random token shared by `sequencer` and `sequencer-signer`. `sequencer-signer/signer-tls.crt` and `sequencer-signer/signer-tls.key` are the self-signed TLS files used by `sequencer-signer`.
+  Each signer/service pair needs its own random token. `da-signer/signer-auth-token` is shared by `da-layer` and `da-signer`; `sequencer-signer/signer-auth-token` is shared by `sequencer` and `sequencer-signer`. The `signer-tls.crt` and `signer-tls.key` files are the self-signed TLS files used by each signer.
 
-  The certificate Subject Alternative Name must match the signer host used by `--signer`. This Docker Compose file uses `sequencer-signer`, so the SAN is `DNS:sequencer-signer`.
+  The certificate Subject Alternative Name must match the signer host used by `--signer`. This Docker Compose file uses `da-signer` and `sequencer-signer`, so the SAN values are `DNS:da-signer` and `DNS:sequencer-signer`.
 
   ```bash
   # create `sequencer` keypair
@@ -387,6 +399,21 @@ project-root/
   done
 
   mv {sequencer,faucet,da-layer}-{sk,pk} /data/keys
+
+  # create `da-signer` auth token and TLS files
+  install -d -m 0700 /data/keys/da-signer
+  openssl rand -hex 32 > /data/keys/da-signer/signer-auth-token
+  chmod 0600 /data/keys/da-signer/signer-auth-token
+
+  DA_SIGNER_HOST=da-signer
+  DA_SIGNER_SAN=DNS:$DA_SIGNER_HOST
+  openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
+    -keyout /data/keys/da-signer/signer-tls.key \
+    -out /data/keys/da-signer/signer-tls.crt \
+    -subj "/CN=$DA_SIGNER_HOST" \
+    -addext "subjectAltName=$DA_SIGNER_SAN"
+  chmod 0644 /data/keys/da-signer/signer-tls.crt
+  chmod 0600 /data/keys/da-signer/signer-tls.key
 
   # create `sequencer-signer` auth token and TLS files
   install -d -m 0700 /data/keys/sequencer-signer

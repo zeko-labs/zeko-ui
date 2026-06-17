@@ -53,11 +53,14 @@ To run a da-layer you will need:
 
 ### Volumes/files
 
-| Volumes         | Files         | Purpose                                       |
-| --------------- | ------------- | --------------------------------------------- |
-| `keys_data`     | `da-layer-sk` | Private key of the DA node                    |
-| `keys_data`     | `da-layer-pk` | Public key of the DA node (used by sequencer) |
-| `da-layer_data` |               | Persistent storage for da-layer               |
+| Volumes         | Files                         | Purpose                                       |
+| --------------- | ----------------------------- | --------------------------------------------- |
+| `keys_data`     | `da-layer-sk`                 | Private key of the DA node                    |
+| `keys_data`     | `da-layer-pk`                 | Public key of the DA node (used by sequencer) |
+| `keys_data`     | `da-signer/signer-auth-token` | Auth token shared by DA layer and signer      |
+| `keys_data`     | `da-signer/signer-tls.crt`    | TLS certificate for DA layer signer           |
+| `keys_data`     | `da-signer/signer-tls.key`    | TLS private key for DA layer signer           |
+| `da-layer_data` |                               | Persistent storage for da-layer               |
 
 ### Service Overview
 
@@ -107,10 +110,13 @@ To run a da-layer you will need:
       entrypoint: bash -c
       command: |
         "export MINA_PRIVATE_KEY=$(cat /keys/da-layer-sk) && \\
+        export ZEKO_SIGNER_AUTH_TOKEN=$(cat /keys/da-signer/signer-auth-token) && \\
         exec zeko-signer \\
         run \\
         --port 9001 \\
-        --allow-field-signing"
+        --allow-field-signing \\
+        --tls-cert-file /keys/da-signer/signer-tls.crt \\
+        --tls-key-file /keys/da-signer/signer-tls.key"
       volumes:
         - keys_data:/keys:ro
       restart: always
@@ -126,7 +132,9 @@ To run a da-layer you will need:
         ZEKO_SIGNATURE_KIND: "testnet"
       entrypoint: bash -c
       command: |
-        "exec zeko-da \\
+        "export ZEKO_SIGNER_AUTH_TOKEN=$(cat /keys/da-signer/signer-auth-token) && \\
+        export ZEKO_SIGNER_TLS_CA_FILE=/keys/da-signer/signer-tls.crt && \\
+        exec zeko-da \\
         run-node \\
         --port 1924 \\
         --db-dir /data/db \\
@@ -134,6 +142,7 @@ To run a da-layer you will need:
         --network-id testnet"
       volumes:
         - da-layer_data:/data
+        - keys_data:/keys:ro
       restart: always
 
   volumes:
@@ -155,6 +164,13 @@ To run a da-layer you will need:
   2. Create `da-layer` keypair
   > - `/data/keys/da-layer-pk`
   > - `/data/keys/da-layer-sk`
+  > - `/data/keys/da-signer/signer-auth-token`
+  > - `/data/keys/da-signer/signer-tls.crt`
+  > - `/data/keys/da-signer/signer-tls.key`
+
+  `da-signer/signer-auth-token` is the random token shared by `da-layer` and `da-signer`. `da-signer/signer-tls.crt` and `da-signer/signer-tls.key` are the self-signed TLS files used by `da-signer`.
+
+  The certificate Subject Alternative Name must match the signer host used by `--signer`. This Docker Compose file uses `da-signer`, so the SAN is `DNS:da-signer`.
 
   > **Note:** Take note of `da-layer-pk`
 
@@ -169,6 +185,22 @@ To run a da-layer you will need:
   done
 
   mv da-layer-{sk,pk} /data/keys
+
+  # create `da-signer` auth token and TLS files
+  install -d -m 0700 /data/keys/da-signer
+  openssl rand -hex 32 > /data/keys/da-signer/signer-auth-token
+  chmod 0600 /data/keys/da-signer/signer-auth-token
+
+  DA_SIGNER_HOST=da-signer
+  DA_SIGNER_SAN=DNS:$DA_SIGNER_HOST
+  openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
+    -keyout /data/keys/da-signer/signer-tls.key \
+    -out /data/keys/da-signer/signer-tls.crt \
+    -subj "/CN=$DA_SIGNER_HOST" \
+    -addext "subjectAltName=$DA_SIGNER_SAN"
+  chmod 0644 /data/keys/da-signer/signer-tls.crt
+  chmod 0600 /data/keys/da-signer/signer-tls.key
+
   touch /data/keys/.keys_created
   ```
 
