@@ -77,6 +77,16 @@ const buildInnerWitness = (withdrawal: Withdrawal, index: number): InnerWitness 
 	aux: withdrawalAux(withdrawal)
 })
 
+const buildWitnessForWithdrawalAction = (withdrawal: Action & Withdrawal): InnerWitness => ({
+	action: withdrawal.action,
+	afterActionState: withdrawal.afterActionState,
+	beforeActionState: withdrawal.beforeActionState,
+	hash: `withdrawal-witness-${withdrawal.index}`,
+	index: withdrawal.index,
+	timestamp: `${1700000001000 + withdrawal.index}`,
+	aux: withdrawalAux(withdrawal)
+})
+
 const buildWithdrawalAction = (withdrawal: Withdrawal, index: number): Action & Withdrawal => ({
 	...withdrawal,
 	action: [Field(index + 1), Field(index + 101)],
@@ -287,6 +297,40 @@ describe("withdrawal finalization state", () => {
 			status: "alreadyFinalised",
 			reason: "Withdrawal already finalised",
 			index: 0
+		})
+	})
+
+	it("does not report already-finalised from an older same-aux witness while a newer action is unresolved", async () => {
+		const bridge = buildBridge()
+		const withdrawal = buildWithdrawal()
+		const oldWithdrawal = buildWithdrawalAction(withdrawal, 0)
+		const newWithdrawal = buildWithdrawalAction(withdrawal, 1)
+		const oldWitness = buildWitnessForWithdrawalAction(oldWithdrawal)
+		const bridgeInternals = bridge as unknown as {
+			fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
+			fetchCurrentSlot: () => Promise<UInt32>
+			fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
+		}
+
+		vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue({
+			zkappState: ["0", "1"]
+		})
+		vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
+		vi.spyOn(bridgeInternals, "fetchUserWithdrawalActions").mockResolvedValue([
+			oldWithdrawal,
+			newWithdrawal
+		])
+		vi.spyOn(utils, "fetchInnerWitnessesFromAuxes").mockResolvedValue([oldWitness])
+		vi.spyOn(utils, "fetchInnerActionsFromIndexer").mockResolvedValue([])
+		vi.spyOn(utils, "fetchCommitAsePastSlot").mockResolvedValue({
+			commit: buildCommit({ innerActionStateLength: 1 }),
+			ase: []
+		})
+
+		await expect(bridge.canFinalizeWithdrawal(recipient)).resolves.toEqual({
+			available: false,
+			reason: "No my withdrawal index found",
+			status: "waiting"
 		})
 	})
 

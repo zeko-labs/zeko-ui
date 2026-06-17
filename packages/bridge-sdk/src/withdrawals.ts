@@ -285,9 +285,14 @@ export async function fetchWithdrawalFinalizationWitnesses(
 	})
 
 	const withdrawals = (
-		await (runtime.bridge?.fetchUserWithdrawals?.(pk) ?? fetchUserWithdrawals(runtime, pk))
+		await (runtime.bridge?.fetchUserWithdrawalActions?.(pk) ??
+			fetchUserWithdrawalActions(runtime, pk))
 	).map((withdrawal) => ({
-		withdrawal,
+		action: withdrawal,
+		withdrawal: {
+			recipient: withdrawal.recipient,
+			amount: withdrawal.amount
+		},
 		aux: withdrawalAux(withdrawal)
 	}))
 	debug(runtime, "fetchWithdrawalFinalizationWitnesses withdrawals", {
@@ -321,7 +326,27 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		return { ok: false, msg: "No withdrawal witnesses found" }
 	}
 
-	const earliestBeforeState = withdrawalWitnesses
+	const findMatchingWithdrawal = (action: InnerWitness) =>
+		withdrawals.find(
+			(withdrawal) =>
+				withdrawal.action.afterActionState.equals(action.afterActionState).toBoolean() &&
+				withdrawal.aux.equals(action.aux).toBoolean()
+		)
+
+	const matchingWitnesses = withdrawalWitnesses.filter((witness) =>
+		Boolean(findMatchingWithdrawal(witness))
+	)
+
+	if (matchingWitnesses.length === 0) {
+		debug(runtime, "fetchWithdrawalFinalizationWitnesses no-matching-witnesses", {
+			pk: pk.toBase58(),
+			withdrawalCount: withdrawals.length,
+			witnessCount: withdrawalWitnesses.length
+		})
+		return { ok: false, msg: "No withdrawal witnesses found" }
+	}
+
+	const earliestBeforeState = [...matchingWitnesses]
 		.sort((a, b) => a.index - b.index)
 		.at(0)?.beforeActionState
 	debug(runtime, "fetchWithdrawalFinalizationWitnesses earliestBeforeState", {
@@ -368,12 +393,6 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		indices: innerActions.map((action) => action.index)
 	})
 
-	const findMatchingWithdrawal = (action: InnerWitness) =>
-		withdrawals.find(({ aux }) => aux.equals(action.aux).toBoolean())
-
-	const matchingWitnesses = withdrawalWitnesses.filter((witness) =>
-		Boolean(findMatchingWithdrawal(witness))
-	)
 	const alreadyFinalisedWitnessIndices = matchingWitnesses
 		.filter((witness) => prevNextWithdrawal.greaterThan(UInt32.from(witness.index)).toBoolean())
 		.map((witness) => witness.index)
@@ -385,6 +404,14 @@ export async function fetchWithdrawalFinalizationWitnesses(
 	let unfinalisedMatchCount = 0
 
 	const minWithdrawalIndex = uint32Max(runtime.V2_WITHDRAWALS_START_INDEX, prevNextWithdrawal)
+	const matchingWitnessAfterStates = new Set(
+		matchingWitnesses.map((witness) => witness.afterActionState.toString())
+	)
+	const hasUnwitnessedPendingWithdrawal = withdrawals.some(
+		(withdrawal) =>
+			!matchingWitnessAfterStates.has(withdrawal.action.afterActionState.toString()) &&
+			!minWithdrawalIndex.greaterThan(UInt32.from(withdrawal.action.index)).toBoolean()
+	)
 
 	const myWithdrawalIndex = innerActions.findIndex((action) => {
 		const matchingWithdrawal = findMatchingWithdrawal(action)
@@ -435,8 +462,9 @@ export async function fetchWithdrawalFinalizationWitnesses(
 			return { ok: false, msg: insufficientFirstWithdrawalReason, status: "blocked" }
 		}
 		if (
-			(alreadyFinalisedCount > 0 && unfinalisedMatchCount === 0) ||
-			(alreadyFinalisedWitnessCount > 0 && unfinalisedWitnessCount === 0)
+			!hasUnwitnessedPendingWithdrawal &&
+			((alreadyFinalisedCount > 0 && unfinalisedMatchCount === 0) ||
+				(alreadyFinalisedWitnessCount > 0 && unfinalisedWitnessCount === 0))
 		) {
 			return {
 				ok: false,
@@ -481,7 +509,10 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		value: {
 			commitAseTarget,
 			commitSlotRange: lastCommit.slotRange,
-			withdrawalParams,
+			withdrawalParams: {
+				withdrawal: withdrawalParams.withdrawal,
+				aux: withdrawalParams.aux
+			},
 			helperAccount,
 			witness: {
 				withdrawalParams: {
@@ -714,11 +745,6 @@ export async function fetchWithdrawalsWithStates(
 
 	const auxes = withdrawals.map(withdrawalAux)
 
-	const auxesMap = new Map<bigint, Action & Withdrawal>()
-	for (const withdrawal of withdrawals) {
-		auxesMap.set(withdrawalAux(withdrawal).toBigInt(), withdrawal)
-	}
-
 	const withdrawalWitnesses = await fetchInnerWitnessesFromAuxes(
 		runtime.actionsApiClient,
 		auxes.map((x) => x.toString())
@@ -747,11 +773,36 @@ export async function fetchWithdrawalsWithStates(
 			? false
 			: lastCommit.innerActionStateLength.greaterThan(UInt32.from(index)).toBoolean())
 
-	const witnessedAuxes = new Set(
-		withdrawalWitnesses.map((witness) => witness.aux.toBigInt().toString())
+	const withdrawalByAfterState = new Map(
+		withdrawals.map((withdrawal) => [withdrawal.afterActionState.toString(), withdrawal])
+	)
+	const findWithdrawalForWitness = (witness: InnerWitness) => {
+		const withdrawal = withdrawalByAfterState.get(witness.afterActionState.toString())
+		if (!withdrawal || !withdrawalAux(withdrawal).equals(witness.aux).toBoolean()) return null
+		return withdrawal
+	}
+	const witnessedWithdrawalStatuses = filterNulls(
+		withdrawalWitnesses.map((witness) => {
+			const withdrawal = findWithdrawalForWitness(witness)
+			if (!withdrawal) return null
+			return {
+				...withdrawal,
+				...witness,
+				timestamp: normalizeTimestamp(witness.timestamp),
+				committed: isCommitted(witness.index),
+				finalised: isFinalised(witness.index),
+				bridgeVersion: bridgeVersionForActionIndex({
+					actionIndex: witness.index,
+					v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
+				})
+			}
+		})
+	)
+	const witnessedActionStates = new Set(
+		witnessedWithdrawalStatuses.map((withdrawal) => withdrawal.afterActionState.toString())
 	)
 	const provisionalWithdrawals = withdrawals
-		.filter((withdrawal) => !witnessedAuxes.has(withdrawalAux(withdrawal).toBigInt().toString()))
+		.filter((withdrawal) => !witnessedActionStates.has(withdrawal.afterActionState.toString()))
 		.map((withdrawal) => ({
 			...withdrawal,
 			timestamp: normalizeTimestamp(withdrawal.timestamp),
@@ -764,21 +815,7 @@ export async function fetchWithdrawalsWithStates(
 			})
 		}))
 	const currentWithdrawalStatuses: WithdrawalWithState[] = [
-		...withdrawalWitnesses.map((witness) => {
-			const withdrawal = auxesMap.get(witness.aux.toBigInt())
-			if (!withdrawal) throw new Error("Unreachable: Did not find withdrawal")
-			return {
-				...withdrawal,
-				...witness,
-				timestamp: normalizeTimestamp(witness.timestamp),
-				committed: isCommitted(witness.index),
-				finalised: isFinalised(witness.index),
-				bridgeVersion: bridgeVersionForActionIndex({
-					actionIndex: witness.index,
-					v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
-				})
-			}
-		}),
+		...witnessedWithdrawalStatuses,
 		...provisionalWithdrawals
 	]
 
