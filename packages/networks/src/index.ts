@@ -101,6 +101,19 @@ export const NETWORK_LABELS = {
 	[AURO_ZEKO_NETWORKS.mainnet]: "Zeko-M Mainnet"
 } as const satisfies Record<DisplayNetwork, string>
 
+export const USER_FACING_NETWORK_LABELS = {
+	...NETWORK_LABELS,
+	[ZEKO_M_NETWORKS.local]: "Zeko Local",
+	[ZEKO_M_NETWORKS.testnet]: "Zeko Testnet",
+	[ZEKO_M_NETWORKS.alphanet]: "Zeko Alphanet",
+	[ZEKO_M_NETWORKS.mainnet]: "Zeko Mainnet",
+	[AURO_ZEKO_NETWORKS.testnet]: "Zeko Testnet",
+	[AURO_ZEKO_NETWORKS.mainnet]: "Zeko Mainnet"
+} as const satisfies Record<DisplayNetwork, string>
+
+export const formatUserFacingNetworkLabel = (network: DisplayNetwork): string =>
+	USER_FACING_NETWORK_LABELS[network]
+
 export const BRIDGE_UI_NETWORKS = [
 	MINA_NETWORKS.devnet,
 	ZEKO_M_NETWORKS.testnet,

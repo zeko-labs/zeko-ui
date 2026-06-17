@@ -8,6 +8,7 @@ import {
 	createExplorerUrl,
 	ETHEREUM_NETWORKS,
 	formatBridgeRoute,
+	formatUserFacingNetworkLabel,
 	isMainnetBridgeNetwork,
 	isMinaBridgeNetwork,
 	isZekoBridgeCliNetwork,
@@ -46,6 +47,13 @@ describe("network nomenclature", () => {
 	it("keeps finite labels in a dictionary", () => {
 		expect(NETWORK_LABELS[ZEKO_M_NETWORKS.testnet]).toBe("Zeko-M Testnet")
 		expect(NETWORK_LABELS["zeko:testnet"]).toBe("Zeko-M Testnet")
+	})
+
+	it("has a single user-facing display helper for Zeko network names", () => {
+		expect(formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.mainnet)).toBe("Zeko Mainnet")
+		expect(formatUserFacingNetworkLabel(AURO_ZEKO_NETWORKS.mainnet)).toBe("Zeko Mainnet")
+		expect(formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.testnet)).toBe("Zeko Testnet")
+		expect(NETWORK_LABELS[ZEKO_M_NETWORKS.mainnet]).toBe("Zeko-M Mainnet")
 	})
 
 	it("normalizes legacy Zeko network IDs at compatibility boundaries", () => {

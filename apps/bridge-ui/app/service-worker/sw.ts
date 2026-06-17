@@ -4,7 +4,21 @@
 declare let self: ServiceWorkerGlobalScope
 const sw = self
 
-self.skipWaiting()
+const SKIP_WAITING_MESSAGE_TYPE = "BRIDGE_UI_SKIP_WAITING"
+
+sw.addEventListener("install", (event) => {
+	event.waitUntil(sw.skipWaiting())
+})
+
+sw.addEventListener("activate", (event) => {
+	event.waitUntil(sw.clients.claim())
+})
+
+sw.addEventListener("message", (event) => {
+	if (event.data?.type === SKIP_WAITING_MESSAGE_TYPE) {
+		event.waitUntil(sw.skipWaiting())
+	}
+})
 
 async function isClientFocused() {
 	const windowClients = await sw.clients.matchAll({

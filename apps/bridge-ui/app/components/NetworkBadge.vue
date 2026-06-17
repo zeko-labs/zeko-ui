@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import {
+	formatUserFacingNetworkLabel,
 	MINA_NETWORKS,
-	NETWORK_LABELS,
 	type WalletZekoNetwork
 } from "@zeko/networks"
 import type { BridgeNetwork } from "~~/machines/networks"
@@ -20,7 +20,7 @@ const isMinaNetwork = (value: BridgeNetwork | WalletZekoNetwork) =>
       <SvgMinaLogo v-if="isMinaNetwork(network)" />
       <SvgZekoToken v-else />
     </template>
-    <span class="network"> {{ NETWORK_LABELS[network] }}</span>
+    <span class="network"> {{ formatUserFacingNetworkLabel(network) }}</span>
   </div>
 </template>
 <style lang="postcss" scoped>

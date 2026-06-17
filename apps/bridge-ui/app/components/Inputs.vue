@@ -49,7 +49,8 @@ const disabledButton = computed(
         </template>
         <template v-else>
           Bridging requires signing two transactions: 1) Send from the origin
-          chain, then 2) Claim to the destination chain.
+          chain, then 2) Claim to the destination chain. Note: Ledger hardware
+          wallets are not yet supported by Zeko Mainnet.
         </template>
       </aside>
     </div>
