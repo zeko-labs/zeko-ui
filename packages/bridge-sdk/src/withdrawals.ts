@@ -409,19 +409,24 @@ export async function fetchWithdrawalFinalizationWitnesses(
 	let unfinalisedMatchCount = 0
 
 	const minWithdrawalIndex = uint32Max(runtime.V2_WITHDRAWALS_START_INDEX, prevNextWithdrawal)
-	const matchingWitnessHashes = new Set(matchingWitnesses.map((witness) => witness.hash))
-	const hasUnwitnessedPendingWithdrawal = withdrawals.some(
-		(withdrawal) => !matchingWitnessHashes.has(withdrawal.action.hash)
+	const matchingWitnessIdentities = new Set(
+		matchingWitnesses.map((witness) => withdrawalActionIdentity(witness.hash, witness.aux))
 	)
-	const committedMatchingWitnessHashes = new Set(
+	const hasUnwitnessedPendingWithdrawal = withdrawals.some(
+		(withdrawal) =>
+			!matchingWitnessIdentities.has(
+				withdrawalActionIdentity(withdrawal.action.hash, withdrawal.aux)
+			)
+	)
+	const committedMatchingWitnessIdentities = new Set(
 		innerActions
 			.filter((action) => Boolean(findMatchingWithdrawal(action)))
-			.map((action) => action.hash)
+			.map((action) => withdrawalActionIdentity(action.hash, action.aux))
 	)
 	const hasUncommittedMatchingWitness = matchingWitnesses.some(
 		(witness) =>
 			!prevNextWithdrawal.greaterThan(UInt32.from(witness.index)).toBoolean() &&
-			!committedMatchingWitnessHashes.has(witness.hash)
+			!committedMatchingWitnessIdentities.has(withdrawalActionIdentity(witness.hash, witness.aux))
 	)
 
 	const myWithdrawalIndex = innerActions.findIndex((action) => {

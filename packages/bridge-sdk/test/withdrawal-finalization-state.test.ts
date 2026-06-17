@@ -408,6 +408,42 @@ describe("withdrawal finalization state", () => {
 		})
 	})
 
+	it("does not report already-finalised when a later same-transaction witness is outside the committed range", async () => {
+		const bridge = buildBridge()
+		const firstWithdrawal = buildWithdrawal({ amount: 2_000_000_000 })
+		const secondWithdrawal = buildWithdrawal({ amount: 3_000_000_000 })
+		const firstAction = buildWithdrawalAction(firstWithdrawal, 0, "shared-withdrawal-tx")
+		const secondAction = buildWithdrawalAction(secondWithdrawal, 1, "shared-withdrawal-tx")
+		const firstWitness = buildWitnessForWithdrawalAction(firstAction)
+		const secondWitness = buildWitnessForWithdrawalAction(secondAction)
+		const bridgeInternals = bridge as unknown as {
+			fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
+			fetchCurrentSlot: () => Promise<UInt32>
+			fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
+		}
+
+		vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue({
+			zkappState: ["0", "1"]
+		})
+		vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
+		vi.spyOn(bridgeInternals, "fetchUserWithdrawalActions").mockResolvedValue([
+			firstAction,
+			secondAction
+		])
+		vi.spyOn(utils, "fetchInnerWitnessesFromAuxes").mockResolvedValue([firstWitness, secondWitness])
+		vi.spyOn(utils, "fetchInnerActionsFromIndexer").mockResolvedValue([firstWitness])
+		vi.spyOn(utils, "fetchCommitAsePastSlot").mockResolvedValue({
+			commit: buildCommit({ innerActionStateLength: 1 }),
+			ase: []
+		})
+
+		await expect(bridge.canFinalizeWithdrawal(recipient)).resolves.toEqual({
+			available: false,
+			reason: "No my withdrawal index found",
+			status: "waiting"
+		})
+	})
+
 	it("keeps both withdrawal states when two witnessed withdrawals share a transaction hash", async () => {
 		const bridge = buildBridge()
 		const firstWithdrawal = buildWithdrawal({ amount: 2_000_000_000 })
