@@ -1,6 +1,6 @@
 {
 	"name": "@zeko-labs/bridge-sdk",
-	"version": "0.3.2",
+	"version": "0.3.3",
 	"description": "Public TypeScript SDK for interacting with the Zeko bridge.",
 	"type": "module",
 	"keywords": ["typescript", "library"],

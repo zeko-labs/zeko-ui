@@ -1,5 +1,11 @@
 # @zeko-labs/bridge-cli
 
+## 0.2.4
+
+### Patch Changes
+
+- c6aca34: Update public network identifiers to the Zeko-M/Zeko-E nomenclature.
+
 ## 0.2.3
 
 ### Patch Changes

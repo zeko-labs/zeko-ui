@@ -1,5 +1,11 @@
 # @zeko-labs/faucet-cli
 
+## 0.1.3
+
+### Patch Changes
+
+- c6aca34: Update public network identifiers to the Zeko-M/Zeko-E nomenclature.
+
 ## 0.1.2
 
 ### Patch Changes

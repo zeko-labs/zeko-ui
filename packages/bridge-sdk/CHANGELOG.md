@@ -1,5 +1,15 @@
 # @zeko-labs/bridge-sdk
 
+## 0.3.3
+
+### Patch Changes
+
+- 9323728: Filter orphaned (dead-fork) blocks out of `fetchActions`. The Mina archive can return blocks from more than one chain instance (for example after an L2 re-genesis that reused the archive database); their actions would otherwise surface as phantom deposits/withdrawals that are not on the live chain. `fetchActions` now selects only canonical/pending blocks via `chainStatus`, protecting both the deposit and withdrawal paths.
+- da52e7a: Filter Actions API bridge status queries to canonical rows and expose finality metadata. Withdrawal status matching now uses transaction hash plus aux after aux candidate lookup, preventing repeated same-recipient/same-amount withdrawals from being marked completed by an older witness.
+- Updated dependencies [9323728]
+- Updated dependencies [da52e7a]
+  - @zeko-labs/graphql@0.3.3
+
 ## 0.3.2
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @zeko-labs/graphql
 
+## 0.3.3
+
+### Patch Changes
+
+- 9323728: Add `chainStatus` to the mina-archive `fetchActions` query `blockInfo` selection. This lets consumers distinguish canonical/pending live-chain blocks from orphaned dead-fork blocks that the archive can return when its database holds more than one chain instance. The field is additive and does not change existing consumers.
+- da52e7a: Filter Actions API bridge status queries to canonical rows and expose finality metadata. Withdrawal status matching now uses transaction hash plus aux after aux candidate lookup, preventing repeated same-recipient/same-amount withdrawals from being marked completed by an older witness.
+
 ## 0.3.2
 
 ## 0.3.1
