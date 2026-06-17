@@ -340,3 +340,4 @@
 - T354 | done | document-user-facing-network-label-helper | done/T354-document-user-facing-network-label-helper.md
 - T355 | done | remove-hardcoded-zeko-mainnet-display-copy | done/T355-remove-hardcoded-zeko-mainnet-display-copy.md
 - T356 | done | show-clickable-update-notification-for-service-worker | done/T356-show-clickable-update-notification-for-service-worker.md
+- T357 | done | lock-generated-service-worker-url | done/T357-register-generated-service-worker-url.md

@@ -24,6 +24,28 @@ describe("service worker update refresh", () => {
 		expect(serviceWorkerSource).toContain("sw.skipWaiting()")
 	})
 
+	it("registers the final worker file emitted by the production PWA build", async () => {
+		const registration = {
+			waiting: undefined,
+			installing: undefined,
+			addEventListener: vi.fn(),
+			update: vi.fn()
+		}
+		const serviceWorker = {
+			controller: {},
+			register: vi.fn(async () => registration),
+			addEventListener: vi.fn()
+		}
+
+		await registerBridgeServiceWorker({
+			serviceWorker,
+			storage: new Map(),
+			reload: vi.fn()
+		})
+
+		expect(serviceWorker.register).toHaveBeenCalledWith("/sw.js", { type: "module" })
+	})
+
 	it("announces a waiting replacement worker without activating it automatically", async () => {
 		const waiting = { postMessage: vi.fn() }
 		const onUpdateAvailable = vi.fn<ServiceWorkerUpdateHandler>()

@@ -9,8 +9,8 @@ describe("bridge UI copy", () => {
 		const networkLabel = formatBridgeNetworkLabel(ZEKO_M_NETWORKS.mainnet)
 		const normalizedInputsSource = inputsSource.replace(/\s+/g, " ")
 
-		expect(inputsSource).toContain(
-			"const ledgerUnsupportedNetworkLabel = formatBridgeNetworkLabel(ZEKO_M_NETWORKS.mainnet)"
+		expect(normalizedInputsSource).toMatch(
+			/const ledgerUnsupportedNetworkLabel = formatBridgeNetworkLabel\( ?ZEKO_M_NETWORKS\.mainnet ?\)/
 		)
 		expect(normalizedInputsSource).toContain(
 			"Note: Ledger hardware wallets are not yet supported by {{ ledgerUnsupportedNetworkLabel }}."
