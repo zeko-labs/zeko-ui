@@ -60,20 +60,23 @@ project-root/
 
 ### Volumes/files
 
-| Volumes           | Files                   | Purpose                                        |
-| ----------------- | ----------------------- | ---------------------------------------------- |
-| `keys_data`       | `sequencer-sk`          | L1 private key to post proofs and pay fees     |
-| `keys_data`       | `sequencer-pk`          | L1 Public key used in deploy step              |
-| `keys_data`       | `faucet-sk`             | Secret key used to distribute tokens inside L2 |
-| `keys_data`       | `faucet-pk`             | Public key                                     |
-| `keys_data`       | `da-node-sk`            | Private key of the DA node                     |
-| `keys_data`       | `da-node-pk`            | Public key of the DA node (used by sequencer)  |
-| `initdb_data`     |                         | Schema file(s) to bootstrap postgresql         |
-| `postgresql_data` |                         | Persistent storage for postgresql              |
-| `rabbitmq_data`   |                         | Persistent storage for RabbitMQ                |
-| `circuits_data`   | `betternet-config.json` | Circuits config used by sequencer/prover       |
-| `da-layer_data`   |                         | Persistent storage for da-layer                |
-| `sequencer_data`  |                         | Persistent storage for sequencer               |
+| Volumes           | Files                                | Purpose                                        |
+| ----------------- | ------------------------------------ | ---------------------------------------------- |
+| `keys_data`       | `sequencer-sk`                       | L1 private key to post proofs and pay fees     |
+| `keys_data`       | `sequencer-pk`                       | L1 Public key used in deploy step              |
+| `keys_data`       | `faucet-sk`                          | Secret key used to distribute tokens inside L2 |
+| `keys_data`       | `faucet-pk`                          | Public key                                     |
+| `keys_data`       | `da-node-sk`                         | Private key of the DA node                     |
+| `keys_data`       | `da-node-pk`                         | Public key of the DA node (used by sequencer)  |
+| `keys_data`       | `sequencer-signer/signer-auth-token` | Auth token shared by sequencer and signer      |
+| `keys_data`       | `sequencer-signer/signer-tls.crt`    | TLS certificate for sequencer signer           |
+| `keys_data`       | `sequencer-signer/signer-tls.key`    | TLS private key for sequencer signer           |
+| `initdb_data`     |                                      | Schema file(s) to bootstrap postgresql         |
+| `postgresql_data` |                                      | Persistent storage for postgresql              |
+| `rabbitmq_data`   |                                      | Persistent storage for RabbitMQ                |
+| `circuits_data`   | `betternet-config.json`              | Circuits config used by sequencer/prover       |
+| `da-layer_data`   |                                      | Persistent storage for da-layer                |
+| `sequencer_data`  |                                      | Persistent storage for sequencer               |
 
 > **Note:** Keys must NOT have newlines or extra spaces.
 
@@ -192,12 +195,15 @@ project-root/
       entrypoint: bash -c
       command: |
         "export MINA_PRIVATE_KEY=$(cat /keys/sequencer-sk) && \\
+        export ZEKO_SIGNER_AUTH_TOKEN=$(cat /keys/sequencer-signer/signer-auth-token) && \\
         exec zeko-signer \\
         run \\
         --port 9000 \\
         --allow-zkapp-signing \\
         --max-fee 1 \\
-        --max-balance-change 0"
+        --max-balance-change 0 \\
+        --tls-cert-file /keys/sequencer-signer/signer-tls.crt \\
+        --tls-key-file /keys/sequencer-signer/signer-tls.key"
       volumes:
         - keys_data:/keys:ro
       restart: always
@@ -295,6 +301,8 @@ project-root/
         - -c
       command: |
         "export DA_LAYER_KEY=$(cat /keys/da-layer-pk) && \\
+        export ZEKO_SIGNER_AUTH_TOKEN=$(cat /keys/sequencer-signer/signer-auth-token) && \\
+        export ZEKO_SIGNER_TLS_CA_FILE=/keys/sequencer-signer/signer-tls.crt && \\
         exec zeko-run \\
         -p 1923 \\
         --l1-uri https://gateway.mina.devnet.zeko.io \\
@@ -337,13 +345,20 @@ project-root/
     --circuits-config-output /data/circuits/betternet-config.json \
     --deploy-config-output /data/circuits/betternet-deploy.json
   ```
-  3. Create `sequencer`/`da-layer` keypairs
+  3. Create `sequencer`/`da-layer` keypairs as well as signer secrets
   > - `/data/keys/sequencer-pk`
   > - `/data/keys/sequencer-sk`
   > - `/data/keys/faucet-pk`
   > - `/data/keys/faucet-sk`
   > - `/data/keys/da-layer-pk`
   > - `/data/keys/da-layer-sk`
+  > - `/data/keys/sequencer-signer/signer-auth-token`
+  > - `/data/keys/sequencer-signer/signer-tls.crt`
+  > - `/data/keys/sequencer-signer/signer-tls.key`
+
+  `sequencer-signer/signer-auth-token` is the random token shared by `sequencer` and `sequencer-signer`. `sequencer-signer/signer-tls.crt` and `sequencer-signer/signer-tls.key` are the self-signed TLS files used by `sequencer-signer`.
+
+  The certificate Subject Alternative Name must match the signer host used by `--signer`. This Docker Compose file uses `sequencer-signer`, so the SAN is `DNS:sequencer-signer`.
 
   ```bash
   # create `sequencer` keypair
@@ -372,6 +387,22 @@ project-root/
   done
 
   mv {sequencer,faucet,da-layer}-{sk,pk} /data/keys
+
+  # create `sequencer-signer` auth token and TLS files
+  install -d -m 0700 /data/keys/sequencer-signer
+  openssl rand -hex 32 > /data/keys/sequencer-signer/signer-auth-token
+  chmod 0600 /data/keys/sequencer-signer/signer-auth-token
+
+  SEQUENCER_SIGNER_HOST=sequencer-signer
+  SEQUENCER_SIGNER_SAN=DNS:$SEQUENCER_SIGNER_HOST
+  openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
+    -keyout /data/keys/sequencer-signer/signer-tls.key \
+    -out /data/keys/sequencer-signer/signer-tls.crt \
+    -subj "/CN=$SEQUENCER_SIGNER_HOST" \
+    -addext "subjectAltName=$SEQUENCER_SIGNER_SAN"
+  chmod 0644 /data/keys/sequencer-signer/signer-tls.crt
+  chmod 0600 /data/keys/sequencer-signer/signer-tls.key
+
   touch /data/keys/.keys_created
   ```
 
