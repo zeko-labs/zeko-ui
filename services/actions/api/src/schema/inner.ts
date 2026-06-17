@@ -1,4 +1,4 @@
-import { between, desc, eq, inArray, isNull, sql } from "drizzle-orm"
+import { and, between, desc, eq, inArray, isNull, not, sql } from "drizzle-orm"
 import { innerActions } from "../../drizzle/schema"
 import { builder } from "../builder"
 import type { Database } from "../db"
@@ -26,7 +26,7 @@ export async function queryInnerWitnessesFromAuxes(
 	const witnesses = await db.drizzle
 		.select()
 		.from(innerActions)
-		.where(inArray(innerActions.aux, auxes))
+		.where(and(inArray(innerActions.aux, auxes), not(isNull(innerActions.markedAsCanonicalAt))))
 
 	return witnesses.map((action) => ({
 		...action,
@@ -43,21 +43,30 @@ export async function queryInnerActions(
 		.select({ index: innerActions.index })
 		.from(innerActions)
 		.where(
-			options.beforeState === GENESIS_BEFORE_STATE
-				? isNull(innerActions.beforeState)
-				: eq(innerActions.beforeState, options.beforeState)
+			and(
+				options.beforeState === GENESIS_BEFORE_STATE
+					? isNull(innerActions.beforeState)
+					: eq(innerActions.beforeState, options.beforeState),
+				not(isNull(innerActions.markedAsCanonicalAt))
+			)
 		)
 		.limit(1)
 
 	const targetEndIndexQb = db.drizzle
 		.select({ index: innerActions.index })
 		.from(innerActions)
-		.where(eq(innerActions.afterState, options.afterState ?? ""))
+		.where(
+			and(
+				eq(innerActions.afterState, options.afterState ?? ""),
+				not(isNull(innerActions.markedAsCanonicalAt))
+			)
+		)
 		.limit(1)
 
 	const maxIndexQb = db.drizzle
 		.select({ index: innerActions.index })
 		.from(innerActions)
+		.where(not(isNull(innerActions.markedAsCanonicalAt)))
 		.orderBy(desc(innerActions.index))
 		.limit(1)
 
@@ -76,7 +85,12 @@ export async function queryInnerActions(
 		.select({ action: innerActions })
 		.from(innerActions)
 		.crossJoin(limitsCte)
-		.where(between(innerActions.index, limitsCte.beforeIndex, limitsCte.afterIndex))
+		.where(
+			and(
+				between(innerActions.index, limitsCte.beforeIndex, limitsCte.afterIndex),
+				not(isNull(innerActions.markedAsCanonicalAt))
+			)
+		)
 		.orderBy(innerActions.index)
 
 	return actionsResult.map(({ action }) => {
@@ -100,7 +114,16 @@ const InnerActionObject = builder.objectRef<InnerAction>("InnerAction").implemen
 		timestamp: t.exposeString("timestamp"),
 		txnHash: t.exposeString("txnHash"),
 		fields: t.exposeStringList("fields"),
-		aux: t.exposeString("aux")
+		aux: t.exposeString("aux"),
+		markedAsCanonicalAt: t.field({
+			type: "String",
+			nullable: true,
+			resolve: (r) => r.markedAsCanonicalAt?.toISOString() ?? null
+		}),
+		finalityStatus: t.field({
+			type: "String",
+			resolve: (r) => (r.markedAsCanonicalAt === null ? "pending_finality" : "final")
+		})
 	})
 })
 

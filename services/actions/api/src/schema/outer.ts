@@ -1,4 +1,4 @@
-import { and, between, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm"
+import { and, between, desc, eq, gte, inArray, isNull, lt, not, sql } from "drizzle-orm"
 import { commitActions, outerActions, witnessActions } from "../../drizzle/schema"
 import { builder } from "../builder"
 import type { Database } from "../db"
@@ -45,7 +45,13 @@ export async function queryOuterWitnessesFromAuxes(
 		.select()
 		.from(witnessActions)
 		.innerJoin(outerActions, eq(witnessActions.afterState, outerActions.afterState))
-		.where(and(eq(outerActions.kind, "witness"), inArray(witnessActions.aux, auxes)))
+		.where(
+			and(
+				eq(outerActions.kind, "witness"),
+				inArray(witnessActions.aux, auxes),
+				not(isNull(outerActions.markedAsCanonicalAt))
+			)
+		)
 
 	return witnesses.map(({ witness_actions, outer_actions }) => ({
 		...outer_actions,
@@ -66,21 +72,30 @@ export async function queryOuterActions(
 		.select({ index: outerActions.index })
 		.from(outerActions)
 		.where(
-			options.beforeState === GENESIS_BEFORE_STATE
-				? isNull(outerActions.beforeState)
-				: eq(outerActions.beforeState, options.beforeState)
+			and(
+				options.beforeState === GENESIS_BEFORE_STATE
+					? isNull(outerActions.beforeState)
+					: eq(outerActions.beforeState, options.beforeState),
+				not(isNull(outerActions.markedAsCanonicalAt))
+			)
 		)
 		.limit(1)
 
 	const targetEndIndexQb = db.drizzle
 		.select({ index: outerActions.index })
 		.from(outerActions)
-		.where(eq(outerActions.afterState, options.afterState ?? ""))
+		.where(
+			and(
+				eq(outerActions.afterState, options.afterState ?? ""),
+				not(isNull(outerActions.markedAsCanonicalAt))
+			)
+		)
 		.limit(1)
 
 	const maxIndexQb = db.drizzle
 		.select({ index: outerActions.index })
 		.from(outerActions)
+		.where(not(isNull(outerActions.markedAsCanonicalAt)))
 		.orderBy(desc(outerActions.index))
 		.limit(1)
 
@@ -101,7 +116,12 @@ export async function queryOuterActions(
 		.crossJoin(limitsCte)
 		.leftJoin(commitActions, eq(commitActions.afterState, outerActions.afterState))
 		.leftJoin(witnessActions, eq(witnessActions.afterState, outerActions.afterState))
-		.where(between(outerActions.index, limitsCte.beforeIndex, limitsCte.afterIndex))
+		.where(
+			and(
+				between(outerActions.index, limitsCte.beforeIndex, limitsCte.afterIndex),
+				not(isNull(outerActions.markedAsCanonicalAt))
+			)
+		)
 		.orderBy(outerActions.index)
 
 	return actionsResult.map(({ action, commit, witness }) => {
@@ -139,7 +159,13 @@ export async function queryCommitAsePastSlot(
 			.select({ anchorIndex: outerActions.index })
 			.from(outerActions)
 			.innerJoin(commitActions, eq(outerActions.afterState, commitActions.afterState))
-			.where(and(eq(outerActions.kind, "commit"), lt(outerActions.slotRangeUpper, BigInt(slot))))
+			.where(
+				and(
+					eq(outerActions.kind, "commit"),
+					lt(outerActions.slotRangeUpper, BigInt(slot)),
+					not(isNull(outerActions.markedAsCanonicalAt))
+				)
+			)
 			.orderBy(desc(outerActions.index))
 			.limit(1)
 	)
@@ -152,7 +178,12 @@ export async function queryCommitAsePastSlot(
 		.crossJoin(lastCommitCte)
 		.leftJoin(commitActions, eq(commitActions.afterState, outerActions.afterState))
 		.leftJoin(witnessActions, eq(witnessActions.afterState, outerActions.afterState))
-		.where(gte(outerActions.index, lastCommitCte.anchorIndex))
+		.where(
+			and(
+				gte(outerActions.index, lastCommitCte.anchorIndex),
+				not(isNull(outerActions.markedAsCanonicalAt))
+			)
+		)
 		.orderBy(outerActions.index)
 
 	if (rows.length === 0) return { commit: null, ase: [] }
@@ -219,7 +250,16 @@ const OuterActionInterface = builder.interfaceRef<OuterBaseAction>("OuterAction"
 		timestamp: t.exposeString("timestamp"),
 		txnHash: t.exposeString("txnHash"),
 		fields: t.exposeStringList("fields"),
-		kind: t.field({ type: OuterActionKind, resolve: (r) => r.kind })
+		kind: t.field({ type: OuterActionKind, resolve: (r) => r.kind }),
+		markedAsCanonicalAt: t.field({
+			type: "String",
+			nullable: true,
+			resolve: (r) => r.markedAsCanonicalAt?.toISOString() ?? null
+		}),
+		finalityStatus: t.field({
+			type: "String",
+			resolve: (r) => (r.markedAsCanonicalAt === null ? "pending_finality" : "final")
+		})
 	})
 })
 

@@ -3,11 +3,13 @@ type Commit implements OuterAction {
   beforeState: String
   blockHeight: Int
   fields: [String!]
+  finalityStatus: String
   index: Int
   innerActionState: String
   innerActionStateLength: Int
   kind: OuterActionKind
   ledger: String
+  markedAsCanonicalAt: String
   slotRangeLower: String
   slotRangeUpper: String
   synchronizedOuterActionState: String
@@ -27,7 +29,9 @@ type InnerAction {
   beforeState: String
   blockHeight: Int
   fields: [String!]
+  finalityStatus: String
   index: Int
+  markedAsCanonicalAt: String
   timestamp: String
   txnHash: String
 }
@@ -46,8 +50,10 @@ interface OuterAction {
   beforeState: String
   blockHeight: Int
   fields: [String!]
+  finalityStatus: String
   index: Int
   kind: OuterActionKind
+  markedAsCanonicalAt: String
   slotRangeLower: String
   slotRangeUpper: String
   timestamp: String
@@ -84,8 +90,10 @@ type Witness implements OuterAction {
   beforeState: String
   blockHeight: Int
   fields: [String!]
+  finalityStatus: String
   index: Int
   kind: OuterActionKind
+  markedAsCanonicalAt: String
   slotRangeLower: String
   slotRangeUpper: String
   timestamp: String

@@ -80,7 +80,9 @@ const indexedActionEntries = {
 	blockHeight: v.number(),
 	timestamp: v.string(),
 	txnHash: v.string(),
-	fields: v.array(v.string())
+	fields: v.array(v.string()),
+	markedAsCanonicalAt: v.optional(v.nullable(v.string())),
+	finalityStatus: v.optional(v.string())
 }
 
 const InnerActionSchema = v.object({

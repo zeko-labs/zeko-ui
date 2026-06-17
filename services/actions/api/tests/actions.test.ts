@@ -28,6 +28,7 @@ describe("Actions API - schema queries", () => {
 	let client: Sql
 	let db: ReturnType<Database>["drizzle"]
 	let testDb: ReturnType<Database>
+	const canonicalAt = new Date("2026-06-17T00:00:00Z")
 
 	beforeAll(async () => {
 		client = postgres(testDatabaseUrl, { max: 1, fetch_types: false })
@@ -46,7 +47,8 @@ describe("Actions API - schema queries", () => {
 				txnHash: "tx1",
 				fields: ["field1"],
 				slotRangeLower: BigInt(1),
-				slotRangeUpper: BigInt(5)
+				slotRangeUpper: BigInt(5),
+				markedAsCanonicalAt: canonicalAt
 			},
 			{
 				afterState: "a2",
@@ -58,7 +60,8 @@ describe("Actions API - schema queries", () => {
 				txnHash: "tx2",
 				fields: ["field2"],
 				slotRangeLower: BigInt(6),
-				slotRangeUpper: BigInt(10)
+				slotRangeUpper: BigInt(10),
+				markedAsCanonicalAt: canonicalAt
 			},
 			{
 				afterState: "a3",
@@ -70,7 +73,20 @@ describe("Actions API - schema queries", () => {
 				txnHash: "tx3",
 				fields: ["field3"],
 				slotRangeLower: BigInt(11),
-				slotRangeUpper: BigInt(15)
+				slotRangeUpper: BigInt(15),
+				markedAsCanonicalAt: canonicalAt
+			},
+			{
+				afterState: "a4-pending",
+				beforeState: "a3",
+				index: 4,
+				kind: "witness",
+				blockHeight: 103,
+				timestamp: new Date(),
+				txnHash: "tx4-pending",
+				fields: ["field4-pending"],
+				slotRangeLower: BigInt(16),
+				slotRangeUpper: BigInt(20)
 			}
 		])
 
@@ -93,7 +109,10 @@ describe("Actions API - schema queries", () => {
 			}
 		])
 
-		await db.insert(witnessActions).values([{ afterState: "a2", aux: "aux-1" }])
+		await db.insert(witnessActions).values([
+			{ afterState: "a2", aux: "aux-1" },
+			{ afterState: "a4-pending", aux: "aux-1" }
+		])
 
 		await db.insert(innerActions).values([
 			{
@@ -104,6 +123,17 @@ describe("Actions API - schema queries", () => {
 				timestamp: new Date(),
 				txnHash: "itx1",
 				fields: ["ifield1"],
+				aux: "iaux-1",
+				markedAsCanonicalAt: canonicalAt
+			},
+			{
+				afterState: "i2-pending",
+				beforeState: "i1",
+				index: 2,
+				blockHeight: 201,
+				timestamp: new Date(),
+				txnHash: "itx2-pending",
+				fields: ["ifield2-pending"],
 				aux: "iaux-1"
 			}
 		])
@@ -122,6 +152,7 @@ describe("Actions API - schema queries", () => {
 			expect(result[0].afterState).toBe("a2")
 			expect(result[0].kind).toBe("WITNESS")
 			expect(result[0].aux).toBe("aux-1")
+			expect(result[0].markedAsCanonicalAt).toEqual(canonicalAt)
 		})
 	})
 
@@ -132,6 +163,7 @@ describe("Actions API - schema queries", () => {
 			expect(result).toHaveLength(1)
 			expect(result[0].afterState).toBe("i1")
 			expect(result[0].aux).toBe("iaux-1")
+			expect(result[0].markedAsCanonicalAt).toEqual(canonicalAt)
 		})
 	})
 
@@ -188,6 +220,11 @@ describe("Actions API - schema queries", () => {
 			expect(result.commit).not.toBeNull()
 			expect(result.commit?.afterState).toBe("a3")
 			expect(result.ase).toHaveLength(0)
+		})
+
+		it("does not return a non-canonical action as ASE", async () => {
+			const result = await queryCommitAsePastSlot(testDb, 20)
+			expect(result.ase.map((action) => action.afterState)).not.toContain("a4-pending")
 		})
 	})
 })
