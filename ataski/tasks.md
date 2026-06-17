@@ -337,3 +337,4 @@
 - T351 | done | actions-api-finality-aware-queries | done/T351-actions-api-finality-aware-queries.md
 - T352 | done | sdk-ui-withdrawal-status-binding | done/T352-sdk-ui-withdrawal-status-binding.md
 - T353 | done | resolve-withdrawal-finality-review | done/T353-resolve-withdrawal-finality-review.md
+- T354 | done | resolve-codex-review-outer-tail | done/T354-resolve-codex-review-outer-tail.md

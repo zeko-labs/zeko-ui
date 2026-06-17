@@ -179,11 +179,14 @@ describe("Actions API - schema queries", () => {
 		it("returns actions after a given beforeState", async () => {
 			const result = await queryOuterActions(testDb, { beforeState: "a1" })
 
-			expect(result.length).toBeGreaterThanOrEqual(2)
+			expect(result.length).toBeGreaterThanOrEqual(3)
 			expect(result[0].afterState).toBe("a2")
 			expect(result[0].kind).toBe("WITNESS")
 			expect(result[1].afterState).toBe("a3")
 			expect(result[1].kind).toBe("COMMIT")
+			expect(result[2].afterState).toBe("a4-pending")
+			expect(result[2].kind).toBe("WITNESS")
+			expect(result[2].markedAsCanonicalAt).toBeNull()
 		})
 
 		it("handles the special genesis before-state indicator", async () => {
@@ -223,16 +226,12 @@ describe("Actions API - schema queries", () => {
 			expect(result.ase).toHaveLength(0)
 		})
 
-		it("returns latest commit and empty ase when no actions follow", async () => {
+		it("returns latest final commit with pending ASE tail when actions follow", async () => {
 			const result = await queryCommitAsePastSlot(testDb, 20)
 			expect(result.commit).not.toBeNull()
 			expect(result.commit?.afterState).toBe("a3")
-			expect(result.ase).toHaveLength(0)
-		})
-
-		it("does not return a non-canonical action as ASE", async () => {
-			const result = await queryCommitAsePastSlot(testDb, 20)
-			expect(result.ase.map((action) => action.afterState)).not.toContain("a4-pending")
+			expect(result.ase.map((action) => action.afterState)).toEqual(["a4-pending"])
+			expect(result.ase[0].markedAsCanonicalAt).toBeNull()
 		})
 	})
 })

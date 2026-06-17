@@ -86,18 +86,12 @@ export async function queryOuterActions(
 	const targetEndIndexQb = db.drizzle
 		.select({ index: outerActions.index })
 		.from(outerActions)
-		.where(
-			and(
-				eq(outerActions.afterState, options.afterState ?? ""),
-				not(isNull(outerActions.markedAsCanonicalAt))
-			)
-		)
+		.where(eq(outerActions.afterState, options.afterState ?? ""))
 		.limit(1)
 
 	const maxIndexQb = db.drizzle
 		.select({ index: outerActions.index })
 		.from(outerActions)
-		.where(not(isNull(outerActions.markedAsCanonicalAt)))
 		.orderBy(desc(outerActions.index))
 		.limit(1)
 
@@ -118,12 +112,7 @@ export async function queryOuterActions(
 		.crossJoin(limitsCte)
 		.leftJoin(commitActions, eq(commitActions.afterState, outerActions.afterState))
 		.leftJoin(witnessActions, eq(witnessActions.afterState, outerActions.afterState))
-		.where(
-			and(
-				between(outerActions.index, limitsCte.beforeIndex, limitsCte.afterIndex),
-				not(isNull(outerActions.markedAsCanonicalAt))
-			)
-		)
+		.where(between(outerActions.index, limitsCte.beforeIndex, limitsCte.afterIndex))
 		.orderBy(outerActions.index)
 
 	return actionsResult.map(({ action, commit, witness }) => {
@@ -180,12 +169,7 @@ export async function queryCommitAsePastSlot(
 		.crossJoin(lastCommitCte)
 		.leftJoin(commitActions, eq(commitActions.afterState, outerActions.afterState))
 		.leftJoin(witnessActions, eq(witnessActions.afterState, outerActions.afterState))
-		.where(
-			and(
-				gte(outerActions.index, lastCommitCte.anchorIndex),
-				not(isNull(outerActions.markedAsCanonicalAt))
-			)
-		)
+		.where(gte(outerActions.index, lastCommitCte.anchorIndex))
 		.orderBy(outerActions.index)
 
 	if (rows.length === 0) return { commit: null, ase: [] }
