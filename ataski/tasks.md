@@ -333,3 +333,6 @@
 - T347 | done | fix-actions-dashboard-same-zone-fetch | done/T347-fix-actions-dashboard-same-zone-fetch.md
 - T348 | done | filter-orphaned-dashboard-coverage | done/T348-filter-orphaned-dashboard-coverage.md
 - T349 | done | preserve-local-control-origin | done/T349-preserve-local-control-origin.md
+- T350 | done | investigate-testnet-withdrawal-finality | done/T350-investigate-testnet-withdrawal-finality.md
+- T351 | done | actions-api-finality-aware-queries | done/T351-actions-api-finality-aware-queries.md
+- T352 | done | sdk-ui-withdrawal-status-binding | done/T352-sdk-ui-withdrawal-status-binding.md
