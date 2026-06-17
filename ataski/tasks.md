@@ -338,3 +338,4 @@
 - T352 | done | sdk-ui-withdrawal-status-binding | done/T352-sdk-ui-withdrawal-status-binding.md
 - T353 | done | resolve-withdrawal-finality-review | done/T353-resolve-withdrawal-finality-review.md
 - T354 | done | resolve-codex-review-outer-tail | done/T354-resolve-codex-review-outer-tail.md
+- T355 | done | fix-provisional-withdrawal-status | done/T355-fix-provisional-withdrawal-status.md

@@ -803,8 +803,8 @@ export async function fetchWithdrawalsWithStates(
 			...withdrawal,
 			timestamp: normalizeTimestamp(withdrawal.timestamp),
 			index: withdrawal.index,
-			committed: isCommitted(withdrawal.index),
-			finalised: isFinalised(withdrawal.index),
+			committed: false,
+			finalised: false,
 			bridgeVersion: bridgeVersionForActionIndex({
 				actionIndex: withdrawal.index,
 				v2StartIndex: runtime.V2_WITHDRAWALS_START_INDEX
