@@ -6,10 +6,6 @@ const sw = self
 
 const SKIP_WAITING_MESSAGE_TYPE = "BRIDGE_UI_SKIP_WAITING"
 
-sw.addEventListener("install", (event) => {
-	event.waitUntil(sw.skipWaiting())
-})
-
 sw.addEventListener("activate", (event) => {
 	event.waitUntil(sw.clients.claim())
 })

@@ -13,6 +13,7 @@
       <slot />
       <Footer />
     </div>
+    <AppUpdateNotice />
   </div>
 </template>
 <style lang="postcss">

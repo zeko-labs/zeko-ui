@@ -337,3 +337,6 @@
 - T351 | done | refresh-bridge-ui-when-new-build-is-available | done/T351-refresh-bridge-ui-when-new-build-is-available.md
 - T352 | done | align-change-network-copy-with-target-network | done/T352-align-change-network-copy-with-target-network.md
 - T353 | done | add-ledger-not-supported-bridge-notice | done/T353-add-ledger-not-supported-bridge-notice.md
+- T354 | done | document-user-facing-network-label-helper | done/T354-document-user-facing-network-label-helper.md
+- T355 | done | remove-hardcoded-zeko-mainnet-display-copy | done/T355-remove-hardcoded-zeko-mainnet-display-copy.md
+- T356 | done | show-clickable-update-notification-for-service-worker | done/T356-show-clickable-update-notification-for-service-worker.md

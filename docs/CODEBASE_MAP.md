@@ -335,6 +335,25 @@ zeko-ui/
 
 ### Shared Packages
 
+#### packages/networks/
+
+**Purpose**: Shared Mina, Zeko, Ethereum, bridge route, wallet compatibility, and display-label nomenclature.
+
+**Key files**:
+
+| File         | Purpose                                                          |
+| ------------ | ---------------------------------------------------------------- |
+| src/index.ts | Network IDs, bridge route maps, wallet conversions, labels       |
+| tests/       | Nomenclature, compatibility, and route-boundary regression tests |
+
+**Label boundary**:
+
+- `NETWORK_LABELS` keeps internal/API nomenclature such as `Zeko-M`.
+- User-facing app copy and badges must use `formatUserFacingNetworkLabel(...)`, or an app-local re-export such as Bridge UI's `formatBridgeNetworkLabel(...)`.
+- Do not hardcode rendered network display names in app components. Update the shared label helper/constant instead.
+
+---
+
 #### packages/bridge-sdk/ (~18k tokens)
 
 **Purpose**: High-level SDK for Zeko-Mina bridge operations with proof generation

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
-import { registerBridgeServiceWorker } from "../../app/service-worker/updateRefresh"
+import {
+	registerBridgeServiceWorker,
+	type ServiceWorkerUpdateHandler
+} from "../../app/service-worker/updateRefresh"
+import serviceWorkerSource from "../../app/service-worker/sw.ts?raw"
 
 const createEventTarget = () => {
 	const listeners = new Map<string, Array<() => void>>()
@@ -14,8 +18,15 @@ const createEventTarget = () => {
 }
 
 describe("service worker update refresh", () => {
-	it("asks a waiting replacement worker to activate when the page is already controlled", async () => {
+	it("does not force waiting workers to activate during install", () => {
+		expect(serviceWorkerSource).not.toContain('sw.addEventListener("install"')
+		expect(serviceWorkerSource).toContain("BRIDGE_UI_SKIP_WAITING")
+		expect(serviceWorkerSource).toContain("sw.skipWaiting()")
+	})
+
+	it("announces a waiting replacement worker without activating it automatically", async () => {
 		const waiting = { postMessage: vi.fn() }
+		const onUpdateAvailable = vi.fn<ServiceWorkerUpdateHandler>()
 		const registration = {
 			waiting,
 			installing: undefined,
@@ -31,18 +42,26 @@ describe("service worker update refresh", () => {
 		await registerBridgeServiceWorker({
 			serviceWorker,
 			storage: new Map(),
-			reload: vi.fn()
+			reload: vi.fn(),
+			onUpdateAvailable
 		})
+
+		expect(waiting.postMessage).not.toHaveBeenCalled()
+		expect(onUpdateAvailable).toHaveBeenCalledTimes(1)
+
+		onUpdateAvailable.mock.calls[0]?.[0]()
 
 		expect(waiting.postMessage).toHaveBeenCalledWith({ type: "BRIDGE_UI_SKIP_WAITING" })
 	})
 
-	it("reloads once when a new service worker takes control", async () => {
+	it("reloads once after the user accepts an update and the new worker takes control", async () => {
 		const controllerEvents = createEventTarget()
 		const storage = new Map<string, string>()
 		const reload = vi.fn()
+		const waiting = { postMessage: vi.fn() }
+		let applyUpdate: (() => void) | undefined
 		const registration = {
-			waiting: undefined,
+			waiting,
 			installing: undefined,
 			addEventListener: vi.fn(),
 			update: vi.fn()
@@ -53,7 +72,19 @@ describe("service worker update refresh", () => {
 			addEventListener: controllerEvents.addEventListener
 		}
 
-		await registerBridgeServiceWorker({ serviceWorker, storage, reload })
+		await registerBridgeServiceWorker({
+			serviceWorker,
+			storage,
+			reload,
+			onUpdateAvailable: (handler) => {
+				applyUpdate = handler
+			}
+		})
+
+		controllerEvents.dispatch("controllerchange")
+		expect(reload).not.toHaveBeenCalled()
+
+		applyUpdate?.()
 		controllerEvents.dispatch("controllerchange")
 		controllerEvents.dispatch("controllerchange")
 

@@ -15,6 +15,7 @@ import {
 	isZekoBridgeNetwork,
 	NETWORK_LABELS,
 	normalizeLegacyNetworkId,
+	USER_FACING_NETWORK_LABELS,
 	walletNetworkToBridgeNetwork,
 	ZEKO_E_NETWORKS,
 	ZEKO_M_NETWORKS,
@@ -50,9 +51,15 @@ describe("network nomenclature", () => {
 	})
 
 	it("has a single user-facing display helper for Zeko network names", () => {
-		expect(formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.mainnet)).toBe("Zeko Mainnet")
-		expect(formatUserFacingNetworkLabel(AURO_ZEKO_NETWORKS.mainnet)).toBe("Zeko Mainnet")
-		expect(formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.testnet)).toBe("Zeko Testnet")
+		expect(formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.mainnet)).toBe(
+			USER_FACING_NETWORK_LABELS[ZEKO_M_NETWORKS.mainnet]
+		)
+		expect(formatUserFacingNetworkLabel(AURO_ZEKO_NETWORKS.mainnet)).toBe(
+			USER_FACING_NETWORK_LABELS[AURO_ZEKO_NETWORKS.mainnet]
+		)
+		expect(formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.testnet)).toBe(
+			USER_FACING_NETWORK_LABELS[ZEKO_M_NETWORKS.testnet]
+		)
 		expect(NETWORK_LABELS[ZEKO_M_NETWORKS.mainnet]).toBe("Zeko-M Mainnet")
 	})
 

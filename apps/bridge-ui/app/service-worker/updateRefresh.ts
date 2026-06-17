@@ -29,10 +29,13 @@ type ServiceWorkerContainerLike = {
 	addEventListener: (type: "controllerchange", listener: () => void) => void
 }
 
+export type ServiceWorkerUpdateHandler = (applyUpdate: () => void) => void
+
 type RegisterBridgeServiceWorkerOptions = {
 	serviceWorker: ServiceWorkerContainerLike
 	storage: RefreshStorage
 	reload: () => void
+	onUpdateAvailable?: ServiceWorkerUpdateHandler
 	scriptUrl?: string
 }
 
@@ -71,24 +74,39 @@ export const registerBridgeServiceWorker = async ({
 	serviceWorker,
 	storage,
 	reload,
+	onUpdateAvailable,
 	scriptUrl = "/sw.js"
 }: RegisterBridgeServiceWorkerOptions) => {
 	const hadController = serviceWorker.controller != null
+	let activationRequested = false
+	let updateAnnounced = false
+	let updateWorker: ServiceWorkerLike | null = null
+	const announceUpdateAvailable = (worker: ServiceWorkerLike | null | undefined) => {
+		if (!worker || !hadController) return
+		updateWorker = worker
+		if (updateAnnounced) return
+		updateAnnounced = true
+		onUpdateAvailable?.(() => {
+			activationRequested = true
+			requestActivation(updateWorker, hadController)
+		})
+	}
 
 	serviceWorker.addEventListener("controllerchange", () => {
-		if (!hadController || storage.get(SERVICE_WORKER_REFRESH_KEY) === "1") return
+		if (!hadController || !activationRequested || storage.get(SERVICE_WORKER_REFRESH_KEY) === "1")
+			return
 		storage.set(SERVICE_WORKER_REFRESH_KEY, "1")
 		reload()
 	})
 
 	const registration = await serviceWorker.register(scriptUrl, { type: "module" })
-	requestActivation(registration.waiting, hadController)
+	announceUpdateAvailable(registration.waiting)
 
 	registration.addEventListener("updatefound", () => {
 		const installing = registration.installing
 		installing?.addEventListener?.("statechange", () => {
 			if (installing.state === "installed") {
-				requestActivation(installing, serviceWorker.controller != null)
+				announceUpdateAvailable(installing)
 			}
 		})
 	})
