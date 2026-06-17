@@ -3,6 +3,7 @@ import type { Theme } from "vitepress"
 import DefaultTheme from "vitepress/theme"
 import { h } from "vue"
 import Layout from "./Layout.vue"
+import NetworkLabel from "./components/NetworkLabel.vue"
 import "./style.css"
 
 export default {
@@ -12,7 +13,7 @@ export default {
 			// https://vitepress.dev/guide/extending-default-theme#layout-slots
 		})
 	},
-	enhanceApp({ app, router, siteData }) {
-		// ...
+	enhanceApp({ app }) {
+		app.component("NetworkLabel", NetworkLabel)
 	}
 } satisfies Theme

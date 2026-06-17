@@ -1,4 +1,6 @@
 layer: application
+dependsOn:
+  - networks
 fileGroups:
   sources:
     - content/**/*

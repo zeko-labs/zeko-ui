@@ -4,6 +4,7 @@ import {
 	type AuroWalletNetwork,
 	type BridgeUiNetwork,
 	bridgeNetworkToWalletNetwork,
+	formatUserFacingNetworkLabel,
 	MINA_NETWORKS
 } from "@zeko/networks"
 import { Mina } from "o1js"
@@ -20,10 +21,10 @@ export const AURO_NETWORKS = {
 } as const satisfies Record<string, AuroWalletNetwork>
 
 export const AURO_NETWORK_LABELS = {
-	[AURO_NETWORKS.minaDevnet]: "Mina Devnet",
-	[AURO_NETWORKS.minaMainnet]: "Mina Mainnet",
-	[AURO_NETWORKS.zekoTestnet]: "Zeko Testnet",
-	[AURO_NETWORKS.zekoMainnet]: "Zeko Mainnet"
+	[AURO_NETWORKS.minaDevnet]: formatUserFacingNetworkLabel(AURO_NETWORKS.minaDevnet),
+	[AURO_NETWORKS.minaMainnet]: formatUserFacingNetworkLabel(AURO_NETWORKS.minaMainnet),
+	[AURO_NETWORKS.zekoTestnet]: formatUserFacingNetworkLabel(AURO_NETWORKS.zekoTestnet),
+	[AURO_NETWORKS.zekoMainnet]: formatUserFacingNetworkLabel(AURO_NETWORKS.zekoMainnet)
 } as const satisfies Record<AuroWalletNetwork, string>
 
 export const AURO_NETWORK_URLS = {
