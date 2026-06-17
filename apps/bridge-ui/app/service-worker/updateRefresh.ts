@@ -79,8 +79,14 @@ export const registerBridgeServiceWorker = async ({
 }: RegisterBridgeServiceWorkerOptions) => {
 	const hadController = serviceWorker.controller != null
 	let activationRequested = false
+	let controllerChanged = false
 	let updateAnnounced = false
 	let updateWorker: ServiceWorkerLike | null = null
+	const reloadOnce = () => {
+		if (storage.get(SERVICE_WORKER_REFRESH_KEY) === "1") return
+		storage.set(SERVICE_WORKER_REFRESH_KEY, "1")
+		reload()
+	}
 	const announceUpdateAvailable = (worker: ServiceWorkerLike | null | undefined) => {
 		if (!worker || !hadController) return
 		updateWorker = worker
@@ -88,15 +94,19 @@ export const registerBridgeServiceWorker = async ({
 		updateAnnounced = true
 		onUpdateAvailable?.(() => {
 			activationRequested = true
+			if (controllerChanged) {
+				reloadOnce()
+				return
+			}
 			requestActivation(updateWorker, hadController)
 		})
 	}
 
 	serviceWorker.addEventListener("controllerchange", () => {
-		if (!hadController || !activationRequested || storage.get(SERVICE_WORKER_REFRESH_KEY) === "1")
-			return
-		storage.set(SERVICE_WORKER_REFRESH_KEY, "1")
-		reload()
+		if (!hadController) return
+		controllerChanged = true
+		if (!activationRequested) return
+		reloadOnce()
 	})
 
 	const registration = await serviceWorker.register(scriptUrl, { type: "module" })
@@ -105,13 +115,17 @@ export const registerBridgeServiceWorker = async ({
 	registration.addEventListener("updatefound", () => {
 		const installing = registration.installing
 		installing?.addEventListener?.("statechange", () => {
-			if (installing.state === "installed") {
+			if (installing?.state === "installed") {
 				announceUpdateAvailable(installing)
 			}
 		})
 	})
 
-	await registration.update?.()
+	try {
+		await registration.update?.()
+	} catch (error) {
+		console.warn("Service worker update check failed", error)
+	}
 
 	return registration
 }
