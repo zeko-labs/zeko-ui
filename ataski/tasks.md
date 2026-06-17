@@ -347,3 +347,4 @@
 - T361 | done | resolve-service-worker-follow-up-review | done/T361-resolve-service-worker-follow-up-review.md
 - T362 | done | preserve-network-labels-in-llm-docs | done/T362-preserve-network-labels-in-llm-docs.md
 - T363 | done | document-llm-network-label-postprocessor | done/T363-document-llm-network-label-postprocessor.md
+- T364 | done | move-auro-labels-to-networks-package | done/T364-move-auro-labels-to-networks-package.md

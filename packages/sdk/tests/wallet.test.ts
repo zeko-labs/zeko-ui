@@ -30,6 +30,7 @@ describe("Auro wallet network boundary", () => {
 		)
 
 		expect(source).not.toContain(USER_FACING_NETWORK_LABELS[AURO_NETWORKS.zekoMainnet])
+		expect(source).not.toContain("export const AURO_NETWORK_LABELS")
 	})
 
 	it("maps Zeko-M mainnet to Auro's supported network ID", () => {

@@ -26,6 +26,13 @@ export const AURO_ZEKO_NETWORKS = {
 	mainnet: "zeko:mainnet"
 } as const
 
+export const AURO_NETWORKS = {
+	minaDevnet: MINA_NETWORKS.devnet,
+	minaMainnet: MINA_NETWORKS.mainnet,
+	zekoTestnet: AURO_ZEKO_NETWORKS.testnet,
+	zekoMainnet: AURO_ZEKO_NETWORKS.mainnet
+} as const satisfies Record<string, AuroWalletNetwork>
+
 export const LEGACY_ZEKO_M_NETWORKS = {
 	testnet: "zeko:testnet",
 	mainnet: "zeko:mainnet"
@@ -113,6 +120,13 @@ export const USER_FACING_NETWORK_LABELS = {
 
 export const formatUserFacingNetworkLabel = (network: DisplayNetwork): string =>
 	USER_FACING_NETWORK_LABELS[network]
+
+export const AURO_NETWORK_LABELS = {
+	[AURO_NETWORKS.minaDevnet]: formatUserFacingNetworkLabel(AURO_NETWORKS.minaDevnet),
+	[AURO_NETWORKS.minaMainnet]: formatUserFacingNetworkLabel(AURO_NETWORKS.minaMainnet),
+	[AURO_NETWORKS.zekoTestnet]: formatUserFacingNetworkLabel(AURO_NETWORKS.zekoTestnet),
+	[AURO_NETWORKS.zekoMainnet]: formatUserFacingNetworkLabel(AURO_NETWORKS.zekoMainnet)
+} as const satisfies Record<AuroWalletNetwork, string>
 
 export const BRIDGE_UI_NETWORKS = [
 	MINA_NETWORKS.devnet,
