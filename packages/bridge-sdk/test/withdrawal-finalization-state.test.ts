@@ -334,6 +334,41 @@ describe("withdrawal finalization state", () => {
 		})
 	})
 
+	it("does not report already-finalised while a newer same-aux witness is outside the committed range", async () => {
+		const bridge = buildBridge()
+		const withdrawal = buildWithdrawal()
+		const oldWithdrawal = buildWithdrawalAction(withdrawal, 0)
+		const newWithdrawal = buildWithdrawalAction(withdrawal, 1)
+		const oldWitness = buildWitnessForWithdrawalAction(oldWithdrawal)
+		const newWitness = buildWitnessForWithdrawalAction(newWithdrawal)
+		const bridgeInternals = bridge as unknown as {
+			fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
+			fetchCurrentSlot: () => Promise<UInt32>
+			fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
+		}
+
+		vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue({
+			zkappState: ["0", "1"]
+		})
+		vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
+		vi.spyOn(bridgeInternals, "fetchUserWithdrawalActions").mockResolvedValue([
+			oldWithdrawal,
+			newWithdrawal
+		])
+		vi.spyOn(utils, "fetchInnerWitnessesFromAuxes").mockResolvedValue([oldWitness, newWitness])
+		vi.spyOn(utils, "fetchInnerActionsFromIndexer").mockResolvedValue([oldWitness])
+		vi.spyOn(utils, "fetchCommitAsePastSlot").mockResolvedValue({
+			commit: buildCommit({ innerActionStateLength: 1 }),
+			ase: []
+		})
+
+		await expect(bridge.canFinalizeWithdrawal(recipient)).resolves.toEqual({
+			available: false,
+			reason: "No my withdrawal index found",
+			status: "waiting"
+		})
+	})
+
 	it("marks witnessed withdrawals finalised when helper state has consumed their index", async () => {
 		const bridge = buildBridge()
 		const withdrawal = buildWithdrawal()

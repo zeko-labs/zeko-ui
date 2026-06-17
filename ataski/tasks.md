@@ -339,3 +339,4 @@
 - T353 | done | resolve-withdrawal-finality-review | done/T353-resolve-withdrawal-finality-review.md
 - T354 | done | resolve-codex-review-outer-tail | done/T354-resolve-codex-review-outer-tail.md
 - T355 | done | fix-provisional-withdrawal-status | done/T355-fix-provisional-withdrawal-status.md
+- T356 | done | gate-already-finalised-withdrawals-by-commit-range | done/T356-gate-already-finalised-withdrawals-by-commit-range.md
