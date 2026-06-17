@@ -6,6 +6,12 @@ import { type DisplayNetwork, formatUserFacingNetworkLabel } from "@zeko/network
 const NETWORK_LABEL_COMPONENT_PATTERN = /<NetworkLabel\s+network=(["'])(?<network>[^"']+)\1\s*\/>/g
 const HTML_COMMENT_PATTERN = /<!--[\s\S]*?-->/g
 
+// vitepress-plugin-llms reads markdown before Vue renders docs components.
+// With its default HTML stripping, NetworkLabel tags become blank text in llms-full.txt.
+// With stripHTML: false, the blanks are gone but raw component tags and internal
+// zeko-m:* ids are published. This postprocessor keeps docs source authored with
+// NetworkLabel while expanding generated LLM artifacts through @zeko/networks.
+
 type VitePressResolvedConfig = ResolvedConfig & {
 	vitepress?: {
 		outDir?: string
