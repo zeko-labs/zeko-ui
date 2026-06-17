@@ -4,6 +4,7 @@ import {
 	type ServiceWorkerUpdateHandler
 } from "../../app/service-worker/updateRefresh"
 import serviceWorkerSource from "../../app/service-worker/sw.ts?raw"
+import nuxtConfigSource from "../../nuxt.config.ts?raw"
 
 const createEventTarget = () => {
 	const listeners = new Map<string, Array<() => void>>()
@@ -31,6 +32,10 @@ describe("service worker update refresh", () => {
 	it("fingerprints app builds through the injected service worker manifest", () => {
 		expect(serviceWorkerSource).toContain("__WB_MANIFEST")
 		expect(serviceWorkerSource).toContain("BRIDGE_UI_BUILD_FINGERPRINT")
+	})
+
+	it("uses only the custom service worker registration prompt", () => {
+		expect(nuxtConfigSource).toContain("client: { registerPlugin: false }")
 	})
 
 	it("registers the final worker file emitted by the production PWA build", async () => {
@@ -141,6 +146,39 @@ describe("service worker update refresh", () => {
 		})
 
 		registrationEvents.dispatch("updatefound")
+		installing.state = "installed"
+		installingEvents.dispatch("statechange")
+
+		expect(onUpdateAvailable).toHaveBeenCalledTimes(1)
+	})
+
+	it("announces a replacement worker that is already installing after registration", async () => {
+		const installingEvents = createEventTarget()
+		const installing = {
+			state: "installing",
+			postMessage: vi.fn(),
+			addEventListener: installingEvents.addEventListener
+		}
+		const onUpdateAvailable = vi.fn<ServiceWorkerUpdateHandler>()
+		const registration = {
+			waiting: undefined,
+			installing,
+			addEventListener: vi.fn(),
+			update: vi.fn()
+		}
+		const serviceWorker = {
+			controller: {},
+			register: vi.fn(async () => registration),
+			addEventListener: vi.fn()
+		}
+
+		await registerBridgeServiceWorker({
+			serviceWorker,
+			storage: new Map(),
+			reload: vi.fn(),
+			onUpdateAvailable
+		})
+
 		installing.state = "installed"
 		installingEvents.dispatch("statechange")
 

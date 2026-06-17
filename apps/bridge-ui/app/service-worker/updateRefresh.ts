@@ -101,6 +101,17 @@ export const registerBridgeServiceWorker = async ({
 			requestActivation(updateWorker, hadController)
 		})
 	}
+	const trackInstallingWorker = (worker: ServiceWorkerLike | null | undefined) => {
+		if (worker?.state === "installed") {
+			announceUpdateAvailable(worker)
+			return
+		}
+		worker?.addEventListener?.("statechange", () => {
+			if (worker?.state === "installed") {
+				announceUpdateAvailable(worker)
+			}
+		})
+	}
 
 	serviceWorker.addEventListener("controllerchange", () => {
 		if (!hadController) return
@@ -111,14 +122,10 @@ export const registerBridgeServiceWorker = async ({
 
 	const registration = await serviceWorker.register(scriptUrl, { type: "module" })
 	announceUpdateAvailable(registration.waiting)
+	trackInstallingWorker(registration.installing)
 
 	registration.addEventListener("updatefound", () => {
-		const installing = registration.installing
-		installing?.addEventListener?.("statechange", () => {
-			if (installing?.state === "installed") {
-				announceUpdateAvailable(installing)
-			}
-		})
+		trackInstallingWorker(registration.installing)
 	})
 
 	try {

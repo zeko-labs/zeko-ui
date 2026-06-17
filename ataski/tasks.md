@@ -344,3 +344,4 @@
 - T358 | done | route-sdk-auro-labels-through-network-helper | done/T358-route-sdk-auro-labels-through-network-helper.md
 - T359 | done | enforce-docs-network-label-component | done/T359-enforce-docs-network-label-component.md
 - T360 | done | harden-service-worker-update-flow | done/T360-harden-service-worker-update-flow.md
+- T361 | done | resolve-service-worker-follow-up-review | done/T361-resolve-service-worker-follow-up-review.md
