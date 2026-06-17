@@ -20,7 +20,12 @@ export interface ArchiveEvent {
 	afterActionState: string
 	timestamp: string
 	hash: string
-	blockInfo: { timestamp: string; height: number; distanceFromMaxBlockHeight: number }
+	blockInfo: {
+		timestamp: string
+		height: number
+		distanceFromMaxBlockHeight: number
+		chainStatus: string
+	}
 }
 
 export interface ActionProcessingStats {

@@ -31,6 +31,8 @@ export interface ChainInsight {
 	daemonBlockHeightSupported: boolean
 }
 
+type ServiceStatus = "ok" | "warn" | "error" | "unknown"
+
 export const toNumber = (value: DetailValue | undefined): number | null => {
 	if (typeof value === "number" && Number.isFinite(value)) return value
 	if (typeof value === "string" && value.trim() !== "") {
@@ -95,12 +97,47 @@ export const actionGapState = (gap: number | null): "ok" | "warn" | "error" | "u
 export const tailState = (
 	tailCount: number | null,
 	expectedFinalityBlocks: number | null
-): "ok" | "warn" | "error" | "unknown" => {
+): ServiceStatus => {
 	if (tailCount === null) return "unknown"
 	if (expectedFinalityBlocks === null) return gapState(tailCount)
 	if (tailCount <= expectedFinalityBlocks) return "ok"
 	if (tailCount <= expectedFinalityBlocks * 2) return "warn"
 	return "error"
+}
+
+const formatBlock = (value: number | null) => (value === null ? "-" : value.toLocaleString())
+
+const hasCanonicalL2FinalityStall = (row: ChainInsight): boolean =>
+	row.id === "l2" &&
+	row.nonCanonicalTailCount !== null &&
+	row.nonCanonicalTailCount > 0 &&
+	row.finalActionBlockHeight !== null &&
+	row.lastActionBlockHeight !== null &&
+	row.archiveCanonicalHeight !== null &&
+	row.finalActionBlockHeight < row.lastActionBlockHeight &&
+	row.lastActionBlockHeight <= row.archiveCanonicalHeight
+
+export const actionFinalityState = (row: ChainInsight): ServiceStatus => {
+	if (hasCanonicalL2FinalityStall(row)) return "error"
+	return tailState(row.nonCanonicalTailCount, row.expectedFinalityBlocks)
+}
+
+export const actionFinalityLabel = (row: ChainInsight): string => {
+	if (hasCanonicalL2FinalityStall(row)) {
+		const count = row.nonCanonicalTailCount ?? 0
+		const unit = count === 1 ? "action" : "actions"
+		return `${count.toLocaleString()} canonical ${unit} not finalized in DB`
+	}
+	if (row.nonCanonicalTailCount === null) return "pending actions unknown"
+	if (row.nonCanonicalTailCount === 0) return "no pending actions"
+	const unit = row.nonCanonicalTailCount === 1 ? "action" : "actions"
+	return `${row.nonCanonicalTailCount.toLocaleString()} ${unit} waiting finality`
+}
+
+export const actionFinalityDetail = (row: ChainInsight): string => {
+	if (hasCanonicalL2FinalityStall(row))
+		return `archive canonical ${formatBlock(row.archiveCanonicalHeight)}; DB final ${formatBlock(row.finalActionBlockHeight)}; indexed ${formatBlock(row.lastActionBlockHeight)}`
+	return `final action block ${formatBlock(row.finalActionBlockHeight)}`
 }
 
 export const buildChainInsight = ({

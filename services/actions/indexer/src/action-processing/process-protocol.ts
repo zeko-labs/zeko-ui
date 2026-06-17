@@ -61,7 +61,8 @@ const ArchiveEventSchema = v.object({
 	blockInfo: v.object({
 		timestamp: v.string(),
 		height: v.number(),
-		distanceFromMaxBlockHeight: v.number()
+		distanceFromMaxBlockHeight: v.number(),
+		chainStatus: v.string()
 	})
 })
 

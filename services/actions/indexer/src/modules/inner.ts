@@ -15,7 +15,7 @@ import {
 	promoteInnerCanonicalActions
 } from "../db"
 import { env } from "../env"
-import type { ArchiveEvent } from "../helper"
+import type { ArchiveAction, ArchiveEvent } from "../helper"
 import { fetchActions, getNetworkTip, handleFork, l2Client, logger } from "../helper"
 
 /**
@@ -24,6 +24,10 @@ import { fetchActions, getNetworkTip, handleFork, l2Client, logger } from "../he
 
 const EMPTY_ACTIONS_STATE = emptyActionsList.toString()
 let lastIntegrityCheckAt: number | null = null
+
+export const isCanonicalInnerActionBlock = ({
+	chainStatus
+}: Pick<ArchiveAction["blockInfo"], "chainStatus">) => chainStatus === "canonical"
 
 async function fetch({ startBlock }: { startBlock: number }) {
 	logger.info(`[inner.fetch] Fetching from ${startBlock}`)
@@ -39,11 +43,7 @@ async function fetch({ startBlock }: { startBlock: number }) {
 			item.beforeActionState === EMPTY_ACTIONS_STATE ? null : item.beforeActionState
 		const afterState = item.afterActionState
 		const blockHeight = item.blockInfo.height
-		const now = +Date.now()
-		const blockTimestamp = +new Date(+item.blockInfo.timestamp)
-		const diffMs = now - blockTimestamp
-		const markedAsCanonicalAt =
-			diffMs / (1000 * 60 * 60) >= env.L2_FINALITY_TIME_H ? new Date() : null
+		const markedAsCanonicalAt = isCanonicalInnerActionBlock(item.blockInfo) ? new Date() : null
 
 		return {
 			fields: item.action,

@@ -4,6 +4,9 @@ import { indexerControlCopy } from "../app/utils/indexer-control-copy"
 import { postControlRefreshOptions } from "../app/utils/refresh-options"
 import {
 	actionGapState,
+	actionFinalityDetail,
+	actionFinalityLabel,
+	actionFinalityState,
 	blockGap,
 	buildChainInsight,
 	databaseAgeSeconds,
@@ -902,6 +905,44 @@ describe("actions dashboard utilities", () => {
 		expect(actionGapState(1_000)).toBe("warn")
 		expect(actionGapState(0)).toBe("ok")
 		expect(tailState(280, 290)).toBe("ok")
+	})
+
+	it("reports L2 canonical action finality stalls as dashboard errors", () => {
+		const stalledL2 = buildChainInsight({
+			id: "l2",
+			label: "L2 Zeko",
+			indexerLabel: "Inner",
+			indexer: {
+				id: "actions-indexer",
+				details: {
+					lastFetchedInner: 1_097_358,
+					innerLastFinalBlockHeight: 1_097_016,
+					innerNonCanonicalTailCount: 17
+				}
+			},
+			archive: {
+				id: "l2-archive",
+				details: {
+					canonicalMaxBlockHeight: 1_097_396,
+					pendingMaxBlockHeight: 1_097_396
+				}
+			},
+			daemon: {
+				id: "l2-daemon",
+				details: {}
+			},
+			indexerHeightKey: "lastFetchedInner",
+			indexerFinalHeightKey: "innerLastFinalBlockHeight",
+			nonCanonicalTailKey: "innerNonCanonicalTailCount",
+			expectedFinalityBlocks: null,
+			daemonBlockHeightSupported: false
+		})
+
+		expect(actionFinalityState(stalledL2)).toBe("error")
+		expect(actionFinalityLabel(stalledL2)).toBe("17 canonical actions not finalized in DB")
+		expect(actionFinalityDetail(stalledL2)).toContain("archive canonical 1,097,396")
+		expect(actionFinalityDetail(stalledL2)).toContain("DB final 1,097,016")
+		expect(actionFinalityDetail(stalledL2)).toContain("indexed 1,097,358")
 	})
 
 	it("builds L1 chain insights from action-indexer, archive, and daemon probes", () => {

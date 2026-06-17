@@ -343,3 +343,5 @@
 - T357 | done | preserve-outer-actions-tail-from-final-anchor | done/T357-preserve-outer-actions-tail-from-final-anchor.md
 - T358 | done | preserve-same-transaction-withdrawals | done/T358-preserve-same-transaction-withdrawals.md
 - T359 | done | key-withdrawal-finality-sets-by-identity | done/T359-key-withdrawal-finality-sets-by-identity.md
+- T360 | done | surface-l2-finality-stall | done/T360-surface-l2-finality-stall.md
+- T361 | done | promote-inner-actions-by-archive-canonical-status | done/T361-promote-inner-actions-by-archive-canonical-status.md
