@@ -7,6 +7,7 @@ import {
 	ZEKO_M_NETWORKS
 } from "@zeko/networks"
 import { describe, expect, it } from "vitest"
+import { replaceNetworkLabelComponentsForLlms } from "../.vitepress/llmsNetworkLabels"
 
 const CONTENT_DIR = fileURLToPath(new URL("../content", import.meta.url))
 const NETWORK_LABEL_COMPONENT = fileURLToPath(
@@ -71,5 +72,15 @@ describe("network labels", () => {
 		expect(USER_FACING_NETWORK_LABELS[ZEKO_M_NETWORKS.mainnet]).toBe(
 			formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.mainnet)
 		)
+	})
+
+	it("expands NetworkLabel components in generated LLM docs from the shared helper", () => {
+		const content = 'How do I get tMINA on <NetworkLabel network="zeko-m:testnet" />?'
+		const expanded = replaceNetworkLabelComponentsForLlms(content)
+
+		expect(expanded).toBe(
+			`How do I get tMINA on ${formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.testnet)}?`
+		)
+		expect(expanded).not.toContain("<NetworkLabel")
 	})
 })

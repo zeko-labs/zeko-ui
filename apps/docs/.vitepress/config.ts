@@ -2,6 +2,7 @@ import { defineConfig } from "vitepress"
 import d2Plugin from "vitepress-plugin-d2"
 import { type Config, Theme } from "vitepress-plugin-d2/dist/config"
 import llmstxt from "vitepress-plugin-llms"
+import { networkLabelsForLlms } from "./llmsNetworkLabels"
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -9,7 +10,7 @@ export default defineConfig({
 	description: "Documentation for Zeko",
 	srcDir: "content",
 	vite: {
-		plugins: [llmstxt()]
+		plugins: [llmstxt({ stripHTML: false }), networkLabelsForLlms()]
 	},
 	markdown: {
 		config: (md) => {
