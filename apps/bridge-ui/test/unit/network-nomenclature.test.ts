@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
+import { formatUserFacingNetworkLabel, ZEKO_M_NETWORKS } from "@zeko/networks"
 import networkMachineSource from "../../machines/networks.ts?raw"
-import { supportedNetworks } from "../../machines/networks"
+import { formatBridgeNetworkLabel, supportedNetworks } from "../../machines/networks"
 import { createExplorerUrl, getBridgeConfig } from "../../machines/helpers"
 
 describe("network nomenclature", () => {
@@ -20,6 +21,12 @@ describe("network nomenclature", () => {
 		})
 
 		expect(config.l2Network).toEqual({ custom: "zeko-mainnet" })
+	})
+
+	it("formats user-facing Zeko-M mainnet through the shared helper", () => {
+		expect(formatBridgeNetworkLabel(ZEKO_M_NETWORKS.mainnet)).toBe(
+			formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.mainnet)
+		)
 	})
 
 	it("keeps explorer links available for Zeko-M networks", () => {

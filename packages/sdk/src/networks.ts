@@ -1,10 +1,10 @@
 import type { ProviderError } from "@aurowallet/mina-provider"
 import {
-	AURO_ZEKO_NETWORKS,
+	AURO_NETWORK_LABELS,
+	AURO_NETWORKS,
 	type AuroWalletNetwork,
 	type BridgeUiNetwork,
-	bridgeNetworkToWalletNetwork,
-	MINA_NETWORKS
+	bridgeNetworkToWalletNetwork
 } from "@zeko/networks"
 import { Mina } from "o1js"
 
@@ -12,19 +12,7 @@ import { logger } from "./logger"
 import type { AuroProvider } from "./provider"
 import { isProviderError } from "./provider"
 
-export const AURO_NETWORKS = {
-	minaDevnet: MINA_NETWORKS.devnet,
-	minaMainnet: MINA_NETWORKS.mainnet,
-	zekoTestnet: AURO_ZEKO_NETWORKS.testnet,
-	zekoMainnet: AURO_ZEKO_NETWORKS.mainnet
-} as const satisfies Record<string, AuroWalletNetwork>
-
-export const AURO_NETWORK_LABELS = {
-	[AURO_NETWORKS.minaDevnet]: "Mina Devnet",
-	[AURO_NETWORKS.minaMainnet]: "Mina Mainnet",
-	[AURO_NETWORKS.zekoTestnet]: "Zeko Testnet",
-	[AURO_NETWORKS.zekoMainnet]: "Zeko Mainnet"
-} as const satisfies Record<AuroWalletNetwork, string>
+export { AURO_NETWORK_LABELS, AURO_NETWORKS } from "@zeko/networks"
 
 export const AURO_NETWORK_URLS = {
 	[AURO_NETWORKS.minaDevnet]: "https://gateway.mina.devnet.zeko.io",

@@ -83,7 +83,8 @@ export default defineNuxtConfig({
 		strategies: "injectManifest",
 		manifest: false,
 		injectRegister: false,
-		injectManifest: { injectionPoint: undefined, buildPlugins: { vite: [sentryPlugin] } },
+		client: { registerPlugin: false },
+		injectManifest: { buildPlugins: { vite: [sentryPlugin] } },
 		devOptions: { enabled: true, type: "module" }
 	},
 	sentry: {

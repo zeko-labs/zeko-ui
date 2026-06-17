@@ -1,4 +1,10 @@
-import { ZEKO_M_NETWORKS } from "@zeko/networks"
+import { readFile } from "node:fs/promises"
+import { fileURLToPath } from "node:url"
+import {
+	formatUserFacingNetworkLabel,
+	USER_FACING_NETWORK_LABELS,
+	ZEKO_M_NETWORKS
+} from "@zeko/networks"
 import { describe, expect, it, vi } from "vitest"
 import {
 	AURO_NETWORK_LABELS,
@@ -17,9 +23,21 @@ const createProvider = (...switchNetworkIds: string[]) => {
 }
 
 describe("Auro wallet network boundary", () => {
+	it("does not own user-facing Zeko network labels", async () => {
+		const source = await readFile(
+			fileURLToPath(new URL("../src/networks.ts", import.meta.url)),
+			"utf8"
+		)
+
+		expect(source).not.toContain(USER_FACING_NETWORK_LABELS[AURO_NETWORKS.zekoMainnet])
+		expect(source).not.toContain("export const AURO_NETWORK_LABELS")
+	})
+
 	it("maps Zeko-M mainnet to Auro's supported network ID", () => {
 		expect(bridgeNetworkToAuroNetwork(ZEKO_M_NETWORKS.mainnet)).toBe(AURO_NETWORKS.zekoMainnet)
-		expect(AURO_NETWORK_LABELS[AURO_NETWORKS.zekoMainnet]).toBe("Zeko Mainnet")
+		expect(AURO_NETWORK_LABELS[AURO_NETWORKS.zekoMainnet]).toBe(
+			formatUserFacingNetworkLabel(AURO_NETWORKS.zekoMainnet)
+		)
 	})
 
 	it("switches to Auro Zeko mainnet without adding a custom chain when Auro supports it", async () => {
@@ -43,7 +61,7 @@ describe("Auro wallet network boundary", () => {
 		})
 
 		expect(provider.addChain).toHaveBeenCalledExactlyOnceWith({
-			name: "Zeko Mainnet",
+			name: formatUserFacingNetworkLabel(AURO_NETWORKS.zekoMainnet),
 			url: "https://mainnet.zeko.io/graphql"
 		})
 	})

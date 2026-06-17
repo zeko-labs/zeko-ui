@@ -6,10 +6,10 @@ _This section helps end users understand some key concepts when interacting with
 
 Zeko's architecture is **mostly isomorphic to Mina**. This means the experience of using Zeko on a test network (like devnet) is **analogous** to using Mina's own testnet compared to its Mainnet.
 
-- **Testnets** (like Zeko-M testnet and alphanet) are environments provided for developers and users to **test applications and features** in a setting that mimics the Mainnet, but without using real-world value. They often have faucets to obtain free test tokens, for example, the faucet on `https://zeko.io/faucet` is for the Zeko-M testnet instance.
+- **Testnets** (like <NetworkLabel network="zeko-m:testnet" /> and <NetworkLabel network="zeko-m:alphanet" />) are environments provided for developers and users to **test applications and features** in a setting that mimics the Mainnet, but without using real-world value. They often have faucets to obtain free test tokens, for example, the faucet on `https://zeko.io/faucet` is for the <NetworkLabel network="zeko-m:testnet" /> instance.
 - **Mainnet** will be the primary, live Zeko network where transactions involve real value.
 
-Starting out on a testnet like Zeko-M testnet is recommended to become familiar with the network and its interactions before using the Mainnet.
+Starting out on a testnet like <NetworkLabel network="zeko-m:testnet" /> is recommended to become familiar with the network and its interactions before using the Mainnet.
 
 #### Understanding Transaction Fees
 

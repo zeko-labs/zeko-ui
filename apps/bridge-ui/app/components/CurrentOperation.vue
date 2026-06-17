@@ -270,8 +270,8 @@ watch(machine.value.context.errors, (newErrors) => {
           </template>
 
           <template v-else-if='machine.matches("WAITING_FOR_NETWORK")'>
-            <div class="Flex">
-              <span>Switch your wallet to&nbsp;</span>
+            <div class="NetworkPrompt">
+              <span class="NetworkPromptText">Switch your wallet to</span>
               <NetworkBadge :network="machine.context.changeNetworkTo" />
               <span>.</span>
             </div>
@@ -357,8 +357,14 @@ watch(machine.value.context.errors, (newErrors) => {
       font-style: italic;
       max-width: 60ch;
       font-size: var(--typography_fluid-lexend-s);
-      .Flex {
-        display: flex;
+      .NetworkPrompt {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.35ch;
+      }
+      .NetworkPromptText {
+        white-space: nowrap;
       }
       p {
         margin: 0;

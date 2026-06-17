@@ -1,8 +1,8 @@
 ---
-id: T361
+id: T376
 title: "Promote inner actions by archive canonical status"
 status: done
-blockedBy: [T360]
+blockedBy: [T375]
 owner: codex
 created_at: 2026-06-17T11:16:46Z
 updated_at: 2026-06-17T11:31:00Z

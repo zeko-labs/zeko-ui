@@ -1,8 +1,14 @@
 <script lang="ts" setup>
+import { ZEKO_M_NETWORKS } from "@zeko/networks"
+import { formatBridgeNetworkLabel } from "~~/machines/networks"
+
 const bs = useBridgeStore()
 const bridgeSettings = useBridgeSettings()
 
 const amountToBridge = ref<number | undefined>(undefined)
+const ledgerUnsupportedNetworkLabel = formatBridgeNetworkLabel(
+	ZEKO_M_NETWORKS.mainnet
+)
 
 const startBridge = () => {
 	const amount = (amountToBridge.value ?? 0).toString()
@@ -49,7 +55,8 @@ const disabledButton = computed(
         </template>
         <template v-else>
           Bridging requires signing two transactions: 1) Send from the origin
-          chain, then 2) Claim to the destination chain.
+          chain, then 2) Claim to the destination chain. Note: Ledger hardware
+          wallets are not yet supported by {{ ledgerUnsupportedNetworkLabel }}.
         </template>
       </aside>
     </div>

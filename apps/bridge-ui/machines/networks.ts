@@ -5,6 +5,7 @@ export type {
 export {
 	BRIDGE_UI_NETWORKS as supportedNetworks,
 	bridgeNetworkToWalletNetwork,
+	formatUserFacingNetworkLabel as formatBridgeNetworkLabel,
 	isMainnetBridgeNetwork,
 	isMinaBridgeNetwork,
 	isZekoBridgeNetwork,

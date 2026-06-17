@@ -1,5 +1,5 @@
 ---
-id: T351
+id: T366
 title: "Actions API finality-aware queries"
 status: done
 blockedBy: []
@@ -29,6 +29,6 @@ updated_at: 2026-06-17T07:16:00Z
 
 ## GREEN Evidence
 
-- `moon run actions-api:typecheck graphql:typecheck bridge-sdk:typecheck -f` passed in the T351 task worktree.
+- `moon run actions-api:typecheck graphql:typecheck bridge-sdk:typecheck -f` passed in the T366 task worktree.
 - Pre-commit Lefthook passed for commit `7ac8a716` with `MOON_NO_ACTIONS=true`: `:lint-fix`, `:format-all-fix`, and `bridge-ui:typecheck` all ran. The hook reported existing lint warnings in unrelated files but no blocking errors.
 - `moon run actions-api:manual-db-test -f` was retried after implementation and remains blocked by Docker/OrbStack not running.

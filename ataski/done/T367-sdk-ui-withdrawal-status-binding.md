@@ -1,8 +1,8 @@
 ---
-id: T352
+id: T367
 title: "SDK UI withdrawal status binding"
 status: done
-blockedBy: [T351]
+blockedBy: [T366]
 owner: codex
 created_at: 2026-06-17T05:40:00Z
 updated_at: 2026-06-17T07:35:00Z

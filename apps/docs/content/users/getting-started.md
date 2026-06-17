@@ -24,12 +24,12 @@ If you are using a different wallet that supports custom networks, you can add t
 - **Testnet URL**: `https://testnet.zeko.io`
 
 :::warning
-Zeko-M mainnet is not yet available. Stay tuned for updates on the mainnet launch.
+<NetworkLabel network="zeko-m:mainnet" /> is not yet available. Stay tuned for updates on the mainnet launch.
 :::
 
 ## Obtaining MINA Tokens
 
 To perform transactions and interact with dApps on Zeko, you will need tMINA tokens.
 
-- **Testnet**: For testing purposes on the Zeko-M testnet, you can obtain tMina tokens from the [Zeko Faucet](https://zeko.io/faucet).
+- **Testnet**: For testing purposes on <NetworkLabel network="zeko-m:testnet" />, you can obtain tMina tokens from the [Zeko Faucet](https://zeko.io/faucet).
 - **Mainnet**: Obtain Mina from a cryptocurrency exchange that supports MINA, or from other users.

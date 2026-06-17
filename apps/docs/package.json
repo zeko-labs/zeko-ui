@@ -2,6 +2,9 @@
 	"name": "@zeko/docs",
 	"private": true,
 	"type": "module",
+	"dependencies": {
+		"@zeko/networks": "workspace:*"
+	},
 	"devDependencies": {
 		"vitepress": "^1.6.3",
 		"vitepress-plugin-d2": "^1.0.4",

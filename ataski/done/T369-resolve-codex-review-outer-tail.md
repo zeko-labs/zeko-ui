@@ -1,5 +1,5 @@
 ---
-id: T354
+id: T369
 title: "Resolve Codex review outer tail"
 status: done
 blockedBy: []
@@ -16,7 +16,7 @@ updated_at: 2026-06-17T07:00:00Z
   - `queryOuterActions` must still be able to return the range from a final anchor through a pending tail.
   - `queryCommitAsePastSlot` must select a final commit anchor, but its returned `ase` must include subsequent outer actions even when they are not final yet.
 - Regenerate or update the checked-in gql.tada bridge indexer introspection so the newly exposed `finalityStatus` and `markedAsCanonicalAt` fields are type-visible to `@zeko-labs/graphql` consumers.
-- Preserve the withdrawal false-completed regression fixes from T351-T353.
+- Preserve the withdrawal false-completed regression fixes from T366-T368.
 
 ## Test Plan
 

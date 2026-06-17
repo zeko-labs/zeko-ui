@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
+	AURO_NETWORK_LABELS,
+	AURO_NETWORKS,
 	AURO_ZEKO_NETWORKS,
 	BRIDGE_CLI_ROUTES,
 	BRIDGE_SDK_CONFIG_BY_ZEKO_M_NETWORK,
@@ -8,12 +10,14 @@ import {
 	createExplorerUrl,
 	ETHEREUM_NETWORKS,
 	formatBridgeRoute,
+	formatUserFacingNetworkLabel,
 	isMainnetBridgeNetwork,
 	isMinaBridgeNetwork,
 	isZekoBridgeCliNetwork,
 	isZekoBridgeNetwork,
 	NETWORK_LABELS,
 	normalizeLegacyNetworkId,
+	USER_FACING_NETWORK_LABELS,
 	walletNetworkToBridgeNetwork,
 	ZEKO_E_NETWORKS,
 	ZEKO_M_NETWORKS,
@@ -46,6 +50,29 @@ describe("network nomenclature", () => {
 	it("keeps finite labels in a dictionary", () => {
 		expect(NETWORK_LABELS[ZEKO_M_NETWORKS.testnet]).toBe("Zeko-M Testnet")
 		expect(NETWORK_LABELS["zeko:testnet"]).toBe("Zeko-M Testnet")
+	})
+
+	it("has a single user-facing display helper for Zeko network names", () => {
+		expect(formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.mainnet)).toBe(
+			USER_FACING_NETWORK_LABELS[ZEKO_M_NETWORKS.mainnet]
+		)
+		expect(formatUserFacingNetworkLabel(AURO_ZEKO_NETWORKS.mainnet)).toBe(
+			USER_FACING_NETWORK_LABELS[AURO_ZEKO_NETWORKS.mainnet]
+		)
+		expect(formatUserFacingNetworkLabel(ZEKO_M_NETWORKS.testnet)).toBe(
+			USER_FACING_NETWORK_LABELS[ZEKO_M_NETWORKS.testnet]
+		)
+		expect(NETWORK_LABELS[ZEKO_M_NETWORKS.mainnet]).toBe("Zeko-M Mainnet")
+	})
+
+	it("owns Auro wallet user-facing labels", () => {
+		expect(AURO_NETWORKS.zekoMainnet).toBe(AURO_ZEKO_NETWORKS.mainnet)
+		expect(AURO_NETWORK_LABELS[AURO_NETWORKS.zekoMainnet]).toBe(
+			formatUserFacingNetworkLabel(AURO_NETWORKS.zekoMainnet)
+		)
+		expect(AURO_NETWORK_LABELS[AURO_NETWORKS.zekoTestnet]).toBe(
+			formatUserFacingNetworkLabel(AURO_NETWORKS.zekoTestnet)
+		)
 	})
 
 	it("normalizes legacy Zeko network IDs at compatibility boundaries", () => {
