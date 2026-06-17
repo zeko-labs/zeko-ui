@@ -362,3 +362,4 @@
 - T376 | done | promote-inner-actions-by-archive-canonical-status | done/T376-promote-inner-actions-by-archive-canonical-status.md
 - T377 | done | resolve-dashboard-finality-review | done/T377-resolve-dashboard-finality-review.md
 - T378 | done | surface-deposit-finality-risk | done/T378-surface-deposit-finality-risk.md
+- T379 | done | render-actions-api-warning | done/T379-render-actions-api-warning.md

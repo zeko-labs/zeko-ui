@@ -116,6 +116,7 @@ const serviceById = computed(
 	() => new Map(services.value.map((service) => [service.id, service]))
 )
 const indexerService = computed(() => serviceById.value.get("actions-indexer"))
+const actionsApiService = computed(() => serviceById.value.get("actions-api"))
 const chainRows = computed<ChainRow[]>(() => {
 	const indexer = indexerService.value
 	const l1Archive = serviceById.value.get("l1-archive")
@@ -667,6 +668,53 @@ watch(
 
         <p v-if="indexerService.error" class="ServiceError">
           {{ indexerService.error }}
+        </p>
+      </article>
+
+      <article
+        v-if="actionsApiService"
+        class="ServiceCard IndexerCard"
+        :data-state="actionsApiService.status">
+        <header class="ServiceHeader">
+          <component :is="serviceIcon(actionsApiService)" :size="19" />
+          <div>
+            <h2>{{ actionsApiService.label }}</h2>
+            <p>{{ actionsApiService.endpoint }}</p>
+          </div>
+          <span class="StateBadge" :data-state="actionsApiService.status">{{
+            actionsApiService.status
+          }}</span>
+        </header>
+
+        <dl class="DetailGrid Compact">
+          <div>
+            <dt>HTTP</dt>
+            <dd>{{ actionsApiService.httpStatus ?? "-" }}</dd>
+          </div>
+          <div>
+            <dt>Latency</dt>
+            <dd>
+              {{
+                actionsApiService.latencyMs === null
+                ? "-"
+                : `${actionsApiService.latencyMs} ms`
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt>Checked</dt>
+            <dd>{{ formatDate(actionsApiService.checkedAt) }}</dd>
+          </div>
+          <div
+            v-for="entry in detailEntries(actionsApiService)"
+            :key="entry.key">
+            <dt>{{ entry.label }}</dt>
+            <dd>{{ formatValue(entry.value) }}</dd>
+          </div>
+        </dl>
+
+        <p v-if="actionsApiService.error" class="ServiceError">
+          {{ actionsApiService.error }}
         </p>
       </article>
     </section>

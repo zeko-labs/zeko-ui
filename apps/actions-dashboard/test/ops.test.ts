@@ -494,6 +494,93 @@ describe("actions dashboard utilities", () => {
 		}
 	})
 
+	it("includes actions API compatibility warnings in the dashboard snapshot", async () => {
+		const originalFetch = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input)
+			const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string }
+
+			if (url.endsWith("/health")) {
+				return Response.json({
+					status: "healthy",
+					service: { environment: "testnet" },
+					database: { status: "up" },
+					indexer: {
+						status: "running",
+						lastFetchedBlock: { outer: 10, inner: 20 },
+						consecutiveErrors: 0,
+						canonicalProgress: {}
+					}
+				})
+			}
+
+			if (url.endsWith("/status")) return Response.json({ isRunning: true })
+
+			if (body.query?.includes("OpsActionsApiSchema")) {
+				return Response.json({
+					data: {
+						outerAction: { fields: [{ name: "index" }] },
+						innerAction: { fields: [{ name: "index" }] }
+					}
+				})
+			}
+
+			if (body.query?.includes("OpsActionCoverage")) {
+				return Response.json({ data: { actions: [] } })
+			}
+
+			if (body.query?.includes("OpsArchiveState")) {
+				return Response.json({
+					data: {
+						networkState: {
+							maxBlockHeight: {
+								canonicalMaxBlockHeight: 20,
+								pendingMaxBlockHeight: 20
+							}
+						}
+					}
+				})
+			}
+
+			return Response.json({
+				data: {
+					syncStatus: "SYNCED",
+					daemonStatus: { syncStatus: "SYNCED" },
+					bestChain: [
+						{
+							stateHash: "state",
+							protocolState: {
+								consensusState: {
+									blockHeight: 20,
+									slotSinceGenesis: 30
+								}
+							}
+						}
+					]
+				}
+			})
+		}) as typeof fetch
+
+		try {
+			await expect(
+				createOpsSnapshot("testnet", {
+					TESTNET_ACTIONS_INDEXER_TOKEN: "testnet-token"
+				})
+			).resolves.toMatchObject({
+				summary: { warn: 1 },
+				services: expect.arrayContaining([
+					expect.objectContaining({
+						id: "actions-api",
+						status: "warn",
+						error: "Actions API schema is missing finality metadata"
+					})
+				])
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+	})
+
 	it("downgrades an L1 daemon when the best-chain head probe fails", async () => {
 		const originalFetch = globalThis.fetch
 		globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
