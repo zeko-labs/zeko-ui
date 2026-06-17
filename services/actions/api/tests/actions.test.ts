@@ -189,6 +189,14 @@ describe("Actions API - schema queries", () => {
 			expect(result[2].markedAsCanonicalAt).toBeNull()
 		})
 
+		it("returns a pending tail when starting from a final anchor", async () => {
+			const result = await queryOuterActions(testDb, { beforeState: "a3" })
+
+			expect(result.map((action) => action.afterState)).toEqual(["a4-pending"])
+			expect(result[0].kind).toBe("WITNESS")
+			expect(result[0].markedAsCanonicalAt).toBeNull()
+		})
+
 		it("handles the special genesis before-state indicator", async () => {
 			const result = await queryOuterActions(testDb, { beforeState: GENESIS_BEFORE_STATE })
 			expect(result[0].afterState).toBe("a1")

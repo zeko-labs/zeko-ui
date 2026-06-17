@@ -74,12 +74,9 @@ export async function queryOuterActions(
 		.select({ index: outerActions.index })
 		.from(outerActions)
 		.where(
-			and(
-				options.beforeState === GENESIS_BEFORE_STATE
-					? isNull(outerActions.beforeState)
-					: eq(outerActions.beforeState, options.beforeState),
-				not(isNull(outerActions.markedAsCanonicalAt))
-			)
+			options.beforeState === GENESIS_BEFORE_STATE
+				? isNull(outerActions.beforeState)
+				: eq(outerActions.beforeState, options.beforeState)
 		)
 		.limit(1)
 
