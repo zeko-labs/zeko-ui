@@ -87,12 +87,16 @@ const buildWitnessForWithdrawalAction = (withdrawal: Action & Withdrawal): Inner
 	aux: withdrawalAux(withdrawal)
 })
 
-const buildWithdrawalAction = (withdrawal: Withdrawal, index: number): Action & Withdrawal => ({
+const buildWithdrawalAction = (
+	withdrawal: Withdrawal,
+	index: number,
+	hash = `withdrawal-action-${index}`
+): Action & Withdrawal => ({
 	...withdrawal,
 	action: [Field(index + 1), Field(index + 101)],
 	afterActionState: Field(index + 201),
 	beforeActionState: Field(index + 200),
-	hash: `withdrawal-action-${index}`,
+	hash,
 	index,
 	timestamp: `${1700000000000 + index}`
 })
@@ -367,6 +371,81 @@ describe("withdrawal finalization state", () => {
 			reason: "No my withdrawal index found",
 			status: "waiting"
 		})
+	})
+
+	it("keeps finalization available for the first withdrawal when two withdrawals share a transaction hash", async () => {
+		const bridge = buildBridge()
+		const firstWithdrawal = buildWithdrawal({ amount: 2_000_000_000 })
+		const secondWithdrawal = buildWithdrawal({ amount: 3_000_000_000 })
+		const firstAction = buildWithdrawalAction(firstWithdrawal, 0, "shared-withdrawal-tx")
+		const secondAction = buildWithdrawalAction(secondWithdrawal, 1, "shared-withdrawal-tx")
+		const firstWitness = buildWitnessForWithdrawalAction(firstAction)
+		const bridgeInternals = bridge as unknown as {
+			fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
+			fetchCurrentSlot: () => Promise<UInt32>
+			fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
+		}
+
+		vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue({
+			zkappState: ["0", "0"]
+		})
+		vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
+		vi.spyOn(bridgeInternals, "fetchUserWithdrawalActions").mockResolvedValue([
+			firstAction,
+			secondAction
+		])
+		vi.spyOn(utils, "fetchInnerWitnessesFromAuxes").mockResolvedValue([firstWitness])
+		vi.spyOn(utils, "fetchInnerActionsFromIndexer").mockResolvedValue([firstWitness])
+		vi.spyOn(utils, "fetchCommitAsePastSlot").mockResolvedValue({
+			commit: buildCommit({ innerActionStateLength: 1 }),
+			ase: []
+		})
+
+		await expect(bridge.canFinalizeWithdrawal(recipient)).resolves.toMatchObject({
+			available: true,
+			status: "available",
+			index: 0
+		})
+	})
+
+	it("keeps both withdrawal states when two witnessed withdrawals share a transaction hash", async () => {
+		const bridge = buildBridge()
+		const firstWithdrawal = buildWithdrawal({ amount: 2_000_000_000 })
+		const secondWithdrawal = buildWithdrawal({ amount: 3_000_000_000 })
+		const firstAction = buildWithdrawalAction(firstWithdrawal, 0, "shared-withdrawal-tx")
+		const secondAction = buildWithdrawalAction(secondWithdrawal, 1, "shared-withdrawal-tx")
+		const firstWitness = buildWitnessForWithdrawalAction(firstAction)
+		const secondWitness = buildWitnessForWithdrawalAction(secondAction)
+		const bridgeInternals = bridge as unknown as {
+			fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
+			fetchCurrentSlot: () => Promise<UInt32>
+			fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
+		}
+
+		vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue({
+			zkappState: ["0", "0"]
+		})
+		vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
+		vi.spyOn(bridgeInternals, "fetchUserWithdrawalActions").mockResolvedValue([
+			firstAction,
+			secondAction
+		])
+		vi.spyOn(utils, "fetchInnerWitnessesFromAuxes").mockResolvedValue([firstWitness, secondWitness])
+		vi.spyOn(utils, "fetchCommitAsePastSlot").mockResolvedValue({
+			commit: buildCommit({ innerActionStateLength: 2 }),
+			ase: []
+		})
+
+		const result = await bridge.fetchWithdrawalsWithStates(recipient)
+
+		expect(result.withdrawals).toHaveLength(2)
+		expect(result.withdrawals.map((withdrawal) => withdrawal.amount.toString())).toEqual([
+			"2000000000",
+			"3000000000"
+		])
+		expect(
+			result.withdrawals.every((withdrawal) => withdrawal.hash === "shared-withdrawal-tx")
+		).toBe(true)
 	})
 
 	it("marks witnessed withdrawals finalised when helper state has consumed their index", async () => {

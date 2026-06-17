@@ -58,6 +58,8 @@ const SKIPPED_LEGACY_WITHDRAWAL_ACTION_INDEX = 3
 const isSkippedLegacyWithdrawalAction = (runtime: BridgeRuntime, actionIndex: number): boolean =>
 	runtime.config.l2Network === "testnet" && actionIndex === SKIPPED_LEGACY_WITHDRAWAL_ACTION_INDEX
 
+const withdrawalActionIdentity = (hash: string, aux: Field): string => `${hash}:${aux.toString()}`
+
 const isUnknownLiveActionCursorError = (error: unknown): boolean => {
 	const message =
 		error && typeof error === "object" && "message" in error ? String(error.message) : String(error)
@@ -326,13 +328,14 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		return { ok: false, msg: "No withdrawal witnesses found" }
 	}
 
-	const withdrawalByHash = new Map(
-		withdrawals.map((withdrawal) => [withdrawal.action.hash, withdrawal])
+	const withdrawalByActionIdentity = new Map(
+		withdrawals.map((withdrawal) => [
+			withdrawalActionIdentity(withdrawal.action.hash, withdrawal.aux),
+			withdrawal
+		])
 	)
 	const findMatchingWithdrawal = (action: InnerWitness) => {
-		const withdrawal = withdrawalByHash.get(action.hash)
-		if (!withdrawal || !withdrawal.aux.equals(action.aux).toBoolean()) return undefined
-		return withdrawal
+		return withdrawalByActionIdentity.get(withdrawalActionIdentity(action.hash, action.aux))
 	}
 
 	const matchingWitnesses = withdrawalWitnesses.filter((witness) =>
@@ -782,11 +785,16 @@ export async function fetchWithdrawalsWithStates(
 			? false
 			: lastCommit.innerActionStateLength.greaterThan(UInt32.from(index)).toBoolean())
 
-	const withdrawalByHash = new Map(withdrawals.map((withdrawal) => [withdrawal.hash, withdrawal]))
+	const withdrawalByActionIdentity = new Map(
+		withdrawals.map((withdrawal) => [
+			withdrawalActionIdentity(withdrawal.hash, withdrawalAux(withdrawal)),
+			withdrawal
+		])
+	)
 	const findWithdrawalForWitness = (witness: InnerWitness) => {
-		const withdrawal = withdrawalByHash.get(witness.hash)
-		if (!withdrawal || !withdrawalAux(withdrawal).equals(witness.aux).toBoolean()) return null
-		return withdrawal
+		return (
+			withdrawalByActionIdentity.get(withdrawalActionIdentity(witness.hash, witness.aux)) ?? null
+		)
 	}
 	const witnessedWithdrawalStatuses = filterNulls(
 		withdrawalWitnesses.map((witness) => {
@@ -805,11 +813,18 @@ export async function fetchWithdrawalsWithStates(
 			}
 		})
 	)
-	const witnessedActionStates = new Set(
-		witnessedWithdrawalStatuses.map((withdrawal) => withdrawal.hash)
+	const witnessedWithdrawalIdentities = new Set(
+		witnessedWithdrawalStatuses.map((withdrawal) =>
+			withdrawalActionIdentity(withdrawal.hash, withdrawal.aux)
+		)
 	)
 	const provisionalWithdrawals = withdrawals
-		.filter((withdrawal) => !witnessedActionStates.has(withdrawal.hash))
+		.filter(
+			(withdrawal) =>
+				!witnessedWithdrawalIdentities.has(
+					withdrawalActionIdentity(withdrawal.hash, withdrawalAux(withdrawal))
+				)
+		)
 		.map((withdrawal) => ({
 			...withdrawal,
 			timestamp: normalizeTimestamp(withdrawal.timestamp),
