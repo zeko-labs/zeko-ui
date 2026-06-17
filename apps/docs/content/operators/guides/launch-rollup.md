@@ -66,8 +66,8 @@ project-root/
 | `keys_data`       | `sequencer-pk`                       | L1 Public key used in deploy step              |
 | `keys_data`       | `faucet-sk`                          | Secret key used to distribute tokens inside L2 |
 | `keys_data`       | `faucet-pk`                          | Public key                                     |
-| `keys_data`       | `da-node-sk`                         | Private key of the DA node                     |
-| `keys_data`       | `da-node-pk`                         | Public key of the DA node (used by sequencer)  |
+| `keys_data`       | `da-layer-sk`                        | Private key of the DA node                     |
+| `keys_data`       | `da-layer-pk`                        | Public key of the DA node (used by sequencer)  |
 | `keys_data`       | `da-signer/signer-auth-token`        | Auth token shared by DA layer and signer       |
 | `keys_data`       | `da-signer/signer-tls.crt`           | TLS certificate for DA layer signer            |
 | `keys_data`       | `da-signer/signer-tls.key`           | TLS private key for DA layer signer            |
