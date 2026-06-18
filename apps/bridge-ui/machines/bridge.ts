@@ -1,13 +1,13 @@
-import * as Sentry from "@sentry/nuxt"
 import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
 import { detectWalletChange, type WalletEmit, type walletMachine } from "@zeko/sdk"
-import * as Comlink from "comlink"
 import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
 import { bridgeOperationMachine } from "./bridgeOperation"
 import { createLogger } from "./debug"
-import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
+import type { BridgeDebugMode } from "./debugMode"
+import type { ActionState, PendingOperations } from "./operations.worker"
 import type { BridgeNetwork } from "./networks"
+import { createOperationsWorkerClient, type OperationWorker } from "./operationWorkerClient"
 import {
 	isMinaBridgeNetwork,
 	isZekoBridgeNetwork,
@@ -20,14 +20,8 @@ import {
 	classifyRecoveredOperations,
 	matchRecoveryOperationIds
 } from "./recovery"
-import workerUrl from "./operations.worker?worker&url"
 
 export { supportedNetworks } from "./networks"
-
-const worker = new Worker(new URL(workerUrl, import.meta.url), { type: "module" })
-if (import.meta.client) {
-	Sentry.addIntegration(Sentry.webWorkerIntegration({ worker }))
-}
 
 const { act, logger } = createLogger("[BRIDGE]", { metrics: true })
 
@@ -42,7 +36,6 @@ type Operations = Map<
 	}
 >
 type Wallet = ActorRefFromLogic<typeof walletMachine>
-type OperationWorker = Comlink.Remote<OperationsWorker>
 const REFRESH_INTERVAL = 20_000
 
 type Command = "start" | "resumeDeposit" | "resumeWithdrawal" | "complete" | "completeCancelled"
@@ -92,6 +85,11 @@ export interface BridgeContext {
 	nextOperationOrder: number
 	currentSlot?: string
 	worker: OperationWorker
+}
+
+type BridgeMachineInput = {
+	wallet: Wallet
+	debugMode?: BridgeDebugMode
 }
 
 const directionPriority = (operation: ActorRefFromLogic<typeof bridgeOperationMachine>) =>
@@ -272,7 +270,7 @@ const bridgeDirections = {
 export const bridgeMachine = setup({
 	types: {
 		context: {} as BridgeContext,
-		input: {} as { wallet: Wallet },
+		input: {} as BridgeMachineInput,
 		events: {} as BridgeEvents | WalletEmit
 	},
 	guards: {
@@ -433,12 +431,16 @@ export const bridgeMachine = setup({
 }).createMachine({
 	id: "bridge",
 	initial: "IDLE",
-	context: ({ input: { wallet } }) => {
+	context: ({ input }) => {
+		const { wallet } = input
+		const workerClient = createOperationsWorkerClient({
+			debugMode: input.debugMode
+		})
 		const sourceNetwork = walletNetworkToBridgeNetwork(wallet.getSnapshot().context.currentNetwork)
 		const destinationNetwork = bridgeDirections[sourceNetwork]
 		return {
 			wallet,
-			worker: Comlink.wrap<OperationsWorker>(worker),
+			worker: workerClient.worker,
 			operations: new Map(),
 			sourceNetwork,
 			destinationNetwork,

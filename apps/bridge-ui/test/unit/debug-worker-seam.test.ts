@@ -1,0 +1,71 @@
+import { describe, expect, it, vi } from "vitest"
+import type { OperationsWorker } from "../../machines/operations.worker"
+import { BRIDGE_DEBUG_MODE_STORAGE_KEY, getBridgeDebugMode } from "../../machines/debugMode"
+import { createOperationsWorkerClient } from "../../machines/operationWorkerClient"
+
+const createStorage = (value: string | null): Pick<Storage, "getItem"> => ({
+	getItem: vi.fn((key: string) => (key === BRIDGE_DEBUG_MODE_STORAGE_KEY ? value : null))
+})
+
+describe("bridge debug worker seam", () => {
+	it("prefers the local debug-mode override over runtime config", () => {
+		expect(
+			getBridgeDebugMode({
+				runtimeMode: "off",
+				storage: createStorage("mock-backend")
+			})
+		).toBe("mock-backend")
+	})
+
+	it("falls back to runtime debug mode when no local override is set", () => {
+		expect(
+			getBridgeDebugMode({
+				runtimeMode: "mock-backend",
+				storage: createStorage(null)
+			})
+		).toBe("mock-backend")
+	})
+
+	it("uses the mock worker factory without constructing the real worker in mock-backend mode", () => {
+		const mockWorker = {} as OperationsWorker
+		const realWorker = {} as Worker
+		const remoteWorker = {} as OperationsWorker
+		const createMockWorker = vi.fn(() => mockWorker)
+		const createRealWorker = vi.fn(() => realWorker)
+		const wrapWorker = vi.fn(() => remoteWorker)
+
+		const client = createOperationsWorkerClient({
+			debugMode: "mock-backend",
+			createMockWorker,
+			createRealWorker,
+			wrapWorker
+		})
+
+		expect(client.mode).toBe("mock-backend")
+		expect(client.worker).toBe(mockWorker)
+		expect(createMockWorker).toHaveBeenCalledTimes(1)
+		expect(createRealWorker).not.toHaveBeenCalled()
+		expect(wrapWorker).not.toHaveBeenCalled()
+	})
+
+	it("uses the real Comlink worker by default", () => {
+		const realWorker = {} as Worker
+		const remoteWorker = {} as OperationsWorker
+		const createMockWorker = vi.fn(() => ({}) as OperationsWorker)
+		const createRealWorker = vi.fn(() => realWorker)
+		const wrapWorker = vi.fn(() => remoteWorker)
+
+		const client = createOperationsWorkerClient({
+			debugMode: "off",
+			createMockWorker,
+			createRealWorker,
+			wrapWorker
+		})
+
+		expect(client.mode).toBe("off")
+		expect(client.worker).toBe(remoteWorker)
+		expect(createMockWorker).not.toHaveBeenCalled()
+		expect(createRealWorker).toHaveBeenCalledTimes(1)
+		expect(wrapWorker).toHaveBeenCalledWith(realWorker)
+	})
+})

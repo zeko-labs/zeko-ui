@@ -363,3 +363,6 @@
 - T377 | done | resolve-dashboard-finality-review | done/T377-resolve-dashboard-finality-review.md
 - T378 | done | surface-deposit-finality-risk | done/T378-surface-deposit-finality-risk.md
 - T379 | done | render-actions-api-warning | done/T379-render-actions-api-warning.md
+- T380 | done | bridge-ui-debug-worker-seam | done/T380-bridge-ui-debug-worker-seam.md
+- T381 | done | bridge-ui-mock-backend-worker | done/T381-bridge-ui-mock-backend-worker.md
+- T382 | done | bridge-ui-debug-panel | done/T382-bridge-ui-debug-panel.md

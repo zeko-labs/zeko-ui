@@ -18,6 +18,7 @@ const bs = useBridgeStore()
           '
         />
         <Bridge v-else />
+        <BridgeDebugPanel v-if='bs.debugMode === "mock-backend"' />
         <Toast :toaster="errorToaster" />
       </main>
     </div>
