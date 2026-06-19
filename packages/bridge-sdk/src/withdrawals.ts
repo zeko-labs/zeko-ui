@@ -14,9 +14,9 @@ import {
 } from "o1js"
 import { Actions, Events, fromList } from "./actions"
 import {
-	assertFirstWithdrawalAmountCanCreateHelper,
-	ensureFirstWithdrawalAmountCanCreateHelper,
-	InsufficientFirstWithdrawalAmountError
+	assertBridgeTransferAmountCanCoverFees,
+	ensureBridgeTransferAmountCanCoverFees,
+	InsufficientBridgeTransferAmountError
 } from "./errors"
 import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
 import { pollProvingResult } from "./prover"
@@ -138,10 +138,6 @@ export async function fetchUserWithdrawals(
 	}))
 }
 
-function minimumFirstWithdrawalAmount(runtime: BridgeRuntime): UInt64 {
-	return runtime.l1AccountCreationFee.add(runtime.bridgeProofFee)
-}
-
 export async function submitWithdrawal(
 	runtime: BridgeRuntime,
 	feePayer: Mina.FeePayerSpec,
@@ -156,10 +152,13 @@ export async function submitWithdrawal(
 ): Promise<string> {
 	setL2(runtime)
 
-	await ensureFirstWithdrawalAmountCanCreateHelper({
+	await ensureBridgeTransferAmountCanCoverFees({
+		direction: "withdrawal",
 		amount,
 		recipient,
-		accountCreationFee: minimumFirstWithdrawalAmount(runtime),
+		accountCreationFee: runtime.l1AccountCreationFee,
+		bridgeProofFee: runtime.bridgeProofFee,
+		recipientAccountExists: async () => (await fetchAccount(runtime.l1Client, recipient)) !== null,
 		helperAccountExists: async () =>
 			(await fetchAccount(runtime.l1Client, recipient, TokenId.derive(runtime.outerTokenOwner))) !==
 			null
@@ -271,11 +270,14 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		witness: ExtractInput<typeof finalizeWithdrawalMutation>
 	}>
 > {
-	const helperAccount = await (runtime.bridge?.fetchAccount ?? fetchAccount)(
-		runtime.l1Client,
-		pk,
-		TokenId.derive(runtime.outerTokenOwner)
-	)
+	const [recipientAccount, helperAccount] = await Promise.all([
+		(runtime.bridge?.fetchAccount ?? fetchAccount)(runtime.l1Client, pk),
+		(runtime.bridge?.fetchAccount ?? fetchAccount)(
+			runtime.l1Client,
+			pk,
+			TokenId.derive(runtime.outerTokenOwner)
+		)
+	])
 	debug(runtime, "fetchWithdrawalFinalizationWitnesses helperAccount", {
 		pk: pk.toBase58(),
 		hasHelperAccount: helperAccount !== null
@@ -448,14 +450,17 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		if (isSkippedLegacyWithdrawalAction(runtime, action.index)) return false
 
 		try {
-			assertFirstWithdrawalAmountCanCreateHelper({
+			assertBridgeTransferAmountCanCoverFees({
+				direction: "withdrawal",
+				recipientAccountExists: recipientAccount !== null,
 				helperAccountExists: helperAccount !== null,
 				amount: matchingWithdrawal.withdrawal.amount,
 				recipient: matchingWithdrawal.withdrawal.recipient,
-				accountCreationFee: minimumFirstWithdrawalAmount(runtime)
+				accountCreationFee: runtime.l1AccountCreationFee,
+				bridgeProofFee: runtime.bridgeProofFee
 			})
 		} catch (e) {
-			if (e instanceof InsufficientFirstWithdrawalAmountError) {
+			if (e instanceof InsufficientBridgeTransferAmountError) {
 				insufficientFirstWithdrawalReason ??= e.message
 				return false
 			}
@@ -503,14 +508,17 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		amount: withdrawalParams.withdrawal.amount.toString()
 	})
 	try {
-		assertFirstWithdrawalAmountCanCreateHelper({
+		assertBridgeTransferAmountCanCoverFees({
+			direction: "withdrawal",
+			recipientAccountExists: recipientAccount !== null,
 			helperAccountExists: helperAccount !== null,
 			amount: withdrawalParams.withdrawal.amount,
 			recipient: withdrawalParams.withdrawal.recipient,
-			accountCreationFee: minimumFirstWithdrawalAmount(runtime)
+			accountCreationFee: runtime.l1AccountCreationFee,
+			bridgeProofFee: runtime.bridgeProofFee
 		})
 	} catch (e) {
-		if (e instanceof InsufficientFirstWithdrawalAmountError) {
+		if (e instanceof InsufficientBridgeTransferAmountError) {
 			return { ok: false, msg: e.message }
 		}
 		throw e
