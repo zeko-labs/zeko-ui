@@ -5,10 +5,7 @@ import { getBridgeDebugMode } from "~~/machines/debugMode"
 import { useMachine } from "~~/machines/vue-xstate"
 
 export const useBridgeStore = defineStore("bridge", () => {
-	const runtimeConfig = useRuntimeConfig()
-	const debugMode = getBridgeDebugMode({
-		runtimeMode: runtimeConfig.public.bridgeDebugMode
-	})
+	const debugMode = getBridgeDebugMode()
 	const wallet = useMachine(walletMachine)
 
 	/** Wallet */

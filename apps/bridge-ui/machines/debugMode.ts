@@ -3,7 +3,6 @@ export const BRIDGE_DEBUG_MODE_STORAGE_KEY = "bridgeDebugMode"
 export type BridgeDebugMode = "off" | "mock-backend"
 
 type GetBridgeDebugModeOptions = {
-	runtimeMode?: unknown
 	storage?: Pick<Storage, "getItem"> | null
 	hostname?: unknown
 }
@@ -48,10 +47,7 @@ const isProductionBridgeHost = (hostname: unknown) =>
 	typeof hostname === "string" && hostname.trim().toLowerCase() === productionBridgeHost
 
 export const getBridgeDebugMode = ({
-	runtimeMode,
 	storage = safeStorage(),
 	hostname = safeHostname()
 }: GetBridgeDebugModeOptions = {}): BridgeDebugMode =>
-	isProductionBridgeHost(hostname)
-		? "off"
-		: getStoredBridgeDebugMode(storage) ?? normalizeBridgeDebugMode(runtimeMode) ?? "off"
+	isProductionBridgeHost(hostname) ? "off" : getStoredBridgeDebugMode(storage) ?? "off"

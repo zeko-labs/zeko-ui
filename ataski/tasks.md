@@ -379,3 +379,4 @@
 
 - T393 | done | guard-bridge-debug-mode-production-host | done/T393-guard-bridge-debug-mode-production-host.md
 - T394 | done | guard-terminal-recovery-action-index | done/T394-guard-terminal-recovery-action-index.md
+- T395 | done | remove-runtime-debug-mode-fallback | done/T395-remove-runtime-debug-mode-fallback.md

@@ -8,29 +8,26 @@ const createStorage = (value: string | null): Pick<Storage, "getItem"> => ({
 })
 
 describe("bridge debug worker seam", () => {
-	it("prefers the local debug-mode override over runtime config", () => {
+	it("uses the local debug-mode override", () => {
 		expect(
 			getBridgeDebugMode({
-				runtimeMode: "off",
 				storage: createStorage("mock-backend")
 			})
 		).toBe("mock-backend")
 	})
 
-	it("falls back to runtime debug mode when no local override is set", () => {
+	it("ignores runtime debug mode when no local override is set", () => {
 		expect(
 			getBridgeDebugMode({
-				runtimeMode: "mock-backend",
 				storage: createStorage(null)
 			})
-		).toBe("mock-backend")
+		).toBe("off")
 	})
 
 	it("forces debug mode off on the production bridge host", () => {
 		expect(
 			getBridgeDebugMode({
 				hostname: "bridge.zeko.io",
-				runtimeMode: "mock-backend",
 				storage: createStorage("mock-backend")
 			})
 		).toBe("off")
@@ -40,15 +37,13 @@ describe("bridge debug worker seam", () => {
 		expect(
 			getBridgeDebugMode({
 				hostname: "testnet.bridge.zeko.io",
-				runtimeMode: "off",
 				storage: createStorage("mock-backend")
 			})
 		).toBe("mock-backend")
 		expect(
 			getBridgeDebugMode({
 				hostname: "localhost",
-				runtimeMode: "mock-backend",
-				storage: createStorage(null)
+				storage: createStorage("mock-backend")
 			})
 		).toBe("mock-backend")
 	})

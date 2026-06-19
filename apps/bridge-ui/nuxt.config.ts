@@ -94,7 +94,6 @@ export default defineNuxtConfig({
 	},
 	runtimeConfig: {
 		public: {
-			bridgeDebugMode: process.env.NUXT_PUBLIC_BRIDGE_DEBUG_MODE ?? "",
 			release: process.env.SENTRY_RELEASE || "development",
 			environment: process.env.SENTRY_ENVIRONMENT || "development",
 			sentry: {
