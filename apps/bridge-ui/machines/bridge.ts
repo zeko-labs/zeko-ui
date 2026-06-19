@@ -175,11 +175,13 @@ const enqueueRecoveredOperation = ({
 	enqueue,
 	actionState,
 	command,
+	lane,
 	status
 }: {
 	enqueue: RecoveryEnqueue
 	actionState: ActionState
 	command: Command
+	lane?: RecoveryLane
 	status: OperationStatus
 }) => {
 	enqueue({
@@ -187,6 +189,7 @@ const enqueueRecoveredOperation = ({
 		params: {
 			amount: actionState.amount,
 			command,
+			lane,
 			state: {
 				id: actionState.id,
 				status,
@@ -208,6 +211,11 @@ const syncRecoveredOperations = ({
 	recovered: RecoveredOperations
 }) => {
 	const operations = new Map(context.operations)
+	const pendingRecoveredOperationById = new Map(
+		[...recovered.mainPending, ...recovered.cancellableDeposits].map(
+			(pendingOperation) => [pendingOperation.actionState.id, pendingOperation] as const
+		)
+	)
 	const recoveryOperationIds = matchRecoveryOperationIds({
 		actionStates: [...recovered.mainPending, ...recovered.cancellableDeposits].map(
 			({ actionState }) => actionState
@@ -248,6 +256,12 @@ const syncRecoveredOperations = ({
 		})
 	}
 
+	const operationsToStart = syncState.pendingOperations.flatMap(({ id, lane, status }) => {
+		if (recoveryOperationIds.has(id)) return []
+		const pendingOperation = pendingRecoveredOperationById.get(id)
+		return pendingOperation ? [{ ...pendingOperation, lane, status }] : []
+	})
+
 	return {
 		operations,
 		activeOperation: (() => {
@@ -257,7 +271,8 @@ const syncRecoveredOperations = ({
 		activeCancellationOperation: (() => {
 			if (!syncState.activeCancellationOperation) return null
 			return recoveryOperationIds.get(syncState.activeCancellationOperation) ?? null
-		})()
+		})(),
+		operationsToStart
 	}
 }
 
@@ -548,7 +563,7 @@ export const bridgeMachine = setup({
 			}
 		},
 		RefreshOperations: {
-			target: ".FIND_OPERATIONS",
+			target: ".REFRESH_OPERATIONS",
 			guard: "canFindPendingOperations"
 		},
 		SimulatePageRefresh: {
@@ -617,19 +632,29 @@ export const bridgeMachine = setup({
 				}),
 				onDone: {
 					target: "READY",
-					actions: assign(({ context, event }) => {
+					actions: enqueueActions(({ context, event, enqueue }) => {
 						const recovered = classifyRecoveredOperations(event.output)
-						const { operations, activeOperation, activeCancellationOperation } =
+						const { operations, activeOperation, activeCancellationOperation, operationsToStart } =
 							syncRecoveredOperations({
 								context,
 								recovered
 							})
 
-						return {
+						enqueue.assign({
 							operations,
 							activeOperation,
 							activeCancellationOperation,
 							currentSlot: event.output.currentSlot
+						})
+
+						for (const { actionState, command, lane, status } of operationsToStart) {
+							enqueueRecoveredOperation({
+								enqueue,
+								actionState,
+								command,
+								lane,
+								status
+							})
 						}
 					})
 				},

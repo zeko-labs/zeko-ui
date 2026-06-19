@@ -109,8 +109,21 @@ export const buildRecoverySyncState = ({
 	recovered: RecoveredOperations
 	entryStateById: ReadonlyMap<string, { status: RecoverySyncStatus; lane: RecoveryLane }>
 }): RecoverySyncState => {
+	const activeMainPending = recovered.mainPending.find(({ actionState }) => {
+		const entryState = entryStateById.get(actionState.id)
+		return entryState?.lane === "main" && entryState.status === "started"
+	})
+	const mainPending =
+		activeMainPending === undefined
+			? recovered.mainPending
+			: [
+					activeMainPending,
+					...recovered.mainPending.filter(
+						({ actionState }) => actionState.id !== activeMainPending.actionState.id
+					)
+				]
 	const pendingOperations = [
-		...recovered.mainPending.map(({ actionState }, order) => ({
+		...mainPending.map(({ actionState }, order) => ({
 			id: actionState.id,
 			lane: "main" as const,
 			order,
@@ -134,7 +147,7 @@ export const buildRecoverySyncState = ({
 				timeoutSlot: actionState.timeoutSlot
 			}
 		})
-	].filter(({ id }) => entryStateById.has(id))
+	]
 
 	const mainPendingIds = pendingOperations.filter(({ lane }) => lane === "main").map(({ id }) => id)
 	const activeCancellationOperation =
