@@ -372,3 +372,4 @@
 - T386 | done | debug-backend-refresh-stability | done/T386-debug-backend-refresh-stability.md
 - T387 | done | fix-debug-deposit-queue-and-completed-hash | done/T387-fix-debug-deposit-queue-and-completed-hash.md
 - T388 | done | disable-unused-debug-panel-controls | done/T388-disable-unused-debug-panel-controls.md
+- T389 | done | fix-claimed-deposit-queue-resume | done/T389-fix-claimed-deposit-queue-resume.md

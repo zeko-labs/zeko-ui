@@ -257,6 +257,48 @@ describe("classifyRecoveredOperations", () => {
 		expect(result.activeCancellationOperation).toBeNull()
 	})
 
+	it("does not let locally completed operations block the recovered main queue head", () => {
+		const recovered = classifyRecoveredOperations({
+			deposits: [
+				actionState({ id: "deposit-1", index: 1, date: "2026-03-24T00:00:00Z" }),
+				actionState({ id: "deposit-2", index: 2, date: "2026-03-24T00:01:00Z" }),
+				actionState({ id: "deposit-3", index: 3, date: "2026-03-24T00:02:00Z" })
+			],
+			withdrawals: [],
+			currentSlot: "0"
+		})
+
+		const result = buildRecoverySyncState({
+			recovered,
+			entryStateById: new Map([
+				["deposit-1", { status: "completed", lane: "main" }],
+				["deposit-2", { status: "paused", lane: "main" }],
+				["deposit-3", { status: "paused", lane: "main" }]
+			])
+		})
+
+		expect(result.pendingOperations).toEqual([
+			{
+				id: "deposit-2",
+				lane: "main",
+				order: 0,
+				status: "started",
+				cancellable: false,
+				timeoutSlot: undefined
+			},
+			{
+				id: "deposit-3",
+				lane: "main",
+				order: 1,
+				status: "paused",
+				cancellable: false,
+				timeoutSlot: undefined
+			}
+		])
+		expect(result.activeOperation).toBe("deposit-2")
+		expect(result.activeCancellationOperation).toBeNull()
+	})
+
 	it("keeps an already-started cancellation-lane operation active during refresh", () => {
 		const recovered = classifyRecoveredOperations({
 			deposits: [
