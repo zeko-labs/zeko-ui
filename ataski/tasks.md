@@ -374,3 +374,4 @@
 - T396 | done | resolve-codex-review-wallet-status | done/T396-resolve-codex-review-wallet-status.md
 - T397 | done | fail-explicit-wallet-secret-overrides | done/T397-fail-explicit-wallet-secret-overrides.md
 - T398 | done | fail-shell-wallet-secret-overrides | done/T398-fail-shell-wallet-secret-overrides.md
+- T399 | done | resolve-wallet-env-overrides-from-repo-root | done/T399-resolve-wallet-env-overrides-from-repo-root.md

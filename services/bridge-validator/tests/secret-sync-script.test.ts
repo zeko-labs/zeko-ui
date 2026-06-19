@@ -24,9 +24,22 @@ const createSecretSyncHarness = async (envLines: string[]) => {
 	const root = await mkdtemp(join(tmpdir(), "bridge-validator-secret-sync-"))
 	const fakeBin = join(root, "bin")
 	const envFile = join(root, ".env")
+	const secretLogFile = join(root, "secrets.log")
 	const wranglerConfig = join(root, "wrangler.jsonc")
 	await mkdir(fakeBin)
-	await writeFile(join(fakeBin, "pnpm"), "#!/usr/bin/env sh\ncat >/dev/null\nexit 0\n", "utf8")
+	await writeFile(
+		join(fakeBin, "pnpm"),
+		[
+			"#!/usr/bin/env sh",
+			"value=$(cat)",
+			'if [ -n "$SECRET_SYNC_LOG" ]; then',
+			'  printf "%s=%s\\n" "$5" "$value" >> "$SECRET_SYNC_LOG"',
+			"fi",
+			"exit 0",
+			""
+		].join("\n"),
+		"utf8"
+	)
 	await chmod(join(fakeBin, "pnpm"), 0o755)
 	await writeFile(envFile, envLines.join("\n"), "utf8")
 	await writeFile(wranglerConfig, "{}", "utf8")
@@ -36,6 +49,7 @@ const createSecretSyncHarness = async (envLines: string[]) => {
 		envFile,
 		wranglerConfig,
 		fakeBin,
+		secretLogFile,
 		missingWalletFile: join(root, ".env.wallet.missing")
 	}
 }
@@ -119,6 +133,47 @@ describe("bridge-validator secret sync script", () => {
 			).rejects.toMatchObject({
 				stderr: expect.stringContaining("Explicit wallet env file does not exist")
 			})
+		} finally {
+			await rm(harness.root, { recursive: true, force: true })
+		}
+	})
+
+	it("resolves dotenv wallet env overrides relative to the dotenv file", async () => {
+		const harness = await createSecretSyncHarness([
+			"BRIDGE_VALIDATOR_WALLET_ENV_FILE=.env.wallet.validator",
+			"BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY=legacy-private-key",
+			"BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY=legacy-public-key",
+			"SLACK_BOT_TOKEN=slack-token",
+			"SLACK_CHANNEL_ID=slack-channel",
+			"VALIDATOR_API_TOKEN=validator-token"
+		])
+		try {
+			await writeFile(
+				join(harness.root, ".env.wallet.validator"),
+				["MINA_PRIVATE_KEY=root-wallet-private-key", "PUBLIC_KEY=root-wallet-public-key"].join(
+					"\n"
+				),
+				"utf8"
+			)
+
+			await execFileAsync(
+				"nu",
+				["scripts/sync-secrets.nu", harness.envFile, harness.wranglerConfig],
+				{
+					cwd: projectDir,
+					env: {
+						...process.env,
+						SECRET_SYNC_LOG: harness.secretLogFile,
+						PATH: `${harness.fakeBin}:${process.env.PATH ?? ""}`
+					}
+				}
+			)
+
+			const syncedSecrets = readFileSync(harness.secretLogFile, "utf8")
+			expect(syncedSecrets).toContain("WALLET_PRIVATE_KEY=root-wallet-private-key")
+			expect(syncedSecrets).toContain("WALLET_PUBLIC_KEY=root-wallet-public-key")
+			expect(syncedSecrets).not.toContain("legacy-private-key")
+			expect(syncedSecrets).not.toContain("legacy-public-key")
 		} finally {
 			await rm(harness.root, { recursive: true, force: true })
 		}
