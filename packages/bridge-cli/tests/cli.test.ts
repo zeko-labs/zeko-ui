@@ -66,6 +66,262 @@ describe("cli skeleton", () => {
 		}
 	})
 
+	it("passes the actions api override to the bridge adapter", async () => {
+		const seenActionsApis: Array<string | undefined> = []
+		const adapter: BridgeAdapter = {
+			async submitDeposit() {
+				return {
+					success: true,
+					direction: "deposit",
+					action: "submit",
+					route: "mina:testnet->zeko-m:testnet",
+					hash: "deposit-submit",
+					explorerUrl: "https://example.test/deposit-submit",
+					included: true
+				}
+			},
+			async getDepositStatuses() {
+				return [
+					{
+						index: 0,
+						amount: "2",
+						recipient: "B62test",
+						cancelled: false,
+						synced: true,
+						accepted: true,
+						confirmed: true,
+						finalised: true,
+						hash: "deposit-submit",
+						timestamp: "2026-03-10T00:00:01.000Z"
+					}
+				]
+			},
+			async getWithdrawalStatuses() {
+				return []
+			},
+			async submitWithdrawal() {
+				throw new Error("submitWithdrawal should not be called")
+			},
+			async finalizeDeposit() {
+				throw new Error("finalizeDeposit should not be called")
+			},
+			async finalizeWithdrawal() {
+				throw new Error("finalizeWithdrawal should not be called")
+			},
+			async cancelDeposit() {
+				throw new Error("cancelDeposit should not be called")
+			}
+		}
+		const command = createBridgeCommand({
+			resolvePaths: () => ({
+				dataDir: "/tmp/data",
+				stateDir: "/tmp/state",
+				logDir: "/tmp/logs",
+				cacheDir: "/tmp/cache"
+			}),
+			createStore: () => ({
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async ({ actionsApi }) => {
+				seenActionsApis.push(actionsApi)
+				return adapter
+			},
+			generateId: () => "bridge-op-actions-api",
+			write: () => {},
+			writeProgress: () => {},
+			sleep: async () => {},
+			pollIntervalMs: 0,
+			now: () => "2026-03-10T00:00:00.000Z"
+		})
+
+		expect(command.args).toHaveProperty("actionsApi")
+
+		await command.run?.({
+			args: {
+				_: [],
+				from: "mina:testnet",
+				to: "zeko-m:testnet",
+				amount: "2",
+				account: "B62test",
+				recipient: "B62test",
+				timeoutSlots: "",
+				"timeout-slots": "",
+				pollIntervalMs: "",
+				"poll-interval-ms": "",
+				retryDelayMs: "",
+				"retry-delay-ms": "",
+				actionsApi: "",
+				"actions-api": "http://127.0.0.1:9100/graphql",
+				json: false,
+				verbose: false
+			},
+			rawArgs: [],
+			cmd: command
+		})
+
+		expect(seenActionsApis).toEqual(["http://127.0.0.1:9100/graphql"])
+	})
+
+	it("logs bridge commit status when verbose bridge command starts", async () => {
+		const progress: string[] = []
+		const adapter: BridgeAdapter = {
+			async getBridgeCommitSnapshot() {
+				return {
+					checkedAt: "2026-06-19T09:27:58.448Z",
+					actionsApi: "http://127.0.0.1:9100/graphql",
+					slotStatus: {
+						currentSlot: 830127,
+						withdrawalDelay: 5,
+						depositCommitPastSlot: 830122
+					},
+					l1: {
+						archiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
+						bridgeContract: "B62outer",
+						networkState: {
+							canonicalMaxBlockHeight: 528847,
+							pendingMaxBlockHeight: 529137
+						},
+						lastCommit: {
+							timestamp: "1781860860000",
+							timestampIso: "2026-06-19T09:21:00.000Z",
+							height: 529137,
+							chainStatus: "pending",
+							distanceFromMaxBlockHeight: 0,
+							transactionHash: "l1-commit-hash",
+							data: [
+								"0",
+								"ledger",
+								"inner-action-state",
+								"10608",
+								"synchronized-outer-action-state",
+								"75957",
+								"830124",
+								"830144"
+							]
+						}
+					},
+					sequencer: {
+						liveUrl: "https://testnet.zeko.io/graphql",
+						archiveUrl: "https://archive.testnet.zeko.io/graphql",
+						sequencerPk: "B62sequencer",
+						bridgeContract: "B62inner",
+						networkState: {
+							canonicalMaxBlockHeight: 1097669,
+							pendingMaxBlockHeight: 1097669
+						},
+						lastCommit: {
+							timestamp: "1781816524563",
+							timestampIso: "2026-06-18T21:02:04.563Z",
+							height: 1097571,
+							chainStatus: "canonical",
+							distanceFromMaxBlockHeight: 98,
+							transactionHash: "sequencer-commit-hash",
+							data: ["0", "inner-action-state", "outer-action-state"]
+						}
+					}
+				}
+			},
+			async submitDeposit() {
+				return {
+					success: true,
+					direction: "deposit",
+					action: "submit",
+					route: "mina:testnet->zeko-m:testnet",
+					hash: "deposit-submit",
+					explorerUrl: "https://example.test/deposit-submit",
+					included: true
+				}
+			},
+			async getDepositStatuses() {
+				return [
+					{
+						index: 0,
+						amount: "2",
+						recipient: "B62test",
+						cancelled: false,
+						synced: true,
+						accepted: true,
+						confirmed: true,
+						finalised: true,
+						hash: "deposit-submit",
+						timestamp: "2026-03-10T00:00:01.000Z"
+					}
+				]
+			},
+			async getWithdrawalStatuses() {
+				return []
+			},
+			async submitWithdrawal() {
+				throw new Error("submitWithdrawal should not be called")
+			},
+			async finalizeDeposit() {
+				throw new Error("finalizeDeposit should not be called")
+			},
+			async finalizeWithdrawal() {
+				throw new Error("finalizeWithdrawal should not be called")
+			},
+			async cancelDeposit() {
+				throw new Error("cancelDeposit should not be called")
+			}
+		}
+		const command = createBridgeCommand({
+			resolvePaths: () => ({
+				dataDir: "/tmp/data",
+				stateDir: "/tmp/state",
+				logDir: "/tmp/logs",
+				cacheDir: "/tmp/cache"
+			}),
+			createStore: () => ({
+				async save() {}
+			}),
+			createLogger: () => ({
+				async write() {}
+			}),
+			createAdapter: async () => adapter,
+			generateId: () => "bridge-op-status-snapshot",
+			write: () => {},
+			writeProgress: (message) => {
+				progress.push(message)
+			},
+			sleep: async () => {},
+			pollIntervalMs: 0,
+			now: () => "2026-03-10T00:00:00.000Z"
+		})
+
+		await command.run?.({
+			args: {
+				_: [],
+				from: "mina:testnet",
+				to: "zeko-m:testnet",
+				amount: "2",
+				account: "B62test",
+				recipient: "B62test",
+				timeoutSlots: "",
+				"timeout-slots": "",
+				pollIntervalMs: "",
+				"poll-interval-ms": "",
+				retryDelayMs: "",
+				"retry-delay-ms": "",
+				actionsApi: "",
+				"actions-api": "http://127.0.0.1:9100/graphql",
+				json: false,
+				verbose: true
+			},
+			rawArgs: [],
+			cmd: command
+		})
+
+		expect(progress.join("\n")).toContain("bridge-status")
+		expect(progress.join("\n")).toContain("sequencerLastCommitTimestamp=2026-06-18T21:02:04.563Z")
+		expect(progress.join("\n")).toContain("l1LastCommitTimestamp=2026-06-19T09:21:00.000Z")
+		expect(progress.join("\n")).toContain("bridgeDepositCommitPastSlot=830122")
+		expect(progress.join("\n")).toContain("l1LastCommitSynchronizedOuterActionStateLength=75957")
+		expect(progress.join("\n")).toContain("l1LastCommitSlotRangeUpper=830144")
+	})
+
 	it("requires an amount on the high-level bridge command", async () => {
 		const command = createBridgeCommand()
 
@@ -81,6 +337,7 @@ describe("cli skeleton", () => {
 					timeoutSlots: "",
 					pollIntervalMs: "",
 					retryDelayMs: "",
+					actionsApi: "",
 					json: false,
 					verbose: false
 				},
@@ -167,6 +424,7 @@ describe("cli skeleton", () => {
 				"poll-interval-ms": "180000",
 				retryDelayMs: "",
 				"retry-delay-ms": "",
+				actionsApi: "",
 				json: false,
 				verbose: false
 			},
@@ -352,6 +610,7 @@ describe("cli skeleton", () => {
 				"poll-interval-ms": "",
 				retryDelayMs: "",
 				"retry-delay-ms": "",
+				actionsApi: "",
 				json: false,
 				verbose: false
 			},
@@ -462,6 +721,7 @@ describe("cli skeleton", () => {
 				"poll-interval-ms": "",
 				retryDelayMs: "",
 				"retry-delay-ms": "",
+				actionsApi: "",
 				json: false,
 				verbose: false
 			},

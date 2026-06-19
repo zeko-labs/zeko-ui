@@ -13,6 +13,7 @@ import type { GqlClient } from "./graphql"
 import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
 import { createBridgeRuntime, type BridgeRuntime } from "./runtime"
 import type { RetryableTransactionOptions, SignTransaction } from "./transactions"
+import { fetchBridgeCommitStatusSnapshot, type BridgeCommitStatusSnapshot } from "./status"
 import type {
 	Account,
 	Action,
@@ -36,6 +37,7 @@ export * from "./actions"
 export * from "./diagnostics"
 export * from "./errors"
 export * from "./graphql/index"
+export * from "./status"
 export * from "./types"
 
 const isBridgeRuntime = (value: unknown): value is BridgeRuntime =>
@@ -140,6 +142,10 @@ export class Bridge {
 
 	public fetchSyncedOuterActionState(): Promise<{ state: Field; length: UInt32 }> {
 		return fetchSyncedOuterActionState(this.runtime)
+	}
+
+	public fetchBridgeCommitStatusSnapshot(): Promise<BridgeCommitStatusSnapshot> {
+		return fetchBridgeCommitStatusSnapshot(this.runtime)
 	}
 
 	private fetchAccount(client: GqlClient, pk: PublicKey, tokenId?: Field): Promise<Account | null> {

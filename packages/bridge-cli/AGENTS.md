@@ -21,7 +21,9 @@ Follow [TESTING.md](./TESTING.md) exactly for live bridge validation.
 Agent-specific rules on top of that procedure:
 
 - Run local source CLI commands from the active PR worktree root, using this worktree's built CLI.
-- Pass `MINA_PRIVATE_KEY` explicitly for one-off wallet selection. Inline/exported environment values take precedence over every dotenv file loaded by the CLI.
+- Select wallets by sourcing one explicit repo-root `.env.wallet.*` file in the shell before invoking the CLI. Do not rely on regular `.env` files for wallet material.
+- Keep wallet files in the monorepo root with `PUBLIC_KEY` and `MINA_PRIVATE_KEY`. Do not add CLI-specific wallet-file loading unless the plain env-file approach stops working.
+- Use a fresh timestamped wallet file for normal live validation. If the latest deployed validator run failed, also run the same local validation path with `.env.wallet.validator`.
 - The CLI rejects an explicit `--account` that does not match the signer public key, so do not add separate preflight checks just to validate that pairing.
 - Do not add the live-validation tasks to CI or any automatic local workflow.
 - Do not copy release/publish workflow detail into the package README. Internal release guidance already lives in `RELEASE.md` and the repo skills.

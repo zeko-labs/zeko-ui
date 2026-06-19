@@ -15,6 +15,7 @@ import { assertSignerMatchesAccount, resolveSignerKeys } from "./signer"
 import { resolveDepositTimeoutSlots } from "./timeouts"
 import type {
 	BridgeCapabilityDiagnostic,
+	BridgeCommitSnapshot,
 	BridgeStatusSources,
 	DepositStatus,
 	TransactionResult,
@@ -23,6 +24,7 @@ import type {
 
 export type BridgeAdapter = {
 	getStatusSources?(): BridgeStatusSources
+	getBridgeCommitSnapshot?(): Promise<BridgeCommitSnapshot>
 	getDepositStatuses(account: string): Promise<DepositStatus[]>
 	getWithdrawalStatuses(account: string): Promise<WithdrawalStatus[]>
 	canFinalizeDeposit?(account?: string): Promise<boolean | BridgeCapabilityDiagnostic>
@@ -64,18 +66,20 @@ type SignedTransactionResult = {
 	}
 }
 
-const routeKey = (route: RouteDescriptor, verbose: boolean) =>
-	`${route.from}->${route.to}:verbose=${verbose ? "1" : "0"}`
+const routeKey = (route: RouteDescriptor, verbose: boolean, actionsApi?: string) =>
+	`${route.from}->${route.to}:verbose=${verbose ? "1" : "0"}:actionsApi=${actionsApi ?? ""}`
 
-const getBridge = (route: RouteDescriptor, verbose: boolean) => {
-	const key = routeKey(route, verbose)
+const getBridge = (route: RouteDescriptor, verbose: boolean, actionsApi?: string) => {
+	const key = routeKey(route, verbose, actionsApi)
 	const cached = bridges.get(key)
 	if (cached) return cached
 
-	const bridge = Bridge.init(createSdkConfig(route, { verbose })).catch((error: unknown) => {
-		bridges.delete(key)
-		throw error
-	})
+	const bridge = Bridge.init(createSdkConfig(route, { verbose, actionsApi })).catch(
+		(error: unknown) => {
+			bridges.delete(key)
+			throw error
+		}
+	)
 	bridges.set(key, bridge)
 	return bridge
 }
@@ -241,14 +245,16 @@ const normalizeTxResult = async ({
 export const createBridgeAdapter = ({
 	route,
 	env = process.env,
-	verbose = false
+	verbose = false,
+	actionsApi
 }: {
 	route: RouteDescriptor
 	env?: Partial<Record<string, string | undefined>>
 	verbose?: boolean
+	actionsApi?: string
 }): BridgeAdapter => {
 	const keys = resolveSignerKeys(env)
-	const config = createSdkConfig(route)
+	const config = createSdkConfig(route, { actionsApi })
 
 	return {
 		getStatusSources() {
@@ -279,8 +285,12 @@ export const createBridgeAdapter = ({
 				]
 			}
 		},
+		async getBridgeCommitSnapshot() {
+			const bridge = await getBridge(route, verbose, actionsApi)
+			return bridge.fetchBridgeCommitStatusSnapshot()
+		},
 		async getDepositStatuses(account) {
-			const bridge = await getBridge(route, verbose)
+			const bridge = await getBridge(route, verbose, actionsApi)
 			const result = await bridge.fetchDepositsWithStates(PublicKey.fromBase58(account))
 			return result.deposits.map(
 				(item): DepositStatus => ({
@@ -299,7 +309,7 @@ export const createBridgeAdapter = ({
 			)
 		},
 		async getWithdrawalStatuses(account) {
-			const bridge = await getBridge(route, verbose)
+			const bridge = await getBridge(route, verbose, actionsApi)
 			const result = await bridge.fetchWithdrawalsWithStates(PublicKey.fromBase58(account))
 			return result.withdrawals.map(
 				(item): WithdrawalStatus => ({
@@ -314,7 +324,7 @@ export const createBridgeAdapter = ({
 			)
 		},
 		async submitDeposit({ account, recipient, amount, timeoutSlots, wait }) {
-			const bridge = await getBridge(route, verbose)
+			const bridge = await getBridge(route, verbose, actionsApi)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
 			const { publicKey: recipientPublicKey } = resolvePublicKey({
 				account: recipient,
@@ -343,17 +353,17 @@ export const createBridgeAdapter = ({
 			return normalizeTxResult({ action: "submit", direction: "deposit", route, result, wait })
 		},
 		async canFinalizeDeposit(account) {
-			const bridge = await getBridge(route, verbose)
+			const bridge = await getBridge(route, verbose, actionsApi)
 			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
 			return bridge.canFinalizeDeposit(publicKey)
 		},
 		async canCancelDeposit(account) {
-			const bridge = await getBridge(route, verbose)
+			const bridge = await getBridge(route, verbose, actionsApi)
 			const { publicKey } = resolvePublicKey({ account, keys, network: route.from })
 			return bridge.canCancelDeposit(publicKey)
 		},
 		async finalizeDeposit({ account, wait }) {
-			const bridge = await getBridge(route, verbose)
+			const bridge = await getBridge(route, verbose, actionsApi)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
 			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
@@ -366,7 +376,7 @@ export const createBridgeAdapter = ({
 			return normalizeTxResult({ action: "finalize", direction: "deposit", route, result, wait })
 		},
 		async cancelDeposit({ account, wait }) {
-			const bridge = await getBridge(route, verbose)
+			const bridge = await getBridge(route, verbose, actionsApi)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
 			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
@@ -381,7 +391,7 @@ export const createBridgeAdapter = ({
 			return normalizeTxResult({ action: "cancel", direction: "deposit", route, result, wait })
 		},
 		async submitWithdrawal({ account, recipient, amount, wait }) {
-			const bridge = await getBridge(route, verbose)
+			const bridge = await getBridge(route, verbose, actionsApi)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
 			const { publicKey: recipientPublicKey } = resolvePublicKey({
 				account: recipient,
@@ -407,12 +417,12 @@ export const createBridgeAdapter = ({
 			return normalizeTxResult({ action: "submit", direction: "withdrawal", route, result, wait })
 		},
 		async canFinalizeWithdrawal(account) {
-			const bridge = await getBridge(route, verbose)
+			const bridge = await getBridge(route, verbose, actionsApi)
 			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
 			return bridge.canFinalizeWithdrawal(publicKey)
 		},
 		async finalizeWithdrawal({ account, wait }) {
-			const bridge = await getBridge(route, verbose)
+			const bridge = await getBridge(route, verbose, actionsApi)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
 			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,

@@ -24,6 +24,16 @@ describe("sdk config", () => {
 		expect(config.verbose).toBe(true)
 	})
 
+	it("can override the actions api endpoint for local validation", () => {
+		const config = createSdkConfig(resolveRoute("mina:testnet", "zeko-m:testnet"), {
+			actionsApi: "http://127.0.0.1:9100/graphql"
+		})
+
+		expect(config.actionsApi).toBe("http://127.0.0.1:9100/graphql")
+		expect(config.l1Url).toBe("https://gateway.mina.devnet.zeko.io")
+		expect(config.zekoUrl).toBe("https://testnet.zeko.io/graphql")
+	})
+
 	it("maps the supported mainnet route to bridge-sdk endpoints", () => {
 		const config = createSdkConfig(resolveRoute("mina:mainnet", "zeko-m:mainnet"))
 

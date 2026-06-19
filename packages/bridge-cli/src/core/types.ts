@@ -53,6 +53,52 @@ export type BridgeStatusSources = {
 	withdrawals?: BridgeStatusSource[]
 }
 
+export type BridgeCommitSnapshot = {
+	checkedAt: string
+	slotStatus: {
+		currentSlot: number | null
+		withdrawalDelay: number
+		depositCommitPastSlot: number | null
+	}
+	l1: {
+		archiveUrl: string
+		bridgeContract: string
+		networkState: {
+			canonicalMaxBlockHeight: number
+			pendingMaxBlockHeight: number
+		} | null
+		lastCommit: {
+			timestamp: string
+			timestampIso: string | null
+			height: number
+			chainStatus: string
+			distanceFromMaxBlockHeight: number | null
+			transactionHash: string | null
+			data: string[]
+		} | null
+	}
+	sequencer: {
+		liveUrl: string
+		archiveUrl: string
+		sequencerPk: string
+		bridgeContract: string
+		networkState: {
+			canonicalMaxBlockHeight: number
+			pendingMaxBlockHeight: number
+		} | null
+		lastCommit: {
+			timestamp: string
+			timestampIso: string | null
+			height: number
+			chainStatus: string
+			distanceFromMaxBlockHeight: number | null
+			transactionHash: string | null
+			data: string[]
+		} | null
+	}
+	actionsApi: string
+}
+
 export type BridgeStatusSourceSnapshot = {
 	sources: BridgeStatusSource[]
 	observedCount: number

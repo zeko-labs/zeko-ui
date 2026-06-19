@@ -48,6 +48,15 @@ export def default-env-file [] {
 	$candidates | first
 }
 
+export def default-wallet-env-file [] {
+	let override = ($env.BRIDGE_VALIDATOR_WALLET_ENV_FILE? | default "" | str trim)
+	if $override != "" {
+		return ($override | path expand)
+	}
+
+	repo-root | path join ".env.wallet.validator"
+}
+
 export def default-wrangler-config [] {
 	repo-root | path join "services/bridge-validator/wrangler.jsonc"
 }

@@ -5,9 +5,15 @@ export type BridgeAdapterFactory = (input: {
 	from: ChainRef
 	to: ChainRef
 	verbose: boolean
+	actionsApi?: string
 }) => Promise<BridgeAdapter> | BridgeAdapter
 
-export const createDefaultBridgeAdapter: BridgeAdapterFactory = async ({ from, to, verbose }) => {
+export const createDefaultBridgeAdapter: BridgeAdapterFactory = async ({
+	from,
+	to,
+	verbose,
+	actionsApi
+}) => {
 	const { createBridgeAdapter } = await import("./adapter")
-	return createBridgeAdapter({ route: resolveRoute(from, to), verbose })
+	return createBridgeAdapter({ route: resolveRoute(from, to), verbose, actionsApi })
 }

@@ -116,6 +116,7 @@ Flags:
 | `--timeout-slots`    | Route default                             | Deposit timeout override for Mina-to-Zeko deposits.                                          |
 | `--poll-interval-ms` | `20000`                                   | Delay between bridge status polls while waiting.                                             |
 | `--retry-delay-ms`   | `5000`                                    | Delay before retrying transient network or bridge service errors.                            |
+| `--actions-api`      | Route default                             | Override the Actions API GraphQL URL for operator or local validation.                       |
 | `--json`             | `false`                                   | Print the final result as JSON on stdout. Progress remains on stderr.                        |
 | `--verbose`          | `false`                                   | Record and print SDK call diagnostics and wait reasons.                                      |
 

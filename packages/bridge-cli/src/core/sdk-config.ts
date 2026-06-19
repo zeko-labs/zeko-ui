@@ -20,7 +20,7 @@ const CONFIG_BY_ROUTE: Partial<Record<RouteDescriptor["route"], Config>> = {
 
 export const createSdkConfig = (
 	route: RouteDescriptor,
-	options: { verbose?: boolean } = {}
+	options: { verbose?: boolean; actionsApi?: string } = {}
 ): Config => {
 	if (!route.enabled) {
 		throw new Error(route.reason ?? `Bridge route ${route.label} is not enabled.`)
@@ -30,6 +30,7 @@ export const createSdkConfig = (
 	if (config !== undefined) {
 		return {
 			...config,
+			...(options.actionsApi ? { actionsApi: options.actionsApi } : {}),
 			verbose: options.verbose === true
 		}
 	}

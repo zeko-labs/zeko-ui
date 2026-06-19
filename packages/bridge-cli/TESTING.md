@@ -6,29 +6,59 @@ Agent-specific workflow rules live in [AGENTS.md](./AGENTS.md).
 
 ## Required Environment
 
-Inline or exported environment variables take priority over every dotenv file. For keys that are not already set in the shell, the CLI loads dotenv files in this order:
+Live validation must use explicit repo-root wallet files. Do not keep bridge wallet keys in regular `.env` files and do not rely on implicit dotenv discovery for wallet selection.
 
-- `~/.zeko/.env`
-- a sibling `.env` next to the CLI binary
-- a sibling `.env` next to the invocation path
+Wallet files:
 
-Set this key in one of those locations or pass it directly for the command:
-
-- `MINA_PRIVATE_KEY`
-
-Example explicit command environment:
+- live under the monorepo root
+- are named `.env.wallet.${name}`
+- contain the same variable names for every wallet:
 
 ```bash
-MINA_PRIVATE_KEY="<wallet private key>" zeko-bridge doctor
+PUBLIC_KEY=...
+MINA_PRIVATE_KEY=...
 ```
+
+Create a fresh timestamped test wallet file for normal live validation:
+
+```bash
+moon run bridge-cli:create-wallet-env -- --name bridge-test
+```
+
+Record the printed wallet file path and `PUBLIC_KEY`. Fund that fresh wallet by moving exactly `3` MINA from `.env.wallet.validator` to the fresh wallet public key on Mina testnet before starting the bridge command. Confirm the fresh wallet balance after funding.
+
+A fresh wallet removes historical queue ambiguity. It does not make bridge operations fast. Budget at least 2 hours for each real-network bridge command; current normal operation time can still be around 1h40 even with a fresh wallet.
+
+Load the wallet file in the same shell before invoking the CLI:
+
+```bash
+set -a
+. ./.env.wallet.bridge-test-YYYYMMDDTHHMMSSZ
+set +a
+
+node ./packages/bridge-cli/dist/cli.js doctor
+```
+
+The CLI already reads `MINA_PRIVATE_KEY`; no wallet-file-specific CLI logic is required. The `PUBLIC_KEY` line is for human/tooling confirmation and funding.
 
 ## Validation Protocol
 
-Bridge validation is not complete until these three tasks have been run in this exact order:
+Before running bridge validation:
+
+1. check the latest deployed validator result and logs
+2. create a fresh timestamped wallet file for the test run
+3. fund that fresh wallet from `.env.wallet.validator` by moving exactly `3` MINA to the fresh wallet public key on Mina testnet
+4. confirm the fresh wallet public key and balance before starting the bridge command
+5. capture surrounding state before the bridge command starts: L1 live status, L1 archive canonical/pending height, L2 archive canonical/pending height, Zeko sequencer public key, latest L1 bridge commit timestamp, latest L2/sequencer bridge commit timestamp, Actions API health, and indexer fetched/final progress when an indexer is involved
+6. if validating a local Actions API/indexer change, pass `--actions-api http://127.0.0.1:9100/graphql` to the high-level `bridge` command instead of editing source endpoint config
+
+Bridge validation is not complete until these tasks have been run in this exact order:
 
 1. one single-command deposit from `mina:testnet` to `zeko-m:testnet`
 2. one single-command withdrawal from `zeko-m:testnet` to `mina:testnet`
 3. one simultaneous run where a deposit command and a withdrawal command are both active at the same time and both progress in parallel
+
+If the latest deployed validator run failed, also reproduce locally with `.env.wallet.validator`. That validator-wallet run is required in addition to fresh-wallet validation, not instead of it.
 
 Pass criteria:
 
@@ -65,6 +95,14 @@ Important distinction:
 
 Run from the monorepo root.
 
+Load the chosen wallet file first:
+
+```bash
+set -a
+. ./.env.wallet.bridge-test-YYYYMMDDTHHMMSSZ
+set +a
+```
+
 Convenience Moon tasks for the two single-direction runs:
 
 ```bash
@@ -76,47 +114,59 @@ Those tasks:
 
 - build the local CLI
 - run the real `bridge` command directly with `--json --verbose`
+- emit a verbose `bridge-status` line before the operation starts
 - stream progress on stderr
 - leave the final JSON result on stdout
+
+The `bridge-status` line should include the latest L1 bridge commit timestamp, latest L2/sequencer bridge commit timestamp, sequencer public key, archive heights, current bridge slot threshold, and the latest L1 commit's synchronized outer action length and slot range. Those fields are diagnostic context, not pass/fail gates by themselves.
 
 Exact one-command equivalents:
 
 ```bash
-node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko-m:testnet --amount 1 --json --verbose
+node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko-m:testnet --amount 1 --json --verbose --actions-api http://127.0.0.1:9100/graphql
 ```
 
 ```bash
-node ./packages/bridge-cli/dist/cli.js bridge --from zeko-m:testnet --to mina:testnet --amount 1 --json --verbose
+node ./packages/bridge-cli/dist/cli.js bridge --from zeko-m:testnet --to mina:testnet --amount 1 --json --verbose --actions-api http://127.0.0.1:9100/graphql
 ```
+
+Omit `--actions-api` only when validating against the deployed Actions API for the selected route.
 
 For the simultaneous validation, open two dedicated terminals and keep both alive:
 
 Terminal A:
 
 ```bash
+set -a
+. ./.env.wallet.bridge-test-YYYYMMDDTHHMMSSZ
+set +a
 node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko-m:testnet --amount 1 --json --verbose
 ```
 
 Terminal B:
 
 ```bash
+set -a
+. ./.env.wallet.bridge-test-YYYYMMDDTHHMMSSZ
+set +a
 node ./packages/bridge-cli/dist/cli.js bridge --from zeko-m:testnet --to mina:testnet --amount 1 --json --verbose
 ```
 
-Start the second command while the first command is still running so the two bridge processes overlap in time.
+When validating a local Actions API/indexer change, add the same `--actions-api http://127.0.0.1:9100/graphql` flag to both simultaneous commands. Start the second command while the first command is still running so the two bridge processes overlap in time.
 
 ## Monitoring And Reporting
 
 Single-direction runs:
 
 - keep one terminal per run
-- check that same terminal at least every 3 minutes
+- check that same terminal about every 5 minutes
 - report what the command is currently waiting on, not just that it is still running
+- keep the command alive for at least 2 hours before treating a real-network fresh-wallet run as timed out, unless the command exits or produces a definitive error earlier
 
 Simultaneous run:
 
 - keep two terminals, one per direction
-- check both terminals every 3 minutes
+- check both terminals about every 5 minutes
 - report whether the two commands are genuinely progressing in parallel or whether one direction is starved behind the other
 
 During reporting, record:
@@ -126,6 +176,20 @@ During reporting, record:
 - whether the command is advancing older queued work first
 - any drift from the expected protocol behavior
 - any errors, unexpected behavior, or suspicious long waits
+- surrounding state relevant to the wait, including Actions API health/readiness when available, L1 archive height, L2 archive height, Zeko sequencer response, latest L1 bridge commit timestamp, latest L2/sequencer bridge commit timestamp, latest L1 synchronized outer action length, latest L1 commit slot range, current deposit commit past-slot threshold, and latest indexer/commit progress exposed by the current tools
+
+When `--verbose` is enabled, the CLI should print this context in its initial `bridge-status` line. The most useful fields for deposit waits are:
+
+- `bridgeCurrentSlot`
+- `bridgeWithdrawalDelaySlots`
+- `bridgeDepositCommitPastSlot`
+- `l1LastCommitSynchronizedOuterActionStateLength`
+- `l1LastCommitSlotRangeLower`
+- `l1LastCommitSlotRangeUpper`
+- `l1LastCommitTimestamp`
+- `sequencerLastCommitTimestamp`
+
+If that line is missing or the status snapshot fails, record the failure and manually query the same state before continuing the interpretation.
 
 Do not rubber-stamp a run as working. The purpose of this validation is to catch bugs and behavioral drift.
 
@@ -143,6 +207,7 @@ Important timing notes:
 
 - after `submitDeposit`, a long `waiting-submission` period is usually Mina L1 visibility/finality delay
 - after a deposit has a target index, `canFinalizeDeposit` and `canCancelDeposit` may still wait a long time on sequencer commit/progression
+- if the latest L1 bridge commit already has `l1LastCommitSynchronizedOuterActionStateLength` at or beyond the target deposit index, but `l1LastCommitSlotRangeUpper` is still above `bridgeDepositCommitPastSlot`, the commit is visible but not yet usable for that deposit finalization proof
 - a long `waiting-finalization` period before any finalize transaction exists does not by itself mean the bridge is stuck
 - `Invalid key` is not expected just because a pre-finalize wait is long; that risk starts only after `finalizeDeposit` has been submitted and the server-side proof request then runs for roughly an hour or longer
 
@@ -164,5 +229,6 @@ For every run, keep:
 - `operation_id`
 - `log_path`
 - final transaction hash
+- wallet file name and `PUBLIC_KEY`
 
 For the simultaneous run, keep those artifacts for both commands and note the overlap window during which both processes were alive together.
