@@ -10,18 +10,34 @@ const formatNanomina = (value: bigint): string => {
 	return fraction.length > 0 ? `${whole}.${fraction}` : whole.toString()
 }
 
+export type InsufficientFirstWithdrawalAmountErrorInput = {
+	amountNanomina: bigint
+	minimumAmountNanomina?: bigint
+	accountCreationFeeNanomina?: bigint
+	recipient: string
+}
+
+const requireMinimumAmountNanomina = ({
+	minimumAmountNanomina,
+	accountCreationFeeNanomina
+}: Pick<
+	InsufficientFirstWithdrawalAmountErrorInput,
+	"minimumAmountNanomina" | "accountCreationFeeNanomina"
+>): bigint => {
+	const value = minimumAmountNanomina ?? accountCreationFeeNanomina
+	if (value === undefined) {
+		throw new Error("Missing required first-withdrawal minimum amount")
+	}
+
+	return value
+}
+
 export class InsufficientFirstWithdrawalAmountError extends Error {
 	public readonly code = "INSUFFICIENT_FIRST_WITHDRAWAL_AMOUNT"
 
-	constructor({
-		amountNanomina,
-		minimumAmountNanomina,
-		recipient
-	}: {
-		amountNanomina: bigint
-		minimumAmountNanomina: bigint
-		recipient: string
-	}) {
+	constructor(input: InsufficientFirstWithdrawalAmountErrorInput) {
+		const { amountNanomina, recipient } = input
+		const minimumAmountNanomina = requireMinimumAmountNanomina(input)
 		super(
 			`${FIRST_WITHDRAWAL_TOO_SMALL_PREFIX}: recipient ${recipient} cannot finalize this withdrawal with the current L1 account state, so the withdrawal must be at least ${formatNanomina(minimumAmountNanomina)} MINA to cover bridge proof fee plus any needed helper account and recipient payout account creation fees. This withdrawal is ${formatNanomina(amountNanomina)} MINA and cannot proceed as submitted.`
 		)
@@ -43,21 +59,23 @@ export const isInsufficientFirstWithdrawalAmountError = (error: unknown): boolea
 	return message.includes(FIRST_WITHDRAWAL_TOO_SMALL_PREFIX)
 }
 
-export const assertFirstWithdrawalAmountCanCreateHelper = ({
-	helperAccountExists,
-	recipientAccountExists,
-	amount,
-	recipient,
-	accountCreationFee,
-	bridgeProofFee
-}: {
+export type FirstWithdrawalAmountGuardInput = {
 	helperAccountExists: boolean
-	recipientAccountExists: boolean
+	recipientAccountExists?: boolean
 	amount: UInt64
 	recipient: PublicKey
 	accountCreationFee: UInt64
-	bridgeProofFee: UInt64
-}): void => {
+	bridgeProofFee?: UInt64
+}
+
+export const assertFirstWithdrawalAmountCanCreateHelper = ({
+	helperAccountExists,
+	recipientAccountExists = true,
+	amount,
+	recipient,
+	accountCreationFee,
+	bridgeProofFee = UInt64.zero
+}: FirstWithdrawalAmountGuardInput): void => {
 	const missingHelperFee = helperAccountExists ? UInt64.zero : accountCreationFee
 	const missingRecipientFee = recipientAccountExists ? UInt64.zero : accountCreationFee
 	const minimumAmount = bridgeProofFee.add(missingHelperFee).add(missingRecipientFee)
@@ -71,31 +89,33 @@ export const assertFirstWithdrawalAmountCanCreateHelper = ({
 	})
 }
 
+export type EnsureFirstWithdrawalAmountGuardInput = {
+	amount: UInt64
+	recipient: PublicKey
+	accountCreationFee: UInt64
+	bridgeProofFee?: UInt64
+	helperAccountExists: () => boolean | Promise<boolean>
+	recipientAccountExists?: () => boolean | Promise<boolean>
+}
+
 export const ensureFirstWithdrawalAmountCanCreateHelper = async ({
 	amount,
 	recipient,
 	accountCreationFee,
-	bridgeProofFee,
+	bridgeProofFee = UInt64.zero,
 	helperAccountExists,
 	recipientAccountExists
-}: {
-	amount: UInt64
-	recipient: PublicKey
-	accountCreationFee: UInt64
-	bridgeProofFee: UInt64
-	helperAccountExists: () => boolean | Promise<boolean>
-	recipientAccountExists: () => boolean | Promise<boolean>
-}): Promise<void> => {
-	if (
-		amount
-			.greaterThanOrEqual(accountCreationFee.add(accountCreationFee).add(bridgeProofFee))
-			.toBoolean()
-	)
-		return
+}: EnsureFirstWithdrawalAmountGuardInput): Promise<void> => {
+	const optimisticMinimumAmount =
+		recipientAccountExists === undefined
+			? accountCreationFee.add(bridgeProofFee)
+			: accountCreationFee.add(accountCreationFee).add(bridgeProofFee)
+
+	if (amount.greaterThanOrEqual(optimisticMinimumAmount).toBoolean()) return
 
 	const [hasHelperAccount, hasRecipientAccount] = await Promise.all([
 		helperAccountExists(),
-		recipientAccountExists()
+		recipientAccountExists?.() ?? true
 	])
 
 	assertFirstWithdrawalAmountCanCreateHelper({

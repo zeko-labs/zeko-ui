@@ -376,3 +376,4 @@
 - T398 | done | fail-shell-wallet-secret-overrides | done/T398-fail-shell-wallet-secret-overrides.md
 - T399 | done | resolve-wallet-env-overrides-from-repo-root | done/T399-resolve-wallet-env-overrides-from-repo-root.md
 - T400 | done | treat-wallet-env-files-as-keypairs | done/T400-treat-wallet-env-files-as-keypairs.md
+- T401 | done | preserve-withdrawal-helper-apis | done/T401-preserve-withdrawal-helper-apis.md

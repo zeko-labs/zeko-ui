@@ -60,6 +60,38 @@ describe("first withdrawal amount guard", () => {
 		).not.toThrow()
 	})
 
+	it("keeps the previous exported helper input shape compatible", async () => {
+		const legacyAssertInput = {
+			helperAccountExists: false,
+			amount: UInt64.from(1_000_000_000),
+			recipient,
+			accountCreationFee: UInt64.from(1_000_000_000)
+		} satisfies Parameters<typeof assertFirstWithdrawalAmountCanCreateHelper>[0]
+
+		expect(() => assertFirstWithdrawalAmountCanCreateHelper(legacyAssertInput)).not.toThrow()
+
+		const helperAccountExists = vi.fn(() => false)
+		const legacyEnsureInput = {
+			amount: UInt64.from(1_000_000_000),
+			recipient,
+			accountCreationFee: UInt64.from(1_000_000_000),
+			helperAccountExists
+		} satisfies Parameters<typeof ensureFirstWithdrawalAmountCanCreateHelper>[0]
+
+		await expect(
+			ensureFirstWithdrawalAmountCanCreateHelper(legacyEnsureInput)
+		).resolves.toBeUndefined()
+		expect(helperAccountExists).not.toHaveBeenCalled()
+
+		const legacyError = new InsufficientFirstWithdrawalAmountError({
+			amountNanomina: 200_000_000n,
+			accountCreationFeeNanomina: 1_000_000_000n,
+			recipient: recipient.toBase58()
+		} satisfies ConstructorParameters<typeof InsufficientFirstWithdrawalAmountError>[0])
+
+		expect(isInsufficientFirstWithdrawalAmountError(legacyError)).toBe(true)
+	})
+
 	it("skips the helper-account lookup when the withdrawal already meets the threshold", async () => {
 		const helperAccountExists = vi.fn(() => false)
 		const recipientAccountExists = vi.fn(() => false)
