@@ -93,20 +93,12 @@ describe("mock bridge operations worker", () => {
 		})
 	})
 
-	it("can hold deposit finalization pending until debug state advances", async () => {
+	it("reports the oldest pending seeded deposit as claimable", async () => {
 		const store = createBridgeDebugBackendStore({ storage })
-		store.setScenario("delayed-deposit-finalization")
 		const worker = createMockBridgeOperationsWorker({ store })
 
-		await expect(
-			worker.canFinalizeDeposit({
-				l1: "mina:devnet",
-				l2: "zeko-m:testnet",
-				user: "B62qtest-user"
-			})
-		).resolves.toEqual({ available: false, reason: "Debug scenario: deposit pending" })
-
-		store.advancePendingStatus()
+		store.seedRecoveredOperation("deposit", { amount: "1" })
+		store.seedRecoveredOperation("deposit", { amount: "2" })
 
 		await expect(
 			worker.canFinalizeDeposit({
@@ -114,7 +106,7 @@ describe("mock bridge operations worker", () => {
 				l2: "zeko-m:testnet",
 				user: "B62qtest-user"
 			})
-		).resolves.toEqual({ available: true, reason: null })
+		).resolves.toEqual({ available: true, reason: null, index: 1 })
 	})
 
 	it("can force a one-shot fee-too-low completion error", async () => {
@@ -253,7 +245,7 @@ describe("mock bridge operations worker", () => {
 		const store = createBridgeDebugBackendStore({ storage })
 		const worker = createMockBridgeOperationsWorker({ store })
 
-		store.setScenario("delayed-withdrawal-finalization")
+		store.setScenario("repro-unindexed-withdrawal-completion")
 		store.seedRecoveredOperation("withdrawal", { amount: "4" })
 		store.advancePendingStatus()
 		await worker.submitDeposit({
@@ -268,7 +260,7 @@ describe("mock bridge operations worker", () => {
 		const reloadedStore = createBridgeDebugBackendStore({ storage })
 
 		expect(reloadedStore.getSnapshot()).toMatchObject({
-			scenario: "delayed-withdrawal-finalization",
+			scenario: "repro-unindexed-withdrawal-completion",
 			currentSlot: 1,
 			pendingAdvancements: 0,
 			nextCallId: 1,
@@ -318,15 +310,11 @@ describe("mock bridge operations worker", () => {
 		])
 	})
 
-	it("exposes realistic reproduction scenarios for reported completion and withdrawal loops", async () => {
-		expect(bridgeDebugBackendScenarios).toEqual(
-			expect.arrayContaining([
-				"repro-withdrawal-recovered-completed",
-				"repro-withdrawal-already-finalised",
-				"repro-withdrawal-blocked-loop",
-				"repro-unindexed-withdrawal-completion"
-			])
-		)
+	it("exposes only debug backend scenarios that are known to work", async () => {
+		expect(bridgeDebugBackendScenarios).toEqual([
+			"happy-path",
+			"repro-unindexed-withdrawal-completion"
+		])
 	})
 
 	it("can reproduce local withdrawal completion before terminal recovery indexing", async () => {
@@ -379,73 +367,6 @@ describe("mock bridge operations worker", () => {
 		expect(terminalRecovery.withdrawals[0]).toMatchObject({
 			index: 1,
 			finalised: true
-		})
-	})
-
-	it("can reproduce recovery marking a withdrawal completed from SDK action state", async () => {
-		const store = createBridgeDebugBackendStore({ storage })
-		store.setScenario("repro-withdrawal-recovered-completed")
-		const worker = createMockBridgeOperationsWorker({ store })
-
-		const pending = await worker.findPendingOperations({
-			account: "B62qtest-user",
-			l1: "mina:devnet",
-			l2: "zeko-m:testnet"
-		})
-
-		expect(pending.withdrawals).toEqual([
-			expect.objectContaining({
-				finalised: true,
-				source: "zeko-m:testnet",
-				destination: "mina:devnet"
-			})
-		])
-		expect(pending.deposits).toEqual([])
-	})
-
-	it("can reproduce withdrawal claim being skipped from an alreadyFinalised SDK status", async () => {
-		const store = createBridgeDebugBackendStore({ storage })
-		store.setScenario("repro-withdrawal-already-finalised")
-		const worker = createMockBridgeOperationsWorker({ store })
-
-		await expect(
-			worker.canFinalizeWithdrawal({
-				user: "B62qtest-user",
-				l1: "mina:devnet",
-				l2: "zeko-m:testnet"
-			})
-		).resolves.toEqual({
-			available: false,
-			reason: "Withdrawal already finalised",
-			status: "alreadyFinalised",
-			index: 1
-		})
-	})
-
-	it("can reproduce a withdrawal finalization loop from a persistent blocked SDK status", async () => {
-		const store = createBridgeDebugBackendStore({ storage })
-		store.setScenario("repro-withdrawal-blocked-loop")
-		const worker = createMockBridgeOperationsWorker({ store })
-
-		await expect(
-			worker.canFinalizeWithdrawal({
-				user: "B62qtest-user",
-				l1: "mina:devnet",
-				l2: "zeko-m:testnet"
-			})
-		).resolves.toMatchObject({
-			available: false,
-			status: "blocked"
-		})
-		await expect(
-			worker.canFinalizeWithdrawal({
-				user: "B62qtest-user",
-				l1: "mina:devnet",
-				l2: "zeko-m:testnet"
-			})
-		).resolves.toMatchObject({
-			available: false,
-			status: "blocked"
 		})
 	})
 })

@@ -51,7 +51,7 @@ describe("bridge debug panel", () => {
 		const store = createBridgeDebugBackendStore({ storage: createMemoryStorage() })
 		const controller = createBridgeDebugPanelController({ store })
 
-		controller.setScenario("delayed-withdrawal-finalization")
+		controller.setScenario("repro-unindexed-withdrawal-completion")
 		controller.seedRecoveredOperation("withdrawal")
 		controller.forceNextError("terminal")
 		controller.advancePendingStatus()
@@ -64,7 +64,7 @@ describe("bridge debug panel", () => {
 		}
 
 		expect(snapshot).toMatchObject({
-			scenario: "delayed-withdrawal-finalization",
+			scenario: "repro-unindexed-withdrawal-completion",
 			forcedError: "terminal",
 			currentSlot: 2
 		})

@@ -381,3 +381,4 @@
 - T394 | done | guard-terminal-recovery-action-index | done/T394-guard-terminal-recovery-action-index.md
 - T395 | done | remove-runtime-debug-mode-fallback | done/T395-remove-runtime-debug-mode-fallback.md
 - T396 | done | clean-debug-panel-controls | done/T396-clean-debug-panel-controls.md
+- T397 | done | prune-debug-backend-scenarios | done/T397-prune-debug-backend-scenarios.md

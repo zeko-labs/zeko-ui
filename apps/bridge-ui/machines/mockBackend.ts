@@ -5,18 +5,6 @@ export const BRIDGE_DEBUG_BACKEND_STORAGE_KEY = "bridgeDebugBackendState"
 
 export const bridgeDebugBackendScenarios = [
 	"happy-path",
-	"delayed-deposit-finalization",
-	"delayed-withdrawal-finalization",
-	"already-finalized-withdrawal",
-	"recovered-pending-operations",
-	"cancellable-deposit",
-	"cancelled-deposit",
-	"fee-too-low-retry",
-	"transient-worker-error",
-	"terminal-worker-error",
-	"repro-withdrawal-recovered-completed",
-	"repro-withdrawal-already-finalised",
-	"repro-withdrawal-blocked-loop",
 	"repro-unindexed-withdrawal-completion"
 ] as const
 
@@ -204,9 +192,6 @@ const debugErrorMessage = (error: BridgeDebugForcedError) =>
 const currentTimestampMs = () => Date.now()
 
 const fakeHash = (id: number) => `5Jdebug${String(id).padStart(6, "0")}`
-const withdrawalAlreadyFinalisedReason = "Withdrawal already finalised"
-const blockedWithdrawalReason =
-	"First Zeko->Mina withdrawal amount is too small: recipient debug recipient does not have an L1 helper account yet, so the first withdrawal must cover the Mina account creation fee. This withdrawal cannot proceed as submitted."
 
 const createUnsignedTransaction = ({
 	action,
@@ -354,22 +339,12 @@ export const createBridgeDebugBackendStore = ({
 	}
 
 	const consumeForcedError = (method: BridgeDebugWorkerMethod): BridgeDebugForcedError | null => {
-		const forcedError = state.forcedError
-		const scenarioError =
-			state.scenario === "fee-too-low-retry" && method === "completeSdkSignature"
-				? "fee-too-low"
-				: state.scenario === "transient-worker-error"
-					? "transient"
-					: state.scenario === "terminal-worker-error"
-						? "terminal"
-						: null
-		const error = forcedError ?? scenarioError
+		const error = state.forcedError
 		if (!error) return null
 		if (error === "fee-too-low" && method !== "completeSdkSignature") return null
 		update((current) => ({
 			...current,
-			scenario: current.scenario === "fee-too-low-retry" ? "happy-path" : current.scenario,
-			forcedError: current.forcedError === null ? null : null
+			forcedError: null
 		}))
 		return error
 	}
@@ -466,15 +441,7 @@ export const createBridgeDebugBackendStore = ({
 			update((current) => ({
 				...current,
 				scenario,
-				pendingAdvancements: 0,
-				forcedError:
-					scenario === "fee-too-low-retry"
-						? "fee-too-low"
-						: scenario === "transient-worker-error"
-							? "transient"
-							: scenario === "terminal-worker-error"
-								? "terminal"
-								: current.forcedError
+				pendingAdvancements: 0
 			}))
 		},
 		subscribe: (listener) => {
@@ -588,26 +555,8 @@ export const createMockBridgeOperationsWorker = ({
 					}
 				})
 				const snapshot = store.getSnapshot()
-				const seededOperations = (() => {
-					if (snapshot.seededOperations.length > 0) return snapshot.seededOperations
-					if (snapshot.scenario === "recovered-pending-operations") {
-						return [
-							store.seedRecoveredOperation("deposit", { amount: "1" }),
-							store.seedRecoveredOperation("withdrawal", { amount: "1" })
-						]
-					}
-					if (snapshot.scenario === "repro-withdrawal-recovered-completed") {
-						return [
-							store.seedRecoveredOperation("withdrawal", {
-								amount: "1",
-								finalised: true
-							})
-						]
-					}
-					return snapshot.seededOperations
-				})()
 				return {
-					deposits: seededOperations
+					deposits: snapshot.seededOperations
 						.filter((seed) => seed.kind === "deposit")
 						.map((seed) =>
 							actionStateFromSeed({
@@ -617,7 +566,7 @@ export const createMockBridgeOperationsWorker = ({
 								destination: input.l2
 							})
 						),
-					withdrawals: seededOperations
+					withdrawals: snapshot.seededOperations
 						.filter((seed) => seed.kind === "withdrawal")
 						.map((seed) =>
 							actionStateFromSeed({
@@ -644,18 +593,6 @@ export const createMockBridgeOperationsWorker = ({
 				const firstPendingDeposit = snapshot.seededOperations.find(
 					(seed) => seed.kind === "deposit" && seed.cancelled === false && seed.finalised === false
 				)
-				if (
-					snapshot.scenario === "delayed-deposit-finalization" &&
-					snapshot.pendingAdvancements === 0
-				) {
-					return { available: false, reason: "Debug scenario: deposit pending" }
-				}
-				if (snapshot.scenario === "cancellable-deposit") {
-					return { available: false, reason: "Debug scenario: deposit is cancellable" }
-				}
-				if (snapshot.scenario === "cancelled-deposit") {
-					return { available: false, reason: "Debug scenario: deposit was cancelled" }
-				}
 				return firstPendingDeposit
 					? { available: true, reason: null, index: firstPendingDeposit.index }
 					: { available: true, reason: null }
@@ -670,10 +607,9 @@ export const createMockBridgeOperationsWorker = ({
 		canCancelDeposit: (input) =>
 			store.recordCall("canCancelDeposit", input, async () => {
 				const snapshot = store.getSnapshot()
-				return snapshot.scenario === "cancellable-deposit" ||
-					snapshot.seededOperations.some(
-						(seed) => seed.kind === "deposit" && seed.cancellable === true
-					)
+				return snapshot.seededOperations.some(
+					(seed) => seed.kind === "deposit" && seed.cancellable === true
+				)
 					? { available: true, reason: null }
 					: { available: false, reason: "Debug scenario: deposit is not cancellable" }
 			}),
@@ -699,39 +635,6 @@ export const createMockBridgeOperationsWorker = ({
 					(seed) =>
 						seed.kind === "withdrawal" && seed.cancelled === false && seed.finalised === false
 				)
-				if (snapshot.scenario === "already-finalized-withdrawal") {
-					return {
-						available: false,
-						reason: null,
-						status: "alreadyFinalised",
-						...(firstPendingWithdrawal ? { index: firstPendingWithdrawal.index } : {})
-					}
-				}
-				if (snapshot.scenario === "repro-withdrawal-already-finalised") {
-					return {
-						available: false,
-						reason: withdrawalAlreadyFinalisedReason,
-						status: "alreadyFinalised",
-						index: 1
-					}
-				}
-				if (snapshot.scenario === "repro-withdrawal-blocked-loop") {
-					return {
-						available: false,
-						reason: blockedWithdrawalReason,
-						status: "blocked"
-					}
-				}
-				if (
-					snapshot.scenario === "delayed-withdrawal-finalization" &&
-					snapshot.pendingAdvancements === 0
-				) {
-					return {
-						available: false,
-						reason: "Debug scenario: withdrawal pending",
-						status: "waiting"
-					}
-				}
 				return firstPendingWithdrawal
 					? {
 							available: true,
