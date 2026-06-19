@@ -17,6 +17,14 @@ const createMemoryStorage = (): Pick<Storage, "getItem" | "removeItem" | "setIte
 	}
 }
 
+const controlSource = (id: string) => {
+	const marker = `data-debug-control="${id}"`
+	const start = debugPanelSource.indexOf(marker)
+	if (start === -1) return ""
+	const end = debugPanelSource.indexOf("</button>", start)
+	return debugPanelSource.slice(start, end)
+}
+
 describe("bridge debug panel", () => {
 	it("is rendered from the bridge page only in mock-backend debug mode", () => {
 		expect(indexSource).toContain("<BridgeDebugPanel")
@@ -40,6 +48,26 @@ describe("bridge debug panel", () => {
 			"Export"
 		]) {
 			expect(debugPanelSource).toContain(label)
+		}
+	})
+
+	it("disables controls that are not currently useful for bug discovery", () => {
+		for (const id of [
+			"reset",
+			"advance",
+			"sync-backend",
+			"fee-retry",
+			"terminal-error",
+			"transient-error",
+			"cancellable",
+			"clear-logs",
+			"export"
+		]) {
+			expect(controlSource(id)).toContain(":disabled")
+		}
+
+		for (const id of ["seed-deposit", "seed-withdrawal", "simulate-refresh", "clear-completed"]) {
+			expect(controlSource(id)).not.toContain(":disabled")
 		}
 	})
 

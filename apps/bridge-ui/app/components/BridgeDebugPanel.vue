@@ -16,6 +16,19 @@ const bs = useBridgeStore()
 const debug = useBridgeDebugBackend({ bridge: bs.bridge })
 const selectedScenario = ref(debug.snapshot.value.scenario)
 const exportedSnapshot = ref("")
+const disabledDebugControlIds = new Set([
+	"reset",
+	"advance",
+	"sync-backend",
+	"fee-retry",
+	"terminal-error",
+	"transient-error",
+	"cancellable",
+	"clear-logs",
+	"export"
+])
+
+const isDebugControlDisabled = (id: string) => disabledDebugControlIds.has(id)
 
 watch(
 	() => debug.snapshot.value.scenario,
@@ -96,80 +109,102 @@ const exportSnapshot = async () => {
 
     <section class="DebugSection ControlsSection">
       <button
+        data-debug-control="reset"
         type="button"
         title="Reset mock backend state"
+        :disabled='isDebugControlDisabled("reset")'
         @click="debug.reset">
         <RotateCcw /> Reset
       </button>
       <button
+        data-debug-control="seed-deposit"
         type="button"
         title="Seed recovered deposit"
         @click='debug.seedRecoveredOperation("deposit")'>
         <Plus /> Seed Deposit
       </button>
       <button
+        data-debug-control="seed-withdrawal"
         type="button"
         title="Seed recovered withdrawal"
         @click='debug.seedRecoveredOperation("withdrawal")'>
         <Plus /> Seed Withdrawal
       </button>
       <button
+        data-debug-control="advance"
         type="button"
         title="Advance pending backend status"
+        :disabled='isDebugControlDisabled("advance")'
         @click="debug.advancePendingStatus">
         <ChevronsRight /> Advance
       </button>
       <button
+        data-debug-control="sync-backend"
         type="button"
         title="Run findPendingOperations without reloading the page"
+        :disabled='isDebugControlDisabled("sync-backend")'
         @click="debug.syncRecoveredOperations">
         <RefreshCw /> Sync Backend
       </button>
       <button
+        data-debug-control="simulate-refresh"
         type="button"
         title="Clear operation actors and rebuild them from mock backend state"
         @click="debug.simulatePageRefresh">
         <RefreshCw /> Sim Refresh
       </button>
       <button
+        data-debug-control="clear-completed"
         type="button"
         title="Remove completed operation actors from the visible list"
         @click="debug.clearCompletedOperations">
         <Trash2 /> Clear Completed
       </button>
       <button
+        data-debug-control="fee-retry"
         type="button"
         title="Force the next completion to return a fee-too-low error"
+        :disabled='isDebugControlDisabled("fee-retry")'
         @click='debug.forceNextError("fee-too-low")'>
         <Zap /> Fee Retry
       </button>
       <button
+        data-debug-control="terminal-error"
         type="button"
         title="Force the next worker call to fail terminally"
+        :disabled='isDebugControlDisabled("terminal-error")'
         @click='debug.forceNextError("terminal")'>
         <AlertTriangle /> Terminal Error
       </button>
       <button
+        data-debug-control="transient-error"
         type="button"
         title="Force the next worker call to fail transiently"
+        :disabled='isDebugControlDisabled("transient-error")'
         @click='debug.forceNextError("transient")'>
         <AlertTriangle /> Transient Error
       </button>
       <button
+        data-debug-control="cancellable"
         type="button"
         title="Toggle the first seeded deposit cancellability"
+        :disabled='isDebugControlDisabled("cancellable")'
         @click="debug.toggleCancellableDeposit">
         <Zap /> Cancellable
       </button>
       <button
+        data-debug-control="clear-logs"
         type="button"
         title="Clear mock backend logs"
+        :disabled='isDebugControlDisabled("clear-logs")'
         @click="debug.clearLogs">
         <Trash2 /> Clear Logs
       </button>
       <button
+        data-debug-control="export"
         type="button"
         title="Export debug snapshot JSON"
+        :disabled='isDebugControlDisabled("export")'
         @click="exportSnapshot">
         <Download /> Export
       </button>
@@ -384,6 +419,15 @@ const exportSnapshot = async () => {
 
     &:hover {
       border-color: oklch(0.72 0.12 92 / 0.8);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    &:disabled:hover {
+      border-color: oklch(0.9 0.01 94 / 0.16);
     }
 
     svg {

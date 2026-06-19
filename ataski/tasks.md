@@ -371,3 +371,4 @@
 - T385 | done | debug-panel-recovery-controls | done/T385-debug-panel-recovery-controls.md
 - T386 | done | debug-backend-refresh-stability | done/T386-debug-backend-refresh-stability.md
 - T387 | done | fix-debug-deposit-queue-and-completed-hash | done/T387-fix-debug-deposit-queue-and-completed-hash.md
+- T388 | done | disable-unused-debug-panel-controls | done/T388-disable-unused-debug-panel-controls.md
