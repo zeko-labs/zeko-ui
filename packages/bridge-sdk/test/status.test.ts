@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { PublicKey } from "o1js"
-import { fetchLastCommit } from "../src/status"
+import { PublicKey, UInt32, UInt64 } from "o1js"
+import { fetchBridgeCommitStatusSnapshot, fetchLastCommit } from "../src/status"
 import type { GqlClient } from "../src/graphql"
+import type { BridgeRuntime } from "../src/runtime"
 
 const publicKey = PublicKey.fromBase58("B62qmE663JH772AeC3LsSi6BUD6C3BK1KDUkqajtjyWAxaZZddQ2CE4")
 
@@ -103,5 +104,49 @@ describe("bridge status helpers", () => {
 			from: 0,
 			to: 101
 		})
+	})
+
+	it("queries sequencer actions for the sequencer commit status", async () => {
+		const innerPk = PublicKey.fromBase58("B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1")
+		const sequencerPk = PublicKey.fromBase58(
+			"B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2"
+		)
+		const l2ActionPks: string[] = []
+		const runtime = {
+			config: {
+				l1Url: "http://l1.test",
+				l1ArchiveUrl: "http://l1-archive.test",
+				zekoUrl: "http://l2.test",
+				zekoArchiveUrl: "http://l2-archive.test",
+				l1Network: "testnet",
+				l2Network: "testnet",
+				actionsApi: "http://actions.test"
+			},
+			l1Client: createClient(),
+			l1ArchiveClient: createClient(),
+			l2Client: createClient(),
+			l2ArchiveClient: createClient((variables) => {
+				if ("pk" in variables) l2ActionPks.push(String(variables.pk))
+			}),
+			actionsApiClient: createClient(),
+			l1AccountCreationFee: UInt64.from(1),
+			l2AccountCreationFee: UInt64.from(1),
+			outerPk: publicKey,
+			innerPk,
+			outerHolders: [publicKey],
+			innerHolder: publicKey,
+			outerTokenOwner: publicKey,
+			sequencerPk,
+			withdrawalDelay: UInt32.from(10),
+			bridgeFeeRecipientL1: publicKey,
+			bridgeFeeRecipientL2: innerPk,
+			bridgeProofFee: UInt64.from(1),
+			V2_DEPOSITS_START_INDEX: UInt32.zero,
+			V2_WITHDRAWALS_START_INDEX: UInt32.zero
+		} satisfies BridgeRuntime
+
+		await fetchBridgeCommitStatusSnapshot(runtime)
+
+		expect(l2ActionPks).toEqual([sequencerPk.toBase58()])
 	})
 })

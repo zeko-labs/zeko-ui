@@ -377,3 +377,5 @@
 - T399 | done | resolve-wallet-env-overrides-from-repo-root | done/T399-resolve-wallet-env-overrides-from-repo-root.md
 - T400 | done | treat-wallet-env-files-as-keypairs | done/T400-treat-wallet-env-files-as-keypairs.md
 - T401 | done | preserve-withdrawal-helper-apis | done/T401-preserve-withdrawal-helper-apis.md
+- T402 | done | check-withdrawal-recipient-account | done/T402-check-withdrawal-recipient-account.md
+- T403 | done | filter-sequencer-commit-status | done/T403-filter-sequencer-commit-status.md

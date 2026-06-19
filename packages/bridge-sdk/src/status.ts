@@ -198,12 +198,12 @@ export async function fetchBridgeCommitStatusSnapshot(
 	const currentSlotPromise = fetchCurrentSlot(runtime)
 		.then((slot) => Number(slot.toString()))
 		.catch(() => null)
-	const [l1NetworkState, l2NetworkState, l1LastCommit, l2LastCommit, currentSlot] =
+	const [l1NetworkState, l2NetworkState, l1LastCommit, sequencerLastCommit, currentSlot] =
 		await Promise.all([
 			fetchNetworkState(runtime.l1ArchiveClient).catch(() => null),
 			fetchNetworkState(runtime.l2ArchiveClient).catch(() => null),
 			fetchLastCommit(runtime.l1ArchiveClient, runtime.outerPk),
-			fetchLastCommit(runtime.l2ArchiveClient, runtime.innerPk),
+			fetchLastCommit(runtime.l2ArchiveClient, runtime.sequencerPk),
 			currentSlotPromise
 		])
 	const withdrawalDelay = Number(runtime.withdrawalDelay.toString())
@@ -228,7 +228,7 @@ export async function fetchBridgeCommitStatusSnapshot(
 			sequencerPk: runtime.sequencerPk.toBase58(),
 			bridgeContract: runtime.innerPk.toBase58(),
 			networkState: l2NetworkState,
-			lastCommit: l2LastCommit
+			lastCommit: sequencerLastCommit
 		},
 		actionsApi: runtime.config.actionsApi
 	}

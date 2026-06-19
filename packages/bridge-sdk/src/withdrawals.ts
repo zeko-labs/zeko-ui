@@ -269,19 +269,15 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		witness: ExtractInput<typeof finalizeWithdrawalMutation>
 	}>
 > {
-	const helperAccount = await (runtime.bridge?.fetchAccount ?? fetchAccount)(
+	const fetchBridgeAccount = runtime.bridge?.fetchAccount ?? fetchAccount
+	const helperAccount = await fetchBridgeAccount(
 		runtime.l1Client,
 		pk,
 		TokenId.derive(runtime.outerTokenOwner)
 	)
-	const recipientAccount = await (runtime.bridge?.fetchAccount ?? fetchAccount)(
-		runtime.l1Client,
-		pk
-	)
 	debug(runtime, "fetchWithdrawalFinalizationWitnesses helperAccount", {
 		pk: pk.toBase58(),
-		hasHelperAccount: helperAccount !== null,
-		hasRecipientAccount: recipientAccount !== null
+		hasHelperAccount: helperAccount !== null
 	})
 
 	const prevNextWithdrawal = helperAccount ? getNextWithdrawalIndex(helperAccount) : UInt32.zero
@@ -304,6 +300,23 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		count: withdrawals.length,
 		recipients: withdrawals.map(({ withdrawal }) => withdrawal.recipient.toBase58()),
 		amounts: withdrawals.map(({ withdrawal }) => withdrawal.amount.toString())
+	})
+
+	const recipientAccountExistsByAddress = new Map(
+		await Promise.all(
+			[...new Set(withdrawals.map(({ withdrawal }) => withdrawal.recipient.toBase58()))].map(
+				async (address) =>
+					[
+						address,
+						(await fetchBridgeAccount(runtime.l1Client, PublicKey.fromBase58(address))) !== null
+					] as const
+			)
+		)
+	)
+	const recipientAccountExists = (recipient: PublicKey): boolean =>
+		recipientAccountExistsByAddress.get(recipient.toBase58()) ?? false
+	debug(runtime, "fetchWithdrawalFinalizationWitnesses recipientAccounts", {
+		recipients: Object.fromEntries(recipientAccountExistsByAddress)
 	})
 
 	if (withdrawals.length === 0) {
@@ -453,7 +466,7 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		try {
 			assertFirstWithdrawalAmountCanCreateHelper({
 				helperAccountExists: helperAccount !== null,
-				recipientAccountExists: recipientAccount !== null,
+				recipientAccountExists: recipientAccountExists(matchingWithdrawal.withdrawal.recipient),
 				amount: matchingWithdrawal.withdrawal.amount,
 				recipient: matchingWithdrawal.withdrawal.recipient,
 				accountCreationFee: runtime.l1AccountCreationFee,
@@ -510,7 +523,7 @@ export async function fetchWithdrawalFinalizationWitnesses(
 	try {
 		assertFirstWithdrawalAmountCanCreateHelper({
 			helperAccountExists: helperAccount !== null,
-			recipientAccountExists: recipientAccount !== null,
+			recipientAccountExists: recipientAccountExists(withdrawalParams.withdrawal.recipient),
 			amount: withdrawalParams.withdrawal.amount,
 			recipient: withdrawalParams.withdrawal.recipient,
 			accountCreationFee: runtime.l1AccountCreationFee,
