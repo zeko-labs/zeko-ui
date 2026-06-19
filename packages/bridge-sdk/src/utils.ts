@@ -10,7 +10,7 @@ import {
 } from "@zeko-labs/graphql"
 import { fetchAccount, Field, Mina, Poseidon, PublicKey, UInt32, type NetworkId } from "o1js"
 import * as v from "valibot"
-import { Actions, empty, fromList } from "./actions"
+import { Actions, emptyActionsList, fromList } from "./actions"
 import type { GqlClient } from "./graphql"
 import type {
 	Account,
@@ -91,7 +91,7 @@ const InnerActionSchema = v.object({
 })
 
 const innerActionFromSchema = (x: v.InferOutput<typeof InnerActionSchema>) => ({
-	beforeActionState: Field.from(x.beforeState ?? empty().hash),
+	beforeActionState: Field.from(x.beforeState ?? emptyActionsList),
 	afterActionState: Field.from(x.afterState),
 	timestamp: x.timestamp,
 	hash: x.txnHash,
@@ -108,7 +108,7 @@ const BaseOuterActionSchema = v.object({
 })
 
 const baseActionFromSchema = (x: v.InferOutput<typeof BaseOuterActionSchema>) => ({
-	beforeActionState: Field.from(x.beforeState ?? empty().hash),
+	beforeActionState: Field.from(x.beforeState ?? emptyActionsList),
 	afterActionState: Field.from(x.afterState),
 	timestamp: x.timestamp,
 	hash: x.txnHash,

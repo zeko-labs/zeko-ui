@@ -1,5 +1,5 @@
 import { UInt32, type Field, type Mina, type PublicKey, type UInt64 } from "o1js"
-import { cancelDeposit, canCancelDeposit } from "./cancellations"
+import { canCancelDeposit, cancelDeposit } from "./cancellations"
 import {
 	canFinalizeDeposit,
 	fetchDepositFinalizationWitnesses,
@@ -55,8 +55,8 @@ export class Bridge {
 	private withBridgeHooks(runtime: BridgeRuntime): BridgeRuntime {
 		const runtimeWithDefaults = {
 			...runtime,
-			V2_DEPOSITS_START_INDEX: runtime.V2_DEPOSITS_START_INDEX ?? UInt32.zero,
-			V2_WITHDRAWALS_START_INDEX: runtime.V2_WITHDRAWALS_START_INDEX ?? UInt32.zero
+			V2_DEPOSITS_START_INDEX: runtime.V2_DEPOSITS_START_INDEX ?? UInt32.from(1),
+			V2_WITHDRAWALS_START_INDEX: runtime.V2_WITHDRAWALS_START_INDEX ?? UInt32.from(1)
 		}
 
 		return {
