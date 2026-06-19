@@ -282,6 +282,41 @@ describe("mock bridge operations worker", () => {
 		})
 	})
 
+	it("marks the oldest pending seeded deposit finalised when claim completes", async () => {
+		const store = createBridgeDebugBackendStore({ storage })
+		const worker = createMockBridgeOperationsWorker({ store })
+		const user = "B62qtest-user"
+
+		store.seedRecoveredOperation("deposit", { amount: "1" })
+		store.seedRecoveredOperation("deposit", { amount: "2" })
+		store.seedRecoveredOperation("deposit", { amount: "3" })
+
+		const finalize = await worker.finalizeDeposit({
+			l1: "mina:devnet",
+			l2: "zeko-m:testnet",
+			user,
+			feeNanomina: 100_000_000
+		})
+		await worker.completeSdkSignature({
+			requestId: finalize.requestId,
+			signedTransaction: signedCommand(user)
+		})
+
+		const pending = await worker.findPendingOperations({
+			account: user,
+			l1: "mina:devnet",
+			l2: "zeko-m:testnet"
+		})
+
+		expect(
+			pending.deposits.map(({ amount, finalised, id }) => ({ amount, finalised, id }))
+		).toEqual([
+			{ amount: "1", finalised: true, id: "debug-deposit-1" },
+			{ amount: "2", finalised: false, id: "debug-deposit-2" },
+			{ amount: "3", finalised: false, id: "debug-deposit-3" }
+		])
+	})
+
 	it("exposes realistic reproduction scenarios for reported completion and withdrawal loops", async () => {
 		expect(bridgeDebugBackendScenarios).toEqual(
 			expect.arrayContaining([

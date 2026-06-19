@@ -179,6 +179,12 @@ const visiblePages = computed(() => {
                 <span>MINA</span>
               </div>
             </td>
+            <!-- Hash -->
+            <td>
+              <span class="HashCell" :title='String(row.getValue("hash"))'>
+                {{ String(row.getValue("hash") || "none") }}
+              </span>
+            </td>
             <!-- Date -->
             <td>{{ String(row.getValue("date")) }}</td>
           </tr>
@@ -282,6 +288,17 @@ tbody tr:hover {
   span:first-child {
     justify-self: end;
   }
+}
+
+.HashCell {
+  display: inline-block;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  white-space: nowrap;
 }
 
 .PaginationBar {

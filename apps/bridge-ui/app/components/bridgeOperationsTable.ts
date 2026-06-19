@@ -20,10 +20,17 @@ export const bridgeOperationDateColumn = {
 	header: "Date"
 } satisfies ColumnDef<BridgeOperationRow>
 
+export const bridgeOperationHashColumn = {
+	id: "hash",
+	accessorFn: (row: BridgeOperationRow) => row.hash,
+	header: "Hash"
+} satisfies ColumnDef<BridgeOperationRow>
+
 export const bridgeOperationColumns = [
 	{ accessorKey: "statusText", header: "Status" },
 	{ accessorKey: "source", header: "From" },
 	{ accessorKey: "destination", header: "To" },
 	{ accessorKey: "amount", header: "Amount" },
+	bridgeOperationHashColumn,
 	bridgeOperationDateColumn
 ] satisfies ColumnDef<BridgeOperationRow>[]

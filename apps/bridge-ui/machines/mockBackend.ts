@@ -292,16 +292,12 @@ const updateSeededOperationsAfterSignature = ({
 		}
 	}
 
-	const updateLatestOperation = (
+	const updateFirstPendingOperation = (
 		kind: BridgeDebugOperationKind,
 		recipe: (seed: BridgeDebugSeededOperation) => BridgeDebugSeededOperation
 	): BridgeDebugBackendState => {
-		const index = state.seededOperations.reduce(
-			(matchIndex, seed, seedIndex) =>
-				seed.kind === kind && seed.cancelled === false && seed.finalised === false
-					? seedIndex
-					: matchIndex,
-			-1
+		const index = state.seededOperations.findIndex(
+			(seed) => seed.kind === kind && seed.cancelled === false && seed.finalised === false
 		)
 		if (index === -1) return state
 		return {
@@ -319,13 +315,13 @@ const updateSeededOperationsAfterSignature = ({
 		return addSubmittedOperation("withdrawal", request.amount ?? "1")
 	}
 	if (request.action === "finalizeDeposit") {
-		return updateLatestOperation("deposit", (seed) => ({ ...seed, finalised: true }))
+		return updateFirstPendingOperation("deposit", (seed) => ({ ...seed, finalised: true }))
 	}
 	if (request.action === "finalizeWithdrawal") {
-		return updateLatestOperation("withdrawal", (seed) => ({ ...seed, finalised: true }))
+		return updateFirstPendingOperation("withdrawal", (seed) => ({ ...seed, finalised: true }))
 	}
 	if (request.action === "cancelDeposit") {
-		return updateLatestOperation("deposit", (seed) => ({ ...seed, cancelled: true }))
+		return updateFirstPendingOperation("deposit", (seed) => ({ ...seed, cancelled: true }))
 	}
 	return state
 }
