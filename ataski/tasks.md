@@ -363,4 +363,4 @@
 - T377 | done | resolve-dashboard-finality-review | done/T377-resolve-dashboard-finality-review.md
 - T378 | done | surface-deposit-finality-risk | done/T378-surface-deposit-finality-risk.md
 - T379 | done | render-actions-api-warning | done/T379-render-actions-api-warning.md
-- T380 | in-progress | bridge-transfer-fee-requirements | in-progress/T380-bridge-transfer-fee-requirements.md
+- T380 | done | bridge-transfer-fee-requirements | done/T380-bridge-transfer-fee-requirements.md

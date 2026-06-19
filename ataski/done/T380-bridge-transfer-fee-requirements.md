@@ -1,12 +1,13 @@
 ---
 id: T380
 title: "Bridge transfer fee requirements"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-19T14:18:52Z
-updated_at: 2026-06-19T14:19:11Z
+updated_at: 2026-06-19T14:28:20Z
 ---
+
 ## Requirements
 
 - Correct bridge SDK minimum transfer validation for both Mina-to-Zeko deposits and Zeko-to-Mina withdrawals.
@@ -30,4 +31,12 @@ updated_at: 2026-06-19T14:19:11Z
 
 ## RED Evidence
 
+- `pnpm exec moon run bridge-sdk:test -f`
+- Result: expected RED. All 9 new fee-domain tests failed because the new calculation, assertion, async account-check, and stable error APIs did not exist; the other 57 bridge SDK tests passed.
+
 ## GREEN Evidence
+
+- `pnpm exec moon run bridge-sdk:test -f`: 14 test files and 67 tests passed after formatting.
+- `pnpm exec moon run bridge-sdk:typecheck -f`: passed.
+- `pnpm exec moon run bridge-sdk:lint -f`: passed with two pre-existing `noExplicitAny` warnings in `src/types.ts`.
+- Lefthook passed on commit `766026b`, including repository lint fixes, formatting, and `bridge-ui:typecheck`.
