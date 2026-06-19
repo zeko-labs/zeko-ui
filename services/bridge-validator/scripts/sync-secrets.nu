@@ -102,8 +102,10 @@ export def main [
 	let wrangler_config = ($wrangler_config | default (default-wrangler-config))
 	let values = read-dotenv $env_file
 	let wallet_env_override = ($values | get --optional "BRIDGE_VALIDATOR_WALLET_ENV_FILE" | default "" | str trim)
+	let shell_wallet_env_override = ($env.BRIDGE_VALIDATOR_WALLET_ENV_FILE? | default "" | str trim)
+	let has_explicit_wallet_env_file = $wallet_env_override != "" or $shell_wallet_env_override != ""
 	let wallet_env_file = if $wallet_env_override != "" { $wallet_env_override | path expand } else { default-wallet-env-file }
-	let wallet_values = if $wallet_env_override != "" { read-explicit-wallet-dotenv $wallet_env_file } else { read-optional-dotenv $wallet_env_file }
+	let wallet_values = if $has_explicit_wallet_env_file { read-explicit-wallet-dotenv $wallet_env_file } else { read-optional-dotenv $wallet_env_file }
 	let wallet_private_key = resolve-wallet-private-key $wallet_values $values
 	let wallet_public_key = resolve-wallet-public-key $wallet_values $values
 

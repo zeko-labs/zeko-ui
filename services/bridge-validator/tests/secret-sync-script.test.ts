@@ -20,6 +20,26 @@ const cleanupScript = readFileSync(resolve(testDir, "../scripts/cleanup.nu"), "u
 const startScript = readFileSync(resolve(testDir, "../scripts/start.nu"), "utf8")
 const moonConfig = readFileSync(resolve(testDir, "../moon.yml"), "utf8")
 
+const createSecretSyncHarness = async (envLines: string[]) => {
+	const root = await mkdtemp(join(tmpdir(), "bridge-validator-secret-sync-"))
+	const fakeBin = join(root, "bin")
+	const envFile = join(root, ".env")
+	const wranglerConfig = join(root, "wrangler.jsonc")
+	await mkdir(fakeBin)
+	await writeFile(join(fakeBin, "pnpm"), "#!/usr/bin/env sh\ncat >/dev/null\nexit 0\n", "utf8")
+	await chmod(join(fakeBin, "pnpm"), 0o755)
+	await writeFile(envFile, envLines.join("\n"), "utf8")
+	await writeFile(wranglerConfig, "{}", "utf8")
+
+	return {
+		root,
+		envFile,
+		wranglerConfig,
+		fakeBin,
+		missingWalletFile: join(root, ".env.wallet.missing")
+	}
+}
+
 describe("bridge-validator secret sync script", () => {
 	it("maps required local values into Cloudflare Worker secrets", () => {
 		expect(script).toContain("default-env-file")
@@ -41,19 +61,18 @@ describe("bridge-validator secret sync script", () => {
 	})
 
 	it("fails when an explicit wallet env override points to a missing file", async () => {
-		const root = await mkdtemp(join(tmpdir(), "bridge-validator-secret-sync-"))
+		const harness = await createSecretSyncHarness([
+			"BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY=legacy-private-key",
+			"BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY=legacy-public-key",
+			"SLACK_BOT_TOKEN=slack-token",
+			"SLACK_CHANNEL_ID=slack-channel",
+			"VALIDATOR_API_TOKEN=validator-token"
+		])
 		try {
-			const fakeBin = join(root, "bin")
-			const envFile = join(root, ".env")
-			const missingWalletFile = join(root, ".env.wallet.missing")
-			const wranglerConfig = join(root, "wrangler.jsonc")
-			await mkdir(fakeBin)
-			await writeFile(join(fakeBin, "pnpm"), "#!/usr/bin/env sh\ncat >/dev/null\nexit 0\n", "utf8")
-			await chmod(join(fakeBin, "pnpm"), 0o755)
 			await writeFile(
-				envFile,
+				harness.envFile,
 				[
-					`BRIDGE_VALIDATOR_WALLET_ENV_FILE=${missingWalletFile}`,
+					`BRIDGE_VALIDATOR_WALLET_ENV_FILE=${harness.missingWalletFile}`,
 					"BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY=legacy-private-key",
 					"BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY=legacy-public-key",
 					"SLACK_BOT_TOKEN=slack-token",
@@ -62,21 +81,46 @@ describe("bridge-validator secret sync script", () => {
 				].join("\n"),
 				"utf8"
 			)
-			await writeFile(wranglerConfig, "{}", "utf8")
 
 			await expect(
-				execFileAsync("nu", ["scripts/sync-secrets.nu", envFile, wranglerConfig], {
+				execFileAsync("nu", ["scripts/sync-secrets.nu", harness.envFile, harness.wranglerConfig], {
 					cwd: projectDir,
 					env: {
 						...process.env,
-						PATH: `${fakeBin}:${process.env.PATH ?? ""}`
+						PATH: `${harness.fakeBin}:${process.env.PATH ?? ""}`
 					}
 				})
 			).rejects.toMatchObject({
 				stderr: expect.stringContaining("Explicit wallet env file does not exist")
 			})
 		} finally {
-			await rm(root, { recursive: true, force: true })
+			await rm(harness.root, { recursive: true, force: true })
+		}
+	})
+
+	it("fails when a shell wallet env override points to a missing file", async () => {
+		const harness = await createSecretSyncHarness([
+			"BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY=legacy-private-key",
+			"BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY=legacy-public-key",
+			"SLACK_BOT_TOKEN=slack-token",
+			"SLACK_CHANNEL_ID=slack-channel",
+			"VALIDATOR_API_TOKEN=validator-token"
+		])
+		try {
+			await expect(
+				execFileAsync("nu", ["scripts/sync-secrets.nu", harness.envFile, harness.wranglerConfig], {
+					cwd: projectDir,
+					env: {
+						...process.env,
+						BRIDGE_VALIDATOR_WALLET_ENV_FILE: harness.missingWalletFile,
+						PATH: `${harness.fakeBin}:${process.env.PATH ?? ""}`
+					}
+				})
+			).rejects.toMatchObject({
+				stderr: expect.stringContaining("Explicit wallet env file does not exist")
+			})
+		} finally {
+			await rm(harness.root, { recursive: true, force: true })
 		}
 	})
 
