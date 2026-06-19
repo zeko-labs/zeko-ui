@@ -55,8 +55,8 @@ export class Bridge {
 	private withBridgeHooks(runtime: BridgeRuntime): BridgeRuntime {
 		const runtimeWithDefaults = {
 			...runtime,
-			V2_DEPOSITS_START_INDEX: runtime.V2_DEPOSITS_START_INDEX ?? UInt32.one,
-			V2_WITHDRAWALS_START_INDEX: runtime.V2_WITHDRAWALS_START_INDEX ?? UInt32.one
+			V2_DEPOSITS_START_INDEX: runtime.V2_DEPOSITS_START_INDEX ?? UInt32.from(1),
+			V2_WITHDRAWALS_START_INDEX: runtime.V2_WITHDRAWALS_START_INDEX ?? UInt32.from(1)
 		}
 
 		return {
