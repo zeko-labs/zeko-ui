@@ -5,13 +5,24 @@ import type {
 	BridgeDebugOperationKind
 } from "~~/machines/mockBackend"
 
-export const createBridgeDebugPanelController = ({
-	store
-}: {
+type BridgeDebugPanelControllerOptions = {
+	clearCompletedOperations?: () => void
+	simulatePageRefresh?: () => void
 	store: BridgeDebugBackendStore
-}) => ({
+	syncRecoveredOperations?: () => void
+}
+
+export const createBridgeDebugPanelController = ({
+	clearCompletedOperations,
+	simulatePageRefresh,
+	syncRecoveredOperations,
+	store
+}: BridgeDebugPanelControllerOptions) => ({
 	advancePendingStatus: () => {
 		store.advancePendingStatus()
+	},
+	clearCompletedOperations: () => {
+		clearCompletedOperations?.()
 	},
 	clearLogs: () => {
 		store.clearLogs()
@@ -25,9 +36,16 @@ export const createBridgeDebugPanelController = ({
 	},
 	seedRecoveredOperation: (kind: BridgeDebugOperationKind) => {
 		store.seedRecoveredOperation(kind)
+		syncRecoveredOperations?.()
 	},
 	setScenario: (scenario: BridgeDebugBackendScenario) => {
 		store.setScenario(scenario)
+	},
+	simulatePageRefresh: () => {
+		simulatePageRefresh?.()
+	},
+	syncRecoveredOperations: () => {
+		syncRecoveredOperations?.()
 	},
 	toggleCancellableDeposit: () => {
 		store.toggleCancellableDeposit()

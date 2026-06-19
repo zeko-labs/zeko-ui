@@ -257,6 +257,77 @@ const actionStateFromSeed = ({
 	destination
 })
 
+const updateSeededOperationsAfterSignature = ({
+	hash,
+	request,
+	state
+}: {
+	hash: string
+	request: BridgeDebugSignatureRequest
+	state: BridgeDebugBackendState
+}): BridgeDebugBackendState => {
+	const timestampMs = currentTimestampMs()
+	const addSubmittedOperation = (
+		kind: BridgeDebugOperationKind,
+		amount: string
+	): BridgeDebugBackendState => {
+		const index = state.nextOperationIndex
+		const seed: BridgeDebugSeededOperation = {
+			kind,
+			index,
+			id: `debug-${kind}-${index}`,
+			amount,
+			cancelled: false,
+			finalised: false,
+			recipient: request.user,
+			transactionHash: hash,
+			timestampMs
+		}
+		return {
+			...state,
+			nextOperationIndex: index + 1,
+			seededOperations: [...state.seededOperations, seed]
+		}
+	}
+
+	const updateLatestOperation = (
+		kind: BridgeDebugOperationKind,
+		recipe: (seed: BridgeDebugSeededOperation) => BridgeDebugSeededOperation
+	): BridgeDebugBackendState => {
+		const index = state.seededOperations.reduce(
+			(matchIndex, seed, seedIndex) =>
+				seed.kind === kind && seed.cancelled === false && seed.finalised === false
+					? seedIndex
+					: matchIndex,
+			-1
+		)
+		if (index === -1) return state
+		return {
+			...state,
+			seededOperations: state.seededOperations.map((seed, seedIndex) =>
+				seedIndex === index ? recipe(seed) : seed
+			)
+		}
+	}
+
+	if (request.action === "submitDeposit") {
+		return addSubmittedOperation("deposit", request.amount ?? "1")
+	}
+	if (request.action === "submitWithdrawal") {
+		return addSubmittedOperation("withdrawal", request.amount ?? "1")
+	}
+	if (request.action === "finalizeDeposit") {
+		return updateLatestOperation("deposit", (seed) => ({ ...seed, finalised: true }))
+	}
+	if (request.action === "finalizeWithdrawal") {
+		return updateLatestOperation("withdrawal", (seed) => ({ ...seed, finalised: true }))
+	}
+	if (request.action === "cancelDeposit") {
+		return updateLatestOperation("deposit", (seed) => ({ ...seed, cancelled: true }))
+	}
+	return state
+}
+
 export const createBridgeDebugBackendStore = ({
 	storage = safeStorage()
 }: CreateBridgeDebugBackendStoreOptions = {}): BridgeDebugBackendStore => {
@@ -641,7 +712,11 @@ export const createMockBridgeOperationsWorker = ({
 				}
 				const hash = fakeHash(snapshot.nextHashId)
 				store.update((current) => ({
-					...current,
+					...updateSeededOperationsAfterSignature({
+						hash,
+						request: signatureRequest,
+						state: current
+					}),
 					nextHashId: current.nextHashId + 1,
 					signatureRequests: current.signatureRequests.map((request) =>
 						request.requestId === input.requestId

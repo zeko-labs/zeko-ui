@@ -67,6 +67,9 @@ export type BridgeEvents =
 	| { type: "CompleteOperation"; id: string }
 	| { type: "PauseOperation"; id: string }
 	| { type: "TerminateOperation"; id: string }
+	| { type: "RefreshOperations" }
+	| { type: "SimulatePageRefresh" }
+	| { type: "ClearCompletedOperations" }
 	| { type: "ActivateCancellationOperation"; id: string }
 	| { type: "ReleaseCancellationOperation"; id: string }
 	| { type: "InvertDirection" }
@@ -277,7 +280,8 @@ export const bridgeMachine = setup({
 		validSource: ({ context }) => supportedNetworks.includes(context.sourceNetwork),
 		validDestination: ({ context }) => supportedNetworks.includes(context.destinationNetwork),
 		shouldRefreshPendingOperations: ({ context }) =>
-			[...context.operations.values()].some(({ status }) => status !== "completed")
+			[...context.operations.values()].some(({ status }) => status !== "completed"),
+		canFindPendingOperations: ({ context }) => context.accountReady && context.walletReady
 	},
 	actors: {
 		bridgeOperationMachine,
@@ -414,6 +418,23 @@ export const bridgeMachine = setup({
 					context.activeCancellationOperation === id ? null : context.activeCancellationOperation
 			}
 		}),
+		clearCompletedOperations: assign(({ context }) => {
+			const operations = new Map(
+				[...context.operations.entries()].filter(([, { status }]) => status !== "completed")
+			)
+			return {
+				operations,
+				activeOperation:
+					context.activeOperation !== null && operations.has(context.activeOperation)
+						? context.activeOperation
+						: null,
+				activeCancellationOperation:
+					context.activeCancellationOperation !== null &&
+					operations.has(context.activeCancellationOperation)
+						? context.activeCancellationOperation
+						: null
+			}
+		}),
 		activateCancellationOperation: assign(({ context }, params: { id: string }) => ({
 			activeCancellationOperation:
 				context.activeCancellationOperation === null ||
@@ -543,6 +564,30 @@ export const bridgeMachine = setup({
 					command: "start"
 				})
 			}
+		},
+		RefreshOperations: {
+			target: ".FIND_OPERATIONS",
+			guard: "canFindPendingOperations"
+		},
+		SimulatePageRefresh: {
+			target: ".FIND_OPERATIONS",
+			guard: "canFindPendingOperations",
+			actions: enqueueActions(({ context, enqueue }) => {
+				context.operations.forEach(({ operation }) => {
+					operation.send({ type: "Destroy" })
+				})
+				context.operations.clear()
+				enqueue.assign({
+					operations: new Map(),
+					activeOperation: null,
+					activeCancellationOperation: null,
+					nextOperationOrder: 0,
+					currentSlot: undefined
+				})
+			})
+		},
+		ClearCompletedOperations: {
+			actions: "clearCompletedOperations"
 		},
 		PauseOperation: {
 			description: "Set operation status to paused and add it to the operationToUnpause array.",

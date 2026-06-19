@@ -1,6 +1,6 @@
 import debugPanelSource from "../../app/components/BridgeDebugPanel.vue?raw"
 import indexSource from "../../app/pages/index.vue?raw"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { createBridgeDebugBackendStore } from "../../machines/mockBackend"
 import { createBridgeDebugPanelController } from "../../app/debug/bridgeDebugPanel"
 
@@ -33,6 +33,9 @@ describe("bridge debug panel", () => {
 			"Terminal Error",
 			"Transient Error",
 			"Cancellable",
+			"Sync Backend",
+			"Sim Refresh",
+			"Clear Completed",
 			"Clear Logs",
 			"Export"
 		]) {
@@ -62,5 +65,32 @@ describe("bridge debug panel", () => {
 			currentSlot: 2
 		})
 		expect(snapshot.seededOperations).toEqual([expect.objectContaining({ kind: "withdrawal" })])
+	})
+
+	it("routes debug queue controls through bridge recovery callbacks", () => {
+		const store = createBridgeDebugBackendStore({ storage: createMemoryStorage() })
+		const syncRecoveredOperations = vi.fn()
+		const simulatePageRefresh = vi.fn()
+		const clearCompletedOperations = vi.fn()
+		const controller = createBridgeDebugPanelController({
+			store,
+			syncRecoveredOperations,
+			simulatePageRefresh,
+			clearCompletedOperations
+		})
+
+		controller.seedRecoveredOperation("deposit")
+		controller.seedRecoveredOperation("withdrawal")
+		controller.syncRecoveredOperations()
+		controller.simulatePageRefresh()
+		controller.clearCompletedOperations()
+
+		expect(syncRecoveredOperations).toHaveBeenCalledTimes(3)
+		expect(simulatePageRefresh).toHaveBeenCalledOnce()
+		expect(clearCompletedOperations).toHaveBeenCalledOnce()
+		expect(store.getSnapshot().seededOperations).toEqual([
+			expect.objectContaining({ kind: "deposit" }),
+			expect.objectContaining({ kind: "withdrawal" })
+		])
 	})
 })

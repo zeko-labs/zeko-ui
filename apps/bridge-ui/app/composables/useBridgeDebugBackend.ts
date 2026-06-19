@@ -6,10 +6,37 @@ import {
 	type BridgeDebugForcedError,
 	type BridgeDebugOperationKind
 } from "~~/machines/mockBackend"
+import type { BridgeEvents } from "~~/machines/bridge"
 
-export const useBridgeDebugBackend = () => {
+type BridgeDebugPanelBridge = {
+	send: (
+		event: Extract<
+			BridgeEvents,
+			| { type: "ClearCompletedOperations" }
+			| { type: "RefreshOperations" }
+			| { type: "SimulatePageRefresh" }
+		>
+	) => void
+}
+
+export const useBridgeDebugBackend = ({
+	bridge
+}: {
+	bridge?: BridgeDebugPanelBridge
+} = {}) => {
 	const store = getBridgeDebugBackendStore()
-	const controller = createBridgeDebugPanelController({ store })
+	const controller = createBridgeDebugPanelController({
+		store,
+		clearCompletedOperations: () => {
+			bridge?.send({ type: "ClearCompletedOperations" })
+		},
+		simulatePageRefresh: () => {
+			bridge?.send({ type: "SimulatePageRefresh" })
+		},
+		syncRecoveredOperations: () => {
+			bridge?.send({ type: "RefreshOperations" })
+		}
+	})
 	const snapshot = ref(store.getSnapshot())
 
 	const refresh = () => {
@@ -34,6 +61,10 @@ export const useBridgeDebugBackend = () => {
 			controller.clearLogs()
 			refresh()
 		},
+		clearCompletedOperations: () => {
+			controller.clearCompletedOperations()
+			refresh()
+		},
 		exportSnapshot: () => controller.exportSnapshot(),
 		forceNextError: (error: BridgeDebugForcedError) => {
 			controller.forceNextError(error)
@@ -49,6 +80,14 @@ export const useBridgeDebugBackend = () => {
 		},
 		setScenario: (scenario: BridgeDebugBackendScenario) => {
 			controller.setScenario(scenario)
+			refresh()
+		},
+		simulatePageRefresh: () => {
+			controller.simulatePageRefresh()
+			refresh()
+		},
+		syncRecoveredOperations: () => {
+			controller.syncRecoveredOperations()
 			refresh()
 		},
 		toggleCancellableDeposit: () => {

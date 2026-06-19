@@ -188,6 +188,67 @@ describe("mock bridge operations worker", () => {
 		})
 	})
 
+	it("persists successful mock SDK submissions for recovery after refresh", async () => {
+		const store = createBridgeDebugBackendStore({ storage })
+		const worker = createMockBridgeOperationsWorker({ store })
+		const user = "B62qtest-user"
+
+		const submit = await worker.submitWithdrawal({
+			l1: "mina:devnet",
+			l2: "zeko-m:testnet",
+			user,
+			amount: "1.25",
+			feeNanomina: 100_000_000
+		})
+		const submitHash = await worker.completeSdkSignature({
+			requestId: submit.requestId,
+			signedTransaction: signedCommand(user)
+		})
+
+		await expect(
+			worker.findPendingOperations({
+				account: user,
+				l1: "mina:devnet",
+				l2: "zeko-m:testnet"
+			})
+		).resolves.toMatchObject({
+			withdrawals: [
+				{
+					amount: "1.25",
+					finalised: false,
+					transaction: { hash: submitHash }
+				}
+			]
+		})
+
+		const finalize = await worker.finalizeWithdrawal({
+			l1: "mina:devnet",
+			l2: "zeko-m:testnet",
+			user,
+			feeNanomina: 100_000_000
+		})
+		await worker.completeSdkSignature({
+			requestId: finalize.requestId,
+			signedTransaction: signedCommand(user)
+		})
+
+		await expect(
+			worker.findPendingOperations({
+				account: user,
+				l1: "mina:devnet",
+				l2: "zeko-m:testnet"
+			})
+		).resolves.toMatchObject({
+			withdrawals: [
+				{
+					amount: "1.25",
+					finalised: true,
+					transaction: { hash: submitHash }
+				}
+			]
+		})
+	})
+
 	it("exposes realistic reproduction scenarios for reported completion and withdrawal loops", async () => {
 		expect(bridgeDebugBackendScenarios).toEqual(
 			expect.arrayContaining([

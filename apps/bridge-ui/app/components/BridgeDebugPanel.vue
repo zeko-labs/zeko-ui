@@ -5,6 +5,7 @@ import {
 	ChevronsRight,
 	Download,
 	Plus,
+	RefreshCw,
 	RotateCcw,
 	Trash2,
 	Zap
@@ -12,7 +13,7 @@ import {
 import type { BridgeDebugBackendScenario } from "~~/machines/mockBackend"
 
 const bs = useBridgeStore()
-const debug = useBridgeDebugBackend()
+const debug = useBridgeDebugBackend({ bridge: bs.bridge })
 const selectedScenario = ref(debug.snapshot.value.scenario)
 const exportedSnapshot = ref("")
 
@@ -117,6 +118,24 @@ const exportSnapshot = async () => {
         title="Advance pending backend status"
         @click="debug.advancePendingStatus">
         <ChevronsRight /> Advance
+      </button>
+      <button
+        type="button"
+        title="Run findPendingOperations without reloading the page"
+        @click="debug.syncRecoveredOperations">
+        <RefreshCw /> Sync Backend
+      </button>
+      <button
+        type="button"
+        title="Clear operation actors and rebuild them from mock backend state"
+        @click="debug.simulatePageRefresh">
+        <RefreshCw /> Sim Refresh
+      </button>
+      <button
+        type="button"
+        title="Remove completed operation actors from the visible list"
+        @click="debug.clearCompletedOperations">
+        <Trash2 /> Clear Completed
       </button>
       <button
         type="button"
