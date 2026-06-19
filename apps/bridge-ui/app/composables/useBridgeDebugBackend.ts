@@ -1,3 +1,4 @@
+import * as Vue from "vue"
 import { createBridgeDebugPanelController } from "~/debug/bridgeDebugPanel"
 import {
 	bridgeDebugBackendScenarios,
@@ -29,21 +30,21 @@ export const useBridgeDebugBackend = ({
 			bridge?.send({ type: "RefreshOperations" })
 		}
 	})
-	const snapshot = ref(store.getSnapshot())
+	const snapshot = Vue.ref(store.getSnapshot())
 
 	const refresh = () => {
 		snapshot.value = store.getSnapshot()
 	}
 
-	onMounted(() => {
+	if (import.meta.client) {
 		const unsubscribe = store.subscribe((nextSnapshot) => {
 			snapshot.value = nextSnapshot
 		})
-		onBeforeUnmount(unsubscribe)
-	})
+		Vue.onScopeDispose(unsubscribe)
+	}
 
 	return {
-		snapshot: readonly(snapshot),
+		snapshot: Vue.readonly(snapshot),
 		scenarios: bridgeDebugBackendScenarios,
 		advancePendingStatus: () => {
 			controller.advancePendingStatus()

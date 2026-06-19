@@ -118,6 +118,7 @@ type BridgeOperationEvents =
 			type: "SyncRecoveredState"
 			actionIndex: number
 			transaction: ActionState["transaction"]
+			progress?: ActionState["progress"]
 			cancellable: boolean
 			timeoutSlot?: string
 	  }
@@ -148,6 +149,7 @@ export interface BridgeOperationContext {
 	timeoutSlots?: number
 	timeoutSlot?: string
 	actionIndex?: number
+	progress?: ActionState["progress"]
 	paused: boolean
 	transaction?: ActionState["transaction"]
 	completedAtMs?: number
@@ -272,6 +274,7 @@ export const bridgeOperationMachine = setup({
 			timeoutSlots?: number
 			timeoutSlot?: string
 			actionIndex?: number
+			progress?: ActionState["progress"]
 			transaction?: ActionState["transaction"]
 			cancellable?: boolean
 			completionVerification?: BridgeOperationCompletionVerification
@@ -398,6 +401,7 @@ export const bridgeOperationMachine = setup({
 			timeoutSlots,
 			timeoutSlot,
 			actionIndex,
+			progress,
 			bridge,
 			wallet,
 			transaction,
@@ -418,6 +422,7 @@ export const bridgeOperationMachine = setup({
 		timeoutSlots,
 		timeoutSlot,
 		actionIndex,
+		progress,
 		returnTo: false,
 		paused: false,
 		transaction,
@@ -463,6 +468,7 @@ export const bridgeOperationMachine = setup({
 			actions: assign(({ event }) => ({
 				actionIndex: event.actionIndex,
 				transaction: event.transaction,
+				progress: event.progress,
 				canCancel: event.cancellable,
 				timeoutSlot: event.timeoutSlot
 			}))
@@ -471,6 +477,7 @@ export const bridgeOperationMachine = setup({
 			actions: assign(({ event }) => ({
 				actionIndex: event.actionIndex,
 				transaction: event.transaction,
+				progress: undefined,
 				completionVerification: "verified"
 			}))
 		}
@@ -488,11 +495,11 @@ export const bridgeOperationMachine = setup({
 				},
 				CompleteBridgeOperation: {
 					target: "BRIDGE_OPERATION_DONE_NOOP",
-					actions: assign({ completionVerification: "verified" })
+					actions: assign({ completionVerification: "verified", progress: undefined })
 				},
 				CompleteBridgeOperationCancelled: {
 					target: "BRIDGE_OPERATION_CANCELLED_DONE",
-					actions: assign({ completionVerification: "verified" })
+					actions: assign({ completionVerification: "verified", progress: undefined })
 				},
 				StartBridgeOperation: [
 					{
@@ -583,6 +590,7 @@ export const bridgeOperationMachine = setup({
 						actions: assign(({ event }) => ({
 							actionIndex: event.actionIndex,
 							transaction: event.transaction,
+							progress: event.progress,
 							canCancel: event.cancellable,
 							timeoutSlot: event.timeoutSlot
 						}))
@@ -727,11 +735,16 @@ export const bridgeOperationMachine = setup({
 					target: "PAUSED",
 					actions: assign({ paused: true })
 				},
-				CanFinalize: { target: "TO_FINALIZE", guard: "matchesActionIndex" },
+				CanFinalize: {
+					target: "TO_FINALIZE",
+					guard: "matchesActionIndex",
+					actions: assign({ progress: undefined })
+				},
 				SyncRecoveredState: {
 					actions: assign(({ event }) => ({
 						actionIndex: event.actionIndex,
 						transaction: event.transaction,
+						progress: event.progress,
 						canCancel: event.cancellable,
 						timeoutSlot: event.timeoutSlot
 					}))
@@ -763,6 +776,7 @@ export const bridgeOperationMachine = setup({
 					actions: assign(({ event }) => ({
 						actionIndex: event.actionIndex,
 						transaction: event.transaction,
+						progress: event.progress,
 						canCancel: event.cancellable,
 						timeoutSlot: event.timeoutSlot
 					}))
@@ -949,10 +963,15 @@ export const bridgeOperationMachine = setup({
 					target: "PAUSED",
 					actions: assign({ paused: true })
 				},
-				CanFinalize: { target: "TO_FINALIZE", guard: "matchesActionIndex" },
+				CanFinalize: {
+					target: "TO_FINALIZE",
+					guard: "matchesActionIndex",
+					actions: assign({ progress: undefined })
+				},
 				AlreadyFinalised: {
 					target: "BRIDGE_OPERATION_COMPLETED",
-					guard: "matchesActionIndex"
+					guard: "matchesActionIndex",
+					actions: assign({ progress: undefined })
 				},
 				TerminalError: {
 					target: "FAILED",
@@ -1025,7 +1044,8 @@ export const bridgeOperationMachine = setup({
 			meta: { step: 4 },
 			entry: [
 				assign({
-					completedAtMs: ({ context }) => context.completedAtMs ?? Date.now()
+					completedAtMs: ({ context }) => context.completedAtMs ?? Date.now(),
+					progress: undefined
 				}),
 				({ context }) => {
 					sendMetric(

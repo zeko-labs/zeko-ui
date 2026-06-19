@@ -382,3 +382,4 @@
 - T395 | done | remove-runtime-debug-mode-fallback | done/T395-remove-runtime-debug-mode-fallback.md
 - T396 | done | clean-debug-panel-controls | done/T396-clean-debug-panel-controls.md
 - T397 | done | prune-debug-backend-scenarios | done/T397-prune-debug-backend-scenarios.md
+- T398 | done | bridge-progress-label-and-build-fix | done/T398-bridge-progress-label-and-build-fix.md

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { progressFromState, shouldShowCompletedOperationsLoading, steps } from "../../app/helpers"
+import {
+	operationProgressLabel,
+	progressFromState,
+	shouldShowCompletedOperationsLoading,
+	steps
+} from "../../app/helpers"
+import { bridgeOperationProgress } from "../../machines/operationProgress"
 
 describe("progressFromState", () => {
 	it("always uses the default main-lane progress steps", () => {
@@ -48,5 +54,24 @@ describe("shouldShowCompletedOperationsLoading", () => {
 				operationCount: 0
 			})
 		).toBe(false)
+	})
+})
+
+describe("operationProgressLabel", () => {
+	it("formats discreet remaining progress text", () => {
+		expect(operationProgressLabel({ confirmationsRemaining: 1 })).toBe("1 confirmation remaining")
+		expect(operationProgressLabel({ confirmationsRemaining: 2 })).toBe("2 confirmations remaining")
+		expect(operationProgressLabel(undefined)).toBeNull()
+		expect(operationProgressLabel({ confirmationsRemaining: 0 })).toBeNull()
+	})
+})
+
+describe("bridgeOperationProgress", () => {
+	it("uses the action index and SDK progress index delta", () => {
+		expect(bridgeOperationProgress({ actionIndex: 4, confirmedIndex: 3 })).toEqual({
+			confirmationsRemaining: 1
+		})
+		expect(bridgeOperationProgress({ actionIndex: 4, confirmedIndex: 4 })).toBeUndefined()
+		expect(bridgeOperationProgress({ actionIndex: 4, confirmedIndex: 5 })).toBeUndefined()
 	})
 })

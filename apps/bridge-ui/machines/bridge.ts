@@ -54,6 +54,7 @@ type StartOperationSettings = {
 		destination: BridgeNetwork
 		transaction: ActionState["transaction"]
 		actionIndex: number
+		progress?: ActionState["progress"]
 		cancellable?: boolean
 		timeoutSlot?: string
 		completionVerification?: BridgeOperationCompletionVerification
@@ -151,6 +152,7 @@ const enqueueRecoveredOperations = ({
 					source,
 					transaction,
 					actionIndex: actionState.index,
+					progress: actionState.progress,
 					cancellable,
 					timeoutSlot
 				}
@@ -213,6 +215,7 @@ const enqueueRecoveredOperation = ({
 				destination: actionState.destination,
 				transaction: actionState.transaction,
 				actionIndex: actionState.index,
+				progress: actionState.progress,
 				cancellable: actionState.cancellable,
 				timeoutSlot: actionState.timeoutSlot,
 				completionVerification:
@@ -317,6 +320,7 @@ const syncRecoveredOperations = ({
 			type: "SyncRecoveredState",
 			actionIndex: actionState.index,
 			transaction: actionState.transaction,
+			progress: actionState.progress,
 			cancellable,
 			timeoutSlot
 		})
@@ -459,6 +463,7 @@ export const bridgeMachine = setup({
 					timeoutSlots,
 					timeoutSlot: state?.timeoutSlot,
 					actionIndex: state?.actionIndex,
+					progress: state?.progress,
 					transaction: state?.transaction,
 					cancellable: state?.cancellable,
 					completionVerification: state?.completionVerification
