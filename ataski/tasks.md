@@ -372,3 +372,4 @@
 - T394 | done | extend-actions-api-cli-overrides | done/T394-extend-actions-api-cli-overrides.md
 - T395 | done | add-cli-l1-url-override | done/T395-add-cli-l1-url-override.md
 - T396 | done | resolve-codex-review-wallet-status | done/T396-resolve-codex-review-wallet-status.md
+- T397 | done | fail-explicit-wallet-secret-overrides | done/T397-fail-explicit-wallet-secret-overrides.md

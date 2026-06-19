@@ -25,6 +25,14 @@ def read-optional-dotenv [env_file: path] {
 	{}
 }
 
+def read-explicit-wallet-dotenv [env_file: path] {
+	if not ($env_file | path exists) {
+		error make { msg: $"Explicit wallet env file does not exist: ($env_file)" }
+	}
+
+	read-dotenv $env_file
+}
+
 def resolve-wallet-private-key [wallet_values: record, values: record] {
 	let wallet_file_private_key = ($wallet_values | get --optional "MINA_PRIVATE_KEY" | default "" | str trim)
 	let validator_private_key = ($values | get --optional "BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY" | default "" | str trim)
@@ -95,7 +103,7 @@ export def main [
 	let values = read-dotenv $env_file
 	let wallet_env_override = ($values | get --optional "BRIDGE_VALIDATOR_WALLET_ENV_FILE" | default "" | str trim)
 	let wallet_env_file = if $wallet_env_override != "" { $wallet_env_override | path expand } else { default-wallet-env-file }
-	let wallet_values = read-optional-dotenv $wallet_env_file
+	let wallet_values = if $wallet_env_override != "" { read-explicit-wallet-dotenv $wallet_env_file } else { read-optional-dotenv $wallet_env_file }
 	let wallet_private_key = resolve-wallet-private-key $wallet_values $values
 	let wallet_public_key = resolve-wallet-public-key $wallet_values $values
 

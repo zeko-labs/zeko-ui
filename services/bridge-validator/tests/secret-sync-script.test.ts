@@ -1,32 +1,24 @@
-import { dirname, resolve } from "node:path"
+import { execFile } from "node:child_process"
 import { readFileSync } from "node:fs"
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { dirname, join, resolve } from "node:path"
+import { promisify } from "node:util"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
-const script = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/sync-secrets.nu"),
-	"utf8"
-)
-const statusScript = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/status.nu"),
-	"utf8"
-)
+const execFileAsync = promisify(execFile)
+const testDir = dirname(fileURLToPath(import.meta.url))
+const projectDir = resolve(testDir, "..")
+const script = readFileSync(resolve(testDir, "../scripts/sync-secrets.nu"), "utf8")
+const statusScript = readFileSync(resolve(testDir, "../scripts/status.nu"), "utf8")
 const describeInstanceScript = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/describe-instance.nu"),
+	resolve(testDir, "../scripts/describe-instance.nu"),
 	"utf8"
 )
-const cleanupScript = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/cleanup.nu"),
-	"utf8"
-)
-const startScript = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/start.nu"),
-	"utf8"
-)
-const moonConfig = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), "../moon.yml"),
-	"utf8"
-)
+const cleanupScript = readFileSync(resolve(testDir, "../scripts/cleanup.nu"), "utf8")
+const startScript = readFileSync(resolve(testDir, "../scripts/start.nu"), "utf8")
+const moonConfig = readFileSync(resolve(testDir, "../moon.yml"), "utf8")
 
 describe("bridge-validator secret sync script", () => {
 	it("maps required local values into Cloudflare Worker secrets", () => {
@@ -46,6 +38,46 @@ describe("bridge-validator secret sync script", () => {
 		expect(script.indexOf("read-dotenv $env_file")).toBeLessThan(
 			script.indexOf("read-optional-dotenv $wallet_env_file")
 		)
+	})
+
+	it("fails when an explicit wallet env override points to a missing file", async () => {
+		const root = await mkdtemp(join(tmpdir(), "bridge-validator-secret-sync-"))
+		try {
+			const fakeBin = join(root, "bin")
+			const envFile = join(root, ".env")
+			const missingWalletFile = join(root, ".env.wallet.missing")
+			const wranglerConfig = join(root, "wrangler.jsonc")
+			await mkdir(fakeBin)
+			await writeFile(join(fakeBin, "pnpm"), "#!/usr/bin/env sh\ncat >/dev/null\nexit 0\n", "utf8")
+			await chmod(join(fakeBin, "pnpm"), 0o755)
+			await writeFile(
+				envFile,
+				[
+					`BRIDGE_VALIDATOR_WALLET_ENV_FILE=${missingWalletFile}`,
+					"BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY=legacy-private-key",
+					"BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY=legacy-public-key",
+					"SLACK_BOT_TOKEN=slack-token",
+					"SLACK_CHANNEL_ID=slack-channel",
+					"VALIDATOR_API_TOKEN=validator-token"
+				].join("\n"),
+				"utf8"
+			)
+			await writeFile(wranglerConfig, "{}", "utf8")
+
+			await expect(
+				execFileAsync("nu", ["scripts/sync-secrets.nu", envFile, wranglerConfig], {
+					cwd: projectDir,
+					env: {
+						...process.env,
+						PATH: `${fakeBin}:${process.env.PATH ?? ""}`
+					}
+				})
+			).rejects.toMatchObject({
+				stderr: expect.stringContaining("Explicit wallet env file does not exist")
+			})
+		} finally {
+			await rm(root, { recursive: true, force: true })
+		}
 	})
 
 	it("loads the status bearer token from the dotenv file", () => {
