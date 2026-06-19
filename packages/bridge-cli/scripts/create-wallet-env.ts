@@ -60,7 +60,7 @@ export const createWalletEnvFile = async ({
 
 	let file: FileHandle
 	try {
-		file = await open(filePath, "wx")
+		file = await open(filePath, "wx", 0o600)
 	} catch (error) {
 		if (error instanceof Error && "code" in error && error.code === "EEXIST") {
 			throw new Error(`Wallet file already exists: ${filePath}`)

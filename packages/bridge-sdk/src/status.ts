@@ -174,17 +174,19 @@ export async function fetchLastCommit(
 	const toBlock = options.toBlock ?? networkState?.pendingMaxBlockHeight ?? 0
 	const stopAtBlock = options.stopAtBlock ?? 0
 
-	for (let cursor = toBlock; cursor >= stopAtBlock; cursor -= BLOCK_RANGE_SIZE) {
-		const from = Math.max(stopAtBlock, cursor - BLOCK_RANGE_SIZE)
+	for (let cursor = toBlock; cursor >= stopAtBlock; ) {
+		const from = Math.max(stopAtBlock, cursor - BLOCK_RANGE_SIZE + 1)
 		const { data, error } = await client().query(fetchActionsQuery, {
 			pk: pk.toBase58(),
 			from,
-			to: cursor
+			to: cursor + 1
 		})
 		if (error) throw error
 
 		const commit = findLatestCommit(parseActions(data?.actions))
 		if (commit !== null) return commit
+
+		cursor = from - 1
 	}
 
 	return null

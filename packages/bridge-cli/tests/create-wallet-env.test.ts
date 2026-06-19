@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
@@ -31,6 +31,18 @@ describe("create-wallet-env", () => {
 		)
 		expect(result.publicKey).toMatch(/^B62q/)
 		expect(result.privateKey).toMatch(/^EK/)
+	})
+
+	it("creates wallet files with owner-only permissions", async () => {
+		const root = await mkdtemp(join(tmpdir(), "wallet-env-"))
+		const result = await createWalletEnvFile({
+			name: "bridge-test",
+			root,
+			now: generatedAt
+		})
+
+		const mode = (await stat(result.filePath)).mode & 0o777
+		expect(mode).toBe(0o600)
 	})
 
 	it("rejects names that are unsafe for env filenames", () => {

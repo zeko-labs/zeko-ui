@@ -5,8 +5,9 @@ import type { GqlClient } from "../src/graphql"
 
 const publicKey = PublicKey.fromBase58("B62qmE663JH772AeC3LsSi6BUD6C3BK1KDUkqajtjyWAxaZZddQ2CE4")
 
-const createClient = (): GqlClient => {
+const createClient = (onQuery?: (variables: Record<string, unknown>) => void): GqlClient => {
 	const query = async (_document: unknown, variables: Record<string, unknown>) => {
+		onQuery?.(variables)
 		if (!("pk" in variables)) {
 			return {
 				data: {
@@ -85,6 +86,22 @@ describe("bridge status helpers", () => {
 			distanceFromMaxBlockHeight: 70,
 			transactionHash: "new-commit-hash",
 			data: ["0", "new-commit"]
+		})
+	})
+
+	it("includes the archive tip block in the first query window", async () => {
+		const calls: Array<Record<string, unknown>> = []
+
+		await fetchLastCommit(
+			createClient((variables) => {
+				if ("pk" in variables) calls.push(variables)
+			}),
+			publicKey
+		)
+
+		expect(calls[0]).toMatchObject({
+			from: 0,
+			to: 101
 		})
 	})
 })
