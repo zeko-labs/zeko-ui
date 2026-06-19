@@ -252,6 +252,7 @@ const exportSnapshot = async () => {
   right: 1rem;
   bottom: 1rem;
   z-index: 120;
+  box-sizing: border-box;
   display: grid;
   gap: 0.75rem;
   width: min(28rem, calc(100vw - 2rem));
@@ -265,6 +266,12 @@ const exportSnapshot = async () => {
   box-shadow: 0 1rem 3rem oklch(0 0 0 / 0.35);
 }
 
+.BridgeDebugPanel *,
+.BridgeDebugPanel *::before,
+.BridgeDebugPanel *::after {
+  box-sizing: border-box;
+}
+
 .DebugHeader {
   display: flex;
   align-items: center;
@@ -275,6 +282,7 @@ const exportSnapshot = async () => {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    min-width: 0;
   }
 
   h3 {
@@ -283,8 +291,11 @@ const exportSnapshot = async () => {
   }
 
   span {
+    min-width: 0;
+    overflow-wrap: anywhere;
     font-size: 0.75rem;
     color: oklch(0.84 0.12 92);
+    text-align: right;
   }
 }
 
@@ -296,6 +307,7 @@ const exportSnapshot = async () => {
 .DebugSection {
   display: grid;
   gap: 0.5rem;
+  min-width: 0;
   padding-top: 0.75rem;
   border-top: 1px solid oklch(0.9 0.01 94 / 0.18);
 
@@ -323,6 +335,7 @@ const exportSnapshot = async () => {
   }
 
   select {
+    width: 100%;
     min-width: 0;
     padding: 0.45rem 0.5rem;
     color: inherit;
@@ -340,6 +353,7 @@ const exportSnapshot = async () => {
     align-items: center;
     justify-content: center;
     gap: 0.35rem;
+    min-width: 0;
     min-height: 2rem;
     padding: 0.4rem 0.5rem;
     color: oklch(0.97 0.01 94);
@@ -389,14 +403,17 @@ const exportSnapshot = async () => {
 .DebugTable {
   display: grid;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .DebugRow {
   display: grid;
-  grid-template-columns: minmax(7rem, 1.4fr) 0.7fr 0.8fr 1fr 1fr;
+  grid-template-columns:
+    minmax(0, 1.35fr) minmax(0, 0.72fr) minmax(0, 0.82fr)
+    minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.35rem;
   align-items: center;
-  min-width: 34rem;
+  min-width: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.7rem;
 
@@ -422,10 +439,16 @@ const exportSnapshot = async () => {
 
   li {
     display: grid;
-    grid-template-columns: minmax(8rem, 1fr) minmax(5rem, auto) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr) minmax(0, 1fr);
     gap: 0.5rem;
     align-items: center;
+    min-width: 0;
     font-size: 0.72rem;
+  }
+
+  strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   span {
@@ -437,6 +460,7 @@ const exportSnapshot = async () => {
 
 .ExportSection textarea {
   width: 100%;
+  min-width: 0;
   min-height: 8rem;
   color: oklch(0.97 0.01 94);
   background: oklch(0.13 0.02 245);

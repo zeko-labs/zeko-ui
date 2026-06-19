@@ -13,7 +13,10 @@ export const bridgeDebugBackendScenarios = [
 	"cancelled-deposit",
 	"fee-too-low-retry",
 	"transient-worker-error",
-	"terminal-worker-error"
+	"terminal-worker-error",
+	"repro-withdrawal-recovered-completed",
+	"repro-withdrawal-already-finalised",
+	"repro-withdrawal-blocked-loop"
 ] as const
 
 export type BridgeDebugBackendScenario = (typeof bridgeDebugBackendScenarios)[number]
@@ -195,6 +198,9 @@ const debugErrorMessage = (error: BridgeDebugForcedError) =>
 const currentTimestampMs = () => Date.now()
 
 const fakeHash = (id: number) => `5Jdebug${String(id).padStart(6, "0")}`
+const withdrawalAlreadyFinalisedReason = "Withdrawal already finalised"
+const blockedWithdrawalReason =
+	"First Zeko->Mina withdrawal amount is too small: recipient debug recipient does not have an L1 helper account yet, so the first withdrawal must cover the Mina account creation fee. This withdrawal cannot proceed as submitted."
 
 const createUnsignedTransaction = ({
 	action,
@@ -485,14 +491,24 @@ export const createMockBridgeOperationsWorker = ({
 		findPendingOperations: (input) =>
 			store.recordCall("findPendingOperations", input, async () => {
 				const snapshot = store.getSnapshot()
-				const seededOperations =
-					snapshot.scenario === "recovered-pending-operations" &&
-					snapshot.seededOperations.length === 0
-						? [
-								store.seedRecoveredOperation("deposit", { amount: "1" }),
-								store.seedRecoveredOperation("withdrawal", { amount: "1" })
-							]
-						: snapshot.seededOperations
+				const seededOperations = (() => {
+					if (snapshot.seededOperations.length > 0) return snapshot.seededOperations
+					if (snapshot.scenario === "recovered-pending-operations") {
+						return [
+							store.seedRecoveredOperation("deposit", { amount: "1" }),
+							store.seedRecoveredOperation("withdrawal", { amount: "1" })
+						]
+					}
+					if (snapshot.scenario === "repro-withdrawal-recovered-completed") {
+						return [
+							store.seedRecoveredOperation("withdrawal", {
+								amount: "1",
+								finalised: true
+							})
+						]
+					}
+					return snapshot.seededOperations
+				})()
 				return {
 					deposits: seededOperations
 						.filter((seed) => seed.kind === "deposit")
@@ -579,6 +595,21 @@ export const createMockBridgeOperationsWorker = ({
 				const snapshot = store.getSnapshot()
 				if (snapshot.scenario === "already-finalized-withdrawal") {
 					return { available: false, reason: null, status: "alreadyFinalised" }
+				}
+				if (snapshot.scenario === "repro-withdrawal-already-finalised") {
+					return {
+						available: false,
+						reason: withdrawalAlreadyFinalisedReason,
+						status: "alreadyFinalised",
+						index: 1
+					}
+				}
+				if (snapshot.scenario === "repro-withdrawal-blocked-loop") {
+					return {
+						available: false,
+						reason: blockedWithdrawalReason,
+						status: "blocked"
+					}
 				}
 				if (
 					snapshot.scenario === "delayed-withdrawal-finalization" &&

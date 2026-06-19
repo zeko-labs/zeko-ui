@@ -366,3 +366,5 @@
 - T380 | done | bridge-ui-debug-worker-seam | done/T380-bridge-ui-debug-worker-seam.md
 - T381 | done | bridge-ui-mock-backend-worker | done/T381-bridge-ui-mock-backend-worker.md
 - T382 | done | bridge-ui-debug-panel | done/T382-bridge-ui-debug-panel.md
+- T383 | done | fit-bridge-debug-panel-content | done/T383-fit-bridge-debug-panel-content.md
+- T384 | done | debug-reproductions-for-bridge-state-bugs | done/T384-debug-reproductions-for-bridge-state-bugs.md
