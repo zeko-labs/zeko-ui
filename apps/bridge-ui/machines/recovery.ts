@@ -40,9 +40,6 @@ export type RecoverySyncCandidate = {
 }
 
 const compareBySubmissionOrder = (a: ActionState, b: ActionState) => a.index - b.index
-const isRecoverableEntry = (
-	entryState: { status: RecoverySyncStatus; lane: RecoveryLane } | undefined
-) => entryState !== undefined && entryState.status !== "completed"
 
 export const classifyRecoveredOperations = ({
 	deposits,
@@ -112,19 +109,16 @@ export const buildRecoverySyncState = ({
 	recovered: RecoveredOperations
 	entryStateById: ReadonlyMap<string, { status: RecoverySyncStatus; lane: RecoveryLane }>
 }): RecoverySyncState => {
-	const mainPendingOperations = recovered.mainPending
-		.filter(({ actionState }) => isRecoverableEntry(entryStateById.get(actionState.id)))
-		.map(({ actionState }, order) => ({
+	const pendingOperations = [
+		...recovered.mainPending.map(({ actionState }, order) => ({
 			id: actionState.id,
 			lane: "main" as const,
 			order,
 			status: order === 0 ? ("started" as const) : ("paused" as const),
 			cancellable: actionState.cancellable === true,
 			timeoutSlot: actionState.timeoutSlot
-		}))
-	const cancellationPendingOperations = recovered.cancellableDeposits
-		.filter(({ actionState }) => isRecoverableEntry(entryStateById.get(actionState.id)))
-		.map(({ actionState }, order) => {
+		})),
+		...recovered.cancellableDeposits.map(({ actionState }, order) => {
 			const entryState = entryStateById.get(actionState.id)
 			const status =
 				entryState?.lane === "cancellation" && entryState.status === "started"
@@ -140,7 +134,7 @@ export const buildRecoverySyncState = ({
 				timeoutSlot: actionState.timeoutSlot
 			}
 		})
-	const pendingOperations = [...mainPendingOperations, ...cancellationPendingOperations]
+	].filter(({ id }) => entryStateById.has(id))
 
 	const mainPendingIds = pendingOperations.filter(({ lane }) => lane === "main").map(({ id }) => id)
 	const activeCancellationOperation =

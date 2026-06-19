@@ -35,7 +35,6 @@ describe("bridge debug panel", () => {
 			"Cancellable",
 			"Sync Backend",
 			"Sim Refresh",
-			"Clear Completed",
 			"Clear Logs",
 			"Export"
 		]) {
@@ -71,23 +70,19 @@ describe("bridge debug panel", () => {
 		const store = createBridgeDebugBackendStore({ storage: createMemoryStorage() })
 		const syncRecoveredOperations = vi.fn()
 		const simulatePageRefresh = vi.fn()
-		const clearCompletedOperations = vi.fn()
 		const controller = createBridgeDebugPanelController({
 			store,
 			syncRecoveredOperations,
-			simulatePageRefresh,
-			clearCompletedOperations
+			simulatePageRefresh
 		})
 
 		controller.seedRecoveredOperation("deposit")
 		controller.seedRecoveredOperation("withdrawal")
 		controller.syncRecoveredOperations()
 		controller.simulatePageRefresh()
-		controller.clearCompletedOperations()
 
 		expect(syncRecoveredOperations).toHaveBeenCalledTimes(3)
 		expect(simulatePageRefresh).toHaveBeenCalledOnce()
-		expect(clearCompletedOperations).toHaveBeenCalledOnce()
 		expect(store.getSnapshot().seededOperations).toEqual([
 			expect.objectContaining({ kind: "deposit" }),
 			expect.objectContaining({ kind: "withdrawal" })

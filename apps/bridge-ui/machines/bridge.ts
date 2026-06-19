@@ -69,7 +69,6 @@ export type BridgeEvents =
 	| { type: "TerminateOperation"; id: string }
 	| { type: "RefreshOperations" }
 	| { type: "SimulatePageRefresh" }
-	| { type: "ClearCompletedOperations" }
 	| { type: "ActivateCancellationOperation"; id: string }
 	| { type: "ReleaseCancellationOperation"; id: string }
 	| { type: "InvertDirection" }
@@ -418,23 +417,6 @@ export const bridgeMachine = setup({
 					context.activeCancellationOperation === id ? null : context.activeCancellationOperation
 			}
 		}),
-		clearCompletedOperations: assign(({ context }) => {
-			const operations = new Map(
-				[...context.operations.entries()].filter(([, { status }]) => status !== "completed")
-			)
-			return {
-				operations,
-				activeOperation:
-					context.activeOperation !== null && operations.has(context.activeOperation)
-						? context.activeOperation
-						: null,
-				activeCancellationOperation:
-					context.activeCancellationOperation !== null &&
-					operations.has(context.activeCancellationOperation)
-						? context.activeCancellationOperation
-						: null
-			}
-		}),
 		activateCancellationOperation: assign(({ context }, params: { id: string }) => ({
 			activeCancellationOperation:
 				context.activeCancellationOperation === null ||
@@ -585,9 +567,6 @@ export const bridgeMachine = setup({
 					currentSlot: undefined
 				})
 			})
-		},
-		ClearCompletedOperations: {
-			actions: "clearCompletedOperations"
 		},
 		PauseOperation: {
 			description: "Set operation status to paused and add it to the operationToUnpause array.",

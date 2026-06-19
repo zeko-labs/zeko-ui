@@ -154,13 +154,6 @@ const exportSnapshot = async () => {
         <RefreshCw /> Sim Refresh
       </button>
       <button
-        data-debug-control="clear-completed"
-        type="button"
-        title="Remove completed operation actors from the visible list"
-        @click="debug.clearCompletedOperations">
-        <Trash2 /> Clear Completed
-      </button>
-      <button
         data-debug-control="fee-retry"
         type="button"
         title="Force the next completion to return a fee-too-low error"

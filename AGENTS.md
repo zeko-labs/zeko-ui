@@ -69,6 +69,11 @@ When testing, prefer using the test tool to run the tests.
 - Match existing coding style.
 - Always use composition API with script setup.
 
+## Bridge UI Debug Mode
+
+- When investigating bridge-ui bugs reproduced in debug mode, first verify whether the behavior comes from actual bridge logic or from debug-only code. Debug mode must not hide, invent, or compensate for bridge state bugs unless the user explicitly asks for a debug-only feature.
+- Do not make the mock backend smarter to work around UI bugs. If realistic SDK answers expose a real bridge issue, fix the bridge logic or UI path and keep the debug mode faithful to that behavior.
+
 ## Notes for this monorepo setup
 
 - Bun is only required when running certain scripts; standard builds use Node.

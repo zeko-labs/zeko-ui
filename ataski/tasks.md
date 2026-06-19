@@ -373,3 +373,4 @@
 - T387 | done | fix-debug-deposit-queue-and-completed-hash | done/T387-fix-debug-deposit-queue-and-completed-hash.md
 - T388 | done | disable-unused-debug-panel-controls | done/T388-disable-unused-debug-panel-controls.md
 - T389 | done | fix-claimed-deposit-queue-resume | done/T389-fix-claimed-deposit-queue-resume.md
+- T390 | done | fix-debug-queue-stuck-after-claim | done/T390-fix-debug-queue-stuck-after-claim.md

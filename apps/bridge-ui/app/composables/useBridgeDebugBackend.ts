@@ -10,12 +10,7 @@ import type { BridgeEvents } from "~~/machines/bridge"
 
 type BridgeDebugPanelBridge = {
 	send: (
-		event: Extract<
-			BridgeEvents,
-			| { type: "ClearCompletedOperations" }
-			| { type: "RefreshOperations" }
-			| { type: "SimulatePageRefresh" }
-		>
+		event: Extract<BridgeEvents, { type: "RefreshOperations" } | { type: "SimulatePageRefresh" }>
 	) => void
 }
 
@@ -27,9 +22,6 @@ export const useBridgeDebugBackend = ({
 	const store = getBridgeDebugBackendStore()
 	const controller = createBridgeDebugPanelController({
 		store,
-		clearCompletedOperations: () => {
-			bridge?.send({ type: "ClearCompletedOperations" })
-		},
 		simulatePageRefresh: () => {
 			bridge?.send({ type: "SimulatePageRefresh" })
 		},
@@ -59,10 +51,6 @@ export const useBridgeDebugBackend = ({
 		},
 		clearLogs: () => {
 			controller.clearLogs()
-			refresh()
-		},
-		clearCompletedOperations: () => {
-			controller.clearCompletedOperations()
 			refresh()
 		},
 		exportSnapshot: () => controller.exportSnapshot(),

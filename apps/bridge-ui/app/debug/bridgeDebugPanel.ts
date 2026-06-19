@@ -6,23 +6,18 @@ import type {
 } from "~~/machines/mockBackend"
 
 type BridgeDebugPanelControllerOptions = {
-	clearCompletedOperations?: () => void
 	simulatePageRefresh?: () => void
 	store: BridgeDebugBackendStore
 	syncRecoveredOperations?: () => void
 }
 
 export const createBridgeDebugPanelController = ({
-	clearCompletedOperations,
 	simulatePageRefresh,
 	syncRecoveredOperations,
 	store
 }: BridgeDebugPanelControllerOptions) => ({
 	advancePendingStatus: () => {
 		store.advancePendingStatus()
-	},
-	clearCompletedOperations: () => {
-		clearCompletedOperations?.()
 	},
 	clearLogs: () => {
 		store.clearLogs()

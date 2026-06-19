@@ -97,7 +97,11 @@ const currentSlot = computed(() => allOperations.value.currentSlot)
         @close="(isSettingsOpen = false)"
       />
       <Inputs v-if="!currentOperation" />
-      <CurrentOperation v-else :operation="currentOperation" />
+      <CurrentOperation
+        v-else
+        :key="currentOperation.id"
+        :operation="currentOperation"
+      />
     </div>
     <div
       v-if="cancellableOperations.length > 0"
