@@ -376,3 +376,5 @@
 - T390 | done | fix-debug-queue-stuck-after-claim | done/T390-fix-debug-queue-stuck-after-claim.md
 - T391 | done | queue-new-recovered-main-operations | done/T391-queue-new-recovered-main-operations.md
 - T392 | done | verify-completed-bridge-operations | done/T392-verify-completed-bridge-operations.md
+
+- T393 | done | guard-bridge-debug-mode-production-host | done/T393-guard-bridge-debug-mode-production-host.md

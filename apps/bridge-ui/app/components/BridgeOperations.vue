@@ -14,6 +14,7 @@ import {
 } from "~/helpers"
 import {
 	bridgeOperationColumns,
+	completedOperationTableStatus,
 	type BridgeOperationRow
 } from "~/components/bridgeOperationsTable"
 import {
@@ -47,11 +48,10 @@ const data = computed<BridgeOperationRow[]>(() =>
 				state.value.context.direction,
 				{ canCancel: state.value.context.canCancel }
 			)
-			const { text, kind } =
-				status.kind === "complete" &&
-				state.value.context.completionVerification === "unverified"
-					? { text: "Unindexed", kind: "pending" as const }
-					: status
+			const { text, kind } = completedOperationTableStatus(
+				status,
+				state.value.context.completionVerification
+			)
 			const timestampMs =
 				state.value.context.transaction?.timestampMs ??
 				state.value.context.completedAtMs ??

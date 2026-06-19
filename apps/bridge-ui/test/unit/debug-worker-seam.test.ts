@@ -26,6 +26,33 @@ describe("bridge debug worker seam", () => {
 		).toBe("mock-backend")
 	})
 
+	it("forces debug mode off on the production bridge host", () => {
+		expect(
+			getBridgeDebugMode({
+				hostname: "bridge.zeko.io",
+				runtimeMode: "mock-backend",
+				storage: createStorage("mock-backend")
+			})
+		).toBe("off")
+	})
+
+	it("allows debug mode on testnet and other hosts", () => {
+		expect(
+			getBridgeDebugMode({
+				hostname: "testnet.bridge.zeko.io",
+				runtimeMode: "off",
+				storage: createStorage("mock-backend")
+			})
+		).toBe("mock-backend")
+		expect(
+			getBridgeDebugMode({
+				hostname: "localhost",
+				runtimeMode: "mock-backend",
+				storage: createStorage(null)
+			})
+		).toBe("mock-backend")
+	})
+
 	it("uses the mock worker factory without constructing the real worker in mock-backend mode", () => {
 		const mockWorker = {} as OperationsWorker
 		const realWorker = {} as Worker

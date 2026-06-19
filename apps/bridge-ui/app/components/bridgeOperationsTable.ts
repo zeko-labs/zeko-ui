@@ -1,17 +1,34 @@
 import type { ColumnDef } from "@tanstack/vue-table"
+import type { BridgeOperationCompletionVerification } from "~~/machines/bridgeOperation"
 import type { BridgeNetwork } from "~~/machines/networks"
+
+export type BridgeOperationStatusKind = "complete" | "cancelled" | "pending" | "error"
+
+export type BridgeOperationDisplayStatus = {
+	text: string
+	kind: BridgeOperationStatusKind
+}
 
 export type BridgeOperationRow = {
 	id: string
 	status: unknown
 	statusText: string
-	statusKind: "complete" | "cancelled" | "pending" | "error"
+	statusKind: BridgeOperationStatusKind
 	source: BridgeNetwork
 	destination: BridgeNetwork
 	amount: number | string
 	hash: string
 	timestampMs: number | null
 	dateLabel: string
+}
+
+export const completedOperationTableStatus = (
+	status: BridgeOperationDisplayStatus,
+	completionVerification: BridgeOperationCompletionVerification
+): BridgeOperationDisplayStatus => {
+	if (status.kind !== "complete") return status
+	if (completionVerification === "unverified") return { text: "Unindexed", kind: "pending" }
+	return { text: "Completed", kind: "complete" }
 }
 
 export const bridgeOperationDateColumn = {

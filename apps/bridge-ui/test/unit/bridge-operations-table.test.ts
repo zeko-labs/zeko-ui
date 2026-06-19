@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import bridgeOperationsSource from "../../app/components/BridgeOperations.vue?raw"
 import {
+	completedOperationTableStatus,
 	bridgeOperationDateColumn,
 	bridgeOperationHashColumn,
 	bridgeOperationColumns,
@@ -62,5 +63,17 @@ describe("bridgeOperationDateColumn", () => {
 		expect(row.statusKind).toBe("pending")
 		expect(row.statusText).toBe("Unindexed")
 		expect(bridgeOperationsSource).toContain("row.original.statusText")
+	})
+
+	it("keeps verified completed table labels compact", () => {
+		expect(
+			completedOperationTableStatus({ text: "Deposit Completed", kind: "complete" }, "verified")
+		).toEqual({ text: "Completed", kind: "complete" })
+		expect(
+			completedOperationTableStatus(
+				{ text: "Withdrawal Completed", kind: "complete" },
+				"unverified"
+			)
+		).toEqual({ text: "Unindexed", kind: "pending" })
 	})
 })

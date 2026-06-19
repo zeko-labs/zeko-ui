@@ -5,9 +5,11 @@ export type BridgeDebugMode = "off" | "mock-backend"
 type GetBridgeDebugModeOptions = {
 	runtimeMode?: unknown
 	storage?: Pick<Storage, "getItem"> | null
+	hostname?: unknown
 }
 
 const bridgeDebugModes = new Set<BridgeDebugMode>(["off", "mock-backend"])
+const productionBridgeHost = "bridge.zeko.io"
 
 export const normalizeBridgeDebugMode = (value: unknown): BridgeDebugMode | null => {
 	if (typeof value !== "string") return null
@@ -34,8 +36,22 @@ const getStoredBridgeDebugMode = (storage: Pick<Storage, "getItem"> | null) => {
 	}
 }
 
+const safeHostname = (): string | null => {
+	try {
+		return globalThis.location?.hostname ?? null
+	} catch {
+		return null
+	}
+}
+
+const isProductionBridgeHost = (hostname: unknown) =>
+	typeof hostname === "string" && hostname.trim().toLowerCase() === productionBridgeHost
+
 export const getBridgeDebugMode = ({
 	runtimeMode,
-	storage = safeStorage()
+	storage = safeStorage(),
+	hostname = safeHostname()
 }: GetBridgeDebugModeOptions = {}): BridgeDebugMode =>
-	getStoredBridgeDebugMode(storage) ?? normalizeBridgeDebugMode(runtimeMode) ?? "off"
+	isProductionBridgeHost(hostname)
+		? "off"
+		: getStoredBridgeDebugMode(storage) ?? normalizeBridgeDebugMode(runtimeMode) ?? "off"
