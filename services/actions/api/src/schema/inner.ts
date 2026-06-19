@@ -1,4 +1,4 @@
-import { and, between, desc, eq, inArray, isNull, not, sql } from "drizzle-orm"
+import { between, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import { innerActions } from "../../drizzle/schema"
 import { builder } from "../builder"
 import type { Database } from "../db"
@@ -28,7 +28,8 @@ export async function queryInnerWitnessesFromAuxes(
 	const witnesses = await db.drizzle
 		.select()
 		.from(innerActions)
-		.where(and(inArray(innerActions.aux, auxes), not(isNull(innerActions.markedAsCanonicalAt))))
+		.where(inArray(innerActions.aux, auxes))
+		.orderBy(innerActions.index)
 
 	return witnesses.map((action) => ({
 		...action,
@@ -45,30 +46,21 @@ export async function queryInnerActions(
 		.select({ index: innerActions.index })
 		.from(innerActions)
 		.where(
-			and(
-				options.beforeState === GENESIS_BEFORE_STATE
-					? isNull(innerActions.beforeState)
-					: eq(innerActions.beforeState, options.beforeState),
-				not(isNull(innerActions.markedAsCanonicalAt))
-			)
+			options.beforeState === GENESIS_BEFORE_STATE
+				? isNull(innerActions.beforeState)
+				: eq(innerActions.beforeState, options.beforeState)
 		)
 		.limit(1)
 
 	const targetEndIndexQb = db.drizzle
 		.select({ index: innerActions.index })
 		.from(innerActions)
-		.where(
-			and(
-				eq(innerActions.afterState, options.afterState ?? ""),
-				not(isNull(innerActions.markedAsCanonicalAt))
-			)
-		)
+		.where(eq(innerActions.afterState, options.afterState ?? ""))
 		.limit(1)
 
 	const maxIndexQb = db.drizzle
 		.select({ index: innerActions.index })
 		.from(innerActions)
-		.where(not(isNull(innerActions.markedAsCanonicalAt)))
 		.orderBy(desc(innerActions.index))
 		.limit(1)
 
@@ -87,12 +79,7 @@ export async function queryInnerActions(
 		.select({ action: innerActions })
 		.from(innerActions)
 		.crossJoin(limitsCte)
-		.where(
-			and(
-				between(innerActions.index, limitsCte.beforeIndex, limitsCte.afterIndex),
-				not(isNull(innerActions.markedAsCanonicalAt))
-			)
-		)
+		.where(between(innerActions.index, limitsCte.beforeIndex, limitsCte.afterIndex))
 		.orderBy(innerActions.index)
 
 	return actionsResult.map(({ action }) => {

@@ -61,6 +61,9 @@ MINA_PRIVATE_KEY=... npx -y @zeko-labs/bridge-cli doctor
 - Use `--json` when an agent needs a machine-readable terminal result.
 - Use `doctor` first if the environment or route support looks suspicious.
 - The CLI writes local logs and persisted operation state, so it is the right default for long-running bridge tasks that may need inspection.
+- Bridge validation must prove fresh deposits and fresh withdrawals with the high-level `bridge` command when the user asks for end-to-end health. Queue clearing, status reads, or one direction alone are not enough evidence.
+- Bridge finalization latency should track pending inclusion when the protocol can build the required witness from pending indexed actions. Canonical finality is diagnostic metadata unless a task or protocol rule explicitly makes it the success gate.
+- When debugging, separate three states in your notes and code changes: visible on the source chain, indexed as pending, and marked canonical/final.
 
 ## Bridge SDK config defaults
 

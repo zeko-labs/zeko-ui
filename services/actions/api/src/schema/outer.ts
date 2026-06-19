@@ -1,4 +1,4 @@
-import { and, between, desc, eq, gte, inArray, isNull, lt, not, sql } from "drizzle-orm"
+import { and, between, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm"
 import { commitActions, outerActions, witnessActions } from "../../drizzle/schema"
 import { builder } from "../builder"
 import type { Database } from "../db"
@@ -47,13 +47,8 @@ export async function queryOuterWitnessesFromAuxes(
 		.select()
 		.from(witnessActions)
 		.innerJoin(outerActions, eq(witnessActions.afterState, outerActions.afterState))
-		.where(
-			and(
-				eq(outerActions.kind, "witness"),
-				inArray(witnessActions.aux, auxes),
-				not(isNull(outerActions.markedAsCanonicalAt))
-			)
-		)
+		.where(and(eq(outerActions.kind, "witness"), inArray(witnessActions.aux, auxes)))
+		.orderBy(outerActions.index)
 
 	return witnesses.map(({ witness_actions, outer_actions }) => ({
 		...outer_actions,
@@ -147,13 +142,7 @@ export async function queryCommitAsePastSlot(
 			.select({ anchorIndex: outerActions.index })
 			.from(outerActions)
 			.innerJoin(commitActions, eq(outerActions.afterState, commitActions.afterState))
-			.where(
-				and(
-					eq(outerActions.kind, "commit"),
-					lt(outerActions.slotRangeUpper, BigInt(slot)),
-					not(isNull(outerActions.markedAsCanonicalAt))
-				)
-			)
+			.where(and(eq(outerActions.kind, "commit"), lt(outerActions.slotRangeUpper, BigInt(slot))))
 			.orderBy(desc(outerActions.index))
 			.limit(1)
 	)

@@ -58,6 +58,14 @@ If a test is failing, take your time to investigate why it is failing without ju
 Handle failures one by one, methodologically, and make sure that the tests are sound, and that they verify the intended behavior.
 When testing, prefer using the test tool to run the tests.
 
+## Bridge Finality and Latency
+
+- Bridge operation latency is an operational contract. Do not change Bridge CLI, Bridge SDK, Actions API, or indexer semantics that decide whether pending indexed bridge actions are visible to finalization code without explicit operator sign-off.
+- Bridge finalization may use pending chain inclusion when the protocol can construct the witness from pending indexed actions. Do not make canonical finality the default success gate just because finality metadata is available.
+- Preserve finality metadata for dashboards and diagnostics, but do not hide pending rows from finalization-oriented query surfaces unless a task explicitly requires the latency change and tests prove it.
+- For Actions API, Bridge SDK, or Bridge CLI changes that touch finalization, tests must cover pending rows and canonical rows separately.
+- Bridge validation evidence must distinguish chain visibility, pending inclusion, and canonical finality. When asked to prove bridge health, prove fresh deposits and fresh withdrawals with the high-level Bridge CLI, not only queue clearing or status reads.
+
 ## Language Instructions
 
 - Always use Typescript instead of Javascript

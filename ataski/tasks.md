@@ -363,3 +363,5 @@
 - T377 | done | resolve-dashboard-finality-review | done/T377-resolve-dashboard-finality-review.md
 - T378 | done | surface-deposit-finality-risk | done/T378-surface-deposit-finality-risk.md
 - T379 | done | render-actions-api-warning | done/T379-render-actions-api-warning.md
+- T389 | done | restore-pending-bridge-finalization | done/T389-restore-pending-bridge-finalization.md
+- T390 | done | guard-bridge-finality-regressions | done/T390-guard-bridge-finality-regressions.md

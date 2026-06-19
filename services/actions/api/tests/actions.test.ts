@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { commitActions, innerActions, outerActions, witnessActions } from "../drizzle/schema"
 import type { Database } from "../src/db"
 import { GENESIS_BEFORE_STATE } from "../src/helpers/utils"
-import { queryInnerWitnessesFromAuxes } from "../src/schema/inner"
+import { queryInnerActions, queryInnerWitnessesFromAuxes } from "../src/schema/inner"
 import {
 	queryCommitAsePastSlot,
 	queryOuterActions,
@@ -87,6 +87,18 @@ describe("Actions API - schema queries", () => {
 				fields: ["field4-pending"],
 				slotRangeLower: BigInt(16),
 				slotRangeUpper: BigInt(20)
+			},
+			{
+				afterState: "a5-pending-commit",
+				beforeState: "a4-pending",
+				index: 5,
+				kind: "commit",
+				blockHeight: 104,
+				timestamp: new Date(),
+				txnHash: "tx5-pending-commit",
+				fields: ["field5-pending-commit"],
+				slotRangeLower: BigInt(21),
+				slotRangeUpper: BigInt(25)
 			}
 		])
 
@@ -106,6 +118,14 @@ describe("Actions API - schema queries", () => {
 				innerActionStateLength: 1,
 				synchronizedOuterActionState: "sync3",
 				synchronizedOuterActionStateLength: 1
+			},
+			{
+				afterState: "a5-pending-commit",
+				ledger: "ledger5-pending",
+				innerActionState: "inner5-pending",
+				innerActionStateLength: 2,
+				synchronizedOuterActionState: "sync5-pending",
+				synchronizedOuterActionStateLength: 2
 			}
 		])
 
@@ -149,14 +169,18 @@ describe("Actions API - schema queries", () => {
 			await expect(queryOuterWitnessesFromAuxes(testDb, [])).resolves.toEqual([])
 		})
 
-		it("returns the witness corresponding to aux", async () => {
+		it("returns final and pending witnesses corresponding to aux", async () => {
 			const result = await queryOuterWitnessesFromAuxes(testDb, ["aux-1"])
 
-			expect(result).toHaveLength(1)
+			expect(result).toHaveLength(2)
 			expect(result[0].afterState).toBe("a2")
 			expect(result[0].kind).toBe("WITNESS")
 			expect(result[0].aux).toBe("aux-1")
 			expect(result[0].markedAsCanonicalAt).toEqual(canonicalAt)
+			expect(result[1].afterState).toBe("a4-pending")
+			expect(result[1].kind).toBe("WITNESS")
+			expect(result[1].aux).toBe("aux-1")
+			expect(result[1].markedAsCanonicalAt).toBeNull()
 		})
 	})
 
@@ -165,13 +189,25 @@ describe("Actions API - schema queries", () => {
 			await expect(queryInnerWitnessesFromAuxes(testDb, [])).resolves.toEqual([])
 		})
 
-		it("returns inner witness row by aux", async () => {
+		it("returns final and pending inner witness rows by aux", async () => {
 			const result = await queryInnerWitnessesFromAuxes(testDb, ["iaux-1"])
 
-			expect(result).toHaveLength(1)
+			expect(result).toHaveLength(2)
 			expect(result[0].afterState).toBe("i1")
 			expect(result[0].aux).toBe("iaux-1")
 			expect(result[0].markedAsCanonicalAt).toEqual(canonicalAt)
+			expect(result[1].afterState).toBe("i2-pending")
+			expect(result[1].aux).toBe("iaux-1")
+			expect(result[1].markedAsCanonicalAt).toBeNull()
+		})
+	})
+
+	describe("queryInnerActions", () => {
+		it("returns pending inner actions after a final anchor", async () => {
+			const result = await queryInnerActions(testDb, { beforeState: "i1" })
+
+			expect(result.map((action) => action.afterState)).toEqual(["i2-pending"])
+			expect(result[0].markedAsCanonicalAt).toBeNull()
 		})
 	})
 
@@ -187,14 +223,19 @@ describe("Actions API - schema queries", () => {
 			expect(result[2].afterState).toBe("a4-pending")
 			expect(result[2].kind).toBe("WITNESS")
 			expect(result[2].markedAsCanonicalAt).toBeNull()
+			expect(result[3].afterState).toBe("a5-pending-commit")
+			expect(result[3].kind).toBe("COMMIT")
+			expect(result[3].markedAsCanonicalAt).toBeNull()
 		})
 
 		it("returns a pending tail when starting from a final anchor", async () => {
 			const result = await queryOuterActions(testDb, { beforeState: "a3" })
 
-			expect(result.map((action) => action.afterState)).toEqual(["a4-pending"])
+			expect(result.map((action) => action.afterState)).toEqual(["a4-pending", "a5-pending-commit"])
 			expect(result[0].kind).toBe("WITNESS")
 			expect(result[0].markedAsCanonicalAt).toBeNull()
+			expect(result[1].kind).toBe("COMMIT")
+			expect(result[1].markedAsCanonicalAt).toBeNull()
 		})
 
 		it("handles the special genesis before-state indicator", async () => {
@@ -238,8 +279,20 @@ describe("Actions API - schema queries", () => {
 			const result = await queryCommitAsePastSlot(testDb, 20)
 			expect(result.commit).not.toBeNull()
 			expect(result.commit?.afterState).toBe("a3")
-			expect(result.ase.map((action) => action.afterState)).toEqual(["a4-pending"])
+			expect(result.ase.map((action) => action.afterState)).toEqual([
+				"a4-pending",
+				"a5-pending-commit"
+			])
 			expect(result.ase[0].markedAsCanonicalAt).toBeNull()
+		})
+
+		it("can anchor on a pending commit for bridge finalization latency", async () => {
+			const result = await queryCommitAsePastSlot(testDb, 30)
+
+			expect(result.commit).not.toBeNull()
+			expect(result.commit?.afterState).toBe("a5-pending-commit")
+			expect(result.commit?.markedAsCanonicalAt).toBeNull()
+			expect(result.ase).toHaveLength(0)
 		})
 	})
 })

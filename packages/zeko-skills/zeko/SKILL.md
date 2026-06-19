@@ -42,6 +42,7 @@ Defaults:
 - Use the public docs pages behind `https://docs.zeko.io` through the targeted references below.
 - Default to gateway-backed Mina testnet endpoints and direct Zeko GraphQL endpoints from `references/40-endpoints-and-curl.md`.
 - Use the live node for current chain config and the archive node for historical actions and events.
+- For bridge debugging, distinguish chain visibility, pending inclusion, and canonical finality; do not treat canonical finality as the default requirement for seeing or finalizing a bridge result.
 
 Load only what you need:
 
