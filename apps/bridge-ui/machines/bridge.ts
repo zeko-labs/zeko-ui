@@ -234,6 +234,14 @@ const recoverableTransactionHash = (
 	)
 }
 
+const matchesRecoveredActionIndex = (
+	operation: ActorRefFromLogic<typeof bridgeOperationMachine>,
+	actionState: ActionState
+) => {
+	const actionIndex = operation.getSnapshot().context.actionIndex
+	return actionIndex === undefined || actionIndex === actionState.index
+}
+
 const terminalRecoveredOperations = (
 	recovered: RecoveredOperations
 ): RecoveredOperationToStart[] => [
@@ -329,6 +337,7 @@ const syncRecoveredOperations = ({
 		if (!operationId) continue
 		const entry = operations.get(operationId)
 		if (!entry) continue
+		if (!matchesRecoveredActionIndex(entry.operation, actionState)) continue
 		entry.operation.send({
 			type: "VerifyCompletion",
 			actionIndex: actionState.index,

@@ -378,3 +378,4 @@
 - T392 | done | verify-completed-bridge-operations | done/T392-verify-completed-bridge-operations.md
 
 - T393 | done | guard-bridge-debug-mode-production-host | done/T393-guard-bridge-debug-mode-production-host.md
+- T394 | done | guard-terminal-recovery-action-index | done/T394-guard-terminal-recovery-action-index.md

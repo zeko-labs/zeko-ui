@@ -95,4 +95,65 @@ describe("bridge refresh queue sync", () => {
 		bridge.stop()
 		wallet.stop()
 	})
+
+	it("does not verify a completed local operation from a terminal recovery with another action index", async () => {
+		const store = getBridgeDebugBackendStore()
+		store.reset()
+		const wallet = createWalletActor()
+		wallet.start()
+		const bridge = createActor(
+			bridgeMachine.provide({
+				actors: {
+					detectWalletChange: fromCallback(() => {})
+				}
+			}),
+			{
+				input: {
+					debugMode: "mock-backend",
+					wallet: wallet as unknown as ActorRefFromLogic<typeof walletMachine>
+				}
+			}
+		)
+		bridge.start()
+
+		bridge.send({ type: "AccountChanged", account: "B62qtest-user" })
+		bridge.send({ type: "NetworkChanged", network: "mina:devnet" })
+		await waitFor(bridge, (snapshot) => snapshot.matches("READY"))
+
+		const seed = store.seedRecoveredOperation("withdrawal")
+		bridge.send({ type: "RefreshOperations" })
+		await waitFor(
+			bridge,
+			(snapshot) => snapshot.context.operations.has(seed.id) && snapshot.matches("READY")
+		)
+
+		bridge.send({ type: "CompleteOperation", id: seed.id })
+		store.update((current) => ({
+			...current,
+			seededOperations: current.seededOperations.map((operation) =>
+				operation.id === seed.id
+					? { ...operation, finalised: true, index: seed.index + 1 }
+					: operation
+			)
+		}))
+
+		const refreshCount = store.getSnapshot().findPendingOperationsCount
+		bridge.send({ type: "RefreshOperations" })
+		const snapshot = await waitFor(
+			bridge,
+			(snapshot) =>
+				snapshot.context.operations.get(seed.id)?.status === "completed" &&
+				store.getSnapshot().findPendingOperationsCount > refreshCount &&
+				snapshot.matches("READY")
+		)
+		const operationSnapshot = snapshot.context.operations
+			.get(seed.id)
+			?.operation.getSnapshot().context
+
+		expect(operationSnapshot?.actionIndex).toBe(seed.index)
+		expect(operationSnapshot?.completionVerification).toBe("unverified")
+
+		bridge.stop()
+		wallet.stop()
+	})
 })
