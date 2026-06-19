@@ -179,6 +179,39 @@ describe("bridge-validator secret sync script", () => {
 		}
 	})
 
+	it("fails when a selected wallet env file is missing part of the keypair", async () => {
+		const harness = await createSecretSyncHarness([
+			"BRIDGE_VALIDATOR_WALLET_ENV_FILE=.env.wallet.validator",
+			"BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY=legacy-private-key",
+			"BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY=legacy-public-key",
+			"SLACK_BOT_TOKEN=slack-token",
+			"SLACK_CHANNEL_ID=slack-channel",
+			"VALIDATOR_API_TOKEN=validator-token"
+		])
+		try {
+			await writeFile(
+				join(harness.root, ".env.wallet.validator"),
+				"MINA_PRIVATE_KEY=root-wallet-private-key\n",
+				"utf8"
+			)
+
+			await expect(
+				execFileAsync("nu", ["scripts/sync-secrets.nu", harness.envFile, harness.wranglerConfig], {
+					cwd: projectDir,
+					env: {
+						...process.env,
+						SECRET_SYNC_LOG: harness.secretLogFile,
+						PATH: `${harness.fakeBin}:${process.env.PATH ?? ""}`
+					}
+				})
+			).rejects.toMatchObject({
+				stderr: expect.stringContaining("Missing required wallet value")
+			})
+		} finally {
+			await rm(harness.root, { recursive: true, force: true })
+		}
+	})
+
 	it("loads the status bearer token from the dotenv file", () => {
 		expect(statusScript).toContain('require-value $values "VALIDATOR_API_TOKEN"')
 		expect(statusScript).toContain("http get")

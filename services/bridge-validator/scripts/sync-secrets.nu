@@ -38,8 +38,16 @@ def resolve-dotenv-wallet-env-file [env_file: path, wallet_env_override: string]
 	$env_dir | path join $wallet_env_override | path expand
 }
 
-def resolve-wallet-private-key [wallet_values: record, values: record] {
-	let wallet_file_private_key = ($wallet_values | get --optional "MINA_PRIVATE_KEY" | default "" | str trim)
+def require-wallet-file-value [wallet_values: record, key: string, wallet_env_file: path] {
+	let value = ($wallet_values | get --optional $key | default "" | str trim)
+	if $value == "" {
+		error make { msg: $"Missing required wallet value in ($wallet_env_file): ($key)" }
+	}
+
+	$value
+}
+
+def resolve-wallet-private-key [values: record] {
 	let validator_private_key = ($values | get --optional "BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY" | default "" | str trim)
 	let wallet_private_key = ($values | get --optional "WALLET_PRIVATE_KEY" | default "" | str trim)
 	let bridge_private_key = ($values | get --optional "ZEKO_BRIDGE_MINA_PRIVATE_KEY" | default "" | str trim)
@@ -54,10 +62,6 @@ def resolve-wallet-private-key [wallet_values: record, values: record] {
 
 	if $wallet_private_key != "" and $bridge_private_key != "" and $wallet_private_key != $bridge_private_key {
 		error make { msg: "WALLET_PRIVATE_KEY and ZEKO_BRIDGE_MINA_PRIVATE_KEY are both set but differ" }
-	}
-
-	if $wallet_file_private_key != "" {
-		return $wallet_file_private_key
 	}
 
 	if $validator_private_key != "" {
@@ -79,14 +83,9 @@ def resolve-wallet-private-key [wallet_values: record, values: record] {
 	error make { msg: "Missing required wallet value: MINA_PRIVATE_KEY in .env.wallet.validator, or a legacy wallet key in .env" }
 }
 
-def resolve-wallet-public-key [wallet_values: record, values: record] {
-	let wallet_file_public_key = ($wallet_values | get --optional "PUBLIC_KEY" | default "" | str trim)
+def resolve-wallet-public-key [values: record] {
 	let validator_public_key = ($values | get --optional "BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY" | default "" | str trim)
 	let wallet_public_key = ($values | get --optional "WALLET_PUBLIC_KEY" | default "" | str trim)
-
-	if $wallet_file_public_key != "" {
-		return $wallet_file_public_key
-	}
 
 	if $validator_public_key != "" {
 		return $validator_public_key
@@ -97,6 +96,20 @@ def resolve-wallet-public-key [wallet_values: record, values: record] {
 	}
 
 	error make { msg: "Missing required wallet value: PUBLIC_KEY in .env.wallet.validator, or a legacy public wallet key in .env" }
+}
+
+def resolve-wallet-keypair [wallet_values: record, values: record, wallet_env_file: path, use_wallet_file: bool] {
+	if $use_wallet_file {
+		return {
+			private_key: (require-wallet-file-value $wallet_values "MINA_PRIVATE_KEY" $wallet_env_file)
+			public_key: (require-wallet-file-value $wallet_values "PUBLIC_KEY" $wallet_env_file)
+		}
+	}
+
+	{
+		private_key: (resolve-wallet-private-key $values)
+		public_key: (resolve-wallet-public-key $values)
+	}
 }
 
 export def main [
@@ -110,9 +123,11 @@ export def main [
 	let shell_wallet_env_override = ($env.BRIDGE_VALIDATOR_WALLET_ENV_FILE? | default "" | str trim)
 	let has_explicit_wallet_env_file = $wallet_env_override != "" or $shell_wallet_env_override != ""
 	let wallet_env_file = if $wallet_env_override != "" { resolve-dotenv-wallet-env-file $env_file $wallet_env_override } else { default-wallet-env-file }
-	let wallet_values = if $has_explicit_wallet_env_file { read-explicit-wallet-dotenv $wallet_env_file } else { read-optional-dotenv $wallet_env_file }
-	let wallet_private_key = resolve-wallet-private-key $wallet_values $values
-	let wallet_public_key = resolve-wallet-public-key $wallet_values $values
+	let use_wallet_file = $has_explicit_wallet_env_file or ($wallet_env_file | path exists)
+	let wallet_values = if $use_wallet_file { read-explicit-wallet-dotenv $wallet_env_file } else { read-optional-dotenv $wallet_env_file }
+	let wallet_keypair = resolve-wallet-keypair $wallet_values $values $wallet_env_file $use_wallet_file
+	let wallet_private_key = $wallet_keypair.private_key
+	let wallet_public_key = $wallet_keypair.public_key
 
 	put-secret "WALLET_PRIVATE_KEY" $wallet_private_key $wrangler_config
 	put-secret "WALLET_PUBLIC_KEY" $wallet_public_key $wrangler_config
