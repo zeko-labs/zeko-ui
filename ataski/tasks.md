@@ -375,3 +375,4 @@
 - T389 | done | fix-claimed-deposit-queue-resume | done/T389-fix-claimed-deposit-queue-resume.md
 - T390 | done | fix-debug-queue-stuck-after-claim | done/T390-fix-debug-queue-stuck-after-claim.md
 - T391 | done | queue-new-recovered-main-operations | done/T391-queue-new-recovered-main-operations.md
+- T392 | done | verify-completed-bridge-operations | done/T392-verify-completed-bridge-operations.md

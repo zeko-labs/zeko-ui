@@ -48,6 +48,8 @@ const operations = computed(() =>
 			order: entry.order,
 			status: entry.status,
 			lane: entry.lane,
+			actionIndex: snapshot.context.actionIndex ?? "none",
+			verification: snapshot.context.completionVerification,
 			state: stringifyState(snapshot.value),
 			direction: snapshot.context.direction,
 			transaction: snapshot.context.transaction?.hash ?? "none",
@@ -219,6 +221,8 @@ const exportSnapshot = async () => {
           <span>ID</span>
           <span>Lane</span>
           <span>Status</span>
+          <span>Idx</span>
+          <span>Verify</span>
           <span>State</span>
           <span>Hash</span>
         </div>
@@ -229,6 +233,8 @@ const exportSnapshot = async () => {
           <span>{{ operation.id }}</span>
           <span>{{ operation.lane }}</span>
           <span>{{ operation.status }}</span>
+          <span>{{ operation.actionIndex }}</span>
+          <span>{{ operation.verification }}</span>
           <span>{{ operation.state }}</span>
           <span>{{ operation.transaction }}</span>
         </div>
@@ -465,8 +471,9 @@ const exportSnapshot = async () => {
 .DebugRow {
   display: grid;
   grid-template-columns:
-    minmax(0, 1.35fr) minmax(0, 0.72fr) minmax(0, 0.82fr)
-    minmax(0, 1fr) minmax(0, 1fr);
+    minmax(0, 1.3fr) minmax(0, 0.62fr) minmax(0, 0.78fr)
+    minmax(0, 0.42fr) minmax(0, 0.78fr) minmax(0, 0.9fr)
+    minmax(0, 0.9fr);
   gap: 0.35rem;
   align-items: center;
   min-width: 0;

@@ -292,11 +292,11 @@ async function submitWithdrawal({
 	)
 }
 
-async function canFinalizeDeposit({
-	l1,
-	l2,
-	user
-}: L1L2 & { user: string }): Promise<{ available: boolean; reason: string | null }> {
+async function canFinalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<{
+	available: boolean
+	reason: string | null
+	index?: number
+}> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
 	return bridge.canFinalizeDeposit(recipient)

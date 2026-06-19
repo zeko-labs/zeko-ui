@@ -275,6 +275,7 @@ describe("mock bridge operations worker", () => {
 			nextRequestId: 1,
 			nextHashId: 1,
 			nextOperationIndex: 1,
+			findPendingOperationsCount: 0,
 			forcedError: null,
 			calls: [],
 			signatureRequests: [],
@@ -322,9 +323,63 @@ describe("mock bridge operations worker", () => {
 			expect.arrayContaining([
 				"repro-withdrawal-recovered-completed",
 				"repro-withdrawal-already-finalised",
-				"repro-withdrawal-blocked-loop"
+				"repro-withdrawal-blocked-loop",
+				"repro-unindexed-withdrawal-completion"
 			])
 		)
+	})
+
+	it("can reproduce local withdrawal completion before terminal recovery indexing", async () => {
+		const store = createBridgeDebugBackendStore({ storage })
+		store.setScenario("repro-unindexed-withdrawal-completion")
+		const worker = createMockBridgeOperationsWorker({ store })
+		const user = "B62qtest-user"
+
+		store.seedRecoveredOperation("withdrawal", { amount: "1" })
+
+		await expect(
+			worker.canFinalizeWithdrawal({
+				user,
+				l1: "mina:devnet",
+				l2: "zeko-m:testnet"
+			})
+		).resolves.toEqual({
+			available: true,
+			reason: null,
+			status: "available",
+			index: 1
+		})
+
+		const finalize = await worker.finalizeWithdrawal({
+			l1: "mina:devnet",
+			l2: "zeko-m:testnet",
+			user,
+			feeNanomina: 100_000_000
+		})
+		await worker.completeSdkSignature({
+			requestId: finalize.requestId,
+			signedTransaction: signedCommand(user)
+		})
+
+		const pendingRecovery = await worker.findPendingOperations({
+			account: user,
+			l1: "mina:devnet",
+			l2: "zeko-m:testnet"
+		})
+		expect(pendingRecovery.withdrawals[0]).toMatchObject({
+			index: 1,
+			finalised: false
+		})
+
+		const terminalRecovery = await worker.findPendingOperations({
+			account: user,
+			l1: "mina:devnet",
+			l2: "zeko-m:testnet"
+		})
+		expect(terminalRecovery.withdrawals[0]).toMatchObject({
+			index: 1,
+			finalised: true
+		})
 	})
 
 	it("can reproduce recovery marking a withdrawal completed from SDK action state", async () => {

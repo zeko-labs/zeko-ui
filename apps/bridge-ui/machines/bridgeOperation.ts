@@ -112,14 +112,27 @@ type BridgeOperationEvents =
 	| { type: "Resume"; paused: boolean }
 	| { type: "Pause" }
 	| { type: "ReturnTo" }
-	| { type: "CanFinalize" }
+	| { type: "CanFinalize"; index?: number }
 	| { type: "CanCancel" }
-	| { type: "SyncRecoveredState"; cancellable: boolean; timeoutSlot?: string }
+	| {
+			type: "SyncRecoveredState"
+			actionIndex: number
+			transaction: ActionState["transaction"]
+			cancellable: boolean
+			timeoutSlot?: string
+	  }
 	| { type: "TerminalError"; error: Error }
-	| { type: "AlreadyFinalised" }
+	| { type: "AlreadyFinalised"; index?: number }
 	| { type: "Finalize" }
 	| { type: "Cancel" }
+	| {
+			type: "VerifyCompletion"
+			actionIndex: number
+			transaction: ActionState["transaction"]
+	  }
 	| { type: "Destroy" }
+
+export type BridgeOperationCompletionVerification = "unverified" | "verified"
 
 export interface BridgeOperationContext {
 	id: string
@@ -134,9 +147,11 @@ export interface BridgeOperationContext {
 	amount: string
 	timeoutSlots?: number
 	timeoutSlot?: string
+	actionIndex?: number
 	paused: boolean
 	transaction?: ActionState["transaction"]
 	completedAtMs?: number
+	completionVerification: BridgeOperationCompletionVerification
 	errors: Error[]
 	transactions: {
 		submitDeposit: WalletTransaction
@@ -256,8 +271,10 @@ export const bridgeOperationMachine = setup({
 			amount: string
 			timeoutSlots?: number
 			timeoutSlot?: string
+			actionIndex?: number
 			transaction?: ActionState["transaction"]
 			cancellable?: boolean
+			completionVerification?: BridgeOperationCompletionVerification
 		},
 		events: {} as BridgeOperationEvents,
 		tags: {} as "loading" | "cta",
@@ -280,8 +297,10 @@ export const bridgeOperationMachine = setup({
 					try {
 						const finalizeResult = await worker(bridge).canFinalizeDeposit({ l1, l2, user })
 						logger.info(`Deposit status: ${JSON.stringify({ finalizeResult })}`)
-						if (finalizeResult.available) sendBack({ type: "CanFinalize" })
-						else if (!signal.aborted) scheduler.schedule()
+						if (finalizeResult.available) {
+							sendBack({ type: "CanFinalize", index: finalizeResult.index })
+							if (!signal.aborted) scheduler.schedule()
+						} else if (!signal.aborted) scheduler.schedule()
 					} catch (error) {
 						logger.error(error instanceof Error ? error : new Error(String(error)))
 						if (!signal.aborted) scheduler.schedule()
@@ -310,9 +329,13 @@ export const bridgeOperationMachine = setup({
 				try {
 					logger.info("Checking withdrawal status...")
 					const result = await worker(bridge).canFinalizeWithdrawal({ l1, l2, user })
-					if (result.available) sendBack({ type: "CanFinalize" })
-					else if (result.status === "alreadyFinalised") sendBack({ type: "AlreadyFinalised" })
-					else if (!signal.aborted) scheduler.schedule()
+					if (result.available) {
+						sendBack({ type: "CanFinalize", index: result.index })
+						if (!signal.aborted) scheduler.schedule()
+					} else if (result.status === "alreadyFinalised") {
+						sendBack({ type: "AlreadyFinalised", index: result.index })
+						if (!signal.aborted) scheduler.schedule()
+					} else if (!signal.aborted) scheduler.schedule()
 				} catch (error) {
 					logger.error(error instanceof Error ? error : new Error(String(error)))
 					if (isTerminalBridgeError(error)) {
@@ -353,6 +376,11 @@ export const bridgeOperationMachine = setup({
 		anotherOperationIsActive: ({ context }) => {
 			const ao = context.bridge.getSnapshot().context.activeOperation
 			return ao !== null && context.id !== ao
+		},
+		matchesActionIndex: ({ context, event }) => {
+			return (
+				"index" in event && context.actionIndex !== undefined && event.index === context.actionIndex
+			)
 		}
 	},
 	delays: {
@@ -369,10 +397,12 @@ export const bridgeOperationMachine = setup({
 			amount,
 			timeoutSlots,
 			timeoutSlot,
+			actionIndex,
 			bridge,
 			wallet,
 			transaction,
-			cancellable
+			cancellable,
+			completionVerification
 		},
 		self: { id }
 	}) => ({
@@ -387,10 +417,12 @@ export const bridgeOperationMachine = setup({
 		amount,
 		timeoutSlots,
 		timeoutSlot,
+		actionIndex,
 		returnTo: false,
 		paused: false,
 		transaction,
 		completedAtMs: undefined,
+		completionVerification: completionVerification ?? "unverified",
 		errors: [],
 		transactions: {
 			submitDeposit: null,
@@ -429,8 +461,17 @@ export const bridgeOperationMachine = setup({
 		},
 		SyncRecoveredState: {
 			actions: assign(({ event }) => ({
+				actionIndex: event.actionIndex,
+				transaction: event.transaction,
 				canCancel: event.cancellable,
 				timeoutSlot: event.timeoutSlot
+			}))
+		},
+		VerifyCompletion: {
+			actions: assign(({ event }) => ({
+				actionIndex: event.actionIndex,
+				transaction: event.transaction,
+				completionVerification: "verified"
 			}))
 		}
 	},
@@ -445,8 +486,14 @@ export const bridgeOperationMachine = setup({
 					target: "PAUSED",
 					actions: assign({ paused: true })
 				},
-				CompleteBridgeOperation: { target: "BRIDGE_OPERATION_DONE_NOOP" },
-				CompleteBridgeOperationCancelled: { target: "BRIDGE_OPERATION_CANCELLED_DONE" },
+				CompleteBridgeOperation: {
+					target: "BRIDGE_OPERATION_DONE_NOOP",
+					actions: assign({ completionVerification: "verified" })
+				},
+				CompleteBridgeOperationCancelled: {
+					target: "BRIDGE_OPERATION_CANCELLED_DONE",
+					actions: assign({ completionVerification: "verified" })
+				},
 				StartBridgeOperation: [
 					{
 						target: "INIT_BRIDGE_OPERATION",
@@ -534,6 +581,8 @@ export const bridgeOperationMachine = setup({
 				SyncRecoveredState: [
 					{
 						actions: assign(({ event }) => ({
+							actionIndex: event.actionIndex,
+							transaction: event.transaction,
 							canCancel: event.cancellable,
 							timeoutSlot: event.timeoutSlot
 						}))
@@ -621,13 +670,17 @@ export const bridgeOperationMachine = setup({
 						input: ({ context }) => transactionInput(context, "submitDeposit"),
 						onDone: {
 							target: "done",
-							actions: assign(({ context, event }) =>
-								addCompletedTransactionResult({
+							actions: assign(({ context, event }) => ({
+								...addCompletedTransactionResult({
 									context,
 									key: "submitDeposit",
 									result: event.output.result
-								})
-							)
+								}),
+								transaction: {
+									hash: event.output.result.hash,
+									timestampMs: Date.now()
+								}
+							}))
 						},
 						onError: {
 							target: "#bridgeOperation.FAILED",
@@ -674,9 +727,11 @@ export const bridgeOperationMachine = setup({
 					target: "PAUSED",
 					actions: assign({ paused: true })
 				},
-				CanFinalize: { target: "TO_FINALIZE" },
+				CanFinalize: { target: "TO_FINALIZE", guard: "matchesActionIndex" },
 				SyncRecoveredState: {
 					actions: assign(({ event }) => ({
+						actionIndex: event.actionIndex,
+						transaction: event.transaction,
 						canCancel: event.cancellable,
 						timeoutSlot: event.timeoutSlot
 					}))
@@ -706,6 +761,8 @@ export const bridgeOperationMachine = setup({
 				},
 				SyncRecoveredState: {
 					actions: assign(({ event }) => ({
+						actionIndex: event.actionIndex,
+						transaction: event.transaction,
 						canCancel: event.cancellable,
 						timeoutSlot: event.timeoutSlot
 					}))
@@ -832,13 +889,17 @@ export const bridgeOperationMachine = setup({
 						input: ({ context }) => transactionInput(context, "submitWithdrawal"),
 						onDone: {
 							target: "done",
-							actions: assign(({ context, event }) =>
-								addCompletedTransactionResult({
+							actions: assign(({ context, event }) => ({
+								...addCompletedTransactionResult({
 									context,
 									key: "submitWithdrawal",
 									result: event.output.result
-								})
-							)
+								}),
+								transaction: {
+									hash: event.output.result.hash,
+									timestampMs: Date.now()
+								}
+							}))
 						},
 						onError: {
 							target: "#bridgeOperation.FAILED",
@@ -888,8 +949,11 @@ export const bridgeOperationMachine = setup({
 					target: "PAUSED",
 					actions: assign({ paused: true })
 				},
-				CanFinalize: { target: "TO_FINALIZE" },
-				AlreadyFinalised: { target: "BRIDGE_OPERATION_COMPLETED" },
+				CanFinalize: { target: "TO_FINALIZE", guard: "matchesActionIndex" },
+				AlreadyFinalised: {
+					target: "BRIDGE_OPERATION_COMPLETED",
+					guard: "matchesActionIndex"
+				},
 				TerminalError: {
 					target: "FAILED",
 					actions: [
@@ -983,20 +1047,17 @@ export const bridgeOperationMachine = setup({
 			after: { exitTimeout: "BRIDGE_OPERATION_DONE" }
 		},
 		BRIDGE_OPERATION_DONE: {
-			meta: { step: 4 },
-			type: "final"
+			meta: { step: 4 }
 		},
 		BRIDGE_OPERATION_CANCELLED_DONE: {
 			meta: { step: 1 },
-			type: "final",
 			entry: sendTo(
 				({ context }) => context.bridge,
 				({ context }) => ({ type: "CompleteOperation", id: context.id })
 			)
 		},
 		BRIDGE_OPERATION_DONE_NOOP: {
-			meta: { step: 4 },
-			type: "final"
+			meta: { step: 4 }
 		},
 		FAILED: {
 			type: "final",

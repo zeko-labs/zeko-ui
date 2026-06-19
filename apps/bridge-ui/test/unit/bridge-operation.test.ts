@@ -179,7 +179,8 @@ describe("bridgeOperationMachine", () => {
 				source: "mina:devnet",
 				destination: "zeko-m:testnet",
 				direction: "deposit",
-				amount: "1"
+				amount: "1",
+				actionIndex: 0
 			}
 		})
 
@@ -427,7 +428,13 @@ describe("bridgeOperationMachine", () => {
 
 		actor.start()
 		actor.send({ type: "Resume", paused: true })
-		actor.send({ type: "SyncRecoveredState", cancellable: true, timeoutSlot: "63540" })
+		actor.send({
+			type: "SyncRecoveredState",
+			actionIndex: 0,
+			transaction: { date: new Date("2026-03-24T00:00:00Z"), hash: "RECOVERED" },
+			cancellable: true,
+			timeoutSlot: "63540"
+		})
 
 		expect(actor.getSnapshot().matches("PAUSED")).toBe(true)
 		expect(actor.getSnapshot().context.canCancel).toBe(true)
@@ -454,7 +461,8 @@ describe("bridgeOperationMachine", () => {
 				source: "mina:devnet",
 				destination: "zeko-m:testnet",
 				direction: "deposit",
-				amount: "1"
+				amount: "1",
+				actionIndex: 0
 			}
 		})
 
@@ -486,7 +494,8 @@ describe("bridgeOperationMachine", () => {
 				source: "mina:devnet",
 				destination: "zeko-m:testnet",
 				direction: "deposit",
-				amount: "1"
+				amount: "1",
+				actionIndex: 0
 			}
 		})
 
@@ -495,7 +504,13 @@ describe("bridgeOperationMachine", () => {
 
 		await waitFor(actor, (snapshot) => snapshot.matches("PENDING_DEPOSIT"))
 
-		actor.send({ type: "SyncRecoveredState", cancellable: true, timeoutSlot: "63540" })
+		actor.send({
+			type: "SyncRecoveredState",
+			actionIndex: 0,
+			transaction: { date: new Date("2026-03-24T00:00:00Z"), hash: "RECOVERED" },
+			cancellable: true,
+			timeoutSlot: "63540"
+		})
 
 		await Promise.resolve()
 		expect(actor.getSnapshot().matches("PENDING_DEPOSIT")).toBe(true)
@@ -509,7 +524,7 @@ describe("bridgeOperationMachine", () => {
 
 	it("keeps the main widget on finalization until queued cancellations have a separate UI", async () => {
 		const bridge = createBridgeActor({
-			canFinalizeDeposit: vi.fn(async () => ({ available: true, reason: null })),
+			canFinalizeDeposit: vi.fn(async () => ({ available: true, reason: null, index: 0 })),
 			canCancelDeposit: vi.fn(async () => ({ available: true, reason: null }))
 		})
 		const wallet = createWalletActor()
@@ -523,7 +538,8 @@ describe("bridgeOperationMachine", () => {
 				source: "mina:devnet",
 				destination: "zeko-m:testnet",
 				direction: "deposit",
-				amount: "1"
+				amount: "1",
+				actionIndex: 0
 			}
 		})
 
@@ -550,21 +566,63 @@ describe("bridgeOperationMachine", () => {
 				source: "mina:devnet",
 				destination: "zeko-m:testnet",
 				direction: "deposit",
-				amount: "1"
+				amount: "1",
+				actionIndex: 0
 			}
 		})
 
 		actor.start()
 		actor.send({ type: "Resume", paused: false })
-		actor.send({ type: "CanFinalize" })
+		actor.send({ type: "CanFinalize", index: 0 })
 		expect(actor.getSnapshot().matches("TO_FINALIZE")).toBe(true)
 
-		actor.send({ type: "SyncRecoveredState", cancellable: true, timeoutSlot: "63540" })
+		actor.send({
+			type: "SyncRecoveredState",
+			actionIndex: 0,
+			transaction: { date: new Date("2026-03-24T00:00:00Z"), hash: "RECOVERED" },
+			cancellable: true,
+			timeoutSlot: "63540"
+		})
 
 		await Promise.resolve()
 		expect(actor.getSnapshot().matches("TO_FINALIZE")).toBe(true)
 		expect(actor.getSnapshot().context.canCancel).toBe(true)
 		expect(actor.getSnapshot().context.timeoutSlot).toBe("63540")
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("ignores a deposit finalization capability for another action index", async () => {
+		const canFinalizeDeposit = vi.fn(async () => ({ available: true, reason: null, index: 1 }))
+		const bridge = createBridgeActor({
+			canFinalizeDeposit
+		})
+		const wallet = createWalletActor()
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(bridgeOperationMachine, {
+			input: {
+				bridge: bridge as never,
+				wallet: wallet as never,
+				source: "mina:devnet",
+				destination: "zeko-m:testnet",
+				direction: "deposit",
+				amount: "1",
+				actionIndex: 2
+			}
+		})
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+
+		await vi.waitFor(() => {
+			expect(canFinalizeDeposit).toHaveBeenCalled()
+		})
+		await Promise.resolve()
+		expect(actor.getSnapshot().matches("PENDING_DEPOSIT")).toBe(true)
 
 		actor.stop()
 		bridge.stop()
@@ -584,16 +642,23 @@ describe("bridgeOperationMachine", () => {
 				source: "mina:devnet",
 				destination: "zeko-m:testnet",
 				direction: "deposit",
-				amount: "1"
+				amount: "1",
+				actionIndex: 0
 			}
 		})
 
 		actor.start()
 		actor.send({ type: "Resume", paused: false })
-		actor.send({ type: "CanFinalize" })
+		actor.send({ type: "CanFinalize", index: 0 })
 		expect(actor.getSnapshot().matches("TO_FINALIZE")).toBe(true)
 
-		actor.send({ type: "SyncRecoveredState", cancellable: true, timeoutSlot: "63540" })
+		actor.send({
+			type: "SyncRecoveredState",
+			actionIndex: 0,
+			transaction: { date: new Date("2026-03-24T00:00:00Z"), hash: "RECOVERED" },
+			cancellable: true,
+			timeoutSlot: "63540"
+		})
 		actor.send({ type: "Pause" })
 
 		await waitFor(actor, (snapshot) => snapshot.matches("PAUSED"))
@@ -629,14 +694,15 @@ describe("bridgeOperationMachine", () => {
 					source: "mina:devnet",
 					destination: "zeko-m:testnet",
 					direction: "deposit",
-					amount: "1"
+					amount: "1",
+					actionIndex: 0
 				}
 			}
 		)
 
 		actor.start()
 		actor.send({ type: "Resume", paused: false })
-		actor.send({ type: "CanFinalize" })
+		actor.send({ type: "CanFinalize", index: 0 })
 		actor.send({ type: "Finalize" })
 
 		await waitFor(actor, (snapshot) => snapshot.matches("BRIDGE_OPERATION_COMPLETED"))
@@ -691,13 +757,14 @@ describe("bridgeOperationMachine", () => {
 				source: "mina:devnet",
 				destination: "zeko-m:testnet",
 				direction: "deposit",
-				amount: "1"
+				amount: "1",
+				actionIndex: 0
 			}
 		})
 
 		actor.start()
 		actor.send({ type: "Resume", paused: false })
-		actor.send({ type: "CanFinalize" })
+		actor.send({ type: "CanFinalize", index: 0 })
 		actor.send({ type: "Finalize" })
 
 		await waitFor(actor, (snapshot) => snapshot.matches("BRIDGE_OPERATION_COMPLETED"))
@@ -719,7 +786,8 @@ describe("bridgeOperationMachine", () => {
 			canFinalizeWithdrawal: vi.fn(async () => ({
 				available: false,
 				reason: "Withdrawal already finalised",
-				status: "alreadyFinalised"
+				status: "alreadyFinalised",
+				index: 0
 			}))
 		})
 		const wallet = createWalletActor("zeko:testnet")
@@ -733,7 +801,8 @@ describe("bridgeOperationMachine", () => {
 				source: "zeko-m:testnet",
 				destination: "mina:devnet",
 				direction: "withdrawal",
-				amount: "1"
+				amount: "1",
+				actionIndex: 0
 			}
 		})
 
@@ -743,6 +812,47 @@ describe("bridgeOperationMachine", () => {
 		await waitFor(actor, (snapshot) => snapshot.matches("BRIDGE_OPERATION_COMPLETED"))
 
 		expect(bridge.getSnapshot().context.events).toContainEqual({
+			type: "CompleteOperation",
+			id: actor.id
+		})
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("ignores an already-finalised withdrawal result for another action index", async () => {
+		const bridge = createBridgeActor({
+			canFinalizeWithdrawal: vi.fn(async () => ({
+				available: false,
+				reason: "Withdrawal already finalised",
+				status: "alreadyFinalised",
+				index: 1
+			}))
+		})
+		const wallet = createWalletActor("zeko:testnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(bridgeOperationMachine, {
+			input: {
+				bridge: bridge as never,
+				wallet: wallet as never,
+				source: "zeko-m:testnet",
+				destination: "mina:devnet",
+				direction: "withdrawal",
+				amount: "1",
+				actionIndex: 2
+			}
+		})
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+
+		await vi.waitFor(() => {
+			expect(actor.getSnapshot().matches("PENDING_WITHDRAWAL")).toBe(true)
+		})
+		expect(bridge.getSnapshot().context.events).not.toContainEqual({
 			type: "CompleteOperation",
 			id: actor.id
 		})
@@ -779,19 +889,83 @@ describe("bridgeOperationMachine", () => {
 					source: "zeko-m:testnet",
 					destination: "mina:devnet",
 					direction: "withdrawal",
-					amount: "1"
+					amount: "1",
+					actionIndex: 0
 				}
 			}
 		)
 
 		actor.start()
 		actor.send({ type: "Resume", paused: false })
-		actor.send({ type: "CanFinalize" })
+		actor.send({ type: "CanFinalize", index: 0 })
 		actor.send({ type: "Finalize" })
 
 		await waitFor(actor, (snapshot) => snapshot.matches("BRIDGE_OPERATION_COMPLETED"))
 
 		expect(actor.getSnapshot().context.completedAtMs).toBe(1778178600000)
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+		vi.useRealTimers()
+	})
+
+	it("keeps local completion unverified until matching terminal recovery arrives", async () => {
+		vi.useFakeTimers()
+		vi.setSystemTime(new Date("2026-05-07T18:30:00.000Z"))
+
+		const bridge = createBridgeActor()
+		const wallet = createWalletActor("mina:devnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(
+			bridgeOperationMachine.provide({
+				actors: {
+					transactionMachine: fromPromise(async () => ({
+						result: {
+							hash: "5JfinalizeWithdrawalHash",
+							url: "https://minascan.io/devnet/tx/5JfinalizeWithdrawalHash"
+						}
+					}))
+				}
+			}),
+			{
+				input: {
+					bridge: bridge as never,
+					wallet: wallet as never,
+					source: "zeko-m:testnet",
+					destination: "mina:devnet",
+					direction: "withdrawal",
+					amount: "1",
+					actionIndex: 0
+				}
+			}
+		)
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+		actor.send({ type: "CanFinalize", index: 0 })
+		actor.send({ type: "Finalize" })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("BRIDGE_OPERATION_COMPLETED"))
+
+		expect(actor.getSnapshot().context.completionVerification).toBe("unverified")
+
+		await vi.advanceTimersByTimeAsync(2_000)
+		expect(actor.getSnapshot().matches("BRIDGE_OPERATION_DONE")).toBe(true)
+
+		actor.send({
+			type: "VerifyCompletion",
+			actionIndex: 0,
+			transaction: {
+				hash: "5JrecoveredWithdrawalHash",
+				timestampMs: 1778178605000
+			}
+		})
+
+		expect(actor.getSnapshot().context.completionVerification).toBe("verified")
+		expect(actor.getSnapshot().context.transaction?.hash).toBe("5JrecoveredWithdrawalHash")
 
 		actor.stop()
 		bridge.stop()

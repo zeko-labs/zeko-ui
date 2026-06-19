@@ -2,7 +2,10 @@ import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
 import { detectWalletChange, type WalletEmit, type walletMachine } from "@zeko/sdk"
 import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
-import { bridgeOperationMachine } from "./bridgeOperation"
+import {
+	bridgeOperationMachine,
+	type BridgeOperationCompletionVerification
+} from "./bridgeOperation"
 import { createLogger } from "./debug"
 import type { BridgeDebugMode } from "./debugMode"
 import type { ActionState, PendingOperations } from "./operations.worker"
@@ -50,8 +53,10 @@ type StartOperationSettings = {
 		source: BridgeNetwork
 		destination: BridgeNetwork
 		transaction: ActionState["transaction"]
+		actionIndex: number
 		cancellable?: boolean
 		timeoutSlot?: string
+		completionVerification?: BridgeOperationCompletionVerification
 	}
 }
 
@@ -116,6 +121,14 @@ type StartArgs = {
 
 type RecoveryEnqueue = (action: { type: "startOperation"; params: StartOperationSettings }) => void
 
+type RecoveredOperationToStart = {
+	actionState: ActionState
+	command: Command
+	lane?: RecoveryLane
+	status: OperationStatus
+	completionVerification?: BridgeOperationCompletionVerification
+}
+
 const enqueueRecoveredOperations = ({
 	enqueue,
 	recovered
@@ -137,6 +150,7 @@ const enqueueRecoveredOperations = ({
 					destination,
 					source,
 					transaction,
+					actionIndex: actionState.index,
 					cancellable,
 					timeoutSlot
 				}
@@ -176,13 +190,15 @@ const enqueueRecoveredOperation = ({
 	actionState,
 	command,
 	lane,
-	status
+	status,
+	completionVerification
 }: {
 	enqueue: RecoveryEnqueue
 	actionState: ActionState
 	command: Command
 	lane?: RecoveryLane
 	status: OperationStatus
+	completionVerification?: BridgeOperationCompletionVerification
 }) => {
 	enqueue({
 		type: "startOperation",
@@ -196,12 +212,50 @@ const enqueueRecoveredOperation = ({
 				source: actionState.source,
 				destination: actionState.destination,
 				transaction: actionState.transaction,
+				actionIndex: actionState.index,
 				cancellable: actionState.cancellable,
-				timeoutSlot: actionState.timeoutSlot
+				timeoutSlot: actionState.timeoutSlot,
+				completionVerification:
+					completionVerification ??
+					(command === "complete" || command === "completeCancelled" ? "verified" : undefined)
 			}
 		}
 	})
 }
+
+const recoverableTransactionHash = (
+	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
+) => {
+	const context = operation.getSnapshot().context
+	return (
+		context.transaction?.hash ??
+		context.transactions.submitDeposit?.result?.hash ??
+		context.transactions.submitWithdrawal?.result?.hash
+	)
+}
+
+const terminalRecoveredOperations = (
+	recovered: RecoveredOperations
+): RecoveredOperationToStart[] => [
+	...recovered.completedDeposits.map((actionState) => ({
+		actionState,
+		command: "complete" as const,
+		status: "completed" as const,
+		completionVerification: "verified" as const
+	})),
+	...recovered.completedWithdrawals.map((actionState) => ({
+		actionState,
+		command: "complete" as const,
+		status: "completed" as const,
+		completionVerification: "verified" as const
+	})),
+	...recovered.cancelledDeposits.map((actionState) => ({
+		actionState,
+		command: "completeCancelled" as const,
+		status: "completed" as const,
+		completionVerification: "verified" as const
+	}))
+]
 
 const syncRecoveredOperations = ({
 	context,
@@ -211,19 +265,25 @@ const syncRecoveredOperations = ({
 	recovered: RecoveredOperations
 }) => {
 	const operations = new Map(context.operations)
+	const pendingRecoveredOperations = [...recovered.mainPending, ...recovered.cancellableDeposits]
 	const pendingRecoveredOperationById = new Map(
-		[...recovered.mainPending, ...recovered.cancellableDeposits].map(
+		pendingRecoveredOperations.map(
 			(pendingOperation) => [pendingOperation.actionState.id, pendingOperation] as const
 		)
 	)
+	const pendingActionStateById = new Map(
+		pendingRecoveredOperations.map(({ actionState }) => [actionState.id, actionState] as const)
+	)
+	const terminalOperations = terminalRecoveredOperations(recovered)
 	const recoveryOperationIds = matchRecoveryOperationIds({
-		actionStates: [...recovered.mainPending, ...recovered.cancellableDeposits].map(
-			({ actionState }) => actionState
-		),
+		actionStates: [
+			...pendingRecoveredOperations.map(({ actionState }) => actionState),
+			...terminalOperations.map(({ actionState }) => actionState)
+		],
 		candidates: [...operations.entries()].map(([id, { status, operation }]) => ({
 			id,
 			status,
-			transactionHash: operation.getSnapshot().context.transaction?.hash
+			transactionHash: recoverableTransactionHash(operation)
 		}))
 	})
 	const syncState = buildRecoverySyncState({
@@ -242,8 +302,16 @@ const syncRecoveredOperations = ({
 		const operationId = recoveryOperationIds.get(id)
 		if (!operationId) continue
 		const entry = operations.get(operationId)
+		const actionState = pendingActionStateById.get(id)
 		if (!entry || entry.status === "completed") continue
-		entry.operation.send({ type: "SyncRecoveredState", cancellable, timeoutSlot })
+		if (!actionState) continue
+		entry.operation.send({
+			type: "SyncRecoveredState",
+			actionIndex: actionState.index,
+			transaction: actionState.transaction,
+			cancellable,
+			timeoutSlot
+		})
 		if (entry.status !== status) {
 			if (status === "started") entry.operation.send({ type: "Resume", paused: false })
 			if (entry.status === "started" && status === "paused") entry.operation.send({ type: "Pause" })
@@ -256,11 +324,32 @@ const syncRecoveredOperations = ({
 		})
 	}
 
-	const operationsToStart = syncState.pendingOperations.flatMap(({ id, lane, status }) => {
-		if (recoveryOperationIds.has(id)) return []
-		const pendingOperation = pendingRecoveredOperationById.get(id)
-		return pendingOperation ? [{ ...pendingOperation, lane, status }] : []
-	})
+	for (const { actionState } of terminalOperations) {
+		const operationId = recoveryOperationIds.get(actionState.id)
+		if (!operationId) continue
+		const entry = operations.get(operationId)
+		if (!entry) continue
+		entry.operation.send({
+			type: "VerifyCompletion",
+			actionIndex: actionState.index,
+			transaction: actionState.transaction
+		})
+		operations.set(operationId, {
+			...entry,
+			status: "completed"
+		})
+	}
+
+	const operationsToStart: RecoveredOperationToStart[] = syncState.pendingOperations.flatMap(
+		({ id, lane, status }) => {
+			if (recoveryOperationIds.has(id)) return []
+			const pendingOperation = pendingRecoveredOperationById.get(id)
+			return pendingOperation ? [{ ...pendingOperation, lane, status }] : []
+		}
+	)
+	const terminalOperationsToStart = terminalOperations.filter(
+		({ actionState }) => !recoveryOperationIds.has(actionState.id)
+	)
 
 	return {
 		operations,
@@ -272,7 +361,7 @@ const syncRecoveredOperations = ({
 			if (!syncState.activeCancellationOperation) return null
 			return recoveryOperationIds.get(syncState.activeCancellationOperation) ?? null
 		})(),
-		operationsToStart
+		operationsToStart: [...operationsToStart, ...terminalOperationsToStart]
 	}
 }
 
@@ -294,7 +383,11 @@ export const bridgeMachine = setup({
 		validSource: ({ context }) => supportedNetworks.includes(context.sourceNetwork),
 		validDestination: ({ context }) => supportedNetworks.includes(context.destinationNetwork),
 		shouldRefreshPendingOperations: ({ context }) =>
-			[...context.operations.values()].some(({ status }) => status !== "completed"),
+			[...context.operations.values()].some(
+				({ status, operation }) =>
+					status !== "completed" ||
+					operation.getSnapshot().context.completionVerification === "unverified"
+			),
 		canFindPendingOperations: ({ context }) => context.accountReady && context.walletReady
 	},
 	actors: {
@@ -356,8 +449,10 @@ export const bridgeMachine = setup({
 					amount,
 					timeoutSlots,
 					timeoutSlot: state?.timeoutSlot,
+					actionIndex: state?.actionIndex,
 					transaction: state?.transaction,
-					cancellable: state?.cancellable
+					cancellable: state?.cancellable,
+					completionVerification: state?.completionVerification
 				}
 			})
 			if (command === "start") operation.send({ type: "StartBridgeOperation" })
@@ -647,13 +742,20 @@ export const bridgeMachine = setup({
 							currentSlot: event.output.currentSlot
 						})
 
-						for (const { actionState, command, lane, status } of operationsToStart) {
+						for (const {
+							actionState,
+							command,
+							lane,
+							status,
+							completionVerification
+						} of operationsToStart) {
 							enqueueRecoveredOperation({
 								enqueue,
 								actionState,
 								command,
 								lane,
-								status
+								status,
+								completionVerification
 							})
 						}
 					})

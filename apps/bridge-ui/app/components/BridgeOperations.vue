@@ -42,15 +42,24 @@ const data = computed<BridgeOperationRow[]>(() =>
 	operations
 		.map(({ id, operation }) => {
 			const state = useSelector(operation, (state) => state)
-			const { text, kind } = statusFromState(
+			const status = statusFromState(
 				state.value.value,
 				state.value.context.direction,
 				{ canCancel: state.value.context.canCancel }
 			)
+			const { text, kind } =
+				status.kind === "complete" &&
+				state.value.context.completionVerification === "unverified"
+					? { text: "Unindexed", kind: "pending" as const }
+					: status
 			const timestampMs =
 				state.value.context.transaction?.timestampMs ??
 				state.value.context.completedAtMs ??
 				null
+			const submitHash =
+				state.value.context.transactions.submitDeposit?.result?.hash ??
+				state.value.context.transactions.submitWithdrawal?.result?.hash ??
+				""
 			return {
 				id,
 				operation,
@@ -60,7 +69,7 @@ const data = computed<BridgeOperationRow[]>(() =>
 				source: state.value.context.source,
 				destination: state.value.context.destination,
 				amount: state.value.context.amount,
-				hash: state.value.context.transaction?.hash ?? "",
+				hash: state.value.context.transaction?.hash ?? submitHash,
 				timestampMs,
 				dateLabel: formatOperationDate(timestampMs)
 			}
@@ -157,14 +166,7 @@ const visiblePages = computed(() => {
                 class="Table"
                 :title="String(row.original.status)"
                 :is="row.original.statusKind">
-                {{
-                  {
-                  	complete: "Completed",
-                  	cancelled: "Cancelled",
-                  	pending: "Pending",
-                  	error: "Failed"
-                  }[row.original.statusKind]
-                }}
+                {{ row.original.statusText }}
               </Label>
             </td>
             <!-- From -->

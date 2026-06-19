@@ -299,6 +299,23 @@ describe("classifyRecoveredOperations", () => {
 		expect(result.activeCancellationOperation).toBeNull()
 	})
 
+	it("keeps locally completed operations out of recovered pending lanes", () => {
+		const recovered = classifyRecoveredOperations({
+			deposits: [actionState({ id: "deposit-1", index: 1, date: "2026-03-24T00:00:00Z" })],
+			withdrawals: [],
+			currentSlot: "0"
+		})
+
+		const result = buildRecoverySyncState({
+			recovered,
+			entryStateById: new Map([["deposit-1", { status: "completed", lane: "main" }]])
+		})
+
+		expect(result.pendingOperations).toEqual([])
+		expect(result.activeOperation).toBeNull()
+		expect(result.activeCancellationOperation).toBeNull()
+	})
+
 	it("keeps an already-started cancellation-lane operation active during refresh", () => {
 		const recovered = classifyRecoveredOperations({
 			deposits: [

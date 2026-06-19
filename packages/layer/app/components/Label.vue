@@ -7,19 +7,19 @@ const { is } = defineProps<{
   <div class="Label" :class="is">
     <template v-if='is === "pending"'>
       <SvgPendingClock />
-      <span>Pending</span>
+      <span><slot>Pending</slot></span>
     </template>
     <template v-else-if='is === "complete"'>
       <SvgCompletedCircle />
-      <span>Completed</span>
+      <span><slot>Completed</slot></span>
     </template>
     <template v-else-if='is === "cancelled"'>
       <SvgCancelledCircle />
-      <span>Cancelled</span>
+      <span><slot>Cancelled</slot></span>
     </template>
     <template v-else-if='is === "error"'>
       <SvgErrorCircle />
-      <span>Error</span>
+      <span><slot>Error</slot></span>
     </template>
   </div>
 </template>

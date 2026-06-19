@@ -37,7 +37,7 @@ describe("bridge operation view model", () => {
 		])
 	})
 
-	it("does not keep a completed actor snapshot in the current operation slot", () => {
+	it("uses the parent operation status instead of the child actor snapshot for completion", () => {
 		const completed = completedOperation("completed")
 		const operations = new Map([
 			["completed", { status: "started" as const, operation: completed }]
@@ -45,9 +45,7 @@ describe("bridge operation view model", () => {
 
 		const view = selectBridgeOperationView({ operations, activeOperation: "completed" })
 
-		expect(view.currentOperation).toBeUndefined()
-		expect(view.completedOperations).toEqual([
-			{ id: "completed", status: "started", operation: completed }
-		])
+		expect(view.currentOperation).toBe(completed)
+		expect(view.completedOperations).toEqual([])
 	})
 })

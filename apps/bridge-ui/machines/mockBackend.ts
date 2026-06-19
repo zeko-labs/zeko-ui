@@ -16,7 +16,8 @@ export const bridgeDebugBackendScenarios = [
 	"terminal-worker-error",
 	"repro-withdrawal-recovered-completed",
 	"repro-withdrawal-already-finalised",
-	"repro-withdrawal-blocked-loop"
+	"repro-withdrawal-blocked-loop",
+	"repro-unindexed-withdrawal-completion"
 ] as const
 
 export type BridgeDebugBackendScenario = (typeof bridgeDebugBackendScenarios)[number]
@@ -70,6 +71,7 @@ export type BridgeDebugSeededOperation = {
 	finalised: boolean
 	transactionHash: string
 	timestampMs: number
+	finaliseAfterFindPendingCalls?: number
 }
 
 export type BridgeDebugBackendState = {
@@ -80,6 +82,7 @@ export type BridgeDebugBackendState = {
 	nextRequestId: number
 	nextHashId: number
 	nextOperationIndex: number
+	findPendingOperationsCount: number
 	forcedError: BridgeDebugForcedError | null
 	calls: BridgeDebugWorkerCall[]
 	signatureRequests: BridgeDebugSignatureRequest[]
@@ -136,6 +139,7 @@ const defaultState = (): BridgeDebugBackendState => ({
 	nextRequestId: 1,
 	nextHashId: 1,
 	nextOperationIndex: 1,
+	findPendingOperationsCount: 0,
 	forcedError: null,
 	calls: [],
 	signatureRequests: [],
@@ -318,7 +322,14 @@ const updateSeededOperationsAfterSignature = ({
 		return updateFirstPendingOperation("deposit", (seed) => ({ ...seed, finalised: true }))
 	}
 	if (request.action === "finalizeWithdrawal") {
-		return updateFirstPendingOperation("withdrawal", (seed) => ({ ...seed, finalised: true }))
+		return updateFirstPendingOperation("withdrawal", (seed) =>
+			state.scenario === "repro-unindexed-withdrawal-completion"
+				? {
+						...seed,
+						finaliseAfterFindPendingCalls: state.findPendingOperationsCount + 2
+					}
+				: { ...seed, finalised: true }
+		)
 	}
 	if (request.action === "cancelDeposit") {
 		return updateFirstPendingOperation("deposit", (seed) => ({ ...seed, cancelled: true }))
@@ -559,6 +570,23 @@ export const createMockBridgeOperationsWorker = ({
 	return {
 		findPendingOperations: (input) =>
 			store.recordCall("findPendingOperations", input, async () => {
+				store.update((current) => {
+					const findPendingOperationsCount = current.findPendingOperationsCount + 1
+					return {
+						...current,
+						findPendingOperationsCount,
+						seededOperations: current.seededOperations.map((seed) =>
+							seed.finaliseAfterFindPendingCalls !== undefined &&
+							seed.finaliseAfterFindPendingCalls <= findPendingOperationsCount
+								? {
+										...seed,
+										finalised: true,
+										finaliseAfterFindPendingCalls: undefined
+									}
+								: seed
+						)
+					}
+				})
 				const snapshot = store.getSnapshot()
 				const seededOperations = (() => {
 					if (snapshot.seededOperations.length > 0) return snapshot.seededOperations
@@ -613,6 +641,9 @@ export const createMockBridgeOperationsWorker = ({
 		canFinalizeDeposit: (input) =>
 			store.recordCall("canFinalizeDeposit", input, async () => {
 				const snapshot = store.getSnapshot()
+				const firstPendingDeposit = snapshot.seededOperations.find(
+					(seed) => seed.kind === "deposit" && seed.cancelled === false && seed.finalised === false
+				)
 				if (
 					snapshot.scenario === "delayed-deposit-finalization" &&
 					snapshot.pendingAdvancements === 0
@@ -625,7 +656,9 @@ export const createMockBridgeOperationsWorker = ({
 				if (snapshot.scenario === "cancelled-deposit") {
 					return { available: false, reason: "Debug scenario: deposit was cancelled" }
 				}
-				return { available: true, reason: null }
+				return firstPendingDeposit
+					? { available: true, reason: null, index: firstPendingDeposit.index }
+					: { available: true, reason: null }
 			}),
 		finalizeDeposit: (input) =>
 			store.recordCall("finalizeDeposit", input, async () =>
@@ -662,8 +695,17 @@ export const createMockBridgeOperationsWorker = ({
 		canFinalizeWithdrawal: (input) =>
 			store.recordCall("canFinalizeWithdrawal", input, async () => {
 				const snapshot = store.getSnapshot()
+				const firstPendingWithdrawal = snapshot.seededOperations.find(
+					(seed) =>
+						seed.kind === "withdrawal" && seed.cancelled === false && seed.finalised === false
+				)
 				if (snapshot.scenario === "already-finalized-withdrawal") {
-					return { available: false, reason: null, status: "alreadyFinalised" }
+					return {
+						available: false,
+						reason: null,
+						status: "alreadyFinalised",
+						...(firstPendingWithdrawal ? { index: firstPendingWithdrawal.index } : {})
+					}
 				}
 				if (snapshot.scenario === "repro-withdrawal-already-finalised") {
 					return {
@@ -690,7 +732,14 @@ export const createMockBridgeOperationsWorker = ({
 						status: "waiting"
 					}
 				}
-				return { available: true, reason: null, status: "available" }
+				return firstPendingWithdrawal
+					? {
+							available: true,
+							reason: null,
+							status: "available",
+							index: firstPendingWithdrawal.index
+						}
+					: { available: true, reason: null, status: "available" }
 			}),
 		finalizeWithdrawal: (input) =>
 			store.recordCall("finalizeWithdrawal", input, async () =>

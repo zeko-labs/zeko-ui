@@ -44,4 +44,23 @@ describe("bridgeOperationDateColumn", () => {
 		expect(bridgeOperationHashColumn.accessorFn?.(row, 0)).toBe("5Jdebug000001")
 		expect(bridgeOperationsSource).toContain('row.getValue("hash")')
 	})
+
+	it("renders explicit status text for unverified completed rows", () => {
+		const row: BridgeOperationRow = {
+			id: "op-1",
+			status: "BRIDGE_OPERATION_COMPLETED",
+			statusText: "Unindexed",
+			statusKind: "pending",
+			source: "zeko",
+			destination: "mina",
+			amount: 1,
+			hash: "5Jdebug000001",
+			timestampMs: 1700000000000,
+			dateLabel: "11/14/2023"
+		}
+
+		expect(row.statusKind).toBe("pending")
+		expect(row.statusText).toBe("Unindexed")
+		expect(bridgeOperationsSource).toContain("row.original.statusText")
+	})
 })
