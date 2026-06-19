@@ -440,7 +440,7 @@ describe("deposit cancellation state", () => {
 		})
 	})
 
-	it("reports when an earlier deposit must resolve before later deposits can finalize", async () => {
+	it("reports when a deposit is waiting for a synchronized bridge commit before it can finalize", async () => {
 		const bridge = buildBridge()
 		const firstDeposit = buildDeposit({ amount: 10, timeout: 20 })
 		const secondDeposit = buildDeposit({ amount: 12, timeout: 20 })
@@ -459,7 +459,8 @@ describe("deposit cancellation state", () => {
 
 		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
 			available: false,
-			reason: "Deposit is not finalizable yet; an earlier deposit must be resolved first"
+			reason:
+				"Deposit 0 is not finalizable yet; no synchronized bridge commit currently confirms this deposit"
 		})
 	})
 

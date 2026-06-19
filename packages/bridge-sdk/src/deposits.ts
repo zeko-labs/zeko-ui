@@ -464,7 +464,7 @@ export function getDepositFinalizationWaitReason(
 		return `Deposit ${witness.index} is accepted but not confirmed yet; confirmedIndex ${confirmedIndex} is behind deposit index ${witness.index}`
 	}
 
-	return "Deposit is not finalizable yet; an earlier deposit must be resolved first"
+	return `Deposit ${witness.index} is not finalizable yet; no synchronized bridge commit currently confirms this deposit`
 }
 
 export async function finalizeDeposit(
