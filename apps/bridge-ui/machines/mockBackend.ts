@@ -92,6 +92,10 @@ type CreateBridgeDebugBackendStoreOptions = {
 	storage?: BridgeDebugBackendStorage | null
 }
 
+type BridgeDebugBackendStorageState = {
+	scenario?: unknown
+}
+
 type SeedRecoveredOperationInput = Partial<
 	Pick<
 		BridgeDebugSeededOperation,
@@ -161,16 +165,11 @@ const readState = (storage: BridgeDebugBackendStorage | null): BridgeDebugBacken
 	try {
 		const raw = storage?.getItem(BRIDGE_DEBUG_BACKEND_STORAGE_KEY)
 		if (!raw) return defaultState()
-		const parsed = JSON.parse(raw) as Partial<BridgeDebugBackendState>
+		const parsed = JSON.parse(raw) as BridgeDebugBackendStorageState
 		const fallback = defaultState()
 		return {
 			...fallback,
-			...parsed,
-			scenario: isBridgeDebugBackendScenario(parsed.scenario) ? parsed.scenario : fallback.scenario,
-			forcedError: parsed.forcedError ?? null,
-			calls: Array.isArray(parsed.calls) ? parsed.calls : [],
-			signatureRequests: Array.isArray(parsed.signatureRequests) ? parsed.signatureRequests : [],
-			seededOperations: Array.isArray(parsed.seededOperations) ? parsed.seededOperations : []
+			scenario: isBridgeDebugBackendScenario(parsed.scenario) ? parsed.scenario : fallback.scenario
 		}
 	} catch {
 		return defaultState()
@@ -182,7 +181,10 @@ const persistState = (
 	state: BridgeDebugBackendState
 ) => {
 	try {
-		storage?.setItem(BRIDGE_DEBUG_BACKEND_STORAGE_KEY, JSON.stringify(state))
+		storage?.setItem(
+			BRIDGE_DEBUG_BACKEND_STORAGE_KEY,
+			JSON.stringify({ scenario: state.scenario } satisfies BridgeDebugBackendStorageState)
+		)
 	} catch {
 		// Debug state persistence is best-effort only.
 	}

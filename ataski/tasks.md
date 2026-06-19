@@ -369,3 +369,4 @@
 - T383 | done | fit-bridge-debug-panel-content | done/T383-fit-bridge-debug-panel-content.md
 - T384 | done | debug-reproductions-for-bridge-state-bugs | done/T384-debug-reproductions-for-bridge-state-bugs.md
 - T385 | done | debug-panel-recovery-controls | done/T385-debug-panel-recovery-controls.md
+- T386 | done | debug-backend-refresh-stability | done/T386-debug-backend-refresh-stability.md

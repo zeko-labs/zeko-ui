@@ -249,6 +249,39 @@ describe("mock bridge operations worker", () => {
 		})
 	})
 
+	it("keeps only the selected scenario across a fresh debug backend page load", async () => {
+		const store = createBridgeDebugBackendStore({ storage })
+		const worker = createMockBridgeOperationsWorker({ store })
+
+		store.setScenario("delayed-withdrawal-finalization")
+		store.seedRecoveredOperation("withdrawal", { amount: "4" })
+		store.advancePendingStatus()
+		await worker.submitDeposit({
+			l1: "mina:devnet",
+			l2: "zeko-m:testnet",
+			user: "B62qtest-user",
+			amount: "1",
+			feeNanomina: 100_000_000
+		})
+		store.forceNextError("terminal")
+
+		const reloadedStore = createBridgeDebugBackendStore({ storage })
+
+		expect(reloadedStore.getSnapshot()).toMatchObject({
+			scenario: "delayed-withdrawal-finalization",
+			currentSlot: 1,
+			pendingAdvancements: 0,
+			nextCallId: 1,
+			nextRequestId: 1,
+			nextHashId: 1,
+			nextOperationIndex: 1,
+			forcedError: null,
+			calls: [],
+			signatureRequests: [],
+			seededOperations: []
+		})
+	})
+
 	it("exposes realistic reproduction scenarios for reported completion and withdrawal loops", async () => {
 		expect(bridgeDebugBackendScenarios).toEqual(
 			expect.arrayContaining([
