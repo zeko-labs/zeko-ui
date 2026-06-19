@@ -138,10 +138,6 @@ export async function fetchUserWithdrawals(
 	}))
 }
 
-function minimumFirstWithdrawalAmount(runtime: BridgeRuntime): UInt64 {
-	return runtime.l1AccountCreationFee.add(runtime.bridgeProofFee)
-}
-
 export async function submitWithdrawal(
 	runtime: BridgeRuntime,
 	feePayer: Mina.FeePayerSpec,
@@ -159,10 +155,12 @@ export async function submitWithdrawal(
 	await ensureFirstWithdrawalAmountCanCreateHelper({
 		amount,
 		recipient,
-		accountCreationFee: minimumFirstWithdrawalAmount(runtime),
+		accountCreationFee: runtime.l1AccountCreationFee,
+		bridgeProofFee: runtime.bridgeProofFee,
 		helperAccountExists: async () =>
 			(await fetchAccount(runtime.l1Client, recipient, TokenId.derive(runtime.outerTokenOwner))) !==
-			null
+			null,
+		recipientAccountExists: async () => (await fetchAccount(runtime.l1Client, recipient)) !== null
 	})
 
 	await refreshCache(recipient)
@@ -276,9 +274,14 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		pk,
 		TokenId.derive(runtime.outerTokenOwner)
 	)
+	const recipientAccount = await (runtime.bridge?.fetchAccount ?? fetchAccount)(
+		runtime.l1Client,
+		pk
+	)
 	debug(runtime, "fetchWithdrawalFinalizationWitnesses helperAccount", {
 		pk: pk.toBase58(),
-		hasHelperAccount: helperAccount !== null
+		hasHelperAccount: helperAccount !== null,
+		hasRecipientAccount: recipientAccount !== null
 	})
 
 	const prevNextWithdrawal = helperAccount ? getNextWithdrawalIndex(helperAccount) : UInt32.zero
@@ -450,9 +453,11 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		try {
 			assertFirstWithdrawalAmountCanCreateHelper({
 				helperAccountExists: helperAccount !== null,
+				recipientAccountExists: recipientAccount !== null,
 				amount: matchingWithdrawal.withdrawal.amount,
 				recipient: matchingWithdrawal.withdrawal.recipient,
-				accountCreationFee: minimumFirstWithdrawalAmount(runtime)
+				accountCreationFee: runtime.l1AccountCreationFee,
+				bridgeProofFee: runtime.bridgeProofFee
 			})
 		} catch (e) {
 			if (e instanceof InsufficientFirstWithdrawalAmountError) {
@@ -505,9 +510,11 @@ export async function fetchWithdrawalFinalizationWitnesses(
 	try {
 		assertFirstWithdrawalAmountCanCreateHelper({
 			helperAccountExists: helperAccount !== null,
+			recipientAccountExists: recipientAccount !== null,
 			amount: withdrawalParams.withdrawal.amount,
 			recipient: withdrawalParams.withdrawal.recipient,
-			accountCreationFee: minimumFirstWithdrawalAmount(runtime)
+			accountCreationFee: runtime.l1AccountCreationFee,
+			bridgeProofFee: runtime.bridgeProofFee
 		})
 	} catch (e) {
 		if (e instanceof InsufficientFirstWithdrawalAmountError) {

@@ -13,6 +13,11 @@ import {
 	readOptionalStringArg,
 	readRequiredStringArg
 } from "../core/command-args"
+import {
+	bridgeEndpointOverrideArgs,
+	readBridgeEndpointOverrides,
+	type BridgeEndpointOverrides
+} from "../core/endpoint-overrides"
 import { createOperationLogger } from "../core/logger"
 import { resolveAppPaths } from "../core/paths"
 import {
@@ -159,15 +164,17 @@ const refreshOperationSession = async ({
 	session,
 	createAdapter,
 	now,
-	verbose
+	verbose,
+	endpointOverrides
 }: {
 	session: OperationSession
 	createAdapter: BridgeAdapterFactory
 	now: () => string
 	verbose: boolean
+	endpointOverrides?: BridgeEndpointOverrides
 }): Promise<OperationSession> => {
 	const [from, to] = parseSessionRoute(session)
-	const adapter = await createAdapter({ from, to, verbose })
+	const adapter = await createAdapter({ from, to, verbose, endpointOverrides })
 
 	return refreshSessionFromNetwork({ session, adapter, now })
 }
@@ -179,12 +186,14 @@ const createAdapterWithRetries = async ({
 	verbose,
 	log,
 	sleep,
-	retryDelayMs
+	retryDelayMs,
+	endpointOverrides
 }: {
 	createAdapter: BridgeAdapterFactory
 	from: ChainRef
 	to: ChainRef
 	verbose: boolean
+	endpointOverrides?: BridgeEndpointOverrides
 	log: (entry: {
 		event: string
 		phase: OperationPhase
@@ -202,7 +211,7 @@ const createAdapterWithRetries = async ({
 
 	return retryWithBackoff({
 		operation: "Bridge.init",
-		run: async () => await createAdapter({ from, to, verbose }),
+		run: async () => await createAdapter({ from, to, verbose, endpointOverrides }),
 		sleep,
 		baseDelayMs: retryDelayMs,
 		maxRetries: DEFAULT_MAX_RETRIES,
@@ -286,11 +295,13 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 				meta: { name: "status", description: "Show one persisted operation." },
 				args: {
 					id: { type: "positional", required: true },
+					...bridgeEndpointOverrideArgs,
 					verbose: { type: "boolean", default: false }
 				},
 				async run({ args }) {
 					const id = readRequiredStringArg(args, "id", "Missing required operation id")
 					const verbose = readBooleanArg(args, "verbose")
+					const endpointOverrides = readBridgeEndpointOverrides(args)
 					const now = deps.now ?? (() => new Date().toISOString())
 					const store = (deps.createStore ?? createSessionStore)({
 						stateDir: (deps.resolvePaths ?? resolveAppPaths)().stateDir
@@ -312,7 +323,8 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						session,
 						createAdapter,
 						now,
-						verbose
+						verbose,
+						endpointOverrides
 					})
 					await store.save(refreshed)
 					;(deps.write ?? console.log)(JSON.stringify(projectOperationStatus(refreshed), null, 2))
@@ -341,6 +353,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					id: { type: "positional", required: true },
 					pollIntervalMs: { type: "string", required: false, alias: ["poll-interval-ms"] },
 					retryDelayMs: { type: "string", required: false, alias: ["retry-delay-ms"] },
+					...bridgeEndpointOverrideArgs,
 					json: { type: "boolean", default: false },
 					verbose: { type: "boolean", default: false }
 				},
@@ -360,6 +373,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						"retry-delay-ms",
 						"--retry-delay-ms"
 					)
+					const endpointOverrides = readBridgeEndpointOverrides(args)
 					const now = deps.now ?? (() => new Date().toISOString())
 					const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
 					const store = (deps.createStore ?? createSessionStore)({ stateDir: appPaths.stateDir })
@@ -393,6 +407,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 								from,
 								to,
 								verbose,
+								endpointOverrides,
 								log,
 								sleep,
 								retryDelayMs: resolveRetryDelayMs({ argValue: retryDelayMs, deps })
@@ -423,6 +438,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 					account: { type: "string", required: false },
 					pollIntervalMs: { type: "string", required: false, alias: ["poll-interval-ms"] },
 					retryDelayMs: { type: "string", required: false, alias: ["retry-delay-ms"] },
+					...bridgeEndpointOverrideArgs,
 					json: { type: "boolean", default: false },
 					verbose: { type: "boolean", default: false }
 				},
@@ -444,6 +460,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						"retry-delay-ms",
 						"--retry-delay-ms"
 					)
+					const endpointOverrides = readBridgeEndpointOverrides(args)
 					const now = deps.now ?? (() => new Date().toISOString())
 					const sleep = resolveSleep(deps)
 					const appPaths = (deps.resolvePaths ?? resolveAppPaths)()
@@ -458,6 +475,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						from: queueRoutes.depositFrom,
 						to: queueRoutes.depositTo,
 						verbose,
+						endpointOverrides,
 						log: discoveryLog,
 						sleep,
 						retryDelayMs: resolveRetryDelayMs({ deps })
@@ -467,6 +485,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 						from: queueRoutes.withdrawalFrom,
 						to: queueRoutes.withdrawalTo,
 						verbose,
+						endpointOverrides,
 						log: discoveryLog,
 						sleep,
 						retryDelayMs: resolveRetryDelayMs({ deps })
@@ -547,6 +566,7 @@ export const createOperationCommand = (deps: OperationCommandDeps = {}): Command
 									from: item.from,
 									to: item.to,
 									verbose,
+									endpointOverrides,
 									log,
 									sleep,
 									retryDelayMs: resolveRetryDelayMs({ argValue: retryDelayMs, deps })

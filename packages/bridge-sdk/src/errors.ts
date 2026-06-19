@@ -1,4 +1,4 @@
-import type { PublicKey, UInt64 } from "o1js"
+import { UInt64, type PublicKey } from "o1js"
 
 const NANOMINA_PER_MINA = 1_000_000_000n
 const FIRST_WITHDRAWAL_TOO_SMALL_PREFIX = "First Zeko->Mina withdrawal amount is too small"
@@ -15,15 +15,15 @@ export class InsufficientFirstWithdrawalAmountError extends Error {
 
 	constructor({
 		amountNanomina,
-		accountCreationFeeNanomina,
+		minimumAmountNanomina,
 		recipient
 	}: {
 		amountNanomina: bigint
-		accountCreationFeeNanomina: bigint
+		minimumAmountNanomina: bigint
 		recipient: string
 	}) {
 		super(
-			`${FIRST_WITHDRAWAL_TOO_SMALL_PREFIX}: recipient ${recipient} does not have an L1 helper account yet, so the first withdrawal must be at least ${formatNanomina(accountCreationFeeNanomina)} MINA to cover the Mina account creation fee. This withdrawal is ${formatNanomina(amountNanomina)} MINA and cannot proceed as submitted.`
+			`${FIRST_WITHDRAWAL_TOO_SMALL_PREFIX}: recipient ${recipient} cannot finalize this withdrawal with the current L1 account state, so the withdrawal must be at least ${formatNanomina(minimumAmountNanomina)} MINA to cover bridge proof fee plus any needed helper account and recipient payout account creation fees. This withdrawal is ${formatNanomina(amountNanomina)} MINA and cannot proceed as submitted.`
 		)
 		this.name = "InsufficientFirstWithdrawalAmountError"
 	}
@@ -45,21 +45,28 @@ export const isInsufficientFirstWithdrawalAmountError = (error: unknown): boolea
 
 export const assertFirstWithdrawalAmountCanCreateHelper = ({
 	helperAccountExists,
+	recipientAccountExists,
 	amount,
 	recipient,
-	accountCreationFee
+	accountCreationFee,
+	bridgeProofFee
 }: {
 	helperAccountExists: boolean
+	recipientAccountExists: boolean
 	amount: UInt64
 	recipient: PublicKey
 	accountCreationFee: UInt64
+	bridgeProofFee: UInt64
 }): void => {
-	if (amount.greaterThanOrEqual(accountCreationFee).toBoolean()) return
-	if (helperAccountExists) return
+	const missingHelperFee = helperAccountExists ? UInt64.zero : accountCreationFee
+	const missingRecipientFee = recipientAccountExists ? UInt64.zero : accountCreationFee
+	const minimumAmount = bridgeProofFee.add(missingHelperFee).add(missingRecipientFee)
+
+	if (amount.greaterThanOrEqual(minimumAmount).toBoolean()) return
 
 	throw new InsufficientFirstWithdrawalAmountError({
 		amountNanomina: amount.toBigInt(),
-		accountCreationFeeNanomina: accountCreationFee.toBigInt(),
+		minimumAmountNanomina: minimumAmount.toBigInt(),
 		recipient: recipient.toBase58()
 	})
 }
@@ -68,19 +75,35 @@ export const ensureFirstWithdrawalAmountCanCreateHelper = async ({
 	amount,
 	recipient,
 	accountCreationFee,
-	helperAccountExists
+	bridgeProofFee,
+	helperAccountExists,
+	recipientAccountExists
 }: {
 	amount: UInt64
 	recipient: PublicKey
 	accountCreationFee: UInt64
+	bridgeProofFee: UInt64
 	helperAccountExists: () => boolean | Promise<boolean>
+	recipientAccountExists: () => boolean | Promise<boolean>
 }): Promise<void> => {
-	if (amount.greaterThanOrEqual(accountCreationFee).toBoolean()) return
+	if (
+		amount
+			.greaterThanOrEqual(accountCreationFee.add(accountCreationFee).add(bridgeProofFee))
+			.toBoolean()
+	)
+		return
+
+	const [hasHelperAccount, hasRecipientAccount] = await Promise.all([
+		helperAccountExists(),
+		recipientAccountExists()
+	])
 
 	assertFirstWithdrawalAmountCanCreateHelper({
-		helperAccountExists: await helperAccountExists(),
+		helperAccountExists: hasHelperAccount,
+		recipientAccountExists: hasRecipientAccount,
 		amount,
 		recipient,
-		accountCreationFee
+		accountCreationFee,
+		bridgeProofFee
 	})
 }

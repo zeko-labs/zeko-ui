@@ -5,6 +5,7 @@ import {
 	MINA_NETWORKS,
 	ZEKO_M_NETWORKS
 } from "@zeko/networks"
+import type { BridgeEndpointOverrides } from "./endpoint-overrides"
 import type { RouteDescriptor } from "./routes"
 
 const CONFIG_BY_ROUTE: Partial<Record<RouteDescriptor["route"], Config>> = {
@@ -20,7 +21,7 @@ const CONFIG_BY_ROUTE: Partial<Record<RouteDescriptor["route"], Config>> = {
 
 export const createSdkConfig = (
 	route: RouteDescriptor,
-	options: { verbose?: boolean; actionsApi?: string } = {}
+	options: BridgeEndpointOverrides & { verbose?: boolean } = {}
 ): Config => {
 	if (!route.enabled) {
 		throw new Error(route.reason ?? `Bridge route ${route.label} is not enabled.`)
@@ -31,6 +32,8 @@ export const createSdkConfig = (
 		return {
 			...config,
 			...(options.actionsApi ? { actionsApi: options.actionsApi } : {}),
+			...(options.l1Url ? { l1Url: options.l1Url } : {}),
+			...(options.l1ArchiveUrl ? { l1ArchiveUrl: options.l1ArchiveUrl } : {}),
 			verbose: options.verbose === true
 		}
 	}

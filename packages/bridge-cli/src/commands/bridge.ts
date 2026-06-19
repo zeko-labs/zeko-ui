@@ -27,13 +27,17 @@ import {
 	withPhaseTiming
 } from "../core/bridge-runtime/instrumentation"
 import {
-	readAliasedStringArg,
 	readAliasedNumberArg,
 	readAliasedOptionalNumberArg,
 	readBooleanArg,
 	readOptionalStringArg,
 	readRequiredStringArg
 } from "../core/command-args"
+import {
+	bridgeEndpointOverrideArgs,
+	readBridgeEndpointOverrides,
+	type BridgeEndpointOverrides
+} from "../core/endpoint-overrides"
 import { createOperationLogger } from "../core/logger"
 import { isRecoverableMutationError } from "../core/mutation-errors"
 import { resolveAppPaths } from "../core/paths"
@@ -126,6 +130,8 @@ type BridgeCommandArgs = {
 	pollIntervalMs: { type: "string"; required: false; alias: string[] }
 	retryDelayMs: { type: "string"; required: false; alias: string[] }
 	actionsApi: { type: "string"; required: false; alias: string[] }
+	l1Url: { type: "string"; required: false; alias: string[] }
+	l1ArchiveUrl: { type: "string"; required: false; alias: string[] }
 	json: { type: "boolean"; default: false }
 	verbose: { type: "boolean"; default: false }
 }
@@ -248,7 +254,7 @@ const parseBridgeCommandArgs = (args: Record<string, unknown>) => ({
 		"--poll-interval-ms"
 	),
 	retryDelayMs: readAliasedNumberArg(args, "retryDelayMs", "retry-delay-ms", "--retry-delay-ms"),
-	actionsApi: readAliasedStringArg(args, "actionsApi", "actions-api"),
+	endpointOverrides: readBridgeEndpointOverrides(args),
 	json: readBooleanArg(args, "json"),
 	verbose: readBooleanArg(args, "verbose")
 })
@@ -1971,7 +1977,7 @@ const createAdapterWithRetries = async ({
 	from,
 	to,
 	verbose,
-	actionsApi,
+	endpointOverrides,
 	log,
 	sleep,
 	retryDelayMs
@@ -1980,7 +1986,7 @@ const createAdapterWithRetries = async ({
 	from: ChainRef
 	to: ChainRef
 	verbose: boolean
-	actionsApi?: string
+	endpointOverrides?: BridgeEndpointOverrides
 	log: LogFn
 	sleep: (ms: number) => Promise<void>
 	retryDelayMs?: number
@@ -1991,7 +1997,7 @@ const createAdapterWithRetries = async ({
 		maxRetries: DEFAULT_MAX_RETRIES,
 		sleep,
 		shouldRetry: isRetryableInitializationError,
-		run: async () => await createAdapter({ from, to, verbose, actionsApi }),
+		run: async () => await createAdapter({ from, to, verbose, endpointOverrides }),
 		onRetry: ({ error, retryIndex, delayMs }) =>
 			log({
 				event: "retrying",
@@ -2091,7 +2097,7 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 			timeoutSlots: { type: "string", required: false, alias: ["timeout-slots"] },
 			pollIntervalMs: { type: "string", required: false, alias: ["poll-interval-ms"] },
 			retryDelayMs: { type: "string", required: false, alias: ["retry-delay-ms"] },
-			actionsApi: { type: "string", required: false, alias: ["actions-api"] },
+			...bridgeEndpointOverrideArgs,
 			json: { type: "boolean", default: false },
 			verbose: { type: "boolean", default: false }
 		},
@@ -2117,7 +2123,7 @@ export const createBridgeCommand = (deps: BridgeCommandDeps = {}): CommandDef<Br
 				from,
 				to,
 				verbose: commandArgs.verbose,
-				actionsApi: commandArgs.actionsApi,
+				endpointOverrides: commandArgs.endpointOverrides,
 				log,
 				sleep,
 				retryDelayMs: commandArgs.retryDelayMs ?? deps.retryDelayMs

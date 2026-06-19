@@ -117,8 +117,12 @@ Flags:
 | `--poll-interval-ms` | `20000`                                   | Delay between bridge status polls while waiting.                                             |
 | `--retry-delay-ms`   | `5000`                                    | Delay before retrying transient network or bridge service errors.                            |
 | `--actions-api`      | Route default                             | Override the Actions API GraphQL URL for operator or local validation.                       |
+| `--l1-url`           | Route default                             | Override the live Mina GraphQL URL for operator or local validation.                         |
+| `--l1-archive-url`   | Route default                             | Override the Mina archive GraphQL URL for operator or local validation.                      |
 | `--json`             | `false`                                   | Print the final result as JSON on stdout. Progress remains on stderr.                        |
 | `--verbose`          | `false`                                   | Record and print SDK call diagnostics and wait reasons.                                      |
+
+The endpoint override flags are also available on `operation status`, `operation resume`, `operation resume-all`, and the low-level `deposit` and `withdrawal` commands. Use them to point the CLI at a local Actions API/indexer stack or an alternate Mina live/archive endpoint without editing source config.
 
 The command is designed to be left running until completion. Long waits can be normal while the source chain transaction becomes visible, while earlier queued bridge work is claimed, or while the destination chain becomes ready for finalization.
 
@@ -160,14 +164,17 @@ The low-level `deposit` and `withdrawal` commands expose individual bridge actio
 
 Common flags:
 
-| Flag        | Description                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------- |
-| `--from`    | Source chain. Defaults to the route's source testnet.                                     |
-| `--to`      | Destination chain. Defaults to the route's destination testnet.                           |
-| `--account` | Optional account to operate on. Defaults to the signer public key.                        |
-| `--json`    | Print JSON instead of formatted text.                                                     |
-| `--verbose` | Enable verbose bridge diagnostics where supported.                                        |
-| `--wait`    | Wait for submitted transactions to be included. Defaults to `true` for mutation commands. |
+| Flag               | Description                                                                               |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| `--from`           | Source chain. Defaults to the route's source testnet.                                     |
+| `--to`             | Destination chain. Defaults to the route's destination testnet.                           |
+| `--account`        | Optional account to operate on. Defaults to the signer public key.                        |
+| `--actions-api`    | Override the Actions API GraphQL URL for operator or local validation.                    |
+| `--l1-url`         | Override the live Mina GraphQL URL for operator or local validation.                      |
+| `--l1-archive-url` | Override the Mina archive GraphQL URL for operator or local validation.                   |
+| `--json`           | Print JSON instead of formatted text.                                                     |
+| `--verbose`        | Enable verbose bridge diagnostics where supported.                                        |
+| `--wait`           | Wait for submitted transactions to be included. Defaults to `true` for mutation commands. |
 
 Deposit-specific flags:
 
@@ -216,6 +223,9 @@ Commands:
 | `--account`          | Optional, derived from `MINA_PRIVATE_KEY` | Account whose pending bridge queue should be resumed. |
 | `--poll-interval-ms` | `20000`                                   | Delay between status polls.                           |
 | `--retry-delay-ms`   | `5000`                                    | Delay before retrying transient errors.               |
+| `--actions-api`      | Route default                             | Override the Actions API GraphQL URL.                 |
+| `--l1-url`           | Route default                             | Override the live Mina GraphQL URL.                   |
+| `--l1-archive-url`   | Route default                             | Override the Mina archive GraphQL URL.                |
 | `--json`             | `false`                                   | Print JSON output.                                    |
 | `--verbose`          | `false`                                   | Enable verbose bridge diagnostics.                    |
 

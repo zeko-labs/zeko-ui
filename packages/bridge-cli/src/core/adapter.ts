@@ -8,6 +8,7 @@ import {
 	fetchTransactionStatus
 } from "o1js"
 import { createExplorerUrl } from "./explorer"
+import type { BridgeEndpointOverrides } from "./endpoint-overrides"
 import { minaStringToNanomina, nanominaToMinaString } from "./format"
 import { isZekoChainRef, type ChainRef, type Direction, type RouteDescriptor } from "./routes"
 import { createSdkConfig } from "./sdk-config"
@@ -66,15 +67,23 @@ type SignedTransactionResult = {
 	}
 }
 
-const routeKey = (route: RouteDescriptor, verbose: boolean, actionsApi?: string) =>
-	`${route.from}->${route.to}:verbose=${verbose ? "1" : "0"}:actionsApi=${actionsApi ?? ""}`
+const routeKey = (
+	route: RouteDescriptor,
+	verbose: boolean,
+	endpointOverrides: BridgeEndpointOverrides = {}
+) =>
+	`${route.from}->${route.to}:verbose=${verbose ? "1" : "0"}:actionsApi=${endpointOverrides.actionsApi ?? ""}:l1Url=${endpointOverrides.l1Url ?? ""}:l1ArchiveUrl=${endpointOverrides.l1ArchiveUrl ?? ""}`
 
-const getBridge = (route: RouteDescriptor, verbose: boolean, actionsApi?: string) => {
-	const key = routeKey(route, verbose, actionsApi)
+const getBridge = (
+	route: RouteDescriptor,
+	verbose: boolean,
+	endpointOverrides: BridgeEndpointOverrides = {}
+) => {
+	const key = routeKey(route, verbose, endpointOverrides)
 	const cached = bridges.get(key)
 	if (cached) return cached
 
-	const bridge = Bridge.init(createSdkConfig(route, { verbose, actionsApi })).catch(
+	const bridge = Bridge.init(createSdkConfig(route, { ...endpointOverrides, verbose })).catch(
 		(error: unknown) => {
 			bridges.delete(key)
 			throw error
@@ -195,12 +204,14 @@ const mapDirectionNetwork = ({
 
 const graphqlUrlForAction = ({
 	action,
-	route
+	route,
+	endpointOverrides
 }: {
 	action: "submit" | "finalize" | "cancel"
 	route: RouteDescriptor
+	endpointOverrides?: BridgeEndpointOverrides
 }): string => {
-	const config = createSdkConfig(route)
+	const config = createSdkConfig(route, endpointOverrides)
 	return isZekoChainRef(mapDirectionNetwork({ action, route })) ? config.zekoUrl : config.l1Url
 }
 
@@ -209,13 +220,15 @@ const normalizeTxResult = async ({
 	direction,
 	route,
 	result,
-	wait
+	wait,
+	endpointOverrides
 }: {
 	action: "submit" | "finalize" | "cancel"
 	direction: Direction
 	route: RouteDescriptor
 	result: SignedTransactionResult
 	wait: boolean
+	endpointOverrides?: BridgeEndpointOverrides
 }): Promise<TransactionResult> => {
 	const hash = result.hash
 	if (!hash) {
@@ -235,7 +248,7 @@ const normalizeTxResult = async ({
 		included: wait
 			? await waitForTransactionInclusion({
 					zkAppId,
-					graphqlUrl: graphqlUrlForAction({ action, route })
+					graphqlUrl: graphqlUrlForAction({ action, route, endpointOverrides })
 				})
 			: false,
 		zkAppId
@@ -246,15 +259,15 @@ export const createBridgeAdapter = ({
 	route,
 	env = process.env,
 	verbose = false,
-	actionsApi
+	endpointOverrides = {}
 }: {
 	route: RouteDescriptor
 	env?: Partial<Record<string, string | undefined>>
 	verbose?: boolean
-	actionsApi?: string
+	endpointOverrides?: BridgeEndpointOverrides
 }): BridgeAdapter => {
 	const keys = resolveSignerKeys(env)
-	const config = createSdkConfig(route, { actionsApi })
+	const config = createSdkConfig(route, endpointOverrides)
 
 	return {
 		getStatusSources() {
@@ -286,11 +299,11 @@ export const createBridgeAdapter = ({
 			}
 		},
 		async getBridgeCommitSnapshot() {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			return bridge.fetchBridgeCommitStatusSnapshot()
 		},
 		async getDepositStatuses(account) {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			const result = await bridge.fetchDepositsWithStates(PublicKey.fromBase58(account))
 			return result.deposits.map(
 				(item): DepositStatus => ({
@@ -309,7 +322,7 @@ export const createBridgeAdapter = ({
 			)
 		},
 		async getWithdrawalStatuses(account) {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			const result = await bridge.fetchWithdrawalsWithStates(PublicKey.fromBase58(account))
 			return result.withdrawals.map(
 				(item): WithdrawalStatus => ({
@@ -324,7 +337,7 @@ export const createBridgeAdapter = ({
 			)
 		},
 		async submitDeposit({ account, recipient, amount, timeoutSlots, wait }) {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
 			const { publicKey: recipientPublicKey } = resolvePublicKey({
 				account: recipient,
@@ -350,20 +363,27 @@ export const createBridgeAdapter = ({
 						)
 					)
 			})
-			return normalizeTxResult({ action: "submit", direction: "deposit", route, result, wait })
+			return normalizeTxResult({
+				action: "submit",
+				direction: "deposit",
+				route,
+				result,
+				wait,
+				endpointOverrides
+			})
 		},
 		async canFinalizeDeposit(account) {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
 			return bridge.canFinalizeDeposit(publicKey)
 		},
 		async canCancelDeposit(account) {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			const { publicKey } = resolvePublicKey({ account, keys, network: route.from })
 			return bridge.canCancelDeposit(publicKey)
 		},
 		async finalizeDeposit({ account, wait }) {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
 			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
@@ -373,10 +393,17 @@ export const createBridgeAdapter = ({
 						await bridge.finalizeDeposit(publicKey, signSdkTransaction(signer), { feeNanomina })
 					)
 			})
-			return normalizeTxResult({ action: "finalize", direction: "deposit", route, result, wait })
+			return normalizeTxResult({
+				action: "finalize",
+				direction: "deposit",
+				route,
+				result,
+				wait,
+				endpointOverrides
+			})
 		},
 		async cancelDeposit({ account, wait }) {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
 			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
@@ -388,10 +415,17 @@ export const createBridgeAdapter = ({
 						})
 					)
 			})
-			return normalizeTxResult({ action: "cancel", direction: "deposit", route, result, wait })
+			return normalizeTxResult({
+				action: "cancel",
+				direction: "deposit",
+				route,
+				result,
+				wait,
+				endpointOverrides
+			})
 		},
 		async submitWithdrawal({ account, recipient, amount, wait }) {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.from })
 			const { publicKey: recipientPublicKey } = resolvePublicKey({
 				account: recipient,
@@ -414,15 +448,22 @@ export const createBridgeAdapter = ({
 						)
 					)
 			})
-			return normalizeTxResult({ action: "submit", direction: "withdrawal", route, result, wait })
+			return normalizeTxResult({
+				action: "submit",
+				direction: "withdrawal",
+				route,
+				result,
+				wait,
+				endpointOverrides
+			})
 		},
 		async canFinalizeWithdrawal(account) {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			const { publicKey } = resolvePublicKey({ account, keys, network: route.to })
 			return bridge.canFinalizeWithdrawal(publicKey)
 		},
 		async finalizeWithdrawal({ account, wait }) {
-			const bridge = await getBridge(route, verbose, actionsApi)
+			const bridge = await getBridge(route, verbose, endpointOverrides)
 			const { publicKey, signer } = resolvePublicKey({ account, keys, network: route.to })
 			const result = await sendWithFeeRetries<SignedTransactionResult, SignedTransactionResult>({
 				initialFeeNanomina: BRIDGE_FEE_NANOMINA,
@@ -439,7 +480,8 @@ export const createBridgeAdapter = ({
 				direction: "withdrawal",
 				route,
 				result,
-				wait
+				wait,
+				endpointOverrides
 			})
 		}
 	}

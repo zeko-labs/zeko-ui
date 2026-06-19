@@ -368,3 +368,6 @@
 - T390 | done | guard-bridge-finality-regressions | done/T390-guard-bridge-finality-regressions.md
 - T391 | done | fix-deposit-finalization-wait-reason | done/T391-fix-deposit-finalization-wait-reason.md
 - T392 | done | cli-actions-api-override-and-fresh-wallet-validation | done/T392-cli-actions-api-override-and-fresh-wallet-validation.md
+- T393 | done | fix-first-withdrawal-helper-minimum | done/T393-fix-first-withdrawal-helper-minimum.md
+- T394 | done | extend-actions-api-cli-overrides | done/T394-extend-actions-api-cli-overrides.md
+- T395 | done | add-cli-l1-url-override | done/T395-add-cli-l1-url-override.md

@@ -29,7 +29,7 @@ Record the printed wallet file path and `PUBLIC_KEY`. Fund that fresh wallet by 
 
 A fresh wallet removes historical queue ambiguity. It does not make bridge operations fast. Budget at least 2 hours for each real-network bridge command; current normal operation time can still be around 1h40 even with a fresh wallet.
 
-Withdrawal validation has one extra funding preflight. A brand-new L1 recipient needs the withdrawal amount to cover L1 account creation plus the bridge proof fee, and the source Zeko balance must also cover the proof fee. Before starting a fresh-wallet withdrawal, read the current bridge fees and confirm the wallet's Zeko balance is sufficient for the selected `--amount`; do not reuse an amount-1 deposit wallet for an amount-1 first withdrawal if it only has the post-deposit remainder on Zeko. If the balance is too low, fund the same timestamped wallet through a larger deposit or use a separate timestamped withdrawal wallet with sufficient Zeko balance. Record which path was used.
+Withdrawal validation has one extra funding preflight. A brand-new L1 recipient needs the withdrawal amount to cover the bridge proof fee, helper account creation if the L1 helper-token account does not exist, and recipient payout account creation if the normal L1 recipient account does not exist. For a fully fresh recipient, the minimum amount is `2 * l1AccountCreationFee + bridgeProofFee`; after the normal L1 recipient account exists, the first helper-account withdrawal minimum drops to `l1AccountCreationFee + bridgeProofFee`. The source Zeko balance must also cover the withdrawal amount plus the bridge proof fee paid on submission. Before starting a fresh-wallet withdrawal, read the current bridge fees and confirm the wallet's Zeko balance is sufficient for the selected `--amount`; do not reuse an amount-1 deposit wallet for an amount-1 first withdrawal if it only has the post-deposit remainder on Zeko. If the balance is too low, fund the same timestamped wallet through a larger deposit or use a separate timestamped withdrawal wallet with sufficient Zeko balance. Record which path was used.
 
 Load the wallet file in the same shell before invoking the CLI:
 
@@ -52,7 +52,7 @@ Before running bridge validation:
 3. fund that fresh wallet from `.env.wallet.validator` by moving `3` MINA to the fresh wallet public key on Mina testnet
 4. confirm the fresh wallet public key and balance before starting the bridge command
 5. capture surrounding state before the bridge command starts: L1 live status, L1 archive canonical/pending height, L2 archive canonical/pending height, Zeko sequencer public key, latest L1 bridge commit timestamp, latest L2/sequencer bridge commit timestamp, Actions API health, and indexer fetched/final progress when an indexer is involved
-6. if validating a local Actions API/indexer change, pass `--actions-api http://127.0.0.1:9100/graphql` to the high-level `bridge` command instead of editing source endpoint config
+6. if validating a local Actions API/indexer change, pass `--actions-api http://127.0.0.1:9100/graphql` to the CLI instead of editing source endpoint config
 7. before a fresh-wallet withdrawal, confirm the selected amount is valid for first-withdrawal fees and that the wallet has enough Zeko balance for amount plus proof fee
 
 Bridge validation is not complete until these tasks have been run in this exact order:
@@ -133,9 +133,15 @@ node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko-m:te
 node ./packages/bridge-cli/dist/cli.js bridge --from zeko-m:testnet --to mina:testnet --amount 1 --json --verbose --actions-api http://127.0.0.1:9100/graphql
 ```
 
-The withdrawal example uses amount `1` only when that amount passes the fee and balance preflight for the loaded wallet. For a fresh first withdrawal, choose an amount and prior funding path that leave enough Zeko balance for the withdrawal amount plus bridge proof fee, and enough withdrawal amount to satisfy any required L1 account creation.
+The withdrawal example uses amount `1` only when that amount passes the fee and balance preflight for the loaded wallet. For a fresh first withdrawal, choose an amount and prior funding path that leave enough Zeko balance for the withdrawal amount plus bridge proof fee, and enough withdrawal amount to satisfy `2 * l1AccountCreationFee + bridgeProofFee`.
 
-Omit `--actions-api` only when validating against the deployed Actions API for the selected route.
+Endpoint overrides:
+
+- use `--actions-api` for a local Actions API/indexer stack
+- use `--l1-url` when the live Mina GraphQL endpoint is part of the diagnosis, for example to compare the default gateway with another responsive live node
+- use `--l1-archive-url` when the Mina archive endpoint is part of the diagnosis
+
+The same endpoint override flags are accepted by `bridge`, `operation status`, `operation resume`, `operation resume-all`, and the low-level `deposit` and `withdrawal` commands. Omit endpoint overrides when validating against the deployed route defaults.
 
 For the simultaneous validation, open two dedicated terminals and keep both alive:
 
@@ -157,7 +163,7 @@ set +a
 node ./packages/bridge-cli/dist/cli.js bridge --from zeko-m:testnet --to mina:testnet --amount 1 --json --verbose
 ```
 
-When validating a local Actions API/indexer change, add the same `--actions-api http://127.0.0.1:9100/graphql` flag to both simultaneous commands. Start the second command while the first command is still running so the two bridge processes overlap in time.
+When validating a local Actions API/indexer change, add the same `--actions-api http://127.0.0.1:9100/graphql` flag to both simultaneous commands. If an L1 live or archive override is part of the diagnosis, add that same override to both commands and to any later `operation status` or `operation resume` recovery command for the same operation. Start the second command while the first command is still running so the two bridge processes overlap in time.
 
 ## Monitoring And Reporting
 

@@ -9,6 +9,11 @@ import {
 	readOptionalStringArg,
 	readRequiredStringArg
 } from "../core/command-args"
+import {
+	bridgeEndpointOverrideArgs,
+	readBridgeEndpointOverrides,
+	type BridgeEndpointOverrides
+} from "../core/endpoint-overrides"
 import { isRecoverableMutationError } from "../core/mutation-errors"
 import { DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY_MS, retryWithBackoff } from "../core/retry"
 import { formatRoute, parseChainRef, type ChainRef } from "../core/routes"
@@ -34,6 +39,7 @@ type RouteArgs = {
 	to: ChainRef
 	json: boolean
 	verbose?: boolean
+	endpointOverrides?: BridgeEndpointOverrides
 }
 
 type DepositSubmitArgs = RouteArgs & {
@@ -89,7 +95,8 @@ const readRouteArgs = (args: Record<string, unknown>): RouteArgs => ({
 	from: parseChainRef(args.from, "--from"),
 	to: parseChainRef(args.to, "--to"),
 	json: readBooleanArg(args, "json"),
-	verbose: readBooleanArg(args, "verbose")
+	verbose: readBooleanArg(args, "verbose"),
+	endpointOverrides: readBridgeEndpointOverrides(args)
 })
 
 const readDepositSubmitArgs = (args: Record<string, unknown>): DepositSubmitArgs => ({
@@ -327,6 +334,7 @@ const booleanArg = (defaultValue: boolean): { type: "boolean"; default: boolean 
 const routeArgs = (defaults: { from: ChainRef; to: ChainRef }) => ({
 	from: stringArg(defaults.from),
 	to: stringArg(defaults.to),
+	...bridgeEndpointOverrideArgs,
 	json: booleanArg(false),
 	verbose: booleanArg(false)
 })
@@ -377,6 +385,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
+						endpointOverrides: commandArgs.endpointOverrides,
 						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runDepositSubmit(commandArgs, {
@@ -402,6 +411,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
+						endpointOverrides: commandArgs.endpointOverrides,
 						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runDepositFinalize(commandArgs, { adapter })
@@ -423,6 +433,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
+						endpointOverrides: commandArgs.endpointOverrides,
 						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runDepositCancel(commandArgs, { adapter })
@@ -444,6 +455,7 @@ export const createDepositCommand = (deps: DirectCommandDeps = {}): CommandDef =
 					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
+						endpointOverrides: commandArgs.endpointOverrides,
 						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runDepositStatus(commandArgs, { adapter })
@@ -476,6 +488,7 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
+						endpointOverrides: commandArgs.endpointOverrides,
 						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runWithdrawalSubmit(commandArgs, {
@@ -501,6 +514,7 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
+						endpointOverrides: commandArgs.endpointOverrides,
 						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runWithdrawalFinalize(commandArgs, { adapter })
@@ -522,6 +536,7 @@ export const createWithdrawalCommand = (deps: DirectCommandDeps = {}): CommandDe
 					const adapter = await (deps.createAdapter ?? createDefaultBridgeAdapter)({
 						from: commandArgs.from,
 						to: commandArgs.to,
+						endpointOverrides: commandArgs.endpointOverrides,
 						verbose: commandArgs.verbose ?? false
 					})
 					const result = await runWithdrawalStatus(commandArgs, { adapter })

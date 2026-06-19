@@ -34,6 +34,18 @@ describe("sdk config", () => {
 		expect(config.zekoUrl).toBe("https://testnet.zeko.io/graphql")
 	})
 
+	it("can override Mina live and archive endpoints for local validation", () => {
+		const config = createSdkConfig(resolveRoute("zeko-m:testnet", "mina:testnet"), {
+			l1Url: "https://mina.devnet.zeko.io/graphql",
+			l1ArchiveUrl: "https://archive.example.test/graphql"
+		})
+
+		expect(config.l1Url).toBe("https://mina.devnet.zeko.io/graphql")
+		expect(config.l1ArchiveUrl).toBe("https://archive.example.test/graphql")
+		expect(config.actionsApi).toBe("https://testnet.api.actions.zeko.io/graphql")
+		expect(config.zekoUrl).toBe("https://testnet.zeko.io/graphql")
+	})
+
 	it("maps the supported mainnet route to bridge-sdk endpoints", () => {
 		const config = createSdkConfig(resolveRoute("mina:mainnet", "zeko-m:mainnet"))
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { createBridgeCommand } from "../src/commands/bridge"
+import { createWithdrawalCommand } from "../src/commands/direct"
 import { createOperationCommand } from "../src/commands/operation"
 import type { BridgeAdapter } from "../src/core/adapter"
 import { createBridgeCliCommand } from "../src/core/root-command"
@@ -25,6 +26,28 @@ const resolveCommand = async (command: unknown): Promise<CommandDef | undefined>
 	}
 
 	return typeof command === "object" && command !== null ? (command as CommandDef) : undefined
+}
+
+const ACTIONS_API_OVERRIDE = "http://127.0.0.1:9100/graphql"
+const L1_URL_OVERRIDE = "https://mina.devnet.zeko.io/graphql"
+const L1_ARCHIVE_URL_OVERRIDE = "https://gateway.mina.archive.devnet.zeko.io"
+const endpointOverrides = {
+	actionsApi: ACTIONS_API_OVERRIDE,
+	l1Url: L1_URL_OVERRIDE,
+	l1ArchiveUrl: L1_ARCHIVE_URL_OVERRIDE
+}
+const endpointOverrideArgs = {
+	actionsApi: "",
+	"actions-api": ACTIONS_API_OVERRIDE,
+	l1Url: "",
+	"l1-url": L1_URL_OVERRIDE,
+	l1ArchiveUrl: "",
+	"l1-archive-url": L1_ARCHIVE_URL_OVERRIDE
+}
+const emptyEndpointOverrideArgs = {
+	actionsApi: "",
+	l1Url: "",
+	l1ArchiveUrl: ""
 }
 
 describe("cli skeleton", () => {
@@ -66,8 +89,31 @@ describe("cli skeleton", () => {
 		}
 	})
 
-	it("passes the actions api override to the bridge adapter", async () => {
-		const seenActionsApis: Array<string | undefined> = []
+	it("exposes endpoint overrides on bridge, recovery, and direct withdrawal commands", async () => {
+		const cli = createBridgeCliCommand()
+		const subCommands = await resolveSubCommands(cli.subCommands)
+		const bridge = await resolveCommand(subCommands.bridge)
+		const operation = await resolveCommand(subCommands.operation)
+		const withdrawal = await resolveCommand(subCommands.withdrawal)
+		const operationSubCommands = await resolveSubCommands(operation?.subCommands)
+		const withdrawalSubCommands = await resolveSubCommands(withdrawal?.subCommands)
+
+		for (const command of [
+			bridge,
+			await resolveCommand(operationSubCommands.status),
+			await resolveCommand(operationSubCommands.resume),
+			await resolveCommand(operationSubCommands["resume-all"]),
+			await resolveCommand(withdrawalSubCommands.status),
+			await resolveCommand(withdrawalSubCommands.finalize)
+		]) {
+			expect(command?.args).toHaveProperty("actionsApi")
+			expect(command?.args).toHaveProperty("l1Url")
+			expect(command?.args).toHaveProperty("l1ArchiveUrl")
+		}
+	})
+
+	it("passes endpoint overrides to the bridge adapter", async () => {
+		const seenEndpointOverrides: unknown[] = []
 		const adapter: BridgeAdapter = {
 			async submitDeposit() {
 				return {
@@ -125,8 +171,8 @@ describe("cli skeleton", () => {
 			createLogger: () => ({
 				async write() {}
 			}),
-			createAdapter: async ({ actionsApi }) => {
-				seenActionsApis.push(actionsApi)
+			createAdapter: async ({ endpointOverrides }) => {
+				seenEndpointOverrides.push(endpointOverrides)
 				return adapter
 			},
 			generateId: () => "bridge-op-actions-api",
@@ -138,6 +184,8 @@ describe("cli skeleton", () => {
 		})
 
 		expect(command.args).toHaveProperty("actionsApi")
+		expect(command.args).toHaveProperty("l1Url")
+		expect(command.args).toHaveProperty("l1ArchiveUrl")
 
 		await command.run?.({
 			args: {
@@ -153,8 +201,7 @@ describe("cli skeleton", () => {
 				"poll-interval-ms": "",
 				retryDelayMs: "",
 				"retry-delay-ms": "",
-				actionsApi: "",
-				"actions-api": "http://127.0.0.1:9100/graphql",
+				...endpointOverrideArgs,
 				json: false,
 				verbose: false
 			},
@@ -162,7 +209,88 @@ describe("cli skeleton", () => {
 			cmd: command
 		})
 
-		expect(seenActionsApis).toEqual(["http://127.0.0.1:9100/graphql"])
+		expect(seenEndpointOverrides).toEqual([endpointOverrides])
+	})
+
+	it("passes endpoint overrides to operation status", async () => {
+		const seenEndpointOverrides: unknown[] = []
+		const session: OperationSession = {
+			id: "status-actions-api",
+			status: "running",
+			phase: "submitted",
+			route: "mina:testnet->zeko-m:testnet",
+			direction: "deposit",
+			account: "B62test",
+			recipient: "B62test",
+			amount: "2",
+			logPath: "/tmp/status-actions-api.jsonl",
+			createdAt: "2026-03-10T00:00:00.000Z",
+			updatedAt: "2026-03-10T00:00:00.000Z",
+			submittedTransactions: [{ action: "submit", hash: "deposit-submit" }]
+		}
+		const adapter: BridgeAdapter = {
+			async getDepositStatuses() {
+				return []
+			},
+			async getWithdrawalStatuses() {
+				return []
+			},
+			async canFinalizeDeposit() {
+				return { available: false, reason: "not ready" }
+			},
+			async canCancelDeposit() {
+				return { available: false, reason: "not ready" }
+			},
+			async submitDeposit() {
+				throw new Error("submitDeposit should not be called")
+			},
+			async submitWithdrawal() {
+				throw new Error("submitWithdrawal should not be called")
+			},
+			async finalizeDeposit() {
+				throw new Error("finalizeDeposit should not be called")
+			},
+			async finalizeWithdrawal() {
+				throw new Error("finalizeWithdrawal should not be called")
+			},
+			async cancelDeposit() {
+				throw new Error("cancelDeposit should not be called")
+			}
+		}
+		const operation = createOperationCommand({
+			createStore: () => ({
+				async list() {
+					return [session]
+				},
+				async load(id) {
+					return id === session.id ? session : null
+				},
+				async save() {}
+			}),
+			createAdapter: async ({ endpointOverrides }) => {
+				seenEndpointOverrides.push(endpointOverrides)
+				return adapter
+			},
+			write: () => {},
+			writeProgress: () => {},
+			now: () => "2026-03-10T00:00:00.000Z"
+		})
+		const subCommands = await resolveSubCommands(operation.subCommands)
+		const status = await resolveCommand(subCommands.status)
+		if (!status) throw new Error("status command was not resolved")
+
+		await status.run?.({
+			args: {
+				_: [],
+				id: session.id,
+				...endpointOverrideArgs,
+				verbose: false
+			},
+			rawArgs: [],
+			cmd: status
+		})
+
+		expect(seenEndpointOverrides).toEqual([endpointOverrides])
 	})
 
 	it("logs bridge commit status when verbose bridge command starts", async () => {
@@ -305,8 +433,7 @@ describe("cli skeleton", () => {
 				"poll-interval-ms": "",
 				retryDelayMs: "",
 				"retry-delay-ms": "",
-				actionsApi: "",
-				"actions-api": "http://127.0.0.1:9100/graphql",
+				...endpointOverrideArgs,
 				json: false,
 				verbose: true
 			},
@@ -337,7 +464,7 @@ describe("cli skeleton", () => {
 					timeoutSlots: "",
 					pollIntervalMs: "",
 					retryDelayMs: "",
-					actionsApi: "",
+					...emptyEndpointOverrideArgs,
 					json: false,
 					verbose: false
 				},
@@ -424,7 +551,7 @@ describe("cli skeleton", () => {
 				"poll-interval-ms": "180000",
 				retryDelayMs: "",
 				"retry-delay-ms": "",
-				actionsApi: "",
+				...emptyEndpointOverrideArgs,
 				json: false,
 				verbose: false
 			},
@@ -437,6 +564,7 @@ describe("cli skeleton", () => {
 
 	it("accepts kebab-case poll delay on operation resume", async () => {
 		const sleeps: number[] = []
+		const seenEndpointOverrides: unknown[] = []
 		const session: OperationSession = {
 			id: "resume-poll-delay",
 			status: "running",
@@ -496,7 +624,10 @@ describe("cli skeleton", () => {
 			createLogger: () => ({
 				async write() {}
 			}),
-			createAdapter: async () => adapter,
+			createAdapter: async ({ endpointOverrides }) => {
+				seenEndpointOverrides.push(endpointOverrides)
+				return adapter
+			},
 			write: () => {},
 			writeProgress: () => {},
 			sleep: async (ms) => {
@@ -517,6 +648,7 @@ describe("cli skeleton", () => {
 				"poll-interval-ms": "180000",
 				retryDelayMs: "",
 				"retry-delay-ms": "",
+				...endpointOverrideArgs,
 				json: false,
 				verbose: false
 			},
@@ -525,6 +657,83 @@ describe("cli skeleton", () => {
 		})
 
 		expect(sleeps).toEqual([180_000])
+		expect(seenEndpointOverrides).toEqual([endpointOverrides])
+	})
+
+	it("passes endpoint overrides to direct withdrawal status and finalize", async () => {
+		const seenEndpointOverrides: unknown[] = []
+		const adapter: BridgeAdapter = {
+			async getDepositStatuses() {
+				return []
+			},
+			async getWithdrawalStatuses() {
+				return []
+			},
+			async submitDeposit() {
+				throw new Error("submitDeposit should not be called")
+			},
+			async submitWithdrawal() {
+				throw new Error("submitWithdrawal should not be called")
+			},
+			async finalizeDeposit() {
+				throw new Error("finalizeDeposit should not be called")
+			},
+			async finalizeWithdrawal() {
+				return {
+					success: true,
+					direction: "withdrawal",
+					action: "finalize",
+					route: "zeko-m:testnet->mina:testnet",
+					hash: "withdrawal-finalize",
+					explorerUrl: "https://example.test/withdrawal-finalize",
+					included: true
+				}
+			},
+			async cancelDeposit() {
+				throw new Error("cancelDeposit should not be called")
+			}
+		}
+		const withdrawal = createWithdrawalCommand({
+			createAdapter: async ({ endpointOverrides }) => {
+				seenEndpointOverrides.push(endpointOverrides)
+				return adapter
+			},
+			write: () => {}
+		})
+		const subCommands = await resolveSubCommands(withdrawal.subCommands)
+		const status = await resolveCommand(subCommands.status)
+		const finalize = await resolveCommand(subCommands.finalize)
+		if (!status || !finalize) throw new Error("withdrawal commands were not resolved")
+
+		const sharedArgs = {
+			_: [],
+			from: "zeko-m:testnet",
+			to: "mina:testnet",
+			account: "B62test",
+			...endpointOverrideArgs,
+			json: false,
+			verbose: false
+		}
+
+		await status.run?.({
+			args: {
+				...sharedArgs,
+				latest: true
+			},
+			rawArgs: [],
+			cmd: status
+		})
+
+		await finalize.run?.({
+			args: {
+				...sharedArgs,
+				wait: true
+			},
+			rawArgs: [],
+			cmd: finalize
+		})
+
+		expect(seenEndpointOverrides).toEqual([endpointOverrides, endpointOverrides])
 	})
 
 	it("accepts kebab-case timeout slots on the high-level bridge command", async () => {
@@ -610,7 +819,7 @@ describe("cli skeleton", () => {
 				"poll-interval-ms": "",
 				retryDelayMs: "",
 				"retry-delay-ms": "",
-				actionsApi: "",
+				...emptyEndpointOverrideArgs,
 				json: false,
 				verbose: false
 			},
@@ -721,7 +930,7 @@ describe("cli skeleton", () => {
 				"poll-interval-ms": "",
 				retryDelayMs: "",
 				"retry-delay-ms": "",
-				actionsApi: "",
+				...emptyEndpointOverrideArgs,
 				json: false,
 				verbose: false
 			},
