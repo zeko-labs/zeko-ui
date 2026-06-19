@@ -1,34 +1,11 @@
 <script lang="ts" setup>
-import {
-	AlertTriangle,
-	Bug,
-	ChevronsRight,
-	Download,
-	Plus,
-	RefreshCw,
-	RotateCcw,
-	Trash2,
-	Zap
-} from "lucide-vue-next"
+import { Bug, Download, Plus, RefreshCw } from "lucide-vue-next"
 import type { BridgeDebugBackendScenario } from "~~/machines/mockBackend"
 
 const bs = useBridgeStore()
 const debug = useBridgeDebugBackend({ bridge: bs.bridge })
 const selectedScenario = ref(debug.snapshot.value.scenario)
 const exportedSnapshot = ref("")
-const disabledDebugControlIds = new Set([
-	"reset",
-	"advance",
-	"sync-backend",
-	"fee-retry",
-	"terminal-error",
-	"transient-error",
-	"cancellable",
-	"clear-logs",
-	"export"
-])
-
-const isDebugControlDisabled = (id: string) => disabledDebugControlIds.has(id)
 
 watch(
 	() => debug.snapshot.value.scenario,
@@ -111,14 +88,6 @@ const exportSnapshot = async () => {
 
     <section class="DebugSection ControlsSection">
       <button
-        data-debug-control="reset"
-        type="button"
-        title="Reset mock backend state"
-        :disabled='isDebugControlDisabled("reset")'
-        @click="debug.reset">
-        <RotateCcw /> Reset
-      </button>
-      <button
         data-debug-control="seed-deposit"
         type="button"
         title="Seed recovered deposit"
@@ -133,20 +102,11 @@ const exportSnapshot = async () => {
         <Plus /> Seed Withdrawal
       </button>
       <button
-        data-debug-control="advance"
-        type="button"
-        title="Advance pending backend status"
-        :disabled='isDebugControlDisabled("advance")'
-        @click="debug.advancePendingStatus">
-        <ChevronsRight /> Advance
-      </button>
-      <button
-        data-debug-control="sync-backend"
+        data-debug-control="refresh-operations"
         type="button"
         title="Run findPendingOperations without reloading the page"
-        :disabled='isDebugControlDisabled("sync-backend")'
         @click="debug.syncRecoveredOperations">
-        <RefreshCw /> Sync Backend
+        <RefreshCw /> RefreshOperations
       </button>
       <button
         data-debug-control="simulate-refresh"
@@ -156,50 +116,9 @@ const exportSnapshot = async () => {
         <RefreshCw /> Sim Refresh
       </button>
       <button
-        data-debug-control="fee-retry"
-        type="button"
-        title="Force the next completion to return a fee-too-low error"
-        :disabled='isDebugControlDisabled("fee-retry")'
-        @click='debug.forceNextError("fee-too-low")'>
-        <Zap /> Fee Retry
-      </button>
-      <button
-        data-debug-control="terminal-error"
-        type="button"
-        title="Force the next worker call to fail terminally"
-        :disabled='isDebugControlDisabled("terminal-error")'
-        @click='debug.forceNextError("terminal")'>
-        <AlertTriangle /> Terminal Error
-      </button>
-      <button
-        data-debug-control="transient-error"
-        type="button"
-        title="Force the next worker call to fail transiently"
-        :disabled='isDebugControlDisabled("transient-error")'
-        @click='debug.forceNextError("transient")'>
-        <AlertTriangle /> Transient Error
-      </button>
-      <button
-        data-debug-control="cancellable"
-        type="button"
-        title="Toggle the first seeded deposit cancellability"
-        :disabled='isDebugControlDisabled("cancellable")'
-        @click="debug.toggleCancellableDeposit">
-        <Zap /> Cancellable
-      </button>
-      <button
-        data-debug-control="clear-logs"
-        type="button"
-        title="Clear mock backend logs"
-        :disabled='isDebugControlDisabled("clear-logs")'
-        @click="debug.clearLogs">
-        <Trash2 /> Clear Logs
-      </button>
-      <button
         data-debug-control="export"
         type="button"
         title="Export debug snapshot JSON"
-        :disabled='isDebugControlDisabled("export")'
         @click="exportSnapshot">
         <Download /> Export
       </button>

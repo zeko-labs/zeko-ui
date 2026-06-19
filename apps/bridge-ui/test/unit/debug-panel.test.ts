@@ -25,20 +25,25 @@ describe("bridge debug panel", () => {
 
 	it("includes the expected debug controls", () => {
 		for (const label of [
-			"Reset",
 			"Seed Deposit",
 			"Seed Withdrawal",
+			"RefreshOperations",
+			"Sim Refresh",
+			"Export"
+		]) {
+			expect(debugPanelSource).toContain(label)
+		}
+		for (const label of [
+			"Reset",
 			"Advance",
 			"Fee Retry",
 			"Terminal Error",
 			"Transient Error",
 			"Cancellable",
 			"Sync Backend",
-			"Sim Refresh",
-			"Clear Logs",
-			"Export"
+			"Clear Logs"
 		]) {
-			expect(debugPanelSource).toContain(label)
+			expect(debugPanelSource).not.toContain(label)
 		}
 	})
 
