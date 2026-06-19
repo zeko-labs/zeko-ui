@@ -367,4 +367,4 @@
 - T389 | done | restore-pending-bridge-finalization | done/T389-restore-pending-bridge-finalization.md
 - T390 | done | guard-bridge-finality-regressions | done/T390-guard-bridge-finality-regressions.md
 - T391 | done | fix-deposit-finalization-wait-reason | done/T391-fix-deposit-finalization-wait-reason.md
-- T392 | in-progress | cli-actions-api-override-and-fresh-wallet-validation | in-progress/T392-cli-actions-api-override-and-fresh-wallet-validation.md
+- T392 | done | cli-actions-api-override-and-fresh-wallet-validation | done/T392-cli-actions-api-override-and-fresh-wallet-validation.md

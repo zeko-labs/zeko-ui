@@ -1,11 +1,11 @@
 ---
 id: T392
 title: "CLI Actions API override and fresh-wallet validation"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-19T08:22:13Z
-updated_at: 2026-06-19T11:06:00Z
+updated_at: 2026-06-19T11:12:46Z
 ---
 
 ## Requirements
@@ -31,7 +31,8 @@ updated_at: 2026-06-19T11:06:00Z
 
 ## GREEN Evidence
 
-- Folded PR 221 wallet/runbook changes into the PR 220 worktree merge state; PR 221 still needs to be closed after this branch is committed/pushed.
+- Folded PR 221 wallet/runbook changes into PR 220 and pushed `branch/bridge-finality-hotfix`.
+- Closed PR 221 after folding its changes into PR 220.
 - Added high-level Bridge CLI `--actions-api` propagation through command args, adapter factory, SDK config, and README/docs.
 - Added SDK status helpers for latest L1/L2 bridge commits and exposed verbose CLI `bridge-status` context, including sequencer last commit timestamp.
 - Extended verbose CLI `bridge-status` diagnostics with current slot, withdrawal delay, deposit commit past-slot threshold, latest L1 synchronized outer action length, and latest L1 commit slot range.
