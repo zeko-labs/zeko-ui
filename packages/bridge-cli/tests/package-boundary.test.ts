@@ -23,10 +23,11 @@ describe("published package boundary", () => {
 		expect(packageJson).not.toHaveProperty("types")
 	})
 
-	it("builds only the CLI entrypoint", () => {
+	it("keeps the public CLI entrypoint stable while building internal tooling", () => {
 		const config = readFileSync(path.join(packageRoot, "tsdown.config.ts"), "utf8")
 
-		expect(config).toContain('entry: ["./src/cli.ts"]')
+		expect(config).toContain('cli: "./src/cli.ts"')
+		expect(config).toContain('"create-wallet-env": "./scripts/create-wallet-env.ts"')
 		expect(config).toContain("inlineDynamicImports: true")
 		expect(config).not.toContain("./src/index.ts")
 		expect(existsSync(path.join(packageRoot, "src/index.ts"))).toBe(false)

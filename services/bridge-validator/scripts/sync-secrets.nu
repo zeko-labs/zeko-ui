@@ -1,5 +1,6 @@
 use ./env.nu [
 	default-env-file
+	default-wallet-env-file
 	default-wrangler-config
 	read-dotenv
 	require-value
@@ -16,7 +17,16 @@ def put-optional-secret [values: record, key: string, wrangler_config: path] {
 	}
 }
 
-def resolve-wallet-private-key [values: record] {
+def read-optional-dotenv [env_file: path] {
+	if ($env_file | path exists) {
+		return (read-dotenv $env_file)
+	}
+
+	{}
+}
+
+def resolve-wallet-private-key [wallet_values: record, values: record] {
+	let wallet_file_private_key = ($wallet_values | get --optional "MINA_PRIVATE_KEY" | default "" | str trim)
 	let validator_private_key = ($values | get --optional "BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY" | default "" | str trim)
 	let wallet_private_key = ($values | get --optional "WALLET_PRIVATE_KEY" | default "" | str trim)
 	let bridge_private_key = ($values | get --optional "ZEKO_BRIDGE_MINA_PRIVATE_KEY" | default "" | str trim)
@@ -31,6 +41,10 @@ def resolve-wallet-private-key [values: record] {
 
 	if $wallet_private_key != "" and $bridge_private_key != "" and $wallet_private_key != $bridge_private_key {
 		error make { msg: "WALLET_PRIVATE_KEY and ZEKO_BRIDGE_MINA_PRIVATE_KEY are both set but differ" }
+	}
+
+	if $wallet_file_private_key != "" {
+		return $wallet_file_private_key
 	}
 
 	if $validator_private_key != "" {
@@ -49,12 +63,17 @@ def resolve-wallet-private-key [values: record] {
 		return $numbered_bridge_private_key
 	}
 
-	error make { msg: "Missing required value in .env: BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY, WALLET_PRIVATE_KEY, ZEKO_BRIDGE_MINA_PRIVATE_KEY, ZEKO_BRIDGE_MINA_PRIVATE_KEY_0, or ZEKO_BRIDGE_MINA_PRIVATE_KEY_1" }
+	error make { msg: "Missing required wallet value: MINA_PRIVATE_KEY in .env.wallet.validator, or a legacy wallet key in .env" }
 }
 
-def resolve-wallet-public-key [values: record] {
+def resolve-wallet-public-key [wallet_values: record, values: record] {
+	let wallet_file_public_key = ($wallet_values | get --optional "PUBLIC_KEY" | default "" | str trim)
 	let validator_public_key = ($values | get --optional "BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY" | default "" | str trim)
 	let wallet_public_key = ($values | get --optional "WALLET_PUBLIC_KEY" | default "" | str trim)
+
+	if $wallet_file_public_key != "" {
+		return $wallet_file_public_key
+	}
 
 	if $validator_public_key != "" {
 		return $validator_public_key
@@ -64,7 +83,7 @@ def resolve-wallet-public-key [values: record] {
 		return $wallet_public_key
 	}
 
-	error make { msg: "Missing required value in .env: BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY or WALLET_PUBLIC_KEY" }
+	error make { msg: "Missing required wallet value: PUBLIC_KEY in .env.wallet.validator, or a legacy public wallet key in .env" }
 }
 
 export def main [
@@ -74,8 +93,11 @@ export def main [
 	let env_file = ($env_file | default (default-env-file))
 	let wrangler_config = ($wrangler_config | default (default-wrangler-config))
 	let values = read-dotenv $env_file
-	let wallet_private_key = resolve-wallet-private-key $values
-	let wallet_public_key = resolve-wallet-public-key $values
+	let wallet_env_override = ($values | get --optional "BRIDGE_VALIDATOR_WALLET_ENV_FILE" | default "" | str trim)
+	let wallet_env_file = if $wallet_env_override != "" { $wallet_env_override | path expand } else { default-wallet-env-file }
+	let wallet_values = read-optional-dotenv $wallet_env_file
+	let wallet_private_key = resolve-wallet-private-key $wallet_values $values
+	let wallet_public_key = resolve-wallet-public-key $wallet_values $values
 
 	put-secret "WALLET_PRIVATE_KEY" $wallet_private_key $wrangler_config
 	put-secret "WALLET_PUBLIC_KEY" $wallet_public_key $wrangler_config
@@ -86,5 +108,5 @@ export def main [
 	put-optional-secret $values "BRIDGE_VALIDATOR_SOURCE_REF" $wrangler_config
 	put-optional-secret $values "GITHUB_TOKEN" $wrangler_config
 
-	print $"Cloudflare validator secrets synced from ($env_file)"
+	print $"Cloudflare validator secrets synced from ($env_file) and ($wallet_env_file)"
 }

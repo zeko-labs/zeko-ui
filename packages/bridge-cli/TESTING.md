@@ -6,29 +6,53 @@ Agent-specific workflow rules live in [AGENTS.md](./AGENTS.md).
 
 ## Required Environment
 
-Inline or exported environment variables take priority over every dotenv file. For keys that are not already set in the shell, the CLI loads dotenv files in this order:
+Live validation must use explicit repo-root wallet files. Do not keep bridge wallet keys in regular `.env` files and do not rely on implicit dotenv discovery for wallet selection.
 
-- `~/.zeko/.env`
-- a sibling `.env` next to the CLI binary
-- a sibling `.env` next to the invocation path
+Wallet files:
 
-Set this key in one of those locations or pass it directly for the command:
-
-- `MINA_PRIVATE_KEY`
-
-Example explicit command environment:
+- live under the monorepo root
+- are named `.env.wallet.${name}`
+- contain the same variable names for every wallet:
 
 ```bash
-MINA_PRIVATE_KEY="<wallet private key>" zeko-bridge doctor
+PUBLIC_KEY=...
+MINA_PRIVATE_KEY=...
 ```
+
+Create a fresh timestamped test wallet file for normal live validation:
+
+```bash
+moon run bridge-cli:create-wallet-env -- --name bridge-test
+```
+
+Load the wallet file in the same shell before invoking the CLI:
+
+```bash
+set -a
+. ./.env.wallet.bridge-test-YYYYMMDDTHHMMSSZ
+set +a
+
+node ./packages/bridge-cli/dist/cli.js doctor
+```
+
+The CLI already reads `MINA_PRIVATE_KEY`; no wallet-file-specific CLI logic is required. The `PUBLIC_KEY` line is for human/tooling confirmation and funding.
 
 ## Validation Protocol
 
-Bridge validation is not complete until these three tasks have been run in this exact order:
+Before running bridge validation:
+
+1. check the latest deployed validator result and logs
+2. create a fresh timestamped wallet file for the test run
+3. fund that fresh wallet from `.env.wallet.validator` with enough test MINA on the required source chain or chains
+4. confirm the fresh wallet public key and balance before starting the bridge command
+
+Bridge validation is not complete until these tasks have been run in this exact order:
 
 1. one single-command deposit from `mina:testnet` to `zeko-m:testnet`
 2. one single-command withdrawal from `zeko-m:testnet` to `mina:testnet`
 3. one simultaneous run where a deposit command and a withdrawal command are both active at the same time and both progress in parallel
+
+If the latest deployed validator run failed, also reproduce locally with `.env.wallet.validator`. That validator-wallet run is required in addition to fresh-wallet validation, not instead of it.
 
 Pass criteria:
 
@@ -65,6 +89,14 @@ Important distinction:
 
 Run from the monorepo root.
 
+Load the chosen wallet file first:
+
+```bash
+set -a
+. ./.env.wallet.bridge-test-YYYYMMDDTHHMMSSZ
+set +a
+```
+
 Convenience Moon tasks for the two single-direction runs:
 
 ```bash
@@ -94,12 +126,18 @@ For the simultaneous validation, open two dedicated terminals and keep both aliv
 Terminal A:
 
 ```bash
+set -a
+. ./.env.wallet.bridge-test-YYYYMMDDTHHMMSSZ
+set +a
 node ./packages/bridge-cli/dist/cli.js bridge --from mina:testnet --to zeko-m:testnet --amount 1 --json --verbose
 ```
 
 Terminal B:
 
 ```bash
+set -a
+. ./.env.wallet.bridge-test-YYYYMMDDTHHMMSSZ
+set +a
 node ./packages/bridge-cli/dist/cli.js bridge --from zeko-m:testnet --to mina:testnet --amount 1 --json --verbose
 ```
 
@@ -110,13 +148,13 @@ Start the second command while the first command is still running so the two bri
 Single-direction runs:
 
 - keep one terminal per run
-- check that same terminal at least every 3 minutes
+- check that same terminal about every 5 minutes
 - report what the command is currently waiting on, not just that it is still running
 
 Simultaneous run:
 
 - keep two terminals, one per direction
-- check both terminals every 3 minutes
+- check both terminals about every 5 minutes
 - report whether the two commands are genuinely progressing in parallel or whether one direction is starved behind the other
 
 During reporting, record:
@@ -126,6 +164,7 @@ During reporting, record:
 - whether the command is advancing older queued work first
 - any drift from the expected protocol behavior
 - any errors, unexpected behavior, or suspicious long waits
+- surrounding state relevant to the wait, including Actions API health/readiness when available, L1 archive height, Zeko sequencer response, and latest indexer/commit progress exposed by the current tools
 
 Do not rubber-stamp a run as working. The purpose of this validation is to catch bugs and behavioral drift.
 
@@ -164,5 +203,6 @@ For every run, keep:
 - `operation_id`
 - `log_path`
 - final transaction hash
+- wallet file name and `PUBLIC_KEY`
 
 For the simultaneous run, keep those artifacts for both commands and note the overlap window during which both processes were alive together.

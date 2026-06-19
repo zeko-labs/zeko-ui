@@ -29,6 +29,13 @@ To install everything, run `pnpm i` from the root.
 - You can disable moon caching by passing the `-f` flag to any `moon run` command that has cached results.
 - If you need to run a command not specified in `moon.yml`, use `pnpm exec <command>`.
 
+## Local wallet files
+
+- Keep local bridge wallet secrets out of regular `.env` files.
+- Store each local wallet in a repo-root `.env.wallet.${name}` file with `PUBLIC_KEY` and `MINA_PRIVATE_KEY`.
+- Load the chosen wallet file explicitly before running Bridge CLI commands. The CLI uses `MINA_PRIVATE_KEY` directly; do not add wallet-file loading logic unless env-file loading no longer works.
+- Keep `.env.wallet.*` and `.env.backup` git-ignored.
+
 ## Linear and PRs
 
 - For this `zeko-ui` repository, create Linear issues in the `Web` team by default. Use the `ZK` team for the separate `zeko` repository or for work that is explicitly owned by Zeko-core rather than this UI monorepo.

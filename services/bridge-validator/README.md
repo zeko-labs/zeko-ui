@@ -22,35 +22,33 @@ Cloudflare Worker service that validates the published bridge CLI through the de
 
 Use the dedicated validator wallet, not shared bridge test wallets. Shared wallets often carry old queue work and make validator runs noisy.
 
-- Source env keys: `BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY` and `BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY`.
+- Source wallet file: repo-root `.env.wallet.validator`.
+- Required wallet keys inside that file: `PUBLIC_KEY` and `MINA_PRIVATE_KEY`.
 - Cloudflare secret names after sync: `WALLET_PRIVATE_KEY` and `WALLET_PUBLIC_KEY`.
 - Keep enough MINA on both Mina L1 and Zeko L2 for 2 MINA operations, fees, retries, and account-creation costs. A practical floor is at least 10 MINA on each side for unattended testnet operation.
 
 ## Configuration
 
-`services/bridge-validator/.env.example` is the authoritative local env list. `moon run bridge-validator:sync-secrets` reads the repo `.env` by default and writes only Cloudflare secrets.
+`services/bridge-validator/.env.example` is the authoritative non-wallet local env list. `moon run bridge-validator:sync-secrets` reads non-wallet secrets from the repo `.env`, reads the validator wallet from `.env.wallet.validator` by default, and writes only Cloudflare secrets.
 
 Required:
 
-| Key                                   | Used for                                                                                |
-| ------------------------------------- | --------------------------------------------------------------------------------------- |
-| `BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY` | Preferred signer source, synced as `WALLET_PRIVATE_KEY`.                                |
-| `BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY`  | Reporting key, synced as `WALLET_PUBLIC_KEY`.                                           |
-| `SLACK_BOT_TOKEN`                     | Slack `chat.postMessage`, `files.getUploadURLExternal`, `files.completeUploadExternal`. |
-| `SLACK_CHANNEL_ID`                    | Slack delivery channel.                                                                 |
-| `VALIDATOR_API_TOKEN`                 | Bearer token for every Worker HTTP endpoint and operator task.                          |
+| Key                   | Used for                                                                                |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| `SLACK_BOT_TOKEN`     | Slack `chat.postMessage`, `files.getUploadURLExternal`, `files.completeUploadExternal`. |
+| `SLACK_CHANNEL_ID`    | Slack delivery channel.                                                                 |
+| `VALIDATOR_API_TOKEN` | Bearer token for every Worker HTTP endpoint and operator task.                          |
 
 Optional:
 
-| Key                                       | Used for                                                      |
-| ----------------------------------------- | ------------------------------------------------------------- |
-| `BRIDGE_VALIDATOR_ENABLED`                | Enables scheduled cron work unless set to false-like values.  |
-| `BRIDGE_VALIDATOR_BASE_URL`               | Operator scripts target URL; defaults to the deployed Worker. |
-| `BRIDGE_VALIDATOR_SOURCE_REPOSITORY`      | Source-build validation repository.                           |
-| `BRIDGE_VALIDATOR_SOURCE_REF`             | Source-build validation ref.                                  |
-| `GITHUB_TOKEN`                            | Private GitHub source-build clone auth.                       |
-| `WALLET_PRIVATE_KEY`, `WALLET_PUBLIC_KEY` | Backward-compatible wallet fallback for secret sync.          |
-| `ZEKO_BRIDGE_MINA_PRIVATE_KEY*`           | Last-resort shared wallet fallback; avoid for scheduled runs. |
+| Key                                  | Used for                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| `BRIDGE_VALIDATOR_ENABLED`           | Enables scheduled cron work unless set to false-like values.             |
+| `BRIDGE_VALIDATOR_BASE_URL`          | Operator scripts target URL; defaults to the deployed Worker.            |
+| `BRIDGE_VALIDATOR_SOURCE_REPOSITORY` | Source-build validation repository.                                      |
+| `BRIDGE_VALIDATOR_SOURCE_REF`        | Source-build validation ref.                                             |
+| `BRIDGE_VALIDATOR_WALLET_ENV_FILE`   | Dedicated wallet env file override; defaults to `.env.wallet.validator`. |
+| `GITHUB_TOKEN`                       | Private GitHub source-build clone auth.                                  |
 
 Slack bot scopes must include `chat:write` and `files:write`. Add channel membership or Slack channel scopes as needed for the configured `SLACK_CHANNEL_ID`.
 

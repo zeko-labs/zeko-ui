@@ -25,6 +25,8 @@ logs
 .env.*
 !.env.example
 !.env.alphanet
+.env.backup
+.env.wallet.*
 
 # moon
 .moon/cache

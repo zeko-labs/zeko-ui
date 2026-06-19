@@ -31,10 +31,11 @@ const moonConfig = readFileSync(
 describe("bridge-validator secret sync script", () => {
 	it("maps required local values into Cloudflare Worker secrets", () => {
 		expect(script).toContain("default-env-file")
+		expect(script).toContain("default-wallet-env-file")
 		expect(script).toContain("default-wrangler-config")
-		expect(script).toContain("BRIDGE_VALIDATOR_WALLET_PRIVATE_KEY")
-		expect(script).toContain("BRIDGE_VALIDATOR_WALLET_PUBLIC_KEY")
-		expect(script).toContain("ZEKO_BRIDGE_MINA_PRIVATE_KEY")
+		expect(script).toContain("MINA_PRIVATE_KEY")
+		expect(script).toContain("PUBLIC_KEY")
+		expect(script).toContain("BRIDGE_VALIDATOR_WALLET_ENV_FILE")
 		expect(script).toContain('put-secret "WALLET_PRIVATE_KEY"')
 		expect(script).toContain('put-secret "WALLET_PUBLIC_KEY"')
 		expect(script).toContain('require-value $values "VALIDATOR_API_TOKEN"')
@@ -42,8 +43,8 @@ describe("bridge-validator secret sync script", () => {
 		expect(script).toContain('put-optional-secret $values "BRIDGE_VALIDATOR_SOURCE_REPOSITORY"')
 		expect(script).toContain('put-optional-secret $values "BRIDGE_VALIDATOR_SOURCE_REF"')
 		expect(script).toContain('put-optional-secret $values "GITHUB_TOKEN"')
-		expect(script.indexOf("ZEKO_BRIDGE_MINA_PRIVATE_KEY_0")).toBeLessThan(
-			script.indexOf("ZEKO_BRIDGE_MINA_PRIVATE_KEY_1")
+		expect(script.indexOf("read-dotenv $env_file")).toBeLessThan(
+			script.indexOf("read-optional-dotenv $wallet_env_file")
 		)
 	})
 
