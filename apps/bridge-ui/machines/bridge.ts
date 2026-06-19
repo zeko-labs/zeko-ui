@@ -245,6 +245,17 @@ const matchesRecoveredActionIndex = (
 	return actionIndex === undefined || actionIndex === actionState.index
 }
 
+const isTerminalOperationActor = (operation: ActorRefFromLogic<typeof bridgeOperationMachine>) => {
+	const snapshot = operation.getSnapshot()
+	return (
+		snapshot.matches("BRIDGE_OPERATION_COMPLETED") ||
+		snapshot.matches("BRIDGE_OPERATION_DONE") ||
+		snapshot.matches("BRIDGE_OPERATION_DONE_NOOP") ||
+		snapshot.matches("BRIDGE_OPERATION_CANCELLED_DONE_NOOP") ||
+		snapshot.matches("BRIDGE_OPERATION_CANCELLED_DONE")
+	)
+}
+
 const terminalRecoveredOperations = (
 	recovered: RecoveredOperations
 ): RecoveredOperationToStart[] => [
@@ -286,7 +297,7 @@ const syncRecoveredOperations = ({
 		pendingRecoveredOperations.map(({ actionState }) => [actionState.id, actionState] as const)
 	)
 	const terminalOperations = terminalRecoveredOperations(recovered)
-	const recoveryOperationIds = matchRecoveryOperationIds({
+	const matchedRecoveryOperationIds = matchRecoveryOperationIds({
 		actionStates: [
 			...pendingRecoveredOperations.map(({ actionState }) => actionState),
 			...terminalOperations.map(({ actionState }) => actionState)
@@ -297,6 +308,37 @@ const syncRecoveredOperations = ({
 			transactionHash: recoverableTransactionHash(operation)
 		}))
 	})
+	const terminalActionStateById = new Map(
+		terminalOperations.map(({ actionState }) => [actionState.id, actionState] as const)
+	)
+	const recoveryOperationIds = new Map(
+		[...matchedRecoveryOperationIds.entries()].filter(([recoveredId, operationId]) => {
+			const terminalActionState = terminalActionStateById.get(recoveredId)
+			if (!terminalActionState) return true
+			const entry = operations.get(operationId)
+			return entry ? matchesRecoveredActionIndex(entry.operation, terminalActionState) : true
+		})
+	)
+	const matchedOperationIds = new Set(recoveryOperationIds.values())
+	const activeEntry =
+		context.activeOperation === null ? undefined : operations.get(context.activeOperation)
+	const preservedActiveMainOperationId =
+		context.activeOperation !== null &&
+		activeEntry?.lane === "main" &&
+		activeEntry.status === "started" &&
+		!matchedOperationIds.has(context.activeOperation)
+			? context.activeOperation
+			: null
+	const mergeStatus = ({
+		lane,
+		status
+	}: {
+		lane: RecoveryLane
+		status: OperationStatus
+	}): OperationStatus =>
+		preservedActiveMainOperationId !== null && lane === "main" && status === "started"
+			? "paused"
+			: status
 	const syncState = buildRecoverySyncState({
 		recovered,
 		entryStateById: new Map(
@@ -316,6 +358,7 @@ const syncRecoveredOperations = ({
 		const actionState = pendingActionStateById.get(id)
 		if (!entry || entry.status === "completed") continue
 		if (!actionState) continue
+		const mergedStatus = mergeStatus({ lane, status })
 		entry.operation.send({
 			type: "SyncRecoveredState",
 			actionIndex: actionState.index,
@@ -324,19 +367,20 @@ const syncRecoveredOperations = ({
 			cancellable,
 			timeoutSlot
 		})
-		if (entry.status !== status) {
-			if (status === "started") entry.operation.send({ type: "Resume", paused: false })
-			if (entry.status === "started" && status === "paused") entry.operation.send({ type: "Pause" })
+		if (entry.status !== mergedStatus) {
+			if (mergedStatus === "started") entry.operation.send({ type: "Resume", paused: false })
+			if (entry.status === "started" && mergedStatus === "paused")
+				entry.operation.send({ type: "Pause" })
 		}
 		operations.set(operationId, {
 			...entry,
-			status,
+			status: mergedStatus,
 			lane,
 			order
 		})
 	}
 
-	for (const { actionState } of terminalOperations) {
+	for (const { actionState, command } of terminalOperations) {
 		const operationId = recoveryOperationIds.get(actionState.id)
 		if (!operationId) continue
 		const entry = operations.get(operationId)
@@ -347,6 +391,14 @@ const syncRecoveredOperations = ({
 			actionIndex: actionState.index,
 			transaction: actionState.transaction
 		})
+		if (!isTerminalOperationActor(entry.operation)) {
+			entry.operation.send({
+				type:
+					command === "completeCancelled"
+						? "RecoverBridgeOperationCancelled"
+						: "RecoverBridgeOperationCompleted"
+			})
+		}
 		operations.set(operationId, {
 			...entry,
 			status: "completed"
@@ -357,16 +409,19 @@ const syncRecoveredOperations = ({
 		({ id, lane, status }) => {
 			if (recoveryOperationIds.has(id)) return []
 			const pendingOperation = pendingRecoveredOperationById.get(id)
-			return pendingOperation ? [{ ...pendingOperation, lane, status }] : []
+			return pendingOperation
+				? [{ ...pendingOperation, lane, status: mergeStatus({ lane, status }) }]
+				: []
 		}
 	)
 	const terminalOperationsToStart = terminalOperations.filter(
-		({ actionState }) => !recoveryOperationIds.has(actionState.id)
+		({ actionState }) => !matchedRecoveryOperationIds.has(actionState.id)
 	)
 
 	return {
 		operations,
 		activeOperation: (() => {
+			if (preservedActiveMainOperationId !== null) return preservedActiveMainOperationId
 			if (!syncState.activeOperation) return null
 			return recoveryOperationIds.get(syncState.activeOperation) ?? null
 		})(),
@@ -473,9 +528,9 @@ export const bridgeMachine = setup({
 			if (command === "resumeDeposit" || command === "resumeWithdrawal") {
 				operation.send({ type: "Resume", paused: state?.status === "paused" })
 			}
-			if (command === "complete") operation.send({ type: "CompleteBridgeOperation" })
+			if (command === "complete") operation.send({ type: "RecoverBridgeOperationCompleted" })
 			if (command === "completeCancelled")
-				operation.send({ type: "CompleteBridgeOperationCancelled" })
+				operation.send({ type: "RecoverBridgeOperationCancelled" })
 			const operations = context.operations.set(id, {
 				order,
 				status: state?.status ?? "started",

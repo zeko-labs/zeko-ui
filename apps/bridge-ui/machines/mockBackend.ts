@@ -417,6 +417,7 @@ export const createBridgeDebugBackendStore = ({
 		seedRecoveredOperation: (kind, input = {}) => {
 			const snapshot = cloneState(state)
 			const index = snapshot.nextOperationIndex
+			const hashId = snapshot.nextHashId
 			const seed: BridgeDebugSeededOperation = {
 				kind,
 				index,
@@ -427,11 +428,12 @@ export const createBridgeDebugBackendStore = ({
 				timeoutSlot: input.timeoutSlot,
 				finalised: input.finalised ?? false,
 				recipient: input.recipient,
-				transactionHash: fakeHash(index),
+				transactionHash: fakeHash(hashId),
 				timestampMs: currentTimestampMs()
 			}
 			commit({
 				...snapshot,
+				nextHashId: hashId + 1,
 				nextOperationIndex: index + 1,
 				seededOperations: [...snapshot.seededOperations, seed]
 			})

@@ -93,6 +93,37 @@ describe("mock bridge operations worker", () => {
 		})
 	})
 
+	it("does not reuse seeded operation hashes for later mock SDK submissions", async () => {
+		const store = createBridgeDebugBackendStore({ storage })
+		const worker = createMockBridgeOperationsWorker({ store })
+		const user = "B62qtest-user"
+
+		const seed = store.seedRecoveredOperation("deposit")
+		const request = await worker.submitWithdrawal({
+			l1: "mina:devnet",
+			l2: "zeko-m:testnet",
+			user,
+			amount: "1",
+			feeNanomina: 100_000_000
+		})
+		const submittedHash = await worker.completeSdkSignature({
+			requestId: request.requestId,
+			signedTransaction: signedCommand(user)
+		})
+
+		const pending = await worker.findPendingOperations({
+			account: user,
+			l1: "mina:devnet",
+			l2: "zeko-m:testnet"
+		})
+
+		expect(submittedHash).not.toBe(seed.transactionHash)
+		expect(
+			new Set([pending.deposits[0]?.transaction.hash, pending.withdrawals[0]?.transaction.hash])
+				.size
+		).toBe(2)
+	})
+
 	it("reports the oldest pending seeded deposit as claimable", async () => {
 		const store = createBridgeDebugBackendStore({ storage })
 		const worker = createMockBridgeOperationsWorker({ store })

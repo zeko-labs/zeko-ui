@@ -26,9 +26,13 @@ export const completedOperationTableStatus = (
 	status: BridgeOperationDisplayStatus,
 	completionVerification: BridgeOperationCompletionVerification
 ): BridgeOperationDisplayStatus => {
-	if (status.kind !== "complete") return status
-	if (completionVerification === "unverified") return { text: "Unindexed", kind: "pending" }
-	return { text: "Completed", kind: "complete" }
+	if (
+		(status.kind === "complete" || status.kind === "cancelled") &&
+		completionVerification === "unverified"
+	)
+		return { text: "Unindexed", kind: "pending" }
+	if (status.kind === "complete") return { text: "Completed", kind: "complete" }
+	return status
 }
 
 export const bridgeOperationDateColumn = {

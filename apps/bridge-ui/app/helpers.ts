@@ -183,7 +183,11 @@ export const statusFromState = (
 ): { text: string; kind: "pending" | "complete" | "cancelled" | "error" } => {
 	const isDeposit = direction === "deposit"
 	if (typeof state === "string") {
-		if (state === "BRIDGE_OPERATION_CANCELLED_DONE" || state === "DEPOSIT_CANCELLED")
+		if (
+			state === "BRIDGE_OPERATION_CANCELLED_DONE" ||
+			state === "BRIDGE_OPERATION_CANCELLED_DONE_NOOP" ||
+			state === "DEPOSIT_CANCELLED"
+		)
 			return { text: "Cancelled", kind: "cancelled" }
 		if (state.includes("DONE") || state === "BRIDGE_OPERATION_COMPLETED")
 			return isDeposit ? deposit("complete")(3) : withdrawal("complete")(3)

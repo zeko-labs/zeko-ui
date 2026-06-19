@@ -109,6 +109,8 @@ type BridgeOperationEvents =
 	| { type: "StartBridgeOperation" }
 	| { type: "CompleteBridgeOperation" }
 	| { type: "CompleteBridgeOperationCancelled" }
+	| { type: "RecoverBridgeOperationCompleted" }
+	| { type: "RecoverBridgeOperationCancelled" }
 	| { type: "Resume"; paused: boolean }
 	| { type: "Pause" }
 	| { type: "ReturnTo" }
@@ -480,6 +482,22 @@ export const bridgeOperationMachine = setup({
 				progress: undefined,
 				completionVerification: "verified"
 			}))
+		},
+		CompleteBridgeOperation: {
+			target: ".BRIDGE_OPERATION_COMPLETED",
+			actions: assign({ completionVerification: "verified", progress: undefined })
+		},
+		CompleteBridgeOperationCancelled: {
+			target: ".BRIDGE_OPERATION_CANCELLED_DONE",
+			actions: assign({ completionVerification: "verified", progress: undefined })
+		},
+		RecoverBridgeOperationCompleted: {
+			target: ".BRIDGE_OPERATION_DONE_NOOP",
+			actions: assign({ completionVerification: "verified", progress: undefined })
+		},
+		RecoverBridgeOperationCancelled: {
+			target: ".BRIDGE_OPERATION_CANCELLED_DONE_NOOP",
+			actions: assign({ completionVerification: "verified", progress: undefined })
 		}
 	},
 	states: {
@@ -1075,6 +1093,9 @@ export const bridgeOperationMachine = setup({
 				({ context }) => context.bridge,
 				({ context }) => ({ type: "CompleteOperation", id: context.id })
 			)
+		},
+		BRIDGE_OPERATION_CANCELLED_DONE_NOOP: {
+			meta: { step: 1 }
 		},
 		BRIDGE_OPERATION_DONE_NOOP: {
 			meta: { step: 4 }

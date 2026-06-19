@@ -76,4 +76,19 @@ describe("bridgeOperationDateColumn", () => {
 			)
 		).toEqual({ text: "Unindexed", kind: "pending" })
 	})
+
+	it("shows unverified cancelled rows as unindexed until backend cancellation recovery matches", () => {
+		expect(
+			completedOperationTableStatus({ text: "Cancelled", kind: "cancelled" }, "unverified")
+		).toEqual({
+			text: "Unindexed",
+			kind: "pending"
+		})
+		expect(
+			completedOperationTableStatus({ text: "Cancelled", kind: "cancelled" }, "verified")
+		).toEqual({
+			text: "Cancelled",
+			kind: "cancelled"
+		})
+	})
 })
