@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type { Process } from "@cloudflare/sandbox"
 import {
 	buildSlackFailureBlocks,
 	buildSlackSuccessBlocks,
@@ -12,20 +13,13 @@ import {
 	BRIDGE_CLI_BINARY,
 	BRIDGE_CLI_SPECIFIER,
 	BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES,
-	BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS,
-	BRIDGE_COMMAND_PID_PATH,
 	BRIDGE_COMMAND_PROCESS_ID,
-	BRIDGE_COMMAND_PROCESS_LOG_PATH,
-	BRIDGE_COMMAND_STDERR_PATH,
-	BRIDGE_COMMAND_STDOUT_PATH,
 	BRIDGE_COMMAND_TIMEOUT_MS,
 	BRIDGE_SANDBOX_OPTIONS,
 	BRIDGE_SANDBOX_PREPARE_TIMEOUT_MS,
 	BRIDGE_WORKSPACE_ROOT,
 	buildBridgeSandboxId,
 	buildBridgeCommand,
-	buildBridgeCommandScript,
-	buildBridgeLaunchCommand,
 	buildBridgeProcessEnv,
 	buildBridgeSourceSetupCommand,
 	buildScheduledValidations,
@@ -106,6 +100,21 @@ const completedTimings = {
 	]
 }
 const walletPublicKey = "B62validator"
+const runningBridgeProcess = (overrides: Partial<Process> = {}): Process =>
+	({
+		id: BRIDGE_COMMAND_PROCESS_ID,
+		pid: 1234,
+		command: buildBridgeCommand({ routeKey: "mina-to-zeko" }),
+		status: "running",
+		startTime: new Date("2026-03-24T12:00:00Z"),
+		kill: vi.fn(async () => {}),
+		getStatus: vi.fn(async () => "running"),
+		getLogs: vi.fn(async () => ({ stdout: "", stderr: "" })),
+		waitForLog: vi.fn(),
+		waitForPort: vi.fn(),
+		waitForExit: vi.fn(async () => ({ exitCode: 0 })),
+		...overrides
+	}) as Process
 
 describe("bridge validator", () => {
 	it("uses a keepAlive sandbox and a single CLI command", () => {
@@ -187,20 +196,12 @@ describe("bridge validator", () => {
 	})
 
 	it("starts the bridge command as one background process in the Cloudflare Sandbox", async () => {
-		const exec = vi.fn(async () => ({
-			success: true,
-			exitCode: 0,
-			stdout: "1234",
-			stderr: "",
-			command: buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" }),
-			duration: 10,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
+		const startProcess = vi.fn(async () => runningBridgeProcess())
 
 		await expect(
 			startBridgeCommand({
 				routeKey: "mina-to-zeko",
-				sandbox: { exec },
+				sandbox: { startProcess },
 				walletPrivateKey: "wallet-secret"
 			})
 		).resolves.toEqual({
@@ -208,35 +209,23 @@ describe("bridge validator", () => {
 			processId: BRIDGE_COMMAND_PROCESS_ID
 		})
 
-		expect(exec).toHaveBeenCalledWith(buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" }), {
+		expect(startProcess).toHaveBeenCalledWith(buildBridgeCommand({ routeKey: "mina-to-zeko" }), {
+			autoCleanup: false,
 			cwd: BRIDGE_WORKSPACE_ROOT,
 			env: {
 				...buildBridgeProcessEnv({ walletPrivateKey: "wallet-secret" })
 			},
-			timeout: BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS
+			processId: BRIDGE_COMMAND_PROCESS_ID,
+			timeout: BRIDGE_COMMAND_TIMEOUT_MS
 		})
-		expect(buildBridgeCommandScript({ routeKey: "mina-to-zeko" })).toContain(
-			'printf "%s" "$exit_code" > "$exit_code_path"\nwhile :; do'
-		)
-		expect(buildBridgeCommandScript({ routeKey: "mina-to-zeko" })).toContain(
-			"trap 'exit 0' TERM INT"
-		)
 	})
 
 	it("passes source-build configuration to the sandbox environment without embedding it in the command", async () => {
-		const exec = vi.fn(async () => ({
-			success: true,
-			exitCode: 0,
-			stdout: "1234",
-			stderr: "",
-			command: buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" }),
-			duration: 10,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
+		const startProcess = vi.fn(async () => runningBridgeProcess())
 
 		await startBridgeCommand({
 			routeKey: "mina-to-zeko",
-			sandbox: { exec },
+			sandbox: { startProcess },
 			walletPrivateKey: "wallet-secret",
 			githubToken: "github-token",
 			sourceBuild: {
@@ -245,7 +234,8 @@ describe("bridge validator", () => {
 			}
 		})
 
-		expect(exec).toHaveBeenCalledWith(buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" }), {
+		expect(startProcess).toHaveBeenCalledWith(buildBridgeCommand({ routeKey: "mina-to-zeko" }), {
+			autoCleanup: false,
 			cwd: BRIDGE_WORKSPACE_ROOT,
 			env: {
 				...buildBridgeProcessEnv({
@@ -257,69 +247,42 @@ describe("bridge validator", () => {
 					}
 				})
 			},
-			timeout: BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS
+			processId: BRIDGE_COMMAND_PROCESS_ID,
+			timeout: BRIDGE_COMMAND_TIMEOUT_MS
 		})
-		expect(buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" })).not.toContain("github-token")
+		expect(buildBridgeCommand({ routeKey: "mina-to-zeko" })).not.toContain("github-token")
 	})
 
 	it("fails startup immediately when the Sandbox process cannot start", async () => {
-		const exec = vi.fn(async () => ({
-			success: false,
-			exitCode: 1,
-			stdout: "",
-			stderr: "process start failed",
-			command: buildBridgeLaunchCommand({ routeKey: "mina-to-zeko" }),
-			duration: 10,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
+		const startProcess = vi.fn(async () => {
+			throw new Error("process start failed")
+		})
 
 		await expect(
 			startBridgeCommand({
 				routeKey: "mina-to-zeko",
-				sandbox: { exec },
+				sandbox: { startProcess },
 				walletPrivateKey: "wallet-secret"
 			})
-		).rejects.toThrow("Bridge command launcher failed with exit code 1")
+		).rejects.toThrow("Bridge command launcher failed: process start failed")
 	})
 
 	it("reports bridge command process status without reading bridge logs", async () => {
-		const readFile = vi.fn(async (path: string) => {
-			if (path === BRIDGE_COMMAND_PID_PATH) {
-				return {
-					success: true,
-					path,
-					content: "1234",
-					timestamp: "2026-03-24T12:00:00Z"
-				}
-			}
+		const getProcess = vi.fn(async () => runningBridgeProcess())
 
-			throw new Error("File not found")
-		})
-		const exec = vi.fn(async () => ({
-			success: true,
-			exitCode: 0,
-			stdout: "running",
-			stderr: "",
-			command: "kill -0",
-			duration: 10,
-			timestamp: "2026-03-24T12:00:00Z"
-		}))
-
-		await expect(getBridgeCommandStatus({ sandbox: { exec, readFile } })).resolves.toEqual({
+		await expect(getBridgeCommandStatus({ sandbox: { getProcess } })).resolves.toEqual({
 			processId: "bridge-validation-command",
 			found: true,
 			pid: "1234",
-			status: "running"
+			status: "running",
+			startedAtMs: Date.parse("2026-03-24T12:00:00Z")
 		})
 	})
 
 	it("reports a missing bridge command process without throwing", async () => {
-		const readFile = vi.fn(async () => {
-			throw new Error("File not found")
-		})
-		const exec = vi.fn()
+		const getProcess = vi.fn(async () => null)
 
-		await expect(getBridgeCommandStatus({ sandbox: { exec, readFile } })).resolves.toEqual({
+		await expect(getBridgeCommandStatus({ sandbox: { getProcess } })).resolves.toEqual({
 			processId: "bridge-validation-command",
 			found: false
 		})
@@ -327,48 +290,14 @@ describe("bridge validator", () => {
 
 	it("reads diagnostic tails from the Sandbox process logs", async () => {
 		const longStdout = `${"x".repeat(BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES)}{"success":false}`
-		const readFile = vi.fn(async (path: string) => {
-			if (path === BRIDGE_COMMAND_PID_PATH) {
-				return {
-					success: true,
-					path,
-					content: "1234",
-					timestamp: "2026-03-24T12:00:00Z"
-				}
-			}
-
-			if (path === BRIDGE_COMMAND_PROCESS_LOG_PATH) {
-				return {
-					success: true,
-					path,
-					content: "process output",
-					timestamp: "2026-03-24T12:00:00Z"
-				}
-			}
-
-			if (path === BRIDGE_COMMAND_STDOUT_PATH) {
-				return {
-					success: true,
-					path,
-					content: longStdout,
-					timestamp: "2026-03-24T12:00:00Z"
-				}
-			}
-
-			if (path === BRIDGE_COMMAND_STDERR_PATH) {
-				return {
-					success: true,
-					path,
-					content: "stderr output",
-					timestamp: "2026-03-24T12:00:00Z"
-				}
-			}
-
-			throw new Error("File not found")
-		})
-		await expect(getBridgeCommandDiagnostics({ sandbox: { readFile } })).resolves.toEqual({
-			pidFile: "1234",
-			processLog: "process output",
+		const getProcessLogs = vi.fn(async () => ({
+			processId: BRIDGE_COMMAND_PROCESS_ID,
+			stdout: longStdout,
+			stderr: "stderr output"
+		}))
+		await expect(getBridgeCommandDiagnostics({ sandbox: { getProcessLogs } })).resolves.toEqual({
+			pidFile: null,
+			processLog: null,
 			stdout: `${"x".repeat(
 				BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES - '{"success":false}'.length
 			)}{"success":false}`,

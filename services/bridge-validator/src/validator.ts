@@ -14,7 +14,7 @@ export const BRIDGE_SANDBOX_OPTIONS = {
 	keepAlive: true
 } as const
 export const BRIDGE_STATUS_SANDBOX_OPTIONS = {
-	keepAlive: false
+	keepAlive: true
 } as const
 export const BRIDGE_WORKSPACE_ROOT = "/workspace"
 export const BRIDGE_SOURCE_ROOT = `${BRIDGE_WORKSPACE_ROOT}/source/zeko-ui`
@@ -26,13 +26,6 @@ export const BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS = 5 * 60 * 1000
 export const BRIDGE_SANDBOX_PREPARE_TIMEOUT_MS = 10 * 60 * 1000
 export const BRIDGE_COMMAND_PROCESS_ID = "bridge-validation-command"
 export const BRIDGE_STATUS_PATH = "/bridge-status"
-export const BRIDGE_COMMAND_PID_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/bridge.pid`
-export const BRIDGE_COMMAND_PROCESS_LOG_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/process.log`
-export const BRIDGE_COMMAND_EXIT_CODE_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/exit-code.txt`
-export const BRIDGE_COMMAND_STARTED_AT_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/started-at-ms.txt`
-export const BRIDGE_COMMAND_FINISHED_AT_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/finished-at-ms.txt`
-export const BRIDGE_COMMAND_STDOUT_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/stdout.json`
-export const BRIDGE_COMMAND_STDERR_PATH = `${BRIDGE_WORKSPACE_ROOT}/bridge-validator/stderr.log`
 export const BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES = 20_000
 export const BRIDGE_SANDBOX_FILE_TIMEOUT_MS = 10_000
 export const BRIDGE_SANDBOX_CONTROL_TIMEOUT_MS = 2 * 60 * 1000
@@ -275,17 +268,10 @@ export const destroyBridgeSandbox = async ({
 export const stopBridgeCommand = async ({
 	sandbox
 }: {
-	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "exec" | "readFile">
+	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "killProcess">
 }) => {
-	const pidFile = await readSandboxFile({ sandbox, path: BRIDGE_COMMAND_PID_PATH })
-	const pid = pidFile?.trim()
-	if (!pid || !/^\d+$/.test(pid)) return
-
 	await withSandboxTimeout(
-		sandbox.exec(`kill -TERM ${pid} 2>/dev/null || true`, {
-			cwd: BRIDGE_WORKSPACE_ROOT,
-			timeout: 10_000
-		}),
+		sandbox.killProcess(BRIDGE_COMMAND_PROCESS_ID, "TERM").catch(() => undefined),
 		"Cloudflare Sandbox command termination",
 		BRIDGE_SANDBOX_FILE_TIMEOUT_MS
 	)
@@ -295,139 +281,76 @@ export const getBridgeCommandStatus = async ({
 	sandbox,
 	fileTimeoutMs = BRIDGE_SANDBOX_FILE_TIMEOUT_MS
 }: {
-	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "exec" | "readFile">
+	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "getProcess">
 	fileTimeoutMs?: number
 }): Promise<BridgeCommandStatus> => {
-	const exitCodeText = await readSandboxFile({
-		sandbox,
-		path: BRIDGE_COMMAND_EXIT_CODE_PATH,
-		timeoutMs: fileTimeoutMs
-	})
-	if (exitCodeText !== null) {
-		const exitCode = Number(exitCodeText.trim())
-		return {
-			processId: BRIDGE_COMMAND_PROCESS_ID,
-			found: true,
-			status: exitCode === 0 ? "completed" : "failed",
-			exitCode: Number.isFinite(exitCode) ? exitCode : 1,
-			...(await readBridgeCommandTiming({ sandbox, fileTimeoutMs }))
-		}
-	}
+	const process = await withSandboxTimeout(
+		sandbox.getProcess(BRIDGE_COMMAND_PROCESS_ID),
+		"Cloudflare Sandbox process status",
+		fileTimeoutMs
+	)
 
-	const pidFile = await readSandboxFile({
-		sandbox,
-		path: BRIDGE_COMMAND_PID_PATH,
-		timeoutMs: fileTimeoutMs
-	})
-	const pid = pidFile?.trim()
-
-	if (!pid || !/^\d+$/.test(pid)) {
+	if (process === null) {
 		return {
 			processId: BRIDGE_COMMAND_PROCESS_ID,
 			found: false
 		}
 	}
 
-	const status = await withSandboxTimeout(
-		sandbox.exec(`if kill -0 ${pid} 2>/dev/null; then printf running; else printf exited; fi`, {
-			cwd: BRIDGE_WORKSPACE_ROOT,
-			timeout: fileTimeoutMs
-		}),
-		"Cloudflare Sandbox status check",
-		fileTimeoutMs
-	)
-
 	return {
 		processId: BRIDGE_COMMAND_PROCESS_ID,
 		found: true,
-		pid,
-		status: status.stdout.trim() === "running" ? "running" : "error",
-		...(await readBridgeCommandTiming({ sandbox, fileTimeoutMs }))
-	}
-}
-
-const readSandboxFile = async ({
-	sandbox,
-	path,
-	timeoutMs = BRIDGE_SANDBOX_FILE_TIMEOUT_MS
-}: {
-	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "readFile">
-	path: string
-	timeoutMs?: number
-}) => {
-	const file = await withSandboxTimeout(
-		sandbox.readFile(path),
-		`Cloudflare Sandbox read ${path}`,
-		timeoutMs
-	).catch((error) => {
-		if (error instanceof Error) {
-			return null
-		}
-
-		throw error
-	})
-
-	return file?.content ?? null
-}
-
-const readBridgeCommandTiming = async ({
-	sandbox,
-	fileTimeoutMs = BRIDGE_SANDBOX_FILE_TIMEOUT_MS
-}: {
-	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "readFile">
-	fileTimeoutMs?: number
-}) => {
-	const [startedAtText, finishedAtText] = await Promise.all([
-		readSandboxFile({ sandbox, path: BRIDGE_COMMAND_STARTED_AT_PATH, timeoutMs: fileTimeoutMs }),
-		readSandboxFile({ sandbox, path: BRIDGE_COMMAND_FINISHED_AT_PATH, timeoutMs: fileTimeoutMs })
-	])
-	const startedAtMs = Number(startedAtText?.trim())
-	const finishedAtMs = Number(finishedAtText?.trim())
-
-	return {
-		...(Number.isFinite(startedAtMs) ? { startedAtMs } : {}),
-		...(Number.isFinite(finishedAtMs) ? { finishedAtMs } : {})
+		...(typeof process.pid === "number" ? { pid: String(process.pid) } : {}),
+		status: process.status,
+		...(typeof process.exitCode === "number" ? { exitCode: process.exitCode } : {}),
+		startedAtMs: process.startTime.getTime(),
+		...(process.endTime ? { finishedAtMs: process.endTime.getTime() } : {})
 	}
 }
 
 const tailDiagnosticText = (value: string | null) =>
 	value === null || value === "" ? null : value.slice(-BRIDGE_COMMAND_DIAGNOSTIC_TAIL_BYTES)
 
+const readProcessLogs = async ({
+	sandbox,
+	timeoutMs = BRIDGE_SANDBOX_FILE_TIMEOUT_MS
+}: {
+	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "getProcessLogs">
+	timeoutMs?: number
+}) =>
+	await withSandboxTimeout(
+		sandbox.getProcessLogs(BRIDGE_COMMAND_PROCESS_ID),
+		"Cloudflare Sandbox process logs",
+		timeoutMs
+	).catch(() => null)
+
 export const getBridgeCommandDiagnostics = async ({
 	sandbox
 }: {
-	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "readFile">
+	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "getProcessLogs">
 }): Promise<BridgeCommandDiagnostics> => {
-	const [pidFile, stdoutFile, stderrFile, processLog] = await Promise.all([
-		readSandboxFile({ sandbox, path: BRIDGE_COMMAND_PID_PATH }),
-		readSandboxFile({ sandbox, path: BRIDGE_COMMAND_STDOUT_PATH }),
-		readSandboxFile({ sandbox, path: BRIDGE_COMMAND_STDERR_PATH }),
-		readSandboxFile({ sandbox, path: BRIDGE_COMMAND_PROCESS_LOG_PATH })
-	])
+	const logs = await readProcessLogs({ sandbox })
 
 	return {
-		pidFile: tailDiagnosticText(pidFile),
-		processLog: tailDiagnosticText(processLog),
-		stdout: tailDiagnosticText(stdoutFile),
-		stderr: tailDiagnosticText(stderrFile)
+		pidFile: null,
+		processLog: null,
+		stdout: tailDiagnosticText(logs?.stdout ?? null),
+		stderr: tailDiagnosticText(logs?.stderr ?? null)
 	}
 }
 
 export const getBridgeCommandOutput = async ({
 	sandbox
 }: {
-	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "readFile">
+	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "getProcessLogs">
 }): Promise<BridgeCommandDiagnostics> => {
-	const [stdoutFile, stderrFile] = await Promise.all([
-		readSandboxFile({ sandbox, path: BRIDGE_COMMAND_STDOUT_PATH }),
-		readSandboxFile({ sandbox, path: BRIDGE_COMMAND_STDERR_PATH })
-	])
+	const logs = await readProcessLogs({ sandbox })
 
 	return {
 		pidFile: null,
 		processLog: null,
-		stdout: stdoutFile,
-		stderr: stderrFile
+		stdout: logs?.stdout ?? null,
+		stderr: logs?.stderr ?? null
 	}
 }
 
@@ -509,42 +432,6 @@ export const buildBridgeCommand = ({ routeKey }: { routeKey: BridgeValidatorRout
 	].join("\n")
 }
 
-export const buildBridgeCommandScript = ({ routeKey }: { routeKey: BridgeValidatorRouteKey }) =>
-	[
-		"#!/usr/bin/env bash",
-		"set -u",
-		`mkdir -p ${shellQuote(`${BRIDGE_WORKSPACE_ROOT}/bridge-validator`)} /workspace/home /workspace/cache /workspace/state`,
-		`stdout_path=${shellQuote(BRIDGE_COMMAND_STDOUT_PATH)}`,
-		`stderr_path=${shellQuote(BRIDGE_COMMAND_STDERR_PATH)}`,
-		`exit_code_path=${shellQuote(BRIDGE_COMMAND_EXIT_CODE_PATH)}`,
-		`started_at_path=${shellQuote(BRIDGE_COMMAND_STARTED_AT_PATH)}`,
-		`finished_at_path=${shellQuote(BRIDGE_COMMAND_FINISHED_AT_PATH)}`,
-		"trap 'exit 0' TERM INT",
-		': > "$stdout_path"',
-		': > "$stderr_path"',
-		'date +%s%3N > "$started_at_path"',
-		"set +e",
-		"(",
-		buildBridgeCommand({ routeKey }),
-		') > "$stdout_path" 2> "$stderr_path"',
-		"exit_code=$?",
-		'date +%s%3N > "$finished_at_path"',
-		'printf "%s" "$exit_code" > "$exit_code_path"',
-		"while :; do",
-		"  sleep 3600 &",
-		'  wait "$!"',
-		"done"
-	].join("\n")
-
-export const buildBridgeLaunchCommand = ({ routeKey }: { routeKey: BridgeValidatorRouteKey }) =>
-	[
-		`mkdir -p ${shellQuote(`${BRIDGE_WORKSPACE_ROOT}/bridge-validator`)} /workspace/home /workspace/cache /workspace/state`,
-		`nohup bash -c ${shellQuote(buildBridgeCommandScript({ routeKey }))} > ${shellQuote(BRIDGE_COMMAND_PROCESS_LOG_PATH)} 2>&1 &`,
-		'pid="$!"',
-		`printf '%s' "$pid" > ${shellQuote(BRIDGE_COMMAND_PID_PATH)}`,
-		'printf "%s" "$pid"'
-	].join("\n")
-
 export const startBridgeCommand = async ({
 	routeKey,
 	sandbox,
@@ -554,44 +441,41 @@ export const startBridgeCommand = async ({
 	launchTimeoutMs = BRIDGE_COMMAND_LAUNCH_TIMEOUT_MS
 }: {
 	routeKey: BridgeValidatorRouteKey
-	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "exec">
+	sandbox: Pick<ReturnType<typeof getBridgeSandbox>, "startProcess">
 	walletPrivateKey: string
 	githubToken?: string
 	sourceBuild?: BridgeSourceBuildConfig
 	launchTimeoutMs?: number
 }) => {
-	const result = await withSandboxTimeout(
-		sandbox.exec(buildBridgeLaunchCommand({ routeKey }), {
-			cwd: BRIDGE_WORKSPACE_ROOT,
-			timeout: launchTimeoutMs,
-			env: buildBridgeProcessEnv({ walletPrivateKey, githubToken, sourceBuild })
-		}),
+	const process = await withSandboxTimeout(
+		sandbox
+			.startProcess(buildBridgeCommand({ routeKey }), {
+				autoCleanup: false,
+				cwd: BRIDGE_WORKSPACE_ROOT,
+				env: buildBridgeProcessEnv({ walletPrivateKey, githubToken, sourceBuild }),
+				processId: BRIDGE_COMMAND_PROCESS_ID,
+				timeout: BRIDGE_COMMAND_TIMEOUT_MS
+			})
+			.catch((error) => {
+				throw new BridgeValidationError(
+					`Bridge command launcher failed: ${error instanceof Error ? error.message : String(error)}`,
+					"process"
+				)
+			}),
 		"Cloudflare Sandbox bridge command launcher",
 		launchTimeoutMs
 	)
-	if (!result.success || result.exitCode !== 0) {
-		throw new BridgeValidationError(
-			`Bridge command launcher failed with exit code ${result.exitCode}`,
-			"process",
-			result.exitCode,
-			result.stdout,
-			result.stderr
-		)
-	}
 
-	const pid = result.stdout.trim()
-	if (!/^\d+$/.test(pid)) {
+	const pid = typeof process.pid === "number" ? String(process.pid) : undefined
+	if (pid === undefined) {
 		throw new BridgeValidationError(
 			"Bridge command launcher did not report a process id",
-			"process",
-			result.exitCode,
-			result.stdout,
-			result.stderr
+			"process"
 		)
 	}
 
 	return {
-		processId: BRIDGE_COMMAND_PROCESS_ID,
+		processId: process.id,
 		pid
 	}
 }
