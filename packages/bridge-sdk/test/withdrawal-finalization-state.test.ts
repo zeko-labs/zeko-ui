@@ -497,7 +497,7 @@ describe("withdrawal finalization state", () => {
 		expect(result.finalisedIndex).toBe(0)
 	})
 
-	it("blocks first withdrawals below the l1 account creation plus bridge proof fee threshold", async () => {
+	it("blocks withdrawals that cannot cover two accounts and two bridge proof fees", async () => {
 		const bridge = buildBridge({
 			l1AccountCreationFee: 1_000_000_000,
 			bridgeProofFee: 500_000_000
@@ -509,7 +509,7 @@ describe("withdrawal finalization state", () => {
 		await expect(bridge.canFinalizeWithdrawal(recipient)).resolves.toMatchObject({
 			available: false,
 			status: "blocked",
-			reason: expect.stringContaining("at least 1.5 MINA")
+			reason: expect.stringContaining("at least 3 MINA")
 		})
 	})
 })

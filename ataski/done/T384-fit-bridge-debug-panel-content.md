@@ -1,5 +1,5 @@
 ---
-id: T383
+id: T384
 title: "fit bridge debug panel content"
 status: done
 blockedBy: []

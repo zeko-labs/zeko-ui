@@ -1,5 +1,5 @@
 ---
-id: T382
+id: T383
 title: "Bridge UI debug panel"
 status: done
 blockedBy: [T381]

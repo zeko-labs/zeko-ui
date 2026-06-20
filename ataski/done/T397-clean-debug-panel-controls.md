@@ -1,5 +1,5 @@
 ---
-id: T396
+id: T397
 title: "Clean debug panel controls"
 status: done
 blockedBy: []
