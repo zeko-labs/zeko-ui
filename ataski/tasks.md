@@ -385,3 +385,4 @@
 - T406 | done | scope-pr218-finality-observability | done/T406-scope-pr218-finality-observability.md
 - T407 | done | use-sandbox-process-api-for-validator | done/T407-use-sandbox-process-api-for-validator.md
 - T408 | done | address-bridge-cli-review-feedback | done/T408-address-bridge-cli-review-feedback.md
+- T409 | in-progress | merge-main-after-debug-mode | in-progress/T409-merge-main-after-debug-mode.md
