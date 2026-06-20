@@ -108,7 +108,7 @@ const parseArgs = (args: string[]): { name: string; root?: string } => {
 		}
 		if (arg === "--help" || arg === "-h") {
 			throw new Error(
-				"Usage: node packages/bridge-cli/dist/create-wallet-env.js --name <name> [--root <repo-root>]"
+				"Usage: node packages/bridge-cli/scripts/create-wallet-env.ts --name <name> [--root <repo-root>]"
 			)
 		}
 		if (arg.startsWith("--")) {

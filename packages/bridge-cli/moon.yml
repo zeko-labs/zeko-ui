@@ -72,12 +72,9 @@ tasks:
       - "@group(src)"
   create-wallet-env:
     description: Create a timestamped root .env.wallet file for isolated live bridge validation.
-    deps:
-      - build
-    command: node ./dist/create-wallet-env.js --root ../..
+    command: node ./scripts/create-wallet-env.ts --root ../..
     options:
       cache: false
       runInCI: false
     inputs:
       - scripts/create-wallet-env.ts
-      - tsdown.config.ts

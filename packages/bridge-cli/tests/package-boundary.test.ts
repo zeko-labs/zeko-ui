@@ -23,13 +23,16 @@ describe("published package boundary", () => {
 		expect(packageJson).not.toHaveProperty("types")
 	})
 
-	it("keeps the public CLI entrypoint stable while building internal tooling", () => {
+	it("keeps the public CLI entrypoint stable without bundling repo tooling", () => {
 		const config = readFileSync(path.join(packageRoot, "tsdown.config.ts"), "utf8")
+		const moonConfig = readFileSync(path.join(packageRoot, "moon.yml"), "utf8")
 
 		expect(config).toContain('cli: "./src/cli.ts"')
-		expect(config).toContain('"create-wallet-env": "./scripts/create-wallet-env.ts"')
+		expect(config).not.toContain("create-wallet-env")
 		expect(config).toContain("inlineDynamicImports: true")
 		expect(config).not.toContain("./src/index.ts")
+		expect(moonConfig).toContain("node ./scripts/create-wallet-env.ts --root ../..")
+		expect(moonConfig).not.toContain("dist/create-wallet-env.js")
 		expect(existsSync(path.join(packageRoot, "src/index.ts"))).toBe(false)
 	})
 

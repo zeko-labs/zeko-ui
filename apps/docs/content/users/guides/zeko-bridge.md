@@ -72,3 +72,5 @@ The main difference is the signing model:
 - the Bridge UI waits for interactive wallet approvals on [mainnet](https://bridge.zeko.io) or [testnet](https://testnet.bridge.zeko.io)
 - the [Bridge CLI](/developers/tools/bridge-cli) is designed for unattended execution with local keys
 - the [Bridge SDK](/developers/tools/bridge-sdk) exposes the underlying operations so other applications can build their own orchestration
+
+For operator debugging, the Bridge CLI supports `--actions-api`, `--l1-url`, and `--l1-archive-url` endpoint overrides so a run can target a local Actions API/indexer stack or alternate Mina endpoints without source changes.

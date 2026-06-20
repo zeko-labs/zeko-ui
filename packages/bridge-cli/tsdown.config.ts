@@ -2,8 +2,7 @@ import { defineConfig } from "tsdown"
 
 export default defineConfig({
 	entry: {
-		cli: "./src/cli.ts",
-		"create-wallet-env": "./scripts/create-wallet-env.ts"
+		cli: "./src/cli.ts"
 	},
 	platform: "node",
 	dts: false,
