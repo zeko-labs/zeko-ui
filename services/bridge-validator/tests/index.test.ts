@@ -184,29 +184,15 @@ describe("bridge-validator worker", () => {
 		expect(getSandbox).not.toHaveBeenCalled()
 	})
 
-	it("checks one sandbox attempt handle for status diagnostics without keepAlive", async () => {
+	it("checks one sandbox attempt handle for status diagnostics without perturbing keepAlive", async () => {
 		const sandboxId = buildBridgeSandboxId({ instanceId: "workflow-1", attempt: 2 })
 		vi.mocked(getSandbox).mockReturnValue({
-			readFile: vi.fn(async (path: string) => {
-				if (path.endsWith("/bridge.pid")) {
-					return {
-						success: true,
-						path,
-						content: "1234",
-						timestamp: "2026-03-24T12:00:00Z"
-					}
-				}
-
-				throw new Error("File not found")
-			}),
-			exec: vi.fn(async () => ({
-				success: true,
-				exitCode: 0,
-				stdout: "running",
-				stderr: "",
-				command: "kill -0",
-				duration: 10,
-				timestamp: "2026-03-24T12:00:00Z"
+			getProcess: vi.fn(async () => ({
+				id: "bridge-validation-command",
+				pid: 1234,
+				command: "zeko-bridge bridge",
+				status: "running",
+				startTime: new Date("2026-03-24T12:00:00Z")
 			}))
 		} as never)
 
@@ -224,11 +210,12 @@ describe("bridge-validator worker", () => {
 				found: true,
 				pid: "1234",
 				processId: "bridge-validation-command",
-				status: "running"
+				status: "running",
+				startedAtMs: Date.parse("2026-03-24T12:00:00Z")
 			}
 		})
 		expect(getSandbox).toHaveBeenCalledWith("sandbox-namespace", sandboxId, {
-			keepAlive: false
+			keepAlive: true
 		})
 	})
 
