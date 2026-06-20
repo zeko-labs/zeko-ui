@@ -1,11 +1,11 @@
 ---
 id: T404
 title: "Merge main after finality hotfix"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-20T04:34:17Z
-updated_at: 2026-06-20T04:34:17Z
+updated_at: 2026-06-20T04:36:34Z
 ---
 
 ## Requirements
@@ -25,3 +25,7 @@ updated_at: 2026-06-20T04:34:17Z
 - Not applicable; see Test Strategy Exception.
 
 ## GREEN Evidence
+
+- `git merge origin/main` completed without conflicts.
+- Reviewed the merge output: `main`'s one-based default V2 action start indexes, canonical empty action-list state, and actions API genesis before-state changes were preserved.
+- `moon run bridge-sdk:test bridge-sdk:typecheck bridge-sdk:lint bridge-sdk:build bridge-cli:test bridge-cli:typecheck bridge-cli:lint bridge-cli:build bridge-validator:test bridge-validator:typecheck bridge-validator:lint bridge-validator:build actions-api:test actions-api:typecheck actions-api:lint actions-api:build -f` passed.

@@ -379,4 +379,4 @@
 - T401 | done | preserve-withdrawal-helper-apis | done/T401-preserve-withdrawal-helper-apis.md
 - T402 | done | check-withdrawal-recipient-account | done/T402-check-withdrawal-recipient-account.md
 - T403 | done | filter-sequencer-commit-status | done/T403-filter-sequencer-commit-status.md
-- T404 | in-progress | merge-main-after-finality-hotfix | in-progress/T404-merge-main-after-finality-hotfix.md
+- T404 | done | merge-main-after-finality-hotfix | done/T404-merge-main-after-finality-hotfix.md
