@@ -948,8 +948,11 @@ const extractActionsApiFinalityDetails = (payload: unknown): ServiceProbe["detai
 	const result = getRecord(data.commitAsePastSlot)
 	const commit = getRecord(result.commit)
 	const ase = Array.isArray(result.ase) ? result.ase.map(actionRecord) : []
-	const first = ase[0] ?? {}
-	const last = ase.at(-1) ?? {}
+	const pendingCommitAnchor =
+		getNumber(commit.index) !== null && getString(commit.markedAsCanonicalAt) === null
+	const pendingTail = pendingCommitAnchor ? [commit, ...ase] : ase
+	const first = pendingTail[0] ?? {}
+	const last = pendingTail.at(-1) ?? {}
 
 	return {
 		finalOuterCommitIndex: getNumber(commit.index),
@@ -960,7 +963,7 @@ const extractActionsApiFinalityDetails = (payload: unknown): ServiceProbe["detai
 		finalOuterCommitSynchronizedOuterActionStateLength: getNumber(
 			commit.synchronizedOuterActionStateLength
 		),
-		pendingOuterTailCount: ase.length,
+		pendingOuterTailCount: pendingTail.length,
 		pendingOuterFirstIndex: getNumber(first.index),
 		pendingOuterFirstBlockHeight: getNumber(first.blockHeight),
 		pendingOuterFirstTimestamp: getString(first.timestamp),
@@ -981,6 +984,11 @@ const actionsApiFinalityWarning = (details: ServiceProbe["details"]): string | u
 	const finalBlock = getNumber(details.finalOuterCommitBlockHeight)
 	const pendingIndex = getNumber(details.pendingOuterLastIndex)
 	const pendingBlock = getNumber(details.pendingOuterLastBlockHeight)
+	const finalMarkedAsCanonicalAt = getString(details.finalOuterCommitMarkedAsCanonicalAt)
+
+	if (finalMarkedAsCanonicalAt === null) {
+		return `Actions API finality degraded: latest outer commit ${formatNullableNumber(finalIndex)} at block ${formatNullableNumber(finalBlock)} is pending and not marked canonical.`
+	}
 
 	return `Actions API finality degraded: ${formatNumber(pendingTailCount)} pending outer ${unit} after final commit ${formatNullableNumber(finalIndex)} at block ${formatNullableNumber(finalBlock)}; latest pending outer action ${formatNullableNumber(pendingIndex)} at block ${formatNullableNumber(pendingBlock)}.`
 }

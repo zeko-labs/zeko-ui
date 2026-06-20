@@ -641,6 +641,77 @@ describe("actions dashboard utilities", () => {
 		}
 	})
 
+	it("warns when the actions API finality anchor is itself pending", async () => {
+		const originalFetch = globalThis.fetch
+		globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+			const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string }
+			if (body.query?.includes("OpsActionsApiSchema")) {
+				return Response.json({
+					data: {
+						outerAction: {
+							fields: [
+								{ name: "index" },
+								{ name: "finalityStatus" },
+								{ name: "markedAsCanonicalAt" }
+							]
+						},
+						innerAction: {
+							fields: [
+								{ name: "index" },
+								{ name: "finalityStatus" },
+								{ name: "markedAsCanonicalAt" }
+							]
+						}
+					}
+				})
+			}
+			if (body.query?.includes("OpsActionsApiFinality")) {
+				return Response.json({
+					data: {
+						commitAsePastSlot: {
+							commit: {
+								index: 75_887,
+								blockHeight: 529_023,
+								timestamp: "2026-06-18T22:09:00.000Z",
+								kind: "COMMIT",
+								innerActionStateLength: 10_608,
+								synchronizedOuterActionStateLength: 75_885,
+								markedAsCanonicalAt: null
+							},
+							ase: []
+						}
+					}
+				})
+			}
+			return Response.json({})
+		}) as typeof fetch
+
+		try {
+			await expect(
+				probeActionsApi({
+					endpoint: "https://testnet.api.actions.zeko.io/graphql"
+				})
+			).resolves.toMatchObject({
+				id: "actions-api",
+				status: "warn",
+				details: {
+					finalOuterCommitIndex: 75_887,
+					finalOuterCommitBlockHeight: 529_023,
+					finalOuterCommitMarkedAsCanonicalAt: null,
+					pendingOuterTailCount: 1,
+					pendingOuterFirstIndex: 75_887,
+					pendingOuterLastIndex: 75_887,
+					pendingOuterLastBlockHeight: 529_023,
+					pendingOuterLastTimestamp: "2026-06-18T22:09:00.000Z"
+				},
+				error:
+					"Actions API finality degraded: latest outer commit 75,887 at block 529,023 is pending and not marked canonical."
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+	})
+
 	it("includes actions API compatibility warnings in the dashboard snapshot", async () => {
 		const originalFetch = globalThis.fetch
 		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {

@@ -407,3 +407,4 @@
 - T421 | done | use-sandbox-process-api-for-validator | done/T421-use-sandbox-process-api-for-validator.md
 - T422 | done | address-bridge-cli-review-feedback | done/T422-address-bridge-cli-review-feedback.md
 - T423 | done | merge-main-after-debug-mode | done/T423-merge-main-after-debug-mode.md
+- T424 | done | fix-dashboard-pending-anchor-warning | done/T424-fix-dashboard-pending-anchor-warning.md
