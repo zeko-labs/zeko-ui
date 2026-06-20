@@ -1,5 +1,13 @@
 # @zeko-labs/bridge-cli
 
+## 0.2.5
+
+### Patch Changes
+
+- 5b25530: Clarify deposit finalization wait reasons, add bridge status helpers for latest commit diagnostics, and expose a Bridge CLI `--actions-api` override with verbose bridge-status context.
+- 5b25530: Fix first-withdrawal finalization when the helper token account does not exist but the Mina recipient account does, and add shared CLI endpoint overrides for Actions API and Mina live/archive URLs across bridge, recovery, and direct commands.
+- 5b25530: Keep the high-level deposit bridge loop waiting when a cancellation capability read fails after retries, while surfacing the failed read as a blocked diagnostic.
+
 ## 0.2.4
 
 ### Patch Changes

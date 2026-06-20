@@ -1,5 +1,12 @@
 # @zeko-labs/graphql
 
+## 0.3.4
+
+### Patch Changes
+
+- 8fd778a: Validate deposit and withdrawal amounts against both bridge proof fees and every missing destination account creation fee.
+- e4fefec: Use the canonical empty actions-list state for missing bridge action before-state values and align default V2 action start indices with one-based bridge histories.
+
 ## 0.3.3
 
 ### Patch Changes

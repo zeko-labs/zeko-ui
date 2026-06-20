@@ -1,5 +1,17 @@
 # @zeko-labs/bridge-sdk
 
+## 0.3.4
+
+### Patch Changes
+
+- 5b25530: Clarify deposit finalization wait reasons, add bridge status helpers for latest commit diagnostics, and expose a Bridge CLI `--actions-api` override with verbose bridge-status context.
+- 8fd778a: Validate deposit and withdrawal amounts against both bridge proof fees and every missing destination account creation fee.
+- e4fefec: Use the canonical empty actions-list state for missing bridge action before-state values and align default V2 action start indices with one-based bridge histories.
+- 5b25530: Fix first-withdrawal finalization when the helper token account does not exist but the Mina recipient account does, and add shared CLI endpoint overrides for Actions API and Mina live/archive URLs across bridge, recovery, and direct commands.
+- Updated dependencies [8fd778a]
+- Updated dependencies [e4fefec]
+  - @zeko-labs/graphql@0.3.4
+
 ## 0.3.3
 
 ### Patch Changes
