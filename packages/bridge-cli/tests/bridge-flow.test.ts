@@ -2999,6 +2999,97 @@ describe("bridge flow", () => {
 		expect(events.some((entry) => entry.event === "claim-pending")).toBe(false)
 	})
 
+	it("keeps waiting when the deposit cancellation capability check fails", async () => {
+		let statusCalls = 0
+		let submitCalls = 0
+		let canCancelCalls = 0
+
+		const result = await runBridgeOperation(
+			{
+				id: "op-waits-through-cancel-check-failure",
+				from: "mina:testnet",
+				to: "zeko-m:testnet",
+				amount: "2",
+				account: "B62cancelcheck"
+			},
+			{
+				adapter: {
+					async submitDeposit() {
+						submitCalls += 1
+						return {
+							success: true,
+							direction: "deposit",
+							action: "submit",
+							route: "mina:testnet->zeko-m:testnet",
+							hash: "submit-current",
+							explorerUrl: "https://minascan.io/devnet/tx/submit-current",
+							included: false
+						}
+					},
+					async getDepositStatuses() {
+						statusCalls += 1
+						if (submitCalls === 0) return []
+
+						return [
+							{
+								index: 12,
+								amount: "2",
+								recipient: "B62cancelcheck",
+								cancelled: false,
+								synced: true,
+								accepted: true,
+								confirmed: true,
+								finalised: false,
+								hash: "submit-current",
+								timestamp: "2026-03-10T12:00:00.000Z"
+							}
+						]
+					},
+					async canFinalizeDeposit() {
+						return {
+							available: false,
+							reason: "Deposit is not finalizable yet"
+						}
+					},
+					async canCancelDeposit() {
+						canCancelCalls += 1
+						throw new Error("Error getting account data")
+					},
+					async cancelDeposit() {
+						throw new Error("cancelDeposit should not be called")
+					},
+					async finalizeDeposit() {
+						throw new Error("finalizeDeposit should not be called")
+					}
+				},
+				sessionStore: {
+					async save() {}
+				},
+				log: async () => {},
+				sleep: async (ms) => {
+					if (ms === 0) {
+						throw new Error("stop-after-wait")
+					}
+				},
+				pollIntervalMs: 0,
+				retryDelayMs: 1,
+				verbose: true
+			}
+		)
+
+		expect(statusCalls).toBeGreaterThan(1)
+		expect(canCancelCalls).toBe(6)
+		expect(result.status).toBe("failed")
+		expect(result.lastError).toBe("stop-after-wait")
+		expect(result.verboseDiagnostics?.waitReasons?.canCancelDeposit).toMatchObject({
+			available: false,
+			status: "blocked"
+		})
+		expect(result.verboseDiagnostics?.waitReasons?.canCancelDeposit?.reason).toContain(
+			"canCancelDeposit failed after 6 attempts"
+		)
+	})
+
 	it.skip("keeps waiting when deposit cannot yet finalize or cancel", async () => {
 		let statusCalls = 0
 		const events: Array<{ event: string; details?: Record<string, unknown> }> = []

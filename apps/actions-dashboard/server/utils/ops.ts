@@ -321,6 +321,47 @@ export const extractActionsIndexerDetails = ({
 	}
 }
 
+const formatNumber = (value: number): string => value.toLocaleString("en-US")
+
+const formatNullableNumber = (value: number | null): string =>
+	value === null ? "unknown" : formatNumber(value)
+
+const actionsIndexerFinalityWarning = (
+	details: ServiceProbe["details"]
+): { details: ServiceProbe["details"]; error?: string } => {
+	const outerTailCount = getNumber(details.outerNonCanonicalTailCount)
+	const finalOuterBlock = getNumber(details.outerLastFinalBlockHeight)
+	const fetchedOuterBlock = getNumber(details.lastFetchedOuter)
+	const finalityLagBlocks =
+		finalOuterBlock === null || fetchedOuterBlock === null
+			? null
+			: Math.max(0, fetchedOuterBlock - finalOuterBlock)
+	const outerFinalityDegraded =
+		outerTailCount !== null &&
+		outerTailCount > 0 &&
+		(finalOuterBlock === null || fetchedOuterBlock === null || fetchedOuterBlock > finalOuterBlock)
+
+	if (!outerFinalityDegraded) {
+		return {
+			details: {
+				...details,
+				outerFinalityLagBlocks: finalityLagBlocks
+			}
+		}
+	}
+
+	const unit = outerTailCount === 1 ? "action is" : "actions are"
+
+	return {
+		details: {
+			...details,
+			outerFinalityLagBlocks: finalityLagBlocks,
+			outerFinalityDegraded: true
+		},
+		error: `Bridge finality degraded: ${formatNumber(outerTailCount)} outer ${unit} not final; final outer block ${formatNullableNumber(finalOuterBlock)}, fetched outer block ${formatNullableNumber(fetchedOuterBlock)}.`
+	}
+}
+
 export const summarizeServices = (services: ServiceProbe[]): Record<ServiceStatus, number> =>
 	services.reduce<Record<ServiceStatus, number>>(
 		(summary, service) => ({
@@ -847,13 +888,17 @@ export const probeActionsIndexer = async ({
 			statusError =
 				"ACTIONS_INDEXER_TOKEN is not set; authenticated status and controls are disabled."
 		}
-		const details = {
+		const finality = actionsIndexerFinalityWarning({
 			...extractActionsIndexerDetails({ healthPayload, statusPayload }),
 			statusHttp
-		}
+		})
+		const details = finality.details
 
 		const status =
-			health.response.ok && healthStatus === "healthy" && statusError === undefined
+			health.response.ok &&
+			healthStatus === "healthy" &&
+			statusError === undefined &&
+			finality.error === undefined
 				? "ok"
 				: health.response.ok
 					? "warn"
@@ -869,7 +914,9 @@ export const probeActionsIndexer = async ({
 			latencyMs: health.latencyMs,
 			httpStatus: health.response.status,
 			details,
-			...(healthError || statusError ? { error: healthError ?? statusError } : {})
+			...(healthError || statusError || finality.error
+				? { error: healthError ?? statusError ?? finality.error }
+				: {})
 		}
 	} catch (error) {
 		return makeProbeError({ id, label, kind: "actions-indexer", endpoint, error })
@@ -890,6 +937,109 @@ const typeHasFinalityMetadata = (
 		})
 	)
 	return fieldNames.has("markedAsCanonicalAt") && fieldNames.has("finalityStatus")
+}
+
+const actionsApiMaxSlot = 2_147_483_647
+
+const actionRecord = (value: unknown): Record<string, unknown> => getRecord(value)
+
+const extractActionsApiFinalityDetails = (payload: unknown): ServiceProbe["details"] => {
+	const data = getRecord(getRecord(payload).data)
+	const result = getRecord(data.commitAsePastSlot)
+	const commit = getRecord(result.commit)
+	const ase = Array.isArray(result.ase) ? result.ase.map(actionRecord) : []
+	const first = ase[0] ?? {}
+	const last = ase.at(-1) ?? {}
+
+	return {
+		finalOuterCommitIndex: getNumber(commit.index),
+		finalOuterCommitBlockHeight: getNumber(commit.blockHeight),
+		finalOuterCommitTimestamp: getString(commit.timestamp),
+		finalOuterCommitMarkedAsCanonicalAt: getString(commit.markedAsCanonicalAt),
+		finalOuterCommitInnerActionStateLength: getNumber(commit.innerActionStateLength),
+		finalOuterCommitSynchronizedOuterActionStateLength: getNumber(
+			commit.synchronizedOuterActionStateLength
+		),
+		pendingOuterTailCount: ase.length,
+		pendingOuterFirstIndex: getNumber(first.index),
+		pendingOuterFirstBlockHeight: getNumber(first.blockHeight),
+		pendingOuterFirstTimestamp: getString(first.timestamp),
+		pendingOuterLastIndex: getNumber(last.index),
+		pendingOuterLastBlockHeight: getNumber(last.blockHeight),
+		pendingOuterLastTimestamp: getString(last.timestamp),
+		pendingOuterLastKind: getString(last.kind),
+		pendingOuterLastMarkedAsCanonicalAt: getString(last.markedAsCanonicalAt)
+	}
+}
+
+const actionsApiFinalityWarning = (details: ServiceProbe["details"]): string | undefined => {
+	const pendingTailCount = getNumber(details.pendingOuterTailCount)
+	if (pendingTailCount === null || pendingTailCount <= 0) return undefined
+
+	const unit = pendingTailCount === 1 ? "action" : "actions"
+	const finalIndex = getNumber(details.finalOuterCommitIndex)
+	const finalBlock = getNumber(details.finalOuterCommitBlockHeight)
+	const pendingIndex = getNumber(details.pendingOuterLastIndex)
+	const pendingBlock = getNumber(details.pendingOuterLastBlockHeight)
+
+	return `Actions API finality degraded: ${formatNumber(pendingTailCount)} pending outer ${unit} after final commit ${formatNullableNumber(finalIndex)} at block ${formatNullableNumber(finalBlock)}; latest pending outer action ${formatNullableNumber(pendingIndex)} at block ${formatNullableNumber(pendingBlock)}.`
+}
+
+const probeActionsApiFinality = async (
+	endpoint: string
+): Promise<{
+	status: ServiceStatus
+	details: ServiceProbe["details"]
+	error?: string
+}> => {
+	const { response, payload } = await graphQlRequest(
+		endpoint,
+		`query OpsActionsApiFinality($slot: Int!) {
+			commitAsePastSlot(slot: $slot) {
+				commit {
+					index
+					blockHeight
+					timestamp
+					innerActionStateLength
+					synchronizedOuterActionStateLength
+					markedAsCanonicalAt
+				}
+				ase {
+					... on Commit {
+						index
+						blockHeight
+						timestamp
+						kind
+						innerActionStateLength
+						synchronizedOuterActionStateLength
+						markedAsCanonicalAt
+					}
+					... on Witness {
+						index
+						blockHeight
+						timestamp
+						kind
+						markedAsCanonicalAt
+					}
+				}
+			}
+		}`,
+		requestTimeoutMs,
+		{ slot: actionsApiMaxSlot }
+	)
+	const error = getFirstError(payload)
+	const details = extractActionsApiFinalityDetails(payload)
+	const requestError = response.ok
+		? undefined
+		: `Actions API finality query failed with HTTP ${response.status}`
+	const warning = requestError ?? error ?? actionsApiFinalityWarning(details)
+	const status: ServiceStatus = !response.ok ? "error" : warning ? "warn" : "ok"
+
+	return {
+		status,
+		details,
+		...(warning && { error: warning })
+	}
 }
 
 export const probeActionsApi = async ({
@@ -922,10 +1072,26 @@ export const probeActionsApi = async ({
 			? typeHasFinalityMetadata(payload, "innerAction")
 			: false
 		const hasFinalityMetadata = outerActionFinalityMetadata && innerActionFinalityMetadata
+		const finality =
+			response.ok && error == null && hasFinalityMetadata
+				? await probeActionsApiFinality(endpoint)
+				: {
+						status: "ok" as const,
+						details: {}
+					}
 		const status: ServiceStatus =
-			!response.ok || error ? "error" : hasFinalityMetadata ? "ok" : "warn"
+			!response.ok || error
+				? "error"
+				: !hasFinalityMetadata
+					? "warn"
+					: finality.status === "error"
+						? "error"
+						: finality.status === "warn"
+							? "warn"
+							: "ok"
 		const compatibilityError =
-			error ?? (hasFinalityMetadata ? undefined : "Actions API schema is missing finality metadata")
+			error ??
+			(hasFinalityMetadata ? finality.error : "Actions API schema is missing finality metadata")
 
 		return {
 			id,
@@ -938,7 +1104,8 @@ export const probeActionsApi = async ({
 			httpStatus: response.status,
 			details: {
 				outerActionFinalityMetadata,
-				innerActionFinalityMetadata
+				innerActionFinalityMetadata,
+				...finality.details
 			},
 			...(compatibilityError && { error: compatibilityError })
 		}

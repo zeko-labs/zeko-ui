@@ -120,7 +120,7 @@ const hasL1DepositFinalityRisk = (row: ChainInsight): boolean =>
 	row.id === "l1" &&
 	row.nonCanonicalTailCount !== null &&
 	row.nonCanonicalTailCount > 0 &&
-	row.actionCoverageStatus === "current" &&
+	row.actionCoverageStatus !== "missing" &&
 	row.lastActionBlockHeight !== null &&
 	(row.finalActionBlockHeight === null || row.finalActionBlockHeight < row.lastActionBlockHeight)
 
@@ -139,7 +139,7 @@ export const actionFinalityLabel = (row: ChainInsight): string => {
 	if (hasL1DepositFinalityRisk(row)) {
 		const count = row.nonCanonicalTailCount ?? 0
 		const unit = count === 1 ? "action" : "actions"
-		return `${count.toLocaleString()} L1 ${unit} not final; deposits may be blocked`
+		return `${count.toLocaleString()} L1 ${unit} not final; deposits and withdrawals may be blocked`
 	}
 	if (row.nonCanonicalTailCount === null) return "pending actions unknown"
 	if (row.nonCanonicalTailCount === 0) return "no pending actions"
@@ -151,7 +151,7 @@ export const actionFinalityDetail = (row: ChainInsight): string => {
 	if (hasCanonicalL2FinalityStall(row))
 		return `archive canonical ${formatBlock(row.archiveCanonicalHeight)}; DB final ${formatBlock(row.finalActionBlockHeight)}; indexed ${formatBlock(row.lastActionBlockHeight)}`
 	if (hasL1DepositFinalityRisk(row))
-		return `DB final ${formatBlock(row.finalActionBlockHeight)}; indexed ${formatBlock(row.lastActionBlockHeight)}; coverage ${row.actionCoverageStatus ?? "unknown"}`
+		return `DB final ${formatBlock(row.finalActionBlockHeight)}; indexed ${formatBlock(row.lastActionBlockHeight)}; archive canonical ${formatBlock(row.archiveCanonicalHeight)}; archive pending ${formatBlock(row.archiveHeight)}; coverage ${row.actionCoverageStatus ?? "unknown"}`
 	return `final action block ${formatBlock(row.finalActionBlockHeight)}`
 }
 
