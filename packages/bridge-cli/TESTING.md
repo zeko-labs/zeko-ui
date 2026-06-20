@@ -204,6 +204,22 @@ If that line is missing or the status snapshot fails, record the failure and man
 
 Do not rubber-stamp a run as working. The purpose of this validation is to catch bugs and behavioral drift.
 
+## Layer Classification Checklist
+
+Use these as diagnostic signals, not a rigid decision tree. If evidence contradicts the expected category, follow the contradiction and record it.
+
+Treat L1 archive finality or canonicality as the likely blocker when the target deposit block or required outer commit block is above L1 archive `canonicalMaxBlockHeight`, the indexer has fetched close to L1 archive pending height with zero consecutive errors, and Actions API shows a final outer commit plus a pending outer tail beyond it.
+
+Treat the Actions indexer as the likely blocker when L1 archive canonical height has passed the needed block but the indexer final outer block remains stale, the indexer has consecutive errors, `lastFetchedBlock.outer` is far behind L1 archive pending height, or a local indexer advances beyond production against the same archive endpoints.
+
+Treat sequencer commit production as the likely blocker when L2 withdrawals are visible and canonical but pending outer commits do not advance across two 5-minute checks, or when pending commits repeat stale `innerActionStateLength` or stale `synchronizedOuterActionStateLength`.
+
+Treat Actions API query semantics as the likely blocker when the indexer database has the expected pending or final rows but API queries used by the CLI do not return them. Compare deployed API semantics before changing validator timeouts; a canonical-only query can turn an expected pending-inclusion wait into an apparent 24-hour finality wait.
+
+Treat CLI or validator behavior as the likely blocker when direct SDK checks show a deposit or withdrawal is finalizable, but the high-level `bridge` command does not submit the finalization transaction, exits on a diagnostic-only read, loses local session state, or reports success without submitting the expected transaction for the requested fresh operation.
+
+When direct checks leave indexer health ambiguous, run a local indexer with an isolated database and the same public archive endpoints, bridge public keys, and finality settings as production. Record local `lastFetchedBlock.outer`, local final outer index/block, production final outer index/block, L1 archive canonical/pending heights, and the target deposit block or withdrawal commit block.
+
 ## Interpreting Long Waits
 
 During long waits, expect stderr progress lines for:

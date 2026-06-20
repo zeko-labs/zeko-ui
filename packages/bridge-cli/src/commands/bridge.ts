@@ -315,6 +315,12 @@ const getHeartbeatBucket = ({
 const formatErrorMessage = (error: unknown): string =>
 	error instanceof Error ? error.message : String(error)
 
+const unavailableCapabilityDiagnosticFromError = (error: unknown): BridgeCapabilityDiagnostic => ({
+	available: false,
+	reason: formatErrorMessage(error),
+	status: "blocked"
+})
+
 const TRANSIENT_CLAIM_UNAVAILABLE_ERROR_PATTERNS = [
 	/Did not find any (deposit|withdrawal) to finalize/i,
 	/No (deposit|withdrawal) witnesses found/i,
@@ -946,7 +952,10 @@ const runInspectDepositStep = async (context: BridgeRunnerContext): Promise<Runn
 						account: session.account,
 						method: "canCancelDeposit"
 					})
-			})
+			}).catch((error) => ({
+				session: getRecordedSessionFromError(error) ?? session,
+				value: unavailableCapabilityDiagnosticFromError(error)
+			}))
 		])
 		session = mergeVerboseDiagnosticsFromSessions({
 			session,

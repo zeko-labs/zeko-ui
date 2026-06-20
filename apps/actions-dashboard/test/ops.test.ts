@@ -461,6 +461,63 @@ describe("actions dashboard utilities", () => {
 		}
 	})
 
+	it("warns when the actions indexer is reachable but outer finality is behind", async () => {
+		const originalFetch = globalThis.fetch
+		globalThis.fetch = (async (input: RequestInfo | URL) => {
+			const url = String(input)
+			if (url.endsWith("/health")) {
+				return Response.json({
+					status: "healthy",
+					service: { environment: "testnet" },
+					database: { status: "up" },
+					indexer: {
+						status: "running",
+						lastFetchedBlock: { outer: 529_014, inner: 1_097_571 },
+						consecutiveErrors: 0,
+						canonicalProgress: {
+							checkedAt: "2026-06-18T16:36:00.000Z",
+							ageMs: 15_000,
+							outer: {
+								lastFinalIndex: 75_728,
+								lastFinalBlockHeight: 528_722,
+								nonCanonicalTailCount: 124
+							},
+							inner: {
+								lastFinalIndex: 10_763,
+								lastFinalBlockHeight: 1_097_571,
+								nonCanonicalTailCount: 0
+							}
+						}
+					}
+				})
+			}
+			if (url.endsWith("/status")) return Response.json({ isRunning: true })
+			return Response.json({})
+		}) as typeof fetch
+
+		try {
+			await expect(
+				probeActionsIndexer({
+					endpoint: "https://testnet.indexer.actions.zeko.io",
+					token: "testnet-token"
+				})
+			).resolves.toMatchObject({
+				status: "warn",
+				details: {
+					outerLastFinalIndex: 75_728,
+					outerLastFinalBlockHeight: 528_722,
+					lastFetchedOuter: 529_014,
+					outerNonCanonicalTailCount: 124,
+					outerFinalityLagBlocks: 292
+				},
+				error:
+					"Bridge finality degraded: 124 outer actions are not final; final outer block 528,722, fetched outer block 529,014."
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+	})
+
 	it("warns when the deployed actions API schema does not expose finality metadata", async () => {
 		const originalFetch = globalThis.fetch
 		globalThis.fetch = (async () =>
@@ -488,6 +545,96 @@ describe("actions dashboard utilities", () => {
 					innerActionFinalityMetadata: false
 				},
 				error: "Actions API schema is missing finality metadata"
+			})
+		} finally {
+			globalThis.fetch = originalFetch
+		}
+	})
+
+	it("warns when the actions API final commit is behind the pending outer tail", async () => {
+		const originalFetch = globalThis.fetch
+		globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+			const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string }
+			if (body.query?.includes("OpsActionsApiSchema")) {
+				return Response.json({
+					data: {
+						outerAction: {
+							fields: [
+								{ name: "index" },
+								{ name: "finalityStatus" },
+								{ name: "markedAsCanonicalAt" }
+							]
+						},
+						innerAction: {
+							fields: [
+								{ name: "index" },
+								{ name: "finalityStatus" },
+								{ name: "markedAsCanonicalAt" }
+							]
+						}
+					}
+				})
+			}
+			if (body.query?.includes("OpsActionsApiFinality")) {
+				return Response.json({
+					data: {
+						commitAsePastSlot: {
+							commit: {
+								index: 75_763,
+								blockHeight: 528_733,
+								timestamp: "2026-06-17T21:18:00.000Z",
+								innerActionStateLength: 10_606,
+								synchronizedOuterActionStateLength: 75_760,
+								markedAsCanonicalAt: "2026-06-18T22:09:33.738Z"
+							},
+							ase: [
+								{
+									index: 75_764,
+									blockHeight: 528_734,
+									timestamp: "2026-06-17T21:27:00.000Z",
+									kind: "COMMIT",
+									markedAsCanonicalAt: null,
+									innerActionStateLength: 10_606,
+									synchronizedOuterActionStateLength: 75_760
+								},
+								{
+									index: 75_887,
+									blockHeight: 529_023,
+									timestamp: "2026-06-18T22:09:00.000Z",
+									kind: "COMMIT",
+									markedAsCanonicalAt: null,
+									innerActionStateLength: 10_608,
+									synchronizedOuterActionStateLength: 75_885
+								}
+							]
+						}
+					}
+				})
+			}
+			return Response.json({})
+		}) as typeof fetch
+
+		try {
+			await expect(
+				probeActionsApi({
+					endpoint: "https://testnet.api.actions.zeko.io/graphql"
+				})
+			).resolves.toMatchObject({
+				id: "actions-api",
+				status: "warn",
+				details: {
+					finalOuterCommitIndex: 75_763,
+					finalOuterCommitBlockHeight: 528_733,
+					finalOuterCommitTimestamp: "2026-06-17T21:18:00.000Z",
+					finalOuterCommitMarkedAsCanonicalAt: "2026-06-18T22:09:33.738Z",
+					pendingOuterTailCount: 2,
+					pendingOuterFirstIndex: 75_764,
+					pendingOuterLastIndex: 75_887,
+					pendingOuterLastBlockHeight: 529_023,
+					pendingOuterLastTimestamp: "2026-06-18T22:09:00.000Z"
+				},
+				error:
+					"Actions API finality degraded: 2 pending outer actions after final commit 75,763 at block 528,733; latest pending outer action 75,887 at block 529,023."
 			})
 		} finally {
 			globalThis.fetch = originalFetch
@@ -1099,9 +1246,51 @@ describe("actions dashboard utilities", () => {
 		})
 
 		expect(actionFinalityState(blockedL1)).toBe("warn")
-		expect(actionFinalityLabel(blockedL1)).toBe("29 L1 actions not final; deposits may be blocked")
+		expect(actionFinalityLabel(blockedL1)).toBe(
+			"29 L1 actions not final; deposits and withdrawals may be blocked"
+		)
 		expect(actionFinalityDetail(blockedL1)).toContain("DB final 528,346")
 		expect(actionFinalityDetail(blockedL1)).toContain("indexed 528,625")
+	})
+
+	it("does not hide L1 finality lag when archive coverage is unavailable", () => {
+		const blockedL1 = buildChainInsight({
+			id: "l1",
+			label: "L1 Mina",
+			indexerLabel: "Outer",
+			indexer: {
+				id: "actions-indexer",
+				details: {
+					lastFetchedOuter: 529_014,
+					outerLastFinalBlockHeight: 528_722,
+					outerNonCanonicalTailCount: 124
+				}
+			},
+			archive: {
+				id: "l1-archive",
+				details: {
+					canonicalMaxBlockHeight: 528_725,
+					pendingMaxBlockHeight: 529_015
+				}
+			},
+			daemon: {
+				id: "l1-daemon",
+				details: { blockHeight: 529_015 }
+			},
+			indexerHeightKey: "lastFetchedOuter",
+			indexerFinalHeightKey: "outerLastFinalBlockHeight",
+			nonCanonicalTailKey: "outerNonCanonicalTailCount",
+			expectedFinalityBlocks: 290,
+			daemonBlockHeightSupported: true
+		})
+
+		expect(actionFinalityState(blockedL1)).toBe("warn")
+		expect(actionFinalityLabel(blockedL1)).toBe(
+			"124 L1 actions not final; deposits and withdrawals may be blocked"
+		)
+		expect(actionFinalityDetail(blockedL1)).toContain("DB final 528,722")
+		expect(actionFinalityDetail(blockedL1)).toContain("indexed 529,014")
+		expect(actionFinalityDetail(blockedL1)).toContain("archive canonical 528,725")
 	})
 
 	it("reports L2 action finality stalls before any DB action is finalized", () => {

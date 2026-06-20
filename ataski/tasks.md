@@ -382,3 +382,4 @@
 - T403 | done | filter-sequencer-commit-status | done/T403-filter-sequencer-commit-status.md
 - T404 | done | merge-main-after-finality-hotfix | done/T404-merge-main-after-finality-hotfix.md
 - T405 | done | merge-pr224-and-fix-fee-fetch-hook | done/T405-merge-pr224-and-fix-fee-fetch-hook.md
+- T406 | done | scope-pr218-finality-observability | done/T406-scope-pr218-finality-observability.md
