@@ -257,6 +257,65 @@ describe("classifyRecoveredOperations", () => {
 		expect(result.activeCancellationOperation).toBeNull()
 	})
 
+	it("keeps the active main operation ahead of newly recovered queued operations", () => {
+		const recovered = classifyRecoveredOperations({
+			deposits: [actionState({ id: "deposit-2", index: 2, date: "2026-03-24T00:01:00Z" })],
+			withdrawals: [
+				actionState({
+					id: "withdrawal-1",
+					index: 1,
+					date: "2026-03-24T00:00:00Z",
+					source: "zeko-m:testnet",
+					destination: "mina:devnet"
+				})
+			],
+			currentSlot: "0"
+		})
+
+		const result = buildRecoverySyncState({
+			recovered,
+			entryStateById: new Map([["withdrawal-1", { status: "started", lane: "main" }]])
+		})
+
+		expect(result.pendingOperations).toEqual([
+			{
+				id: "withdrawal-1",
+				lane: "main",
+				order: 0,
+				status: "started",
+				cancellable: false,
+				timeoutSlot: undefined
+			},
+			{
+				id: "deposit-2",
+				lane: "main",
+				order: 1,
+				status: "paused",
+				cancellable: false,
+				timeoutSlot: undefined
+			}
+		])
+		expect(result.activeOperation).toBe("withdrawal-1")
+		expect(result.activeCancellationOperation).toBeNull()
+	})
+
+	it("keeps locally completed operations out of recovered pending lanes", () => {
+		const recovered = classifyRecoveredOperations({
+			deposits: [actionState({ id: "deposit-1", index: 1, date: "2026-03-24T00:00:00Z" })],
+			withdrawals: [],
+			currentSlot: "0"
+		})
+
+		const result = buildRecoverySyncState({
+			recovered,
+			entryStateById: new Map([["deposit-1", { status: "completed", lane: "main" }]])
+		})
+
+		expect(result.pendingOperations).toEqual([])
+		expect(result.activeOperation).toBeNull()
+		expect(result.activeCancellationOperation).toBeNull()
+	})
+
 	it("keeps an already-started cancellation-lane operation active during refresh", () => {
 		const recovered = classifyRecoveredOperations({
 			deposits: [

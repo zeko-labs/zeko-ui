@@ -1,6 +1,7 @@
 import { createToaster } from "@ark-ui/vue/toast"
 import type { Entries } from "type-fest"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import type { BridgeOperationProgress } from "~~/machines/operationProgress"
 
 export const depositSteps = [
 	"Submit Deposit",
@@ -182,7 +183,11 @@ export const statusFromState = (
 ): { text: string; kind: "pending" | "complete" | "cancelled" | "error" } => {
 	const isDeposit = direction === "deposit"
 	if (typeof state === "string") {
-		if (state === "BRIDGE_OPERATION_CANCELLED_DONE" || state === "DEPOSIT_CANCELLED")
+		if (
+			state === "BRIDGE_OPERATION_CANCELLED_DONE" ||
+			state === "BRIDGE_OPERATION_CANCELLED_DONE_NOOP" ||
+			state === "DEPOSIT_CANCELLED"
+		)
 			return { text: "Cancelled", kind: "cancelled" }
 		if (state.includes("DONE") || state === "BRIDGE_OPERATION_COMPLETED")
 			return isDeposit ? deposit("complete")(3) : withdrawal("complete")(3)
@@ -212,6 +217,12 @@ export const progressFromState = ({
 }: {
 	step: number
 }): UiProgress => ({ steps, step })
+
+export const operationProgressLabel = (progress?: BridgeOperationProgress | null) => {
+	if (!progress || progress.confirmationsRemaining <= 0) return null
+	const confirmation = progress.confirmationsRemaining === 1 ? "confirmation" : "confirmations"
+	return `${progress.confirmationsRemaining} ${confirmation} remaining`
+}
 
 export const errorToaster = createToaster({
 	placement: "top-end",

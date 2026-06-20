@@ -3,6 +3,7 @@ import type { ActorRefFromLogic } from "xstate"
 import { toUserFriendlyMessage } from "~/errors"
 import {
 	errorToaster,
+	operationProgressLabel,
 	progressFromState,
 	statePath,
 	statusFromState
@@ -54,6 +55,12 @@ const status = computed(() =>
 	})
 )
 const toFinalize = computed(() => machine.value.matches("TO_FINALIZE"))
+const progressLabel = computed(() =>
+	machine.value.matches("PENDING_DEPOSIT") ||
+	machine.value.matches("PENDING_WITHDRAWAL")
+		? operationProgressLabel(machine.value.context.progress)
+		: null
+)
 const transactionIsComplete = (
 	key: keyof typeof machine.value.context.transactions
 ) =>
@@ -118,6 +125,10 @@ watch(machine.value.context.errors, (newErrors) => {
             <SvgMinaLogo width="24" height="24" />
             <span>MINA</span>
           </div>
+        </div>
+        <div v-if="progressLabel" class="Row ProgressRemaining">
+          <div>Progress</div>
+          <div>{{ progressLabel }}</div>
         </div>
       </div>
       <div class="Bottom">
@@ -345,6 +356,10 @@ watch(machine.value.context.errors, (newErrors) => {
         display: flex;
         place-items: center;
         gap: 0.5ch;
+      }
+      &.ProgressRemaining {
+        color: oklch(0.42 0.03 260);
+        font-size: var(--typography_fluid-lexend-xs);
       }
     }
   }

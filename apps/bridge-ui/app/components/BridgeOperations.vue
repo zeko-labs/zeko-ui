@@ -14,6 +14,7 @@ import {
 } from "~/helpers"
 import {
 	bridgeOperationColumns,
+	completedOperationTableStatus,
 	type BridgeOperationRow
 } from "~/components/bridgeOperationsTable"
 import {
@@ -42,15 +43,23 @@ const data = computed<BridgeOperationRow[]>(() =>
 	operations
 		.map(({ id, operation }) => {
 			const state = useSelector(operation, (state) => state)
-			const { text, kind } = statusFromState(
+			const status = statusFromState(
 				state.value.value,
 				state.value.context.direction,
 				{ canCancel: state.value.context.canCancel }
+			)
+			const { text, kind } = completedOperationTableStatus(
+				status,
+				state.value.context.completionVerification
 			)
 			const timestampMs =
 				state.value.context.transaction?.timestampMs ??
 				state.value.context.completedAtMs ??
 				null
+			const submitHash =
+				state.value.context.transactions.submitDeposit?.result?.hash ??
+				state.value.context.transactions.submitWithdrawal?.result?.hash ??
+				""
 			return {
 				id,
 				operation,
@@ -60,7 +69,7 @@ const data = computed<BridgeOperationRow[]>(() =>
 				source: state.value.context.source,
 				destination: state.value.context.destination,
 				amount: state.value.context.amount,
-				hash: state.value.context.transaction?.hash ?? "",
+				hash: state.value.context.transaction?.hash ?? submitHash,
 				timestampMs,
 				dateLabel: formatOperationDate(timestampMs)
 			}
@@ -157,14 +166,7 @@ const visiblePages = computed(() => {
                 class="Table"
                 :title="String(row.original.status)"
                 :is="row.original.statusKind">
-                {{
-                  {
-                  	complete: "Completed",
-                  	cancelled: "Cancelled",
-                  	pending: "Pending",
-                  	error: "Failed"
-                  }[row.original.statusKind]
-                }}
+                {{ row.original.statusText }}
               </Label>
             </td>
             <!-- From -->
@@ -178,6 +180,12 @@ const visiblePages = computed(() => {
                 <SvgMinaLogo width="24" height="24" />
                 <span>MINA</span>
               </div>
+            </td>
+            <!-- Hash -->
+            <td>
+              <span class="HashCell" :title='String(row.getValue("hash"))'>
+                {{ String(row.getValue("hash") || "none") }}
+              </span>
             </td>
             <!-- Date -->
             <td>{{ String(row.getValue("date")) }}</td>
@@ -282,6 +290,17 @@ tbody tr:hover {
   span:first-child {
     justify-self: end;
   }
+}
+
+.HashCell {
+  display: inline-block;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  white-space: nowrap;
 }
 
 .PaginationBar {

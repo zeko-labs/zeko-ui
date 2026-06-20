@@ -1,13 +1,16 @@
-import * as Sentry from "@sentry/nuxt"
 import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
 import { detectWalletChange, type WalletEmit, type walletMachine } from "@zeko/sdk"
-import * as Comlink from "comlink"
 import { nanoid } from "nanoid"
 import { type ActorRefFromLogic, and, assign, enqueueActions, fromPromise, setup } from "xstate"
-import { bridgeOperationMachine } from "./bridgeOperation"
+import {
+	bridgeOperationMachine,
+	type BridgeOperationCompletionVerification
+} from "./bridgeOperation"
 import { createLogger } from "./debug"
-import type { ActionState, OperationsWorker, PendingOperations } from "./operations.worker"
+import type { BridgeDebugMode } from "./debugMode"
+import type { ActionState, PendingOperations } from "./operations.worker"
 import type { BridgeNetwork } from "./networks"
+import { createOperationsWorkerClient, type OperationWorker } from "./operationWorkerClient"
 import {
 	isMinaBridgeNetwork,
 	isZekoBridgeNetwork,
@@ -20,14 +23,8 @@ import {
 	classifyRecoveredOperations,
 	matchRecoveryOperationIds
 } from "./recovery"
-import workerUrl from "./operations.worker?worker&url"
 
 export { supportedNetworks } from "./networks"
-
-const worker = new Worker(new URL(workerUrl, import.meta.url), { type: "module" })
-if (import.meta.client) {
-	Sentry.addIntegration(Sentry.webWorkerIntegration({ worker }))
-}
 
 const { act, logger } = createLogger("[BRIDGE]", { metrics: true })
 
@@ -42,7 +39,6 @@ type Operations = Map<
 	}
 >
 type Wallet = ActorRefFromLogic<typeof walletMachine>
-type OperationWorker = Comlink.Remote<OperationsWorker>
 const REFRESH_INTERVAL = 20_000
 
 type Command = "start" | "resumeDeposit" | "resumeWithdrawal" | "complete" | "completeCancelled"
@@ -57,8 +53,11 @@ type StartOperationSettings = {
 		source: BridgeNetwork
 		destination: BridgeNetwork
 		transaction: ActionState["transaction"]
+		actionIndex: number
+		progress?: ActionState["progress"]
 		cancellable?: boolean
 		timeoutSlot?: string
+		completionVerification?: BridgeOperationCompletionVerification
 	}
 }
 
@@ -74,6 +73,8 @@ export type BridgeEvents =
 	| { type: "CompleteOperation"; id: string }
 	| { type: "PauseOperation"; id: string }
 	| { type: "TerminateOperation"; id: string }
+	| { type: "RefreshOperations" }
+	| { type: "SimulatePageRefresh" }
 	| { type: "ActivateCancellationOperation"; id: string }
 	| { type: "ReleaseCancellationOperation"; id: string }
 	| { type: "InvertDirection" }
@@ -92,6 +93,11 @@ export interface BridgeContext {
 	nextOperationOrder: number
 	currentSlot?: string
 	worker: OperationWorker
+}
+
+type BridgeMachineInput = {
+	wallet: Wallet
+	debugMode?: BridgeDebugMode
 }
 
 const directionPriority = (operation: ActorRefFromLogic<typeof bridgeOperationMachine>) =>
@@ -116,6 +122,14 @@ type StartArgs = {
 
 type RecoveryEnqueue = (action: { type: "startOperation"; params: StartOperationSettings }) => void
 
+type RecoveredOperationToStart = {
+	actionState: ActionState
+	command: Command
+	lane?: RecoveryLane
+	status: OperationStatus
+	completionVerification?: BridgeOperationCompletionVerification
+}
+
 const enqueueRecoveredOperations = ({
 	enqueue,
 	recovered
@@ -137,6 +151,8 @@ const enqueueRecoveredOperations = ({
 					destination,
 					source,
 					transaction,
+					actionIndex: actionState.index,
+					progress: actionState.progress,
 					cancellable,
 					timeoutSlot
 				}
@@ -175,30 +191,93 @@ const enqueueRecoveredOperation = ({
 	enqueue,
 	actionState,
 	command,
-	status
+	lane,
+	status,
+	completionVerification
 }: {
 	enqueue: RecoveryEnqueue
 	actionState: ActionState
 	command: Command
+	lane?: RecoveryLane
 	status: OperationStatus
+	completionVerification?: BridgeOperationCompletionVerification
 }) => {
 	enqueue({
 		type: "startOperation",
 		params: {
 			amount: actionState.amount,
 			command,
+			lane,
 			state: {
 				id: actionState.id,
 				status,
 				source: actionState.source,
 				destination: actionState.destination,
 				transaction: actionState.transaction,
+				actionIndex: actionState.index,
+				progress: actionState.progress,
 				cancellable: actionState.cancellable,
-				timeoutSlot: actionState.timeoutSlot
+				timeoutSlot: actionState.timeoutSlot,
+				completionVerification:
+					completionVerification ??
+					(command === "complete" || command === "completeCancelled" ? "verified" : undefined)
 			}
 		}
 	})
 }
+
+const recoverableTransactionHash = (
+	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
+) => {
+	const context = operation.getSnapshot().context
+	return (
+		context.transaction?.hash ??
+		context.transactions.submitDeposit?.result?.hash ??
+		context.transactions.submitWithdrawal?.result?.hash
+	)
+}
+
+const matchesRecoveredActionIndex = (
+	operation: ActorRefFromLogic<typeof bridgeOperationMachine>,
+	actionState: ActionState
+) => {
+	const actionIndex = operation.getSnapshot().context.actionIndex
+	return actionIndex === undefined || actionIndex === actionState.index
+}
+
+const isTerminalOperationActor = (operation: ActorRefFromLogic<typeof bridgeOperationMachine>) => {
+	const snapshot = operation.getSnapshot()
+	return (
+		snapshot.matches("BRIDGE_OPERATION_COMPLETED") ||
+		snapshot.matches("BRIDGE_OPERATION_DONE") ||
+		snapshot.matches("BRIDGE_OPERATION_DONE_NOOP") ||
+		snapshot.matches("BRIDGE_OPERATION_CANCELLED_DONE_NOOP") ||
+		snapshot.matches("BRIDGE_OPERATION_CANCELLED_DONE")
+	)
+}
+
+const terminalRecoveredOperations = (
+	recovered: RecoveredOperations
+): RecoveredOperationToStart[] => [
+	...recovered.completedDeposits.map((actionState) => ({
+		actionState,
+		command: "complete" as const,
+		status: "completed" as const,
+		completionVerification: "verified" as const
+	})),
+	...recovered.completedWithdrawals.map((actionState) => ({
+		actionState,
+		command: "complete" as const,
+		status: "completed" as const,
+		completionVerification: "verified" as const
+	})),
+	...recovered.cancelledDeposits.map((actionState) => ({
+		actionState,
+		command: "completeCancelled" as const,
+		status: "completed" as const,
+		completionVerification: "verified" as const
+	}))
+]
 
 const syncRecoveredOperations = ({
 	context,
@@ -208,16 +287,58 @@ const syncRecoveredOperations = ({
 	recovered: RecoveredOperations
 }) => {
 	const operations = new Map(context.operations)
-	const recoveryOperationIds = matchRecoveryOperationIds({
-		actionStates: [...recovered.mainPending, ...recovered.cancellableDeposits].map(
-			({ actionState }) => actionState
-		),
+	const pendingRecoveredOperations = [...recovered.mainPending, ...recovered.cancellableDeposits]
+	const pendingRecoveredOperationById = new Map(
+		pendingRecoveredOperations.map(
+			(pendingOperation) => [pendingOperation.actionState.id, pendingOperation] as const
+		)
+	)
+	const pendingActionStateById = new Map(
+		pendingRecoveredOperations.map(({ actionState }) => [actionState.id, actionState] as const)
+	)
+	const terminalOperations = terminalRecoveredOperations(recovered)
+	const matchedRecoveryOperationIds = matchRecoveryOperationIds({
+		actionStates: [
+			...pendingRecoveredOperations.map(({ actionState }) => actionState),
+			...terminalOperations.map(({ actionState }) => actionState)
+		],
 		candidates: [...operations.entries()].map(([id, { status, operation }]) => ({
 			id,
 			status,
-			transactionHash: operation.getSnapshot().context.transaction?.hash
+			transactionHash: recoverableTransactionHash(operation)
 		}))
 	})
+	const terminalActionStateById = new Map(
+		terminalOperations.map(({ actionState }) => [actionState.id, actionState] as const)
+	)
+	const recoveryOperationIds = new Map(
+		[...matchedRecoveryOperationIds.entries()].filter(([recoveredId, operationId]) => {
+			const terminalActionState = terminalActionStateById.get(recoveredId)
+			if (!terminalActionState) return true
+			const entry = operations.get(operationId)
+			return entry ? matchesRecoveredActionIndex(entry.operation, terminalActionState) : true
+		})
+	)
+	const matchedOperationIds = new Set(recoveryOperationIds.values())
+	const activeEntry =
+		context.activeOperation === null ? undefined : operations.get(context.activeOperation)
+	const preservedActiveMainOperationId =
+		context.activeOperation !== null &&
+		activeEntry?.lane === "main" &&
+		activeEntry.status === "started" &&
+		!matchedOperationIds.has(context.activeOperation)
+			? context.activeOperation
+			: null
+	const mergeStatus = ({
+		lane,
+		status
+	}: {
+		lane: RecoveryLane
+		status: OperationStatus
+	}): OperationStatus =>
+		preservedActiveMainOperationId !== null && lane === "main" && status === "started"
+			? "paused"
+			: status
 	const syncState = buildRecoverySyncState({
 		recovered,
 		entryStateById: new Map(
@@ -234,30 +355,81 @@ const syncRecoveredOperations = ({
 		const operationId = recoveryOperationIds.get(id)
 		if (!operationId) continue
 		const entry = operations.get(operationId)
+		const actionState = pendingActionStateById.get(id)
 		if (!entry || entry.status === "completed") continue
-		entry.operation.send({ type: "SyncRecoveredState", cancellable, timeoutSlot })
-		if (entry.status !== status) {
-			if (status === "started") entry.operation.send({ type: "Resume", paused: false })
-			if (entry.status === "started" && status === "paused") entry.operation.send({ type: "Pause" })
+		if (!actionState) continue
+		const mergedStatus = mergeStatus({ lane, status })
+		entry.operation.send({
+			type: "SyncRecoveredState",
+			actionIndex: actionState.index,
+			transaction: actionState.transaction,
+			progress: actionState.progress,
+			cancellable,
+			timeoutSlot
+		})
+		if (entry.status !== mergedStatus) {
+			if (mergedStatus === "started") entry.operation.send({ type: "Resume", paused: false })
+			if (entry.status === "started" && mergedStatus === "paused")
+				entry.operation.send({ type: "Pause" })
 		}
 		operations.set(operationId, {
 			...entry,
-			status,
+			status: mergedStatus,
 			lane,
 			order
 		})
 	}
 
+	for (const { actionState, command } of terminalOperations) {
+		const operationId = recoveryOperationIds.get(actionState.id)
+		if (!operationId) continue
+		const entry = operations.get(operationId)
+		if (!entry) continue
+		if (!matchesRecoveredActionIndex(entry.operation, actionState)) continue
+		entry.operation.send({
+			type: "VerifyCompletion",
+			actionIndex: actionState.index,
+			transaction: actionState.transaction
+		})
+		if (!isTerminalOperationActor(entry.operation)) {
+			entry.operation.send({
+				type:
+					command === "completeCancelled"
+						? "RecoverBridgeOperationCancelled"
+						: "RecoverBridgeOperationCompleted"
+			})
+		}
+		operations.set(operationId, {
+			...entry,
+			status: "completed"
+		})
+	}
+
+	const operationsToStart: RecoveredOperationToStart[] = syncState.pendingOperations.flatMap(
+		({ id, lane, status }) => {
+			if (recoveryOperationIds.has(id)) return []
+			const pendingOperation = pendingRecoveredOperationById.get(id)
+			return pendingOperation
+				? [{ ...pendingOperation, lane, status: mergeStatus({ lane, status }) }]
+				: []
+		}
+	)
+	const terminalOperationsToStart = terminalOperations.filter(
+		({ actionState }) => !matchedRecoveryOperationIds.has(actionState.id)
+	)
+
 	return {
 		operations,
 		activeOperation: (() => {
+			if (preservedActiveMainOperationId !== null) return preservedActiveMainOperationId
 			if (!syncState.activeOperation) return null
 			return recoveryOperationIds.get(syncState.activeOperation) ?? null
 		})(),
 		activeCancellationOperation: (() => {
 			if (!syncState.activeCancellationOperation) return null
 			return recoveryOperationIds.get(syncState.activeCancellationOperation) ?? null
-		})()
+		})(),
+		operationsToStart: [...operationsToStart, ...terminalOperationsToStart]
 	}
 }
 
@@ -272,14 +444,19 @@ const bridgeDirections = {
 export const bridgeMachine = setup({
 	types: {
 		context: {} as BridgeContext,
-		input: {} as { wallet: Wallet },
+		input: {} as BridgeMachineInput,
 		events: {} as BridgeEvents | WalletEmit
 	},
 	guards: {
 		validSource: ({ context }) => supportedNetworks.includes(context.sourceNetwork),
 		validDestination: ({ context }) => supportedNetworks.includes(context.destinationNetwork),
 		shouldRefreshPendingOperations: ({ context }) =>
-			[...context.operations.values()].some(({ status }) => status !== "completed")
+			[...context.operations.values()].some(
+				({ status, operation }) =>
+					status !== "completed" ||
+					operation.getSnapshot().context.completionVerification === "unverified"
+			),
+		canFindPendingOperations: ({ context }) => context.accountReady && context.walletReady
 	},
 	actors: {
 		bridgeOperationMachine,
@@ -340,17 +517,20 @@ export const bridgeMachine = setup({
 					amount,
 					timeoutSlots,
 					timeoutSlot: state?.timeoutSlot,
+					actionIndex: state?.actionIndex,
+					progress: state?.progress,
 					transaction: state?.transaction,
-					cancellable: state?.cancellable
+					cancellable: state?.cancellable,
+					completionVerification: state?.completionVerification
 				}
 			})
 			if (command === "start") operation.send({ type: "StartBridgeOperation" })
 			if (command === "resumeDeposit" || command === "resumeWithdrawal") {
 				operation.send({ type: "Resume", paused: state?.status === "paused" })
 			}
-			if (command === "complete") operation.send({ type: "CompleteBridgeOperation" })
+			if (command === "complete") operation.send({ type: "RecoverBridgeOperationCompleted" })
 			if (command === "completeCancelled")
-				operation.send({ type: "CompleteBridgeOperationCancelled" })
+				operation.send({ type: "RecoverBridgeOperationCancelled" })
 			const operations = context.operations.set(id, {
 				order,
 				status: state?.status ?? "started",
@@ -433,12 +613,16 @@ export const bridgeMachine = setup({
 }).createMachine({
 	id: "bridge",
 	initial: "IDLE",
-	context: ({ input: { wallet } }) => {
+	context: ({ input }) => {
+		const { wallet } = input
+		const workerClient = createOperationsWorkerClient({
+			debugMode: input.debugMode
+		})
 		const sourceNetwork = walletNetworkToBridgeNetwork(wallet.getSnapshot().context.currentNetwork)
 		const destinationNetwork = bridgeDirections[sourceNetwork]
 		return {
 			wallet,
-			worker: Comlink.wrap<OperationsWorker>(worker),
+			worker: workerClient.worker,
 			operations: new Map(),
 			sourceNetwork,
 			destinationNetwork,
@@ -542,6 +726,27 @@ export const bridgeMachine = setup({
 				})
 			}
 		},
+		RefreshOperations: {
+			target: ".REFRESH_OPERATIONS",
+			guard: "canFindPendingOperations"
+		},
+		SimulatePageRefresh: {
+			target: ".FIND_OPERATIONS",
+			guard: "canFindPendingOperations",
+			actions: enqueueActions(({ context, enqueue }) => {
+				context.operations.forEach(({ operation }) => {
+					operation.send({ type: "Destroy" })
+				})
+				context.operations.clear()
+				enqueue.assign({
+					operations: new Map(),
+					activeOperation: null,
+					activeCancellationOperation: null,
+					nextOperationOrder: 0,
+					currentSlot: undefined
+				})
+			})
+		},
 		PauseOperation: {
 			description: "Set operation status to paused and add it to the operationToUnpause array.",
 			actions: { type: "pauseOperation", params: ({ event }) => ({ id: event.id }) }
@@ -591,19 +796,36 @@ export const bridgeMachine = setup({
 				}),
 				onDone: {
 					target: "READY",
-					actions: assign(({ context, event }) => {
+					actions: enqueueActions(({ context, event, enqueue }) => {
 						const recovered = classifyRecoveredOperations(event.output)
-						const { operations, activeOperation, activeCancellationOperation } =
+						const { operations, activeOperation, activeCancellationOperation, operationsToStart } =
 							syncRecoveredOperations({
 								context,
 								recovered
 							})
 
-						return {
+						enqueue.assign({
 							operations,
 							activeOperation,
 							activeCancellationOperation,
 							currentSlot: event.output.currentSlot
+						})
+
+						for (const {
+							actionState,
+							command,
+							lane,
+							status,
+							completionVerification
+						} of operationsToStart) {
+							enqueueRecoveredOperation({
+								enqueue,
+								actionState,
+								command,
+								lane,
+								status,
+								completionVerification
+							})
 						}
 					})
 				},

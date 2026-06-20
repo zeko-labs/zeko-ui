@@ -1,9 +1,11 @@
 import { walletMachine } from "@zeko/sdk"
 import { defineStore } from "pinia"
 import { bridgeMachine } from "~~/machines/bridge"
+import { getBridgeDebugMode } from "~~/machines/debugMode"
 import { useMachine } from "~~/machines/vue-xstate"
 
 export const useBridgeStore = defineStore("bridge", () => {
+	const debugMode = getBridgeDebugMode()
 	const wallet = useMachine(walletMachine)
 
 	/** Wallet */
@@ -20,7 +22,9 @@ export const useBridgeStore = defineStore("bridge", () => {
 	)
 
 	/** Bridge */
-	const bridge = useMachine(bridgeMachine, { input: { wallet: wallet.actorRef } })
+	const bridge = useMachine(bridgeMachine, {
+		input: { wallet: wallet.actorRef, debugMode }
+	})
 
 	onBeforeMount(() => {
 		// auto-connect
@@ -32,6 +36,7 @@ export const useBridgeStore = defineStore("bridge", () => {
 	return {
 		wallet,
 		bridge,
+		debugMode,
 		address,
 		displayAddress,
 		currentNetwork,

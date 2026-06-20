@@ -109,8 +109,29 @@ export const buildRecoverySyncState = ({
 	recovered: RecoveredOperations
 	entryStateById: ReadonlyMap<string, { status: RecoverySyncStatus; lane: RecoveryLane }>
 }): RecoverySyncState => {
+	const isLocallyCompleted = ({ actionState }: PendingRecoveryOperation) =>
+		entryStateById.get(actionState.id)?.status === "completed"
+	const recoverableMainPending = recovered.mainPending.filter(
+		(operation) => !isLocallyCompleted(operation)
+	)
+	const recoverableCancellableDeposits = recovered.cancellableDeposits.filter(
+		(operation) => !isLocallyCompleted(operation)
+	)
+	const activeMainPending = recoverableMainPending.find(({ actionState }) => {
+		const entryState = entryStateById.get(actionState.id)
+		return entryState?.lane === "main" && entryState.status === "started"
+	})
+	const mainPending =
+		activeMainPending === undefined
+			? recoverableMainPending
+			: [
+					activeMainPending,
+					...recoverableMainPending.filter(
+						({ actionState }) => actionState.id !== activeMainPending.actionState.id
+					)
+				]
 	const pendingOperations = [
-		...recovered.mainPending.map(({ actionState }, order) => ({
+		...mainPending.map(({ actionState }, order) => ({
 			id: actionState.id,
 			lane: "main" as const,
 			order,
@@ -118,7 +139,7 @@ export const buildRecoverySyncState = ({
 			cancellable: actionState.cancellable === true,
 			timeoutSlot: actionState.timeoutSlot
 		})),
-		...recovered.cancellableDeposits.map(({ actionState }, order) => {
+		...recoverableCancellableDeposits.map(({ actionState }, order) => {
 			const entryState = entryStateById.get(actionState.id)
 			const status =
 				entryState?.lane === "cancellation" && entryState.status === "started"
@@ -134,7 +155,7 @@ export const buildRecoverySyncState = ({
 				timeoutSlot: actionState.timeoutSlot
 			}
 		})
-	].filter(({ id }) => entryStateById.has(id))
+	]
 
 	const mainPendingIds = pendingOperations.filter(({ lane }) => lane === "main").map(({ id }) => id)
 	const activeCancellationOperation =

@@ -14,6 +14,7 @@ import { filterBridgeVersionOperations } from "./bridgeVersions"
 import { createLogger } from "./debug"
 import { getBridgeConfig } from "./helpers"
 import type { BridgeNetwork } from "./networks"
+import { bridgeOperationProgress, type BridgeOperationProgress } from "./operationProgress"
 import { normalizeOperationTimestamp } from "./operationTimestamps"
 
 function validatePublicKey(address: string): PublicKey {
@@ -39,6 +40,7 @@ export type ActionState = {
 		timestampMs?: number | null
 		hash: string
 	}
+	progress?: BridgeOperationProgress
 	source: BridgeNetwork
 	destination: BridgeNetwork
 }
@@ -198,11 +200,13 @@ async function findPendingOperations({
 	const transferToString = ({
 		transfer,
 		cancelled,
+		progress,
 		source,
 		destination
 	}: {
 		transfer: DepositWithState | WithdrawalWithState
 		cancelled: boolean
+		progress?: BridgeOperationProgress
 		source: BridgeNetwork
 		destination: BridgeNetwork
 	}) => ({
@@ -219,6 +223,7 @@ async function findPendingOperations({
 			timestampMs: normalizeOperationTimestamp(transfer.timestamp),
 			hash: transfer.hash
 		},
+		progress,
 		source,
 		destination
 	})
@@ -228,6 +233,13 @@ async function findPendingOperations({
 			transferToString({
 				transfer: deposit,
 				cancelled: deposit.cancelled,
+				progress:
+					deposit.cancelled || deposit.finalised
+						? undefined
+						: bridgeOperationProgress({
+								actionIndex: deposit.index,
+								confirmedIndex: depositIndices.confirmedIndex
+							}),
 				source: l1,
 				destination: l2
 			})
@@ -236,6 +248,12 @@ async function findPendingOperations({
 			transferToString({
 				transfer: withdrawal,
 				cancelled: false,
+				progress: withdrawal.finalised
+					? undefined
+					: bridgeOperationProgress({
+							actionIndex: withdrawal.index,
+							confirmedIndex: withdrawalIndices.committedIndex
+						}),
 				source: l2,
 				destination: l1
 			})
@@ -292,11 +310,11 @@ async function submitWithdrawal({
 	)
 }
 
-async function canFinalizeDeposit({
-	l1,
-	l2,
-	user
-}: L1L2 & { user: string }): Promise<{ available: boolean; reason: string | null }> {
+async function canFinalizeDeposit({ l1, l2, user }: L1L2 & { user: string }): Promise<{
+	available: boolean
+	reason: string | null
+	index?: number
+}> {
 	const bridge = await initBridge({ l1, l2 })
 	const recipient = validatePublicKey(user)
 	return bridge.canFinalizeDeposit(recipient)
