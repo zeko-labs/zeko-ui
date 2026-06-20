@@ -384,3 +384,4 @@
 - T397 | done | prune-debug-backend-scenarios | done/T397-prune-debug-backend-scenarios.md
 - T398 | done | bridge-progress-label-and-build-fix | done/T398-bridge-progress-label-and-build-fix.md
 - T399 | done | resolve-codex-review-terminal-verification | done/T399-resolve-codex-review-terminal-verification.md
+- T400 | in-progress | resolve-bridge-debug-pr-conflicts | in-progress/T400-resolve-bridge-debug-pr-conflicts.md
