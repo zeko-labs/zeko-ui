@@ -1,11 +1,11 @@
 ---
 id: T405
 title: "Merge PR 224 and fix fee fetch hook"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-20T05:17:23Z
-updated_at: 2026-06-20T05:17:23Z
+updated_at: 2026-06-20T05:22:53Z
 ---
 
 ## Requirements
@@ -24,4 +24,9 @@ updated_at: 2026-06-20T05:17:23Z
 
 ## RED Evidence
 
+- `moon run bridge-sdk:test -f -- test/bridge-transfer-fee-hooks.test.ts`: failed as expected. The new deposit test received `Error: l2 raw account query should not be used`, and the withdrawal test received `Error: l1 raw account query should not be used`, proving PR #224's submit-time fee guards bypass the runtime account fetch hook.
+
 ## GREEN Evidence
+
+- `moon run bridge-sdk:test -f -- test/bridge-transfer-fee-hooks.test.ts`: passed; the focused deposit and withdrawal tests now reject through `InsufficientBridgeTransferAmountError` and observe two runtime account-fetch hook calls.
+- `moon run bridge-sdk:test bridge-sdk:typecheck bridge-sdk:lint bridge-sdk:build bridge-cli:test bridge-cli:typecheck bridge-cli:lint bridge-cli:build bridge-validator:test bridge-validator:typecheck bridge-validator:lint -f`: passed. `bridge-sdk:lint` exited with the pre-existing `src/types.ts` `noExplicitAny` warnings.

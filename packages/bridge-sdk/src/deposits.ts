@@ -17,6 +17,7 @@ import {
 	UInt64
 } from "o1js"
 import { Actions, Events, fromList } from "./actions"
+import { ensureBridgeTransferAmountCanCoverFees } from "./errors"
 import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
 import { pollProvingResult } from "./prover"
 import { debug, type BridgeRuntime } from "./runtime"
@@ -284,6 +285,23 @@ export async function submitDeposit(
 	signTxn: SignTransaction
 ): Promise<string> {
 	setL1(runtime)
+	const fetchBridgeAccount = runtime.bridge?.fetchAccount ?? fetchAccount
+
+	await ensureBridgeTransferAmountCanCoverFees({
+		direction: "deposit",
+		amount,
+		recipient,
+		accountCreationFee: runtime.l2AccountCreationFee,
+		bridgeProofFee: runtime.bridgeProofFee,
+		recipientAccountExists: async () =>
+			(await fetchBridgeAccount(runtime.l2Client, recipient)) !== null,
+		helperAccountExists: async () =>
+			(await fetchBridgeAccount(
+				runtime.l2Client,
+				recipient,
+				TokenId.derive(runtime.innerHolder)
+			)) !== null
+	})
 
 	await refreshCache(recipient)
 	await refreshCache(feePayer)

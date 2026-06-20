@@ -363,7 +363,8 @@
 - T377 | done | resolve-dashboard-finality-review | done/T377-resolve-dashboard-finality-review.md
 - T378 | done | surface-deposit-finality-risk | done/T378-surface-deposit-finality-risk.md
 - T379 | done | render-actions-api-warning | done/T379-render-actions-api-warning.md
-- T380 | done | standardize-wallet-env-files | done/T380-standardize-wallet-env-files.md
+- T380 | done | bridge-transfer-fee-requirements | done/T380-bridge-transfer-fee-requirements.md
+- T381 | done | standardize-wallet-env-files | done/T381-standardize-wallet-env-files.md
 - T389 | done | restore-pending-bridge-finalization | done/T389-restore-pending-bridge-finalization.md
 - T390 | done | guard-bridge-finality-regressions | done/T390-guard-bridge-finality-regressions.md
 - T391 | done | fix-deposit-finalization-wait-reason | done/T391-fix-deposit-finalization-wait-reason.md
@@ -380,4 +381,4 @@
 - T402 | done | check-withdrawal-recipient-account | done/T402-check-withdrawal-recipient-account.md
 - T403 | done | filter-sequencer-commit-status | done/T403-filter-sequencer-commit-status.md
 - T404 | done | merge-main-after-finality-hotfix | done/T404-merge-main-after-finality-hotfix.md
-- T405 | in-progress | merge-pr224-and-fix-fee-fetch-hook | in-progress/T405-merge-pr224-and-fix-fee-fetch-hook.md
+- T405 | done | merge-pr224-and-fix-fee-fetch-hook | done/T405-merge-pr224-and-fix-fee-fetch-hook.md

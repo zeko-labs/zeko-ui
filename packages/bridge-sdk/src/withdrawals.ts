@@ -14,9 +14,9 @@ import {
 } from "o1js"
 import { Actions, Events, fromList } from "./actions"
 import {
-	assertFirstWithdrawalAmountCanCreateHelper,
-	ensureFirstWithdrawalAmountCanCreateHelper,
-	InsufficientFirstWithdrawalAmountError
+	assertBridgeTransferAmountCanCoverFees,
+	ensureBridgeTransferAmountCanCoverFees,
+	InsufficientBridgeTransferAmountError
 } from "./errors"
 import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
 import { pollProvingResult } from "./prover"
@@ -151,16 +151,22 @@ export async function submitWithdrawal(
 	signTxn: SignTransaction
 ): Promise<string> {
 	setL2(runtime)
+	const fetchBridgeAccount = runtime.bridge?.fetchAccount ?? fetchAccount
 
-	await ensureFirstWithdrawalAmountCanCreateHelper({
+	await ensureBridgeTransferAmountCanCoverFees({
+		direction: "withdrawal",
 		amount,
 		recipient,
 		accountCreationFee: runtime.l1AccountCreationFee,
 		bridgeProofFee: runtime.bridgeProofFee,
+		recipientAccountExists: async () =>
+			(await fetchBridgeAccount(runtime.l1Client, recipient)) !== null,
 		helperAccountExists: async () =>
-			(await fetchAccount(runtime.l1Client, recipient, TokenId.derive(runtime.outerTokenOwner))) !==
-			null,
-		recipientAccountExists: async () => (await fetchAccount(runtime.l1Client, recipient)) !== null
+			(await fetchBridgeAccount(
+				runtime.l1Client,
+				recipient,
+				TokenId.derive(runtime.outerTokenOwner)
+			)) !== null
 	})
 
 	await refreshCache(recipient)
@@ -269,12 +275,14 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		witness: ExtractInput<typeof finalizeWithdrawalMutation>
 	}>
 > {
-	const fetchBridgeAccount = runtime.bridge?.fetchAccount ?? fetchAccount
-	const helperAccount = await fetchBridgeAccount(
-		runtime.l1Client,
-		pk,
-		TokenId.derive(runtime.outerTokenOwner)
-	)
+	const [recipientAccount, helperAccount] = await Promise.all([
+		(runtime.bridge?.fetchAccount ?? fetchAccount)(runtime.l1Client, pk),
+		(runtime.bridge?.fetchAccount ?? fetchAccount)(
+			runtime.l1Client,
+			pk,
+			TokenId.derive(runtime.outerTokenOwner)
+		)
+	])
 	debug(runtime, "fetchWithdrawalFinalizationWitnesses helperAccount", {
 		pk: pk.toBase58(),
 		hasHelperAccount: helperAccount !== null
@@ -300,23 +308,6 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		count: withdrawals.length,
 		recipients: withdrawals.map(({ withdrawal }) => withdrawal.recipient.toBase58()),
 		amounts: withdrawals.map(({ withdrawal }) => withdrawal.amount.toString())
-	})
-
-	const recipientAccountExistsByAddress = new Map(
-		await Promise.all(
-			[...new Set(withdrawals.map(({ withdrawal }) => withdrawal.recipient.toBase58()))].map(
-				async (address) =>
-					[
-						address,
-						(await fetchBridgeAccount(runtime.l1Client, PublicKey.fromBase58(address))) !== null
-					] as const
-			)
-		)
-	)
-	const recipientAccountExists = (recipient: PublicKey): boolean =>
-		recipientAccountExistsByAddress.get(recipient.toBase58()) ?? false
-	debug(runtime, "fetchWithdrawalFinalizationWitnesses recipientAccounts", {
-		recipients: Object.fromEntries(recipientAccountExistsByAddress)
 	})
 
 	if (withdrawals.length === 0) {
@@ -464,16 +455,17 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		if (isSkippedLegacyWithdrawalAction(runtime, action.index)) return false
 
 		try {
-			assertFirstWithdrawalAmountCanCreateHelper({
+			assertBridgeTransferAmountCanCoverFees({
+				direction: "withdrawal",
+				recipientAccountExists: recipientAccount !== null,
 				helperAccountExists: helperAccount !== null,
-				recipientAccountExists: recipientAccountExists(matchingWithdrawal.withdrawal.recipient),
 				amount: matchingWithdrawal.withdrawal.amount,
 				recipient: matchingWithdrawal.withdrawal.recipient,
 				accountCreationFee: runtime.l1AccountCreationFee,
 				bridgeProofFee: runtime.bridgeProofFee
 			})
 		} catch (e) {
-			if (e instanceof InsufficientFirstWithdrawalAmountError) {
+			if (e instanceof InsufficientBridgeTransferAmountError) {
 				insufficientFirstWithdrawalReason ??= e.message
 				return false
 			}
@@ -521,16 +513,17 @@ export async function fetchWithdrawalFinalizationWitnesses(
 		amount: withdrawalParams.withdrawal.amount.toString()
 	})
 	try {
-		assertFirstWithdrawalAmountCanCreateHelper({
+		assertBridgeTransferAmountCanCoverFees({
+			direction: "withdrawal",
+			recipientAccountExists: recipientAccount !== null,
 			helperAccountExists: helperAccount !== null,
-			recipientAccountExists: recipientAccountExists(withdrawalParams.withdrawal.recipient),
 			amount: withdrawalParams.withdrawal.amount,
 			recipient: withdrawalParams.withdrawal.recipient,
 			accountCreationFee: runtime.l1AccountCreationFee,
 			bridgeProofFee: runtime.bridgeProofFee
 		})
 	} catch (e) {
-		if (e instanceof InsufficientFirstWithdrawalAmountError) {
+		if (e instanceof InsufficientBridgeTransferAmountError) {
 			return { ok: false, msg: e.message }
 		}
 		throw e

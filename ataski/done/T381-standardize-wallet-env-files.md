@@ -1,11 +1,11 @@
 ---
-id: T380
+id: T381
 title: "Standardize wallet env files"
 status: done
 blockedBy: []
 owner: codex
 created_at: 2026-06-19T06:55:05Z
-updated_at: 2026-06-19T07:08:50Z
+updated_at: 2026-06-20T05:17:23Z
 ---
 
 ## Requirements

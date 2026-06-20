@@ -62,11 +62,8 @@ const buildBridge = ({
 		V2_WITHDRAWALS_START_INDEX: UInt32.zero
 	} satisfies BridgeRuntime)
 
-const buildWithdrawal = ({
-	amount = 2_000_000_000,
-	recipient: withdrawalRecipient = recipient
-}: { amount?: number; recipient?: PublicKey } = {}): Withdrawal => ({
-	recipient: withdrawalRecipient,
+const buildWithdrawal = ({ amount = 2_000_000_000 }: { amount?: number } = {}): Withdrawal => ({
+	recipient,
 	amount: UInt64.from(amount)
 })
 
@@ -148,9 +145,7 @@ const mockWithdrawalState = ({
 	witness,
 	nextWithdrawal = 0,
 	innerActions = [witness],
-	helperAccountExists,
-	sourceAccountExists = true,
-	recipientAccountExists = true
+	helperAccountExists
 }: {
 	bridge: Bridge
 	withdrawal: Withdrawal
@@ -158,8 +153,6 @@ const mockWithdrawalState = ({
 	nextWithdrawal?: number
 	innerActions?: InnerWitness[]
 	helperAccountExists?: boolean
-	sourceAccountExists?: boolean
-	recipientAccountExists?: boolean
 }) => {
 	const bridgeInternals = bridge as unknown as {
 		fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
@@ -168,20 +161,13 @@ const mockWithdrawalState = ({
 		fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
 	}
 
-	vi.spyOn(bridgeInternals, "fetchAccount").mockImplementation(async (_client, pk, tokenId) => {
-		if (tokenId === undefined) {
-			const isWithdrawalRecipient = (pk as PublicKey).toBase58() === withdrawal.recipient.toBase58()
-			const accountExists = isWithdrawalRecipient ? recipientAccountExists : sourceAccountExists
-
-			return accountExists ? { zkappState: null } : null
-		}
-
-		return helperAccountExists === false
+	vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue(
+		helperAccountExists === false
 			? null
 			: {
 					zkappState: ["0", String(nextWithdrawal)]
 				}
-	})
+	)
 	vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(100))
 	vi.spyOn(bridgeInternals, "fetchUserWithdrawals").mockResolvedValue([withdrawal])
 	vi.spyOn(bridgeInternals, "fetchUserWithdrawalActions").mockResolvedValue([
@@ -511,98 +497,19 @@ describe("withdrawal finalization state", () => {
 		expect(result.finalisedIndex).toBe(0)
 	})
 
-	it("blocks first withdrawals below the full first-withdrawal threshold", async () => {
+	it("blocks withdrawals that cannot cover two accounts and two bridge proof fees", async () => {
 		const bridge = buildBridge({
 			l1AccountCreationFee: 1_000_000_000,
 			bridgeProofFee: 500_000_000
 		})
 		const withdrawal = buildWithdrawal({ amount: 1_000_000_001 })
 		const witness = buildInnerWitness(withdrawal, 0)
-		mockWithdrawalState({
-			bridge,
-			withdrawal,
-			witness,
-			helperAccountExists: false,
-			recipientAccountExists: false
-		})
+		mockWithdrawalState({ bridge, withdrawal, witness, helperAccountExists: false })
 
 		await expect(bridge.canFinalizeWithdrawal(recipient)).resolves.toMatchObject({
 			available: false,
 			status: "blocked",
-			reason: expect.stringContaining("at least 2.5 MINA")
-		})
-	})
-
-	it("blocks first withdrawals that would leave no helper-recipient payout", async () => {
-		const bridge = buildBridge({
-			l1AccountCreationFee: 1_000_000_000,
-			bridgeProofFee: 500_000_000
-		})
-		const withdrawal = buildWithdrawal({ amount: 1_500_000_000 })
-		const witness = buildInnerWitness(withdrawal, 0)
-		mockWithdrawalState({
-			bridge,
-			withdrawal,
-			witness,
-			helperAccountExists: false,
-			recipientAccountExists: false
-		})
-
-		await expect(bridge.canFinalizeWithdrawal(recipient)).resolves.toMatchObject({
-			available: false,
-			status: "blocked",
-			reason: expect.stringContaining("at least 2.5 MINA")
-		})
-	})
-
-	it("allows first withdrawals at the helper plus proof threshold when the recipient L1 account exists", async () => {
-		const bridge = buildBridge({
-			l1AccountCreationFee: 1_000_000_000,
-			bridgeProofFee: 500_000_000
-		})
-		const withdrawal = buildWithdrawal({ amount: 1_500_000_000 })
-		const witness = buildInnerWitness(withdrawal, 0)
-		mockWithdrawalState({
-			bridge,
-			withdrawal,
-			witness,
-			helperAccountExists: false,
-			recipientAccountExists: true
-		})
-
-		await expect(bridge.canFinalizeWithdrawal(recipient)).resolves.toMatchObject({
-			available: true,
-			status: "available",
-			reason: null,
-			index: 0
-		})
-	})
-
-	it("uses the matched withdrawal recipient account for first-withdrawal amount checks", async () => {
-		const bridge = buildBridge({
-			l1AccountCreationFee: 1_000_000_000,
-			bridgeProofFee: 500_000_000
-		})
-		const source = PublicKey.fromBase58("B62qmE663JH772AeC3LsSi6BUD6C3BK1KDUkqajtjyWAxaZZddQ2CE4")
-		const withdrawal = buildWithdrawal({
-			amount: 1_500_000_000,
-			recipient
-		})
-		const witness = buildInnerWitness(withdrawal, 0)
-		mockWithdrawalState({
-			bridge,
-			withdrawal,
-			witness,
-			helperAccountExists: false,
-			sourceAccountExists: false,
-			recipientAccountExists: true
-		})
-
-		await expect(bridge.canFinalizeWithdrawal(source)).resolves.toMatchObject({
-			available: true,
-			status: "available",
-			reason: null,
-			index: 0
+			reason: expect.stringContaining("at least 3 MINA")
 		})
 	})
 })
