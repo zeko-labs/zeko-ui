@@ -201,6 +201,7 @@ project-root/
         export ZEKO_SIGNER_AUTH_TOKEN=$(cat /keys/sequencer-signer/signer-auth-token) && \\
         exec zeko-signer \\
         run \\
+        --host 0.0.0.0 \\
         --port 9000 \\
         --allow-zkapp-signing \\
         --max-fee 1 \\
@@ -224,6 +225,7 @@ project-root/
         export ZEKO_SIGNER_AUTH_TOKEN=$(cat /keys/da-signer/signer-auth-token) && \\
         exec zeko-signer \\
         run \\
+        --host 0.0.0.0 \\
         --port 9001 \\
         --allow-field-signing \\
         --tls-cert-file /keys/da-signer/signer-tls.crt \\
