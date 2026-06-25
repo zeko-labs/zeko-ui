@@ -4,6 +4,11 @@ import type { MetricEvent } from "./metrics.schema"
 export type { MetricEvent }
 
 const localMetricHostnames = new Set(["localhost", "127.0.0.1", "::1"])
+const normalizeHostname = (hostname: string): string =>
+	hostname
+		.trim()
+		.toLowerCase()
+		.replace(/^\[(.*)\]$/, "$1")
 
 type UserContext = {
 	userAgent: string
@@ -32,7 +37,7 @@ export const shouldSendBridgeMetric = ({
 	hostname = safeHostname()
 }: ShouldSendBridgeMetricInput = {}): boolean =>
 	debugMode !== "mock-backend" &&
-	(typeof hostname !== "string" || !localMetricHostnames.has(hostname.trim().toLowerCase()))
+	(typeof hostname !== "string" || !localMetricHostnames.has(normalizeHostname(hostname)))
 
 /**
  * Collects device context (userAgent, cpuCores, language, screenResolution).

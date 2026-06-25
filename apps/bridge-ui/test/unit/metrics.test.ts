@@ -12,6 +12,7 @@ describe("bridge metrics", () => {
 		expect(shouldSendBridgeMetric({ debugMode: "off", hostname: "localhost" })).toBe(false)
 		expect(shouldSendBridgeMetric({ debugMode: "off", hostname: "127.0.0.1" })).toBe(false)
 		expect(shouldSendBridgeMetric({ debugMode: "off", hostname: "::1" })).toBe(false)
+		expect(shouldSendBridgeMetric({ debugMode: "off", hostname: "[::1]" })).toBe(false)
 		expect(shouldSendBridgeMetric({ debugMode: "mock-backend", hostname: "bridge.zeko.io" })).toBe(
 			false
 		)

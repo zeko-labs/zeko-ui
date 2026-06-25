@@ -490,4 +490,45 @@ describe("bridge refresh queue sync", () => {
 		bridge.stop()
 		wallet.stop()
 	})
+
+	it("removes a pre-submit wallet rejection from the active main operation", async () => {
+		vi.stubGlobal("mina", {
+			sendTransaction: vi.fn(async () => new Error("User rejected the request"))
+		})
+		const store = getBridgeDebugBackendStore()
+		store.reset()
+		const wallet = createWalletActor()
+		wallet.start()
+		const bridge = createActor(
+			bridgeMachine.provide({
+				actors: {
+					detectWalletChange: fromCallback(() => {})
+				}
+			}),
+			{
+				input: {
+					debugMode: "mock-backend",
+					wallet: wallet as unknown as ActorRefFromLogic<typeof walletMachine>
+				}
+			}
+		)
+		bridge.start()
+
+		bridge.send({ type: "AccountChanged", account: "B62qtest-user" })
+		bridge.send({ type: "NetworkChanged", network: "mina:devnet" })
+		await waitFor(bridge, (snapshot) => snapshot.matches("READY"))
+
+		bridge.send({ type: "StartOperation", amount: "2" })
+		const released = await waitFor(
+			bridge,
+			(snapshot) =>
+				snapshot.context.activeOperation === null && snapshot.context.operations.size === 0
+		)
+
+		expect(released.context.activeOperation).toBeNull()
+		expect(released.context.operations.size).toBe(0)
+
+		bridge.stop()
+		wallet.stop()
+	})
 })

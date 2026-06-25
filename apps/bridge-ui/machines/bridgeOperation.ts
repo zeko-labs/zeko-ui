@@ -13,7 +13,7 @@ import {
 	setup
 } from "xstate"
 import { finalizeNotification } from "../app/service-worker/notificationList"
-import { isTerminalBridgeError } from "../app/errors"
+import { isTerminalBridgeError, QuietError } from "../app/errors"
 import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
@@ -67,6 +67,9 @@ const addError =
 		logger.error(e)
 		return { errors: [...context.errors, e] }
 	}
+
+const shouldTerminateQuietPreSubmitFailure = (context: BridgeOperationContext): boolean =>
+	context.transaction === undefined && context.errors.at(-1) instanceof QuietError
 
 const worker = (bridge: Bridge) => bridge.getSnapshot().context.worker
 
@@ -1067,6 +1070,10 @@ export const bridgeOperationMachine = setup({
 		FAILED: {
 			type: "final",
 			entry: [
+				({ context }) => {
+					if (!shouldTerminateQuietPreSubmitFailure(context)) return
+					context.bridge.send({ type: "TerminateOperation", id: context.id })
+				},
 				sendTo(
 					({ context }) => context.bridge,
 					({ self }) => ({ type: "ReleaseCancellationOperation", id: self.id })
