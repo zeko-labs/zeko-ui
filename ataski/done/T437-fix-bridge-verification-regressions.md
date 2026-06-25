@@ -39,3 +39,7 @@ updated_at: 2026-06-25T11:18:42Z
 - `moon run -f bridge-ui:test` passed: 31 files, 171 tests.
 - `moon run -f bridge-ui:typecheck` passed.
 - `moon run -f bridge-ui:lint` passed.
+- Browser dev-server smoke on `http://127.0.0.1:4300/` with a mocked Auro wallet provider and `bridgeDebugMode=mock-backend`:
+  - entering `1.99` kept Send disabled and the amount selector had `SelectWrapper isInvalid`.
+  - entering `2` enabled Send and the amount selector had `SelectWrapper`.
+  - filtered console output had no service-worker registration error, `/metrics` failure, or duplicate actor error.
