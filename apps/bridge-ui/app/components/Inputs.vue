@@ -140,7 +140,7 @@ const selectedFeeDisclosure = computed(() =>
 
 .Bottom {
   display: flex;
-  gap: 1rem;
+  gap: 2rem;
   align-items: center;
   justify-content: start;
 }

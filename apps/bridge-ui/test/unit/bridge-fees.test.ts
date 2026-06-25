@@ -49,12 +49,14 @@ describe("bridge fee disclosure", () => {
 
 	it("uses exact selected-route fee wording with small italic details", () => {
 		expect(feeNoticeSource).toContain("{{ fees.firstTransfer.maximumTotalMina }} MINA total")
-		expect(feeNoticeSource).toContain("{{ fees.static.totalMina }} MINA bridge fees")
-		expect(feeNoticeSource).toMatch(/helper\s+account creation/)
+		expect(feeNoticeSource).toContain("CircleHelp")
+		expect(feeNoticeSource).toContain("data-tooltip")
+		expect(feeNoticeSource).toContain("FeeTooltip")
+		expect(feeNoticeSource).toMatch(/0\.2 MINA bridge fees/)
+		expect(feeNoticeSource).toMatch(/helper account creation/)
 		expect(feeNoticeSource).toMatch(/recipient account creation/)
-		expect(feeNoticeSource).toMatch(/when those\s+destination accounts do not exist/)
-		expect(feeNoticeSource).toContain("font-style: italic")
 		expect(feeNoticeSource).not.toContain("Up to")
 		expect(feeNoticeSource).not.toContain("May include")
+		expect(feeNoticeSource).not.toMatch(/<span class="FeeBreakdown">[\s\S]*account creation/)
 	})
 })

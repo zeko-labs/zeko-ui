@@ -35,4 +35,28 @@ describe("bridge metrics", () => {
 
 		expect(fetch).not.toHaveBeenCalled()
 	})
+
+	it("still sends metrics from the production bridge host", () => {
+		const fetch = vi.fn(async () => new Response())
+		vi.stubGlobal("fetch", fetch)
+
+		sendMetric(
+			{
+				category: "transaction",
+				action: "signTransaction",
+				durationMs: 10,
+				success: true
+			},
+			"B62qtest-user",
+			{ debugMode: "off", hostname: "bridge.zeko.io" }
+		)
+
+		expect(fetch).toHaveBeenCalledWith(
+			"/metrics",
+			expect.objectContaining({
+				method: "POST",
+				keepalive: true
+			})
+		)
+	})
 })

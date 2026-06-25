@@ -121,9 +121,9 @@ describe("toUserFriendlyMessage", () => {
 	})
 
 	it("maps the first-withdrawal-too-small protocol error", () => {
-		expect(toUserFriendlyMessage(new Error(firstWithdrawalTooSmall))).toContain(
-			"first Zeko-to-Mina withdrawal"
-		)
+		const message = toUserFriendlyMessage(new Error(firstWithdrawalTooSmall))
+		expect(message).toContain("first Zeko-to-Mina withdrawal")
+		expect(message).toContain("at least 2.2 MINA")
 		expect(isTerminalBridgeError(new Error(firstWithdrawalTooSmall))).toBe(true)
 	})
 

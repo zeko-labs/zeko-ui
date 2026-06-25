@@ -192,7 +192,7 @@ const debugErrorMessage = (error: BridgeDebugForcedError) =>
 	})[error]
 
 const firstWithdrawalTooSmallMessage = (recipient: string) =>
-	`First Zeko->Mina withdrawal amount is too small: recipient ${recipient} requires 2 destination account creation fees and two bridge proof fees, so the transfer amount must be at least 2.4 MINA.`
+	`First Zeko->Mina withdrawal amount is too small: recipient ${recipient} requires 0.2 MINA bridge fees, 1 MINA helper account creation, and 1 MINA recipient account creation on Mina, so the transfer amount must be at least 2.2 MINA.`
 
 const currentTimestampMs = () => Date.now()
 

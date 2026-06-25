@@ -55,8 +55,12 @@ const getUserContext = (walletAddress: string | undefined): Partial<MetricEvent>
  * Automatically attaches user context and timestamp.
  * Failures are silently ignored (fire-and-forget).
  */
-export const sendMetric = (event: MetricEvent, walletAddress: string | undefined) => {
-	if (!shouldSendBridgeMetric()) return
+export const sendMetric = (
+	event: MetricEvent,
+	walletAddress: string | undefined,
+	options: ShouldSendBridgeMetricInput = {}
+) => {
+	if (!shouldSendBridgeMetric(options)) return
 
 	const payload: MetricEvent = {
 		...getUserContext(walletAddress),

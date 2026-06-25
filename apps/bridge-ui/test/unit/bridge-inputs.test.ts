@@ -49,5 +49,6 @@ describe("bridge input rules", () => {
 		expect(inputsSource).toContain("amountIsBelowBridgeMinimum")
 		expect(inputsSource).toContain("BRIDGE_MINIMUM_AMOUNT_MINA")
 		expect(inputsSource).toContain(':invalid="amountIsBelowMinimum"')
+		expect(inputsSource).toMatch(/\.Bottom\s*{[\s\S]*gap:\s*2rem/)
 	})
 })

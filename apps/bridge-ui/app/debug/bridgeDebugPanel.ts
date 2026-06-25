@@ -27,7 +27,10 @@ export const createBridgeDebugPanelController = ({
 		store.forceNextError(error)
 	},
 	reset: () => {
+		const scenario = store.getSnapshot().scenario
 		store.reset()
+		store.setScenario(scenario)
+		simulatePageRefresh?.()
 	},
 	seedRecoveredOperation: (kind: BridgeDebugOperationKind) => {
 		store.seedRecoveredOperation(kind)

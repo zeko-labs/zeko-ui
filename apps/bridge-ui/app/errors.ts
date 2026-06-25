@@ -83,7 +83,7 @@ const knownErrorMessages: [pattern: RegExp, userMessage: string][] = [
 	],
 	[
 		firstWithdrawalTooSmallPattern,
-		"The first Zeko-to-Mina withdrawal to this wallet is too small for the destination account creation and bridge proof fees. Use at least 2.4 MINA for the first withdrawal, or bridge at least 2 MINA to an account that already has the required destination accounts."
+		"The first Zeko-to-Mina withdrawal to this wallet is too small for the destination account creation and bridge fees. Use at least 2.2 MINA for the first withdrawal: 0.2 MINA bridge fees, 1 MINA helper account creation, and 1 MINA recipient account creation on Mina."
 	]
 ]
 

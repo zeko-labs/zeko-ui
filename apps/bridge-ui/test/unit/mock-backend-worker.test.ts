@@ -363,7 +363,7 @@ describe("mock bridge operations worker", () => {
 				l1: "mina:devnet",
 				l2: "zeko-m:testnet"
 			})
-		).rejects.toThrow(/First Zeko->Mina withdrawal amount is too small.*2\.4 MINA/)
+		).rejects.toThrow(/0\.2 MINA bridge fees.*1 MINA helper.*1 MINA recipient.*2\.2 MINA/)
 	})
 
 	it("can reproduce a route-neutral claim backend failure without frontend shortcuts", async () => {

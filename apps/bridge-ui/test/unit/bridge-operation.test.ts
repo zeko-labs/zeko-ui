@@ -15,7 +15,7 @@ vi.mock("../../app/service-worker/notificationList", () => ({
 }))
 
 const firstWithdrawalTooSmallMessage =
-	"First Zeko->Mina withdrawal amount is too small: recipient B62test requires 2 destination account creation fees and two bridge proof fees, so the transfer amount must be at least 2.4 MINA."
+	"First Zeko->Mina withdrawal amount is too small: recipient B62test requires 0.2 MINA bridge fees, 1 MINA helper account creation, and 1 MINA recipient account creation on Mina, so the transfer amount must be at least 2.2 MINA."
 
 const createBridgeActor = (
 	worker: object = {},
@@ -152,7 +152,7 @@ describe("bridgeOperationMachine", () => {
 		const error = actor.getSnapshot().context.errors.at(-1)
 
 		expect(error?.message).toBe(firstWithdrawalTooSmallMessage)
-		expect(toUserFriendlyMessage(error)).toContain("at least 2.4 MINA")
+		expect(toUserFriendlyMessage(error)).toContain("at least 2.2 MINA")
 		expect(
 			bridge.getSnapshot().context.events.some((event) => event.type === "TerminateOperation")
 		).toBe(false)
