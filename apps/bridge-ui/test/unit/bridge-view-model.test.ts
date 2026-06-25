@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { selectBridgeOperationView } from "../../app/components/bridgeOperationView"
+import { selectBridgeOperationView } from "../../app/utils/bridgeOperationView"
 
 const operation = (id: string) => ({ id })
 const completedOperation = (id: string) => ({

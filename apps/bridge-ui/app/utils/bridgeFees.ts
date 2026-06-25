@@ -1,6 +1,9 @@
 import type { BridgeNetwork } from "~~/machines/networks"
 import { formatBridgeNetworkLabel, isMinaBridgeNetwork } from "~~/machines/networks"
 
+const shortBridgeNetworkLabel = (network: BridgeNetwork) =>
+	formatBridgeNetworkLabel(network).startsWith("Mina") ? "Mina" : "Zeko"
+
 const staticBridgeFee = {
 	requestMina: 0.1,
 	claimMina: 0.1,
@@ -15,10 +18,16 @@ export const selectedBridgeFeeDisclosure = ({
 	destination: BridgeNetwork
 }) => {
 	const isMinaToZeko = isMinaBridgeNetwork(source)
+	const minimumAmountMina = isMinaToZeko ? 5 : 3
+	const routeFeeMina = isMinaToZeko ? 3 : 5
 	const accountCreationMina = isMinaToZeko ? 0.1 : 1
+	const routeShortLabel = `${shortBridgeNetworkLabel(source)} -> ${shortBridgeNetworkLabel(destination)}`
 
 	return {
 		routeLabel: `${formatBridgeNetworkLabel(source)} to ${formatBridgeNetworkLabel(destination)}`,
+		routeShortLabel,
+		routeFeeLabel: `${routeShortLabel} fee ${routeFeeMina} MINA`,
+		minimumAmountMina,
 		static: staticBridgeFee,
 		firstTransfer: {
 			helperAccountCreationMina: accountCreationMina,

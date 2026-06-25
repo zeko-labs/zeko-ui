@@ -6,7 +6,7 @@ import {
 	bridgeOperationHashColumn,
 	bridgeOperationColumns,
 	type BridgeOperationRow
-} from "../../app/components/bridgeOperationsTable"
+} from "../../app/utils/bridgeOperationsTable"
 
 describe("bridgeOperationDateColumn", () => {
 	it("reads the rendered date from dateLabel", () => {

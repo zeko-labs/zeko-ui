@@ -16,7 +16,7 @@ import {
 	bridgeOperationColumns,
 	completedOperationTableStatus,
 	type BridgeOperationRow
-} from "~/components/bridgeOperationsTable"
+} from "~/utils/bridgeOperationsTable"
 import {
 	formatOperationDate,
 	sortOperationTimestampsDesc

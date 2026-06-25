@@ -3,11 +3,11 @@ import { ZEKO_M_NETWORKS } from "@zeko/networks"
 import {
 	amountIsBelowBridgeMinimum,
 	type BridgeAmountInput,
-	BRIDGE_MINIMUM_AMOUNT_MINA,
 	canStartBridgeOperation,
-	normalizeBridgeAmountInput
-} from "./bridgeInputs"
-import { selectedBridgeFeeDisclosure } from "./bridgeFees"
+	normalizeBridgeAmountInput,
+	selectedBridgeMinimumAmountMina
+} from "~/utils/bridgeInputs"
+import { selectedBridgeFeeDisclosure } from "~/utils/bridgeFees"
 import { formatBridgeNetworkLabel } from "~~/machines/networks"
 
 const bs = useBridgeStore()
@@ -30,22 +30,30 @@ const startBridge = () => {
 	amountToBridge.value = undefined
 }
 const loading = computed(() => !bs.bridge.snapshot.matches("READY"))
-const amountIsBelowMinimum = computed(() =>
-	amountIsBelowBridgeMinimum(amountToBridge.value)
+const selectedRoute = computed(() => ({
+	source: bs.bridge.snapshot.context.sourceNetwork,
+	destination: bs.bridge.snapshot.context.destinationNetwork
+}))
+const selectedMinimumAmountMina = computed(() =>
+	selectedBridgeMinimumAmountMina(selectedRoute.value)
 )
+const amountIsBelowMinimum = computed(() => {
+	return amountIsBelowBridgeMinimum({
+		amount: amountToBridge.value,
+		...selectedRoute.value
+	})
+})
 const canStart = computed(() =>
 	canStartBridgeOperation({
 		address: bs.address,
 		amount: amountToBridge.value,
-		loading: loading.value
+		loading: loading.value,
+		...selectedRoute.value
 	})
 )
 const disabledButton = computed(() => !canStart.value)
 const selectedFeeDisclosure = computed(() =>
-	selectedBridgeFeeDisclosure({
-		source: bs.bridge.snapshot.context.sourceNetwork,
-		destination: bs.bridge.snapshot.context.destinationNetwork
-	})
+	selectedBridgeFeeDisclosure(selectedRoute.value)
 )
 </script>
 <template>
@@ -74,26 +82,22 @@ const selectedFeeDisclosure = computed(() =>
       </Button>
       <aside
         class="BridgeNotice"
-        :data-minimum-mina="BRIDGE_MINIMUM_AMOUNT_MINA">
+        :data-minimum-mina="selectedMinimumAmountMina">
         <template v-if="loading">
           Please wait… The Zeko Bridge is loading your wallet's latest
           transaction history and status.
         </template>
         <template v-else>
-          <span>Bridging requires signing two transactions:</span>
-          <ol class="BridgeSteps">
-            <li>Send from the origin chain.</li>
-            <li>Claim to the destination chain.</li>
-          </ol>
           <span>
-            Ledger hardware wallets are not yet supported by
+            Bridging requires signing two transactions: Send from origin, then
+            claim on destination. Ledger hardware wallets are not yet supported
+            by
             {{ ledgerUnsupportedNetworkLabel }}.
           </span>
-          <strong>Bridge minimum 2 MINA.</strong>
+          <BridgeFeeNotice :fees="selectedFeeDisclosure" />
         </template>
       </aside>
     </div>
-    <BridgeFeeNotice :fees="selectedFeeDisclosure" />
   </div>
 </template>
 <style lang="postcss" scoped>
@@ -143,15 +147,13 @@ const selectedFeeDisclosure = computed(() =>
   gap: 2rem;
   align-items: center;
   justify-content: start;
+  margin-bottom: 2rem;
 }
 
 .BridgeNotice {
   display: grid;
-  gap: 0.35rem;
-}
-
-.BridgeSteps {
-  margin: 0;
-  padding-left: 1.25rem;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  line-height: 1.25;
 }
 </style>
