@@ -6,10 +6,11 @@ const shortBridgeNetworkLabel = (network: BridgeNetwork) =>
 	formatBridgeNetworkLabel(network).startsWith("Mina") ? "Mina" : "Zeko"
 
 const staticBridgeFee = {
-	requestMina: 0.1,
-	claimMina: 0.1,
-	totalMina: 0.2
+	totalMina: 0.4
 } as const
+
+const addMinaFees = (...fees: number[]) =>
+	Number(fees.reduce((total, fee) => total + fee, 0).toFixed(10))
 
 export const selectedBridgeFeeDisclosure = ({
 	source,
@@ -33,7 +34,11 @@ export const selectedBridgeFeeDisclosure = ({
 		firstTransfer: {
 			helperAccountCreationMina: accountCreationMina,
 			recipientAccountCreationMina: accountCreationMina,
-			maximumTotalMina: staticBridgeFee.totalMina + accountCreationMina * 2,
+			maximumTotalMina: addMinaFees(
+				staticBridgeFee.totalMina,
+				accountCreationMina,
+				accountCreationMina
+			),
 			destinationAccountLabel: isMinaToZeko ? "Zeko" : "Mina"
 		}
 	} as const

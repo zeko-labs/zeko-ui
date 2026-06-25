@@ -18,18 +18,18 @@ describe("bridge fee disclosure", () => {
 			destinationShortLabel: "Zeko",
 			minimumAmountMina: 5,
 			static: {
-				requestMina: 0.1,
-				claimMina: 0.1,
-				totalMina: 0.2
+				totalMina: 0.4
 			},
 			firstTransfer: {
-				maximumTotalMina: 0.4,
+				maximumTotalMina: 0.6,
 				helperAccountCreationMina: 0.1,
 				recipientAccountCreationMina: 0.1,
 				destinationAccountLabel: "Zeko"
 			}
 		})
 		expect(minaToZeko).not.toHaveProperty("bridgeMinimumLabel")
+		expect(minaToZeko.static).not.toHaveProperty("requestMina")
+		expect(minaToZeko.static).not.toHaveProperty("claimMina")
 
 		const zekoToMina = selectedBridgeFeeDisclosure({
 			source: ZEKO_M_NETWORKS.testnet,
@@ -41,7 +41,7 @@ describe("bridge fee disclosure", () => {
 			destinationShortLabel: "Mina",
 			minimumAmountMina: 3,
 			firstTransfer: {
-				maximumTotalMina: 2.2,
+				maximumTotalMina: 2.4,
 				helperAccountCreationMina: 1,
 				recipientAccountCreationMina: 1,
 				destinationAccountLabel: "Mina"
