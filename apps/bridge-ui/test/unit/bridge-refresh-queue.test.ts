@@ -531,4 +531,51 @@ describe("bridge refresh queue sync", () => {
 		bridge.stop()
 		wallet.stop()
 	})
+
+	it("removes a pre-submit non-wallet failure from the active main operation", async () => {
+		vi.stubGlobal("mina", {
+			sendTransaction: vi.fn(async () => {
+				throw new Error("Error invoking post: Method not found")
+			})
+		})
+		const store = getBridgeDebugBackendStore()
+		store.reset()
+		const wallet = createWalletActor()
+		wallet.start()
+		const bridge = createActor(
+			bridgeMachine.provide({
+				actors: {
+					detectWalletChange: fromCallback(() => {})
+				}
+			}),
+			{
+				input: {
+					debugMode: "mock-backend",
+					wallet: wallet as unknown as ActorRefFromLogic<typeof walletMachine>
+				}
+			}
+		)
+		bridge.start()
+
+		bridge.send({ type: "AccountChanged", account: "B62qtest-user" })
+		bridge.send({ type: "NetworkChanged", network: "mina:devnet" })
+		await waitFor(bridge, (snapshot) => snapshot.matches("READY"))
+
+		bridge.send({ type: "StartOperation", amount: "2" })
+		const completed = await waitFor(bridge, (snapshot) => {
+			if (snapshot.context.activeOperation === null && snapshot.context.operations.size === 0) {
+				return true
+			}
+			const activeOperation = snapshot.context.activeOperation
+				? snapshot.context.operations.get(snapshot.context.activeOperation)
+				: null
+			return activeOperation?.operation.getSnapshot().matches("FAILED") === true
+		})
+
+		expect(completed.context.activeOperation).toBeNull()
+		expect(completed.context.operations.size).toBe(0)
+
+		bridge.stop()
+		wallet.stop()
+	})
 })

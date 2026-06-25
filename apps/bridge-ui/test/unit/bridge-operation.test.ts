@@ -118,7 +118,7 @@ describe("bridgeOperationMachine", () => {
 		vi.unstubAllGlobals()
 	})
 
-	it("stores the early withdrawal threshold SDK error from submitWithdrawal", async () => {
+	it("stores and clears the early withdrawal threshold SDK error from submitWithdrawal", async () => {
 		const bridge = createBridgeActor()
 		const wallet = createWalletActor("zeko:testnet")
 		bridge.start()
@@ -155,7 +155,7 @@ describe("bridgeOperationMachine", () => {
 		expect(toUserFriendlyMessage(error)).toContain("at least 2.2 MINA")
 		expect(
 			bridge.getSnapshot().context.events.some((event) => event.type === "TerminateOperation")
-		).toBe(false)
+		).toBe(true)
 
 		actor.stop()
 		bridge.stop()

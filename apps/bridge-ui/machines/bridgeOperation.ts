@@ -68,8 +68,8 @@ const addError =
 		return { errors: [...context.errors, e] }
 	}
 
-const shouldTerminateQuietPreSubmitFailure = (context: BridgeOperationContext): boolean =>
-	context.transaction === undefined && context.errors.at(-1) instanceof QuietError
+const shouldTerminatePreSubmitFailure = (context: BridgeOperationContext): boolean =>
+	context.transaction === undefined && context.actionIndex === undefined
 
 const worker = (bridge: Bridge) => bridge.getSnapshot().context.worker
 
@@ -1086,7 +1086,7 @@ export const bridgeOperationMachine = setup({
 			type: "final",
 			entry: [
 				({ context }) => {
-					if (!shouldTerminateQuietPreSubmitFailure(context)) return
+					if (!shouldTerminatePreSubmitFailure(context)) return
 					context.bridge.send({ type: "TerminateOperation", id: context.id })
 				},
 				sendTo(
