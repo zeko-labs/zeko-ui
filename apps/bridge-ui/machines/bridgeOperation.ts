@@ -210,13 +210,6 @@ type BridgeWorker = {
 	direction: Direction
 }
 
-const BRIDGE_FEE_NANOMINA = 1 * 10e8
-
-const initialTransactionFeeNanomina = (key: TransactionKey) =>
-	key === "submitDeposit" || key === "submitWithdrawal"
-		? DEFAULT_TRANSACTION_FEE_NANOMINA
-		: BRIDGE_FEE_NANOMINA
-
 const createSdkSignature = (
 	context: BridgeOperationContext,
 	key: TransactionKey,
@@ -254,7 +247,7 @@ const transactionInput = (
 	key,
 	user: context.user,
 	network: currentNetwork(context),
-	initialFeeNanomina: initialTransactionFeeNanomina(key),
+	initialFeeNanomina: DEFAULT_TRANSACTION_FEE_NANOMINA,
 	createSdkSignature: ({ feeNanomina }) => createSdkSignature(context, key, feeNanomina),
 	completeSdkSignature: ({ requestId, signedTransaction }) =>
 		worker(context.bridge).completeSdkSignature({
@@ -1083,7 +1076,6 @@ export const bridgeOperationMachine = setup({
 			meta: { step: 4 }
 		},
 		FAILED: {
-			type: "final",
 			entry: [
 				sendTo(
 					({ context }) => context.bridge,

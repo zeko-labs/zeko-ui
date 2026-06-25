@@ -724,7 +724,7 @@ describe("bridgeOperationMachine", () => {
 		const user = "B62test"
 		const signedCommand = {
 			accountUpdates: [],
-			feePayer: { authorization: "", body: { fee: "1000000000", publicKey: user } },
+			feePayer: { authorization: "", body: { fee: "100000000", publicKey: user } },
 			memo: ""
 		}
 		vi.stubGlobal("mina", {
@@ -739,7 +739,7 @@ describe("bridgeOperationMachine", () => {
 			expect(input).not.toHaveProperty("wallet")
 			return {
 				requestId: "request-finalize-deposit",
-				transaction: unsignedTransaction({ fee: 1000000000, user })
+				transaction: unsignedTransaction({ fee: 100000000, user })
 			}
 		})
 		const bridge = createBridgeActor({
@@ -773,7 +773,7 @@ describe("bridgeOperationMachine", () => {
 			l1: "mina:devnet",
 			l2: "zeko-m:testnet",
 			user,
-			feeNanomina: 1 * 10e8
+			feeNanomina: 100_000_000
 		})
 
 		actor.stop()

@@ -648,4 +648,77 @@ describe("bridge refresh queue sync", () => {
 		bridge.stop()
 		wallet.stop()
 	})
+
+	it("reconciles a failed recovered claim when a terminal refresh arrives", async () => {
+		const user = "B62qtest-user"
+		vi.stubGlobal("mina", {
+			sendTransaction: vi.fn(async () => signedTransactionForUser(user))
+		})
+		const store = getBridgeDebugBackendStore()
+		store.reset()
+		store.setScenario("repro-claim-failure")
+		const wallet = createWalletActor()
+		wallet.start()
+		const bridge = createActor(
+			bridgeMachine.provide({
+				actors: {
+					detectWalletChange: fromCallback(() => {})
+				}
+			}),
+			{
+				input: {
+					debugMode: "mock-backend",
+					wallet: wallet as unknown as ActorRefFromLogic<typeof walletMachine>
+				}
+			}
+		)
+		bridge.start()
+
+		bridge.send({ type: "AccountChanged", account: user })
+		bridge.send({ type: "NetworkChanged", network: "mina:devnet" })
+		await waitFor(bridge, (snapshot) => snapshot.matches("READY"))
+
+		const seed = store.seedRecoveredOperation("withdrawal")
+		bridge.send({ type: "RefreshOperations" })
+		const recovered = await waitFor(
+			bridge,
+			(snapshot) => snapshot.context.activeOperation === seed.id && snapshot.matches("READY")
+		)
+		const operation = recovered.context.operations.get(seed.id)?.operation
+		if (!operation) throw new Error("Expected recovered operation actor")
+
+		await waitFor(operation, (snapshot) => snapshot.matches("TO_FINALIZE"))
+		operation.send({ type: "Finalize" })
+		await waitFor(operation, (snapshot) => snapshot.matches("FAILED"))
+		await waitFor(bridge, (snapshot) => snapshot.context.activeOperation === null)
+
+		store.update((current) => ({
+			...current,
+			seededOperations: current.seededOperations.map((operation) =>
+				operation.id === seed.id ? { ...operation, finalised: true } : operation
+			)
+		}))
+
+		const refreshCount = store.getSnapshot().findPendingOperationsCount
+		bridge.send({ type: "RefreshOperations" })
+		await waitFor(
+			bridge,
+			(snapshot) =>
+				store.getSnapshot().findPendingOperationsCount > refreshCount && snapshot.matches("READY")
+		)
+		const refreshedOperation = await waitFor(
+			operation,
+			(snapshot) => snapshot.context.completionVerification === "verified"
+		)
+
+		const refreshed = bridge.getSnapshot()
+
+		expect(refreshedOperation.matches("FAILED")).toBe(false)
+		expect(refreshedOperation.matches("BRIDGE_OPERATION_DONE_NOOP")).toBe(true)
+		expect(refreshedOperation.context.completionVerification).toBe("verified")
+		expect(refreshed.context.activeOperation).toBeNull()
+
+		bridge.stop()
+		wallet.stop()
+	})
 })
