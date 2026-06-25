@@ -423,3 +423,4 @@
 - T437 | done | fix-bridge-verification-regressions | done/T437-fix-bridge-verification-regressions.md
 - T438 | done | tighten-bridge-debug-fee-ux | done/T438-tighten-bridge-debug-fee-ux.md
 - T439 | done | address-codex-review-bridge-stuck-and-local-metrics | done/T439-address-codex-review-bridge-stuck-and-local-metrics.md
+- T440 | done | keep-claim-wallet-rejections-retryable | done/T440-keep-claim-wallet-rejections-retryable.md

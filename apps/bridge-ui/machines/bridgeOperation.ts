@@ -375,6 +375,11 @@ export const bridgeOperationMachine = setup({
 		toFinalizeWithdrawal: ({ context: { returnTo } }) => returnTo === "FINALIZE_WITHDRAWAL",
 		toFinalize: ({ context: { returnTo } }) => returnTo === "TO_FINALIZE",
 		toCancelDeposit: ({ context: { returnTo } }) => returnTo === "CANCEL_DEPOSIT",
+		quietError: ({ event }) =>
+			typeof event === "object" &&
+			event !== null &&
+			"error" in event &&
+			event.error instanceof QuietError,
 		cancellationReady: ({ context }) => context.canCancel === true,
 		cancellationSlotAvailable: ({ context }) => {
 			const activeCancellationOperation =
@@ -847,6 +852,11 @@ export const bridgeOperationMachine = setup({
 						},
 						onError: [
 							{
+								target: "#bridgeOperation.TO_FINALIZE",
+								guard: "quietError",
+								actions: assign(addError(new Error("Failed to finalize deposit")))
+							},
+							{
 								target: "#bridgeOperation.FAILED",
 								actions: assign(addError(new Error("Failed to finalize deposit")))
 							}
@@ -1007,6 +1017,11 @@ export const bridgeOperationMachine = setup({
 							)
 						},
 						onError: [
+							{
+								target: "#bridgeOperation.TO_FINALIZE",
+								guard: "quietError",
+								actions: assign(addError(new Error("Failed to finalize withdrawal")))
+							},
 							{
 								target: "#bridgeOperation.FAILED",
 								actions: assign(addError(new Error("Failed to finalize withdrawal")))
