@@ -14,7 +14,7 @@ defineProps<{
         <dt>Bridge transactions</dt>
         <dd>
           {{ fees.static.totalMina }} MINA total
-          <span>
+          <span class="FeeBreakdown">
             {{ fees.static.requestMina }} send + {{ fees.static.claimMina }}
             claim
           </span>
@@ -23,12 +23,16 @@ defineProps<{
       <div>
         <dt>First transfer maximum</dt>
         <dd>
-          Up to {{ fees.firstTransfer.maximumTotalMina }} MINA total
-          <span>
-            May include {{ fees.firstTransfer.helperAccountCreationMina }}
-            helper + {{ fees.firstTransfer.recipientAccountCreationMina }}
-            recipient account creation on
-            {{ fees.firstTransfer.destinationAccountLabel }}
+          {{ fees.firstTransfer.maximumTotalMina }} MINA total
+          <span class="FeeBreakdown">
+            {{ fees.static.totalMina }} MINA bridge fees +
+            {{ fees.firstTransfer.helperAccountCreationMina }} MINA helper
+            account creation + {{
+              fees.firstTransfer.recipientAccountCreationMina
+            }}
+            MINA recipient account creation on
+            {{ fees.firstTransfer.destinationAccountLabel }} when those
+            destination accounts do not exist
           </span>
         </dd>
       </div>
@@ -78,10 +82,12 @@ defineProps<{
     font-weight: var(--typography-weight-lexend-semibold);
   }
 
-  span {
+  .FeeBreakdown {
     color: var(--theme-light-text-secondary);
-    font-size: var(--typography_fluid-lexend-xs);
+    font-size: 0.8125rem;
+    font-style: italic;
     font-weight: var(--typography-weight-lexend-regular);
+    line-height: 1.45;
   }
 
   @media (max-width: 720px) {

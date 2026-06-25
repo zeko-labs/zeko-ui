@@ -2,8 +2,10 @@
 import { ZEKO_M_NETWORKS } from "@zeko/networks"
 import {
 	amountIsBelowBridgeMinimum,
+	type BridgeAmountInput,
 	BRIDGE_MINIMUM_AMOUNT_MINA,
-	canStartBridgeOperation
+	canStartBridgeOperation,
+	normalizeBridgeAmountInput
 } from "./bridgeInputs"
 import { selectedBridgeFeeDisclosure } from "./bridgeFees"
 import { formatBridgeNetworkLabel } from "~~/machines/networks"
@@ -11,17 +13,18 @@ import { formatBridgeNetworkLabel } from "~~/machines/networks"
 const bs = useBridgeStore()
 const bridgeSettings = useBridgeSettings()
 
-const amountToBridge = ref<number | undefined>(undefined)
+const amountToBridge = ref<BridgeAmountInput>(undefined)
 const ledgerUnsupportedNetworkLabel = formatBridgeNetworkLabel(
 	ZEKO_M_NETWORKS.mainnet
 )
 
 const startBridge = () => {
 	if (!canStart.value) return
-	const amount = (amountToBridge.value ?? 0).toString()
+	const normalizedAmount = normalizeBridgeAmountInput(amountToBridge.value)
+	if (normalizedAmount === undefined) return
 	bs.bridge.send({
 		type: "StartOperation",
-		amount,
+		amount: normalizedAmount.toString(),
 		timeoutSlots: bridgeSettings.timeoutSlots.value
 	})
 	amountToBridge.value = undefined

@@ -2,12 +2,13 @@
 import { Field } from "@ark-ui/vue/field"
 import { createListCollection, Select } from "@ark-ui/vue/select"
 import { ChevronDownIcon } from "lucide-vue-next"
+import type { BridgeAmountInput } from "./bridgeInputs"
 
 const { loading = false, invalid = false } = defineProps<{
 	loading?: boolean
 	invalid?: boolean
 }>()
-const modelValue = defineModel({ required: true })
+const modelValue = defineModel<BridgeAmountInput>({ required: true })
 const collection = createListCollection({
 	items: ["MINA", "ZEKO"] as const
 })

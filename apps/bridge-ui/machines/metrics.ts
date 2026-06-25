@@ -1,6 +1,9 @@
+import { getBridgeDebugMode, type BridgeDebugMode } from "./debugMode"
 import type { MetricEvent } from "./metrics.schema"
 
 export type { MetricEvent }
+
+const localMetricHostnames = new Set(["localhost", "127.0.0.1", "::1"])
 
 type UserContext = {
 	userAgent: string
@@ -10,6 +13,26 @@ type UserContext = {
 }
 
 let cachedUserContext: UserContext | null = null
+
+type ShouldSendBridgeMetricInput = {
+	debugMode?: BridgeDebugMode
+	hostname?: string | null
+}
+
+const safeHostname = (): string | null => {
+	try {
+		return globalThis.location?.hostname ?? null
+	} catch {
+		return null
+	}
+}
+
+export const shouldSendBridgeMetric = ({
+	debugMode = getBridgeDebugMode(),
+	hostname = safeHostname()
+}: ShouldSendBridgeMetricInput = {}): boolean =>
+	debugMode !== "mock-backend" &&
+	(typeof hostname !== "string" || !localMetricHostnames.has(hostname.trim().toLowerCase()))
 
 /**
  * Collects device context (userAgent, cpuCores, language, screenResolution).
@@ -33,6 +56,8 @@ const getUserContext = (walletAddress: string | undefined): Partial<MetricEvent>
  * Failures are silently ignored (fire-and-forget).
  */
 export const sendMetric = (event: MetricEvent, walletAddress: string | undefined) => {
+	if (!shouldSendBridgeMetric()) return
+
 	const payload: MetricEvent = {
 		...getUserContext(walletAddress),
 		...event,

@@ -420,3 +420,4 @@
 - T434 | done | fix-claim-failure-scenarios-for-both-routes | done/T434-fix-claim-failure-scenarios-for-both-routes.md
 - T435 | done | redesign-fee-and-signing-copy-display | done/T435-redesign-fee-and-signing-copy-display.md
 - T436 | done | harden-bridge-ui-manual-verification-instructions | done/T436-harden-bridge-ui-manual-verification-instructions.md
+- T437 | done | fix-bridge-verification-regressions | done/T437-fix-bridge-verification-regressions.md

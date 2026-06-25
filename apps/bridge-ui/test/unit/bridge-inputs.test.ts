@@ -19,6 +19,20 @@ describe("bridge input rules", () => {
 		expect(canStartBridgeOperation({ loading: false, amount: 2, address: "B62qtest-user" })).toBe(
 			true
 		)
+		expect(
+			canStartBridgeOperation({
+				loading: false,
+				amount: "2" as never,
+				address: "B62qtest-user"
+			})
+		).toBe(true)
+		expect(
+			canStartBridgeOperation({
+				loading: false,
+				amount: "1.999" as never,
+				address: "B62qtest-user"
+			})
+		).toBe(false)
 		expect(canStartBridgeOperation({ loading: true, amount: 2, address: "B62qtest-user" })).toBe(
 			false
 		)
@@ -26,6 +40,8 @@ describe("bridge input rules", () => {
 		expect(amountIsBelowBridgeMinimum(undefined)).toBe(false)
 		expect(amountIsBelowBridgeMinimum(1.999)).toBe(true)
 		expect(amountIsBelowBridgeMinimum(2)).toBe(false)
+		expect(amountIsBelowBridgeMinimum("1.999" as never)).toBe(true)
+		expect(amountIsBelowBridgeMinimum("2" as never)).toBe(false)
 	})
 
 	it("uses the shared minimum helper in Inputs.vue", () => {

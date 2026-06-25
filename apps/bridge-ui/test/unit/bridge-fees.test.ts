@@ -1,5 +1,6 @@
 import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
 import { describe, expect, it } from "vitest"
+import feeNoticeSource from "../../app/components/BridgeFeeNotice.vue?raw"
 import inputsSource from "../../app/components/Inputs.vue?raw"
 
 describe("bridge fee disclosure", () => {
@@ -44,5 +45,16 @@ describe("bridge fee disclosure", () => {
 		expect(inputsSource).toContain("selectedFeeDisclosure")
 		expect(inputsSource).not.toContain("Deposit total")
 		expect(inputsSource).not.toContain("Withdrawal total")
+	})
+
+	it("uses exact selected-route fee wording with small italic details", () => {
+		expect(feeNoticeSource).toContain("{{ fees.firstTransfer.maximumTotalMina }} MINA total")
+		expect(feeNoticeSource).toContain("{{ fees.static.totalMina }} MINA bridge fees")
+		expect(feeNoticeSource).toMatch(/helper\s+account creation/)
+		expect(feeNoticeSource).toMatch(/recipient account creation/)
+		expect(feeNoticeSource).toMatch(/when those\s+destination accounts do not exist/)
+		expect(feeNoticeSource).toContain("font-style: italic")
+		expect(feeNoticeSource).not.toContain("Up to")
+		expect(feeNoticeSource).not.toContain("May include")
 	})
 })
