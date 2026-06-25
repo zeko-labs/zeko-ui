@@ -18,15 +18,14 @@ export const selectedBridgeFeeDisclosure = ({
 	destination: BridgeNetwork
 }) => {
 	const isMinaToZeko = isMinaBridgeNetwork(source)
-	const minimumAmountMina = isMinaToZeko ? 5 : 3
-	const routeFeeMina = isMinaToZeko ? 3 : 5
+	const minimumAmountMina = isMinaToZeko ? 3 : 5
 	const accountCreationMina = isMinaToZeko ? 0.1 : 1
 	const routeShortLabel = `${shortBridgeNetworkLabel(source)} -> ${shortBridgeNetworkLabel(destination)}`
 
 	return {
 		routeLabel: `${formatBridgeNetworkLabel(source)} to ${formatBridgeNetworkLabel(destination)}`,
 		routeShortLabel,
-		routeFeeLabel: `${routeShortLabel} fee ${routeFeeMina} MINA`,
+		bridgeMinimumLabel: `${routeShortLabel} bridge minimum ${minimumAmountMina} MINA`,
 		minimumAmountMina,
 		static: staticBridgeFee,
 		firstTransfer: {

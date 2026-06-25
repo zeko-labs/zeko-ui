@@ -19,8 +19,7 @@ const feeDetailsTitle = computed(
 
 <template>
   <span class="BridgeFeeNotice">
-    <strong>Bridge Minimum {{ fees.minimumAmountMina }} MINA.</strong>
-    <span>{{ fees.routeFeeLabel }}.</span>
+    <strong>{{ fees.bridgeMinimumLabel }}</strong>
     <button
       class="FeeHelp"
       type="button"

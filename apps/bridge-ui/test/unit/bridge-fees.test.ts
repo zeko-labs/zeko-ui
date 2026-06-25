@@ -14,8 +14,8 @@ describe("bridge fee disclosure", () => {
 			})
 		).toMatchObject({
 			routeLabel: "Mina Devnet to Zeko Testnet",
-			routeFeeLabel: "Mina -> Zeko fee 3 MINA",
-			minimumAmountMina: 5,
+			bridgeMinimumLabel: "Mina -> Zeko bridge minimum 3 MINA",
+			minimumAmountMina: 3,
 			static: {
 				requestMina: 0.1,
 				claimMina: 0.1,
@@ -36,8 +36,8 @@ describe("bridge fee disclosure", () => {
 			})
 		).toMatchObject({
 			routeLabel: "Zeko Testnet to Mina Devnet",
-			routeFeeLabel: "Zeko -> Mina fee 5 MINA",
-			minimumAmountMina: 3,
+			bridgeMinimumLabel: "Zeko -> Mina bridge minimum 5 MINA",
+			minimumAmountMina: 5,
 			firstTransfer: {
 				maximumTotalMina: 2.2,
 				helperAccountCreationMina: 1,
@@ -55,9 +55,10 @@ describe("bridge fee disclosure", () => {
 	})
 
 	it("uses a native title tooltip next to the bridge minimum", () => {
-		expect(feeNoticeSource).toContain("Bridge Minimum")
-		expect(feeNoticeSource).toContain("{{ fees.minimumAmountMina }} MINA")
-		expect(feeNoticeSource).toContain("{{ fees.routeFeeLabel }}")
+		expect(feeNoticeSource).toContain("{{ fees.bridgeMinimumLabel }}")
+		expect(feeNoticeSource).not.toContain("Bridge Minimum")
+		expect(feeNoticeSource).not.toContain("{{ fees.routeFeeLabel }}")
+		expect(feeNoticeSource).not.toMatch(/fee \{\{.*\}\} MINA/)
 		expect(feeNoticeSource).toContain(":title=")
 		expect(feeNoticeSource).toContain("?")
 		expect(feeNoticeSource).toContain("props.fees.static.totalMina")
