@@ -408,3 +408,10 @@
 - T422 | done | address-bridge-cli-review-feedback | done/T422-address-bridge-cli-review-feedback.md
 - T423 | done | merge-main-after-debug-mode | done/T423-merge-main-after-debug-mode.md
 - T424 | done | fix-dashboard-pending-anchor-warning | done/T424-fix-dashboard-pending-anchor-warning.md
+- T425 | done | surface-console-only-bridge-errors | done/T425-surface-console-only-bridge-errors.md
+- T426 | done | stop-withdrawal-claim-loop | done/T426-stop-withdrawal-claim-loop.md
+- T427 | done | restore-bridge-sentry-telemetry | done/T427-restore-bridge-sentry-telemetry.md
+- T428 | done | display-bridge-fee-breakdown | done/T428-display-bridge-fee-breakdown.md
+- T429 | done | show-pending-for-unindexed-operations | done/T429-show-pending-for-unindexed-operations.md
+- T430 | done | update-bridge-signing-notice | done/T430-update-bridge-signing-notice.md
+- T431 | done | block-bridge-transfers-below-two-mina | done/T431-block-bridge-transfers-below-two-mina.md

@@ -1,5 +1,10 @@
 <script lang="ts" setup>
 import { ZEKO_M_NETWORKS } from "@zeko/networks"
+import {
+	BRIDGE_MINIMUM_AMOUNT_MINA,
+	canStartBridgeOperation
+} from "./bridgeInputs"
+import { bridgeFeeDisclosure } from "./bridgeFees"
 import { formatBridgeNetworkLabel } from "~~/machines/networks"
 
 const bs = useBridgeStore()
@@ -11,6 +16,7 @@ const ledgerUnsupportedNetworkLabel = formatBridgeNetworkLabel(
 )
 
 const startBridge = () => {
+	if (!canStart.value) return
 	const amount = (amountToBridge.value ?? 0).toString()
 	bs.bridge.send({
 		type: "StartOperation",
@@ -20,13 +26,14 @@ const startBridge = () => {
 	amountToBridge.value = undefined
 }
 const loading = computed(() => !bs.bridge.snapshot.matches("READY"))
-const disabledButton = computed(
-	() =>
-		loading.value ||
-		!amountToBridge.value ||
-		amountToBridge.value <= 0 ||
-		bs.address.length === 0
+const canStart = computed(() =>
+	canStartBridgeOperation({
+		address: bs.address,
+		amount: amountToBridge.value,
+		loading: loading.value
+	})
 )
+const disabledButton = computed(() => !canStart.value)
 </script>
 <template>
   <div :class="{ Inputs: true, isLoading: loading }">
@@ -48,7 +55,7 @@ const disabledButton = computed(
         :disabled="disabledButton">
         Send
       </Button>
-      <aside>
+      <aside :data-minimum-mina="BRIDGE_MINIMUM_AMOUNT_MINA">
         <template v-if="loading">
           Please wait… The Zeko Bridge is loading your wallet's latest
           transaction history and status.
@@ -57,9 +64,11 @@ const disabledButton = computed(
           Bridging requires signing two transactions: 1) Send from the origin
           chain, then 2) Claim to the destination chain. Note: Ledger hardware
           wallets are not yet supported by {{ ledgerUnsupportedNetworkLabel }}.
+          Bridge minimum 2 MINA.
         </template>
       </aside>
     </div>
+    <BridgeFeeNotice :fees="bridgeFeeDisclosure" />
   </div>
 </template>
 <style lang="postcss" scoped>

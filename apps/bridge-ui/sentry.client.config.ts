@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nuxt"
+import { bridgeSentryReplayOptions } from "~/telemetry/sentryOptions"
 import { beforeSendBridgeUiEvent, sentryIgnorePatterns } from "~/telemetry/sentryClient"
 
 Sentry.init({
@@ -26,8 +27,7 @@ Sentry.init({
 	],
 	//  session-replay
 	// https://docs.sentry.io/platforms/javascript/session-replay/configuration/#general-integration-configuration
-	replaysSessionSampleRate: 0,
-	replaysOnErrorSampleRate: 1.0,
+	...bridgeSentryReplayOptions,
 	// traces
 	// https://docs.sentry.io/platforms/javascript/configuration/options/#traces-sample-rate
 	tracesSampleRate: 0.05,

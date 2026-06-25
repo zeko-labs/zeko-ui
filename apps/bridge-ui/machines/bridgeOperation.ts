@@ -1026,7 +1026,6 @@ export const bridgeOperationMachine = setup({
 						onError: [
 							{
 								target: "#bridgeOperation.FAILED",
-								guard: ({ event }) => isTerminalBridgeError(event.error),
 								actions: [
 									assign(addError(new Error("Failed to finalize withdrawal"))),
 									sendTo(
@@ -1034,15 +1033,6 @@ export const bridgeOperationMachine = setup({
 										({ self }) => ({ type: "TerminateOperation", id: self.id })
 									)
 								]
-							},
-							{
-								target: "#bridgeOperation.FAILED",
-								guard: ({ context }) => context.errors.length >= 3,
-								actions: assign(addError(new Error("Failed to finalize withdrawal")))
-							},
-							{
-								target: "#bridgeOperation.PENDING_WITHDRAWAL",
-								actions: assign(addError(new Error("Failed to finalize withdrawal")))
 							}
 						]
 					}

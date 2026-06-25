@@ -30,7 +30,7 @@ export const completedOperationTableStatus = (
 		(status.kind === "complete" || status.kind === "cancelled") &&
 		completionVerification === "unverified"
 	)
-		return { text: "Unindexed", kind: "pending" }
+		return { text: "Pending", kind: "pending" }
 	if (status.kind === "complete") return { text: "Completed", kind: "complete" }
 	return status
 }

@@ -15,7 +15,7 @@ vi.mock("../../app/service-worker/notificationList", () => ({
 }))
 
 const firstWithdrawalTooSmallMessage =
-	"First Zeko->Mina withdrawal amount is too small: recipient B62test does not have an L1 helper account yet, so the first withdrawal must be at least 1 MINA to cover the Mina account creation fee. This withdrawal is 0.2 MINA and cannot proceed as submitted."
+	"First Zeko->Mina withdrawal amount is too small: recipient B62test requires 2 destination account creation fees and two bridge proof fees, so the transfer amount must be at least 2.4 MINA."
 
 const createBridgeActor = (
 	worker: object = {},
@@ -152,7 +152,7 @@ describe("bridgeOperationMachine", () => {
 		const error = actor.getSnapshot().context.errors.at(-1)
 
 		expect(error?.message).toBe(firstWithdrawalTooSmallMessage)
-		expect(toUserFriendlyMessage(error)).toContain("required Mina helper account")
+		expect(toUserFriendlyMessage(error)).toContain("at least 2.4 MINA")
 		expect(
 			bridge.getSnapshot().context.events.some((event) => event.type === "TerminateOperation")
 		).toBe(true)
@@ -971,5 +971,51 @@ describe("bridgeOperationMachine", () => {
 		bridge.stop()
 		wallet.stop()
 		vi.useRealTimers()
+	})
+
+	it("fails visibly after a withdrawal claim backend error instead of returning to claim", async () => {
+		const claimError = new Error("Debug scenario: withdrawal claim failed")
+		const bridge = createBridgeActor()
+		const wallet = createWalletActor("mina:devnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(
+			bridgeOperationMachine.provide({
+				actors: {
+					transactionMachine: fromPromise(async () => {
+						throw claimError
+					})
+				}
+			}),
+			{
+				input: {
+					bridge: bridge as never,
+					wallet: wallet as never,
+					source: "zeko-m:testnet",
+					destination: "mina:devnet",
+					direction: "withdrawal",
+					amount: "4",
+					actionIndex: 0
+				}
+			}
+		)
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+		actor.send({ type: "CanFinalize", index: 0 })
+		actor.send({ type: "Finalize" })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("FAILED"))
+
+		expect(actor.getSnapshot().context.errors.at(-1)).toBe(claimError)
+		expect(bridge.getSnapshot().context.events).toContainEqual({
+			type: "TerminateOperation",
+			id: actor.id
+		})
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
 	})
 })

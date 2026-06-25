@@ -5,6 +5,8 @@ export const BRIDGE_DEBUG_BACKEND_STORAGE_KEY = "bridgeDebugBackendState"
 
 export const bridgeDebugBackendScenarios = [
 	"happy-path",
+	"repro-first-withdrawal-too-small",
+	"repro-withdrawal-claim-failure",
 	"repro-unindexed-withdrawal-completion"
 ] as const
 
@@ -188,6 +190,9 @@ const debugErrorMessage = (error: BridgeDebugForcedError) =>
 		terminal: "Debug scenario: terminal backend error",
 		transient: "Debug scenario: transient worker error"
 	})[error]
+
+const firstWithdrawalTooSmallMessage = (recipient: string) =>
+	`First Zeko->Mina withdrawal amount is too small: recipient ${recipient} requires 2 destination account creation fees and two bridge proof fees, so the transfer amount must be at least 2.4 MINA.`
 
 const currentTimestampMs = () => Date.now()
 
@@ -637,6 +642,9 @@ export const createMockBridgeOperationsWorker = ({
 					(seed) =>
 						seed.kind === "withdrawal" && seed.cancelled === false && seed.finalised === false
 				)
+				if (snapshot.scenario === "repro-first-withdrawal-too-small" && firstPendingWithdrawal) {
+					throw new Error(firstWithdrawalTooSmallMessage(input.user))
+				}
 				return firstPendingWithdrawal
 					? {
 							available: true,
@@ -661,6 +669,12 @@ export const createMockBridgeOperationsWorker = ({
 				)
 				if (!signatureRequest) {
 					throw new Error(`No debug SDK signature request found for ${input.requestId}`)
+				}
+				if (
+					snapshot.scenario === "repro-withdrawal-claim-failure" &&
+					signatureRequest.action === "finalizeWithdrawal"
+				) {
+					throw new Error("Debug scenario: withdrawal claim failed")
 				}
 				const hash = fakeHash(snapshot.nextHashId)
 				store.update((current) => ({

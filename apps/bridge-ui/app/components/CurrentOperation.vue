@@ -75,20 +75,21 @@ const requestNetworkChange = () => {
 	})
 }
 
-watch(machine.value.context.errors, (newErrors) => {
-	if (newErrors) {
+watch(
+	() => machine.value.context.errors,
+	(newErrors) => {
 		const [e] = newErrors.toReversed()
-		if (e) {
-			console.error(`A total of ${newErrors.length} errors have occurred.`)
-			errorToaster.create({
-				title: "Error",
-				description: toUserFriendlyMessage(e),
-				type: "error",
-				duration: Number.POSITIVE_INFINITY
-			})
-		}
+		if (!e) return
+
+		console.error(`A total of ${newErrors.length} errors have occurred.`)
+		errorToaster.create({
+			title: "Error",
+			description: toUserFriendlyMessage(e),
+			type: "error",
+			duration: Number.POSITIVE_INFINITY
+		})
 	}
-})
+)
 </script>
 <template>
   <div :class="{ CurrentOperationWrapper: true, isLoading, hasCTA }">

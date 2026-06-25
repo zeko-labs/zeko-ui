@@ -46,11 +46,11 @@ describe("bridgeOperationDateColumn", () => {
 		expect(bridgeOperationsSource).toContain('row.getValue("hash")')
 	})
 
-	it("renders explicit status text for unverified completed rows", () => {
+	it("renders pending status text for unverified completed rows", () => {
 		const row: BridgeOperationRow = {
 			id: "op-1",
 			status: "BRIDGE_OPERATION_COMPLETED",
-			statusText: "Unindexed",
+			statusText: "Pending",
 			statusKind: "pending",
 			source: "zeko",
 			destination: "mina",
@@ -61,7 +61,7 @@ describe("bridgeOperationDateColumn", () => {
 		}
 
 		expect(row.statusKind).toBe("pending")
-		expect(row.statusText).toBe("Unindexed")
+		expect(row.statusText).toBe("Pending")
 		expect(bridgeOperationsSource).toContain("row.original.statusText")
 	})
 
@@ -74,14 +74,14 @@ describe("bridgeOperationDateColumn", () => {
 				{ text: "Withdrawal Completed", kind: "complete" },
 				"unverified"
 			)
-		).toEqual({ text: "Unindexed", kind: "pending" })
+		).toEqual({ text: "Pending", kind: "pending" })
 	})
 
-	it("shows unverified cancelled rows as unindexed until backend cancellation recovery matches", () => {
+	it("shows unverified cancelled rows as pending until backend cancellation recovery matches", () => {
 		expect(
 			completedOperationTableStatus({ text: "Cancelled", kind: "cancelled" }, "unverified")
 		).toEqual({
-			text: "Unindexed",
+			text: "Pending",
 			kind: "pending"
 		})
 		expect(

@@ -49,4 +49,11 @@ describe("sentry.client.config", () => {
 			} satisfies EventHint)
 		).toBe(event)
 	})
+
+	it("keeps baseline replay sampling enabled for production diagnosis", async () => {
+		const { bridgeSentryReplayOptions } = await import("../../app/telemetry/sentryOptions")
+
+		expect(bridgeSentryReplayOptions.replaysSessionSampleRate).toBeGreaterThan(0)
+		expect(bridgeSentryReplayOptions.replaysOnErrorSampleRate).toBe(1)
+	})
 })

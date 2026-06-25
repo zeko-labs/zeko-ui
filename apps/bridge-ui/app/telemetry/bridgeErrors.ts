@@ -119,6 +119,7 @@ export const captureBridgeError = ({
 
 	Sentry.withScope((scope) => {
 		scope.setLevel("error")
+		scope.setTag("app_originated", "true")
 		scope.setTag("bridge_category", context.category)
 		scope.setTag("bridge_action", context.action)
 		scope.setTag("bridge_wallet_present", context.walletAddress ? "true" : "false")
