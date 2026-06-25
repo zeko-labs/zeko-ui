@@ -430,3 +430,4 @@
 - T444 | done | align-claim-transaction-fee | done/T444-align-claim-transaction-fee.md
 - T445 | done | recover-failed-operations-after-terminal-refresh | done/T445-recover-failed-operations-after-terminal-refresh.md
 - T446 | done | tighten-bridge-minimum-and-fee-copy | done/T446-tighten-bridge-minimum-and-fee-copy.md
+- T447 | done | remove-bridge-input-bottom-margin | done/T447-remove-bridge-input-bottom-margin.md

@@ -147,7 +147,6 @@ const selectedFeeDisclosure = computed(() =>
   gap: 2rem;
   align-items: center;
   justify-content: start;
-  margin-bottom: 2rem;
 }
 
 .BridgeNotice {

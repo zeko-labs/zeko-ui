@@ -127,7 +127,7 @@ describe("bridge input rules", () => {
 		expect(inputsSource).toContain("selectedBridgeMinimumAmountMina")
 		expect(inputsSource).toContain(':invalid="amountIsBelowMinimum"')
 		expect(inputsSource).toMatch(/\.Bottom\s*{[\s\S]*gap:\s*2rem/)
-		expect(inputsSource).toMatch(/margin-bottom:\s*2rem/)
+		expect(inputsSource).not.toMatch(/\.Bottom\s*{[\s\S]*margin-bottom:/)
 	})
 
 	it("keeps bridge input helpers outside the components directory", () => {
