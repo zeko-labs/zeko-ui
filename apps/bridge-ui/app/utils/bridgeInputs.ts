@@ -1,8 +1,8 @@
 import type { BridgeNetwork } from "~~/machines/networks"
 import { isMinaBridgeNetwork } from "~~/machines/networks"
 
-const MINA_TO_ZEKO_MINIMUM_AMOUNT_MINA = 3
-const ZEKO_TO_MINA_MINIMUM_AMOUNT_MINA = 5
+const MINA_TO_ZEKO_MINIMUM_AMOUNT_MINA = 5
+const ZEKO_TO_MINA_MINIMUM_AMOUNT_MINA = 3
 
 export type BridgeAmountInput = number | string | undefined
 

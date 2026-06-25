@@ -12,13 +12,13 @@ describe("bridge input rules", () => {
 				source: MINA_NETWORKS.devnet,
 				destination: ZEKO_M_NETWORKS.testnet
 			})
-		).toBe(3)
+		).toBe(5)
 		expect(
 			selectedBridgeMinimumAmountMina({
 				source: ZEKO_M_NETWORKS.testnet,
 				destination: MINA_NETWORKS.devnet
 			})
-		).toBe(5)
+		).toBe(3)
 
 		expect(
 			canStartBridgeOperation({
@@ -32,7 +32,7 @@ describe("bridge input rules", () => {
 		expect(
 			canStartBridgeOperation({
 				loading: false,
-				amount: 2.999,
+				amount: 4.999,
 				address: "B62qtest-user",
 				source: MINA_NETWORKS.devnet,
 				destination: ZEKO_M_NETWORKS.testnet
@@ -41,7 +41,7 @@ describe("bridge input rules", () => {
 		expect(
 			canStartBridgeOperation({
 				loading: false,
-				amount: 3,
+				amount: 5,
 				address: "B62qtest-user",
 				source: MINA_NETWORKS.devnet,
 				destination: ZEKO_M_NETWORKS.testnet
@@ -50,7 +50,7 @@ describe("bridge input rules", () => {
 		expect(
 			canStartBridgeOperation({
 				loading: false,
-				amount: 4.999,
+				amount: 2.999,
 				address: "B62qtest-user",
 				source: ZEKO_M_NETWORKS.testnet,
 				destination: MINA_NETWORKS.devnet
@@ -59,7 +59,7 @@ describe("bridge input rules", () => {
 		expect(
 			canStartBridgeOperation({
 				loading: false,
-				amount: 5,
+				amount: 3,
 				address: "B62qtest-user",
 				source: ZEKO_M_NETWORKS.testnet,
 				destination: MINA_NETWORKS.devnet
@@ -68,7 +68,7 @@ describe("bridge input rules", () => {
 		expect(
 			canStartBridgeOperation({
 				loading: true,
-				amount: 3,
+				amount: 5,
 				address: "B62qtest-user",
 				source: MINA_NETWORKS.devnet,
 				destination: ZEKO_M_NETWORKS.testnet
@@ -77,7 +77,7 @@ describe("bridge input rules", () => {
 		expect(
 			canStartBridgeOperation({
 				loading: false,
-				amount: 3,
+				amount: 5,
 				address: "",
 				source: MINA_NETWORKS.devnet,
 				destination: ZEKO_M_NETWORKS.testnet
@@ -93,28 +93,28 @@ describe("bridge input rules", () => {
 		).toBe(false)
 		expect(
 			amountIsBelowBridgeMinimum({
-				amount: 2.999,
+				amount: 4.999,
 				source: MINA_NETWORKS.devnet,
 				destination: ZEKO_M_NETWORKS.testnet
 			})
 		).toBe(true)
 		expect(
 			amountIsBelowBridgeMinimum({
-				amount: 3,
+				amount: 5,
 				source: MINA_NETWORKS.devnet,
 				destination: ZEKO_M_NETWORKS.testnet
 			})
 		).toBe(false)
 		expect(
 			amountIsBelowBridgeMinimum({
-				amount: 4.999,
+				amount: 2.999,
 				source: ZEKO_M_NETWORKS.testnet,
 				destination: MINA_NETWORKS.devnet
 			})
 		).toBe(true)
 		expect(
 			amountIsBelowBridgeMinimum({
-				amount: "5" as never,
+				amount: "3" as never,
 				source: ZEKO_M_NETWORKS.testnet,
 				destination: MINA_NETWORKS.devnet
 			})

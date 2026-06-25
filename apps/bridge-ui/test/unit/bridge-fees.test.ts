@@ -2,20 +2,21 @@ import { MINA_NETWORKS, ZEKO_M_NETWORKS } from "@zeko/networks"
 import { describe, expect, it } from "vitest"
 import feeNoticeSource from "../../app/components/BridgeFeeNotice.vue?raw"
 import inputsSource from "../../app/components/Inputs.vue?raw"
+import bridgeFeesSource from "../../app/utils/bridgeFees.ts?raw"
 
 describe("bridge fee disclosure", () => {
 	it("describes the selected route fee without deposit or withdrawal terminology", async () => {
 		const { selectedBridgeFeeDisclosure } = await import("../../app/utils/bridgeFees")
 
-		expect(
-			selectedBridgeFeeDisclosure({
-				source: MINA_NETWORKS.devnet,
-				destination: ZEKO_M_NETWORKS.testnet
-			})
-		).toMatchObject({
+		const minaToZeko = selectedBridgeFeeDisclosure({
+			source: MINA_NETWORKS.devnet,
+			destination: ZEKO_M_NETWORKS.testnet
+		})
+		expect(minaToZeko).toMatchObject({
 			routeLabel: "Mina Devnet to Zeko Testnet",
-			bridgeMinimumLabel: "Mina -> Zeko bridge minimum 3 MINA",
-			minimumAmountMina: 3,
+			sourceShortLabel: "Mina",
+			destinationShortLabel: "Zeko",
+			minimumAmountMina: 5,
 			static: {
 				requestMina: 0.1,
 				claimMina: 0.1,
@@ -28,16 +29,17 @@ describe("bridge fee disclosure", () => {
 				destinationAccountLabel: "Zeko"
 			}
 		})
+		expect(minaToZeko).not.toHaveProperty("bridgeMinimumLabel")
 
-		expect(
-			selectedBridgeFeeDisclosure({
-				source: ZEKO_M_NETWORKS.testnet,
-				destination: MINA_NETWORKS.devnet
-			})
-		).toMatchObject({
+		const zekoToMina = selectedBridgeFeeDisclosure({
+			source: ZEKO_M_NETWORKS.testnet,
+			destination: MINA_NETWORKS.devnet
+		})
+		expect(zekoToMina).toMatchObject({
 			routeLabel: "Zeko Testnet to Mina Devnet",
-			bridgeMinimumLabel: "Zeko -> Mina bridge minimum 5 MINA",
-			minimumAmountMina: 5,
+			sourceShortLabel: "Zeko",
+			destinationShortLabel: "Mina",
+			minimumAmountMina: 3,
 			firstTransfer: {
 				maximumTotalMina: 2.2,
 				helperAccountCreationMina: 1,
@@ -45,6 +47,9 @@ describe("bridge fee disclosure", () => {
 				destinationAccountLabel: "Mina"
 			}
 		})
+		expect(zekoToMina).not.toHaveProperty("bridgeMinimumLabel")
+		expect(bridgeFeesSource).toContain("selectedBridgeMinimumAmountMina")
+		expect(bridgeFeesSource).not.toMatch(/minimumAmountMina\s*=\s*isMinaToZeko\s*\?/)
 	})
 
 	it("renders only selected route fees from the input panel", () => {
@@ -55,7 +60,12 @@ describe("bridge fee disclosure", () => {
 	})
 
 	it("uses a native title tooltip next to the bridge minimum", () => {
-		expect(feeNoticeSource).toContain("{{ fees.bridgeMinimumLabel }}")
+		expect(feeNoticeSource).toContain("ArrowRight")
+		expect(feeNoticeSource).toContain("{{ fees.sourceShortLabel }}")
+		expect(feeNoticeSource).toContain("{{ fees.destinationShortLabel }}")
+		expect(feeNoticeSource).toMatch(/bridge minimum\s*\{\{\s*fees\.minimumAmountMina\s*\}\}\s*MINA/)
+		expect(feeNoticeSource).not.toContain("{{ fees.bridgeMinimumLabel }}")
+		expect(feeNoticeSource).not.toContain("->")
 		expect(feeNoticeSource).not.toContain("Bridge Minimum")
 		expect(feeNoticeSource).not.toContain("{{ fees.routeFeeLabel }}")
 		expect(feeNoticeSource).not.toMatch(/fee \{\{.*\}\} MINA/)

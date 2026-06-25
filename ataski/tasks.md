@@ -432,3 +432,4 @@
 - T446 | done | tighten-bridge-minimum-and-fee-copy | done/T446-tighten-bridge-minimum-and-fee-copy.md
 - T447 | done | remove-bridge-input-bottom-margin | done/T447-remove-bridge-input-bottom-margin.md
 - T448 | done | fix-route-minimum-copy-and-validation | done/T448-fix-route-minimum-copy-and-validation.md
+- T449 | done | fix-route-minimum-source-of-truth | done/T449-fix-route-minimum-source-of-truth.md

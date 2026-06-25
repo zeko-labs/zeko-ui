@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ArrowRightIcon } from "lucide-vue-next"
 import type { SelectedBridgeFeeDisclosure } from "~/utils/bridgeFees"
 
 const props = defineProps<{
@@ -19,7 +20,13 @@ const feeDetailsTitle = computed(
 
 <template>
   <span class="BridgeFeeNotice">
-    <strong>{{ fees.bridgeMinimumLabel }}</strong>
+    <strong class="RouteMinimum">
+      <span>{{ fees.sourceShortLabel }}</span>
+      <ArrowRightIcon class="RouteArrow" aria-hidden="true" />
+      <span>{{ fees.destinationShortLabel }} bridge minimum {{
+          fees.minimumAmountMina
+        }} MINA</span>
+    </strong>
     <button
       class="FeeHelp"
       type="button"
@@ -33,13 +40,29 @@ const feeDetailsTitle = computed(
 <style lang="postcss" scoped>
 .BridgeFeeNotice {
   display: inline-flex;
-  gap: 0.35rem;
-  align-items: baseline;
+  gap: 0.3rem;
+  align-items: center;
   flex-wrap: wrap;
 
+  .RouteMinimum {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 0;
+    line-height: 1.1;
+  }
+
+  .RouteArrow {
+    flex: 0 0 auto;
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
   .FeeHelp {
-    display: inline-grid;
-    place-items: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
     width: 1rem;
     height: 1rem;
     padding: 0;
