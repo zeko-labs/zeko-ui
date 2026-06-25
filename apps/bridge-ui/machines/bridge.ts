@@ -71,6 +71,7 @@ type PendingOperationsInput = {
 export type BridgeEvents =
 	| { type: "StartOperation"; amount: string; timeoutSlots?: number }
 	| { type: "CompleteOperation"; id: string }
+	| { type: "FailOperation"; id: string }
 	| { type: "PauseOperation"; id: string }
 	| { type: "TerminateOperation"; id: string }
 	| { type: "RefreshOperations" }
@@ -596,6 +597,39 @@ export const bridgeMachine = setup({
 					context.activeCancellationOperation === id ? null : context.activeCancellationOperation
 			}
 		}),
+		failOperation: assign(({ context }, params: { id: string }) => {
+			logger.info("Failing operation", params.id)
+			const { id } = params
+			const operations = context.operations
+			const failedEntry = operations.get(id)
+			if (!failedEntry) throw new Error("Operation not found")
+			const { lane, operation: failedOperation, order } = failedEntry
+			operations.set(id, { status: "completed", lane, operation: failedOperation, order })
+
+			let idToResume: string | null = null
+			if (lane === "main" && context.activeOperation === id) {
+				const [nextId, ...rest] = pausedMainQueueIds(operations)
+				idToResume = nextId ?? null
+				logger.info("Found operation to resume after failure", idToResume, rest)
+				if (idToResume) {
+					const nextEntry = operations.get(idToResume)
+					const operation = nextEntry?.operation
+					if (operation && nextEntry) {
+						logger.info("Resuming operation", idToResume)
+						operation.send({ type: "Resume", paused: false })
+						operations.set(idToResume, { ...nextEntry, status: "started" })
+					}
+				}
+			}
+
+			return {
+				operations: new Map(operations),
+				activeOperation:
+					lane === "main" && context.activeOperation === id ? idToResume : context.activeOperation,
+				activeCancellationOperation:
+					context.activeCancellationOperation === id ? null : context.activeCancellationOperation
+			}
+		}),
 		activateCancellationOperation: assign(({ context }, params: { id: string }) => ({
 			activeCancellationOperation:
 				context.activeCancellationOperation === null ||
@@ -757,6 +791,10 @@ export const bridgeMachine = setup({
 		CompleteOperation: {
 			description: "Complete an operation.",
 			actions: { type: "completeOperation", params: ({ event }) => ({ id: event.id }) }
+		},
+		FailOperation: {
+			description: "Mark a failed operation inactive without deleting its actor.",
+			actions: { type: "failOperation", params: ({ event }) => ({ id: event.id }) }
 		},
 		ActivateCancellationOperation: {
 			actions: {

@@ -426,3 +426,4 @@
 - T440 | done | keep-claim-wallet-rejections-retryable | done/T440-keep-claim-wallet-rejections-retryable.md
 - T441 | done | fix-codex-review-debug-and-notification-findings | done/T441-fix-codex-review-debug-and-notification-findings.md
 - T442 | done | clear-non-quiet-pre-submit-failures | done/T442-clear-non-quiet-pre-submit-failures.md
+- T443 | done | release-post-submit-failures | done/T443-release-post-submit-failures.md

@@ -1085,10 +1085,13 @@ export const bridgeOperationMachine = setup({
 		FAILED: {
 			type: "final",
 			entry: [
-				({ context }) => {
-					if (!shouldTerminatePreSubmitFailure(context)) return
-					context.bridge.send({ type: "TerminateOperation", id: context.id })
-				},
+				sendTo(
+					({ context }) => context.bridge,
+					({ context }) =>
+						shouldTerminatePreSubmitFailure(context)
+							? { type: "TerminateOperation", id: context.id }
+							: { type: "FailOperation", id: context.id }
+				),
 				sendTo(
 					({ context }) => context.bridge,
 					({ self }) => ({ type: "ReleaseCancellationOperation", id: self.id })

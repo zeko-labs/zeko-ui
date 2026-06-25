@@ -44,6 +44,16 @@ const createWalletActor = () =>
 		})
 	)
 
+const signedTransactionForUser = (user: string) => ({
+	signedData: JSON.stringify({
+		zkappCommand: {
+			accountUpdates: [],
+			feePayer: { authorization: "", body: { fee: "100000000", publicKey: user } },
+			memo: ""
+		}
+	})
+})
+
 describe("bridge refresh queue sync", () => {
 	it("queues recovered main operations behind an active local operation that is not indexed yet", async () => {
 		vi.stubGlobal("mina", {
@@ -574,6 +584,66 @@ describe("bridge refresh queue sync", () => {
 
 		expect(completed.context.activeOperation).toBeNull()
 		expect(completed.context.operations.size).toBe(0)
+
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("releases a post-submit claim failure from the active main operation", async () => {
+		const user = "B62qtest-user"
+		vi.stubGlobal("mina", {
+			sendTransaction: vi.fn(async () => signedTransactionForUser(user))
+		})
+		const store = getBridgeDebugBackendStore()
+		store.reset()
+		store.setScenario("repro-claim-failure")
+		const wallet = createWalletActor()
+		wallet.start()
+		const bridge = createActor(
+			bridgeMachine.provide({
+				actors: {
+					detectWalletChange: fromCallback(() => {})
+				}
+			}),
+			{
+				input: {
+					debugMode: "mock-backend",
+					wallet: wallet as unknown as ActorRefFromLogic<typeof walletMachine>
+				}
+			}
+		)
+		bridge.start()
+
+		bridge.send({ type: "AccountChanged", account: user })
+		bridge.send({ type: "NetworkChanged", network: "mina:devnet" })
+		await waitFor(bridge, (snapshot) => snapshot.matches("READY"))
+
+		const seed = store.seedRecoveredOperation("withdrawal")
+		bridge.send({ type: "RefreshOperations" })
+		const recovered = await waitFor(
+			bridge,
+			(snapshot) => snapshot.context.activeOperation === seed.id && snapshot.matches("READY")
+		)
+		const operation = recovered.context.operations.get(seed.id)?.operation
+		if (!operation) throw new Error("Expected recovered operation actor")
+
+		await waitFor(operation, (snapshot) => snapshot.matches("TO_FINALIZE"))
+		operation.send({ type: "Finalize" })
+		await waitFor(operation, (snapshot) => snapshot.matches("FAILED"))
+		const released = await waitFor(
+			bridge,
+			(snapshot) =>
+				snapshot.context.activeOperation === null &&
+				snapshot.context.operations.has(seed.id) &&
+				snapshot.context.operations.get(seed.id)?.status === "completed" &&
+				snapshot.context.operations.get(seed.id)?.operation.getSnapshot().matches("FAILED") === true
+		)
+
+		expect(released.context.activeOperation).toBeNull()
+		expect(released.context.operations.get(seed.id)).toMatchObject({
+			lane: "main",
+			status: "completed"
+		})
 
 		bridge.stop()
 		wallet.stop()
