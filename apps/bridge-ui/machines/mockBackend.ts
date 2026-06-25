@@ -194,6 +194,13 @@ const debugErrorMessage = (error: BridgeDebugForcedError) =>
 const firstWithdrawalTooSmallMessage = (recipient: string) =>
 	`First Zeko->Mina withdrawal amount is too small: recipient ${recipient} requires 0.2 MINA bridge fees, 1 MINA helper account creation, and 1 MINA recipient account creation on Mina, so the transfer amount must be at least 2.2 MINA.`
 
+const firstWithdrawalTooSmallMinimumMina = 2.2
+
+const amountIsBelowFirstWithdrawalMinimum = (amount: string): boolean => {
+	const amountMina = Number(amount)
+	return Number.isFinite(amountMina) && amountMina < firstWithdrawalTooSmallMinimumMina
+}
+
 const currentTimestampMs = () => Date.now()
 
 const fakeHash = (id: number) => `5Jdebug${String(id).padStart(6, "0")}`
@@ -642,7 +649,11 @@ export const createMockBridgeOperationsWorker = ({
 					(seed) =>
 						seed.kind === "withdrawal" && seed.cancelled === false && seed.finalised === false
 				)
-				if (snapshot.scenario === "repro-first-withdrawal-too-small" && firstPendingWithdrawal) {
+				if (
+					snapshot.scenario === "repro-first-withdrawal-too-small" &&
+					firstPendingWithdrawal &&
+					amountIsBelowFirstWithdrawalMinimum(firstPendingWithdrawal.amount)
+				) {
 					throw new Error(firstWithdrawalTooSmallMessage(input.user))
 				}
 				return firstPendingWithdrawal

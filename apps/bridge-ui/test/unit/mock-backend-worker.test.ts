@@ -366,6 +366,27 @@ describe("mock bridge operations worker", () => {
 		).rejects.toThrow(/0\.2 MINA bridge fees.*1 MINA helper.*1 MINA recipient.*2\.2 MINA/)
 	})
 
+	it("does not invent a first withdrawal threshold error for valid amounts", async () => {
+		const store = createBridgeDebugBackendStore({ storage })
+		store.setScenario("repro-first-withdrawal-too-small")
+		const worker = createMockBridgeOperationsWorker({ store })
+
+		store.seedRecoveredOperation("withdrawal", { amount: "2.2" })
+
+		await expect(
+			worker.canFinalizeWithdrawal({
+				user: "B62qtest-user",
+				l1: "mina:devnet",
+				l2: "zeko-m:testnet"
+			})
+		).resolves.toEqual({
+			available: true,
+			reason: null,
+			status: "available",
+			index: 1
+		})
+	})
+
 	it("can reproduce a route-neutral claim backend failure without frontend shortcuts", async () => {
 		const store = createBridgeDebugBackendStore({ storage })
 		store.setScenario("repro-claim-failure")

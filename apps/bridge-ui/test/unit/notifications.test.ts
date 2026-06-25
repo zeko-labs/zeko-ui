@@ -6,24 +6,70 @@ describe("bridge notifications", () => {
 		vi.restoreAllMocks()
 	})
 
-	it("does not request permission or log an error when no service worker is registered", async () => {
+	it("rejects when no service worker is registered outside quiet verification contexts", async () => {
+		const requestPermission = vi.fn(async () => "granted" as NotificationPermission)
+
+		await expect(
+			dispatch(
+				{ title: "Bridge update", options: {} },
+				{
+					browserWindow: {
+						Notification: { requestPermission } as typeof Notification
+					},
+					debugMode: "off",
+					hostname: "bridge.zeko.io",
+					navigator: {
+						serviceWorker: {
+							getRegistration: vi.fn(async () => undefined)
+						}
+					}
+				}
+			)
+		).rejects.toThrow("No service worker registration found.")
+
+		expect(requestPermission).not.toHaveBeenCalled()
+	})
+
+	it("does not request permission or log an error when no service worker is registered in mock debug mode", async () => {
 		const requestPermission = vi.fn(async () => "granted" as NotificationPermission)
 		const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
 		const log = vi.spyOn(console, "log").mockImplementation(() => undefined)
 
-		await dispatch(
-			{ title: "Bridge update", options: {} },
-			{
-				browserWindow: {
-					Notification: { requestPermission } as typeof Notification
-				},
-				navigator: {
-					serviceWorker: {
-						getRegistration: vi.fn(async () => undefined)
+		await expect(
+			dispatch(
+				{ title: "Bridge update", options: {} },
+				{
+					browserWindow: {
+						Notification: { requestPermission } as typeof Notification
+					},
+					debugMode: "mock-backend",
+					hostname: "bridge.zeko.io",
+					navigator: {
+						serviceWorker: {
+							getRegistration: vi.fn(async () => undefined)
+						}
 					}
 				}
-			}
-		)
+			)
+		).resolves.toBeUndefined()
+
+		await expect(
+			dispatch(
+				{ title: "Bridge update", options: {} },
+				{
+					browserWindow: {
+						Notification: { requestPermission } as typeof Notification
+					},
+					debugMode: "off",
+					hostname: "localhost",
+					navigator: {
+						serviceWorker: {
+							getRegistration: vi.fn(async () => undefined)
+						}
+					}
+				}
+			)
+		).resolves.toBeUndefined()
 
 		expect(requestPermission).not.toHaveBeenCalled()
 		expect(error).not.toHaveBeenCalled()
