@@ -13,13 +13,17 @@ describe("bridge UI copy", () => {
 			/const ledgerUnsupportedNetworkLabel = formatBridgeNetworkLabel\( ?ZEKO_M_NETWORKS\.mainnet ?\)/
 		)
 		expect(normalizedInputsSource).toContain(
-			"Note: Ledger hardware wallets are not yet supported by {{ ledgerUnsupportedNetworkLabel }}. Bridge minimum 2 MINA."
+			"Ledger hardware wallets are not yet supported by {{ ledgerUnsupportedNetworkLabel }}."
 		)
+		expect(inputsSource).toContain('<ol class="BridgeSteps">')
+		expect(inputsSource).toContain("<li>Send from the origin chain.</li>")
+		expect(inputsSource).toContain("<li>Claim to the destination chain.</li>")
+		expect(inputsSource).toContain("<strong>Bridge minimum 2 MINA.</strong>")
 		expect(inputsSource).not.toContain(networkLabel)
 		expect(normalizedInputsSource.indexOf("Claim to the destination chain.")).toBeLessThan(
-			normalizedInputsSource.indexOf("Note: Ledger hardware wallets")
+			normalizedInputsSource.indexOf("Ledger hardware wallets")
 		)
-		expect(normalizedInputsSource.indexOf("Note: Ledger hardware wallets")).toBeLessThan(
+		expect(normalizedInputsSource.indexOf("Ledger hardware wallets")).toBeLessThan(
 			normalizedInputsSource.indexOf("Bridge minimum 2 MINA.")
 		)
 	})

@@ -155,7 +155,7 @@ describe("bridgeOperationMachine", () => {
 		expect(toUserFriendlyMessage(error)).toContain("at least 2.4 MINA")
 		expect(
 			bridge.getSnapshot().context.events.some((event) => event.type === "TerminateOperation")
-		).toBe(true)
+		).toBe(false)
 
 		actor.stop()
 		bridge.stop()
@@ -973,8 +973,53 @@ describe("bridgeOperationMachine", () => {
 		vi.useRealTimers()
 	})
 
+	it("fails visibly after a deposit claim backend error instead of returning to claim", async () => {
+		const claimError = new Error("Debug scenario: claim failed")
+		const bridge = createBridgeActor()
+		const wallet = createWalletActor("zeko:testnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(
+			bridgeOperationMachine.provide({
+				actors: {
+					transactionMachine: fromPromise(async () => {
+						throw claimError
+					})
+				}
+			}),
+			{
+				input: {
+					bridge: bridge as never,
+					wallet: wallet as never,
+					source: "mina:devnet",
+					destination: "zeko-m:testnet",
+					direction: "deposit",
+					amount: "4",
+					actionIndex: 0
+				}
+			}
+		)
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+		actor.send({ type: "CanFinalize", index: 0 })
+		actor.send({ type: "Finalize" })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("FAILED"))
+
+		expect(actor.getSnapshot().context.errors.at(-1)).toBe(claimError)
+		expect(
+			bridge.getSnapshot().context.events.some((event) => event.type === "TerminateOperation")
+		).toBe(false)
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
 	it("fails visibly after a withdrawal claim backend error instead of returning to claim", async () => {
-		const claimError = new Error("Debug scenario: withdrawal claim failed")
+		const claimError = new Error("Debug scenario: claim failed")
 		const bridge = createBridgeActor()
 		const wallet = createWalletActor("mina:devnet")
 		bridge.start()
@@ -1009,10 +1054,9 @@ describe("bridgeOperationMachine", () => {
 		await waitFor(actor, (snapshot) => snapshot.matches("FAILED"))
 
 		expect(actor.getSnapshot().context.errors.at(-1)).toBe(claimError)
-		expect(bridge.getSnapshot().context.events).toContainEqual({
-			type: "TerminateOperation",
-			id: actor.id
-		})
+		expect(
+			bridge.getSnapshot().context.events.some((event) => event.type === "TerminateOperation")
+		).toBe(false)
 
 		actor.stop()
 		bridge.stop()

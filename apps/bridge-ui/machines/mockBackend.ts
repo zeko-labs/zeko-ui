@@ -6,7 +6,7 @@ export const BRIDGE_DEBUG_BACKEND_STORAGE_KEY = "bridgeDebugBackendState"
 export const bridgeDebugBackendScenarios = [
 	"happy-path",
 	"repro-first-withdrawal-too-small",
-	"repro-withdrawal-claim-failure",
+	"repro-claim-failure",
 	"repro-unindexed-withdrawal-completion"
 ] as const
 
@@ -671,10 +671,11 @@ export const createMockBridgeOperationsWorker = ({
 					throw new Error(`No debug SDK signature request found for ${input.requestId}`)
 				}
 				if (
-					snapshot.scenario === "repro-withdrawal-claim-failure" &&
-					signatureRequest.action === "finalizeWithdrawal"
+					snapshot.scenario === "repro-claim-failure" &&
+					(signatureRequest.action === "finalizeDeposit" ||
+						signatureRequest.action === "finalizeWithdrawal")
 				) {
-					throw new Error("Debug scenario: withdrawal claim failed")
+					throw new Error("Debug scenario: claim failed")
 				}
 				const hash = fakeHash(snapshot.nextHashId)
 				store.update((current) => ({

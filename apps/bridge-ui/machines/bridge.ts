@@ -646,9 +646,7 @@ export const bridgeMachine = setup({
 				target: ".FIND_OPERATIONS",
 				guard: ({ context }) => context.accountReady && context.walletReady,
 				actions: enqueueActions(({ enqueue, context }) => {
-					context.operations.forEach(({ operation }) => {
-						operation.send({ type: "Destroy" })
-					})
+					for (const id of context.operations.keys()) enqueue.stopChild(id)
 					context.operations.clear()
 					enqueue.assign({
 						operations: new Map(),
@@ -734,9 +732,7 @@ export const bridgeMachine = setup({
 			target: ".FIND_OPERATIONS",
 			guard: "canFindPendingOperations",
 			actions: enqueueActions(({ context, enqueue }) => {
-				context.operations.forEach(({ operation }) => {
-					operation.send({ type: "Destroy" })
-				})
+				for (const id of context.operations.keys()) enqueue.stopChild(id)
 				context.operations.clear()
 				enqueue.assign({
 					operations: new Map(),

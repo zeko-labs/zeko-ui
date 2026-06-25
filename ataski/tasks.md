@@ -415,3 +415,8 @@
 - T429 | done | show-pending-for-unindexed-operations | done/T429-show-pending-for-unindexed-operations.md
 - T430 | done | update-bridge-signing-notice | done/T430-update-bridge-signing-notice.md
 - T431 | done | block-bridge-transfers-below-two-mina | done/T431-block-bridge-transfers-below-two-mina.md
+- T432 | done | fix-debug-reset-and-refresh-recovery | done/T432-fix-debug-reset-and-refresh-recovery.md
+- T433 | done | fix-under-minimum-input-and-first-withdrawal-error | done/T433-fix-under-minimum-input-and-first-withdrawal-error.md
+- T434 | done | fix-claim-failure-scenarios-for-both-routes | done/T434-fix-claim-failure-scenarios-for-both-routes.md
+- T435 | done | redesign-fee-and-signing-copy-display | done/T435-redesign-fee-and-signing-copy-display.md
+- T436 | done | harden-bridge-ui-manual-verification-instructions | done/T436-harden-bridge-ui-manual-verification-instructions.md

@@ -29,12 +29,12 @@ describe("bridge debug panel", () => {
 			"Seed Withdrawal",
 			"RefreshOperations",
 			"Sim Refresh",
+			"Reset",
 			"Export"
 		]) {
 			expect(debugPanelSource).toContain(label)
 		}
 		for (const label of [
-			"Reset",
 			"Advance",
 			"Fee Retry",
 			"Terminal Error",
@@ -92,5 +92,21 @@ describe("bridge debug panel", () => {
 			expect.objectContaining({ kind: "deposit" }),
 			expect.objectContaining({ kind: "withdrawal" })
 		])
+	})
+
+	it("routes reset through the debug backend store", () => {
+		const store = createBridgeDebugBackendStore({ storage: createMemoryStorage() })
+		const controller = createBridgeDebugPanelController({ store })
+
+		controller.setScenario("repro-claim-failure")
+		controller.seedRecoveredOperation("withdrawal")
+		controller.reset()
+
+		expect(store.getSnapshot()).toMatchObject({
+			scenario: "happy-path",
+			seededOperations: [],
+			signatureRequests: [],
+			calls: []
+		})
 	})
 })

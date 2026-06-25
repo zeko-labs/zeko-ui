@@ -1,5 +1,8 @@
 export const BRIDGE_MINIMUM_AMOUNT_MINA = 2
 
+export const amountIsBelowBridgeMinimum = (amount: number | undefined): boolean =>
+	typeof amount === "number" && Number.isFinite(amount) && amount < BRIDGE_MINIMUM_AMOUNT_MINA
+
 export const canStartBridgeOperation = ({
 	address,
 	amount,

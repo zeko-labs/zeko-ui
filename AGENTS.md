@@ -64,6 +64,7 @@ Never try to skip tests or make dumb assertions just to make test pass.
 If a test is failing, take your time to investigate why it is failing without jumping to conclusions.
 Handle failures one by one, methodologically, and make sure that the tests are sound, and that they verify the intended behavior.
 When testing, prefer using the test tool to run the tests.
+For UI bugs, tests must fail for the user-visible broken behavior, not merely for implementation details or source text. If a component cannot be exercised through the existing harness, either add the missing harness as part of the task or record the exact limitation and cover the behavior at the closest executable boundary.
 
 ## Bridge Finality and Latency
 
@@ -88,6 +89,7 @@ When testing, prefer using the test tool to run the tests.
 
 - When investigating bridge-ui bugs reproduced in debug mode, first verify whether the behavior comes from actual bridge logic or from debug-only code. Debug mode must not hide, invent, or compensate for bridge state bugs unless the user explicitly asks for a debug-only feature.
 - Do not make the mock backend smarter to work around UI bugs. If realistic SDK answers expose a real bridge issue, fix the bridge logic or UI path and keep the debug mode faithful to that behavior.
+- Before handing off bridge-ui debug-mode fixes, run the relevant debug scenario in a browser against the dev server and record the scenario, steps, and observed UI result in the task or PR. If browser execution is blocked by wallet, extension, or browser-policy constraints, state that blocker explicitly and include executable machine/component evidence for the same behavior.
 
 ## Notes for this monorepo setup
 

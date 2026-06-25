@@ -112,7 +112,7 @@ describe("bridge error telemetry", () => {
 	})
 
 	it("marks handled bridge errors as app-originated for Sentry filtering", () => {
-		const error = new Error("Debug scenario: withdrawal claim failed")
+		const error = new Error("Debug scenario: claim failed")
 
 		captureBridgeError({
 			error,

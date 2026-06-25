@@ -17,6 +17,8 @@ describe("bridge current operation rendering", () => {
 		expect(normalizedCurrentOperationSource).toMatch(
 			/watch\( ?\(\) => machine\.value\.context\.errors/
 		)
+		expect(normalizedCurrentOperationSource).toContain("const latestErrorMessage = computed")
+		expect(normalizedCurrentOperationSource).toContain("<p>{{ latestErrorMessage }}</p>")
 		expect(normalizedCurrentOperationSource).toContain("errorToaster.create")
 	})
 })

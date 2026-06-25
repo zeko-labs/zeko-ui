@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { ZEKO_M_NETWORKS } from "@zeko/networks"
 import {
+	amountIsBelowBridgeMinimum,
 	BRIDGE_MINIMUM_AMOUNT_MINA,
 	canStartBridgeOperation
 } from "./bridgeInputs"
-import { bridgeFeeDisclosure } from "./bridgeFees"
+import { selectedBridgeFeeDisclosure } from "./bridgeFees"
 import { formatBridgeNetworkLabel } from "~~/machines/networks"
 
 const bs = useBridgeStore()
@@ -26,6 +27,9 @@ const startBridge = () => {
 	amountToBridge.value = undefined
 }
 const loading = computed(() => !bs.bridge.snapshot.matches("READY"))
+const amountIsBelowMinimum = computed(() =>
+	amountIsBelowBridgeMinimum(amountToBridge.value)
+)
 const canStart = computed(() =>
 	canStartBridgeOperation({
 		address: bs.address,
@@ -34,12 +38,22 @@ const canStart = computed(() =>
 	})
 )
 const disabledButton = computed(() => !canStart.value)
+const selectedFeeDisclosure = computed(() =>
+	selectedBridgeFeeDisclosure({
+		source: bs.bridge.snapshot.context.sourceNetwork,
+		destination: bs.bridge.snapshot.context.destinationNetwork
+	})
+)
 </script>
 <template>
   <div :class="{ Inputs: true, isLoading: loading }">
     <div class="InputBox">
       <h4>Sending</h4>
-      <BridgeAmountSelector v-model="amountToBridge" :loading />
+      <BridgeAmountSelector
+        v-model="amountToBridge"
+        :loading
+        :invalid="amountIsBelowMinimum"
+      />
     </div>
 
     <FromTo
@@ -55,20 +69,28 @@ const disabledButton = computed(() => !canStart.value)
         :disabled="disabledButton">
         Send
       </Button>
-      <aside :data-minimum-mina="BRIDGE_MINIMUM_AMOUNT_MINA">
+      <aside
+        class="BridgeNotice"
+        :data-minimum-mina="BRIDGE_MINIMUM_AMOUNT_MINA">
         <template v-if="loading">
           Please wait… The Zeko Bridge is loading your wallet's latest
           transaction history and status.
         </template>
         <template v-else>
-          Bridging requires signing two transactions: 1) Send from the origin
-          chain, then 2) Claim to the destination chain. Note: Ledger hardware
-          wallets are not yet supported by {{ ledgerUnsupportedNetworkLabel }}.
-          Bridge minimum 2 MINA.
+          <span>Bridging requires signing two transactions:</span>
+          <ol class="BridgeSteps">
+            <li>Send from the origin chain.</li>
+            <li>Claim to the destination chain.</li>
+          </ol>
+          <span>
+            Ledger hardware wallets are not yet supported by
+            {{ ledgerUnsupportedNetworkLabel }}.
+          </span>
+          <strong>Bridge minimum 2 MINA.</strong>
         </template>
       </aside>
     </div>
-    <BridgeFeeNotice :fees="bridgeFeeDisclosure" />
+    <BridgeFeeNotice :fees="selectedFeeDisclosure" />
   </div>
 </template>
 <style lang="postcss" scoped>
@@ -118,5 +140,15 @@ const disabledButton = computed(() => !canStart.value)
   gap: 1rem;
   align-items: center;
   justify-content: start;
+}
+
+.BridgeNotice {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.BridgeSteps {
+  margin: 0;
+  padding-left: 1.25rem;
 }
 </style>

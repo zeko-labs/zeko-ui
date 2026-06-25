@@ -26,7 +26,7 @@ updated_at: 2026-06-25T07:01:19Z
 
 ## RED Evidence
 
-- `moon run bridge-ui:test -- test/unit/mock-backend-worker.test.ts test/unit/bridge-operation.test.ts test/unit/bridge-sentry.test.ts test/unit/sentry-client-config.test.ts test/unit/bridge-operations-table.test.ts test/unit/bridge-ui-copy.test.ts test/unit/bridge-current-operation.test.ts test/unit/bridge-inputs.test.ts test/unit/bridge-fees.test.ts` failed: `app/components/bridgeFees` did not exist and `Inputs.vue` did not render `BridgeFeeNotice` or `bridgeFeeDisclosure`.
+- `moon run bridge-ui:test -- test/unit/mock-backend-worker.test.ts test/unit/bridge-operation.test.ts test/unit/bridge-sentry.test.ts test/unit/sentry-client-config.test.ts test/unit/bridge-operations-table.test.ts test/unit/bridge-ui-copy.test.ts test/unit/bridge-current-operation.test.ts test/unit/bridge-inputs.test.ts test/unit/bridge-fees.test.ts` failed: `app/components/bridgeFees` did not exist and `Inputs.vue` did not render a bridge fee notice.
 
 ## GREEN Evidence
 

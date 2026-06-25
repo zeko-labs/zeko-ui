@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Bug, Download, Plus, RefreshCw } from "lucide-vue-next"
+import { Bug, Download, Plus, RefreshCw, RotateCcw } from "lucide-vue-next"
 import type { BridgeDebugBackendScenario } from "~~/machines/mockBackend"
 
 const bs = useBridgeStore()
@@ -114,6 +114,13 @@ const exportSnapshot = async () => {
         title="Clear operation actors and rebuild them from mock backend state"
         @click="debug.simulatePageRefresh">
         <RefreshCw /> Sim Refresh
+      </button>
+      <button
+        data-debug-control="reset"
+        type="button"
+        title="Reset mock backend state"
+        @click="debug.reset">
+        <RotateCcw /> Reset
       </button>
       <button
         data-debug-control="export"

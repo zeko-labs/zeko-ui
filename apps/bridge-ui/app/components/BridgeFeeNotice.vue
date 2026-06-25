@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import type { BridgeFeeDisclosure } from "./bridgeFees"
+import type { SelectedBridgeFeeDisclosure } from "./bridgeFees"
 
 defineProps<{
-	fees: BridgeFeeDisclosure
+	fees: SelectedBridgeFeeDisclosure
 }>()
 </script>
 
 <template>
   <section class="BridgeFeeNotice" aria-label="Bridge fees">
-    <h5>Fees</h5>
+    <h5>Fees for {{ fees.routeLabel }}</h5>
     <dl>
       <div>
         <dt>Bridge transactions</dt>
@@ -21,22 +21,14 @@ defineProps<{
         </dd>
       </div>
       <div>
-        <dt>Deposit total</dt>
+        <dt>First transfer maximum</dt>
         <dd>
-          Up to {{ fees.deposit.maximumFirstOperationFeeMina }} MINA total
+          Up to {{ fees.firstTransfer.maximumTotalMina }} MINA total
           <span>
-            May include {{ fees.deposit.helperAccountCreationMina }} helper +
-            {{ fees.deposit.recipientAccountCreationMina }} recipient on Zeko
-          </span>
-        </dd>
-      </div>
-      <div>
-        <dt>Withdrawal total</dt>
-        <dd>
-          Up to {{ fees.withdrawal.maximumFirstOperationFeeMina }} MINA total
-          <span>
-            May include {{ fees.withdrawal.helperAccountCreationMina }} helper +
-            {{ fees.withdrawal.recipientAccountCreationMina }} recipient on Mina
+            May include {{ fees.firstTransfer.helperAccountCreationMina }}
+            helper + {{ fees.firstTransfer.recipientAccountCreationMina }}
+            recipient account creation on
+            {{ fees.firstTransfer.destinationAccountLabel }}
           </span>
         </dd>
       </div>

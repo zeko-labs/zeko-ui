@@ -710,10 +710,7 @@ export const bridgeOperationMachine = setup({
 						},
 						onError: {
 							target: "#bridgeOperation.FAILED",
-							actions: sendTo(
-								({ context }) => context.bridge,
-								({ self }) => ({ type: "TerminateOperation", id: self.id })
-							)
+							actions: assign(addError(new Error("Failed to submit deposit")))
 						}
 					}
 				},
@@ -848,11 +845,6 @@ export const bridgeOperationMachine = setup({
 						onError: [
 							{
 								target: "#bridgeOperation.FAILED",
-								guard: ({ context }) => context.errors.length >= 3,
-								actions: assign(addError(new Error("Failed to finalize deposit")))
-							},
-							{
-								target: "#bridgeOperation.FINALIZE_DEPOSIT",
 								actions: assign(addError(new Error("Failed to finalize deposit")))
 							}
 						]
@@ -935,13 +927,7 @@ export const bridgeOperationMachine = setup({
 						},
 						onError: {
 							target: "#bridgeOperation.FAILED",
-							actions: [
-								assign(addError(new Error("Failed to submit withdrawal"))),
-								sendTo(
-									({ context }) => context.bridge,
-									({ self }) => ({ type: "TerminateOperation", id: self.id })
-								)
-							]
+							actions: assign(addError(new Error("Failed to submit withdrawal")))
 						}
 					}
 				},
@@ -993,13 +979,7 @@ export const bridgeOperationMachine = setup({
 				},
 				TerminalError: {
 					target: "FAILED",
-					actions: [
-						assign(addError(new Error("Failed to determine withdrawal status"))),
-						sendTo(
-							({ context }) => context.bridge,
-							({ self }) => ({ type: "TerminateOperation", id: self.id })
-						)
-					]
+					actions: assign(addError(new Error("Failed to determine withdrawal status")))
 				}
 			}
 		},
@@ -1026,13 +1006,7 @@ export const bridgeOperationMachine = setup({
 						onError: [
 							{
 								target: "#bridgeOperation.FAILED",
-								actions: [
-									assign(addError(new Error("Failed to finalize withdrawal"))),
-									sendTo(
-										({ context }) => context.bridge,
-										({ self }) => ({ type: "TerminateOperation", id: self.id })
-									)
-								]
+								actions: assign(addError(new Error("Failed to finalize withdrawal")))
 							}
 						]
 					}

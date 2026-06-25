@@ -439,4 +439,55 @@ describe("bridge refresh queue sync", () => {
 		bridge.stop()
 		wallet.stop()
 	})
+
+	it("can simulate page refresh repeatedly without duplicate recovered actor ids", async () => {
+		const store = getBridgeDebugBackendStore()
+		store.reset()
+		const wallet = createWalletActor()
+		wallet.start()
+		const bridge = createActor(
+			bridgeMachine.provide({
+				actors: {
+					detectWalletChange: fromCallback(() => {})
+				}
+			}),
+			{
+				input: {
+					debugMode: "mock-backend",
+					wallet: wallet as unknown as ActorRefFromLogic<typeof walletMachine>
+				}
+			}
+		)
+		bridge.start()
+
+		bridge.send({ type: "AccountChanged", account: "B62qtest-user" })
+		bridge.send({ type: "NetworkChanged", network: "mina:devnet" })
+		await waitFor(bridge, (snapshot) => snapshot.matches("READY"))
+
+		const seed = store.seedRecoveredOperation("withdrawal")
+		bridge.send({ type: "RefreshOperations" })
+		await waitFor(
+			bridge,
+			(snapshot) => snapshot.context.operations.has(seed.id) && snapshot.matches("READY")
+		)
+
+		bridge.send({ type: "SimulatePageRefresh" })
+		await waitFor(
+			bridge,
+			(snapshot) => snapshot.context.operations.has(seed.id) && snapshot.matches("READY")
+		)
+		bridge.send({ type: "SimulatePageRefresh" })
+		const refreshed = await waitFor(
+			bridge,
+			(snapshot) => snapshot.context.operations.has(seed.id) && snapshot.matches("READY")
+		)
+
+		expect(refreshed.context.operations.get(seed.id)).toMatchObject({
+			lane: "main",
+			status: "started"
+		})
+
+		bridge.stop()
+		wallet.stop()
+	})
 })

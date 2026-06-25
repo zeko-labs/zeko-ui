@@ -68,6 +68,10 @@ const transactionIsComplete = (
 	transaction.value?.matches("COMPLETE") === true
 const isLoading = computed(() => machine.value.hasTag("loading"))
 const hasCTA = computed(() => machine.value.hasTag("cta"))
+const latestErrorMessage = computed(() => {
+	const error = machine.value.context.errors.at(-1)
+	return error ? toUserFriendlyMessage(error) : "Something went wrong."
+})
 const requestNetworkChange = () => {
 	machine.value.context.wallet.send({
 		type: "RequestNetworkChange",
@@ -291,7 +295,7 @@ watch(
 
           <template v-else-if='machine.matches("FAILED")'>
             <div class="error">
-              <p>Something went wrong.</p>
+              <p>{{ latestErrorMessage }}</p>
               <p>
                 Don't worry, your funds are safe.
                 <a href="https://discord.gg/vSDxqAchUY" target="_blank">Contact
