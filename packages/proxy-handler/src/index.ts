@@ -222,9 +222,18 @@ export function createProxyHandler(
 				timedOut = true
 				controller.abort(new UpstreamTimeoutError())
 			}, upstreamTimeoutMs)
+			const onAbort = () => {
+				controller.abort(request.signal.reason)
+			}
+
+			if (request.signal.aborted) {
+				onAbort()
+			} else {
+				request.signal.addEventListener("abort", onAbort)
+			}
 
 			try {
-				return await fetch(new Request(proxyRequest, { signal: controller.signal }))
+				return await fetch(proxyRequest, { signal: controller.signal })
 			} catch (error) {
 				if (timedOut) {
 					throw new UpstreamTimeoutError()
@@ -232,6 +241,7 @@ export function createProxyHandler(
 				throw error
 			} finally {
 				clearTimeout(timeout)
+				request.signal.removeEventListener("abort", onAbort)
 			}
 		}
 

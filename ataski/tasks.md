@@ -435,3 +435,4 @@
 - T449 | done | fix-route-minimum-source-of-truth | done/T449-fix-route-minimum-source-of-truth.md
 - T450 | done | update-tooltip-fee-base | done/T450-update-tooltip-fee-base.md
 - T451 | done | add-proxy-upstream-timeouts | done/T451-add-proxy-upstream-timeouts.md
+- T452 | done | preserve-client-abort-for-proxy-timeouts | done/T452-preserve-client-abort-for-proxy-timeouts.md

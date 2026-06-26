@@ -1,9 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createProxyHandler } from "./index"
 
-type FetchMock = ReturnType<typeof vi.fn<[Request], Promise<Response>>>
+type FetchMock = ReturnType<typeof vi.fn<[Request, RequestInit?], Promise<Response>>>
 
 const requestUrl = "https://proxy.example/graphql?query=blocks"
+
+function getFetchSignal(request: Request, init?: RequestInit): AbortSignal {
+	return init?.signal ?? request.signal
+}
+
+function createAbortAwarePendingResponse(request: Request, init?: RequestInit): Promise<Response> {
+	return new Promise((_, reject) => {
+		const signal = getFetchSignal(request, init)
+		if (signal.aborted) {
+			reject(signal.reason)
+			return
+		}
+		signal.addEventListener("abort", () => reject(signal.reason))
+	})
+}
 
 function createHandler() {
 	return createProxyHandler({
@@ -97,13 +112,8 @@ describe("createProxyHandler", () => {
 	it("aborts a hanging primary after the configured timeout and tries a backup", async () => {
 		vi.useFakeTimers()
 		const fetchMock = vi
-			.fn<[Request], Promise<Response>>()
-			.mockImplementationOnce(
-				(request) =>
-					new Promise((_, reject) => {
-						request.signal.addEventListener("abort", () => reject(request.signal.reason))
-					})
-			)
+			.fn<[Request, RequestInit?], Promise<Response>>()
+			.mockImplementationOnce(createAbortAwarePendingResponse)
 			.mockResolvedValueOnce(new Response("backup one", { status: 200 }))
 		vi.stubGlobal("fetch", fetchMock)
 
@@ -118,7 +128,8 @@ describe("createProxyHandler", () => {
 
 		expect(response.status).toBe(200)
 		expect(await response.text()).toBe("backup one")
-		expect(fetchMock.mock.calls[0]?.[0].signal.aborted).toBe(true)
+		const firstFetchCall = fetchMock.mock.calls[0]
+		expect(firstFetchCall && getFetchSignal(...firstFetchCall).aborted).toBe(true)
 		expectRequestedUrls(fetchMock, [
 			"https://primary.example/api/graphql?query=blocks",
 			"https://backup-one.example/api/graphql?query=blocks"
@@ -127,12 +138,9 @@ describe("createProxyHandler", () => {
 
 	it("returns 504 when all backends exceed the configured timeout", async () => {
 		vi.useFakeTimers()
-		const fetchMock = vi.fn<[Request], Promise<Response>>().mockImplementation(
-			(request) =>
-				new Promise((_, reject) => {
-					request.signal.addEventListener("abort", () => reject(request.signal.reason))
-				})
-		)
+		const fetchMock = vi
+			.fn<[Request, RequestInit?], Promise<Response>>()
+			.mockImplementation(createAbortAwarePendingResponse)
 		vi.stubGlobal("fetch", fetchMock)
 
 		const responsePromise = createProxyHandler({
@@ -147,7 +155,32 @@ describe("createProxyHandler", () => {
 
 		expect(response.status).toBe(504)
 		expect(await response.text()).toBe("Origin fetch timed out")
-		expect(fetchMock.mock.calls.every(([request]) => request.signal.aborted)).toBe(true)
+		expect(fetchMock.mock.calls.every((call) => getFetchSignal(...call).aborted)).toBe(true)
+		expectRequestedUrls(fetchMock, [
+			"https://primary.example/api/graphql?query=blocks",
+			"https://backup-one.example/api/graphql?query=blocks"
+		])
+	})
+
+	it("aborts upstream fetches when the client aborts before the timeout", async () => {
+		const clientController = new AbortController()
+		const fetchMock = vi
+			.fn<[Request, RequestInit?], Promise<Response>>()
+			.mockImplementation(createAbortAwarePendingResponse)
+		vi.stubGlobal("fetch", fetchMock)
+
+		const responsePromise = createProxyHandler({
+			primaryUrl: "https://primary.example/api",
+			backupUrls: ["https://backup-one.example/api"],
+			options: { upstreamTimeoutMs: 60_000 }
+		})(new Request(requestUrl, { signal: clientController.signal }))
+
+		clientController.abort(new Error("client aborted"))
+		const response = await responsePromise
+
+		expect(response.status).toBe(502)
+		expect(await response.text()).toBe("Origin fetch error: client aborted")
+		expect(fetchMock.mock.calls.every((call) => getFetchSignal(...call).aborted)).toBe(true)
 		expectRequestedUrls(fetchMock, [
 			"https://primary.example/api/graphql?query=blocks",
 			"https://backup-one.example/api/graphql?query=blocks"
