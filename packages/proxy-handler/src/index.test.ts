@@ -22,6 +22,7 @@ describe("createProxyHandler", () => {
 	})
 
 	afterEach(() => {
+		vi.useRealTimers()
 		vi.unstubAllGlobals()
 		vi.restoreAllMocks()
 	})
@@ -87,6 +88,66 @@ describe("createProxyHandler", () => {
 
 		expect(response.status).toBe(200)
 		expect(await response.text()).toBe("backup one")
+		expectRequestedUrls(fetchMock, [
+			"https://primary.example/api/graphql?query=blocks",
+			"https://backup-one.example/api/graphql?query=blocks"
+		])
+	})
+
+	it("aborts a hanging primary after the configured timeout and tries a backup", async () => {
+		vi.useFakeTimers()
+		const fetchMock = vi
+			.fn<[Request], Promise<Response>>()
+			.mockImplementationOnce(
+				(request) =>
+					new Promise((_, reject) => {
+						request.signal.addEventListener("abort", () => reject(request.signal.reason))
+					})
+			)
+			.mockResolvedValueOnce(new Response("backup one", { status: 200 }))
+		vi.stubGlobal("fetch", fetchMock)
+
+		const responsePromise = createProxyHandler({
+			primaryUrl: "https://primary.example/api",
+			backupUrls: ["https://backup-one.example/api"],
+			options: { upstreamTimeoutMs: 10 }
+		})(new Request(requestUrl))
+
+		await vi.advanceTimersByTimeAsync(10)
+		const response = await responsePromise
+
+		expect(response.status).toBe(200)
+		expect(await response.text()).toBe("backup one")
+		expect(fetchMock.mock.calls[0]?.[0].signal.aborted).toBe(true)
+		expectRequestedUrls(fetchMock, [
+			"https://primary.example/api/graphql?query=blocks",
+			"https://backup-one.example/api/graphql?query=blocks"
+		])
+	})
+
+	it("returns 504 when all backends exceed the configured timeout", async () => {
+		vi.useFakeTimers()
+		const fetchMock = vi.fn<[Request], Promise<Response>>().mockImplementation(
+			(request) =>
+				new Promise((_, reject) => {
+					request.signal.addEventListener("abort", () => reject(request.signal.reason))
+				})
+		)
+		vi.stubGlobal("fetch", fetchMock)
+
+		const responsePromise = createProxyHandler({
+			primaryUrl: "https://primary.example/api",
+			backupUrls: ["https://backup-one.example/api"],
+			options: { upstreamTimeoutMs: 10 }
+		})(new Request(requestUrl))
+
+		await vi.advanceTimersByTimeAsync(10)
+		await vi.advanceTimersByTimeAsync(10)
+		const response = await responsePromise
+
+		expect(response.status).toBe(504)
+		expect(await response.text()).toBe("Origin fetch timed out")
+		expect(fetchMock.mock.calls.every(([request]) => request.signal.aborted)).toBe(true)
 		expectRequestedUrls(fetchMock, [
 			"https://primary.example/api/graphql?query=blocks",
 			"https://backup-one.example/api/graphql?query=blocks"

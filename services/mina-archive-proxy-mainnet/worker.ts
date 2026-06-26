@@ -10,7 +10,8 @@ export default {
 		options: {
 			cors: {
 				origins: ["*"]
-			}
+			},
+			upstreamTimeoutMs: 3_000
 		}
 	})
 }

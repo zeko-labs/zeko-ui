@@ -1,3 +1,10 @@
+class UpstreamTimeoutError extends Error {
+	constructor() {
+		super("Origin fetch timed out")
+		this.name = "UpstreamTimeoutError"
+	}
+}
+
 export interface CorsOptions {
 	/** List of allowed origins. Use ["*"] to allow all origins, ["localhost"] to allow all localhost ports (e.g., "https://example.com", "http://localhost:3000") */
 	origins: string[]
@@ -8,6 +15,8 @@ export interface CorsOptions {
 export interface ProxyHandlerOptions {
 	/** CORS configuration. If not provided, CORS is disabled */
 	cors?: CorsOptions
+	/** Per-backend fetch timeout in milliseconds. If not provided, upstream fetches are not timed out */
+	upstreamTimeoutMs?: number
 }
 
 function isOriginAllowed(params: {
@@ -113,7 +122,7 @@ type ProxyHandlerParams = {
 
 /**
  * Creates a proxy request handler that forwards requests to a primary backend URL
- * and sequentially tries backup URLs when a backend fails or returns 5xx.
+ * and sequentially tries backup URLs when a backend fails, times out, or returns 5xx.
  *
  * @param primaryUrl - Primary backend URL to proxy requests to
  * @param backupUrls - Ordered backup backend URLs to try after primary failures
@@ -124,7 +133,7 @@ export function createProxyHandler(
 	params: ProxyHandlerParams
 ): (request: Request) => Promise<Response> {
 	const { primaryUrl, backupUrls = [], options = {} } = params
-	const { cors } = options
+	const { cors, upstreamTimeoutMs } = options
 	const backendUrls = [primaryUrl, ...backupUrls]
 
 	return async (request: Request): Promise<Response> => {
@@ -186,6 +195,9 @@ export function createProxyHandler(
 				? new Response(`Origin fetch error: ${err.message}`, { status: 502 })
 				: new Response("Unknown origin error", { status: 502 })
 
+		const createProxyTimeoutResponse = (): Response =>
+			new Response("Origin fetch timed out", { status: 504, statusText: "Gateway Timeout" })
+
 		const upgradeHeader = request.headers.get("Upgrade")
 		if (upgradeHeader?.toLowerCase() === "websocket") {
 			return fetch(new Request(makeTargetUrl(primaryUrl).toString(), request))
@@ -197,8 +209,36 @@ export function createProxyHandler(
 			}
 		}
 
+		const fetchBackend = async (targetUrl: URL, requestSource: Request): Promise<Response> => {
+			const proxyRequest = new Request(targetUrl.toString(), requestSource)
+
+			if (!upstreamTimeoutMs || upstreamTimeoutMs <= 0) {
+				return fetch(proxyRequest)
+			}
+
+			const controller = new AbortController()
+			let timedOut = false
+			const timeout = setTimeout(() => {
+				timedOut = true
+				controller.abort(new UpstreamTimeoutError())
+			}, upstreamTimeoutMs)
+
+			try {
+				return await fetch(new Request(proxyRequest, { signal: controller.signal }))
+			} catch (error) {
+				if (timedOut) {
+					throw new UpstreamTimeoutError()
+				}
+				throw error
+			} finally {
+				clearTimeout(timeout)
+			}
+		}
+
 		let lastUnavailableResponse: Response | undefined
 		let lastError: unknown
+		let hasTimeoutError = false
+		let hasNonTimeoutError = false
 
 		for (const [index, backendUrl] of backendUrls.entries()) {
 			const targetUrl = makeTargetUrl(backendUrl)
@@ -209,7 +249,7 @@ export function createProxyHandler(
 
 			try {
 				const requestBodySource = index < backendUrls.length - 1 ? request.clone() : request
-				const response = await fetch(new Request(targetUrl.toString(), requestBodySource))
+				const response = await fetchBackend(targetUrl, requestBodySource)
 
 				if (response.status >= 500) {
 					if (lastUnavailableResponse) {
@@ -223,7 +263,13 @@ export function createProxyHandler(
 				return finalizeResponse(response)
 			} catch (err) {
 				lastError = err
-				console.log(`Backend fetch failed: ${targetUrl}`, err)
+				if (err instanceof UpstreamTimeoutError) {
+					hasTimeoutError = true
+					console.log(`Backend fetch timed out: ${targetUrl}`)
+				} else {
+					hasNonTimeoutError = true
+					console.log(`Backend fetch failed: ${targetUrl}`, err)
+				}
 			}
 		}
 
@@ -233,7 +279,10 @@ export function createProxyHandler(
 			return finalizeResponse(lastUnavailableResponse)
 		}
 
-		const errorResponse = createProxyErrorResponse(lastError)
+		const errorResponse =
+			hasTimeoutError && !hasNonTimeoutError
+				? createProxyTimeoutResponse()
+				: createProxyErrorResponse(lastError)
 		return cors
 			? responseWithCors({ response: errorResponse, requestOrigin, corsConfig: cors })
 			: errorResponse
