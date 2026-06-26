@@ -1,7 +1,6 @@
 {
 	"$schema": "../../../packages/cloudflare-build-config/schema/workers-build.schema.json",
 	"scriptName": "mina-archive-proxy-mainnet",
-	"triggerTemplateScriptName": "actions-api-testnet",
 	"triggers": [
 		{
 			"name": "Deploy default branch",
