@@ -14,6 +14,7 @@ updated_at: 2026-06-26T13:48:22Z
 - When upstream timeout handling is enabled, a client/request abort must abort the in-flight upstream fetch instead of waiting for the proxy timeout.
 - Preserve existing timeout failover behavior: actual upstream timeouts still abort, try backups, and return 504 when every backend times out.
 - Avoid unnecessary request wrapping when applying the timeout signal if `fetch(request, { signal })` is sufficient.
+- Add mina-proxy-devnet to changeset
 
 ## Test Plan
 
