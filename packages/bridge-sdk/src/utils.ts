@@ -272,7 +272,7 @@ const BLOCK_RANGE_SIZE = 10_000
 
 export const BRIDGE_DEPLOY_BLOCK_BY_NETWORK = {
 	testnet: 430_000,
-	mainnet: 0
+	mainnet: 530_000
 } as const satisfies Record<Extract<NetworkId, "testnet" | "mainnet">, number>
 
 export const getBridgeDeployBlock = (network: NetworkId): number =>
