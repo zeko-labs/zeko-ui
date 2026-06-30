@@ -436,3 +436,4 @@
 - T450 | done | update-tooltip-fee-base | done/T450-update-tooltip-fee-base.md
 - T451 | done | add-proxy-upstream-timeouts | done/T451-add-proxy-upstream-timeouts.md
 - T452 | done | preserve-client-abort-for-proxy-timeouts | done/T452-preserve-client-abort-for-proxy-timeouts.md
+- T453 | done | pass-mainnet-fetch-optimization-tests | done/T453-pass-mainnet-fetch-optimization-tests.md
