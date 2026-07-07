@@ -15,6 +15,8 @@ import {
 import {
 	bridgeOperationColumns,
 	completedOperationTableStatus,
+	mergeBridgeOperationRows,
+	pendingBridgeTransactionRows,
 	type BridgeOperationRow
 } from "~/utils/bridgeOperationsTable"
 import {
@@ -22,13 +24,15 @@ import {
 	sortOperationTimestampsDesc
 } from "~~/machines/operationTimestamps"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import type { PendingBridgeTransaction } from "~~/machines/pendingTransactions"
 import { useSelector } from "~~/machines/vue-xstate"
 
-const { operations } = defineProps<{
+const { operations, pendingOperations = [] } = defineProps<{
 	operations: {
 		id: string
 		operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 	}[]
+	pendingOperations?: PendingBridgeTransaction[]
 }>()
 
 const bs = useBridgeStore()
@@ -39,48 +43,48 @@ const loading = computed(() =>
 	})
 )
 
-const data = computed<BridgeOperationRow[]>(() =>
-	operations
-		.map(({ id, operation }) => {
-			const state = useSelector(operation, (state) => state)
-			const status = statusFromState(
-				state.value.value,
-				state.value.context.direction,
-				{ canCancel: state.value.context.canCancel }
-			)
-			const { text, kind } = completedOperationTableStatus(
-				status,
-				state.value.context.completionVerification
-			)
-			const timestampMs =
-				state.value.context.transaction?.timestampMs ??
-				state.value.context.completedAtMs ??
-				null
-			const submitHash =
-				state.value.context.transactions.submitDeposit?.result?.hash ??
-				state.value.context.transactions.submitWithdrawal?.result?.hash ??
-				""
-			return {
-				id,
-				operation,
-				status: state.value.value,
-				statusText: text,
-				statusKind: kind,
-				source: state.value.context.source,
-				destination: state.value.context.destination,
-				amount: state.value.context.amount,
-				hash: state.value.context.transaction?.hash ?? submitHash,
-				timestampMs,
-				dateLabel: formatOperationDate(timestampMs)
-			}
-		})
-		.toSorted((a, b) => {
-			const aIsDone = typeof a.status === "string" && a.status.includes("DONE")
-			const bIsDone = typeof b.status === "string" && b.status.includes("DONE")
-			if (aIsDone !== bIsDone) return aIsDone ? 1 : -1
-			return sortOperationTimestampsDesc(a.timestampMs, b.timestampMs)
-		})
-)
+const data = computed<BridgeOperationRow[]>(() => {
+	const fetchedRows = operations.map(({ id, operation }) => {
+		const state = useSelector(operation, (state) => state)
+		const status = statusFromState(
+			state.value.value,
+			state.value.context.direction,
+			{ canCancel: state.value.context.canCancel }
+		)
+		const { text, kind } = completedOperationTableStatus(
+			status,
+			state.value.context.completionVerification
+		)
+		const timestampMs =
+			state.value.context.transaction?.timestampMs ??
+			state.value.context.completedAtMs ??
+			null
+		const submitHash =
+			state.value.context.transactions.submitDeposit?.result?.hash ??
+			state.value.context.transactions.submitWithdrawal?.result?.hash ??
+			""
+		return {
+			id,
+			operation,
+			status: state.value.value,
+			statusText: text,
+			statusKind: kind,
+			source: state.value.context.source,
+			destination: state.value.context.destination,
+			amount: state.value.context.amount,
+			hash: submitHash || state.value.context.transaction?.hash || "",
+			timestampMs,
+			dateLabel: formatOperationDate(timestampMs)
+		}
+	})
+	const pendingRows = pendingBridgeTransactionRows(pendingOperations)
+	return mergeBridgeOperationRows(fetchedRows, pendingRows).toSorted((a, b) => {
+		const aIsDone = typeof a.status === "string" && a.status.includes("DONE")
+		const bIsDone = typeof b.status === "string" && b.status.includes("DONE")
+		if (aIsDone !== bIsDone) return aIsDone ? 1 : -1
+		return sortOperationTimestampsDesc(a.timestampMs, b.timestampMs)
+	})
+})
 
 const columns = bridgeOperationColumns
 

@@ -5,8 +5,28 @@ import {
 	bridgeOperationDateColumn,
 	bridgeOperationHashColumn,
 	bridgeOperationColumns,
+	mergeBridgeOperationRows,
+	pendingBridgeTransactionRows,
 	type BridgeOperationRow
 } from "../../app/utils/bridgeOperationsTable"
+import type { PendingBridgeTransaction } from "../../machines/pendingTransactions"
+
+const pendingRecord = (
+	overrides: Partial<PendingBridgeTransaction> = {}
+): PendingBridgeTransaction => ({
+	schemaVersion: 1,
+	walletAddress: "B62qwallet-1",
+	l1: "mina:devnet",
+	l2: "zeko:testnet",
+	source: "mina:devnet",
+	destination: "zeko:testnet",
+	direction: "deposit",
+	amount: "3.25",
+	transactionHash: "5JpendingHash",
+	submittedAtMs: Date.parse("2026-07-01T00:00:00Z"),
+	status: "awaiting-inclusion",
+	...overrides
+})
 
 describe("bridgeOperationDateColumn", () => {
 	it("reads the rendered date from dateLabel", () => {
@@ -46,11 +66,17 @@ describe("bridgeOperationDateColumn", () => {
 		expect(bridgeOperationsSource).toContain('row.getValue("hash")')
 	})
 
-	it("renders pending status text for unverified completed rows", () => {
+	it("keeps history rows keyed to the original submit transaction hash", () => {
+		expect(bridgeOperationsSource).toContain(
+			'hash: submitHash || state.value.context.transaction?.hash || ""'
+		)
+	})
+
+	it("renders finalizing status text for unverified completed rows", () => {
 		const row: BridgeOperationRow = {
 			id: "op-1",
 			status: "BRIDGE_OPERATION_COMPLETED",
-			statusText: "Pending",
+			statusText: "Finalizing",
 			statusKind: "pending",
 			source: "zeko",
 			destination: "mina",
@@ -61,7 +87,7 @@ describe("bridgeOperationDateColumn", () => {
 		}
 
 		expect(row.statusKind).toBe("pending")
-		expect(row.statusText).toBe("Pending")
+		expect(row.statusText).toBe("Finalizing")
 		expect(bridgeOperationsSource).toContain("row.original.statusText")
 	})
 
@@ -74,14 +100,14 @@ describe("bridgeOperationDateColumn", () => {
 				{ text: "Withdrawal Completed", kind: "complete" },
 				"unverified"
 			)
-		).toEqual({ text: "Pending", kind: "pending" })
+		).toEqual({ text: "Finalizing", kind: "pending" })
 	})
 
 	it("shows unverified cancelled rows as pending until backend cancellation recovery matches", () => {
 		expect(
 			completedOperationTableStatus({ text: "Cancelled", kind: "cancelled" }, "unverified")
 		).toEqual({
-			text: "Pending",
+			text: "Finalizing",
 			kind: "pending"
 		})
 		expect(
@@ -90,5 +116,61 @@ describe("bridgeOperationDateColumn", () => {
 			text: "Cancelled",
 			kind: "cancelled"
 		})
+	})
+
+	it("maps pending-only persisted bridge transactions to awaiting inclusion rows", () => {
+		expect(pendingBridgeTransactionRows([pendingRecord()])).toMatchObject([
+			{
+				id: "pending-5JpendingHash",
+				statusText: "Awaiting inclusion",
+				statusKind: "pending",
+				source: "mina:devnet",
+				destination: "zeko:testnet",
+				amount: "3.25",
+				hash: "5JpendingHash",
+				timestampMs: Date.parse("2026-07-01T00:00:00Z")
+			}
+		])
+	})
+
+	it("maps recovered pending bridge transactions to awaiting claim rows", () => {
+		expect(
+			pendingBridgeTransactionRows([pendingRecord({ status: "awaiting-claim" })])
+		).toMatchObject([
+			{
+				statusText: "Awaiting claim",
+				statusKind: "pending",
+				hash: "5JpendingHash"
+			}
+		])
+	})
+
+	it("maps claimed pending bridge transactions to finalizing rows", () => {
+		expect(pendingBridgeTransactionRows([pendingRecord({ status: "finalizing" })])).toMatchObject([
+			{
+				statusText: "Finalizing",
+				statusKind: "pending",
+				hash: "5JpendingHash"
+			}
+		])
+	})
+
+	it("prefers fetched operation rows over duplicate pending rows", () => {
+		const fetchedRow: BridgeOperationRow = {
+			id: "op-1",
+			status: "BRIDGE_OPERATION_COMPLETED",
+			statusText: "Completed",
+			statusKind: "complete",
+			source: "mina:devnet",
+			destination: "zeko:testnet",
+			amount: "3.25",
+			hash: "5JpendingHash",
+			timestampMs: Date.parse("2026-07-01T00:30:00Z"),
+			dateLabel: "Jul 1, 2026"
+		}
+
+		expect(
+			mergeBridgeOperationRows([fetchedRow], pendingBridgeTransactionRows([pendingRecord()]))
+		).toEqual([fetchedRow])
 	})
 })

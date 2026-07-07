@@ -25,6 +25,12 @@ describe("formatOperationDate", () => {
 	it("returns Unknown for missing timestamps", () => {
 		expect(formatOperationDate(null, "en-US")).toBe("Unknown")
 	})
+
+	it("formats date with hour and minute", () => {
+		expect(formatOperationDate(new Date(2026, 6, 1, 14, 5).getTime(), "en-US")).toBe(
+			"7/1/2026, 14:05"
+		)
+	})
 })
 
 describe("sortOperationTimestampsDesc", () => {

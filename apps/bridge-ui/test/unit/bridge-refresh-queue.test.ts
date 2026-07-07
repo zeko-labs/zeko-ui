@@ -1,8 +1,13 @@
 import type { walletMachine } from "@zeko/sdk"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { type ActorRefFromLogic, assign, createActor, fromCallback, setup, waitFor } from "xstate"
-import { bridgeMachine } from "../../machines/bridge"
+import { bridgeMachine, shouldRefreshPendingOperations } from "../../machines/bridge"
 import { getBridgeDebugBackendStore } from "../../machines/mockBackend"
+import type { BridgeNetwork } from "../../machines/networks"
+import {
+	savePendingBridgeTransaction,
+	type PendingBridgeTransaction
+} from "../../machines/pendingTransactions"
 
 vi.mock("../../app/service-worker/notificationList", () => ({
 	finalizeNotification: vi.fn(async () => {})
@@ -54,7 +59,88 @@ const signedTransactionForUser = (user: string) => ({
 	})
 })
 
+type MemoryStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">
+
+const createMemoryStorage = (): MemoryStorage => {
+	const values = new Map<string, string>()
+	return {
+		getItem: (key) => values.get(key) ?? null,
+		setItem: (key, value) => values.set(key, value),
+		removeItem: (key) => values.delete(key)
+	}
+}
+
+const pendingRecord = (
+	overrides: Partial<PendingBridgeTransaction> = {}
+): PendingBridgeTransaction => ({
+	schemaVersion: 1,
+	walletAddress: "B62qtest-user",
+	l1: "mina:devnet" as BridgeNetwork,
+	l2: "zeko-m:testnet" as BridgeNetwork,
+	source: "mina:devnet" as BridgeNetwork,
+	destination: "zeko-m:testnet" as BridgeNetwork,
+	direction: "deposit",
+	amount: "1",
+	transactionHash: "5JpendingHash",
+	submittedAtMs: Date.now(),
+	status: "awaiting-inclusion",
+	...overrides
+})
+
 describe("bridge refresh queue sync", () => {
+	it("keeps polling when only a local pending transaction is visible", () => {
+		const storage = createMemoryStorage()
+		vi.stubGlobal("localStorage", storage)
+		savePendingBridgeTransaction(pendingRecord(), { storage })
+		const wallet = createWalletActor()
+		wallet.start()
+
+		expect(
+			shouldRefreshPendingOperations({
+				sourceNetwork: "mina:devnet" as BridgeNetwork,
+				destinationNetwork: "zeko-m:testnet" as BridgeNetwork,
+				operations: new Map(),
+				wallet: wallet as unknown as never,
+				walletReady: true,
+				accountReady: true,
+				activeOperation: null,
+				activeCancellationOperation: null,
+				nextOperationOrder: 0,
+				worker: {} as never
+			})
+		).toBe(true)
+
+		wallet.stop()
+	})
+
+	it("does not poll for unrelated local pending transactions", () => {
+		const storage = createMemoryStorage()
+		vi.stubGlobal("localStorage", storage)
+		savePendingBridgeTransaction(
+			pendingRecord({ walletAddress: "B62qother-user", transactionHash: "5JotherHash" }),
+			{ storage }
+		)
+		const wallet = createWalletActor()
+		wallet.start()
+
+		expect(
+			shouldRefreshPendingOperations({
+				sourceNetwork: "mina:devnet" as BridgeNetwork,
+				destinationNetwork: "zeko-m:testnet" as BridgeNetwork,
+				operations: new Map(),
+				wallet: wallet as unknown as never,
+				walletReady: true,
+				accountReady: true,
+				activeOperation: null,
+				activeCancellationOperation: null,
+				nextOperationOrder: 0,
+				worker: {} as never
+			})
+		).toBe(false)
+
+		wallet.stop()
+	})
+
 	it("queues recovered main operations behind an active local operation that is not indexed yet", async () => {
 		vi.stubGlobal("mina", {
 			sendTransaction: vi.fn(() => new Promise(() => {}))

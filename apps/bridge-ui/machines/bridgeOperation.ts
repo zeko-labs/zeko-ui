@@ -18,6 +18,7 @@ import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
 import type { BridgeNetwork } from "./networks"
+import { savePendingBridgeTransaction } from "./pendingTransactions"
 import {
 	bridgeNetworkToWalletNetwork,
 	isMinaBridgeNetwork,
@@ -697,17 +698,36 @@ export const bridgeOperationMachine = setup({
 						input: ({ context }) => transactionInput(context, "submitDeposit"),
 						onDone: {
 							target: "done",
-							actions: assign(({ context, event }) => ({
-								...addCompletedTransactionResult({
-									context,
-									key: "submitDeposit",
-									result: event.output.result
-								}),
-								transaction: {
-									hash: event.output.result.hash,
-									timestampMs: Date.now()
+							actions: [
+								assign(({ context, event }) => ({
+									...addCompletedTransactionResult({
+										context,
+										key: "submitDeposit",
+										result: event.output.result
+									}),
+									transaction: {
+										hash: event.output.result.hash,
+										timestampMs: Date.now()
+									}
+								})),
+								({ context, event }) => {
+									savePendingBridgeTransaction({
+										schemaVersion: 1,
+										walletAddress: context.user,
+										l1: context.l1,
+										l2: context.l2,
+										source: context.source,
+										destination: context.destination,
+										direction: "deposit",
+										amount: context.amount,
+										transactionHash: event.output.result.hash,
+										submittedAtMs: Date.now(),
+										operationId: context.id,
+										timeoutSlots: context.timeoutSlots,
+										status: "awaiting-inclusion"
+									})
 								}
-							}))
+							]
 						},
 						onError: {
 							target: "#bridgeOperation.FAILED",
@@ -919,17 +939,36 @@ export const bridgeOperationMachine = setup({
 						input: ({ context }) => transactionInput(context, "submitWithdrawal"),
 						onDone: {
 							target: "done",
-							actions: assign(({ context, event }) => ({
-								...addCompletedTransactionResult({
-									context,
-									key: "submitWithdrawal",
-									result: event.output.result
-								}),
-								transaction: {
-									hash: event.output.result.hash,
-									timestampMs: Date.now()
+							actions: [
+								assign(({ context, event }) => ({
+									...addCompletedTransactionResult({
+										context,
+										key: "submitWithdrawal",
+										result: event.output.result
+									}),
+									transaction: {
+										hash: event.output.result.hash,
+										timestampMs: Date.now()
+									}
+								})),
+								({ context, event }) => {
+									savePendingBridgeTransaction({
+										schemaVersion: 1,
+										walletAddress: context.user,
+										l1: context.l1,
+										l2: context.l2,
+										source: context.source,
+										destination: context.destination,
+										direction: "withdrawal",
+										amount: context.amount,
+										transactionHash: event.output.result.hash,
+										submittedAtMs: Date.now(),
+										operationId: context.id,
+										timeoutSlots: context.timeoutSlots,
+										status: "awaiting-inclusion"
+									})
 								}
-							}))
+							]
 						},
 						onError: {
 							target: "#bridgeOperation.FAILED",

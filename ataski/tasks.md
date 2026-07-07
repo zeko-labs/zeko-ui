@@ -440,3 +440,16 @@
 - T454 | done | failover-on-upstream-redirect | done/T454-failover-on-upstream-redirect.md
 - T455 | done | cover-304-non-failover | done/T455-cover-304-non-failover.md
 - T456 | done | avoid-duplicating-proxy-endpoint-paths | done/T456-avoid-duplicating-proxy-endpoint-paths.md
+- T457 | done | implement-bridge-pending-persistence | done/T457-implement-bridge-pending-persistence.md
+- T458 | done | merge-display-bridge-pending-transactions | done/T458-merge-display-bridge-pending-transactions.md
+- T459 | done | validate-bridge-pending-transactions-release | done/T459-validate-bridge-pending-transactions-release.md
+- T460 | done | address-layer-css-path-review | done/T460-address-layer-css-path-review.md
+- T461 | done | optimize-pending-reconcile-watch | done/T461-optimize-pending-reconcile-watch.md
+- T462 | done | skip-empty-pending-reconcile-writes | done/T462-skip-empty-pending-reconcile-writes.md
+- T463 | done | fix-layer-worker-css-resolution | done/T463-fix-layer-worker-css-resolution.md
+- T464 | done | refresh-pending-transactions-after-submit | done/T464-refresh-pending-transactions-after-submit.md
+- T465 | done | rename-history-and-show-transaction-time | done/T465-rename-history-and-show-transaction-time.md
+- T466 | done | preserve-pending-withdrawals-after-refresh | done/T466-preserve-pending-withdrawals-after-refresh.md
+- T467 | done | show-awaiting-claim-for-recovered-pending-transactions | done/T467-show-awaiting-claim-for-recovered-pending-transactions.md
+- T468 | done | poll-while-local-pending-transactions-exist | done/T468-poll-while-local-pending-transactions-exist.md
+- T469 | done | keep-finalizing-state-after-claim-submit | done/T469-keep-finalizing-state-after-claim-submit.md

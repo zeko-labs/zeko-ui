@@ -17,6 +17,7 @@ import {
 	supportedNetworks,
 	walletNetworkToBridgeNetwork
 } from "./networks"
+import { hasPendingBridgeTransactions } from "./pendingTransactions"
 import type { RecoveredOperations, RecoveryLane } from "./recovery"
 import {
 	buildRecoverySyncState,
@@ -441,6 +442,29 @@ const bridgeDirections = {
 	[MINA_NETWORKS.devnet]: ZEKO_M_NETWORKS.testnet
 } as const satisfies Record<BridgeNetwork, BridgeNetwork>
 
+const bridgePendingScope = (context: BridgeContext) => {
+	const walletAddress = context.wallet.getSnapshot().context.account
+	if (!walletAddress) return null
+	const { sourceNetwork, destinationNetwork } = context
+	return {
+		walletAddress,
+		l1: isMinaBridgeNetwork(sourceNetwork) ? sourceNetwork : destinationNetwork,
+		l2: isZekoBridgeNetwork(sourceNetwork) ? sourceNetwork : destinationNetwork
+	}
+}
+
+export const shouldRefreshPendingOperations = (context: BridgeContext) => {
+	const hasPendingMachineOperations = [...context.operations.values()].some(
+		({ status, operation }) =>
+			status !== "completed" ||
+			operation.getSnapshot().context.completionVerification === "unverified"
+	)
+	if (hasPendingMachineOperations) return true
+
+	const pendingScope = bridgePendingScope(context)
+	return pendingScope ? hasPendingBridgeTransactions(pendingScope) : false
+}
+
 // Parent Bridge Machine
 export const bridgeMachine = setup({
 	types: {
@@ -451,12 +475,7 @@ export const bridgeMachine = setup({
 	guards: {
 		validSource: ({ context }) => supportedNetworks.includes(context.sourceNetwork),
 		validDestination: ({ context }) => supportedNetworks.includes(context.destinationNetwork),
-		shouldRefreshPendingOperations: ({ context }) =>
-			[...context.operations.values()].some(
-				({ status, operation }) =>
-					status !== "completed" ||
-					operation.getSnapshot().context.completionVerification === "unverified"
-			),
+		shouldRefreshPendingOperations: ({ context }) => shouldRefreshPendingOperations(context),
 		canFindPendingOperations: ({ context }) => context.accountReady && context.walletReady
 	},
 	actors: {

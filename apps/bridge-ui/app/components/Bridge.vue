@@ -3,6 +3,12 @@ import { Settings } from "lucide-vue-next"
 import type { ActorRefFromLogic } from "xstate"
 import { deriveBridgeQueues, type BridgeQueueItem } from "~/helpers"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import { isMinaBridgeNetwork, isZekoBridgeNetwork } from "~~/machines/networks"
+import {
+	loadPendingBridgeTransactions,
+	PENDING_BRIDGE_TRANSACTIONS_CHANGED_EVENT,
+	reconcilePendingBridgeTransactions
+} from "~~/machines/pendingTransactions"
 import { useSelector } from "~~/machines/vue-xstate"
 
 const bs = useBridgeStore()
@@ -27,9 +33,23 @@ const allOperations = useSelector(bs.bridge.actorRef, (state) => {
 	return {
 		...deriveBridgeQueues(items),
 		activeCancellationOperation: state.context.activeCancellationOperation,
-		currentSlot: state.context.currentSlot
+		currentSlot: state.context.currentSlot,
+		sourceNetwork: state.context.sourceNetwork,
+		destinationNetwork: state.context.destinationNetwork
 	}
 })
+
+const operationTransactionHash = (
+	operation: ActorRefFromLogic<typeof bridgeOperationMachine>
+) => {
+	const context = operation.getSnapshot().context
+	return (
+		context.transaction?.hash ??
+		context.transactions.submitDeposit?.result?.hash ??
+		context.transactions.submitWithdrawal?.result?.hash ??
+		null
+	)
+}
 
 const completedOperations = computed(() => allOperations.value.completed ?? [])
 
@@ -52,6 +72,125 @@ const activeCancellationOperation = computed(
 )
 
 const currentSlot = computed(() => allOperations.value.currentSlot)
+
+const bridgeNetworkScope = computed(() => {
+	const { sourceNetwork, destinationNetwork } = allOperations.value
+	if (
+		isMinaBridgeNetwork(sourceNetwork) &&
+		isZekoBridgeNetwork(destinationNetwork)
+	) {
+		return { l1: sourceNetwork, l2: destinationNetwork }
+	}
+	if (
+		isMinaBridgeNetwork(destinationNetwork) &&
+		isZekoBridgeNetwork(sourceNetwork)
+	) {
+		return { l1: destinationNetwork, l2: sourceNetwork }
+	}
+	return null
+})
+
+const pendingOperationsVersion = ref(0)
+const operationStatusVersion = ref(0)
+
+const refreshPendingOperations = () => {
+	pendingOperationsVersion.value += 1
+}
+
+const statusTrackedOperations = computed(() => [
+	...(currentOperation.value ? [currentOperation.value] : []),
+	...depositQueue.value,
+	...withdrawalQueue.value,
+	...cancellableOperations.value,
+	...completedOperations.value.map(({ operation }) => operation)
+])
+
+watch(
+	statusTrackedOperations,
+	(operations, _previousOperations, onCleanup) => {
+		operationStatusVersion.value += 1
+		const subscriptions = operations.map((operation) =>
+			operation.subscribe(() => {
+				operationStatusVersion.value += 1
+			})
+		)
+		onCleanup(() => {
+			for (const subscription of subscriptions) subscription.unsubscribe()
+		})
+	},
+	{ immediate: true }
+)
+
+const localPendingStatusByHash = computed(() => {
+	void operationStatusVersion.value
+	return new Map(
+		statusTrackedOperations.value.flatMap((operation) => {
+			const snapshot = operation.getSnapshot()
+			const hash = operationTransactionHash(operation)
+			if (snapshot.context.actionIndex === undefined || !hash) return []
+			const status =
+				snapshot.matches("BRIDGE_OPERATION_COMPLETED") ||
+				snapshot.matches({ FINALIZE_DEPOSIT: "transaction" }) ||
+				snapshot.matches({ FINALIZE_DEPOSIT: "done" }) ||
+				snapshot.matches({ FINALIZE_WITHDRAWAL: "transaction" }) ||
+				snapshot.matches({ FINALIZE_WITHDRAWAL: "done" })
+					? "finalizing"
+					: "awaiting-claim"
+			return [[hash, status] as const]
+		})
+	)
+})
+
+const pendingOperations = computed(() => {
+	void pendingOperationsVersion.value
+	if (!bs.address || !bridgeNetworkScope.value) return []
+	return loadPendingBridgeTransactions({
+		walletAddress: bs.address,
+		...bridgeNetworkScope.value
+	}).map((transaction) => {
+		const status = localPendingStatusByHash.value.get(
+			transaction.transactionHash
+		)
+		return status ? { ...transaction, status } : transaction
+	})
+})
+
+onMounted(() => {
+	window.addEventListener(
+		PENDING_BRIDGE_TRANSACTIONS_CHANGED_EVENT,
+		refreshPendingOperations
+	)
+})
+
+onBeforeUnmount(() => {
+	window.removeEventListener(
+		PENDING_BRIDGE_TRANSACTIONS_CHANGED_EVENT,
+		refreshPendingOperations
+	)
+})
+
+const completedIndexedTransactionHashesKey = computed(() =>
+	completedOperations.value
+		.flatMap(({ operation }) => {
+			const context = operation.getSnapshot().context
+			const hash = operationTransactionHash(operation)
+			return context.actionIndex !== undefined && hash ? [hash] : []
+		})
+		.join(",")
+)
+
+watch(
+	[completedIndexedTransactionHashesKey, bridgeNetworkScope, () => bs.address],
+	([hashesKey, scope, walletAddress]) => {
+		if (!walletAddress || !scope || !hashesKey) return
+		reconcilePendingBridgeTransactions({
+			walletAddress,
+			...scope,
+			transactionHashes: hashesKey.split(",")
+		})
+	},
+	{ immediate: true }
+)
 </script>
 <template>
   <div class="Bridge">
@@ -133,8 +272,11 @@ const currentSlot = computed(() => allOperations.value.currentSlot)
       </h4>
     </div>
     <div class="CompletedTransactions">
-      <h3>Completed Transactions</h3>
-      <BridgeOperations :operations="completedOperations" />
+      <h3>Transactions</h3>
+      <BridgeOperations
+        :operations="completedOperations"
+        :pendingOperations
+      />
     </div>
   </div>
 </template>
