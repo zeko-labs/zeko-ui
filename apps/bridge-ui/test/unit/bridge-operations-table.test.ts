@@ -6,7 +6,9 @@ import {
 	bridgeOperationHashColumn,
 	bridgeOperationColumns,
 	mergeBridgeOperationRows,
+	networkTransactionExplorerUrl,
 	pendingBridgeTransactionRows,
+	transactionExplorerUrl,
 	type BridgeOperationRow
 } from "../../app/utils/bridgeOperationsTable"
 import type { PendingBridgeTransaction } from "../../machines/pendingTransactions"
@@ -45,6 +47,62 @@ describe("bridgeOperationDateColumn", () => {
 
 		expect(bridgeOperationDateColumn.id).toBe("date")
 		expect(bridgeOperationDateColumn.accessorFn?.(row, 0)).toBe("11/14/2023")
+	})
+
+	it("links transaction hashes to the correct explorer", () => {
+		const baseRow: BridgeOperationRow = {
+			id: "op-1",
+			status: "PENDING",
+			statusText: "Awaiting inclusion",
+			statusKind: "pending",
+			source: "mina:mainnet",
+			destination: "zeko-m:mainnet",
+			amount: 1,
+			hash: "5JmainnetDeposit",
+			timestampMs: null,
+			dateLabel: "Unknown"
+		}
+
+		expect(transactionExplorerUrl(baseRow)).toBe("https://minascan.io/mainnet/tx/5JmainnetDeposit")
+		expect(
+			transactionExplorerUrl({
+				...baseRow,
+				source: "zeko-m:mainnet",
+				destination: "mina:mainnet",
+				hash: "5JmainnetWithdrawal"
+			})
+		).toBe("https://zekoscan.io/mainnet/tx/5JmainnetWithdrawal")
+		expect(
+			transactionExplorerUrl({
+				...baseRow,
+				source: "mina:devnet",
+				destination: "zeko-m:testnet",
+				hash: "5JtestnetDeposit"
+			})
+		).toBe("https://minascan.io/devnet/tx/5JtestnetDeposit")
+		expect(
+			transactionExplorerUrl({
+				...baseRow,
+				source: "zeko-m:testnet",
+				destination: "mina:devnet",
+				hash: "5JtestnetWithdrawal"
+			})
+		).toBe("https://zekoscan.xyz/testnet/tx/5JtestnetWithdrawal")
+	})
+
+	it("links finalization hashes by destination network", () => {
+		expect(
+			networkTransactionExplorerUrl({ network: "zeko-m:mainnet", hash: "5JfinalizeDeposit" })
+		).toBe("https://zekoscan.io/mainnet/tx/5JfinalizeDeposit")
+		expect(
+			networkTransactionExplorerUrl({ network: "mina:mainnet", hash: "5JfinalizeWithdrawal" })
+		).toBe("https://minascan.io/mainnet/tx/5JfinalizeWithdrawal")
+		expect(
+			networkTransactionExplorerUrl({ network: "zeko-m:testnet", hash: "5JtestnetFinalizeDeposit" })
+		).toBe("https://zekoscan.xyz/testnet/tx/5JtestnetFinalizeDeposit")
+		expect(
+			networkTransactionExplorerUrl({ network: "mina:devnet", hash: "5JtestnetFinalizeWithdrawal" })
+		).toBe("https://minascan.io/devnet/tx/5JtestnetFinalizeWithdrawal")
 	})
 
 	it("exposes completed transaction hashes as a rendered table column", () => {

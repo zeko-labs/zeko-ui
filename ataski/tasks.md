@@ -455,3 +455,8 @@
 - T469 | done | keep-finalizing-state-after-claim-submit | done/T469-keep-finalizing-state-after-claim-submit.md
 - T470 | done | fix-withdrawal-refresh-after-submit | done/T470-fix-withdrawal-refresh-after-submit.md
 - T471 | in-progress | do-not-produce-duplicate-claim-after-refresh | in-progress/T471-do-not-produce-duplicate-claim-after-refresh.md
+- T472 | done | link-transaction-hashes-to-explorers | done/T472-link-transaction-hashes-to-explorers.md
+- T473 | done | add-hash-copy-and-explorer-actions | done/T473-add-hash-copy-and-explorer-actions.md
+- T474 | done | link-header-wallet-address-to-explorer | done/T474-link-header-wallet-address-to-explorer.md
+- T475 | done | show-copied-check-feedback | done/T475-show-copied-check-feedback.md
+- T476 | done | show-finalization-transaction-link-modal | done/T476-show-finalization-transaction-link-modal.md

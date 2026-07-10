@@ -5,8 +5,14 @@ import {
 	getPaginationRowModel,
 	useVueTable
 } from "@tanstack/vue-table"
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-vue-next"
-import { computed } from "vue"
+import {
+	CheckIcon,
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	CopyIcon,
+	ExternalLinkIcon
+} from "lucide-vue-next"
+import { computed, ref } from "vue"
 import type { ActorRefFromLogic } from "xstate"
 import {
 	shouldShowCompletedOperationsLoading,
@@ -17,6 +23,7 @@ import {
 	completedOperationTableStatus,
 	mergeBridgeOperationRows,
 	pendingBridgeTransactionRows,
+	transactionExplorerUrl,
 	type BridgeOperationRow
 } from "~/utils/bridgeOperationsTable"
 import {
@@ -124,6 +131,20 @@ const visiblePages = computed(() => {
 	}
 	return pages
 })
+
+const copiedHash = ref<string | null>(null)
+let copiedHashTimeout: ReturnType<typeof setTimeout> | null = null
+
+const copyHash = async (hash: string) => {
+	if (!hash) return
+	await navigator.clipboard.writeText(hash)
+	copiedHash.value = hash
+	if (copiedHashTimeout) clearTimeout(copiedHashTimeout)
+	copiedHashTimeout = setTimeout(() => {
+		copiedHash.value = null
+		copiedHashTimeout = null
+	}, 1500)
+}
 </script>
 
 <template>
@@ -186,10 +207,46 @@ const visiblePages = computed(() => {
               </div>
             </td>
             <!-- Hash -->
-            <td>
-              <span class="HashCell" :title='String(row.getValue("hash"))'>
-                {{ String(row.getValue("hash") || "none") }}
-              </span>
+            <td class="HashTableCell">
+              <div class="HashActionsCell">
+                <span class="HashCell" :title='String(row.getValue("hash"))'>
+                  {{ String(row.getValue("hash") || "none") }}
+                </span>
+                <span
+                  v-if='String(row.getValue("hash") || "")'
+                  class="HashActions">
+                  <button
+                    type="button"
+                    class="HashActionButton"
+                    :aria-label='
+                      copiedHash === String(row.getValue("hash"))
+                      ? "Copied transaction hash"
+                      : `Copy transaction hash ${String(row.getValue("hash"))}`
+                    '
+                    :title='
+                      copiedHash === String(row.getValue("hash"))
+                      ? "Copied"
+                      : "Copy hash"
+                    '
+                    @click='copyHash(String(row.getValue("hash")))'>
+                    <CheckIcon
+                      v-if='copiedHash === String(row.getValue("hash"))'
+                      class="CopiedIcon"
+                    />
+                    <CopyIcon v-else />
+                  </button>
+                  <a
+                    v-if="transactionExplorerUrl(row.original)"
+                    class="HashActionButton"
+                    :href="transactionExplorerUrl(row.original) ?? undefined"
+                    :aria-label='`Open transaction ${String(row.getValue("hash"))} in explorer`'
+                    title="Open in explorer"
+                    target="_blank"
+                    rel="noopener noreferrer">
+                    <ExternalLinkIcon />
+                  </a>
+                </span>
+              </div>
             </td>
             <!-- Date -->
             <td>{{ String(row.getValue("date")) }}</td>
@@ -296,6 +353,23 @@ tbody tr:hover {
   }
 }
 
+.HashTableCell {
+  &:hover,
+  &:focus-within {
+    .HashActions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+}
+
+.HashActionsCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-inline-size: 22ch;
+}
+
 .HashCell {
   display: inline-block;
   max-width: 18ch;
@@ -305,6 +379,61 @@ tbody tr:hover {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.85em;
   white-space: nowrap;
+}
+
+.HashActions {
+  display: inline-flex;
+  gap: 0.2rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+@keyframes CopiedCheckFade {
+  0%,
+  65% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+}
+
+.HashActionButton {
+  inline-size: 1.7rem;
+  block-size: 1.7rem;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--bridge-border-color);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.74);
+  color: var(--theme-light-content-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+  &:hover {
+    background: var(--bridge-bg-alt);
+    color: var(--theme-light-content-primary);
+    border-color: var(--palette-yellow-200);
+  }
+  &:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--bridge-focus-color);
+    outline-offset: 2px;
+  }
+  svg {
+    inline-size: 0.95rem;
+    block-size: 0.95rem;
+  }
+  .CopiedIcon {
+    color: var(--theme-light-content-primary);
+    animation: CopiedCheckFade 1500ms ease both;
+  }
 }
 
 .PaginationBar {

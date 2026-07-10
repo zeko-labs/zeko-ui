@@ -79,6 +79,46 @@ export const bridgeOperationHashColumn = {
 	header: "Hash"
 } satisfies ColumnDef<BridgeOperationRow>
 
+export const networkTransactionExplorerUrl = ({
+	network,
+	hash
+}: {
+	network: BridgeNetwork
+	hash: string
+}): string | null => {
+	if (!hash) return null
+
+	if (network === "zeko-m:mainnet") return `https://zekoscan.io/mainnet/tx/${hash}`
+	if (network === "mina:mainnet") return `https://minascan.io/mainnet/tx/${hash}`
+	if (network === "zeko-m:testnet") return `https://zekoscan.xyz/testnet/tx/${hash}`
+	if (network === "mina:devnet") return `https://minascan.io/devnet/tx/${hash}`
+
+	return null
+}
+
+export const transactionExplorerUrl = ({
+	source,
+	destination,
+	hash
+}: Pick<BridgeOperationRow, "source" | "destination" | "hash">): string | null => {
+	if (!hash) return null
+
+	if (source === "zeko-m:mainnet" && destination === "mina:mainnet") {
+		return networkTransactionExplorerUrl({ network: source, hash })
+	}
+	if (source === "mina:mainnet" && destination === "zeko-m:mainnet") {
+		return networkTransactionExplorerUrl({ network: source, hash })
+	}
+	if (source === "zeko-m:testnet" && destination === "mina:devnet") {
+		return networkTransactionExplorerUrl({ network: source, hash })
+	}
+	if (source === "mina:devnet" && destination === "zeko-m:testnet") {
+		return networkTransactionExplorerUrl({ network: source, hash })
+	}
+
+	return null
+}
+
 export const bridgeOperationColumns = [
 	{ accessorKey: "statusText", header: "Status" },
 	{ accessorKey: "source", header: "From" },
