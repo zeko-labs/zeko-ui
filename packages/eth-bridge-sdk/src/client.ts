@@ -148,7 +148,7 @@ export class EthereumBridgeClient {
 			address: this.config.bridgeAddress,
 			functionName: "depositETH",
 			args: [BigInt(packZekoAddress(input.recipient))],
-			chain: undefined,
+			chain: null,
 			value: input.valueWei
 		})
 		const receipt = await this.#publicClient.waitForTransactionReceipt({ hash })
@@ -245,7 +245,7 @@ export class EthereumBridgeClient {
 			account,
 			address: this.config.bridgeAddress,
 			functionName: "claimNativeWithdrawal",
-			chain: undefined,
+			chain: null,
 			args: [
 				BigInt(withdrawal.settlementSequence),
 				withdrawal.offset,
