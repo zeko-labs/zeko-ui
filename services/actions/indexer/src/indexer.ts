@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { clearAllTables } from "./db"
+import { env } from "./env"
 import { logger } from "./helper"
 import { handler as innerHandler, rebuild as innerRebuild } from "./modules/inner"
 import { handler as outerHandler, rebuild as outerRebuild } from "./modules/outer"
@@ -38,6 +39,9 @@ const waitForDelay = async (seconds: number, signal: AbortSignal): Promise<void>
 	}
 }
 
+const disabledHandler = async (): Promise<HandlerResult> => ({ lastFetchedBlock: null })
+const disabledRebuild = async () => ({ data: [], lastFetchedBlock: null })
+
 export async function runIndexingLoop(
 	db: PostgresJsDatabase,
 	state: IndexerState,
@@ -45,8 +49,8 @@ export async function runIndexingLoop(
 	deps: Partial<IndexingLoopDependencies> = {}
 ): Promise<void> {
 	const baseDelay = Math.max(1, state.config.intervalSeconds)
-	const outer = deps.outer ?? outerHandler
-	const inner = deps.inner ?? innerHandler
+	const outer = deps.outer ?? (env.INDEX_OUTER ? outerHandler : disabledHandler)
+	const inner = deps.inner ?? (env.INDEX_INNER ? innerHandler : disabledHandler)
 	const now = deps.now ?? Date.now
 	const wait = deps.wait ?? waitForDelay
 
@@ -241,7 +245,8 @@ export class Indexer {
 			lastRunTimestamp: this.#state.lastRunTimestamp,
 			lastFetchedBlock: this.#state.lastFetchedBlock,
 			config: this.#state.config,
-			consecutiveErrors: this.#state.consecutiveErrors
+			consecutiveErrors: this.#state.consecutiveErrors,
+			streams: { outer: env.INDEX_OUTER, inner: env.INDEX_INNER }
 		}
 	}
 
@@ -255,8 +260,8 @@ export class Indexer {
 
 		try {
 			const [outerResult, innerResult] = await Promise.all([
-				outerRebuild(this.#db),
-				innerRebuild(this.#db)
+				env.INDEX_OUTER ? outerRebuild(this.#db) : disabledRebuild(),
+				env.INDEX_INNER ? innerRebuild(this.#db) : disabledRebuild()
 			])
 
 			this.#state.lastFetchedBlock = {

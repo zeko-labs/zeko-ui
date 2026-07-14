@@ -2,6 +2,11 @@
 
 Actions Indexer is a service that indexes actions from the Zeko blockchain and stores them in a database for easy retrieval and querying.
 
+`INDEX_OUTER` and `INDEX_INNER` independently enable the two streams and
+default to `true`. The Ethereum bridge local roundtrip runs outer-only against
+the gateway's Mina archive API; a testnet deployment normally enables both and
+points the inner stream at the Zeko archive.
+
 ## CLI
 
 Run diagnostics and control operations through moon tasks (all tasks invoke the actions-indexer CLI):

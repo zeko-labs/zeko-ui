@@ -10,6 +10,14 @@ const Schema = v.object({
 	L2_FINALITY_TIME_H: v.pipe(v.fallback(v.string(), "72"), v.transform(Number)),
 	OUTER_PK: v.string(),
 	INNER_PK: v.string(),
+	INDEX_OUTER: v.pipe(
+		v.fallback(v.string(), "true"),
+		v.transform((value) => !["0", "false", "no", "off"].includes(value.toLowerCase()))
+	),
+	INDEX_INNER: v.pipe(
+		v.fallback(v.string(), "true"),
+		v.transform((value) => !["0", "false", "no", "off"].includes(value.toLowerCase()))
+	),
 	ENVIRONMENT: v.optional(v.string())
 })
 export const env = v.parse(Schema, process.env)

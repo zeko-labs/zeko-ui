@@ -9,6 +9,8 @@ export type Config = {
 	l1Network: NetworkId
 	l2Network: NetworkId
 	actionsApi: string
+	v2DepositsStartIndex?: number
+	v2WithdrawalsStartIndex?: number
 	pollTimeout?: number
 	verbose?: boolean
 }
@@ -32,6 +34,15 @@ export type Deposit = {
 export type Withdrawal = {
 	recipient: PublicKey
 	amount: UInt64
+}
+
+export type WithdrawalRoute = "mina" | "ethereum"
+
+export type SubmitWithdrawalParams = Withdrawal & {
+	/** Account authorizing and funding the L2 debit. Defaults to recipient for Mina compatibility. */
+	sender?: PublicKey
+	/** Ethereum withdrawals do not reserve Mina L1 finalization or account-creation fees. */
+	route?: WithdrawalRoute
 }
 
 export type BridgeVersion = 1 | 2

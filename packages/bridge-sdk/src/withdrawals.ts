@@ -31,6 +31,7 @@ import type {
 	Action,
 	ExtractInput,
 	InnerWitness,
+	SubmitWithdrawalParams,
 	Withdrawal,
 	WithdrawalFinalizationResult,
 	WithdrawalWithState,
@@ -141,42 +142,40 @@ export async function fetchUserWithdrawals(
 export async function submitWithdrawal(
 	runtime: BridgeRuntime,
 	feePayer: Mina.FeePayerSpec,
-	{
-		recipient,
-		amount
-	}: {
-		recipient: PublicKey
-		amount: UInt64
-	},
+	{ recipient, amount, sender = recipient, route = "mina" }: SubmitWithdrawalParams,
 	signTxn: SignTransaction
 ): Promise<string> {
 	setL2(runtime)
 	const fetchBridgeAccount = runtime.bridge?.fetchAccount ?? fetchAccount
 
-	await ensureBridgeTransferAmountCanCoverFees({
-		direction: "withdrawal",
-		amount,
-		recipient,
-		accountCreationFee: runtime.l1AccountCreationFee,
-		bridgeProofFee: runtime.bridgeProofFee,
-		recipientAccountExists: async () =>
-			(await fetchBridgeAccount(runtime.l1Client, recipient)) !== null,
-		helperAccountExists: async () =>
-			(await fetchBridgeAccount(
-				runtime.l1Client,
-				recipient,
-				TokenId.derive(runtime.outerTokenOwner)
-			)) !== null
-	})
+	if (route === "mina") {
+		await ensureBridgeTransferAmountCanCoverFees({
+			direction: "withdrawal",
+			amount,
+			recipient,
+			accountCreationFee: runtime.l1AccountCreationFee,
+			bridgeProofFee: runtime.bridgeProofFee,
+			recipientAccountExists: async () =>
+				(await fetchBridgeAccount(runtime.l1Client, recipient)) !== null,
+			helperAccountExists: async () =>
+				(await fetchBridgeAccount(
+					runtime.l1Client,
+					recipient,
+					TokenId.derive(runtime.outerTokenOwner)
+				)) !== null
+		})
+	} else if (amount.equals(UInt64.zero).toBoolean()) {
+		throw new Error("Ethereum withdrawal amount must be greater than zero")
+	}
 
-	await refreshCache(recipient)
+	await refreshCache(sender)
 	await refreshCache(feePayer)
 	await refreshCache(runtime.innerHolder)
 	await refreshCache(runtime.innerPk)
 	await refreshCache(runtime.bridgeFeeRecipientL2)
 
 	const txn = await Mina.transaction(feePayer, async () => {
-		const transferrer = AccountUpdate.createSigned(recipient)
+		const transferrer = AccountUpdate.createSigned(sender)
 		transferrer.balance.subInPlace(amount.add(runtime.bridgeProofFee))
 		transferrer.body.actions = Actions.pushAction(transferrer.body.actions, [
 			...recipient.toFields(),
@@ -239,7 +238,7 @@ export async function submitWithdrawal(
 
 	const signed = await signTxn(txn)
 	const transferrer = signed.transaction.accountUpdates.find(({ publicKey }) =>
-		publicKey.equals(recipient).toBoolean()
+		publicKey.equals(sender).toBoolean()
 	)
 	if (!transferrer) throw new Error("Transferrer not found")
 

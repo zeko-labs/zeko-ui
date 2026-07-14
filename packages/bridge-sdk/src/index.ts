@@ -22,6 +22,7 @@ import type {
 	DepositWithState,
 	Withdrawal,
 	WithdrawalFinalizationResult,
+	SubmitWithdrawalParams,
 	WithdrawalWithState
 } from "./types"
 import {
@@ -37,8 +38,11 @@ export * from "./actions"
 export * from "./diagnostics"
 export * from "./errors"
 export * from "./graphql/index"
+export * from "./runtime"
 export * from "./status"
 export * from "./types"
+export { ethereumDepositAux } from "./ethereum"
+export type { RetryableTransactionOptions, SignTransaction } from "./transactions"
 
 const isBridgeRuntime = (value: unknown): value is BridgeRuntime =>
 	typeof value === "object" && value !== null && "config" in value && "l1Client" in value
@@ -55,6 +59,7 @@ export class Bridge {
 	}
 
 	private withBridgeHooks(runtime: BridgeRuntime): BridgeRuntime {
+		const hooks = runtime.bridge
 		const runtimeWithDefaults = {
 			...runtime,
 			V2_DEPOSITS_START_INDEX: runtime.V2_DEPOSITS_START_INDEX ?? UInt32.from(1),
@@ -64,14 +69,19 @@ export class Bridge {
 		return {
 			...runtimeWithDefaults,
 			bridge: {
-				fetchAccount: (...args) => this.fetchAccount(...args),
-				fetchCurrentSlot: () => this.fetchCurrentSlot(),
-				fetchDepositFinalizationWitnesses: (_runtime, pk) =>
-					this.fetchDepositFinalizationWitnesses(pk),
-				fetchSyncedOuterActionState: () => this.fetchSyncedOuterActionState(),
-				fetchUserDeposits: (pk) => this.fetchUserDeposits(pk),
-				fetchUserWithdrawals: (pk) => this.fetchUserWithdrawals(pk),
-				fetchUserWithdrawalActions: (pk) => this.fetchUserWithdrawalActions(pk)
+				depositAux: hooks?.depositAux,
+				fetchAccount: hooks?.fetchAccount ?? ((...args) => this.fetchAccount(...args)),
+				fetchCurrentSlot: hooks?.fetchCurrentSlot ?? (() => this.fetchCurrentSlot()),
+				fetchDepositFinalizationWitnesses:
+					hooks?.fetchDepositFinalizationWitnesses ??
+					((_runtime, pk) => this.fetchDepositFinalizationWitnesses(pk)),
+				fetchSyncedOuterActionState:
+					hooks?.fetchSyncedOuterActionState ?? (() => this.fetchSyncedOuterActionState()),
+				fetchUserDeposits: hooks?.fetchUserDeposits ?? ((pk) => this.fetchUserDeposits(pk)),
+				fetchUserWithdrawals:
+					hooks?.fetchUserWithdrawals ?? ((pk) => this.fetchUserWithdrawals(pk)),
+				fetchUserWithdrawalActions:
+					hooks?.fetchUserWithdrawalActions ?? ((pk) => this.fetchUserWithdrawalActions(pk))
 			}
 		}
 	}
@@ -210,10 +220,7 @@ export class Bridge {
 
 	public submitWithdrawal(
 		feePayer: Mina.FeePayerSpec,
-		params: {
-			recipient: PublicKey
-			amount: UInt64
-		},
+		params: SubmitWithdrawalParams,
 		signTxn: SignTransaction
 	): Promise<string> {
 		return submitWithdrawal(this.runtime, feePayer, params, signTxn)

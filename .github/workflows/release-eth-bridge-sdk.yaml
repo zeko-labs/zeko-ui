@@ -1,0 +1,64 @@
+name: Release Ethereum Bridge SDK
+
+on:
+  workflow_call:
+    outputs:
+      should_release:
+        description: Whether eth-bridge-sdk should release in this run
+        value: ${{ jobs.version-check.outputs.should_release }}
+      version:
+        description: eth-bridge-sdk package version for this run
+        value: ${{ jobs.version-check.outputs.version }}
+  workflow_dispatch:
+
+jobs:
+  version-check:
+    name: Check eth-bridge-sdk version
+    runs-on: warp-ubuntu-latest-x64-2x
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check if version is already published
+        id: check
+        run: |
+          VERSION=$(node -p "require('./packages/eth-bridge-sdk/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          PUBLISHED=$(npm view @zeko-labs/eth-bridge-sdk@"$VERSION" version 2>/dev/null || echo "")
+          if [ -z "$PUBLISHED" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    needs: version-check
+    if: needs.version-check.outputs.should_release == 'true'
+    runs-on: warp-ubuntu-latest-x64-4x
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+      - run: pnpm install --frozen-lockfile
+      - name: Build package
+        run: pnpm exec moon run eth-bridge-sdk:build
+      - name: Pack package
+        working-directory: packages/eth-bridge-sdk
+        run: pnpm pack
+      - name: Configure npm registry
+        run: |
+          echo "registry=https://registry.npmjs.org/" > "$HOME/.npmrc"
+          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> "$HOME/.npmrc"
+      - name: Publish package
+        working-directory: packages/eth-bridge-sdk
+        env:
+          NPM_CONFIG_PROVENANCE: "false"
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          npm publish "zeko-labs-eth-bridge-sdk-${VERSION}.tgz" --access public --loglevel verbose

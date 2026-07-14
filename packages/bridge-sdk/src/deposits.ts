@@ -159,7 +159,7 @@ export async function fetchDepositStateContext(
 		await (runtime.bridge?.fetchUserDeposits?.(pk) ?? fetchUserDeposits(runtime, pk))
 	).map((deposit) => ({
 		deposit,
-		aux: depositAux(deposit)
+		aux: (runtime.bridge?.depositAux ?? depositAux)(deposit)
 	}))
 
 	const depositsByAux = new Map<bigint, DepositParams>()

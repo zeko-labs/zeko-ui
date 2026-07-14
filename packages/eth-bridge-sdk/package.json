@@ -1,0 +1,25 @@
+{
+	"name": "@zeko-labs/eth-bridge-sdk",
+	"version": "0.1.0",
+	"description": "Browser SDK for the Zeko native Ethereum bridge PoC.",
+	"type": "module",
+	"license": "MIT",
+	"publishConfig": { "access": "public" },
+	"files": ["dist"],
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": { ".": "./dist/index.js" },
+	"dependencies": {
+		"@zeko-labs/bridge-sdk": "workspace:^",
+		"o1js": "catalog:",
+		"viem": "^2.55.2"
+	},
+	"devDependencies": {
+		"@types/bun": "catalog:",
+		"@typescript/native-preview": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

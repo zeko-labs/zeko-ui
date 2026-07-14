@@ -93,17 +93,21 @@ export type BridgeRuntime = {
 	readonly V2_DEPOSITS_START_INDEX: UInt32
 	readonly V2_WITHDRAWALS_START_INDEX: UInt32
 	readonly bridge?: {
-		fetchAccount: (
+		depositAux?: (deposit: Deposit) => import("o1js").Field
+		fetchAccount?: (
 			client: GqlClient,
 			pk: PublicKey,
 			tokenId?: import("o1js").Field
 		) => Promise<Account | null>
-		fetchCurrentSlot: () => Promise<UInt32>
-		fetchDepositFinalizationWitnesses: typeof fetchDepositFinalizationWitnesses
-		fetchSyncedOuterActionState: () => Promise<{ state: import("o1js").Field; length: UInt32 }>
-		fetchUserDeposits: (pk: PublicKey) => Promise<Deposit[]>
-		fetchUserWithdrawals: (pk: PublicKey) => Promise<Withdrawal[]>
-		fetchUserWithdrawalActions: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
+		fetchCurrentSlot?: () => Promise<UInt32>
+		fetchDepositFinalizationWitnesses?: typeof fetchDepositFinalizationWitnesses
+		fetchSyncedOuterActionState?: () => Promise<{
+			state: import("o1js").Field
+			length: UInt32
+		}>
+		fetchUserDeposits?: (pk: PublicKey) => Promise<Deposit[]>
+		fetchUserWithdrawals?: (pk: PublicKey) => Promise<Withdrawal[]>
+		fetchUserWithdrawalActions?: (pk: PublicKey) => Promise<Array<Action & Withdrawal>>
 	}
 }
 
@@ -183,9 +187,17 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 	})
 
 	const V2_DEPOSITS_START_INDEX =
-		config.l2Network === "testnet" ? UInt32.from(68520) : UInt32.from(0)
+		config.v2DepositsStartIndex === undefined
+			? config.l2Network === "testnet"
+				? UInt32.from(68520)
+				: UInt32.from(0)
+			: UInt32.from(config.v2DepositsStartIndex)
 	const V2_WITHDRAWALS_START_INDEX =
-		config.l2Network === "testnet" ? UInt32.from(10529) : UInt32.from(0)
+		config.v2WithdrawalsStartIndex === undefined
+			? config.l2Network === "testnet"
+				? UInt32.from(10529)
+				: UInt32.from(0)
+			: UInt32.from(config.v2WithdrawalsStartIndex)
 
 	return {
 		config,

@@ -456,7 +456,7 @@ export function filterNulls<T>(arr: (T | null)[]): T[] {
 	})
 }
 
-export async function refreshCache(feePayer: Mina.FeePayerSpec, tokenId?: Field) {
+export async function refreshCache(feePayer: Mina.FeePayerSpec, tokenId?: Field): Promise<void> {
 	if (feePayer instanceof PublicKey) {
 		await fetchAccount({ publicKey: feePayer, tokenId })
 	} else if (feePayer) {

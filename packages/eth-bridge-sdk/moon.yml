@@ -1,0 +1,59 @@
+layer: library
+fileGroups:
+  src:
+    - src/**/*
+    - tsconfig.json
+    - tsconfig.build.json
+    - tsdown.config.ts
+    - package.json
+  examples:
+    - examples/**/*
+  tests:
+    - test/**/*
+dependsOn:
+  - bridge-sdk
+tasks:
+  build:
+    command: tsdown
+    deps:
+      - ^:build
+    inputs:
+      - "@globs(src)"
+    outputs:
+      - dist/**/*
+  typecheck:
+    deps:
+      - ^:build
+    command: tsgo --noEmit --declaration false --declarationMap false
+    inputs:
+      - "@globs(src)"
+      - "@globs(tests)"
+  test:
+    deps:
+      - ^:build
+    command: pnpm exec vitest run
+    inputs:
+      - "@globs(src)"
+      - "@globs(tests)"
+  lint:
+    command: biome check --formatter-enabled=false
+    inputs:
+      - "@globs(src)"
+      - "@globs(examples)"
+      - "@globs(tests)"
+  lint-fix:
+    command: biome check --formatter-enabled=false --write
+    inputs:
+      - "@globs(src)"
+      - "@globs(examples)"
+      - "@globs(tests)"
+  example:
+    command: bun examples/headless.ts
+    options:
+      cache: false
+  e2e:
+    command: bun examples/e2e.ts
+    deps:
+      - ^:build
+    options:
+      cache: false
