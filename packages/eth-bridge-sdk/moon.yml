@@ -57,3 +57,9 @@ tasks:
       - ^:build
     options:
       cache: false
+  live-sequencer-e2e:
+    command: bun examples/live-sequencer-e2e.ts
+    deps:
+      - ^:build
+    options:
+      cache: false

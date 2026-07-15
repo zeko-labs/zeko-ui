@@ -61,6 +61,19 @@ export type DepositParams = {
 
 const NO_OUTER_COMMIT_REASON = "No outer commit available yet"
 
+const publicKeyToBase58 = (label: string, publicKey: PublicKey): string => {
+	try {
+		return publicKey.toBase58()
+	} catch {
+		throw new Error(
+			`${label} cannot be encoded as a Mina public key (fields: ${publicKey
+				.toFields()
+				.map((field) => field.toString())
+				.join(", ")})`
+		)
+	}
+}
+
 export type DepositStateContext = {
 	helperAccountL1: Account | null
 	helperAccountL2: Account | null
@@ -372,8 +385,6 @@ export async function submitDeposit(
 			isProved: Bool(true),
 			verificationKeyHash: await getVkHash(runtime.outerPk)
 		}
-
-		AccountUpdate.attachToTransaction(actionWitness)
 	})
 
 	const signed = await signTxn(txn)
@@ -590,9 +601,9 @@ export async function finalizeDeposit(
 				finalizeDeposit.body.events = Events.pushEvent(finalizeDeposit.body.events, [
 					Field(witness.checkAccepted.init.depositIndex),
 					Field(0), // empty children
-					...PublicKey.fromBase58(witness.checkAccepted.init.params.holderAccountL1).toFields(),
+					...depositParams.deposit.holderAccountL1.toFields(),
 					...UInt64.from(witness.checkAccepted.init.params.amount).toFields(),
-					...PublicKey.fromBase58(witness.checkAccepted.init.params.recipient).toFields(),
+					...depositParams.deposit.recipient.toFields(),
 					...UInt32.from(witness.checkAccepted.init.params.timeout).toFields()
 				])
 				finalizeDeposit.body.authorizationKind = {
@@ -600,7 +611,6 @@ export async function finalizeDeposit(
 					isProved: Bool(true),
 					verificationKeyHash: await getVkHash(runtime.innerHolder)
 				}
-				AccountUpdate.attachToTransaction(finalizeDeposit)
 			}
 		)
 
@@ -729,6 +739,11 @@ function buildDepositFinalizationWitnessValue(
 	const aseElems = context.outerActions
 		.slice(nextCommitIndex + 1, context.currentSyncedOuterActionStateIndex + 1)
 		.map(({ action }) => fromList([action]).hash)
+	const recipient = publicKeyToBase58("Deposit recipient", depositParams.deposit.recipient)
+	const holderAccountL1 = publicKeyToBase58(
+		"Deposit L1 holder",
+		depositParams.deposit.holderAccountL1
+	)
 
 	return {
 		aseTarget: context.syncedOuterActionState,
@@ -745,8 +760,8 @@ function buildDepositFinalizationWitnessValue(
 					orignalActionState: witness.beforeActionState.toString(),
 					params: {
 						amount: depositParams.deposit.amount.toString(),
-						recipient: depositParams.deposit.recipient.toBase58(),
-						holderAccountL1: depositParams.deposit.holderAccountL1.toBase58(),
+						recipient,
+						holderAccountL1,
 						timeout: +depositParams.deposit.timeout,
 						children: "[]"
 					}

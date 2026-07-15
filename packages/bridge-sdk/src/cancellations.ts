@@ -199,7 +199,6 @@ export async function cancelDeposit(
 				isProved: Bool(true),
 				verificationKeyHash: await getVkHash(outerHolder)
 			}
-			AccountUpdate.attachToTransaction(cancelDeposit)
 		}
 	)
 

@@ -232,8 +232,6 @@ export async function submitWithdrawal(
 			isProved: Bool(true),
 			verificationKeyHash: await getVkHash(runtime.innerPk)
 		}
-
-		AccountUpdate.attachToTransaction(actionWitness)
 	})
 
 	const signed = await signTxn(txn)
@@ -710,7 +708,6 @@ export async function finalizeWithdrawal(
 				isProved: Bool(true),
 				verificationKeyHash: await getVkHash(outerHolder)
 			}
-			AccountUpdate.attachToTransaction(finalizeWithdrawal)
 		}
 	)
 

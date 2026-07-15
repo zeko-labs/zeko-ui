@@ -20,7 +20,6 @@ import {
 } from "viem"
 import { ethereumZekoBridgeAbi } from "./abi"
 import {
-	ETHEREUM_DEPOSIT_HOLDER,
 	ethereumAddressToZekoPublicKey,
 	packZekoAddress,
 	unpackZekoAddress,
@@ -103,6 +102,7 @@ export class EthereumBridgeClient {
 				v2DepositsStartIndex: input.zeko.v2DepositsStartIndex ?? 0,
 				v2WithdrawalsStartIndex: input.zeko.v2WithdrawalsStartIndex ?? 0
 			})
+			const ethereumHolder = ethereumAddressToZekoPublicKey(config.bridgeAddress)
 			const ethereumRuntime = {
 				...runtime,
 				bridge: {
@@ -116,7 +116,7 @@ export class EthereumBridgeClient {
 							recipient: unpackZekoAddress(deposit.zekoRecipient),
 							amount: UInt64.from(deposit.zekoAmount),
 							timeout: UInt32.from(deposit.timeout),
-							holderAccountL1: ETHEREUM_DEPOSIT_HOLDER
+							holderAccountL1: ethereumHolder
 						}))
 					}
 				}
