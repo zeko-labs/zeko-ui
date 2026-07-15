@@ -3,7 +3,15 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import type { GqlClient } from "../src/graphql"
 import { Bridge } from "../src/index"
 import type { BridgeRuntime } from "../src/runtime"
-import type { Action, Config, Deposit, InnerWitness, OuterWitness, Withdrawal } from "../src/types"
+import type {
+	Action,
+	Config,
+	Deposit,
+	InnerWitness,
+	OuterCommit,
+	OuterWitness,
+	Withdrawal
+} from "../src/types"
 import * as utils from "../src/utils"
 import { depositAux, withdrawalAux } from "../src/utils"
 
@@ -75,6 +83,25 @@ const buildDepositWitness = (deposit: Deposit): OuterWitness => ({
 	timestamp: "1700000000000",
 	type: "witness",
 	aux: depositAux(deposit)
+})
+
+const buildDepositCommit = (witness: OuterWitness): OuterCommit => ({
+	action: [Field(5), Field(6)],
+	afterActionState: Field(7),
+	beforeActionState: witness.afterActionState,
+	hash: "deposit-commit",
+	index: 1,
+	slotRange: {
+		lower: UInt32.from(80),
+		upper: UInt32.from(95)
+	},
+	timestamp: "1700000000500",
+	type: "commit",
+	ledger: Field(8),
+	innerActionState: Field(9),
+	innerActionStateLength: UInt32.zero,
+	synchronizedOuterActionState: witness.afterActionState,
+	synchronizedOuterActionStateLength: UInt32.from(1)
 })
 
 const buildWithdrawal = (): Withdrawal => ({
@@ -190,6 +217,36 @@ describe("null commit state", () => {
 		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
 			available: false,
 			reason: "No outer commit available yet"
+		})
+	})
+
+	it("finalizes a synchronized deposit without waiting for withdrawal-delay maturity", async () => {
+		const bridge = buildBridge()
+		const deposit = buildDeposit()
+		const witness = buildDepositWitness(deposit)
+		const commit = buildDepositCommit(witness)
+		const bridgeInternals = bridge as unknown as {
+			fetchAccount: (...args: unknown[]) => Promise<{ zkappState: string[] | null } | null>
+			fetchCurrentSlot: () => Promise<UInt32>
+			fetchSyncedOuterActionState: () => Promise<{ state: Field; length: UInt32 }>
+			fetchUserDeposits: (pk: PublicKey) => Promise<Deposit[]>
+		}
+
+		vi.spyOn(bridgeInternals, "fetchUserDeposits").mockResolvedValue([deposit])
+		vi.spyOn(bridgeInternals, "fetchAccount").mockResolvedValue(null)
+		vi.spyOn(bridgeInternals, "fetchSyncedOuterActionState").mockResolvedValue({
+			state: commit.afterActionState,
+			length: UInt32.from(2)
+		})
+		vi.spyOn(bridgeInternals, "fetchCurrentSlot").mockResolvedValue(UInt32.from(80))
+		vi.spyOn(utils, "fetchOuterWitnessesFromAuxes").mockResolvedValue([witness])
+		vi.spyOn(utils, "fetchOuterActionsFromIndexer").mockResolvedValue([witness, commit])
+		mockNullCommit()
+
+		await expect(bridge.canFinalizeDeposit(recipient)).resolves.toEqual({
+			available: true,
+			reason: null,
+			index: 0
 		})
 	})
 

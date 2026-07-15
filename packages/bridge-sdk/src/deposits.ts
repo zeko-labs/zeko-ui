@@ -18,7 +18,7 @@ import {
 } from "o1js"
 import { Actions, Events, fromList } from "./actions"
 import { ensureBridgeTransferAmountCanCoverFees } from "./errors"
-import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
+import { fetchAccount, setL1, setL2 } from "./network"
 import { pollProvingResult } from "./prover"
 import { debug, type BridgeRuntime } from "./runtime"
 import {
@@ -41,7 +41,6 @@ import {
 	checkAccepted,
 	depositAux,
 	fetchActions,
-	fetchCommitAsePastSlot,
 	fetchOuterActionsFromIndexer,
 	fetchOuterWitnessesFromAuxes,
 	filterNulls,
@@ -189,7 +188,7 @@ export async function fetchDepositStateContext(
 					deposits.map(({ aux }) => aux.toString())
 				)
 
-	const [helperAccountL1, helperAccountL2, syncedOuterActionState, currentSlot] = await Promise.all(
+	const [helperAccountL1, helperAccountL2, syncedOuterActionState] = await Promise.all(
 		[
 			(runtime.bridge?.fetchAccount ?? fetchAccount)(
 				runtime.l1Client,
@@ -201,8 +200,7 @@ export async function fetchDepositStateContext(
 				pk,
 				TokenId.derive(runtime.innerHolder)
 			),
-			runtime.bridge?.fetchSyncedOuterActionState?.() ?? fetchSyncedOuterActionState(runtime),
-			runtime.bridge?.fetchCurrentSlot?.() ?? fetchCurrentSlot(runtime)
+			runtime.bridge?.fetchSyncedOuterActionState?.() ?? fetchSyncedOuterActionState(runtime)
 		]
 	)
 
@@ -210,11 +208,6 @@ export async function fetchDepositStateContext(
 		? getNextCancelledDepositIndex(helperAccountL1)
 		: UInt32.zero
 	const prevNextDeposit = helperAccountL2 ? getNextDepositIndex(helperAccountL2) : UInt32.zero
-
-	const { commit: lastCommit, ase } = await fetchCommitAsePastSlot(
-		runtime.actionsApiClient,
-		+currentSlot.sub(runtime.withdrawalDelay)
-	)
 
 	const earliestBeforeState =
 		depositWitnesses.length === 0
@@ -227,6 +220,13 @@ export async function fetchDepositStateContext(
 			: await fetchOuterActionsFromIndexer(runtime.actionsApiClient, {
 					fromState: earliestBeforeState.toString()
 				})
+	const lastCommitIndex = outerActions.reduce(
+		(lastIndex, action, index) => (action.type === "commit" ? index : lastIndex),
+		-1
+	)
+	const lastCommit =
+		lastCommitIndex === -1 ? null : (outerActions[lastCommitIndex] as OuterCommit)
+	const ase = lastCommitIndex === -1 ? [] : outerActions.slice(lastCommitIndex + 1)
 
 	return {
 		helperAccountL1,
@@ -236,8 +236,7 @@ export async function fetchDepositStateContext(
 		syncedOuterActionState,
 		lastCommit,
 		lastCommitAse: ase.map(({ action }) => fromList([action]).hash),
-		lastCommitIndex:
-			lastCommit === null ? -1 : outerActions.findIndex(({ index }) => lastCommit.index === index),
+		lastCommitIndex,
 		commitAseTarget:
 			ase.at(-1)?.afterActionState ?? lastCommit?.afterActionState ?? syncedOuterActionState.state,
 		synchronizedOuterActionStateIndex:
