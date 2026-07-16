@@ -114,6 +114,11 @@ function responseWithCors(params: {
 	})
 }
 
+function shouldFailoverResponse(response: Response): boolean {
+	const isRedirect = response.status >= 300 && response.status < 400 && response.status !== 304
+	return isRedirect || response.status >= 500
+}
+
 type ProxyHandlerParams = {
 	primaryUrl: string
 	backupUrls?: readonly string[]
@@ -261,7 +266,7 @@ export function createProxyHandler(
 				const requestBodySource = index < backendUrls.length - 1 ? request.clone() : request
 				const response = await fetchBackend(targetUrl, requestBodySource)
 
-				if (response.status >= 500) {
+				if (shouldFailoverResponse(response)) {
 					if (lastUnavailableResponse) {
 						cancelResponseBody(lastUnavailableResponse)
 					}
