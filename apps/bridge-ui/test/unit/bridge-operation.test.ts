@@ -67,6 +67,11 @@ const createBridgeActor = (
 								: context.activeCancellationOperation,
 						events: ({ context, event }) => [...context.events, event]
 					})
+				},
+				RefreshOperations: {
+					actions: assign({
+						events: ({ context, event }) => [...context.events, event]
+					})
 				}
 			}
 		})
@@ -280,6 +285,52 @@ describe("bridgeOperationMachine", () => {
 			hash: "5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc",
 			url: "https://minascan.io/devnet/tx/5JuyQd4aQLYP6SLUihfy1wMcPVsqUKagbDVXw4P2iX2PpA5iPzUc"
 		})
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("requests a parent refresh after signing a withdrawal", async () => {
+		const transactionMachine = vi.fn(async () => ({
+			result: {
+				hash: "5JuwithdrawalSubmitHash",
+				url: "https://zekoscan.io/testnet/tx/5JuwithdrawalSubmitHash"
+			}
+		}))
+		const bridge = createBridgeActor()
+		const wallet = createWalletActor("zeko:testnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(
+			bridgeOperationMachine.provide({
+				actors: {
+					transactionMachine: fromPromise(transactionMachine),
+					pendingWithdrawal: fromPromise(async () => undefined)
+				}
+			}),
+			{
+				input: {
+					bridge: bridge as never,
+					wallet: wallet as never,
+					source: "zeko-m:testnet",
+					destination: "mina:devnet",
+					direction: "withdrawal",
+					amount: "1"
+				}
+			}
+		)
+
+		actor.start()
+		actor.send({ type: "StartBridgeOperation" })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("PENDING_WITHDRAWAL"))
+
+		expect(transactionMachine).toHaveBeenCalledOnce()
+		expect(
+			bridge.getSnapshot().context.events.some((event) => event.type === "RefreshOperations")
+		).toBe(true)
 
 		actor.stop()
 		bridge.stop()
@@ -774,6 +825,44 @@ describe("bridgeOperationMachine", () => {
 			l2: "zeko-m:testnet",
 			user,
 			feeNanomina: 100_000_000
+		})
+
+		actor.stop()
+		bridge.stop()
+		wallet.stop()
+	})
+
+	it("requests a parent refresh when a withdrawal becomes claimable", async () => {
+		const bridge = createBridgeActor({
+			canFinalizeWithdrawal: vi.fn(async () => ({
+				available: true,
+				reason: null,
+				index: 0
+			}))
+		})
+		const wallet = createWalletActor("zeko:testnet")
+		bridge.start()
+		wallet.start()
+
+		const actor = createActor(bridgeOperationMachine, {
+			input: {
+				bridge: bridge as never,
+				wallet: wallet as never,
+				source: "zeko-m:testnet",
+				destination: "mina:devnet",
+				direction: "withdrawal",
+				amount: "1",
+				actionIndex: 0
+			}
+		})
+
+		actor.start()
+		actor.send({ type: "Resume", paused: false })
+
+		await waitFor(actor, (snapshot) => snapshot.matches("TO_FINALIZE"))
+
+		expect(bridge.getSnapshot().context.events).toContainEqual({
+			type: "RefreshOperations"
 		})
 
 		actor.stop()

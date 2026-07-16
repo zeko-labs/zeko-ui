@@ -453,3 +453,4 @@
 - T467 | done | show-awaiting-claim-for-recovered-pending-transactions | done/T467-show-awaiting-claim-for-recovered-pending-transactions.md
 - T468 | done | poll-while-local-pending-transactions-exist | done/T468-poll-while-local-pending-transactions-exist.md
 - T469 | done | keep-finalizing-state-after-claim-submit | done/T469-keep-finalizing-state-after-claim-submit.md
+- T470 | done | fix-withdrawal-refresh-after-submit | done/T470-fix-withdrawal-refresh-after-submit.md

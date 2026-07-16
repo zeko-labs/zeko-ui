@@ -726,7 +726,11 @@ export const bridgeOperationMachine = setup({
 										timeoutSlots: context.timeoutSlots,
 										status: "awaiting-inclusion"
 									})
-								}
+								},
+								sendTo(
+									({ context }) => context.bridge,
+									() => ({ type: "RefreshOperations" })
+								)
 							]
 						},
 						onError: {
@@ -967,7 +971,11 @@ export const bridgeOperationMachine = setup({
 										timeoutSlots: context.timeoutSlots,
 										status: "awaiting-inclusion"
 									})
-								}
+								},
+								sendTo(
+									({ context }) => context.bridge,
+									() => ({ type: "RefreshOperations" })
+								)
 							]
 						},
 						onError: {
@@ -1015,12 +1023,24 @@ export const bridgeOperationMachine = setup({
 				CanFinalize: {
 					target: "TO_FINALIZE",
 					guard: "matchesActionIndex",
-					actions: assign({ progress: undefined })
+					actions: [
+						assign({ progress: undefined }),
+						sendTo(
+							({ context }) => context.bridge,
+							() => ({ type: "RefreshOperations" })
+						)
+					]
 				},
 				AlreadyFinalised: {
 					target: "BRIDGE_OPERATION_COMPLETED",
 					guard: "matchesActionIndex",
-					actions: assign({ progress: undefined })
+					actions: [
+						assign({ progress: undefined }),
+						sendTo(
+							({ context }) => context.bridge,
+							() => ({ type: "RefreshOperations" })
+						)
+					]
 				},
 				TerminalError: {
 					target: "FAILED",
