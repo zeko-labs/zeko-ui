@@ -438,3 +438,5 @@
 - T452 | done | preserve-client-abort-for-proxy-timeouts | done/T452-preserve-client-abort-for-proxy-timeouts.md
 - T453 | done | pass-mainnet-fetch-optimization-tests | done/T453-pass-mainnet-fetch-optimization-tests.md
 - T454 | done | failover-on-upstream-redirect | done/T454-failover-on-upstream-redirect.md
+- T455 | done | cover-304-non-failover | done/T455-cover-304-non-failover.md
+- T456 | done | avoid-duplicating-proxy-endpoint-paths | done/T456-avoid-duplicating-proxy-endpoint-paths.md

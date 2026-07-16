@@ -157,8 +157,12 @@ export function createProxyHandler(
 		// Combine backend base URL + original path + query
 		const makeTargetUrl = (base: string) => {
 			const baseUrl = new URL(base)
-			const joinedPath = `${baseUrl.pathname.replace(/\/$/, "")}/${sourceUrl.pathname.replace(/^\//, "")}`
-			baseUrl.pathname = joinedPath
+			const basePath = baseUrl.pathname.replace(/\/$/, "")
+			const sourcePath = sourceUrl.pathname.replace(/^\//, "")
+			const sourcePathSegment = `/${sourcePath}`
+			const pathAlreadyIncluded =
+				sourcePath === "" || basePath === sourcePathSegment || basePath.endsWith(sourcePathSegment)
+			baseUrl.pathname = pathAlreadyIncluded ? basePath || "/" : `${basePath}/${sourcePath}`
 			baseUrl.search = sourceUrl.search
 			return baseUrl
 		}
