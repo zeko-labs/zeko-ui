@@ -1,4 +1,5 @@
 export interface ArchiveActionData {
+	accountUpdateId?: string
 	data: string[]
 	transactionInfo: { hash: string }
 }
@@ -15,6 +16,7 @@ export interface ArchiveAction {
 }
 
 export interface ArchiveEvent {
+	accountUpdateId?: string
 	action: string[]
 	beforeActionState: string
 	afterActionState: string

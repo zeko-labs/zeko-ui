@@ -24,6 +24,7 @@ type CommitAsePastSlotResult {
 }
 
 type InnerAction {
+  accountUpdateId: String
   afterState: String
   aux: String
   beforeState: String

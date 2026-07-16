@@ -2,6 +2,7 @@ import {
 	Bridge,
 	type Config,
 	createBridgeRuntime,
+	type DepositWithState,
 	ethereumDepositAux,
 	type RetryableTransactionOptions,
 	type SignTransaction
@@ -29,6 +30,7 @@ import {
 	type BridgeConfig,
 	type DepositStatus,
 	GatewayClient,
+	type WithdrawalRequest,
 	type WithdrawalProof
 } from "./gateway"
 
@@ -48,6 +50,45 @@ export type NativeDepositResult = {
 	hash: Hash
 	nonce: number
 	deposit: DepositStatus
+}
+
+export type DepositActivity = DepositStatus & {
+	actionIndex: number | null
+	zekoFinalized: boolean
+	zekoState: Pick<
+		DepositWithState,
+		"accepted" | "bridgeVersion" | "cancellable" | "cancelled" | "confirmed" | "finalised" | "synced"
+	> | null
+}
+
+export const mergeDepositActivity = (
+	deposits: DepositStatus[],
+	states: DepositWithState[]
+): DepositActivity[] => {
+	const byIndex = new Map(states.map((deposit) => [deposit.index, deposit]))
+	return deposits.map((deposit) => {
+		const actionIndex =
+			deposit.outerActionSequence === null ? null : deposit.outerActionSequence - 1
+		const zekoState = actionIndex === null ? undefined : byIndex.get(actionIndex)
+		return {
+			...deposit,
+			actionIndex,
+			zekoFinalized: zekoState?.finalised ?? false,
+			zekoState: zekoState
+				? {
+						accepted: zekoState.accepted,
+						bridgeVersion: zekoState.bridgeVersion,
+						cancellable: zekoState.cancellable,
+						cancelled: zekoState.cancelled,
+						confirmed: zekoState.confirmed,
+						finalised: zekoState.finalised,
+						synced: zekoState.synced
+					}
+				: null,
+			status: zekoState?.finalised ? "finalized" : deposit.status,
+			nextAction: zekoState?.finalised ? "none" : deposit.nextAction
+		}
+	})
 }
 
 export class EthereumBridgeClient {
@@ -187,6 +228,18 @@ export class EthereumBridgeClient {
 		})
 	}
 
+	public async listDepositsWithStates(input: {
+		recipient: PublicKey
+		after?: number
+		limit?: number
+	}): Promise<DepositActivity[]> {
+		const [deposits, state] = await Promise.all([
+			this.listDeposits(input),
+			this.requireZekoBridge().fetchDepositsWithStates(input.recipient)
+		])
+		return mergeDepositActivity(deposits, state.deposits)
+	}
+
 	public prepareDepositFinalization(recipient: PublicKey) {
 		return this.requireZekoBridge().canFinalizeDeposit(recipient)
 	}
@@ -224,6 +277,14 @@ export class EthereumBridgeClient {
 		limit?: number
 	} = {}): Promise<WithdrawalProof[]> {
 		return this.#gateway.withdrawals(input)
+	}
+
+	public listWithdrawalRequests(input: {
+		recipient?: Address
+		after?: number
+		limit?: number
+	} = {}): Promise<WithdrawalRequest[]> {
+		return this.#gateway.withdrawalRequests(input)
 	}
 
 	public getWithdrawal(settlementSequence: number, offset: number): Promise<WithdrawalProof> {

@@ -22,6 +22,7 @@ export const fetchActionsQuery = graphql(`
         actionStateTwo
       }
       actionData {
+        accountUpdateId
         data
         transactionInfo {
           hash

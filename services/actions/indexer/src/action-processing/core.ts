@@ -58,6 +58,7 @@ export function processArchiveBlocks({
 			const afterActionStateString = afterActionState.toString()
 
 			events.push({
+				accountUpdateId: actionItem.accountUpdateId,
 				action: actionItem.data,
 				beforeActionState: beforeActionStateString,
 				afterActionState: afterActionStateString,

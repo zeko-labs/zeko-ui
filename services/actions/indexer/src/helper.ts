@@ -104,6 +104,7 @@ export async function fetchActions({
 			actionData: (a.actionData ?? [])
 				.filter((ad) => ad != null)
 				.map((ad) => ({
+					accountUpdateId: ad.accountUpdateId,
 					data: ad.data.filter((d) => d != null),
 					transactionInfo: ad.transactionInfo ?? { hash: "hash" }
 				}))
@@ -119,6 +120,7 @@ export async function fetchActions({
 				actionState: v.object({ actionStateOne: v.string(), actionStateTwo: v.string() }),
 				actionData: v.array(
 					v.object({
+						accountUpdateId: v.optional(v.string()),
 						data: v.array(v.string()),
 						transactionInfo: v.object({ hash: v.string() })
 					})

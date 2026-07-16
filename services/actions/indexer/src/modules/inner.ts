@@ -46,6 +46,7 @@ async function fetch({ startBlock }: { startBlock: number }) {
 		const markedAsCanonicalAt = isCanonicalInnerActionBlock(item.blockInfo) ? new Date() : null
 
 		return {
+			accountUpdateId: item.accountUpdateId,
 			fields: item.action,
 			timestamp: item.timestamp,
 			hash: item.hash,
@@ -84,6 +85,7 @@ function buildInner(items: InnerItem[], currIndex: number) {
 			blockHeight: item.blockHeight,
 			timestamp: new Date(+item.timestamp),
 			txnHash: item.hash,
+			accountUpdateId: item.accountUpdateId,
 			fields: item.fields,
 			markedAsCanonicalAt: item.markedAsCanonicalAt,
 			aux: item.aux

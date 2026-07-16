@@ -74,6 +74,7 @@ export const innerActions = pgTable(
 		blockHeight: integer("block_height").notNull(),
 		timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
 		txnHash: text("txn_hash").notNull(),
+		accountUpdateId: text("account_update_id"),
 		fields: jsonb("fields").$type<string[]>().notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		markedAsCanonicalAt: timestamp("marked_as_canonical_at", { withTimezone: true }),
@@ -84,6 +85,7 @@ export const innerActions = pgTable(
 		index("after_state|inner_actions_index").on(table.afterState),
 		index("index|inner_actions_index").on(table.index),
 		index("marked_as_canonical_at|inner_actions_index").on(table.markedAsCanonicalAt),
+		index("account_update_id|inner_actions_index").on(table.accountUpdateId),
 		index("aux|inner_actions_index").on(table.aux),
 		check(
 			"actions_before_not_after|inner_actions_check",

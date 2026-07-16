@@ -48,6 +48,17 @@ export type WithdrawalProof = {
 	nextAction: string
 }
 
+export type WithdrawalRequest = {
+	globalActionIndex: number
+	transactionHash: string
+	blockHeight: number
+	timestamp: string
+	recipient: Address
+	amount: string
+	status: "pendingSettlement"
+	nextAction: "waitForSettlement"
+}
+
 type Fetch = typeof globalThis.fetch
 
 const asRecord = (value: unknown, label: string): Record<string, unknown> => {
@@ -161,6 +172,31 @@ const parseWithdrawal = (value: unknown): WithdrawalProof => {
 	}
 }
 
+const parseWithdrawalRequest = (value: unknown): WithdrawalRequest => {
+	const row = asRecord(value, "withdrawal request")
+	const recipient = requireString(row.recipient, "withdrawalRequest.recipient")
+	if (!isAddress(recipient)) throw new Error("Invalid withdrawalRequest.recipient")
+	if (row.status !== "pendingSettlement" || row.nextAction !== "waitForSettlement") {
+		throw new Error("Invalid withdrawalRequest progress")
+	}
+	return {
+		globalActionIndex: requireNumber(
+			row.globalActionIndex,
+			"withdrawalRequest.globalActionIndex"
+		),
+		transactionHash: requireString(
+			row.transactionHash,
+			"withdrawalRequest.transactionHash"
+		),
+		blockHeight: requireNumber(row.blockHeight, "withdrawalRequest.blockHeight"),
+		timestamp: requireString(row.timestamp, "withdrawalRequest.timestamp"),
+		recipient: getAddress(recipient),
+		amount: requireUintString(row.amount, "withdrawalRequest.amount"),
+		status: "pendingSettlement",
+		nextAction: "waitForSettlement"
+	}
+}
+
 export class GatewayClient {
 	readonly #baseUrl: string
 	readonly #fetch: Fetch
@@ -244,6 +280,23 @@ export class GatewayClient {
 		)
 		if (!Array.isArray(body)) throw new Error("Invalid withdrawals response")
 		return body.map(parseWithdrawal)
+	}
+
+	public async withdrawalRequests(input: {
+		recipient?: Address
+		after?: number
+		limit?: number
+	} = {}): Promise<WithdrawalRequest[]> {
+		const query = new URLSearchParams()
+		if (input.recipient) query.set("recipient", input.recipient)
+		if (input.after !== undefined) query.set("after", input.after.toString())
+		if (input.limit !== undefined) query.set("limit", input.limit.toString())
+		const body = await requestJson(
+			this.#fetch,
+			`${this.#baseUrl}/v1/bridge/withdrawal-requests?${query.toString()}`
+		)
+		if (!Array.isArray(body)) throw new Error("Invalid withdrawal requests response")
+		return body.map(parseWithdrawalRequest)
 	}
 
 	public async withdrawal(settlementSequence: number, offset: number): Promise<WithdrawalProof> {

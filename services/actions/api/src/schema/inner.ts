@@ -12,6 +12,7 @@ type InnerAction = {
 	timestamp: string
 	createdAt: Date
 	txnHash: string
+	accountUpdateId: string | null
 	fields: string[]
 	aux: string
 	markedAsCanonicalAt: Date | null
@@ -102,6 +103,7 @@ const InnerActionObject = builder.objectRef<InnerAction>("InnerAction").implemen
 		blockHeight: t.exposeInt("blockHeight"),
 		timestamp: t.exposeString("timestamp"),
 		txnHash: t.exposeString("txnHash"),
+		accountUpdateId: t.exposeString("accountUpdateId", { nullable: true }),
 		fields: t.exposeStringList("fields"),
 		aux: t.exposeString("aux"),
 		markedAsCanonicalAt: t.field({

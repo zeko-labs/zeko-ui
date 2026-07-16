@@ -31,4 +31,23 @@ describe("GatewayClient", () => {
 			new GatewayClient("https://gateway.test", fetcher).withdrawal(1, 0)
 		).rejects.toThrow("Invalid withdrawal.amount")
 	})
+
+	it("loads pending withdrawal requests from canonical archive activity", async () => {
+		const request = {
+			globalActionIndex: 4,
+			transactionHash: "5Jwithdrawal",
+			blockHeight: 9,
+			timestamp: "1784159326275",
+			recipient: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+			amount: "5000000000",
+			status: "pendingSettlement",
+			nextAction: "waitForSettlement"
+		}
+		const fetcher: typeof fetch = async () => Response.json([request])
+		await expect(
+			new GatewayClient("https://gateway.test", fetcher).withdrawalRequests({
+				recipient: request.recipient
+			})
+		).resolves.toEqual([{ ...request, recipient: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" }])
+	})
 })
