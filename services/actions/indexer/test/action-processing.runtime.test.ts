@@ -43,6 +43,7 @@ const makeBlocks = (): ArchiveAction[] => {
 			const values = [`${blockIndex}`, `${actionIndex}`, `${blockIndex + actionIndex + 1}`]
 			chainState = nextState(chainState, values)
 			return {
+				accountUpdateId: `${blockIndex}:${actionIndex}`,
 				data: values,
 				transactionInfo: { hash: `txn-${blockIndex}-${actionIndex}` }
 			}
@@ -74,6 +75,7 @@ const makeEvents = (blocks: ArchiveAction[]): ArchiveEvent[] => {
 		for (const action of block.actionData) {
 			const afterState = nextState(state, action.data)
 			events.push({
+				accountUpdateId: action.accountUpdateId,
 				action: action.data,
 				beforeActionState: state,
 				afterActionState: afterState,
@@ -200,6 +202,12 @@ describe("action-processing runtime", () => {
 
 		expect(result.stats.strategy).toBe("worker")
 		expect(result.events.length).toBe(4)
+		expect(result.events.map((event) => event.accountUpdateId)).toEqual([
+			"0:0",
+			"0:1",
+			"1:0",
+			"1:1"
+		])
 	})
 
 	it("rejects cleanly when the subprocess exits non-zero", async () => {

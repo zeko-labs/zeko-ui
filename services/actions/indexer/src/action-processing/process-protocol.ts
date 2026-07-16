@@ -30,6 +30,7 @@ const ArchiveActionSchema = v.object({
 	}),
 	actionData: v.array(
 		v.object({
+			accountUpdateId: v.optional(v.string()),
 			data: v.array(v.string()),
 			transactionInfo: v.object({
 				hash: v.string()
@@ -53,6 +54,7 @@ const ActionProcessingStatsSchema = v.object({
 })
 
 const ArchiveEventSchema = v.object({
+	accountUpdateId: v.optional(v.string()),
 	action: v.array(v.string()),
 	beforeActionState: v.string(),
 	afterActionState: v.string(),
