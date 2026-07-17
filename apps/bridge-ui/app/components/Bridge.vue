@@ -2,6 +2,7 @@
 import { Settings } from "lucide-vue-next"
 import type { ActorRefFromLogic } from "xstate"
 import { deriveBridgeQueues, type BridgeQueueItem } from "~/helpers"
+import { completedOperationReconciliationHash } from "~/utils/pendingReconciliation"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
 import { isMinaBridgeNetwork, isZekoBridgeNetwork } from "~~/machines/networks"
 import {
@@ -173,8 +174,12 @@ const completedIndexedTransactionHashesKey = computed(() =>
 	completedOperations.value
 		.flatMap(({ operation }) => {
 			const context = operation.getSnapshot().context
-			const hash = operationTransactionHash(operation)
-			return context.actionIndex !== undefined && hash ? [hash] : []
+			if (context.actionIndex === undefined) return []
+			const hash = completedOperationReconciliationHash({
+				hash: operationTransactionHash(operation),
+				completionVerification: context.completionVerification
+			})
+			return hash ? [hash] : []
 		})
 		.join(",")
 )

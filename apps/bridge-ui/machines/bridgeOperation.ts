@@ -18,7 +18,7 @@ import type { BridgeContext, BridgeEvents } from "./bridge"
 import { createLogger } from "./debug"
 import { sendMetric } from "./metrics"
 import type { BridgeNetwork } from "./networks"
-import { savePendingBridgeTransaction } from "./pendingTransactions"
+import { loadPendingBridgeTransactions, savePendingBridgeTransaction } from "./pendingTransactions"
 import {
 	bridgeNetworkToWalletNetwork,
 	isMinaBridgeNetwork,
@@ -259,6 +259,39 @@ const transactionInput = (
 		worker(context.bridge).rejectSdkSignature({ requestId, message })
 })
 
+const hasFinalizingPendingBridgeTransaction = (context: BridgeOperationContext) => {
+	const transactionHash = context.transaction?.hash
+	if (!transactionHash) return false
+	return loadPendingBridgeTransactions({
+		walletAddress: context.user,
+		l1: context.l1,
+		l2: context.l2
+	}).some(
+		(transaction) =>
+			transaction.transactionHash === transactionHash && transaction.status === "finalizing"
+	)
+}
+
+const saveFinalizingPendingBridgeTransaction = (context: BridgeOperationContext) => {
+	const transactionHash = context.transaction?.hash
+	if (!transactionHash) return
+	savePendingBridgeTransaction({
+		schemaVersion: 1,
+		walletAddress: context.user,
+		l1: context.l1,
+		l2: context.l2,
+		source: context.source,
+		destination: context.destination,
+		direction: context.direction,
+		amount: context.amount,
+		transactionHash,
+		submittedAtMs: Date.now(),
+		operationId: context.id,
+		timeoutSlots: context.timeoutSlots,
+		status: "finalizing"
+	})
+}
+
 //TODO: Error handling
 export const bridgeOperationMachine = setup({
 	types: {
@@ -388,7 +421,8 @@ export const bridgeOperationMachine = setup({
 			return (
 				"index" in event && context.actionIndex !== undefined && event.index === context.actionIndex
 			)
-		}
+		},
+		finalizingTransactionSubmitted: ({ context }) => hasFinalizingPendingBridgeTransaction(context)
 	},
 	delays: {
 		exitTimeout: () => 2_000
@@ -775,11 +809,18 @@ export const bridgeOperationMachine = setup({
 					target: "PAUSED",
 					actions: assign({ paused: true })
 				},
-				CanFinalize: {
-					target: "TO_FINALIZE",
-					guard: "matchesActionIndex",
-					actions: assign({ progress: undefined })
-				},
+				CanFinalize: [
+					{
+						target: "BRIDGE_OPERATION_COMPLETED",
+						guard: and(["matchesActionIndex", "finalizingTransactionSubmitted"]),
+						actions: assign({ progress: undefined })
+					},
+					{
+						target: "TO_FINALIZE",
+						guard: "matchesActionIndex",
+						actions: assign({ progress: undefined })
+					}
+				],
 				SyncRecoveredState: {
 					actions: assign(({ event }) => ({
 						actionIndex: event.actionIndex,
@@ -859,13 +900,16 @@ export const bridgeOperationMachine = setup({
 						input: ({ context }) => transactionInput(context, "finalizeDeposit"),
 						onDone: {
 							target: "done",
-							actions: assign(({ context, event }) =>
-								addCompletedTransactionResult({
-									context,
-									key: "finalizeDeposit",
-									result: event.output.result
-								})
-							)
+							actions: [
+								assign(({ context, event }) =>
+									addCompletedTransactionResult({
+										context,
+										key: "finalizeDeposit",
+										result: event.output.result
+									})
+								),
+								({ context }) => saveFinalizingPendingBridgeTransaction(context)
+							]
 						},
 						onError: [
 							{
@@ -1020,17 +1064,24 @@ export const bridgeOperationMachine = setup({
 					target: "PAUSED",
 					actions: assign({ paused: true })
 				},
-				CanFinalize: {
-					target: "TO_FINALIZE",
-					guard: "matchesActionIndex",
-					actions: [
-						assign({ progress: undefined }),
-						sendTo(
-							({ context }) => context.bridge,
-							() => ({ type: "RefreshOperations" })
-						)
-					]
-				},
+				CanFinalize: [
+					{
+						target: "BRIDGE_OPERATION_COMPLETED",
+						guard: and(["matchesActionIndex", "finalizingTransactionSubmitted"]),
+						actions: assign({ progress: undefined })
+					},
+					{
+						target: "TO_FINALIZE",
+						guard: "matchesActionIndex",
+						actions: [
+							assign({ progress: undefined }),
+							sendTo(
+								({ context }) => context.bridge,
+								() => ({ type: "RefreshOperations" })
+							)
+						]
+					}
+				],
 				AlreadyFinalised: {
 					target: "BRIDGE_OPERATION_COMPLETED",
 					guard: "matchesActionIndex",
@@ -1060,13 +1111,16 @@ export const bridgeOperationMachine = setup({
 						input: ({ context }) => transactionInput(context, "finalizeWithdrawal"),
 						onDone: {
 							target: "done",
-							actions: assign(({ context, event }) =>
-								addCompletedTransactionResult({
-									context,
-									key: "finalizeWithdrawal",
-									result: event.output.result
-								})
-							)
+							actions: [
+								assign(({ context, event }) =>
+									addCompletedTransactionResult({
+										context,
+										key: "finalizeWithdrawal",
+										result: event.output.result
+									})
+								),
+								({ context }) => saveFinalizingPendingBridgeTransaction(context)
+							]
 						},
 						onError: [
 							{
