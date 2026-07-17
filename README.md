@@ -7,7 +7,7 @@ A pnpm + Moon monorepo for Zeko apps and packages.
 
 ## Install
 
-Proto is not necessary, but extremely convenient as it take cares of installing the correct version of Moon, Node, pnpm and Bun.
+Proto is not necessary, but it is the easiest way to install the exact versions of Moon, Node, pnpm, Bun, Nushell, and the other tools pinned in `.prototools`.
 
 1. Install Proto (https://moonrepo.dev/docs/proto/install)
 
@@ -33,13 +33,23 @@ Set-ExecutionPolicy RemoteSigned
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-2. Install Moon
+2. Install the pinned toolchain and JavaScript dependencies
 
 ```bash
-proto install moon
+proto install
+pnpm install --frozen-lockfile
 ```
 
-3. Use Moon to run tasks from the repo root. All tools and dependencies will be installed automatically.
+3. Install the native tools used by documentation and browser tests
+
+```bash
+curl -fsSL https://d2lang.com/install.sh | sh -s --
+moon run bridge-ui:playwright-install
+```
+
+The D2 installer is required by the documentation build. The Playwright task installs Chromium and its host dependencies for the bridge UI tests.
+
+4. Use Moon to run tasks from the repo root.
 
 ```bash
 moon <project>:<task>

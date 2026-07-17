@@ -61,8 +61,7 @@ const deposit = {
 const gatewayFetch = Object.assign(
 	async (...args: Parameters<typeof globalThis.fetch>) => {
 		const [input, init] = args
-		const target =
-			typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+		const target = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
 		const url = new URL(target)
 		if (url.origin !== gatewayOrigin) return fetch(input, init)
 

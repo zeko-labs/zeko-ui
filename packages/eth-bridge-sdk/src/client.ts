@@ -30,8 +30,8 @@ import {
 	type BridgeConfig,
 	type DepositStatus,
 	GatewayClient,
-	type WithdrawalRequest,
-	type WithdrawalProof
+	type WithdrawalProof,
+	type WithdrawalRequest
 } from "./gateway"
 
 export type EthereumBridgeClientConfig = {
@@ -57,7 +57,13 @@ export type DepositActivity = DepositStatus & {
 	zekoFinalized: boolean
 	zekoState: Pick<
 		DepositWithState,
-		"accepted" | "bridgeVersion" | "cancellable" | "cancelled" | "confirmed" | "finalised" | "synced"
+		| "accepted"
+		| "bridgeVersion"
+		| "cancellable"
+		| "cancelled"
+		| "confirmed"
+		| "finalised"
+		| "synced"
 	> | null
 }
 
@@ -216,11 +222,13 @@ export class EthereumBridgeClient {
 		return this.#gateway.deposit(nonce)
 	}
 
-	public listDeposits(input: {
-		recipient?: PublicKey
-		after?: number
-		limit?: number
-	} = {}): Promise<DepositStatus[]> {
+	public listDeposits(
+		input: {
+			recipient?: PublicKey
+			after?: number
+			limit?: number
+		} = {}
+	): Promise<DepositStatus[]> {
 		return this.#gateway.deposits({
 			zekoRecipient: input.recipient ? packZekoAddress(input.recipient) : undefined,
 			after: input.after,
@@ -271,19 +279,23 @@ export class EthereumBridgeClient {
 		)
 	}
 
-	public listWithdrawals(input: {
-		recipient?: Address
-		after?: number
-		limit?: number
-	} = {}): Promise<WithdrawalProof[]> {
+	public listWithdrawals(
+		input: {
+			recipient?: Address
+			after?: number
+			limit?: number
+		} = {}
+	): Promise<WithdrawalProof[]> {
 		return this.#gateway.withdrawals(input)
 	}
 
-	public listWithdrawalRequests(input: {
-		recipient?: Address
-		after?: number
-		limit?: number
-	} = {}): Promise<WithdrawalRequest[]> {
+	public listWithdrawalRequests(
+		input: {
+			recipient?: Address
+			after?: number
+			limit?: number
+		} = {}
+	): Promise<WithdrawalRequest[]> {
 		return this.#gateway.withdrawalRequests(input)
 	}
 

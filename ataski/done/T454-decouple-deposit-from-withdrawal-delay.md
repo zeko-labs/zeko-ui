@@ -7,6 +7,7 @@ owner: codex
 created_at: 2026-07-15T23:36:00Z
 updated_at: 2026-07-15T23:42:00Z
 ---
+
 ## Requirements
 
 - Deposit finalization and deposit status must use the latest indexed outer commit and action tail, regardless of that commit's withdrawal-delay maturity.

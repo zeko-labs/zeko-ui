@@ -1,7 +1,7 @@
 import type { DepositWithState } from "@zeko-labs/bridge-sdk"
 import { describe, expect, it } from "vitest"
-import type { DepositStatus } from "../src/gateway"
 import { mergeDepositActivity } from "../src/client"
+import type { DepositStatus } from "../src/gateway"
 
 const gatewayDeposit = (outerActionSequence: number | null): DepositStatus => ({
 	nonce: 4,

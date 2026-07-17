@@ -9,14 +9,14 @@ import { EthereumBridgeClient } from "@zeko-labs/eth-bridge-sdk"
 import { PublicKey } from "o1js"
 
 const bridge = await EthereumBridgeClient.init({
-  gatewayUrl: "https://ethereum-gateway.example",
-  provider: window.ethereum,
-  expectedChainId: 11155111
+	gatewayUrl: "https://ethereum-gateway.example",
+	provider: window.ethereum,
+	expectedChainId: 11155111
 })
 
 const deposit = await bridge.depositNative({
-  recipient: PublicKey.fromBase58("B62..."),
-  valueWei: 1_000_000_000_000_000_000n
+	recipient: PublicKey.fromBase58("B62..."),
+	valueWei: 1_000_000_000_000_000_000n
 })
 
 console.log(deposit.nonce, deposit.deposit.status)
@@ -29,12 +29,12 @@ of this package.
 
 The four user operations are split by execution environment:
 
-| Flow step | Client call | Submitted to |
-| --- | --- | --- |
-| Deposit request | `depositNative` | Ethereum bridge |
-| Deposit finalization | `finalizeDeposit` | Zeko sequencer proof API |
-| Withdrawal request | `requestWithdrawal` | Zeko sequencer proof API |
-| Withdrawal finalization | `claimNativeWithdrawal` | Ethereum bridge |
+| Flow step               | Client call             | Submitted to             |
+| ----------------------- | ----------------------- | ------------------------ |
+| Deposit request         | `depositNative`         | Ethereum bridge          |
+| Deposit finalization    | `finalizeDeposit`       | Zeko sequencer proof API |
+| Withdrawal request      | `requestWithdrawal`     | Zeko sequencer proof API |
+| Withdrawal finalization | `claimNativeWithdrawal` | Ethereum bridge          |
 
 Use `listDeposits`/`waitForDeposit` and `listWithdrawals` after reloads. Amounts returned by the
 gateway are decimal strings so callers can convert them to `bigint` without losing `uint64`

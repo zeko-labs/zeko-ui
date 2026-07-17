@@ -105,7 +105,9 @@ const requestJson = async (fetcher: Fetch, url: string): Promise<unknown> => {
 	const body: unknown = await response.json()
 	if (!response.ok) {
 		const record = asRecord(body, "gateway error")
-		throw new Error(typeof record.error === "string" ? record.error : `Gateway returned ${response.status}`)
+		throw new Error(
+			typeof record.error === "string" ? record.error : `Gateway returned ${response.status}`
+		)
 	}
 	return body
 }
@@ -180,14 +182,8 @@ const parseWithdrawalRequest = (value: unknown): WithdrawalRequest => {
 		throw new Error("Invalid withdrawalRequest progress")
 	}
 	return {
-		globalActionIndex: requireNumber(
-			row.globalActionIndex,
-			"withdrawalRequest.globalActionIndex"
-		),
-		transactionHash: requireString(
-			row.transactionHash,
-			"withdrawalRequest.transactionHash"
-		),
+		globalActionIndex: requireNumber(row.globalActionIndex, "withdrawalRequest.globalActionIndex"),
+		transactionHash: requireString(row.transactionHash, "withdrawalRequest.transactionHash"),
 		blockHeight: requireNumber(row.blockHeight, "withdrawalRequest.blockHeight"),
 		timestamp: requireString(row.timestamp, "withdrawalRequest.timestamp"),
 		recipient: getAddress(recipient),
@@ -234,10 +230,7 @@ export class GatewayClient {
 				row.ethereumConfirmations,
 				"config.ethereumConfirmations"
 			),
-			withdrawalDelaySlots: requireNumber(
-				row.withdrawalDelaySlots,
-				"config.withdrawalDelaySlots"
-			),
+			withdrawalDelaySlots: requireNumber(row.withdrawalDelaySlots, "config.withdrawalDelaySlots"),
 			currentVirtualSlot: requireNumber(row.currentVirtualSlot, "config.currentVirtualSlot")
 		}
 	}
@@ -248,11 +241,13 @@ export class GatewayClient {
 		)
 	}
 
-	public async deposits(input: {
-		zekoRecipient?: Hex
-		after?: number
-		limit?: number
-	} = {}): Promise<DepositStatus[]> {
+	public async deposits(
+		input: {
+			zekoRecipient?: Hex
+			after?: number
+			limit?: number
+		} = {}
+	): Promise<DepositStatus[]> {
 		const query = new URLSearchParams()
 		if (input.zekoRecipient) query.set("zekoRecipient", input.zekoRecipient)
 		if (input.after !== undefined) query.set("after", input.after.toString())
@@ -265,11 +260,13 @@ export class GatewayClient {
 		return body.map(parseDeposit)
 	}
 
-	public async withdrawals(input: {
-		recipient?: Address
-		after?: number
-		limit?: number
-	} = {}): Promise<WithdrawalProof[]> {
+	public async withdrawals(
+		input: {
+			recipient?: Address
+			after?: number
+			limit?: number
+		} = {}
+	): Promise<WithdrawalProof[]> {
 		const query = new URLSearchParams()
 		if (input.recipient) query.set("recipient", input.recipient)
 		if (input.after !== undefined) query.set("after", input.after.toString())
@@ -282,11 +279,13 @@ export class GatewayClient {
 		return body.map(parseWithdrawal)
 	}
 
-	public async withdrawalRequests(input: {
-		recipient?: Address
-		after?: number
-		limit?: number
-	} = {}): Promise<WithdrawalRequest[]> {
+	public async withdrawalRequests(
+		input: {
+			recipient?: Address
+			after?: number
+			limit?: number
+		} = {}
+	): Promise<WithdrawalRequest[]> {
 		const query = new URLSearchParams()
 		if (input.recipient) query.set("recipient", input.recipient)
 		if (input.after !== undefined) query.set("after", input.after.toString())

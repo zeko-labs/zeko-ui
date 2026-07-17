@@ -31,7 +31,8 @@ export const zekoPublicKeyToEthereumAddress = (publicKey: PublicKey): Address =>
 		throw new Error("Ethereum withdrawal recipient must use an even synthetic Zeko public key")
 	}
 	const x = xField.toBigInt()
-	if (x > ADDRESS_MAX) throw new Error("Synthetic Zeko public key does not contain an Ethereum address")
+	if (x > ADDRESS_MAX)
+		throw new Error("Synthetic Zeko public key does not contain an Ethereum address")
 	return getAddress(toHex(x, { size: 20 }))
 }
 

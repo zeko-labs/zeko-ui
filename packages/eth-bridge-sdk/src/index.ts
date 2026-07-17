@@ -1,7 +1,7 @@
 export { ethereumZekoBridgeAbi } from "./abi"
 export {
-	EthereumBridgeClient,
 	type DepositActivity,
+	EthereumBridgeClient,
 	type EthereumBridgeClientConfig,
 	type NativeDepositResult
 } from "./client"
@@ -18,6 +18,6 @@ export {
 	type BridgeConfig,
 	type DepositStatus,
 	GatewayClient,
-	type WithdrawalRequest,
-	type WithdrawalProof
+	type WithdrawalProof,
+	type WithdrawalRequest
 } from "./gateway"

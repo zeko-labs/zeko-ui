@@ -188,21 +188,19 @@ export async function fetchDepositStateContext(
 					deposits.map(({ aux }) => aux.toString())
 				)
 
-	const [helperAccountL1, helperAccountL2, syncedOuterActionState] = await Promise.all(
-		[
-			(runtime.bridge?.fetchAccount ?? fetchAccount)(
-				runtime.l1Client,
-				pk,
-				TokenId.derive(runtime.outerTokenOwner)
-			),
-			(runtime.bridge?.fetchAccount ?? fetchAccount)(
-				runtime.l2Client,
-				pk,
-				TokenId.derive(runtime.innerHolder)
-			),
-			runtime.bridge?.fetchSyncedOuterActionState?.() ?? fetchSyncedOuterActionState(runtime)
-		]
-	)
+	const [helperAccountL1, helperAccountL2, syncedOuterActionState] = await Promise.all([
+		(runtime.bridge?.fetchAccount ?? fetchAccount)(
+			runtime.l1Client,
+			pk,
+			TokenId.derive(runtime.outerTokenOwner)
+		),
+		(runtime.bridge?.fetchAccount ?? fetchAccount)(
+			runtime.l2Client,
+			pk,
+			TokenId.derive(runtime.innerHolder)
+		),
+		runtime.bridge?.fetchSyncedOuterActionState?.() ?? fetchSyncedOuterActionState(runtime)
+	])
 
 	const prevNextCancelledDeposit = helperAccountL1
 		? getNextCancelledDepositIndex(helperAccountL1)
@@ -224,8 +222,7 @@ export async function fetchDepositStateContext(
 		(lastIndex, action, index) => (action.type === "commit" ? index : lastIndex),
 		-1
 	)
-	const lastCommit =
-		lastCommitIndex === -1 ? null : (outerActions[lastCommitIndex] as OuterCommit)
+	const lastCommit = lastCommitIndex === -1 ? null : (outerActions[lastCommitIndex] as OuterCommit)
 	const ase = lastCommitIndex === -1 ? [] : outerActions.slice(lastCommitIndex + 1)
 
 	return {

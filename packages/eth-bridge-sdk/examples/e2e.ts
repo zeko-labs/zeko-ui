@@ -51,6 +51,8 @@ if (command === "deposit") {
 	throw new Error("Expected e2e command: deposit, status, or claim")
 }
 
-const json = JSON.stringify(output, (_, value) => (typeof value === "bigint" ? value.toString() : value))
+const json = JSON.stringify(output, (_, value) =>
+	typeof value === "bigint" ? value.toString() : value
+)
 if (Bun.env.E2E_OUTPUT) await Bun.write(Bun.env.E2E_OUTPUT, `${json}\n`)
 console.log(json)

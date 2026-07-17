@@ -44,7 +44,7 @@
 		"@total-typescript/ts-reset": "catalog:",
 		"@vitest/browser": "^3.2.4",
 		"nitro-cloudflare-dev": "catalog:",
-		"playwright": "^1.55.0",
+		"playwright": "^1.61.1",
 		"postcss-preset-env": "catalog:",
 		"type-fest": "^4.41.0",
 		"typescript": "^5.9.2",

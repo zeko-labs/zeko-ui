@@ -438,3 +438,4 @@
 - T452 | done | preserve-client-abort-for-proxy-timeouts | done/T452-preserve-client-abort-for-proxy-timeouts.md
 - T453 | done | pass-mainnet-fetch-optimization-tests | done/T453-pass-mainnet-fetch-optimization-tests.md
 - T454 | done | decouple-deposit-from-withdrawal-delay | done/T454-decouple-deposit-from-withdrawal-delay.md
+- T455 | done | support-ubuntu-2604-playwright | done/T455-support-ubuntu-2604-playwright.md
