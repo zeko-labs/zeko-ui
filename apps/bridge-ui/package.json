@@ -42,6 +42,7 @@
 		"@sentry/cli": "^2.53.0",
 		"@sentry/vite-plugin": "^4.3.0",
 		"@total-typescript/ts-reset": "catalog:",
+		"@vitejs/plugin-vue": "^6.0.1",
 		"@vitest/browser": "^3.2.4",
 		"nitro-cloudflare-dev": "catalog:",
 		"playwright": "^1.55.0",
