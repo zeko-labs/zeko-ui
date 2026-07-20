@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises"
-import { PrivateKey, PublicKey, UInt64 } from "o1js"
+import { type NetworkId, PrivateKey, PublicKey, UInt64 } from "o1js"
 import { type Address, type EIP1193Provider, getAddress } from "viem"
 import { EthereumBridgeClient, packZekoAddress } from "../src/index"
 
@@ -16,6 +16,12 @@ const required = (name: string): string => {
 	const value = Bun.env[name]
 	if (!value) throw new Error(`${name} is required`)
 	return value
+}
+
+const requiredL1Network = (): Extract<NetworkId, "mainnet" | "testnet"> => {
+	const value = required("L1_NETWORK")
+	if (value === "mainnet" || value === "testnet") return value
+	throw new Error("L1_NETWORK must be one of: mainnet, testnet")
 }
 
 const readyPath = required("LIVE_SEQUENCER_READY_FILE")
@@ -103,7 +109,7 @@ const client = await EthereumBridgeClient.init({
 		zekoUrl: harness.sequencerGraphqlUrl,
 		zekoArchiveUrl: harness.sequencerGraphqlUrl,
 		actionsApi: required("ACTIONS_API_URL"),
-		l1Network: "mainnet",
+		l1Network: requiredL1Network(),
 		l2Network: { custom: "zeko-testnet" },
 		pollTimeout: 30 * 60 * 1_000,
 		verbose: Bun.env.VERBOSE === "true"
