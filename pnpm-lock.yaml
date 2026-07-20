@@ -16755,6 +16755,16 @@ snapshots:
       msw: 2.11.1(@types/node@25.4.0)(typescript@5.9.3)
       vite: rolldown-vite@7.1.9(@types/node@25.4.0)(esbuild@0.25.12)(jiti@2.6.1)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
 
+  '@vitest/mocker@3.2.4(msw@2.11.1(@types/node@25.4.0)(typescript@5.9.3))(vite@7.1.5(@types/node@25.4.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1))':
+    dependencies:
+      '@vitest/spy': 3.2.4
+      estree-walker: 3.0.3
+      magic-string: 0.30.19
+    optionalDependencies:
+      msw: 2.11.1(@types/node@25.4.0)(typescript@5.9.3)
+      vite: 7.1.5(@types/node@25.4.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.34.1)(tsx@4.20.3)(yaml@2.8.1)
+    optional: true
+
   '@vitest/pretty-format@3.2.4':
     dependencies:
       tinyrainbow: 2.0.0
