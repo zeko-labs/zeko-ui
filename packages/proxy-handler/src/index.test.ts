@@ -204,6 +204,43 @@ describe("createProxyHandler", () => {
 		])
 	})
 
+	it("tries the first backup after a primary 307 redirect response", async () => {
+		const fetchMock = vi
+			.fn<[Request], Promise<Response>>()
+			.mockResolvedValueOnce(new Response("temporary redirect", { status: 307 }))
+			.mockResolvedValueOnce(new Response("backup one", { status: 200 }))
+		vi.stubGlobal("fetch", fetchMock)
+
+		const response = await createHandler()(new Request(requestUrl))
+
+		expect(response.status).toBe(200)
+		expect(await response.text()).toBe("backup one")
+		expectRequestedUrls(fetchMock, [
+			"https://primary.example/api/graphql?query=blocks",
+			"https://backup-one.example/api/graphql?query=blocks"
+		])
+	})
+
+	it("does not duplicate request paths that are already included in backend URLs", async () => {
+		const fetchMock = vi
+			.fn<[Request], Promise<Response>>()
+			.mockResolvedValueOnce(new Response("temporary redirect", { status: 307 }))
+			.mockResolvedValueOnce(new Response("backup one", { status: 200 }))
+		vi.stubGlobal("fetch", fetchMock)
+
+		const response = await createProxyHandler({
+			primaryUrl: "https://primary.example/api/graphql",
+			backupUrls: ["https://backup-one.example/graphql"]
+		})(new Request(requestUrl))
+
+		expect(response.status).toBe(200)
+		expect(await response.text()).toBe("backup one")
+		expectRequestedUrls(fetchMock, [
+			"https://primary.example/api/graphql?query=blocks",
+			"https://backup-one.example/graphql?query=blocks"
+		])
+	})
+
 	it("tries multiple backups in configured order", async () => {
 		const fetchMock = vi
 			.fn<[Request], Promise<Response>>()
@@ -288,6 +325,19 @@ describe("createProxyHandler", () => {
 			"https://backup-one.example/api/graphql?query=blocks",
 			"https://backup-two.example/api/graphql?query=blocks"
 		])
+	})
+
+	it("does not fail over for 304 not modified responses", async () => {
+		const fetchMock = vi
+			.fn<[Request], Promise<Response>>()
+			.mockResolvedValueOnce(new Response(null, { status: 304 }))
+		vi.stubGlobal("fetch", fetchMock)
+
+		const response = await createHandler()(new Request(requestUrl))
+
+		expect(response.status).toBe(304)
+		expect(await response.text()).toBe("")
+		expectRequestedUrls(fetchMock, ["https://primary.example/api/graphql?query=blocks"])
 	})
 
 	it("does not fail over for 4xx responses", async () => {

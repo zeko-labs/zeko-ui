@@ -5,8 +5,14 @@ import {
 	getPaginationRowModel,
 	useVueTable
 } from "@tanstack/vue-table"
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-vue-next"
-import { computed } from "vue"
+import {
+	CheckIcon,
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	CopyIcon,
+	ExternalLinkIcon
+} from "lucide-vue-next"
+import { computed, ref } from "vue"
 import type { ActorRefFromLogic } from "xstate"
 import {
 	shouldShowCompletedOperationsLoading,
@@ -15,6 +21,9 @@ import {
 import {
 	bridgeOperationColumns,
 	completedOperationTableStatus,
+	mergeBridgeOperationRows,
+	pendingBridgeTransactionRows,
+	transactionExplorerUrl,
 	type BridgeOperationRow
 } from "~/utils/bridgeOperationsTable"
 import {
@@ -22,13 +31,15 @@ import {
 	sortOperationTimestampsDesc
 } from "~~/machines/operationTimestamps"
 import type { bridgeOperationMachine } from "~~/machines/bridgeOperation"
+import type { PendingBridgeTransaction } from "~~/machines/pendingTransactions"
 import { useSelector } from "~~/machines/vue-xstate"
 
-const { operations } = defineProps<{
+const { operations, pendingOperations = [] } = defineProps<{
 	operations: {
 		id: string
 		operation: ActorRefFromLogic<typeof bridgeOperationMachine>
 	}[]
+	pendingOperations?: PendingBridgeTransaction[]
 }>()
 
 const bs = useBridgeStore()
@@ -39,48 +50,48 @@ const loading = computed(() =>
 	})
 )
 
-const data = computed<BridgeOperationRow[]>(() =>
-	operations
-		.map(({ id, operation }) => {
-			const state = useSelector(operation, (state) => state)
-			const status = statusFromState(
-				state.value.value,
-				state.value.context.direction,
-				{ canCancel: state.value.context.canCancel }
-			)
-			const { text, kind } = completedOperationTableStatus(
-				status,
-				state.value.context.completionVerification
-			)
-			const timestampMs =
-				state.value.context.transaction?.timestampMs ??
-				state.value.context.completedAtMs ??
-				null
-			const submitHash =
-				state.value.context.transactions.submitDeposit?.result?.hash ??
-				state.value.context.transactions.submitWithdrawal?.result?.hash ??
-				""
-			return {
-				id,
-				operation,
-				status: state.value.value,
-				statusText: text,
-				statusKind: kind,
-				source: state.value.context.source,
-				destination: state.value.context.destination,
-				amount: state.value.context.amount,
-				hash: state.value.context.transaction?.hash ?? submitHash,
-				timestampMs,
-				dateLabel: formatOperationDate(timestampMs)
-			}
-		})
-		.toSorted((a, b) => {
-			const aIsDone = typeof a.status === "string" && a.status.includes("DONE")
-			const bIsDone = typeof b.status === "string" && b.status.includes("DONE")
-			if (aIsDone !== bIsDone) return aIsDone ? 1 : -1
-			return sortOperationTimestampsDesc(a.timestampMs, b.timestampMs)
-		})
-)
+const data = computed<BridgeOperationRow[]>(() => {
+	const fetchedRows = operations.map(({ id, operation }) => {
+		const state = useSelector(operation, (state) => state)
+		const status = statusFromState(
+			state.value.value,
+			state.value.context.direction,
+			{ canCancel: state.value.context.canCancel }
+		)
+		const { text, kind } = completedOperationTableStatus(
+			status,
+			state.value.context.completionVerification
+		)
+		const timestampMs =
+			state.value.context.transaction?.timestampMs ??
+			state.value.context.completedAtMs ??
+			null
+		const submitHash =
+			state.value.context.transactions.submitDeposit?.result?.hash ??
+			state.value.context.transactions.submitWithdrawal?.result?.hash ??
+			""
+		return {
+			id,
+			operation,
+			status: state.value.value,
+			statusText: text,
+			statusKind: kind,
+			source: state.value.context.source,
+			destination: state.value.context.destination,
+			amount: state.value.context.amount,
+			hash: submitHash || state.value.context.transaction?.hash || "",
+			timestampMs,
+			dateLabel: formatOperationDate(timestampMs)
+		}
+	})
+	const pendingRows = pendingBridgeTransactionRows(pendingOperations)
+	return mergeBridgeOperationRows(fetchedRows, pendingRows).toSorted((a, b) => {
+		const aIsDone = typeof a.status === "string" && a.status.includes("DONE")
+		const bIsDone = typeof b.status === "string" && b.status.includes("DONE")
+		if (aIsDone !== bIsDone) return aIsDone ? 1 : -1
+		return sortOperationTimestampsDesc(a.timestampMs, b.timestampMs)
+	})
+})
 
 const columns = bridgeOperationColumns
 
@@ -120,6 +131,20 @@ const visiblePages = computed(() => {
 	}
 	return pages
 })
+
+const copiedHash = ref<string | null>(null)
+let copiedHashTimeout: ReturnType<typeof setTimeout> | null = null
+
+const copyHash = async (hash: string) => {
+	if (!hash || !navigator.clipboard) return
+	await navigator.clipboard.writeText(hash)
+	copiedHash.value = hash
+	if (copiedHashTimeout) clearTimeout(copiedHashTimeout)
+	copiedHashTimeout = setTimeout(() => {
+		copiedHash.value = null
+		copiedHashTimeout = null
+	}, 1500)
+}
 </script>
 
 <template>
@@ -182,10 +207,44 @@ const visiblePages = computed(() => {
               </div>
             </td>
             <!-- Hash -->
-            <td>
-              <span class="HashCell" :title='String(row.getValue("hash"))'>
-                {{ String(row.getValue("hash") || "none") }}
-              </span>
+            <td class="HashTableCell">
+              <div class="HashActionsCell">
+                <span class="HashCell" :title="row.original.hash">
+                  {{ row.original.hash || "none" }}
+                </span>
+                <span v-if="row.original.hash" class="HashActions">
+                  <button
+                    type="button"
+                    class="HashActionButton"
+                    :aria-label='
+                      copiedHash === row.original.hash
+                      ? "Copied transaction hash"
+                      : `Copy transaction hash ${row.original.hash}`
+                    '
+                    :title='
+                      copiedHash === row.original.hash
+                      ? "Copied"
+                      : "Copy hash"
+                    '
+                    @click="copyHash(row.original.hash)">
+                    <CheckIcon
+                      v-if="copiedHash === row.original.hash"
+                      class="CopiedIcon"
+                    />
+                    <CopyIcon v-else />
+                  </button>
+                  <a
+                    v-if="transactionExplorerUrl(row.original)"
+                    class="HashActionButton"
+                    :href="transactionExplorerUrl(row.original) ?? undefined"
+                    :aria-label="`Open transaction ${row.original.hash} in explorer`"
+                    title="Open in explorer"
+                    target="_blank"
+                    rel="noopener noreferrer">
+                    <ExternalLinkIcon />
+                  </a>
+                </span>
+              </div>
             </td>
             <!-- Date -->
             <td>{{ String(row.getValue("date")) }}</td>
@@ -292,6 +351,23 @@ tbody tr:hover {
   }
 }
 
+.HashTableCell {
+  &:hover,
+  &:focus-within {
+    .HashActions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+}
+
+.HashActionsCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-inline-size: 22ch;
+}
+
 .HashCell {
   display: inline-block;
   max-width: 18ch;
@@ -301,6 +377,61 @@ tbody tr:hover {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.85em;
   white-space: nowrap;
+}
+
+.HashActions {
+  display: inline-flex;
+  gap: 0.2rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+@keyframes CopiedCheckFade {
+  0%,
+  65% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+}
+
+.HashActionButton {
+  inline-size: 1.7rem;
+  block-size: 1.7rem;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--bridge-border-color);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.74);
+  color: var(--theme-light-content-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+  &:hover {
+    background: var(--bridge-bg-alt);
+    color: var(--theme-light-content-primary);
+    border-color: var(--palette-yellow-200);
+  }
+  &:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--bridge-focus-color);
+    outline-offset: 2px;
+  }
+  svg {
+    inline-size: 0.95rem;
+    block-size: 0.95rem;
+  }
+  .CopiedIcon {
+    color: var(--theme-light-content-primary);
+    animation: CopiedCheckFade 1500ms ease both;
+  }
 }
 
 .PaginationBar {

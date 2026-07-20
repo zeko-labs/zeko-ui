@@ -1,8 +1,4 @@
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
 import { sentryVitePlugin } from "@sentry/vite-plugin"
-
-const currentDir = dirname(fileURLToPath(import.meta.url))
 
 const headers = {
 	"Cross-Origin-Resource-Policy": "same-site",
@@ -51,7 +47,10 @@ export default defineNuxtConfig({
 	extends: ["@zeko/layer"],
 	typescript: {
 		tsConfig: {
-			include: [join(currentDir, "sentry.client.config.ts"), join(currentDir, "machines")]
+			include: [
+				new URL("./sentry.client.config.ts", import.meta.url).pathname,
+				new URL("./machines", import.meta.url).pathname
+			]
 		}
 	},
 	postcss: {

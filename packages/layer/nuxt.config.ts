@@ -1,8 +1,6 @@
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
 import { defineNuxtConfig } from "nuxt/config"
 
-const currentDir = dirname(fileURLToPath(import.meta.url))
+const layerDir = (import.meta as ImportMeta & { dirname: string }).dirname
 
 export default defineNuxtConfig({
 	compatibilityDate: "2025-08-09",
@@ -11,14 +9,14 @@ export default defineNuxtConfig({
 	css: [
 		"@unocss/reset/sanitize/sanitize.css",
 		"@unocss/reset/sanitize/assets.css",
-		join(currentDir, "./app/assets/styles/cssforge.css"),
-		join(currentDir, "./app/assets/styles/layer.css")
+		new URL("./app/assets/styles/cssforge.css", import.meta.url).pathname,
+		new URL("./app/assets/styles/layer.css", import.meta.url).pathname
 	],
 	fonts: { provider: "google" },
 	postcss: {
 		plugins: {
 			"@csstools/postcss-global-data": {
-				files: [join(currentDir, "./app/assets/styles/queries.css")]
+				files: [new URL("./app/assets/styles/queries.css", import.meta.url).pathname]
 			},
 			"postcss-preset-env": { browsers: "baseline widely available" }
 		}

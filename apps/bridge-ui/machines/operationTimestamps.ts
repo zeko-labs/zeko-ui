@@ -39,5 +39,12 @@ export const formatOperationDate = (
 		return "Unknown"
 	}
 
-	return new Date(timestampMs).toLocaleDateString(locale)
+	return new Date(timestampMs).toLocaleString(locale, {
+		year: "numeric",
+		month: "numeric",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: false
+	})
 }

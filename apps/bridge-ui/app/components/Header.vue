@@ -1,5 +1,12 @@
 <script lang="ts" setup>
-import { BellOffIcon, BellRingIcon, WalletIcon } from "lucide-vue-next"
+import {
+	BellOffIcon,
+	BellRingIcon,
+	CheckIcon,
+	CopyIcon,
+	ExternalLinkIcon,
+	WalletIcon
+} from "lucide-vue-next"
 
 const bs = useBridgeStore()
 const n = useNotificationStore()
@@ -10,6 +17,32 @@ const currentMina = computed(() => {
 	).toString()
 })
 const granted = computed(() => n.notificationPermission === "granted")
+const walletExplorerUrl = computed(() => {
+	if (!bs.address) return null
+	if (
+		bs.currentNetwork === "zeko:mainnet" ||
+		bs.currentNetwork === "zeko-m:mainnet"
+	) {
+		return `https://zekoscan.io/mainnet/account/${bs.address}`
+	}
+	if (bs.currentNetwork === "mina:mainnet") {
+		return `https://minascan.io/mainnet/account/${bs.address}`
+	}
+	return null
+})
+const copiedAddress = ref(false)
+let copiedAddressTimeout: ReturnType<typeof setTimeout> | null = null
+
+const copyAddress = async () => {
+	if (!bs.address) return
+	await navigator.clipboard.writeText(bs.address)
+	copiedAddress.value = true
+	if (copiedAddressTimeout) clearTimeout(copiedAddressTimeout)
+	copiedAddressTimeout = setTimeout(() => {
+		copiedAddress.value = false
+		copiedAddressTimeout = null
+	}, 1500)
+}
 const refetchBalance = () => {
 	bs.wallet.send({
 		type: "FetchBalance",
@@ -34,6 +67,31 @@ const refetchBalance = () => {
     <div class="Address Badge" :title="bs.address">
       <WalletIcon />
       <span> {{ bs.displayAddress }} </span>
+      <span v-if="bs.address" class="AddressActions">
+        <button
+          type="button"
+          class="AddressActionButton"
+          :aria-label='
+            copiedAddress
+            ? "Copied wallet address"
+            : `Copy wallet address ${bs.address}`
+          '
+          :title='copiedAddress ? "Copied" : "Copy address"'
+          @click="copyAddress">
+          <CheckIcon v-if="copiedAddress" class="CopiedIcon" />
+          <CopyIcon v-else />
+        </button>
+        <a
+          v-if="walletExplorerUrl"
+          class="AddressActionButton"
+          :href="walletExplorerUrl"
+          :aria-label="`Open wallet address ${bs.address} in explorer`"
+          title="Open in explorer"
+          target="_blank"
+          rel="noopener noreferrer">
+          <ExternalLinkIcon />
+        </a>
+      </span>
     </div>
     <div
       class="Notifications Badge"
@@ -102,6 +160,70 @@ header {
 .Address {
   grid-area: address;
   gap: 0.5ch;
+  color: var(--palette-gray-950);
+  text-decoration: none;
+  &:hover,
+  &:focus-within {
+    .AddressActions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+}
+
+.AddressActions {
+  display: inline-flex;
+  gap: 0.2rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+@keyframes CopiedCheckFade {
+  0%,
+  65% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+}
+
+.AddressActionButton {
+  inline-size: 1.65rem;
+  block-size: 1.65rem;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--theme-light-border-secondary);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.74);
+  color: var(--theme-light-content-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+  &:hover {
+    background: var(--theme-light-background-secondary);
+    color: var(--theme-light-content-primary);
+    border-color: var(--palette-yellow-200);
+  }
+  &:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--palette-yellow-200);
+    outline-offset: 2px;
+  }
+  svg {
+    inline-size: 0.9rem;
+    block-size: 0.9rem;
+  }
+  .CopiedIcon {
+    color: var(--theme-light-content-primary);
+    animation: CopiedCheckFade 1500ms ease both;
+  }
 }
 
 .Notifications {
