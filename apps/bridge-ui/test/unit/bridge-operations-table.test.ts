@@ -121,7 +121,7 @@ describe("bridgeOperationDateColumn", () => {
 
 		expect(bridgeOperationColumns.map((column) => column.header)).toContain("Hash")
 		expect(bridgeOperationHashColumn.accessorFn?.(row, 0)).toBe("5Jdebug000001")
-		expect(bridgeOperationsSource).toContain('row.getValue("hash")')
+		expect(bridgeOperationsSource).toContain("row.original.hash")
 	})
 
 	it("keeps history rows keyed to the original submit transaction hash", () => {

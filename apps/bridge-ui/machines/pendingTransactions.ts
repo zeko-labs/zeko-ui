@@ -147,17 +147,7 @@ const matchesScope = (scope: PendingBridgeTransactionScope) => (record: PendingB
 export const loadPendingBridgeTransactions = (
 	scope: PendingBridgeTransactionScope,
 	options: PersistenceOptions = {}
-): PendingBridgeTransaction[] => {
-	const { target, records } = readStore(options)
-	if (target) {
-		try {
-			writeStore(target, records)
-		} catch {
-			// Best-effort stale cleanup only.
-		}
-	}
-	return records.filter(matchesScope(scope))
-}
+): PendingBridgeTransaction[] => readStore(options).records.filter(matchesScope(scope))
 
 export const hasPendingBridgeTransactions = (
 	scope: PendingBridgeTransactionScope,

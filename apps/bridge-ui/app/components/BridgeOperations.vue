@@ -136,7 +136,7 @@ const copiedHash = ref<string | null>(null)
 let copiedHashTimeout: ReturnType<typeof setTimeout> | null = null
 
 const copyHash = async (hash: string) => {
-	if (!hash) return
+	if (!hash || !navigator.clipboard) return
 	await navigator.clipboard.writeText(hash)
 	copiedHash.value = hash
 	if (copiedHashTimeout) clearTimeout(copiedHashTimeout)
@@ -209,28 +209,26 @@ const copyHash = async (hash: string) => {
             <!-- Hash -->
             <td class="HashTableCell">
               <div class="HashActionsCell">
-                <span class="HashCell" :title='String(row.getValue("hash"))'>
-                  {{ String(row.getValue("hash") || "none") }}
+                <span class="HashCell" :title="row.original.hash">
+                  {{ row.original.hash || "none" }}
                 </span>
-                <span
-                  v-if='String(row.getValue("hash") || "")'
-                  class="HashActions">
+                <span v-if="row.original.hash" class="HashActions">
                   <button
                     type="button"
                     class="HashActionButton"
                     :aria-label='
-                      copiedHash === String(row.getValue("hash"))
+                      copiedHash === row.original.hash
                       ? "Copied transaction hash"
-                      : `Copy transaction hash ${String(row.getValue("hash"))}`
+                      : `Copy transaction hash ${row.original.hash}`
                     '
                     :title='
-                      copiedHash === String(row.getValue("hash"))
+                      copiedHash === row.original.hash
                       ? "Copied"
                       : "Copy hash"
                     '
-                    @click='copyHash(String(row.getValue("hash")))'>
+                    @click="copyHash(row.original.hash)">
                     <CheckIcon
-                      v-if='copiedHash === String(row.getValue("hash"))'
+                      v-if="copiedHash === row.original.hash"
                       class="CopiedIcon"
                     />
                     <CopyIcon v-else />
@@ -239,7 +237,7 @@ const copyHash = async (hash: string) => {
                     v-if="transactionExplorerUrl(row.original)"
                     class="HashActionButton"
                     :href="transactionExplorerUrl(row.original) ?? undefined"
-                    :aria-label='`Open transaction ${String(row.getValue("hash"))} in explorer`'
+                    :aria-label="`Open transaction ${row.original.hash} in explorer`"
                     title="Open in explorer"
                     target="_blank"
                     rel="noopener noreferrer">

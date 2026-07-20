@@ -74,6 +74,22 @@ describe("pending bridge transaction persistence", () => {
 		).toEqual([record()])
 	})
 
+	it("does not write to storage when loading records", () => {
+		const baseStorage = createMemoryStorage()
+		const setItem = vi.fn(baseStorage.setItem)
+		const storageWithSpy = { ...baseStorage, setItem }
+		savePendingBridgeTransaction(record(), { storage: storageWithSpy })
+		setItem.mockClear()
+
+		expect(
+			loadPendingBridgeTransactions(
+				{ walletAddress: "B62qwallet-1", l1: mina, l2: zeko },
+				{ storage: storageWithSpy }
+			)
+		).toEqual([record()])
+		expect(setItem).not.toHaveBeenCalled()
+	})
+
 	it("normalizes duplicate records by scoped transaction hash", () => {
 		const firstSubmittedAtMs = Date.parse("2026-07-01T00:00:00Z")
 		const secondSubmittedAtMs = Date.parse("2026-07-01T00:00:01Z")

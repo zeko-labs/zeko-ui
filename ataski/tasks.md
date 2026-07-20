@@ -461,3 +461,6 @@
 - T475 | done | show-copied-check-feedback | done/T475-show-copied-check-feedback.md
 - T476 | done | show-finalization-transaction-link-modal | done/T476-show-finalization-transaction-link-modal.md
 - T477 | done | remove-obsolete-minascan-status-link | done/T477-remove-obsolete-minascan-status-link.md
+- T478 | done | simplify-bridge-operation-hash-cell | done/T478-simplify-bridge-operation-hash-cell.md
+- T479 | done | guard-clipboard-hash-copy | done/T479-guard-clipboard-hash-copy.md
+- T480 | done | make-pending-transaction-load-pure | done/T480-make-pending-transaction-load-pure.md
