@@ -1,11 +1,11 @@
 ---
 id: T456
 title: "Configure live E2E signing network"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-07-20T16:49:08Z
-updated_at: 2026-07-20T17:06:00Z
+updated_at: 2026-07-20T17:19:00Z
 ---
 
 ## Requirements
@@ -27,3 +27,6 @@ updated_at: 2026-07-20T17:06:00Z
 - After making L1 configurable and passing `testnet`, the same boundary still rejected the signature (`/root/zeko/logs/zeko-wire-live-final-5-20260720.log`). `finalizeDeposit` is created after `setL2`, and the example was still hardcoded to the custom `zeko-testnet` domain while the live sequencer and its signer use built-in `testnet`; both client domains must match their target services.
 
 ## GREEN Evidence
+
+- `moon run eth-bridge-sdk:lint` passed; forced uncached `eth-bridge-sdk:typecheck` passed; forced uncached `eth-bridge-sdk:test` passed 9/9 tests. Pre-commit lint/format and `bridge-ui:typecheck` also passed.
+- `tools/run-live-sequencer-bridge-e2e.sh` passed with both networks set to `testnet` (exit 0; `/root/zeko/logs/zeko-wire-live-final-6-20260720.log`). The browser SDK finalized the deposit, submitted the native withdrawal, and the OCaml harness emitted two settlement exports; zero SP1 proofs were requested or generated.
