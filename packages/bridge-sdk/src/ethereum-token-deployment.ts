@@ -8,8 +8,8 @@ import {
 	Permissions,
 	type PublicKey,
 	TokenId,
-	UInt64,
 	UInt8,
+	UInt64,
 	type VerificationKey
 } from "o1js"
 import { normalizeEthereumAssetId, validateEthereumTokenBridgeConfig } from "./ethereum"
@@ -246,6 +246,7 @@ export const deployEthereumTokenMirror = async (
 	)
 	await Promise.all([
 		refreshCache(plan.config.tokenOwnerL2),
+		refreshCache(plan.config.tokenOwnerL2, plan.config.tokenIdL2),
 		refreshCache(input.adminContractL2),
 		refreshCache(plan.config.holderAccountL2, plan.config.tokenIdL2)
 	])

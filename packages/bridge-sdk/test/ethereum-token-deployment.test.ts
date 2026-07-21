@@ -13,12 +13,13 @@ import {
 	UInt64,
 	type VerificationKey
 } from "o1js"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
 	deployEthereumTokenMirror,
 	validateEthereumTokenDeployment,
 	type EthereumTokenDeploymentPlan
 } from "../src/ethereum-token-deployment"
+import * as utils from "../src/utils"
 
 class TestBridgeVault extends SmartContract {
 	@method.returns(AccountUpdate)
@@ -128,6 +129,7 @@ describe("ERC20 mirror token deployment validation", () => {
 
 describe("ERC20 mirror token local roundtrip", () => {
 	it("deploys the standard token, locks its funded vault to the bridge VK, and moves tokens both ways", async () => {
+		const refreshCache = vi.spyOn(utils, "refreshCache")
 		const local = await Mina.LocalBlockchain({
 			proofsEnabled: false,
 			enforceTransactionLimits: false
@@ -190,6 +192,8 @@ describe("ERC20 mirror token local roundtrip", () => {
 			manifest.vaultInstallationTransactionHash,
 			manifest.inventoryMintTransactionHash
 		])
+		expect(refreshCache).toHaveBeenCalledWith(ownerKey.toPublicKey(), tokenId)
+		refreshCache.mockRestore()
 		expect(Mina.getBalance(vaultKey.toPublicKey(), tokenId).toBigInt()).toBe(1_000n)
 		expect(
 			Mina.getAccount(vaultKey.toPublicKey(), tokenId).zkapp?.verificationKey?.hash.toString()
