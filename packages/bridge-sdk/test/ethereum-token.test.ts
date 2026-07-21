@@ -1,7 +1,8 @@
-import { AccountUpdate, Bool, Field, Int64, PrivateKey, TokenId, UInt64 } from "o1js"
+import { AccountUpdate, Bool, Field, Int64, Mina, PrivateKey, TokenId, UInt64 } from "o1js"
 import { describe, expect, it } from "vitest"
 import {
 	assertMatchingFungibleTokenOwner,
+	countMissingEthereumTokenAccounts,
 	graftEthereumTokenDepositHelperSignature,
 	parseProvedAccountUpdates,
 	validateEthereumTokenBridgeConfig,
@@ -90,6 +91,36 @@ describe("proved ERC20 deposit forest", () => {
 			vault,
 			helper
 		})
+	})
+
+	it("rejects a custom-token vault that tries to pay an implicit creation fee", () => {
+		const bridge = config()
+		const vault = AccountUpdate.default(bridge.holderAccountL2, bridge.tokenIdL2)
+		vault.balanceChange = Int64.from(-25)
+		vault.body.implicitAccountCreationFee = Bool(true)
+		proofAuthorize(vault, bridge.verificationKeyHash)
+
+		expect(() =>
+			validateEthereumTokenDepositForest(bridge, key(), UInt64.from(25), [vault])
+		).toThrow("implicit account-creation fee")
+	})
+
+	it("counts each absent account in the proved forest once", async () => {
+		const local = await Mina.LocalBlockchain({ proofsEnabled: false })
+		Mina.setActiveInstance(local)
+		const existing = local.testAccounts[0]
+		const missingNative = key()
+		const missingToken = key()
+		const customToken = Field(123)
+
+		expect(
+			countMissingEthereumTokenAccounts([
+				AccountUpdate.default(existing),
+				AccountUpdate.default(missingNative),
+				AccountUpdate.default(missingNative),
+				AccountUpdate.default(missingToken, customToken)
+			])
+		).toBe(2)
 	})
 
 	it("rejects a wrong vault and verification key", () => {

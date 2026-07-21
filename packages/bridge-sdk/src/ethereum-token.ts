@@ -137,6 +137,9 @@ export const validateEthereumTokenDepositForest = (
 	if (!vault) throw new Error("ERC20 deposit proof has no vault root")
 	requireAccount(vault, config.holderAccountL2, config.tokenIdL2, "ERC20 deposit vault")
 	requireProof(vault, config.verificationKeyHash, "ERC20 deposit vault")
+	if (vault.body.implicitAccountCreationFee.toBoolean()) {
+		throw new Error("ERC20 deposit vault charges an implicit account-creation fee")
+	}
 	if (vault.balanceChange.toBigint() !== -amount.toBigInt()) {
 		throw new Error("ERC20 deposit vault debits the wrong amount")
 	}
@@ -172,6 +175,28 @@ const attachFlatForest = (updates: AccountUpdate[]): void => {
 		parents[depth] = update
 		parents.length = depth + 1
 	}
+}
+
+const uniqueForestAccounts = (
+	updates: AccountUpdate[]
+): Array<{ publicKey: PublicKey; tokenId: Field }> => {
+	const accounts = new Map<string, { publicKey: PublicKey; tokenId: Field }>()
+	for (const update of updates) {
+		const account = { publicKey: update.publicKey, tokenId: update.tokenId }
+		accounts.set(`${account.publicKey.toBase58()}:${account.tokenId.toString()}`, account)
+	}
+	return [...accounts.values()]
+}
+
+export const countMissingEthereumTokenAccounts = (updates: AccountUpdate[]): number =>
+	uniqueForestAccounts(updates).filter(
+		({ publicKey, tokenId }) => !Mina.hasAccount(publicKey, tokenId)
+	).length
+
+const refreshEthereumTokenForestAccounts = async (updates: AccountUpdate[]): Promise<void> => {
+	await Promise.all(
+		uniqueForestAccounts(updates).map(({ publicKey, tokenId }) => refreshCache(publicKey, tokenId))
+	)
 }
 
 const sendProvedTransaction = async (
@@ -281,9 +306,15 @@ export async function finalizeEthereumTokenDeposit(
 		updates
 	)
 	graftEthereumTokenDepositHelperSignature(helper)
+	await refreshEthereumTokenForestAccounts(updates)
+	const newAccountCount = countMissingEthereumTokenAccounts(updates)
 
 	const token = new FungibleToken(config.tokenOwnerL2)
-	const txn = await Mina.transaction(feePayerWithFee(feePayer, fee), async () => {
+	const transactionFeePayer = feePayerWithFee(feePayer, fee)
+	const txn = await Mina.transaction(transactionFeePayer, async () => {
+		if (newAccountCount > 0) {
+			AccountUpdate.fundNewAccount(transactionFeePayer.sender, newAccountCount)
+		}
 		await token.approveBase(AccountUpdateForest.fromFlatArray(updates))
 	})
 	try {
