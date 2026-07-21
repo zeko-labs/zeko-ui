@@ -1,8 +1,19 @@
-import { AccountUpdate, Bool, Field, Int64, PrivateKey, TokenId, UInt64 } from "o1js"
+import {
+	AccountUpdate,
+	Bool,
+	Field,
+	Int64,
+	Mina,
+	PrivateKey,
+	Provable,
+	TokenId,
+	UInt64
+} from "o1js"
 import { describe, expect, it } from "vitest"
 import {
 	assertMatchingFungibleTokenOwner,
 	parseProvedAccountUpdates,
+	requireUnchangedHelperSignature,
 	validateEthereumTokenBridgeConfig,
 	validateEthereumTokenDepositForest
 } from "../src/ethereum-token"
@@ -55,6 +66,19 @@ describe("Ethereum token bridge configuration", () => {
 })
 
 describe("proved ERC20 deposit forest", () => {
+	it("keeps the signed helper body constrained in provable code", async () => {
+		Mina.setActiveInstance(await Mina.LocalBlockchain({ proofsEnabled: false }))
+		const helper = AccountUpdate.default(key())
+		helper.requireSignature()
+
+		await expect(
+			Provable.runAndCheck(() => {
+				const witnessed = Provable.witness(AccountUpdate, () => helper)
+				requireUnchangedHelperSignature(witnessed)
+			})
+		).resolves.toBeUndefined()
+	})
+
 	it("accepts the proved vault and helper shape", () => {
 		const bridge = config()
 		const recipient = key()

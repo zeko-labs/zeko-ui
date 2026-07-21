@@ -150,6 +150,15 @@ export const validateEthereumTokenDepositForest = (
 	return { vault, helper }
 }
 
+export const requireUnchangedHelperSignature = (helper: AccountUpdate): void => {
+	const helperHash = helper.hash()
+	helper.requireSignature()
+	helper
+		.hash()
+		.equals(helperHash)
+		.assertTrue("Signing the ERC20 deposit helper changed its proved body")
+}
+
 const attachFlatForest = (updates: AccountUpdate[]): void => {
 	const parents: AccountUpdate[] = []
 	for (const update of updates) {
@@ -275,11 +284,7 @@ export async function finalizeEthereumTokenDeposit(
 
 	const token = new FungibleToken(config.tokenOwnerL2)
 	const txn = await Mina.transaction(feePayerWithFee(feePayer, fee), async () => {
-		const helperHash = helper.hash()
-		helper.requireSignature()
-		if (!helper.hash().equals(helperHash).toBoolean()) {
-			throw new Error("Signing the ERC20 deposit helper changed its proved body")
-		}
+		requireUnchangedHelperSignature(helper)
 		await token.approveBase(AccountUpdateForest.fromFlatArray(updates))
 	})
 	try {
