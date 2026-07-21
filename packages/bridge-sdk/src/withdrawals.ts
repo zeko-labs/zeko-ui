@@ -37,6 +37,11 @@ import type {
 	WithdrawalWithState,
 	WitnessFetchResult
 } from "./types"
+
+type WithdrawalFinalizationWitness = Omit<
+	ExtractInput<typeof finalizeWithdrawalMutation>,
+	"helperAccountNew" | "helperAccountSignature" | "prevNonce"
+>
 import {
 	bridgeVersionForActionIndex,
 	fetchActions,
@@ -269,7 +274,7 @@ export async function fetchWithdrawalFinalizationWitnesses(
 			aux: Field
 		}
 		helperAccount: Account | null
-		witness: ExtractInput<typeof finalizeWithdrawalMutation>
+		witness: WithdrawalFinalizationWitness
 	}>
 > {
 	const [recipientAccount, helperAccount] = await Promise.all([

@@ -18,6 +18,7 @@ export const accountQuery = graphql(`
   query Account($pk: PublicKey!, $tokenId: TokenId) {
     account(publicKey: $pk, token: $tokenId) {
       zkappState
+      nonce
     }
   }
 `)

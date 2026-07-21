@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { pollProvingResult } from "../src/prover"
+import { pollProvedForest, pollProvingResult } from "../src/prover"
 import type { BridgeRuntime } from "../src/runtime"
 
 const buildRuntime = ({
@@ -59,5 +59,68 @@ describe("pollProvingResult", () => {
 				0
 			)
 		).rejects.toThrow("Unsupported proving result payload for key proof-key")
+	})
+})
+
+describe("pollProvedForest", () => {
+	it("returns a proof-only account-update forest without waiting for execution", async () => {
+		const proved = [{ body: { publicKey: "vault" }, authorization: { proof: "proof" } }]
+
+		await expect(
+			pollProvedForest(
+				buildRuntime({
+					verbose: false,
+					provingResult: JSON.stringify({ proved })
+				}),
+				"erc20-proof-key",
+				0
+			)
+		).resolves.toEqual(proved)
+	})
+
+	it("keeps polling while a proof-only result is pending", async () => {
+		const proved = [{ body: { publicKey: "vault" }, authorization: { proof: "proof" } }]
+		const query = vi
+			.fn()
+			.mockResolvedValueOnce({ data: { provingResult: null } })
+			.mockResolvedValueOnce({ data: { provingResult: JSON.stringify({ proved }) } })
+		const runtime = {
+			...buildRuntime({ verbose: false }),
+			l2Client: Object.assign(() => ({ query }), { label: "l2" })
+		} as BridgeRuntime
+
+		await expect(pollProvedForest(runtime, "pending-key", 0)).resolves.toEqual(proved)
+		expect(query).toHaveBeenCalledTimes(2)
+	})
+
+	it("surfaces GraphQL polling errors", async () => {
+		const runtime = {
+			...buildRuntime({ verbose: false }),
+			l2Client: Object.assign(
+				() => ({ query: vi.fn().mockResolvedValue({ error: new Error("gateway unavailable") }) }),
+				{ label: "l2" }
+			)
+		} as BridgeRuntime
+
+		await expect(pollProvedForest(runtime, "errored-key", 0)).rejects.toThrow("gateway unavailable")
+	})
+
+	it("rejects malformed proof-only forests", async () => {
+		await expect(
+			pollProvedForest(
+				buildRuntime({
+					verbose: false,
+					provingResult: JSON.stringify({ proved: "not-an-array" })
+				}),
+				"erc20-proof-key",
+				0
+			)
+		).rejects.toThrow("Invalid proved forest for key erc20-proof-key")
+	})
+
+	it("does not accept an already-executed native result as a composable forest", async () => {
+		await expect(
+			pollProvedForest(buildRuntime({ verbose: false }), "erc20-proof-key", 0)
+		).rejects.toThrow("Proof key erc20-proof-key was already executed")
 	})
 })

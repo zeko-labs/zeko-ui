@@ -14,6 +14,14 @@ export const fetchConfigQuery = graphql(`
       bridgeFeeRecipientL1
       bridgeFeeRecipientL2
       bridgeProofFee
+      ethereumToken {
+        assetId
+        ethereumTokenAddress
+        tokenOwnerL2
+        tokenIdL2
+        holderAccountL2
+        verificationKeyHash
+      }
     }
   }
 `)
@@ -64,6 +72,22 @@ export const submitDepositMutation = graphql(`
 export const finalizeDepositMutation = graphql(`
   mutation FinalizeDeposit($input: FinalizeDepositInput!) {
     request: finalizeDeposit(input: $input) {
+      key
+    }
+  }
+`)
+
+export const finalizeEthereumTokenDepositMutation = graphql(`
+  mutation FinalizeEthereumTokenDeposit($input: FinalizeEthereumTokenDepositInput!) {
+    request: finalizeEthereumTokenDeposit(input: $input) {
+      key
+    }
+  }
+`)
+
+export const proveEthereumTokenWithdrawalRequestMutation = graphql(`
+  mutation ProveEthereumTokenWithdrawalRequest($input: EthereumTokenWithdrawalRequestInput!) {
+    request: proveEthereumTokenWithdrawalRequest(input: $input) {
       key
     }
   }

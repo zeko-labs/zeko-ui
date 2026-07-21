@@ -29,6 +29,17 @@ export type Deposit = {
 	amount: UInt64
 	timeout: UInt32
 	holderAccountL1: PublicKey
+	/** Ethereum ERC20 asset identifier. Absent for native-token deposits. */
+	assetId?: string
+}
+
+export type EthereumTokenBridgeConfig = {
+	assetId: string
+	ethereumTokenAddress: string
+	tokenOwnerL2: PublicKey
+	tokenIdL2: Field
+	holderAccountL2: PublicKey
+	verificationKeyHash: Field
 }
 
 export type Withdrawal = {
@@ -114,6 +125,7 @@ export type InnerActionWithState = MaybeWithdrawal & {
 
 export type Account = {
 	zkappState?: string[] | null
+	nonce?: string | null
 }
 
 export type WitnessFetchResult<T> =

@@ -5,6 +5,20 @@ import { ethereumDepositAux } from "../src/index"
 const holder = PublicKey.fromFields([Field(1), Field(0)])
 
 describe("Ethereum bridge compatibility", () => {
+	it("matches the OCaml ERC20 deposit aux vector including its immutable asset", () => {
+		const actual = ethereumDepositAux({
+			recipient: PublicKey.fromFields([Field(16909060), Field(0)]),
+			amount: UInt64.from("2000000"),
+			timeout: UInt32.MAXINT(),
+			holderAccountL1: holder,
+			assetId: `0x${"0".repeat(31)}1${"0".repeat(31)}2`
+		})
+
+		expect(actual.toBigInt().toString(16).padStart(64, "0")).toBe(
+			"0fc821581944d768e902d37d6527e3011992e5368fb33dca2f5ccc24a6f417f7"
+		)
+	})
+
 	it.each([
 		[
 			"1000000000",

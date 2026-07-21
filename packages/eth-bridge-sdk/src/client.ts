@@ -3,11 +3,12 @@ import {
 	type Config,
 	createBridgeRuntime,
 	type DepositWithState,
+	type EthereumTokenSolidityRegistration,
 	ethereumDepositAux,
 	type RetryableTransactionOptions,
 	type SignTransaction
 } from "@zeko-labs/bridge-sdk"
-import { type Mina, type PublicKey, UInt32, UInt64 } from "o1js"
+import { Field, type Mina, type PublicKey, UInt32, UInt64 } from "o1js"
 import {
 	type Address,
 	createPublicClient,
@@ -166,7 +167,8 @@ export class EthereumBridgeClient {
 							recipient: unpackZekoAddress(deposit.zekoRecipient),
 							amount: UInt64.from(deposit.zekoAmount),
 							timeout: UInt32.from(deposit.timeout),
-							holderAccountL1: ethereumHolder
+							holderAccountL1: ethereumHolder,
+							assetId: deposit.assetId ?? undefined
 						}))
 					}
 				}
@@ -226,6 +228,10 @@ export class EthereumBridgeClient {
 		recipient: PublicKey
 		amount: bigint
 	}): Promise<TokenDepositResult> {
+		const configuredToken = this.#bridge?.ethereumToken?.ethereumTokenAddress
+		if (configuredToken && getAddress(configuredToken) !== getAddress(input.token)) {
+			throw new Error("Ethereum token does not match the ERC20 asset configured on Zeko")
+		}
 		if (input.amount <= 0n || input.amount > 2n ** 64n - 1n) {
 			throw new Error("ERC20 deposit amount must fit Zeko UInt64")
 		}
@@ -262,6 +268,41 @@ export class EthereumBridgeClient {
 			throw new Error(`Ethereum token deposit ${hash} emitted no matching BridgeDeposit`)
 		}
 		return { hash, nonce, deposit: await this.waitForDeposit(nonce) }
+	}
+
+	public async getTokenRegistration(token: Address): Promise<EthereumTokenSolidityRegistration> {
+		const ethereumTokenAddress = getAddress(token)
+		const contract = {
+			abi: ethereumZekoBridgeAbi,
+			address: this.config.bridgeAddress,
+			args: [ethereumTokenAddress]
+		} as const
+		const [registered, assetId, tokenOwner, tokenId, depositCap, tokenConfig] = await Promise.all([
+			this.#publicClient.readContract({
+				...contract,
+				functionName: "canonicalTokenRegistered"
+			}),
+			this.#publicClient.readContract({ ...contract, functionName: "assetIdByToken" }),
+			this.#publicClient.readContract({
+				...contract,
+				functionName: "zekoTokenOwnerByToken"
+			}),
+			this.#publicClient.readContract({ ...contract, functionName: "zekoTokenIdByToken" }),
+			this.#publicClient.readContract({ ...contract, functionName: "depositCapByToken" }),
+			this.#publicClient.readContract({ ...contract, functionName: "allowedToken" })
+		])
+		const [zekoDecimals, ethereumDecimals, allowed] = tokenConfig
+		return {
+			registered,
+			allowed,
+			assetId,
+			ethereumTokenAddress,
+			zekoTokenOwnerL2: unpackZekoAddress(tokenOwner),
+			zekoTokenIdL2: Field(BigInt(tokenId)),
+			zekoDecimals,
+			ethereumDecimals,
+			depositCap: UInt64.from(depositCap)
+		}
 	}
 
 	public getDeposit(nonce: number): Promise<DepositStatus> {
@@ -306,6 +347,20 @@ export class EthereumBridgeClient {
 		return this.requireZekoBridge().finalizeDeposit(recipient, signTransaction, options)
 	}
 
+	public finalizeTokenDeposit(input: {
+		feePayer: Mina.FeePayerSpec
+		recipient: PublicKey
+		signTransaction: SignTransaction
+		options?: number | RetryableTransactionOptions
+	}): Promise<string> {
+		return this.requireZekoBridge().finalizeEthereumTokenDeposit(
+			input.feePayer,
+			input.recipient,
+			input.signTransaction,
+			input.options
+		)
+	}
+
 	public requestWithdrawal(input: {
 		feePayer: Mina.FeePayerSpec
 		sender: PublicKey
@@ -322,6 +377,26 @@ export class EthereumBridgeClient {
 				route: "ethereum"
 			},
 			input.signTransaction
+		)
+	}
+
+	public requestTokenWithdrawal(input: {
+		feePayer: Mina.FeePayerSpec
+		sender: PublicKey
+		recipient: Address
+		amount: UInt64
+		signTransaction: SignTransaction
+		options?: RetryableTransactionOptions
+	}): Promise<string> {
+		return this.requireZekoBridge().submitEthereumTokenWithdrawal(
+			input.feePayer,
+			{
+				sender: input.sender,
+				recipient: ethereumAddressToZekoPublicKey(input.recipient),
+				amount: input.amount
+			},
+			input.signTransaction,
+			input.options
 		)
 	}
 

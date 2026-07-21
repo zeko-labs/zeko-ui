@@ -103,6 +103,47 @@ await bridge.finalizeWithdrawal(
 
 Finalization time depends on the size of the witness data the bridge must prove. Longer gaps between submission and finalization generally mean more proof work and slower completion.
 
+### Canonical Ethereum ERC-20
+
+An Ethereum-enabled sequencer can expose one immutable ERC-20 asset configuration. The SDK's
+`finalizeEthereumTokenDeposit` and `submitEthereumTokenWithdrawal` methods request the
+asset-specific bridge proof, verify the returned forest, compose it with the unmodified
+`mina-fungible-token` owner's `approveBase` proof, and submit the complete L2 transaction.
+The withdrawal request binds the complete token-owner account-update body, so the sequencer proof
+cannot be reused under a different standard-token approval.
+
+Operators can deploy and provision the matching L2 mirror with `deployEthereumTokenMirror`:
+
+```typescript
+import { deployEthereumTokenMirror } from "@zeko-labs/bridge-sdk"
+
+bridge.setL2()
+const config = bridge.ethereumToken
+if (!config) throw new Error("The sequencer has no configured Ethereum token")
+
+const manifest = await deployEthereumTokenMirror({
+	config,
+	registration, // Read with EthereumBridgeClient.getTokenRegistration(token).
+	bridgeVerificationKey, // The VK for this immutable asset-specific Zeko circuit.
+	decimals: registration.zekoDecimals,
+	inventory: registration.depositCap,
+	feePayer,
+	adminContractL2,
+	adminAuthorityL2,
+	symbol: "zERC",
+	sourceUri: "https://example.invalid/contracts/zerc20",
+	allowUpdates: false,
+	signDeployment,
+	signProvisioning
+})
+```
+
+The helper rejects registry, owner, derived token ID, asset ID, address, decimal, cap, inventory,
+or bridge-VK mismatches before submission. It deploys the stock `FungibleToken` and
+`FungibleTokenAdmin`, installs a separate proof-controlled vault, and mints exactly the registered
+Solidity deposit cap. The returned manifest contains public identifiers and transaction hashes
+only. Each additional ERC-20 needs a separately configured circuit and verification key.
+
 ## Development
 
 These commands are maintainer workflows and only run from the private zeko-ui monorepo.

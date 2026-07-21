@@ -33,6 +33,12 @@ const deposit = await bridge.depositToken({
 })
 ```
 
+Operators can read the exact immutable Solidity registration used by the L2 deployment helper:
+
+```ts
+const registration = await bridge.getTokenRegistration("0x...")
+```
+
 Pass the optional `zeko` configuration to enable `prepareDepositFinalization`,
 `finalizeDeposit`, and `requestWithdrawal`. Ethereum deposits and withdrawal claims only need
 the gateway and EIP-1193 wallet provider. Operator proof endpoints and credentials are not part
@@ -43,14 +49,13 @@ The four user operations are split by execution environment:
 | Flow step               | Client call                                      | Submitted to             |
 | ----------------------- | ------------------------------------------------ | ------------------------ |
 | Deposit request         | `depositNative` / `depositToken`                 | Ethereum bridge          |
-| Deposit finalization    | `finalizeDeposit`                                | Zeko sequencer proof API |
-| Withdrawal request      | `requestWithdrawal`                              | Zeko sequencer proof API |
+| Deposit finalization    | `finalizeDeposit` / `finalizeTokenDeposit`       | Zeko sequencer proof API |
+| Withdrawal request      | `requestWithdrawal` / `requestTokenWithdrawal`   | Zeko sequencer proof API |
 | Withdrawal finalization | `claimNativeWithdrawal` / `claimTokenWithdrawal` | Ethereum bridge          |
 
 Use `listDeposits`/`waitForDeposit` and `listWithdrawals` after reloads. Amounts returned by the
 gateway are decimal strings so callers can convert them to `bigint` without losing `uint64`
 precision. `requestWithdrawal` accepts separate `sender` and Ethereum destination values; the
 sender signs and funds the L2 debit while the synthetic Zeko public key encodes the destination.
-Use `getTokenWithdrawal` for an asset-bound token proof. Constructing the Mina Fungible Token
-owner-approved L2 withdrawal is intentionally separate from the native `requestWithdrawal`
-method.
+Use `getTokenWithdrawal` for an asset-bound token proof. The token-specific L2 methods compose the
+Zeko vault proof with the unmodified Mina `FungibleToken.approveBase` proof before submission.

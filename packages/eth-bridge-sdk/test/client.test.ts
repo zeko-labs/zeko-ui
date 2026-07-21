@@ -1,12 +1,15 @@
 import type { DepositWithState } from "@zeko-labs/bridge-sdk"
+import { Field, PrivateKey, TokenId } from "o1js"
 import {
 	decodeFunctionData,
 	type EIP1193Provider,
 	encodeAbiParameters,
 	encodeEventTopics,
+	encodeFunctionResult,
 	getAddress,
 	type Hex,
-	parseAbiParameters
+	parseAbiParameters,
+	toHex
 } from "viem"
 import { describe, expect, it } from "vitest"
 import { ethereumZekoBridgeAbi } from "../src/abi"
@@ -119,6 +122,85 @@ describe("deposit activity", () => {
 })
 
 describe("ERC20 bridge transactions", () => {
+	it("reads the immutable Solidity registration used to provision the L2 token", async () => {
+		const token = "0x00000000000000000000000000000000000000a1"
+		const owner = PrivateKey.random().toPublicKey()
+		const tokenId = TokenId.derive(owner)
+		const assetId = `0x${"44".repeat(32)}` as Hex
+		const depositCap = 1_000_000n
+		const provider: EIP1193Provider = {
+			request: async ({ method, params }) => {
+				if (method === "eth_chainId") return "0x7a69"
+				if (method === "eth_accounts") return [account]
+				if (method === "eth_call") {
+					const call = (params as [{ data: Hex }])[0]
+					const decoded = decodeFunctionData({ abi: ethereumZekoBridgeAbi, data: call.data })
+					switch (decoded.functionName) {
+						case "canonicalTokenRegistered":
+							return encodeFunctionResult({
+								abi: ethereumZekoBridgeAbi,
+								functionName: decoded.functionName,
+								result: true
+							})
+						case "assetIdByToken":
+							return encodeFunctionResult({
+								abi: ethereumZekoBridgeAbi,
+								functionName: decoded.functionName,
+								result: assetId
+							})
+						case "zekoTokenOwnerByToken":
+							return encodeFunctionResult({
+								abi: ethereumZekoBridgeAbi,
+								functionName: decoded.functionName,
+								result: packZekoAddress(owner)
+							})
+						case "zekoTokenIdByToken":
+							return encodeFunctionResult({
+								abi: ethereumZekoBridgeAbi,
+								functionName: decoded.functionName,
+								result: toHex(tokenId.toBigInt(), { size: 32 })
+							})
+						case "depositCapByToken":
+							return encodeFunctionResult({
+								abi: ethereumZekoBridgeAbi,
+								functionName: decoded.functionName,
+								result: depositCap
+							})
+						case "allowedToken":
+							return encodeFunctionResult({
+								abi: ethereumZekoBridgeAbi,
+								functionName: decoded.functionName,
+								result: [9, 9, true]
+							})
+						default:
+							throw new Error(`Unexpected contract read ${decoded.functionName}`)
+					}
+				}
+				throw new Error(`Unexpected RPC method ${method}`)
+			}
+		}
+		const fetcher: typeof fetch = async () => Response.json(gatewayConfig)
+		const client = await EthereumBridgeClient.init({
+			gatewayUrl: "https://gateway.test",
+			provider,
+			fetch: fetcher
+		})
+
+		const registration = await client.getTokenRegistration(token)
+
+		expect(registration).toMatchObject({
+			registered: true,
+			allowed: true,
+			assetId,
+			ethereumTokenAddress: getAddress(token),
+			zekoDecimals: 9,
+			ethereumDecimals: 9
+		})
+		expect(registration.zekoTokenOwnerL2.equals(owner).toBoolean()).toBe(true)
+		expect(registration.zekoTokenIdL2.equals(Field(tokenId)).toBoolean()).toBe(true)
+		expect(registration.depositCap.toBigInt()).toBe(depositCap)
+	})
+
 	it("calls canonical submitDeposit and returns the indexed gateway deposit", async () => {
 		const transactions: Record<string, Hex>[] = []
 		const nonce = 7n

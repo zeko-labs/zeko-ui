@@ -10,6 +10,7 @@ import {
 	submitDeposit
 } from "./deposits"
 import type { GqlClient } from "./graphql"
+import { finalizeEthereumTokenDeposit, submitEthereumTokenWithdrawal } from "./ethereum-token"
 import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
 import { createBridgeRuntime, type BridgeRuntime } from "./runtime"
 import type { RetryableTransactionOptions, SignTransaction } from "./transactions"
@@ -20,6 +21,7 @@ import type {
 	Config,
 	Deposit,
 	DepositWithState,
+	EthereumTokenBridgeConfig,
 	Withdrawal,
 	WithdrawalFinalizationResult,
 	SubmitWithdrawalParams,
@@ -37,6 +39,8 @@ import {
 export * from "./actions"
 export * from "./diagnostics"
 export * from "./errors"
+export * from "./ethereum-token"
+export * from "./ethereum-token-deployment"
 export * from "./graphql/index"
 export * from "./runtime"
 export * from "./status"
@@ -138,6 +142,10 @@ export class Bridge {
 		return this.runtime.bridgeProofFee
 	}
 
+	public get ethereumToken(): EthereumTokenBridgeConfig | null {
+		return this.runtime.ethereumToken
+	}
+
 	public setL1(): void {
 		setL1(this.runtime)
 	}
@@ -199,6 +207,15 @@ export class Bridge {
 		return finalizeDeposit(this.runtime, pk, signTxn, options)
 	}
 
+	public finalizeEthereumTokenDeposit(
+		feePayer: Mina.FeePayerSpec,
+		recipient: PublicKey,
+		signTxn: SignTransaction,
+		options?: number | RetryableTransactionOptions
+	): Promise<string> {
+		return finalizeEthereumTokenDeposit(this.runtime, feePayer, recipient, signTxn, options)
+	}
+
 	public canFinalizeDeposit(
 		pk: PublicKey
 	): Promise<{ available: boolean; reason: string | null; index?: number }> {
@@ -224,6 +241,15 @@ export class Bridge {
 		signTxn: SignTransaction
 	): Promise<string> {
 		return submitWithdrawal(this.runtime, feePayer, params, signTxn)
+	}
+
+	public submitEthereumTokenWithdrawal(
+		feePayer: Mina.FeePayerSpec,
+		params: { sender: PublicKey; recipient: PublicKey; amount: UInt64 },
+		signTxn: SignTransaction,
+		options?: RetryableTransactionOptions
+	): Promise<string> {
+		return submitEthereumTokenWithdrawal(this.runtime, feePayer, params, signTxn, options)
 	}
 
 	public finalizeWithdrawal(

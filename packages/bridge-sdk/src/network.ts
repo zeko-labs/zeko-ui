@@ -47,7 +47,7 @@ export const fetchAccount = async (
 	client: GqlClient,
 	pk: PublicKey,
 	tokenId?: Field
-): Promise<{ zkappState: string[] | null } | null> => {
+): Promise<{ zkappState: string[] | null; nonce?: string | null } | null> => {
 	const { data } = await client().query(accountQuery, {
 		pk: pk.toBase58(),
 		tokenId: tokenId ? TokenId.toBase58(tokenId) : null
