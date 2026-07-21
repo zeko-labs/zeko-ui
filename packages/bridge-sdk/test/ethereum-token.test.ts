@@ -1,19 +1,9 @@
-import {
-	AccountUpdate,
-	Bool,
-	Field,
-	Int64,
-	Mina,
-	PrivateKey,
-	Provable,
-	TokenId,
-	UInt64
-} from "o1js"
+import { AccountUpdate, Bool, Field, Int64, PrivateKey, TokenId, UInt64 } from "o1js"
 import { describe, expect, it } from "vitest"
 import {
 	assertMatchingFungibleTokenOwner,
+	graftEthereumTokenDepositHelperSignature,
 	parseProvedAccountUpdates,
-	requireUnchangedHelperSignature,
 	validateEthereumTokenBridgeConfig,
 	validateEthereumTokenDepositForest
 } from "../src/ethereum-token"
@@ -66,17 +56,21 @@ describe("Ethereum token bridge configuration", () => {
 })
 
 describe("proved ERC20 deposit forest", () => {
-	it("keeps the signed helper body constrained in provable code", async () => {
-		Mina.setActiveInstance(await Mina.LocalBlockchain({ proofsEnabled: false }))
+	it("grafts a lazy signature without changing the proved helper body", () => {
 		const helper = AccountUpdate.default(key())
-		helper.requireSignature()
+		helper.body.authorizationKind.isSigned = Bool(true)
+		const helperHash = helper.hash().toString()
 
-		await expect(
-			Provable.runAndCheck(() => {
-				const witnessed = Provable.witness(AccountUpdate, () => helper)
-				requireUnchangedHelperSignature(witnessed)
-			})
-		).resolves.toBeUndefined()
+		graftEthereumTokenDepositHelperSignature(helper)
+
+		expect(helper.lazyAuthorization).toEqual({ kind: "lazy-signature" })
+		expect(helper.hash().toString()).toBe(helperHash)
+	})
+
+	it("rejects a helper whose proved body does not require a signature", () => {
+		expect(() => graftEthereumTokenDepositHelperSignature(AccountUpdate.default(key()))).toThrow(
+			"not signature-authorized"
+		)
 	})
 
 	it("accepts the proved vault and helper shape", () => {

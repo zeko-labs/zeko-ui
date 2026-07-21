@@ -150,13 +150,12 @@ export const validateEthereumTokenDepositForest = (
 	return { vault, helper }
 }
 
-export const requireUnchangedHelperSignature = (helper: AccountUpdate): void => {
-	const helperHash = helper.hash()
-	helper.requireSignature()
-	helper
-		.hash()
-		.equals(helperHash)
-		.assertTrue("Signing the ERC20 deposit helper changed its proved body")
+export const graftEthereumTokenDepositHelperSignature = (helper: AccountUpdate): void => {
+	const isSigned = helper.body.authorizationKind.isSigned
+	if (!isSigned.isConstant() || !isSigned.toBoolean()) {
+		throw new Error("ERC20 deposit helper body is not signature-authorized")
+	}
+	helper.lazyAuthorization = { kind: "lazy-signature" }
 }
 
 const attachFlatForest = (updates: AccountUpdate[]): void => {
@@ -281,10 +280,10 @@ export async function finalizeEthereumTokenDeposit(
 		depositParams.deposit.amount,
 		updates
 	)
+	graftEthereumTokenDepositHelperSignature(helper)
 
 	const token = new FungibleToken(config.tokenOwnerL2)
 	const txn = await Mina.transaction(feePayerWithFee(feePayer, fee), async () => {
-		requireUnchangedHelperSignature(helper)
 		await token.approveBase(AccountUpdateForest.fromFlatArray(updates))
 	})
 	try {
