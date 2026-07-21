@@ -1,8 +1,8 @@
-import { readFile } from "node:fs/promises"
+import { readFile, writeFile } from "node:fs/promises"
 import { deployEthereumTokenMirror } from "@zeko-labs/bridge-sdk"
 import { Field, fetchAccount, Mina, PrivateKey, PublicKey, UInt64, VerificationKey } from "o1js"
 import { type Address, type EIP1193Provider, getAddress } from "viem"
-import { EthereumBridgeClient, packZekoAddress } from "../src/index"
+import { EthereumBridgeClient, packZekoAddress } from "../dist/index.js"
 
 type LiveHarness = {
 	schemaVersion: 2
@@ -16,7 +16,7 @@ type LiveHarness = {
 }
 
 const required = (name: string): string => {
-	const value = Bun.env[name]
+	const value = process.env[name]
 	if (!value) throw new Error(`${name} is required`)
 	return value
 }
@@ -38,15 +38,15 @@ if (!recipient.equals(PublicKey.fromBase58(harness.recipientPublicKey)).toBoolea
 
 const chainId = 31_337
 const ethereumAccount = getAddress(
-	Bun.env.ETHEREUM_ACCOUNT ?? "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+	process.env.ETHEREUM_ACCOUNT ?? "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
 )
 const withdrawalRecipient = getAddress(
-	Bun.env.WITHDRAWAL_RECIPIENT ?? "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+	process.env.WITHDRAWAL_RECIPIENT ?? "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
 )
 const bridgeAddress = getAddress(required("BRIDGE_ADDRESS"))
 const depositAmount = required("DEPOSIT_AMOUNT_ZEKO")
 const withdrawalAmount = required("WITHDRAWAL_AMOUNT_ZEKO")
-const bridgeAsset = Bun.env.BRIDGE_ASSET ?? "native"
+const bridgeAsset = process.env.BRIDGE_ASSET ?? "native"
 if (bridgeAsset !== "native" && bridgeAsset !== "erc20") {
 	throw new Error(`Unsupported BRIDGE_ASSET: ${bridgeAsset}`)
 }
@@ -125,7 +125,7 @@ const client = await EthereumBridgeClient.init({
 		l1Network,
 		l2Network,
 		pollTimeout: 30 * 60 * 1_000,
-		verbose: Bun.env.VERBOSE === "true"
+		verbose: process.env.VERBOSE === "true"
 	}
 })
 console.log("[live-sequencer-e2e] Ethereum bridge client initialized")
@@ -268,5 +268,5 @@ const output = {
 	tokenDeployment,
 	tokenBalances
 }
-await Bun.write(harness.completionMarker, `${JSON.stringify(output)}\n`)
+await writeFile(harness.completionMarker, `${JSON.stringify(output)}\n`)
 console.log(JSON.stringify(output))

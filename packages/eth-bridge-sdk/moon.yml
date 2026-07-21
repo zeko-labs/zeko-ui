@@ -58,9 +58,10 @@ tasks:
     options:
       cache: false
   live-sequencer-e2e:
-    command: bun examples/live-sequencer-e2e.ts
+    command: node examples/live-sequencer-e2e.ts
     deps:
       - ^:build
+      - build
     options:
       cache: false
   erc20-identity:
