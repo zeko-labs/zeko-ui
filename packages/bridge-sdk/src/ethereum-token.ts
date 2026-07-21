@@ -197,6 +197,25 @@ const feePayerWithFee = (
 	return { ...feePayer, fee }
 }
 
+export async function canFinalizeEthereumTokenDeposit(
+	runtime: BridgeRuntime,
+	recipient: PublicKey
+): Promise<{ available: boolean; reason: string | null; index?: number }> {
+	const config = requireEthereumTokenBridgeConfig(runtime)
+	const result = await fetchDepositFinalizationWitnesses(
+		runtime,
+		recipient,
+		(deposit) =>
+			deposit.assetId !== undefined && normalizeEthereumAssetId(deposit.assetId) === config.assetId,
+		TokenId.derive(config.holderAccountL2, config.tokenIdL2)
+	)
+	return {
+		available: result.ok,
+		reason: result.ok ? null : result.msg,
+		index: result.index
+	}
+}
+
 export async function finalizeEthereumTokenDeposit(
 	runtime: BridgeRuntime,
 	feePayer: Mina.FeePayerSpec,

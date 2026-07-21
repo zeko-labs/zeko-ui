@@ -63,3 +63,9 @@ tasks:
       - ^:build
     options:
       cache: false
+  erc20-identity:
+    command: bun examples/erc20-identity.ts
+    deps:
+      - ^:build
+    options:
+      cache: false

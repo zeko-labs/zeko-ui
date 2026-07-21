@@ -467,3 +467,4 @@
 - T481 | done | add-erc20-ethereum-bridge-sdk | done/T481-add-erc20-ethereum-bridge-sdk.md
 - T482 | done | prove-and-compose-erc20-l2-bridge | done/T482-prove-and-compose-erc20-l2-bridge.md
 - T483 | done | deploy-erc20-mirror-token | done/T483-deploy-erc20-mirror-token.md
+- T484 | in-progress | prove-cross-repo-erc20-roundtrip | in-progress/T484-prove-cross-repo-erc20-roundtrip.md

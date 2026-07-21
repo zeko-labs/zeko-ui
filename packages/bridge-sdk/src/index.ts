@@ -10,7 +10,11 @@ import {
 	submitDeposit
 } from "./deposits"
 import type { GqlClient } from "./graphql"
-import { finalizeEthereumTokenDeposit, submitEthereumTokenWithdrawal } from "./ethereum-token"
+import {
+	canFinalizeEthereumTokenDeposit,
+	finalizeEthereumTokenDeposit,
+	submitEthereumTokenWithdrawal
+} from "./ethereum-token"
 import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
 import { createBridgeRuntime, type BridgeRuntime } from "./runtime"
 import type { RetryableTransactionOptions, SignTransaction } from "./transactions"
@@ -214,6 +218,12 @@ export class Bridge {
 		options?: number | RetryableTransactionOptions
 	): Promise<string> {
 		return finalizeEthereumTokenDeposit(this.runtime, feePayer, recipient, signTxn, options)
+	}
+
+	public canFinalizeEthereumTokenDeposit(
+		recipient: PublicKey
+	): Promise<{ available: boolean; reason: string | null; index?: number }> {
+		return canFinalizeEthereumTokenDeposit(this.runtime, recipient)
 	}
 
 	public canFinalizeDeposit(

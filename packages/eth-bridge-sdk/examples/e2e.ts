@@ -1,5 +1,12 @@
 import { PublicKey } from "o1js"
-import { type EIP1193Provider, getAddress } from "viem"
+import {
+	createPublicClient,
+	createWalletClient,
+	custom,
+	type EIP1193Provider,
+	erc20Abi,
+	getAddress
+} from "viem"
 import { EthereumBridgeClient } from "../src/index"
 
 const required = (name: string): string => {
@@ -23,10 +30,14 @@ const provider = {
 	}
 } as EIP1193Provider
 
+const account = getAddress(required("ETHEREUM_ACCOUNT"))
+const transport = custom(provider)
+const publicClient = createPublicClient({ transport })
+const walletClient = createWalletClient({ transport })
 const client = await EthereumBridgeClient.init({
 	gatewayUrl: required("GATEWAY_URL"),
 	provider,
-	account: getAddress(required("ETHEREUM_ACCOUNT")),
+	account,
 	expectedChainId: Number(required("CHAIN_ID"))
 })
 
@@ -45,10 +56,39 @@ if (command === "deposit") {
 	if (!withdrawal) throw new Error("No native withdrawal found")
 	const hash = await client.claimNativeWithdrawal(withdrawal)
 	output = { hash, withdrawal }
+} else if (command === "token-deposit") {
+	const token = getAddress(required("ERC20_TOKEN_ADDRESS"))
+	const amount = BigInt(required("ERC20_DEPOSIT_AMOUNT"))
+	const approvalHash = await walletClient.writeContract({
+		abi: erc20Abi,
+		account,
+		address: token,
+		functionName: "approve",
+		args: [client.config.bridgeAddress, amount],
+		chain: null
+	})
+	const approvalReceipt = await publicClient.waitForTransactionReceipt({ hash: approvalHash })
+	if (approvalReceipt.status !== "success")
+		throw new Error(`ERC20 approval ${approvalHash} reverted`)
+	output = {
+		approvalHash,
+		...(await client.depositToken({
+			token,
+			recipient: PublicKey.fromBase58(required("ZEKO_RECIPIENT_PUBLIC_KEY")),
+			amount
+		}))
+	}
+} else if (command === "token-claim") {
+	const withdrawal = await client.getTokenWithdrawal(
+		Number(required("WITHDRAWAL_SETTLEMENT_SEQUENCE")),
+		Number(required("WITHDRAWAL_OFFSET"))
+	)
+	const hash = await client.claimTokenWithdrawal(withdrawal)
+	output = { hash, withdrawal }
 } else if (command === "status") {
 	output = await client.getDeposit(Number(required("DEPOSIT_NONCE")))
 } else {
-	throw new Error("Expected e2e command: deposit, status, or claim")
+	throw new Error("Expected e2e command: deposit, claim, token-deposit, token-claim, or status")
 }
 
 const json = JSON.stringify(output, (_, value) =>

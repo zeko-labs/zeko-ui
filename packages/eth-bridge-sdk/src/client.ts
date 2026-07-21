@@ -3,6 +3,7 @@ import {
 	type Config,
 	createBridgeRuntime,
 	type DepositWithState,
+	type EthereumTokenBridgeConfig,
 	type EthereumTokenSolidityRegistration,
 	ethereumDepositAux,
 	type RetryableTransactionOptions,
@@ -189,6 +190,10 @@ export class EthereumBridgeClient {
 		return this.#account
 	}
 
+	public get ethereumToken(): EthereumTokenBridgeConfig | null {
+		return this.#bridge?.ethereumToken ?? null
+	}
+
 	public async depositNative(input: {
 		recipient: PublicKey
 		valueWei: bigint
@@ -337,6 +342,10 @@ export class EthereumBridgeClient {
 
 	public prepareDepositFinalization(recipient: PublicKey) {
 		return this.requireZekoBridge().canFinalizeDeposit(recipient)
+	}
+
+	public prepareTokenDepositFinalization(recipient: PublicKey) {
+		return this.requireZekoBridge().canFinalizeEthereumTokenDeposit(recipient)
 	}
 
 	public finalizeDeposit(
