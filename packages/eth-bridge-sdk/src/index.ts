@@ -3,7 +3,8 @@ export {
 	type DepositActivity,
 	EthereumBridgeClient,
 	type EthereumBridgeClientConfig,
-	type NativeDepositResult
+	type NativeDepositResult,
+	type TokenDepositResult
 } from "./client"
 export {
 	ETHEREUM_DEPOSIT_HOLDER,
@@ -18,6 +19,7 @@ export {
 	type BridgeConfig,
 	type DepositStatus,
 	GatewayClient,
+	type TokenWithdrawalProof,
 	type WithdrawalProof,
 	type WithdrawalRequest
 } from "./gateway"

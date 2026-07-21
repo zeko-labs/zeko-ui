@@ -30,6 +30,7 @@ import {
 	type BridgeConfig,
 	type DepositStatus,
 	GatewayClient,
+	type TokenWithdrawalProof,
 	type WithdrawalProof,
 	type WithdrawalRequest
 } from "./gateway"
@@ -51,6 +52,8 @@ export type NativeDepositResult = {
 	nonce: number
 	deposit: DepositStatus
 }
+
+export type TokenDepositResult = NativeDepositResult
 
 export type DepositActivity = DepositStatus & {
 	actionIndex: number | null
@@ -218,6 +221,49 @@ export class EthereumBridgeClient {
 		return { hash, nonce, deposit: await this.waitForDeposit(nonce) }
 	}
 
+	public async depositToken(input: {
+		token: Address
+		recipient: PublicKey
+		amount: bigint
+	}): Promise<TokenDepositResult> {
+		if (input.amount <= 0n || input.amount > 2n ** 64n - 1n) {
+			throw new Error("ERC20 deposit amount must fit Zeko UInt64")
+		}
+		const hash = await this.#walletClient.writeContract({
+			abi: ethereumZekoBridgeAbi,
+			account: this.#account,
+			address: this.config.bridgeAddress,
+			functionName: "submitDeposit",
+			args: [getAddress(input.token), input.amount, BigInt(packZekoAddress(input.recipient))],
+			chain: null
+		})
+		const receipt = await this.#publicClient.waitForTransactionReceipt({ hash })
+		if (receipt.status !== "success") throw new Error(`Ethereum token deposit ${hash} reverted`)
+		let nonce: number | undefined
+		for (const log of receipt.logs) {
+			if (getAddress(log.address) !== this.config.bridgeAddress) continue
+			try {
+				const event = decodeEventLog({
+					abi: ethereumZekoBridgeAbi,
+					data: log.data,
+					topics: log.topics
+				})
+				if (
+					event.eventName === "BridgeDeposit" &&
+					getAddress(event.args.token) === getAddress(input.token)
+				) {
+					nonce = Number(event.args.nonce)
+				}
+			} catch {
+				// Ignore unrelated bridge logs from the same receipt.
+			}
+		}
+		if (nonce === undefined) {
+			throw new Error(`Ethereum token deposit ${hash} emitted no matching BridgeDeposit`)
+		}
+		return { hash, nonce, deposit: await this.waitForDeposit(nonce) }
+	}
+
 	public getDeposit(nonce: number): Promise<DepositStatus> {
 		return this.#gateway.deposit(nonce)
 	}
@@ -303,6 +349,13 @@ export class EthereumBridgeClient {
 		return this.#gateway.withdrawal(settlementSequence, offset)
 	}
 
+	public getTokenWithdrawal(
+		settlementSequence: number,
+		offset: number
+	): Promise<TokenWithdrawalProof> {
+		return this.#gateway.tokenWithdrawal(settlementSequence, offset)
+	}
+
 	public async claimNativeWithdrawal(
 		withdrawal: WithdrawalProof,
 		account: Address = this.#account
@@ -347,6 +400,56 @@ export class EthereumBridgeClient {
 		})
 		const receipt = await this.#publicClient.waitForTransactionReceipt({ hash })
 		if (receipt.status !== "success") throw new Error(`Ethereum withdrawal claim ${hash} reverted`)
+		return hash
+	}
+
+	public async claimTokenWithdrawal(
+		withdrawal: TokenWithdrawalProof,
+		account: Address = this.#account
+	): Promise<Hash> {
+		if (withdrawal.status !== "claimable") {
+			throw new Error(`Withdrawal is ${withdrawal.status}, not claimable`)
+		}
+		if (withdrawal.siblings.length !== 16) {
+			throw new Error("ERC20 withdrawal proof must contain 16 siblings")
+		}
+		const hash = await this.#walletClient.writeContract({
+			abi: ethereumZekoBridgeAbi,
+			account,
+			address: this.config.bridgeAddress,
+			functionName: "claimERC20Withdrawal",
+			chain: null,
+			args: [
+				BigInt(withdrawal.settlementSequence),
+				withdrawal.offset,
+				withdrawal.token,
+				withdrawal.recipient,
+				BigInt(withdrawal.amount),
+				withdrawal.actionFieldsHash,
+				withdrawal.siblings as [
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex,
+					Hex
+				]
+			]
+		})
+		const receipt = await this.#publicClient.waitForTransactionReceipt({ hash })
+		if (receipt.status !== "success") {
+			throw new Error(`Ethereum ERC20 withdrawal claim ${hash} reverted`)
+		}
 		return hash
 	}
 

@@ -15,6 +15,7 @@ export type BridgeConfig = {
 export type DepositStatus = {
 	nonce: number
 	token: Address
+	assetId: Hex | null
 	sender: Address
 	zekoRecipient: Hex
 	ethereumAmount: string
@@ -46,6 +47,11 @@ export type WithdrawalProof = {
 	recipientCursor: number
 	status: string
 	nextAction: string
+}
+
+export type TokenWithdrawalProof = WithdrawalProof & {
+	token: Address
+	assetId: Hex
 }
 
 export type WithdrawalRequest = {
@@ -97,6 +103,9 @@ const requireHex = (value: unknown, field: string): Hex => {
 const nullableString = (value: unknown, field: string): string | null =>
 	value === null ? null : requireString(value, field)
 
+const nullableHex = (value: unknown, field: string): Hex | null =>
+	value === null ? null : requireHex(value, field)
+
 const nullableNumber = (value: unknown, field: string): number | null =>
 	value === null ? null : requireNumber(value, field)
 
@@ -120,6 +129,7 @@ const parseDeposit = (value: unknown): DepositStatus => {
 	return {
 		nonce: requireNumber(row.nonce, "deposit.nonce"),
 		token: getAddress(token),
+		assetId: nullableHex(row.assetId, "deposit.assetId"),
 		sender: getAddress(sender),
 		zekoRecipient: requireHex(row.zekoRecipient, "deposit.zekoRecipient"),
 		ethereumAmount: requireString(row.ethereumAmount, "deposit.ethereumAmount"),
@@ -148,6 +158,18 @@ const parseDeposit = (value: unknown): DepositStatus => {
 		),
 		status: requireString(row.status, "deposit.status"),
 		nextAction: requireString(row.nextAction, "deposit.nextAction")
+	}
+}
+
+const parseTokenWithdrawal = (value: unknown): TokenWithdrawalProof => {
+	const row = asRecord(value, "token withdrawal")
+	const withdrawal = parseWithdrawal(value)
+	const token = requireString(row.token, "withdrawal.token")
+	if (!isAddress(token)) throw new Error("Invalid withdrawal.token")
+	return {
+		...withdrawal,
+		token: getAddress(token),
+		assetId: requireHex(row.assetId, "withdrawal.assetId")
 	}
 }
 
@@ -303,6 +325,18 @@ export class GatewayClient {
 			await requestJson(
 				this.#fetch,
 				`${this.#baseUrl}/v1/bridge/withdrawals/${settlementSequence}/${offset}`
+			)
+		)
+	}
+
+	public async tokenWithdrawal(
+		settlementSequence: number,
+		offset: number
+	): Promise<TokenWithdrawalProof> {
+		return parseTokenWithdrawal(
+			await requestJson(
+				this.#fetch,
+				`${this.#baseUrl}/v1/bridge/token-withdrawals/${settlementSequence}/${offset}`
 			)
 		)
 	}

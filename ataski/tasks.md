@@ -464,3 +464,4 @@
 - T478 | done | simplify-bridge-operation-hash-cell | done/T478-simplify-bridge-operation-hash-cell.md
 - T479 | done | guard-clipboard-hash-copy | done/T479-guard-clipboard-hash-copy.md
 - T480 | done | make-pending-transaction-load-pure | done/T480-make-pending-transaction-load-pure.md
+- T481 | done | add-erc20-ethereum-bridge-sdk | done/T481-add-erc20-ethereum-bridge-sdk.md

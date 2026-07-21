@@ -18,6 +18,13 @@ const withdrawal = {
 	nextAction: "claimNativeWithdrawal"
 }
 
+const tokenWithdrawal = {
+	...withdrawal,
+	token: "0x00000000000000000000000000000000000000a1",
+	assetId: `0x${"44".repeat(32)}`,
+	nextAction: "claimERC20Withdrawal"
+}
+
 describe("GatewayClient", () => {
 	it("preserves the full UInt64 withdrawal amount", async () => {
 		const fetcher: typeof fetch = async () => Response.json(withdrawal)
@@ -49,5 +56,43 @@ describe("GatewayClient", () => {
 				recipient: request.recipient
 			})
 		).resolves.toEqual([{ ...request, recipient: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" }])
+	})
+
+	it("preserves the token and asset identity of an ERC20 withdrawal proof", async () => {
+		const fetcher: typeof fetch = async () => Response.json(tokenWithdrawal)
+		await expect(
+			new GatewayClient("https://gateway.test", fetcher).tokenWithdrawal(1, 0)
+		).resolves.toMatchObject({
+			token: "0x00000000000000000000000000000000000000A1",
+			assetId: tokenWithdrawal.assetId,
+			amount: tokenWithdrawal.amount,
+			recipient: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+		})
+	})
+
+	it("exposes the proof-bound asset ID on indexed ERC20 deposits", async () => {
+		const deposit = {
+			nonce: 7,
+			token: tokenWithdrawal.token,
+			assetId: tokenWithdrawal.assetId,
+			sender: withdrawal.recipient,
+			zekoRecipient: `0x${"55".repeat(32)}`,
+			ethereumAmount: "2000000",
+			zekoAmount: "2000000",
+			timeout: 4_294_967_295,
+			ethereumTransactionHash: `0x${"66".repeat(32)}`,
+			ethereumFinalized: true,
+			bridgeJobId: null,
+			bridgeJobStatus: null,
+			outerActionSequence: null,
+			outerActionStateAfter: null,
+			synchronizedSettlementSequence: null,
+			status: "locked",
+			nextAction: "requestBridgeProof"
+		}
+		const fetcher: typeof fetch = async () => Response.json(deposit)
+		await expect(
+			new GatewayClient("https://gateway.test", fetcher).deposit(7)
+		).resolves.toMatchObject({ assetId: tokenWithdrawal.assetId })
 	})
 })

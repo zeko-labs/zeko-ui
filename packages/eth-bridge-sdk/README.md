@@ -1,6 +1,6 @@
 # `@zeko-labs/eth-bridge-sdk`
 
-Browser-facing client for the native Ethereum bridge PoC. It owns Ethereum wallet calls and
+Browser-facing client for the native and canonical ERC-20 Ethereum bridge. It owns Ethereum wallet calls and
 gateway discovery while reusing `@zeko-labs/bridge-sdk` for Zeko transaction preparation,
 signing, and sequencer proof requests.
 
@@ -22,6 +22,17 @@ const deposit = await bridge.depositNative({
 console.log(deposit.nonce, deposit.deposit.status)
 ```
 
+After approving the bridge contract to spend the ERC-20, submit an asset-bound deposit with
+the token's unscaled base-unit amount:
+
+```ts
+const deposit = await bridge.depositToken({
+	token: "0x...",
+	recipient: PublicKey.fromBase58("B62..."),
+	amount: 2_000_000n
+})
+```
+
 Pass the optional `zeko` configuration to enable `prepareDepositFinalization`,
 `finalizeDeposit`, and `requestWithdrawal`. Ethereum deposits and withdrawal claims only need
 the gateway and EIP-1193 wallet provider. Operator proof endpoints and credentials are not part
@@ -29,14 +40,17 @@ of this package.
 
 The four user operations are split by execution environment:
 
-| Flow step               | Client call             | Submitted to             |
-| ----------------------- | ----------------------- | ------------------------ |
-| Deposit request         | `depositNative`         | Ethereum bridge          |
-| Deposit finalization    | `finalizeDeposit`       | Zeko sequencer proof API |
-| Withdrawal request      | `requestWithdrawal`     | Zeko sequencer proof API |
-| Withdrawal finalization | `claimNativeWithdrawal` | Ethereum bridge          |
+| Flow step               | Client call                                      | Submitted to             |
+| ----------------------- | ------------------------------------------------ | ------------------------ |
+| Deposit request         | `depositNative` / `depositToken`                 | Ethereum bridge          |
+| Deposit finalization    | `finalizeDeposit`                                | Zeko sequencer proof API |
+| Withdrawal request      | `requestWithdrawal`                              | Zeko sequencer proof API |
+| Withdrawal finalization | `claimNativeWithdrawal` / `claimTokenWithdrawal` | Ethereum bridge          |
 
 Use `listDeposits`/`waitForDeposit` and `listWithdrawals` after reloads. Amounts returned by the
 gateway are decimal strings so callers can convert them to `bigint` without losing `uint64`
 precision. `requestWithdrawal` accepts separate `sender` and Ethereum destination values; the
 sender signs and funds the L2 debit while the synthetic Zeko public key encodes the destination.
+Use `getTokenWithdrawal` for an asset-bound token proof. Constructing the Mina Fungible Token
+owner-approved L2 withdrawal is intentionally separate from the native `requestWithdrawal`
+method.
