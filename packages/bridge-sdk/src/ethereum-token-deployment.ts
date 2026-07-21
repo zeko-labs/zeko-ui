@@ -63,6 +63,7 @@ export type DeployEthereumTokenMirrorInput = EthereumTokenDeploymentPlan & {
 	feeNanomina?: number | bigint
 	signDeployment: SignTransaction
 	signProvisioning: SignTransaction
+	waitForInclusion?: (transactionHash: string) => Promise<void>
 }
 
 const compilationByNetwork = new Map<
@@ -149,12 +150,14 @@ export const compileEthereumTokenDeployment = async (): Promise<{
 
 const proveSignAndSend = async (
 	transaction: Awaited<ReturnType<typeof Mina.transaction>>,
-	sign: SignTransaction
+	sign: SignTransaction,
+	waitForInclusion?: (transactionHash: string) => Promise<void>
 ): Promise<string> => {
 	const proved = await transaction.prove()
 	const signed = await sign(proved)
 	const pending = await signed.send()
-	await pending.wait()
+	if (waitForInclusion) await waitForInclusion(pending.hash)
+	else await pending.wait()
 	return pending.hash
 }
 
@@ -215,7 +218,11 @@ export const deployEthereumTokenMirror = async (
 		})
 		await token.initialize(input.adminContractL2, UInt8.from(plan.decimals), Bool(false))
 	})
-	const deploymentTransactionHash = await proveSignAndSend(deployment, input.signDeployment)
+	const deploymentTransactionHash = await proveSignAndSend(
+		deployment,
+		input.signDeployment,
+		input.waitForInclusion
+	)
 	await Promise.all([refreshCache(plan.config.tokenOwnerL2), refreshCache(input.adminContractL2)])
 
 	// Build the signed custom-token update outside the transaction so it is only
@@ -234,7 +241,8 @@ export const deployEthereumTokenMirror = async (
 	})
 	const vaultInstallationTransactionHash = await proveSignAndSend(
 		vaultInstallation,
-		input.signProvisioning
+		input.signProvisioning,
+		input.waitForInclusion
 	)
 	await Promise.all([
 		refreshCache(plan.config.tokenOwnerL2),
@@ -253,7 +261,11 @@ export const deployEthereumTokenMirror = async (
 		AccountUpdate.fundNewAccount(input.feePayer, 1)
 		await token.mint(plan.config.holderAccountL2, plan.inventory)
 	})
-	const inventoryMintTransactionHash = await proveSignAndSend(inventoryMint, input.signProvisioning)
+	const inventoryMintTransactionHash = await proveSignAndSend(
+		inventoryMint,
+		input.signProvisioning,
+		input.waitForInclusion
+	)
 	await assertInstalledAccount(plan, input.adminContractL2, plan.inventory, standard)
 
 	return {

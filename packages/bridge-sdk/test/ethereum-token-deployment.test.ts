@@ -142,6 +142,7 @@ describe("ERC20 mirror token local roundtrip", () => {
 		const tokenId = TokenId.derive(ownerKey.toPublicKey())
 		const { verificationKey } = await TestBridgeVault.compile()
 		const inventory = UInt64.from(1_000)
+		const inclusionHashes: string[] = []
 		const plan: EthereumTokenDeploymentPlan = {
 			config: {
 				assetId: `0x${"44".repeat(32)}`,
@@ -177,10 +178,18 @@ describe("ERC20 mirror token local roundtrip", () => {
 			signDeployment: async (transaction) =>
 				transaction.sign([feePayer.key, ownerKey, adminContractKey]),
 			signProvisioning: async (transaction) =>
-				transaction.sign([feePayer.key, adminAuthorityKey, vaultKey])
+				transaction.sign([feePayer.key, adminAuthorityKey, vaultKey]),
+			waitForInclusion: async (transactionHash) => {
+				inclusionHashes.push(transactionHash)
+			}
 		})
 
 		expect(manifest.inventory).toBe("1000")
+		expect(inclusionHashes).toEqual([
+			manifest.deploymentTransactionHash,
+			manifest.vaultInstallationTransactionHash,
+			manifest.inventoryMintTransactionHash
+		])
 		expect(Mina.getBalance(vaultKey.toPublicKey(), tokenId).toBigInt()).toBe(1_000n)
 		expect(
 			Mina.getAccount(vaultKey.toPublicKey(), tokenId).zkapp?.verificationKey?.hash.toString()

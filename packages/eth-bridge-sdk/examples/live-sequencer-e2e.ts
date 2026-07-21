@@ -209,7 +209,10 @@ if (bridgeAsset === "erc20") {
 		symbol: "ZP20",
 		sourceUri: "https://zeko.invalid/local-erc20",
 		signDeployment,
-		signProvisioning
+		signProvisioning,
+		// The local sequencer applies sendZkapp synchronously but does not expose
+		// Mina daemon bestChain, which is what o1js's default pending.wait() polls.
+		waitForInclusion: async () => {}
 	})
 	console.log("[live-sequencer-e2e] ERC20 mirror deployed")
 	depositTransactionHash = await client.finalizeTokenDeposit({
