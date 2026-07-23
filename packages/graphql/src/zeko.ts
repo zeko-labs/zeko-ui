@@ -69,6 +69,14 @@ export const finalizeDepositMutation = graphql(`
   }
 `)
 
+export const finalizeEthereumDepositMutation = graphql(`
+  mutation FinalizeEthereumDeposit($input: FinalizeEthereumDepositInput!) {
+    request: finalizeEthereumDeposit(input: $input) {
+      key
+    }
+  }
+`)
+
 export const submitWithdrawalMutation = graphql(`
   mutation SubmitWithdrawal($withdrawalParams: WithdrawalParamsInput!, $transferrer: BridgeTransferrerInput!) {
     request: proveWithdrawalRequest(input: { withdrawalParams: $withdrawalParams, transferrer: $transferrer }) {

@@ -1,6 +1,7 @@
 import {
 	type cancelDepositMutation,
 	finalizeDepositMutation,
+	finalizeEthereumDepositMutation,
 	submitDepositMutation
 } from "@zeko-labs/graphql"
 import {
@@ -57,6 +58,8 @@ export type DepositParams = {
 	deposit: Deposit
 	aux: Field
 }
+
+type UnsignedHelperInput<T> = Omit<T, "prevNonce" | "helperAccountNew" | "helperAccountSignature">
 
 const NO_OUTER_COMMIT_REASON = "No outer commit available yet"
 
@@ -419,7 +422,7 @@ export async function fetchDepositFinalizationWitnesses(
 			aux: Field
 		}
 		helperAccount: Account | null
-		witness: ExtractInput<typeof finalizeDepositMutation>
+		witness: UnsignedHelperInput<ExtractInput<typeof finalizeDepositMutation>>
 	}>
 > {
 	setL2(runtime)
@@ -465,6 +468,60 @@ export async function fetchDepositFinalizationWitnesses(
 		return {
 			ok: false,
 			msg: getDepositFinalizationWaitReason(context, witness)
+		}
+	}
+
+	return { ok: false, msg: "No finalizable deposit found" }
+}
+
+export async function fetchEthereumDepositFinalizationWitnesses(
+	runtime: BridgeRuntime,
+	pk: PublicKey
+): Promise<
+	WitnessFetchResult<{
+		aseTarget: {
+			state: Field
+			length: UInt32
+		}
+		depositParams: DepositParams
+		witness: UnsignedHelperInput<ExtractInput<typeof finalizeEthereumDepositMutation>>
+	}>
+> {
+	setL2(runtime)
+
+	const context = await fetchDepositStateContext(runtime, pk)
+
+	if (context.depositsByAux.size === 0) {
+		return { ok: false, msg: "No deposits found" }
+	}
+
+	if (context.depositWitnesses.length === 0) {
+		return { ok: false, msg: "No deposit witnesses found" }
+	}
+
+	const minDepositIndex = uint32Max(context.v2DepositsStartIndex, context.prevNextDeposit)
+
+	for (const witness of getSortedDepositWitnesses(context)) {
+		if (
+			isDepositFinalised(context, witness) ||
+			minDepositIndex.greaterThan(UInt32.from(witness.index)).toBoolean()
+		) {
+			continue
+		}
+
+		const finalizationWitness = buildEthereumDepositFinalizationWitnessValue(context, witness)
+		if (finalizationWitness) {
+			return {
+				ok: true,
+				index: witness.index,
+				value: finalizationWitness
+			}
+		}
+
+		return {
+			ok: false,
+			index: witness.index,
+			msg: `Deposit ${witness.index} is not synchronized into Zeko yet`
 		}
 	}
 
@@ -652,6 +709,166 @@ export async function finalizeDeposit(
 	return await prove(attempts)
 }
 
+export async function finalizeEthereumDeposit(
+	runtime: BridgeRuntime,
+	pk: PublicKey,
+	signTxn: SignTransaction,
+	options?: number | RetryableTransactionOptions
+): Promise<string> {
+	const { attempts, fee } = normalizeRetryableTransactionOptions(options)
+	const prove = async (attempts: number) => {
+		if (attempts === 0) throw new Error("Failed to prove Ethereum deposit finalization")
+
+		const witnesses = await fetchEthereumDepositFinalizationWitnesses(runtime, pk)
+
+		if (!witnesses.ok) throw new Error(witnesses.msg)
+
+		const { witness, depositParams, aseTarget } = witnesses.value
+
+		setL2(runtime)
+		await refreshCache(depositParams.deposit.recipient)
+		await refreshCache(depositParams.deposit.recipient, TokenId.derive(runtime.innerHolder))
+		await refreshCache(runtime.innerHolder)
+
+		let isHelperAccountNew = false
+		const txn = await Mina.transaction(
+			{
+				sender: runtime.sequencerPk,
+				fee
+			},
+			async () => {
+				const helperAccount = AccountUpdate.createSigned(
+					depositParams.deposit.recipient,
+					TokenId.derive(runtime.innerHolder)
+				)
+				helperAccount.body.useFullCommitment = Bool(false)
+				helperAccount.body.incrementNonce = Bool(true)
+				helperAccount.body.implicitAccountCreationFee = Bool(false)
+				helperAccount.body.mayUseToken = {
+					parentsOwnToken: Bool(true),
+					inheritFromParent: Bool(false)
+				}
+				helperAccount.body.update.appState[0] = {
+					isSome: Bool(true),
+					value: Field(witness.deposit.depositIndex).add(1)
+				}
+				helperAccount.account.isNew.getAndRequireEquals()
+				Provable.asProver(() => {
+					isHelperAccountNew = helperAccount.body.preconditions.account.isNew.value.toBoolean()
+				})
+				helperAccount.body.preconditions.account.state[0] = {
+					isSome: Bool(true),
+					value: Field(witness.prevNextDeposit)
+				}
+				helperAccount.account.nonce.getAndRequireEquals()
+
+				const innerWitness = AccountUpdate.create(runtime.innerPk)
+				innerWitness.body.useFullCommitment = Bool(true)
+				innerWitness.body.implicitAccountCreationFee = Bool(true)
+				innerWitness.body.mayUseToken = {
+					parentsOwnToken: Bool(false),
+					inheritFromParent: Bool(false)
+				}
+				innerWitness.body.preconditions.account.state[0] = {
+					isSome: Bool(true),
+					value: aseTarget.state
+				}
+				innerWitness.body.preconditions.account.state[1] = {
+					isSome: Bool(true),
+					value: aseTarget.length.toFields()[0]
+				}
+
+				const recipientPayout = AccountUpdate.create(depositParams.deposit.recipient)
+				recipientPayout.body.useFullCommitment = Bool(true)
+				recipientPayout.body.implicitAccountCreationFee = Bool(true)
+				recipientPayout.body.mayUseToken = {
+					parentsOwnToken: Bool(true),
+					inheritFromParent: Bool(false)
+				}
+				let payout = depositParams.deposit.amount
+				payout = payout.sub(runtime.bridgeProofFee)
+				if (isHelperAccountNew) payout = payout.sub(runtime.l2AccountCreationFee)
+				recipientPayout.balance.addInPlace(payout)
+
+				const feePayout = AccountUpdate.create(runtime.bridgeFeeRecipientL2)
+				feePayout.body.useFullCommitment = Bool(true)
+				feePayout.body.implicitAccountCreationFee = Bool(true)
+				feePayout.body.mayUseToken = {
+					parentsOwnToken: Bool(true),
+					inheritFromParent: Bool(false)
+				}
+				feePayout.balance.addInPlace(runtime.bridgeProofFee)
+
+				const finalizeDeposit = AccountUpdate.create(runtime.innerHolder)
+				finalizeDeposit.approve(helperAccount)
+				finalizeDeposit.approve(innerWitness)
+				finalizeDeposit.approve(recipientPayout)
+				finalizeDeposit.approve(feePayout)
+				finalizeDeposit.body.useFullCommitment = Bool(true)
+				finalizeDeposit.body.implicitAccountCreationFee = Bool(true)
+				finalizeDeposit.body.mayUseToken = {
+					parentsOwnToken: Bool(false),
+					inheritFromParent: Bool(false)
+				}
+				finalizeDeposit.balance.subInPlace(depositParams.deposit.amount)
+				finalizeDeposit.body.events = Events.pushEvent(finalizeDeposit.body.events, [
+					Field(witness.deposit.depositIndex),
+					Field(0), // empty children
+					...depositParams.deposit.holderAccountL1.toFields(),
+					...UInt64.from(witness.deposit.params.amount).toFields(),
+					...depositParams.deposit.recipient.toFields(),
+					...UInt32.from(witness.deposit.params.timeout).toFields()
+				])
+				finalizeDeposit.body.authorizationKind = {
+					isSigned: Bool(false),
+					isProved: Bool(true),
+					verificationKeyHash: await getVkHash(runtime.innerHolder)
+				}
+			}
+		)
+
+		const signed = await signTxn(txn)
+		const helperAccountUpdate = signed.transaction.accountUpdates.find(
+			({ publicKey, tokenId }) =>
+				publicKey.equals(depositParams.deposit.recipient).toBoolean() &&
+				tokenId.equals(TokenId.derive(runtime.innerHolder)).toBoolean()
+		)
+		if (!helperAccountUpdate) throw new Error("Helper account update not found")
+
+		const helperAccountNonce =
+			helperAccountUpdate.body.preconditions.account.nonce.value.lower.toString()
+
+		const helperAccountSignatureString = helperAccountUpdate.authorization.signature
+		if (!helperAccountSignatureString) throw new Error("Helper account update not signed")
+		const helperAccountSignature = Signature.fromBase58(helperAccountSignatureString)
+
+		const { data, error } = await runtime.l2Client().mutation(finalizeEthereumDepositMutation, {
+			input: {
+				...witness,
+				prevNonce: helperAccountNonce,
+				helperAccountSignature: {
+					scalar: helperAccountSignature.s.toBigInt().toString(),
+					field: helperAccountSignature.r.toBigInt().toString()
+				},
+				helperAccountNew: isHelperAccountNew
+			}
+		})
+		if (!data?.request?.key) throw new Error(error?.message ?? "No key returned from mutation")
+		const txnHash = await pollProvingResult(runtime, data.request.key)
+
+		const currentSyncedOuterActionState =
+			(await runtime.bridge?.fetchSyncedOuterActionState?.()) ??
+			(await fetchSyncedOuterActionState(runtime))
+
+		if (currentSyncedOuterActionState.state.equals(aseTarget.state).toBoolean()) {
+			return txnHash
+		}
+		return await prove(attempts - 1)
+	}
+
+	return await prove(attempts)
+}
+
 export async function canFinalizeDeposit(
 	runtime: BridgeRuntime,
 	pk: PublicKey
@@ -663,6 +880,93 @@ export async function canFinalizeDeposit(
 		available: result.ok,
 		reason: result.ok ? null : result.msg,
 		index: result.index
+	}
+}
+
+export async function canFinalizeEthereumDeposit(
+	runtime: BridgeRuntime,
+	pk: PublicKey
+): Promise<{ available: boolean; reason: string | null; index?: number }> {
+	debug(runtime, "canFinalizeEthereumDeposit start", { pk: pk.toBase58() })
+	const result = await fetchEthereumDepositFinalizationWitnesses(runtime, pk)
+	debug(runtime, "canFinalizeEthereumDeposit result", result)
+	return {
+		available: result.ok,
+		reason: result.ok ? null : result.msg,
+		index: result.index
+	}
+}
+
+function buildEthereumDepositFinalizationWitnessValue(
+	context: DepositStateContext,
+	witness: OuterWitness
+): {
+	aseTarget: {
+		state: Field
+		length: UInt32
+	}
+	depositParams: DepositParams
+	witness: UnsignedHelperInput<ExtractInput<typeof finalizeEthereumDepositMutation>>
+} | null {
+	const depositParams = getDepositParamsForWitness(context, witness)
+	const minDepositIndex = uint32Max(context.v2DepositsStartIndex, context.prevNextDeposit)
+
+	if (isDepositFinalised(context, witness)) {
+		return null
+	}
+
+	if (minDepositIndex.greaterThan(UInt32.from(witness.index)).toBoolean()) {
+		return null
+	}
+
+	const depositActionIndex = context.outerActions.findIndex(
+		(action) =>
+			action.type === "witness" &&
+			action.index === witness.index &&
+			action.aux.equals(witness.aux).toBoolean()
+	)
+
+	if (
+		depositActionIndex === -1 ||
+		context.currentSyncedOuterActionStateIndex < depositActionIndex ||
+		context.syncedOuterActionState.length.lessThan(UInt32.from(witness.index + 1)).toBoolean()
+	) {
+		return null
+	}
+
+	const aseElems = context.outerActions
+		.slice(depositActionIndex + 1, context.currentSyncedOuterActionStateIndex + 1)
+		.map(({ action }) => fromList([action]).hash)
+	const recipient = publicKeyToBase58("Deposit recipient", depositParams.deposit.recipient)
+	const holderAccountL1 = publicKeyToBase58(
+		"Deposit L1 holder",
+		depositParams.deposit.holderAccountL1
+	)
+
+	return {
+		aseTarget: context.syncedOuterActionState,
+		depositParams,
+		witness: {
+			prevNextDeposit: context.prevNextDeposit.toString(),
+			deposit: {
+				depositIndex: witness.index.toString(),
+				originalActionState: witness.beforeActionState.toString(),
+				params: {
+					amount: depositParams.deposit.amount.toString(),
+					recipient,
+					holderAccountL1,
+					timeout: +depositParams.deposit.timeout,
+					children: "[]"
+				}
+			},
+			ase: {
+				stmt: {
+					length: UInt32.from(witness.index + 1).toString(),
+					actionState: witness.afterActionState.toString()
+				},
+				fields: aseElems.map((elem) => elem.toString())
+			}
+		}
 	}
 }
 
@@ -679,7 +983,7 @@ function buildDepositFinalizationWitnessValue(
 		aux: Field
 	}
 	helperAccount: Account | null
-	witness: ExtractInput<typeof finalizeDepositMutation>
+	witness: UnsignedHelperInput<ExtractInput<typeof finalizeDepositMutation>>
 } | null {
 	const depositParams = getDepositParamsForWitness(context, witness)
 	const minDepositIndex = uint32Max(context.v2DepositsStartIndex, context.prevNextDeposit)

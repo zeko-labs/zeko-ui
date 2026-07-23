@@ -53,6 +53,8 @@ import {
 	withdrawalAux
 } from "./utils"
 
+type UnsignedHelperInput<T> = Omit<T, "prevNonce" | "helperAccountNew" | "helperAccountSignature">
+
 const NO_OUTER_COMMIT_REASON = "No outer commit available yet"
 const SKIPPED_LEGACY_WITHDRAWAL_ACTION_INDEX = 3
 
@@ -269,7 +271,7 @@ export async function fetchWithdrawalFinalizationWitnesses(
 			aux: Field
 		}
 		helperAccount: Account | null
-		witness: ExtractInput<typeof finalizeWithdrawalMutation>
+		witness: UnsignedHelperInput<ExtractInput<typeof finalizeWithdrawalMutation>>
 	}>
 > {
 	const [recipientAccount, helperAccount] = await Promise.all([

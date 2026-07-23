@@ -1,12 +1,14 @@
 import { UInt32, type Field, type Mina, type PublicKey, type UInt64 } from "o1js"
 import { canCancelDeposit, cancelDeposit } from "./cancellations"
 import {
+	canFinalizeEthereumDeposit,
 	canFinalizeDeposit,
 	fetchDepositFinalizationWitnesses,
 	fetchDepositsWithStates,
 	fetchSyncedOuterActionState,
 	fetchUserDeposits,
 	finalizeDeposit,
+	finalizeEthereumDeposit,
 	submitDeposit
 } from "./deposits"
 import type { GqlClient } from "./graphql"
@@ -203,6 +205,20 @@ export class Bridge {
 		pk: PublicKey
 	): Promise<{ available: boolean; reason: string | null; index?: number }> {
 		return canFinalizeDeposit(this.runtime, pk)
+	}
+
+	public canFinalizeEthereumDeposit(
+		pk: PublicKey
+	): Promise<{ available: boolean; reason: string | null; index?: number }> {
+		return canFinalizeEthereumDeposit(this.runtime, pk)
+	}
+
+	public finalizeEthereumDeposit(
+		pk: PublicKey,
+		signTxn: SignTransaction,
+		options?: number | RetryableTransactionOptions
+	): Promise<string> {
+		return finalizeEthereumDeposit(this.runtime, pk, signTxn, options)
 	}
 
 	public cancelDeposit(

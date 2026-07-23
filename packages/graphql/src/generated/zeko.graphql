@@ -71,6 +71,21 @@ input FinalizeDepositInput {
   ase: AseWithLengthInput!
 }
 
+input EthereumDepositFinalizationWitnessInput {
+  params: DepositParamsInput!
+  originalActionState: String!
+  depositIndex: UInt32!
+}
+
+input FinalizeEthereumDepositInput {
+  ase: AseWithLengthInput!
+  deposit: EthereumDepositFinalizationWitnessInput!
+  prevNextDeposit: UInt32!
+  prevNonce: UInt32!
+  helperAccountNew: Boolean!
+  helperAccountSignature: SignatureInput!
+}
+
 input WithdrawalParamsInput {
   recipient: PublicKey!
   amount: UInt64!
@@ -704,6 +719,11 @@ type mutation {
 
   """Finalize a deposit"""
   finalizeDeposit(input: FinalizeDepositInput!): ProofKeyPayload!
+
+  """Finalize an Ethereum deposit after inner synchronization"""
+  finalizeEthereumDeposit(
+    input: FinalizeEthereumDepositInput!
+  ): ProofKeyPayload!
 
   """Finalize a withdrawal"""
   finalizeWithdrawal(input: FinalizeWithdrawalInput!): ProofKeyPayload!

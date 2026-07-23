@@ -249,7 +249,7 @@ export class EthereumBridgeClient {
 	}
 
 	public prepareDepositFinalization(recipient: PublicKey) {
-		return this.requireZekoBridge().canFinalizeDeposit(recipient)
+		return this.requireZekoBridge().canFinalizeEthereumDeposit(recipient)
 	}
 
 	public finalizeDeposit(
@@ -257,7 +257,7 @@ export class EthereumBridgeClient {
 		signTransaction: SignTransaction,
 		options?: number | RetryableTransactionOptions
 	): Promise<string> {
-		return this.requireZekoBridge().finalizeDeposit(recipient, signTransaction, options)
+		return this.requireZekoBridge().finalizeEthereumDeposit(recipient, signTransaction, options)
 	}
 
 	public requestWithdrawal(input: {
