@@ -1,11 +1,11 @@
 ---
 id: T481
 title: "Finalize Ethereum deposits after inner sync"
-status: in-progress
+status: done
 blockedBy: []
 owner: codex
 created_at: 2026-07-23T12:47:28Z
-updated_at: 2026-07-23T12:47:28Z
+updated_at: 2026-07-23T13:30:18Z
 ---
 
 ## Requirements
@@ -38,3 +38,28 @@ updated_at: 2026-07-23T12:47:28Z
   then run the focused Bridge SDK, Ethereum Bridge SDK, and GraphQL package
   tests/typechecks/lints/builds through Moon.
 - Regression: run the existing Mina deposit-finalization tests unchanged.
+
+## Implementation
+
+- Added an Ethereum-only witness builder and finalizer that starts from the
+  exact deposit action state and extends it to the inner account's synchronized
+  outer-action state.
+- Added the `finalizeEthereumDeposit` GraphQL mutation and routed the Ethereum
+  Bridge SDK's existing public finalization methods through the dedicated
+  Bridge SDK methods.
+- Left the Mina commit/timeout-based finalization path unchanged.
+- Added patch changesets for `@zeko-labs/bridge-sdk`,
+  `@zeko-labs/eth-bridge-sdk`, and `@zeko-labs/graphql`.
+
+## Validation
+
+- TDD RED was captured before implementation: the new Ethereum-only method was
+  absent while the existing Bridge SDK suite remained green.
+- `moon run graphql:typecheck bridge-sdk:typecheck eth-bridge-sdk:typecheck
+  bridge-sdk:test eth-bridge-sdk:test` passed.
+- Bridge SDK: 18 files and 80 tests passed, including pending, canonical,
+  unsynchronized, and cancellation-cursor coverage.
+- Ethereum Bridge SDK: 3 files and 10 tests passed, including dedicated-method
+  routing.
+- Package lint, formatting, and builds passed; the unchanged Mina deposit
+  finalization regression tests remain green.

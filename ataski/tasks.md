@@ -464,4 +464,4 @@
 - T478 | done | simplify-bridge-operation-hash-cell | done/T478-simplify-bridge-operation-hash-cell.md
 - T479 | done | guard-clipboard-hash-copy | done/T479-guard-clipboard-hash-copy.md
 - T480 | done | make-pending-transaction-load-pure | done/T480-make-pending-transaction-load-pure.md
-- T481 | in-progress | finalize-ethereum-deposits-after-inner-sync | in-progress/T481-finalize-ethereum-deposits-after-inner-sync.md
+- T481 | done | finalize-ethereum-deposits-after-inner-sync | done/T481-finalize-ethereum-deposits-after-inner-sync.md
