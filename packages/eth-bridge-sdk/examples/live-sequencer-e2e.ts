@@ -417,5 +417,8 @@ const output = {
 	registryRecords: assets,
 	crossAssetRejected
 }
-await writeFile(harness.completionMarker, `${JSON.stringify(output)}\n`)
-console.log(JSON.stringify(output))
+const outputJson = JSON.stringify(output, (_, value) =>
+	typeof value === "bigint" ? value.toString() : value
+)
+await writeFile(harness.completionMarker, `${outputJson}\n`)
+console.log(outputJson)
