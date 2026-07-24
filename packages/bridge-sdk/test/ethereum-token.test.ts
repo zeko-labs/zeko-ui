@@ -182,6 +182,8 @@ describe("FungibleToken owner graft", () => {
 		expect(vault.body.callDepth).toBe(0)
 		expect(registry.body.callDepth).toBe(1)
 		expect(registry.publicKey.equals(registryPublicKey).toBoolean()).toBe(true)
+		expect(registry.body.useFullCommitment.toBoolean()).toBe(true)
+		expect(registry.body.implicitAccountCreationFee.toBoolean()).toBe(true)
 		const state = registry.body.preconditions.account.state
 		expect(state[0]?.isSome.toBoolean()).toBe(true)
 		expect(state[0]?.value.equals(root).toBoolean()).toBe(true)

@@ -139,6 +139,8 @@ export const buildEthereumTokenWithdrawalApproval = ({
 
 	const registry = AccountUpdate.default(registryPublicKey)
 	registry.body.callDepth = 1
+	registry.body.useFullCommitment = Bool(true)
+	registry.body.implicitAccountCreationFee = Bool(true)
 	for (const [index, value] of [
 		[0, membership.root],
 		[1, Field(membership.count)],

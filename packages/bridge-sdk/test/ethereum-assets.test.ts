@@ -1,4 +1,4 @@
-import { Field, Poseidon, PrivateKey, PublicKey, TokenId, UInt64 } from "o1js"
+import { Field, Mina, Poseidon, PrivateKey, PublicKey, TokenId, UInt64 } from "o1js"
 import { describe, expect, it } from "vitest"
 import {
 	type EthereumAssetRegistryApiRecord,
@@ -6,6 +6,7 @@ import {
 	parseEthereumAssetRegistrySnapshot,
 	prepareEthereumAssetRegistrationFromRegistry
 } from "../src/ethereum-assets"
+import { buildEthereumTokenWithdrawalApproval } from "../src/ethereum-token"
 import type { EthereumAssetRecord } from "../src/types"
 
 const SIGN_BIT = 1n << 255n
@@ -136,7 +137,8 @@ const fixture = () => {
 }
 
 describe("universal Ethereum asset memberships", () => {
-	it("matches the OCaml bridge call-data vector", () => {
+	it("matches the OCaml bridge account-update vectors", async () => {
+		Mina.setActiveInstance(await Mina.LocalBlockchain({ proofsEnabled: false }))
 		const record: EthereumAssetRecord = {
 			schemaVersion: 1,
 			registryIndex: 0,
@@ -152,9 +154,34 @@ describe("universal Ethereum asset memberships", () => {
 			vaultPublicKey: PublicKey.fromFields([Field(11111), Field(0)]),
 			universalBridgeVkId: Field(778)
 		}
+		const amount = UInt64.from(2_000_000)
 
-		expect(fieldHex(ethereumAssetBridgeCallData(record, UInt64.from(2_000_000)).toBigInt())).toBe(
+		expect(fieldHex(ethereumAssetBridgeCallData(record, amount).toBigInt())).toBe(
 			"0x19a86bb8c106848e3bab8dd79491cbc4589f28b33227007eb60409efa56e12d0"
+		)
+		const { registry } = buildEthereumTokenWithdrawalApproval({
+			config: {
+				assetId: record.assetId,
+				ethereumTokenAddress: record.ethereumTokenAddress,
+				tokenOwnerL2: record.tokenOwnerL2,
+				tokenIdL2: record.tokenIdL2,
+				holderAccountL2: record.vaultPublicKey,
+				verificationKeyHash: Field(999)
+			},
+			membership: {
+				root: Field(
+					"21764611412127449418947192256791981546502136485622468759540630220336889558797"
+				),
+				count: 1,
+				schemaVersion: 1,
+				record
+			},
+			registryPublicKey: PublicKey.fromFields([Field(22223), Field(1)]),
+			sender: record.tokenOwnerL2,
+			amount
+		})
+		expect(fieldHex(registry.hash().toBigInt())).toBe(
+			"0x2c383e7260ea384af96f3c833feee18b10a1d614f852076287c1cb513e5b47d6"
 		)
 	})
 
