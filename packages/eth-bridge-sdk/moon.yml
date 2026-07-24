@@ -70,3 +70,10 @@ tasks:
       - ^:build
     options:
       cache: false
+  asset-record-batch:
+    command: bun examples/asset-record-batch.ts
+    deps:
+      - ^:build
+      - build
+    options:
+      cache: false

@@ -1,4 +1,4 @@
-import { UInt32, type Field, type Mina, type PublicKey, type UInt64 } from "o1js"
+import { type Field, type Mina, type PublicKey, UInt32, type UInt64 } from "o1js"
 import { canCancelDeposit, cancelDeposit } from "./cancellations"
 import {
 	canFinalizeDeposit,
@@ -9,26 +9,32 @@ import {
 	finalizeDeposit,
 	submitDeposit
 } from "./deposits"
-import type { GqlClient } from "./graphql"
+import { fetchEthereumAsset, fetchEthereumAssetRegistry } from "./ethereum-assets"
 import {
 	canFinalizeEthereumTokenDeposit,
 	finalizeEthereumTokenDeposit,
+	registerEthereumAsset,
 	submitEthereumTokenWithdrawal
 } from "./ethereum-token"
+import type { GqlClient } from "./graphql"
 import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
-import { createBridgeRuntime, type BridgeRuntime } from "./runtime"
+import { type BridgeRuntime, createBridgeRuntime } from "./runtime"
+import { type BridgeCommitStatusSnapshot, fetchBridgeCommitStatusSnapshot } from "./status"
 import type { RetryableTransactionOptions, SignTransaction } from "./transactions"
-import { fetchBridgeCommitStatusSnapshot, type BridgeCommitStatusSnapshot } from "./status"
 import type {
 	Account,
 	Action,
 	Config,
 	Deposit,
 	DepositWithState,
+	EthereumAssetLookup,
+	EthereumAssetMembership,
+	EthereumAssetRecord,
+	EthereumAssetsConfig,
 	EthereumTokenBridgeConfig,
+	SubmitWithdrawalParams,
 	Withdrawal,
 	WithdrawalFinalizationResult,
-	SubmitWithdrawalParams,
 	WithdrawalWithState
 } from "./types"
 import {
@@ -43,14 +49,15 @@ import {
 export * from "./actions"
 export * from "./diagnostics"
 export * from "./errors"
+export { ethereumDepositAux } from "./ethereum"
+export * from "./ethereum-assets"
 export * from "./ethereum-token"
 export * from "./ethereum-token-deployment"
 export * from "./graphql/index"
 export * from "./runtime"
 export * from "./status"
-export * from "./types"
-export { ethereumDepositAux } from "./ethereum"
 export type { RetryableTransactionOptions, SignTransaction } from "./transactions"
+export * from "./types"
 
 const isBridgeRuntime = (value: unknown): value is BridgeRuntime =>
 	typeof value === "object" && value !== null && "config" in value && "l1Client" in value
@@ -150,6 +157,31 @@ export class Bridge {
 		return this.runtime.ethereumToken
 	}
 
+	public get ethereumAssets(): EthereumAssetsConfig | null {
+		return this.runtime.ethereumAssets
+	}
+
+	public fetchEthereumAsset(
+		lookup: EthereumAssetLookup
+	): Promise<{ membership: EthereumAssetMembership; config: EthereumTokenBridgeConfig }> {
+		return fetchEthereumAsset(this.runtime, lookup)
+	}
+
+	public fetchEthereumAssetRegistry(): Promise<
+		Array<{ membership: EthereumAssetMembership; config: EthereumTokenBridgeConfig }>
+	> {
+		return fetchEthereumAssetRegistry(this.runtime)
+	}
+
+	public registerEthereumAsset(
+		feePayer: Mina.FeePayerSpec,
+		candidate: EthereumAssetRecord,
+		signTxn: SignTransaction,
+		options?: RetryableTransactionOptions
+	): Promise<string> {
+		return registerEthereumAsset(this.runtime, feePayer, candidate, signTxn, options)
+	}
+
 	public setL1(): void {
 		setL1(this.runtime)
 	}
@@ -214,16 +246,18 @@ export class Bridge {
 	public finalizeEthereumTokenDeposit(
 		feePayer: Mina.FeePayerSpec,
 		recipient: PublicKey,
+		asset: EthereumAssetLookup,
 		signTxn: SignTransaction,
 		options?: number | RetryableTransactionOptions
 	): Promise<string> {
-		return finalizeEthereumTokenDeposit(this.runtime, feePayer, recipient, signTxn, options)
+		return finalizeEthereumTokenDeposit(this.runtime, feePayer, recipient, asset, signTxn, options)
 	}
 
 	public canFinalizeEthereumTokenDeposit(
-		recipient: PublicKey
+		recipient: PublicKey,
+		asset: EthereumAssetLookup
 	): Promise<{ available: boolean; reason: string | null; index?: number }> {
-		return canFinalizeEthereumTokenDeposit(this.runtime, recipient)
+		return canFinalizeEthereumTokenDeposit(this.runtime, recipient, asset)
 	}
 
 	public canFinalizeDeposit(
@@ -255,7 +289,12 @@ export class Bridge {
 
 	public submitEthereumTokenWithdrawal(
 		feePayer: Mina.FeePayerSpec,
-		params: { sender: PublicKey; recipient: PublicKey; amount: UInt64 },
+		params: {
+			sender: PublicKey
+			recipient: PublicKey
+			amount: UInt64
+			asset: EthereumAssetLookup
+		},
 		signTxn: SignTransaction,
 		options?: RetryableTransactionOptions
 	): Promise<string> {

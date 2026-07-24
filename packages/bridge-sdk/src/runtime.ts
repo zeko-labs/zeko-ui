@@ -4,18 +4,18 @@ import {
 	genesisConstantsQueryL2,
 	sequencerPkQuery
 } from "@zeko-labs/graphql"
-import { Field, PublicKey, TokenId, UInt32, UInt64 } from "o1js"
+import { Field, PublicKey, UInt32, UInt64 } from "o1js"
+import type { fetchDepositFinalizationWitnesses } from "./deposits"
 import { createGraphqlClient, type GqlClient } from "./graphql"
 import type {
-	Action,
 	Account,
+	Action,
 	Config,
 	Deposit,
+	EthereumAssetsConfig,
 	EthereumTokenBridgeConfig,
 	Withdrawal
 } from "./types"
-import type { fetchDepositFinalizationWitnesses } from "./deposits"
-import { validateEthereumTokenBridgeConfig } from "./ethereum"
 
 type RuntimeQueryError = {
 	readonly message?: string
@@ -98,6 +98,7 @@ export type BridgeRuntime = {
 	readonly bridgeFeeRecipientL1: PublicKey
 	readonly bridgeFeeRecipientL2: PublicKey
 	readonly bridgeProofFee: UInt64
+	readonly ethereumAssets: EthereumAssetsConfig | null
 	readonly ethereumToken: EthereumTokenBridgeConfig | null
 	readonly V2_DEPOSITS_START_INDEX: UInt32
 	readonly V2_WITHDRAWALS_START_INDEX: UInt32
@@ -207,15 +208,18 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 				? UInt32.from(10529)
 				: UInt32.from(0)
 			: UInt32.from(config.v2WithdrawalsStartIndex)
-	const ethereumToken = circuitsConfig.ethereumToken
-		? validateEthereumTokenBridgeConfig({
-				assetId: circuitsConfig.ethereumToken.assetId,
-				ethereumTokenAddress: circuitsConfig.ethereumToken.ethereumTokenAddress,
-				tokenOwnerL2: PublicKey.fromBase58(circuitsConfig.ethereumToken.tokenOwnerL2),
-				tokenIdL2: TokenId.fromBase58(circuitsConfig.ethereumToken.tokenIdL2),
-				holderAccountL2: PublicKey.fromBase58(circuitsConfig.ethereumToken.holderAccountL2),
-				verificationKeyHash: Field(circuitsConfig.ethereumToken.verificationKeyHash)
-			})
+	const ethereumAssets = circuitsConfig.ethereumAssets
+		? {
+				registryPublicKey: PublicKey.fromBase58(circuitsConfig.ethereumAssets.registryPublicKey),
+				vaultPublicKey: PublicKey.fromBase58(circuitsConfig.ethereumAssets.vaultPublicKey),
+				registrySchemaVersion: circuitsConfig.ethereumAssets.registrySchemaVersion,
+				approvedMftStandardVkId: Field(circuitsConfig.ethereumAssets.approvedMftStandardVkId),
+				universalBridgeVkId: Field(circuitsConfig.ethereumAssets.universalBridgeVkId),
+				bridgeVerificationKeyHash: Field(circuitsConfig.ethereumAssets.bridgeVerificationKeyHash),
+				registryVerificationKeyHash: Field(
+					circuitsConfig.ethereumAssets.registryVerificationKeyHash
+				)
+			}
 		: null
 
 	return {
@@ -237,7 +241,8 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 		bridgeFeeRecipientL1: PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL1),
 		bridgeFeeRecipientL2: PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL2),
 		bridgeProofFee: UInt64.from(circuitsConfig.bridgeProofFee),
-		ethereumToken,
+		ethereumAssets,
+		ethereumToken: null,
 		V2_DEPOSITS_START_INDEX,
 		V2_WITHDRAWALS_START_INDEX
 	}

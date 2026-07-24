@@ -1,6 +1,7 @@
 import {
 	finalizeEthereumTokenDepositMutation,
-	proveEthereumTokenWithdrawalRequestMutation
+	proveEthereumTokenWithdrawalRequestMutation,
+	registerEthereumAssetMutation
 } from "@zeko-labs/graphql"
 import { FungibleToken } from "mina-fungible-token"
 import {
@@ -12,15 +13,12 @@ import {
 	Mina,
 	PublicKey,
 	TokenId,
-	type UInt64,
-	type Transaction
+	type Transaction,
+	type UInt64
 } from "o1js"
 import { fetchDepositFinalizationWitnesses } from "./deposits"
-import {
-	normalizeEthereumAssetId,
-	splitEthereumAssetId,
-	validateEthereumTokenBridgeConfig
-} from "./ethereum"
+import { normalizeEthereumAssetId, splitEthereumAssetId } from "./ethereum"
+import { fetchEthereumAsset, prepareEthereumAssetRegistration } from "./ethereum-assets"
 import { setL2 } from "./network"
 import { pollProvedForest } from "./prover"
 import type { BridgeRuntime } from "./runtime"
@@ -29,7 +27,7 @@ import {
 	type RetryableTransactionOptions,
 	type SignTransaction
 } from "./transactions"
-import type { EthereumTokenBridgeConfig } from "./types"
+import type { EthereumAssetLookup, EthereumAssetRecord, EthereumTokenBridgeConfig } from "./types"
 import { getVkHash, refreshCache } from "./utils"
 
 export { validateEthereumTokenBridgeConfig } from "./ethereum"
@@ -37,13 +35,6 @@ export { validateEthereumTokenBridgeConfig } from "./ethereum"
 const compilationByNetwork = new Map<string, Promise<void>>()
 
 type JsonAccountUpdate = Parameters<typeof AccountUpdate.fromJSON>[0]
-
-export const requireEthereumTokenBridgeConfig = (
-	runtime: BridgeRuntime
-): EthereumTokenBridgeConfig => {
-	if (!runtime.ethereumToken) throw new Error("Ethereum ERC20 bridging is not configured")
-	return validateEthereumTokenBridgeConfig(runtime.ethereumToken)
-}
 
 export const compileEthereumTokenStandard = async (runtime: BridgeRuntime): Promise<void> => {
 	setL2(runtime)
@@ -232,9 +223,10 @@ const feePayerWithFee = (
 
 export async function canFinalizeEthereumTokenDeposit(
 	runtime: BridgeRuntime,
-	recipient: PublicKey
+	recipient: PublicKey,
+	asset: EthereumAssetLookup
 ): Promise<{ available: boolean; reason: string | null; index?: number }> {
-	const config = requireEthereumTokenBridgeConfig(runtime)
+	const { config } = await fetchEthereumAsset(runtime, asset)
 	const result = await fetchDepositFinalizationWitnesses(
 		runtime,
 		recipient,
@@ -253,10 +245,11 @@ export async function finalizeEthereumTokenDeposit(
 	runtime: BridgeRuntime,
 	feePayer: Mina.FeePayerSpec,
 	recipient: PublicKey,
+	asset: EthereumAssetLookup,
 	signTxn: SignTransaction,
 	options?: number | RetryableTransactionOptions
 ): Promise<string> {
-	const config = requireEthereumTokenBridgeConfig(runtime)
+	const { config, membership } = await fetchEthereumAsset(runtime, asset)
 	const { attempts, fee } = normalizeRetryableTransactionOptions(options)
 	const [assetIdHigh, assetIdLow] = splitEthereumAssetId(config.assetId)
 	const witnesses = await fetchDepositFinalizationWitnesses(
@@ -279,6 +272,7 @@ export async function finalizeEthereumTokenDeposit(
 
 	const { data, error } = await runtime.l2Client().mutation(finalizeEthereumTokenDepositMutation, {
 		input: {
+			asset: membership.witnessJson,
 			ase: witness.ase,
 			prevNextDeposit: witness.prevNextDeposit,
 			prevNonce: helperAccount?.nonce ?? "0",
@@ -321,7 +315,7 @@ export async function finalizeEthereumTokenDeposit(
 		return await sendProvedTransaction(txn, signTxn)
 	} catch (error) {
 		if (attempts <= 1) throw error
-		return await finalizeEthereumTokenDeposit(runtime, feePayer, recipient, signTxn, {
+		return await finalizeEthereumTokenDeposit(runtime, feePayer, recipient, asset, signTxn, {
 			attempts: attempts - 1,
 			feeNanomina: fee.toBigInt()
 		})
@@ -331,11 +325,16 @@ export async function finalizeEthereumTokenDeposit(
 export async function submitEthereumTokenWithdrawal(
 	runtime: BridgeRuntime,
 	feePayer: Mina.FeePayerSpec,
-	input: { sender: PublicKey; recipient: PublicKey; amount: UInt64 },
+	input: {
+		sender: PublicKey
+		recipient: PublicKey
+		amount: UInt64
+		asset: EthereumAssetLookup
+	},
 	signTxn: SignTransaction,
 	options?: RetryableTransactionOptions
 ): Promise<string> {
-	const config = requireEthereumTokenBridgeConfig(runtime)
+	const { config, membership } = await fetchEthereumAsset(runtime, input.asset)
 	const { fee } = normalizeRetryableTransactionOptions(options)
 	const [assetIdHigh, assetIdLow] = splitEthereumAssetId(config.assetId)
 	setL2(runtime)
@@ -380,6 +379,7 @@ export async function submitEthereumTokenWithdrawal(
 		.l2Client()
 		.mutation(proveEthereumTokenWithdrawalRequestMutation, {
 			input: {
+				asset: membership.witnessJson,
 				withdrawalParams: {
 					assetIdHigh: assetIdHigh.toString(),
 					assetIdLow: assetIdLow.toString(),
@@ -428,4 +428,34 @@ export async function submitEthereumTokenWithdrawal(
 		attachFlatForest(updates)
 	)
 	return await sendProvedTransaction(finalTransaction, signTxn)
+}
+
+export async function registerEthereumAsset(
+	runtime: BridgeRuntime,
+	feePayer: Mina.FeePayerSpec,
+	candidate: EthereumAssetRecord,
+	signTxn: SignTransaction,
+	options?: RetryableTransactionOptions
+): Promise<string> {
+	const assets = runtime.ethereumAssets
+	if (!assets) throw new Error("Universal Ethereum asset bridging is not configured")
+	const { fee } = normalizeRetryableTransactionOptions(options)
+	const registration = await prepareEthereumAssetRegistration(runtime, candidate)
+	const { data, error } = await runtime
+		.l2Client()
+		.mutation(registerEthereumAssetMutation, { input: registration.witnessJson })
+	if (!data?.request?.key) {
+		throw new Error(error?.message ?? "No Ethereum asset registration proof key returned")
+	}
+	const updates = parseProvedAccountUpdates(await pollProvedForest(runtime, data.request.key))
+	const registry = updates[0]
+	if (!registry) throw new Error("Ethereum asset registration proof has no registry root")
+	requireAccount(registry, assets.registryPublicKey, TokenId.default, "Ethereum asset registry")
+	requireProof(registry, assets.registryVerificationKeyHash, "Ethereum asset registry")
+	setL2(runtime)
+	await Promise.all([refreshCache(feePayer), refreshEthereumTokenForestAccounts(updates)])
+	const transaction = await Mina.transaction(feePayerWithFee(feePayer, fee), async () =>
+		attachFlatForest(updates)
+	)
+	return await sendProvedTransaction(transaction, signTxn)
 }

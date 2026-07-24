@@ -1,6 +1,8 @@
 export { ethereumZekoBridgeAbi } from "./abi"
 export {
 	type DepositActivity,
+	type EthereumAssetProposal,
+	type EthereumAssetStatus,
 	EthereumBridgeClient,
 	type EthereumBridgeClientConfig,
 	type NativeDepositResult,
@@ -23,3 +25,14 @@ export {
 	type WithdrawalProof,
 	type WithdrawalRequest
 } from "./gateway"
+export {
+	type EthereumAssetMembership,
+	type EthereumAssetRecord,
+	type EthereumAssetRecordBatchMembership,
+	EthereumAssetRegistry,
+	type EthereumAssetRegistryConfig,
+	type EthereumAssetRegistryEntry,
+	type EthereumAssetRegistrySnapshot,
+	ethereumAssetRecordBatchMembership,
+	hashEthereumAssetRecord
+} from "./registry"

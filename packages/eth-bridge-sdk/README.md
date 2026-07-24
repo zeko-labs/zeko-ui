@@ -33,11 +33,33 @@ const deposit = await bridge.depositToken({
 })
 ```
 
-Operators can read the exact immutable Solidity registration used by the L2 deployment helper:
+Operators can propose the same canonical record on Zeko and Ethereum, then
+activate the pending Solidity proposal only after its proof-backed registry
+batch settles:
 
 ```ts
-const registration = await bridge.getTokenRegistration("0x...")
+await bridge.registerAssetRecord({
+	record,
+	feePayer: { sender, fee: 100_000_000 },
+	signTransaction
+})
+
+const registration = await bridge.getTokenRegistration(
+	record.ethereumTokenAddress
+)
+await bridge.activateAssetFromBatch({
+	token: record.ethereumTokenAddress,
+	settlementSequence,
+	siblings
+})
 ```
+
+With the optional Zeko configuration, `getZekoAsset` resolves the latest
+immutable record and depth-8 Poseidon membership by Ethereum token. The shared
+registry package also resolves by asset ID or stable registry index and refreshes
+paths after later appends. `ethereumAssetRecordBatchMembership` constructs the
+separate depth-8 Keccak proof used only at the OCaml/SP1/Solidity activation
+seam.
 
 Pass the optional `zeko` configuration to enable `prepareDepositFinalization`,
 `finalizeDeposit`, and `requestWithdrawal`. Ethereum deposits and withdrawal claims only need

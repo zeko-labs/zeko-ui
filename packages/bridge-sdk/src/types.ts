@@ -42,6 +42,44 @@ export type EthereumTokenBridgeConfig = {
 	verificationKeyHash: Field
 }
 
+export type EthereumAssetsConfig = {
+	registryPublicKey: PublicKey
+	vaultPublicKey: PublicKey
+	registrySchemaVersion: number
+	approvedMftStandardVkId: Field
+	universalBridgeVkId: Field
+	bridgeVerificationKeyHash: Field
+	registryVerificationKeyHash: Field
+}
+
+export type EthereumAssetRecord = {
+	schemaVersion: number
+	registryIndex: number
+	assetId: string
+	ethereumTokenAddress: string
+	tokenOwnerL2: PublicKey
+	tokenIdL2: Field
+	decimals: number
+	inventoryCap: UInt64
+	mftStandardVkId: Field
+	vaultPublicKey: PublicKey
+	universalBridgeVkId: Field
+}
+
+export type EthereumAssetMembership = {
+	root: Field
+	count: number
+	schemaVersion: number
+	record: EthereumAssetRecord
+	path: Field[]
+	witnessJson: string
+}
+
+export type EthereumAssetLookup =
+	| { index: number }
+	| { assetId: string }
+	| { ethereumTokenAddress: string }
+
 export type Withdrawal = {
 	recipient: PublicKey
 	amount: UInt64

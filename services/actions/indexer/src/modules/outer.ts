@@ -7,7 +7,7 @@ import { checkAndRepairActionIndexDrift } from "../action-repair"
 import {
 	batchInsert,
 	type CommitInsert,
-	clearAllTables,
+	clearActionTables,
 	deleteOuterActionsFromIndex,
 	getLastFinalOuterAction,
 	getOuterActionIndexIntegrity,
@@ -221,7 +221,7 @@ export async function rebuild(db: PostgresJsDatabase) {
 	}
 
 	await db.transaction(async (tx) => {
-		await clearAllTables(tx)
+		await clearActionTables(tx)
 		await insertOuter(tx, dataToInsert)
 	})
 

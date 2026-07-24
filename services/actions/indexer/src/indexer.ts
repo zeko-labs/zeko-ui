@@ -5,6 +5,7 @@ import { env } from "./env"
 import { logger } from "./helper"
 import { handler as innerHandler, rebuild as innerRebuild } from "./modules/inner"
 import { handler as outerHandler, rebuild as outerRebuild } from "./modules/outer"
+import { handler as registryHandler, rebuild as registryRebuild } from "./modules/registry"
 
 interface IndexerConfig {
 	intervalSeconds: number
@@ -42,6 +43,27 @@ const waitForDelay = async (seconds: number, signal: AbortSignal): Promise<void>
 const disabledHandler = async (): Promise<HandlerResult> => ({ lastFetchedBlock: null })
 const disabledRebuild = async () => ({ data: [], lastFetchedBlock: null })
 
+const l2Handler = async (db: PostgresJsDatabase): Promise<HandlerResult> => {
+	const [inner, registry] = await Promise.all([
+		env.INDEX_INNER ? innerHandler(db) : disabledHandler(),
+		env.INDEX_REGISTRY ? registryHandler(db) : disabledHandler()
+	])
+	return {
+		lastFetchedBlock: Math.max(inner.lastFetchedBlock ?? 0, registry.lastFetchedBlock ?? 0) || null
+	}
+}
+
+const l2Rebuild = async (db: PostgresJsDatabase) => {
+	const [inner, registry] = await Promise.all([
+		env.INDEX_INNER ? innerRebuild(db) : disabledRebuild(),
+		env.INDEX_REGISTRY ? registryRebuild(db) : disabledHandler()
+	])
+	return {
+		data: inner.data,
+		lastFetchedBlock: Math.max(inner.lastFetchedBlock ?? 0, registry.lastFetchedBlock ?? 0) || null
+	}
+}
+
 export async function runIndexingLoop(
 	db: PostgresJsDatabase,
 	state: IndexerState,
@@ -50,7 +72,7 @@ export async function runIndexingLoop(
 ): Promise<void> {
 	const baseDelay = Math.max(1, state.config.intervalSeconds)
 	const outer = deps.outer ?? (env.INDEX_OUTER ? outerHandler : disabledHandler)
-	const inner = deps.inner ?? (env.INDEX_INNER ? innerHandler : disabledHandler)
+	const inner = deps.inner ?? (env.INDEX_INNER || env.INDEX_REGISTRY ? l2Handler : disabledHandler)
 	const now = deps.now ?? Date.now
 	const wait = deps.wait ?? waitForDelay
 
@@ -246,7 +268,11 @@ export class Indexer {
 			lastFetchedBlock: this.#state.lastFetchedBlock,
 			config: this.#state.config,
 			consecutiveErrors: this.#state.consecutiveErrors,
-			streams: { outer: env.INDEX_OUTER, inner: env.INDEX_INNER }
+			streams: {
+				outer: env.INDEX_OUTER,
+				inner: env.INDEX_INNER,
+				registry: env.INDEX_REGISTRY
+			}
 		}
 	}
 
@@ -261,7 +287,7 @@ export class Indexer {
 		try {
 			const [outerResult, innerResult] = await Promise.all([
 				env.INDEX_OUTER ? outerRebuild(this.#db) : disabledRebuild(),
-				env.INDEX_INNER ? innerRebuild(this.#db) : disabledRebuild()
+				env.INDEX_INNER || env.INDEX_REGISTRY ? l2Rebuild(this.#db) : disabledRebuild()
 			])
 
 			this.#state.lastFetchedBlock = {
