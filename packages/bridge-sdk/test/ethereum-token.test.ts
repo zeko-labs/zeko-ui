@@ -2,6 +2,7 @@ import { AccountUpdate, Bool, Field, Int64, Mina, PrivateKey, TokenId, UInt64 } 
 import { describe, expect, it } from "vitest"
 import {
 	assertMatchingFungibleTokenOwner,
+	buildEthereumTokenWithdrawalApproval,
 	countMissingEthereumTokenAccounts,
 	graftEthereumTokenDepositHelperSignature,
 	parseProvedAccountUpdates,
@@ -144,6 +145,36 @@ describe("proved ERC20 deposit forest", () => {
 })
 
 describe("FungibleToken owner graft", () => {
+	it("binds the registry checkpoint below the synthesized vault receive", () => {
+		const bridge = config()
+		const registryPublicKey = key()
+		const root = Field(1234)
+		const { debit, vault, registry, updates } = buildEthereumTokenWithdrawalApproval({
+			config: bridge,
+			membership: {
+				root,
+				count: 2,
+				schemaVersion: 1
+			},
+			registryPublicKey,
+			sender: key(),
+			amount: UInt64.from(10)
+		})
+
+		expect(updates).toEqual([debit, vault, registry])
+		expect(debit.body.callDepth).toBe(0)
+		expect(vault.body.callDepth).toBe(0)
+		expect(registry.body.callDepth).toBe(1)
+		expect(registry.publicKey.equals(registryPublicKey).toBoolean()).toBe(true)
+		const state = registry.body.preconditions.account.state
+		expect(state[0]?.isSome.toBoolean()).toBe(true)
+		expect(state[0]?.value.equals(root).toBoolean()).toBe(true)
+		expect(state[1]?.isSome.toBoolean()).toBe(true)
+		expect(state[1]?.value.equals(Field(2)).toBoolean()).toBe(true)
+		expect(state[2]?.isSome.toBoolean()).toBe(true)
+		expect(state[2]?.value.equals(Field(1)).toBoolean()).toBe(true)
+	})
+
 	it("accepts the same owner body and debit-first calls under a new parent", () => {
 		const bridge = config()
 		const sender = key()
@@ -154,7 +185,13 @@ describe("FungibleToken owner graft", () => {
 		const templateVault = AccountUpdate.default(bridge.holderAccountL2, bridge.tokenIdL2)
 		templateVault.body.callDepth = 1
 		templateVault.balanceChange = Int64.from(10)
-		const template = [templateOwner, templateDebit, templateVault]
+		const templateRegistry = AccountUpdate.default(key())
+		templateRegistry.body.callDepth = 2
+		templateRegistry.body.preconditions.account.state[0] = {
+			isSome: Bool(true),
+			value: Field(1234)
+		}
+		const template = [templateOwner, templateDebit, templateVault, templateRegistry]
 
 		const inner = AccountUpdate.default(key())
 		const provedOwner = AccountUpdate.clone(templateOwner)
@@ -163,13 +200,16 @@ describe("FungibleToken owner graft", () => {
 		provedDebit.body.callDepth = 2
 		const provedVault = AccountUpdate.clone(templateVault)
 		provedVault.body.callDepth = 2
+		const provedRegistry = AccountUpdate.clone(templateRegistry)
+		provedRegistry.body.callDepth = 3
 
 		expect(() =>
 			assertMatchingFungibleTokenOwner(templateOwner, template, provedOwner, [
 				inner,
 				provedOwner,
 				provedDebit,
-				provedVault
+				provedVault,
+				provedRegistry
 			])
 		).not.toThrow()
 	})

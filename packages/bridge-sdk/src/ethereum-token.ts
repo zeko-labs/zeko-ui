@@ -8,7 +8,7 @@ import {
 	AccountUpdate,
 	AccountUpdateForest,
 	Bool,
-	type Field,
+	Field,
 	Int64,
 	Mina,
 	PublicKey,
@@ -27,7 +27,12 @@ import {
 	type RetryableTransactionOptions,
 	type SignTransaction
 } from "./transactions"
-import type { EthereumAssetLookup, EthereumAssetRecord, EthereumTokenBridgeConfig } from "./types"
+import type {
+	EthereumAssetLookup,
+	EthereumAssetMembership,
+	EthereumAssetRecord,
+	EthereumTokenBridgeConfig
+} from "./types"
 import { getVkHash, refreshCache } from "./utils"
 
 export { validateEthereumTokenBridgeConfig } from "./ethereum"
@@ -85,6 +90,68 @@ export const assertMatchingFungibleTokenOwner = (
 		!leftInput.calls.equals(rightInput.calls).toBoolean()
 	) {
 		throw new Error("ERC20 withdrawal token-owner proof template does not match Zeko witness")
+	}
+}
+
+export const buildEthereumTokenWithdrawalApproval = ({
+	config,
+	membership,
+	registryPublicKey,
+	sender,
+	amount
+}: {
+	config: EthereumTokenBridgeConfig
+	membership: Pick<EthereumAssetMembership, "root" | "count" | "schemaVersion">
+	registryPublicKey: PublicKey
+	sender: PublicKey
+	amount: UInt64
+}): {
+	debit: AccountUpdate
+	vault: AccountUpdate
+	registry: AccountUpdate
+	updates: AccountUpdate[]
+	forest: AccountUpdateForest
+} => {
+	const debit = AccountUpdate.default(sender, config.tokenIdL2)
+	debit.requireSignature()
+	debit.balanceChange = Int64.fromUnsigned(amount).neg()
+	debit.body.mayUseToken = {
+		parentsOwnToken: Bool(true),
+		inheritFromParent: Bool(false)
+	}
+
+	const vault = AccountUpdate.default(config.holderAccountL2, config.tokenIdL2)
+	vault.balance.addInPlace(amount)
+	vault.body.mayUseToken = {
+		parentsOwnToken: Bool(true),
+		inheritFromParent: Bool(false)
+	}
+	vault.body.authorizationKind = {
+		isSigned: Bool(false),
+		isProved: Bool(true),
+		verificationKeyHash: config.verificationKeyHash
+	}
+
+	const registry = AccountUpdate.default(registryPublicKey)
+	registry.body.callDepth = 1
+	for (const [index, value] of [
+		[0, membership.root],
+		[1, Field(membership.count)],
+		[2, Field(membership.schemaVersion)]
+	] as const) {
+		registry.body.preconditions.account.state[index] = {
+			isSome: Bool(true),
+			value
+		}
+	}
+
+	const updates = [debit, vault, registry]
+	return {
+		debit,
+		vault,
+		registry,
+		updates,
+		forest: AccountUpdateForest.fromFlatArray(updates)
 	}
 }
 
@@ -341,29 +408,22 @@ export async function submitEthereumTokenWithdrawal(
 	await compileEthereumTokenStandard(runtime)
 	await refreshEthereumTokenAccounts(config, feePayer, input.sender)
 
+	const assets = runtime.ethereumAssets
+	if (!assets) throw new Error("Universal Ethereum asset bridging is not configured")
 	const token = new FungibleToken(config.tokenOwnerL2)
 	let templateDebit: AccountUpdate | undefined
 	let templateVault: AccountUpdate | undefined
 	const template = await Mina.transaction(feePayerWithFee(feePayer, fee), async () => {
-		templateDebit = AccountUpdate.default(input.sender, config.tokenIdL2)
-		templateDebit.requireSignature()
-		templateDebit.balanceChange = Int64.fromUnsigned(input.amount).neg()
-		templateDebit.body.mayUseToken = {
-			parentsOwnToken: Bool(true),
-			inheritFromParent: Bool(false)
-		}
-		templateVault = AccountUpdate.default(config.holderAccountL2, config.tokenIdL2)
-		templateVault.balance.addInPlace(input.amount)
-		templateVault.body.mayUseToken = {
-			parentsOwnToken: Bool(true),
-			inheritFromParent: Bool(false)
-		}
-		templateVault.body.authorizationKind = {
-			isSigned: Bool(false),
-			isProved: Bool(true),
-			verificationKeyHash: config.verificationKeyHash
-		}
-		await token.approveBase(AccountUpdateForest.fromFlatArray([templateDebit, templateVault]))
+		const approval = buildEthereumTokenWithdrawalApproval({
+			config,
+			membership,
+			registryPublicKey: assets.registryPublicKey,
+			sender: input.sender,
+			amount: input.amount
+		})
+		templateDebit = approval.debit
+		templateVault = approval.vault
+		await token.approveBase(approval.forest)
 	})
 	if (!templateDebit || !templateVault) throw new Error("Failed to build ERC20 withdrawal template")
 	const templateOwner = template.transaction.accountUpdates.find(
