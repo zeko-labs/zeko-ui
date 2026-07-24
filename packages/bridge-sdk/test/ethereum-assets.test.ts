@@ -1,7 +1,8 @@
-import { Field, Poseidon, PrivateKey, type PublicKey, TokenId, UInt64 } from "o1js"
+import { Field, Poseidon, PrivateKey, PublicKey, TokenId, UInt64 } from "o1js"
 import { describe, expect, it } from "vitest"
 import {
 	type EthereumAssetRegistryApiRecord,
+	ethereumAssetBridgeCallData,
 	parseEthereumAssetRegistrySnapshot,
 	prepareEthereumAssetRegistrationFromRegistry
 } from "../src/ethereum-assets"
@@ -135,6 +136,28 @@ const fixture = () => {
 }
 
 describe("universal Ethereum asset memberships", () => {
+	it("matches the OCaml bridge call-data vector", () => {
+		const record: EthereumAssetRecord = {
+			schemaVersion: 1,
+			registryIndex: 0,
+			assetId: fieldHex((1n << 128n) + 2n),
+			ethereumTokenAddress: `0x${5000n.toString(16).padStart(40, "0")}`,
+			tokenOwnerL2: PublicKey.fromFields([Field(344213), Field(1)]),
+			tokenIdL2: Field(
+				"4577977917597607045863284126668314124667649089740894741873158063619412226600"
+			),
+			decimals: 6,
+			inventoryCap: UInt64.from(100_000_000),
+			mftStandardVkId: Field(777),
+			vaultPublicKey: PublicKey.fromFields([Field(11111), Field(0)]),
+			universalBridgeVkId: Field(778)
+		}
+
+		expect(fieldHex(ethereumAssetBridgeCallData(record, UInt64.from(2_000_000)).toBigInt())).toBe(
+			"0x19a86bb8c106848e3bab8dd79491cbc4589f28b33227007eb60409efa56e12d0"
+		)
+	})
+
 	it("authenticates two token records against one runtime and emits exact OCaml witness JSON", () => {
 		const { runtime, snapshot } = fixture()
 		const assets = parseEthereumAssetRegistrySnapshot(runtime, snapshot)

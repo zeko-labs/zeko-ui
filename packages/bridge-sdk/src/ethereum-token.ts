@@ -18,7 +18,11 @@ import {
 } from "o1js"
 import { fetchDepositFinalizationWitnesses } from "./deposits"
 import { normalizeEthereumAssetId, splitEthereumAssetId } from "./ethereum"
-import { fetchEthereumAsset, prepareEthereumAssetRegistration } from "./ethereum-assets"
+import {
+	ethereumAssetBridgeCallData,
+	fetchEthereumAsset,
+	prepareEthereumAssetRegistration
+} from "./ethereum-assets"
 import { setL2 } from "./network"
 import { pollProvedForest } from "./prover"
 import type { BridgeRuntime } from "./runtime"
@@ -101,7 +105,7 @@ export const buildEthereumTokenWithdrawalApproval = ({
 	amount
 }: {
 	config: EthereumTokenBridgeConfig
-	membership: Pick<EthereumAssetMembership, "root" | "count" | "schemaVersion">
+	membership: Pick<EthereumAssetMembership, "root" | "count" | "schemaVersion" | "record">
 	registryPublicKey: PublicKey
 	sender: PublicKey
 	amount: UInt64
@@ -131,6 +135,7 @@ export const buildEthereumTokenWithdrawalApproval = ({
 		isProved: Bool(true),
 		verificationKeyHash: config.verificationKeyHash
 	}
+	vault.body.callData = ethereumAssetBridgeCallData(membership.record, amount)
 
 	const registry = AccountUpdate.default(registryPublicKey)
 	registry.body.callDepth = 1

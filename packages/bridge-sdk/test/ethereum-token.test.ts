@@ -1,5 +1,6 @@
 import { AccountUpdate, Bool, Field, Int64, Mina, PrivateKey, TokenId, UInt64 } from "o1js"
 import { describe, expect, it } from "vitest"
+import { ethereumAssetBridgeCallData } from "../src/ethereum-assets"
 import {
 	assertMatchingFungibleTokenOwner,
 	buildEthereumTokenWithdrawalApproval,
@@ -149,16 +150,31 @@ describe("FungibleToken owner graft", () => {
 		const bridge = config()
 		const registryPublicKey = key()
 		const root = Field(1234)
+		const record = {
+			schemaVersion: 1,
+			registryIndex: 0,
+			assetId: bridge.assetId,
+			ethereumTokenAddress: bridge.ethereumTokenAddress,
+			tokenOwnerL2: bridge.tokenOwnerL2,
+			tokenIdL2: bridge.tokenIdL2,
+			decimals: 9,
+			inventoryCap: UInt64.from(1000),
+			mftStandardVkId: Field(77),
+			vaultPublicKey: bridge.holderAccountL2,
+			universalBridgeVkId: Field(78)
+		}
+		const amount = UInt64.from(10)
 		const { debit, vault, registry, updates } = buildEthereumTokenWithdrawalApproval({
 			config: bridge,
 			membership: {
 				root,
 				count: 2,
-				schemaVersion: 1
+				schemaVersion: 1,
+				record
 			},
 			registryPublicKey,
 			sender: key(),
-			amount: UInt64.from(10)
+			amount
 		})
 
 		expect(updates).toEqual([debit, vault, registry])
@@ -173,6 +189,9 @@ describe("FungibleToken owner graft", () => {
 		expect(state[1]?.value.equals(Field(2)).toBoolean()).toBe(true)
 		expect(state[2]?.isSome.toBoolean()).toBe(true)
 		expect(state[2]?.value.equals(Field(1)).toBoolean()).toBe(true)
+		expect(
+			vault.body.callData.equals(ethereumAssetBridgeCallData(record, amount)).toBoolean()
+		).toBe(true)
 	})
 
 	it("accepts the same owner body and debit-first calls under a new parent", () => {

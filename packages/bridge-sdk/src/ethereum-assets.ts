@@ -20,6 +20,7 @@ const PUBLIC_KEY_X_MASK = PUBLIC_KEY_SIGN_BIT - 1n
 const U64_MAX = (1n << 64n) - 1n
 const LEAF_PREFIX = "Ethereum asset registry leaf V1"
 const NODE_PREFIX = "Ethereum asset registry node V1"
+const BRIDGE_CALL_PREFIX = "Ethereum asset bridge call V1"
 
 export type EthereumAssetRegistryApiRecord = {
 	readonly schemaVersion: number
@@ -119,6 +120,9 @@ const recordFields = (record: EthereumAssetRecord): Field[] => {
 		record.universalBridgeVkId
 	]
 }
+
+export const ethereumAssetBridgeCallData = (record: EthereumAssetRecord, amount: UInt64): Field =>
+	Poseidon.hashWithPrefix(BRIDGE_CALL_PREFIX, [...recordFields(record), Field(amount.toBigInt())])
 
 const registryLeaf = (record: EthereumAssetRecord): Field =>
 	Poseidon.hashWithPrefix(LEAF_PREFIX, recordFields(record))
