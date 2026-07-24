@@ -470,4 +470,4 @@
 - T484 | done | prove-cross-repo-erc20-roundtrip | done/T484-prove-cross-repo-erc20-roundtrip.md
 - T485 | done | universal-erc20-registry-sdk | done/T485-universal-erc20-registry-sdk.md
 - T486 | done | index-universal-erc20-registry | done/T486-index-universal-erc20-registry.md
-- T487 | in-progress | two-token-universal-erc20-roundtrip | in-progress/T487-two-token-universal-erc20-roundtrip.md
+- T487 | done | two-token-universal-erc20-roundtrip | done/T487-two-token-universal-erc20-roundtrip.md
