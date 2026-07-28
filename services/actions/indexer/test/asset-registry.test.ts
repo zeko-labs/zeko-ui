@@ -13,11 +13,13 @@ const event = (
 		ownerX: bigint
 		ownerIsOdd: bigint
 		tokenId: bigint
+		finalityStatus: "pending" | "canonical"
 	}> = {}
 ): RegistryArchiveEvent => ({
 	blockHeight: 100 + index,
 	timestamp: new Date(1_700_000_000_000 + index),
 	txnHash: `tx-${index}`,
+	finalityStatus: overrides.finalityStatus ?? "canonical",
 	fields: [
 		"1",
 		index.toString(),
@@ -44,6 +46,11 @@ describe("universal Ethereum asset registry indexing", () => {
 		expect(snapshot.depth).toBe(8)
 		expect(snapshot.count).toBe(2)
 		expect(snapshot.records.map((entry) => entry.record.registryIndex)).toEqual([0, 1])
+		expect(snapshot.finalityStatus).toBe("canonical")
+		expect(snapshot.records.map((entry) => entry.record.finalityStatus)).toEqual([
+			"canonical",
+			"canonical"
+		])
 		expect(verifyRegistryMembership(snapshot, snapshot.records[0])).toBe(true)
 		expect(verifyRegistryMembership(snapshot, snapshot.records[1])).toBe(true)
 
@@ -53,6 +60,25 @@ describe("universal Ethereum asset registry indexing", () => {
 		expect(
 			findRegistryAsset(snapshot, { ethereumTokenAddress: second.ethereumTokenAddress }).record
 		).toEqual(second)
+	})
+
+	it("preserves a pending append and normalizes lookup addresses locally", () => {
+		const snapshot = buildRegistrySnapshot([
+			event(0),
+			event(1, { token: 0xabcdefn, finalityStatus: "pending" })
+		])
+		const second = snapshot.records[1].record
+		const uppercase =
+			`0x${second.ethereumTokenAddress.slice(2).toUpperCase()}` as typeof second.ethereumTokenAddress
+
+		expect(snapshot.finalityStatus).toBe("pending")
+		expect(second.finalityStatus).toBe("pending")
+		expect(findRegistryAsset(snapshot, { ethereumTokenAddress: uppercase }).record).toEqual(second)
+		expect(() =>
+			findRegistryAsset(snapshot, {
+				ethereumTokenAddress: "0x1234" as typeof second.ethereumTokenAddress
+			})
+		).toThrow(/20-byte/i)
 	})
 
 	it("preserves an old record while refreshing its path after append", () => {

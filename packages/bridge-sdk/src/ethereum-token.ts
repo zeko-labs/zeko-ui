@@ -16,7 +16,7 @@ import {
 	type Transaction,
 	type UInt64
 } from "o1js"
-import { fetchDepositFinalizationWitnesses } from "./deposits"
+import { fetchDepositFinalizationWitnesses, fetchDepositsWithStates } from "./deposits"
 import {
 	normalizeEthereumAssetId,
 	splitEthereumAssetId,
@@ -37,11 +37,13 @@ import {
 	type SignTransaction
 } from "./transactions"
 import type {
+	DepositStateSnapshot,
 	EthereumAssetLookup,
 	EthereumAssetMembership,
 	EthereumAssetRecord,
 	EthereumAssetsConfig,
-	EthereumTokenBridgeConfig
+	EthereumTokenBridgeConfig,
+	EthereumTokenDepositSelection
 } from "./types"
 import { getVkHash, refreshCache } from "./utils"
 
@@ -105,6 +107,38 @@ export async function resolveEthereumTokenAsset(
 		throw new Error("Universal Ethereum asset bridging requires an explicit asset selector")
 	}
 	throw new Error("Ethereum ERC20 bridging is not configured")
+}
+
+export async function resolveEthereumTokenDepositAsset(
+	runtime: BridgeRuntime,
+	selection?: EthereumTokenDepositSelection | EthereumAssetLookup
+): Promise<ResolvedEthereumTokenAsset> {
+	if (!selection) {
+		return { encodingVersion: 1, config: requireEthereumTokenBridgeConfig(runtime) }
+	}
+	if (!("encodingVersion" in selection)) {
+		if (runtime.ethereumToken && runtime.ethereumAssets) {
+			throw new Error("Dual-runtime ERC20 deposits require immutable action encoding metadata")
+		}
+		return resolveEthereumTokenAsset(runtime, selection)
+	}
+	if (selection.encodingVersion === 1) {
+		const config = requireEthereumTokenBridgeConfig(runtime)
+		if (!matchesLegacyLookup(config, selection.asset)) {
+			throw new Error("Requested Ethereum asset does not match the legacy runtime configuration")
+		}
+		return { encodingVersion: 1, config }
+	}
+	if (!runtime.ethereumAssets) {
+		throw new Error("Universal Ethereum asset bridging is not configured")
+	}
+	const { config, membership } = await fetchEthereumAsset(runtime, selection.asset)
+	return {
+		encodingVersion: 2,
+		config,
+		membership,
+		assets: runtime.ethereumAssets
+	}
 }
 
 export const compileEthereumTokenStandard = async (runtime: BridgeRuntime): Promise<void> => {
@@ -419,9 +453,9 @@ const matchesResolvedDeposit = (
 export async function canFinalizeEthereumTokenDeposit(
 	runtime: BridgeRuntime,
 	recipient: PublicKey,
-	asset?: EthereumAssetLookup
+	asset?: EthereumTokenDepositSelection | EthereumAssetLookup
 ): Promise<{ available: boolean; reason: string | null; index?: number }> {
-	const resolved = await resolveEthereumTokenAsset(runtime, asset)
+	const resolved = await resolveEthereumTokenDepositAsset(runtime, asset)
 	const { config } = resolved
 	const result = await fetchDepositFinalizationWitnesses(
 		runtime,
@@ -440,11 +474,11 @@ export async function finalizeEthereumTokenDeposit(
 	runtime: BridgeRuntime,
 	feePayer: Mina.FeePayerSpec,
 	recipient: PublicKey,
-	asset: EthereumAssetLookup | undefined,
+	asset: EthereumTokenDepositSelection | EthereumAssetLookup | undefined,
 	signTxn: SignTransaction,
 	options?: number | RetryableTransactionOptions
 ): Promise<string> {
-	const resolved = await resolveEthereumTokenAsset(runtime, asset)
+	const resolved = await resolveEthereumTokenDepositAsset(runtime, asset)
 	const { config } = resolved
 	const { attempts, fee } = normalizeRetryableTransactionOptions(options)
 	const [assetIdHigh, assetIdLow] = splitEthereumAssetId(config.assetId)
@@ -467,9 +501,7 @@ export async function finalizeEthereumTokenDeposit(
 
 	const { data, error } = await runtime.l2Client().mutation(finalizeEthereumTokenDepositMutation, {
 		input: {
-			...(resolved.encodingVersion === 2
-				? { asset: resolved.membership.witnessJson }
-				: {}),
+			...(resolved.encodingVersion === 2 ? { asset: resolved.membership.witnessJson } : {}),
 			ase: witness.ase,
 			prevNextDeposit: witness.prevNextDeposit,
 			prevNonce: helperAccount?.nonce ?? "0",
@@ -528,6 +560,19 @@ export async function finalizeEthereumTokenDeposit(
 	}
 }
 
+export async function fetchEthereumTokenDepositsWithStates(
+	runtime: BridgeRuntime,
+	recipient: PublicKey,
+	selection: EthereumTokenDepositSelection
+): Promise<DepositStateSnapshot> {
+	const resolved = await resolveEthereumTokenDepositAsset(runtime, selection)
+	const helperTokenId = TokenId.derive(resolved.config.holderAccountL2, resolved.config.tokenIdL2)
+	return fetchDepositsWithStates(runtime, recipient, {
+		helperTokenId,
+		acceptDeposit: (deposit) => matchesResolvedDeposit(deposit, resolved)
+	})
+}
+
 export async function submitEthereumTokenWithdrawal(
 	runtime: BridgeRuntime,
 	feePayer: Mina.FeePayerSpec,
@@ -583,9 +628,7 @@ export async function submitEthereumTokenWithdrawal(
 			isProved: Bool(true),
 			verificationKeyHash: config.verificationKeyHash
 		}
-		await token.approveBase(
-			AccountUpdateForest.fromFlatArray([templateDebit, templateVault])
-		)
+		await token.approveBase(AccountUpdateForest.fromFlatArray([templateDebit, templateVault]))
 	})
 	if (!templateDebit || !templateVault) throw new Error("Failed to build ERC20 withdrawal template")
 	const templateOwner = template.transaction.accountUpdates.find(
@@ -601,9 +644,7 @@ export async function submitEthereumTokenWithdrawal(
 		.l2Client()
 		.mutation(proveEthereumTokenWithdrawalRequestMutation, {
 			input: {
-				...(resolved.encodingVersion === 2
-					? { asset: resolved.membership.witnessJson }
-					: {}),
+				...(resolved.encodingVersion === 2 ? { asset: resolved.membership.witnessJson } : {}),
 				withdrawalParams: {
 					...(resolved.encodingVersion === 2
 						? {

@@ -14,13 +14,14 @@ interface IndexerConfig {
 interface IndexerState {
 	isRunning: boolean
 	lastRunTimestamp: number | null
-	lastFetchedBlock: { outer: number | null; inner: number | null }
+	lastFetchedBlock: { outer: number | null; inner: number | null; registry: number | null }
 	config: IndexerConfig
 	consecutiveErrors: number
 }
 
 interface HandlerResult {
 	lastFetchedBlock: number | null
+	registryLastFetchedBlock?: number | null
 }
 
 interface IndexingLoopDependencies {
@@ -41,7 +42,11 @@ const waitForDelay = async (seconds: number, signal: AbortSignal): Promise<void>
 }
 
 const disabledHandler = async (): Promise<HandlerResult> => ({ lastFetchedBlock: null })
-const disabledRebuild = async () => ({ data: [], lastFetchedBlock: null })
+const disabledRebuild = async () => ({
+	data: [],
+	lastFetchedBlock: null,
+	registryLastFetchedBlock: null
+})
 
 const l2Handler = async (db: PostgresJsDatabase): Promise<HandlerResult> => {
 	const [inner, registry] = await Promise.all([
@@ -49,7 +54,8 @@ const l2Handler = async (db: PostgresJsDatabase): Promise<HandlerResult> => {
 		env.INDEX_REGISTRY ? registryHandler(db) : disabledHandler()
 	])
 	return {
-		lastFetchedBlock: Math.max(inner.lastFetchedBlock ?? 0, registry.lastFetchedBlock ?? 0) || null
+		lastFetchedBlock: inner.lastFetchedBlock,
+		registryLastFetchedBlock: registry.lastFetchedBlock
 	}
 }
 
@@ -60,7 +66,8 @@ const l2Rebuild = async (db: PostgresJsDatabase) => {
 	])
 	return {
 		data: inner.data,
-		lastFetchedBlock: Math.max(inner.lastFetchedBlock ?? 0, registry.lastFetchedBlock ?? 0) || null
+		lastFetchedBlock: inner.lastFetchedBlock,
+		registryLastFetchedBlock: registry.lastFetchedBlock
 	}
 }
 
@@ -88,13 +95,15 @@ export async function runIndexingLoop(
 		if (innerResult.status === "fulfilled") {
 			state.lastFetchedBlock.inner =
 				innerResult.value.lastFetchedBlock ?? state.lastFetchedBlock.inner
+			state.lastFetchedBlock.registry =
+				innerResult.value.registryLastFetchedBlock ?? state.lastFetchedBlock.registry
 		}
 
 		if (hasSuccess) {
 			state.lastRunTimestamp = now()
 			state.consecutiveErrors = 0
 			logger.info(
-				`runIndexingLoop: finished run (outer=${state.lastFetchedBlock.outer ?? 0}, inner=${state.lastFetchedBlock.inner ?? 0})`
+				`runIndexingLoop: finished run (outer=${state.lastFetchedBlock.outer ?? 0}, inner=${state.lastFetchedBlock.inner ?? 0}, registry=${state.lastFetchedBlock.registry ?? 0})`
 			)
 		}
 
@@ -154,7 +163,7 @@ export class Indexer {
 		this.#state = {
 			isRunning: false,
 			lastRunTimestamp: null,
-			lastFetchedBlock: { outer: null, inner: null },
+			lastFetchedBlock: { outer: null, inner: null, registry: null },
 			consecutiveErrors: 0,
 			config: { intervalSeconds: 15 }
 		}
@@ -292,7 +301,8 @@ export class Indexer {
 
 			this.#state.lastFetchedBlock = {
 				outer: outerResult.lastFetchedBlock ?? null,
-				inner: innerResult.lastFetchedBlock ?? null
+				inner: innerResult.lastFetchedBlock ?? null,
+				registry: innerResult.registryLastFetchedBlock ?? null
 			}
 
 			if (wasRunning) {
@@ -336,7 +346,7 @@ export class Indexer {
 			})
 
 			this.#state.lastRunTimestamp = null
-			this.#state.lastFetchedBlock = { outer: null, inner: null }
+			this.#state.lastFetchedBlock = { outer: null, inner: null, registry: null }
 			this.#state.consecutiveErrors = 0
 
 			const startResult = this.#start(previousConfig)

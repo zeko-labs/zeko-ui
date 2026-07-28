@@ -105,12 +105,17 @@ export const ethereumAssetRegistryCheckpoints = pgTable(
 		blockHeight: integer("block_height").notNull(),
 		timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
 		txnHash: text("txn_hash").notNull(),
+		finalityStatus: text("finality_status").default("canonical").notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 	},
 	(table) => [
 		check(
 			"ethereum_asset_registry_checkpoint_shape",
 			sql`${table.count} > 0 AND ${table.count} <= 256 AND ${table.schemaVersion} = 1 AND ${table.depth} = 8`
+		),
+		check(
+			"ethereum_asset_registry_checkpoint_finality",
+			sql`${table.finalityStatus} IN ('pending', 'canonical')`
 		)
 	]
 )
@@ -135,12 +140,17 @@ export const ethereumAssetRecords = pgTable(
 		blockHeight: integer("block_height").notNull(),
 		timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
 		txnHash: text("txn_hash").notNull(),
+		finalityStatus: text("finality_status").default("canonical").notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 	},
 	(table) => [
 		check(
 			"ethereum_asset_record_shape",
 			sql`${table.registryIndex} >= 0 AND ${table.registryIndex} < 256 AND ${table.schemaVersion} = 1 AND ${table.decimals} >= 0 AND ${table.decimals} <= 9 AND ${table.inventoryCap} > 0`
+		),
+		check(
+			"ethereum_asset_record_finality",
+			sql`${table.finalityStatus} IN ('pending', 'canonical')`
 		)
 	]
 )

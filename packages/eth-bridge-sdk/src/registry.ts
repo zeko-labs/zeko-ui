@@ -59,6 +59,11 @@ export type EthereumAssetRegistryConfig = {
 	readonly universalBridgeVkId: Hex
 }
 
+export type EthereumAssetRegistryAnchor = EthereumAssetRegistryConfig & {
+	readonly root: Hex
+	readonly count: number
+}
+
 export type EthereumAssetMembership = EthereumAssetRegistryEntry & {
 	root: Hex
 	count: number
@@ -120,11 +125,22 @@ const normalizeRecord = (record: EthereumAssetRecord): EthereumAssetRecord => {
 	return normalized
 }
 
-const recordKey = (record: EthereumAssetRecord): string =>
-	JSON.stringify({
-		...record,
-		inventoryCap: record.inventoryCap.toString()
-	})
+const recordKey = (record: EthereumAssetRecord): string => {
+	const normalized = normalizeRecord(record)
+	return JSON.stringify([
+		normalized.schemaVersion,
+		normalized.registryIndex,
+		normalized.assetId,
+		normalized.ethereumTokenAddress,
+		normalized.tokenOwnerL2,
+		normalized.tokenIdL2,
+		normalized.decimals,
+		normalized.inventoryCap.toString(),
+		normalized.mftStandardVkId,
+		normalized.vaultPublicKey,
+		normalized.universalBridgeVkId
+	])
+}
 
 const samePath = (left: readonly Hex[], right: readonly Hex[]): boolean =>
 	left.length === right.length && left.every((value, index) => value === right[index])
@@ -228,6 +244,7 @@ export class EthereumAssetRegistry {
 	readonly #byIndex = new Map<number, EthereumAssetRegistryEntry>()
 	readonly #byToken = new Map<Address, EthereumAssetRegistryEntry>()
 	readonly #config: EthereumAssetRegistryConfig
+	readonly #hasSharedConfig: boolean
 	readonly #snapshot: EthereumAssetRegistrySnapshot
 
 	public constructor(input: EthereumAssetRegistrySnapshot, config?: EthereumAssetRegistryConfig) {
@@ -277,6 +294,7 @@ export class EthereumAssetRegistry {
 			}
 		}
 		const first = entries[0]?.record
+		this.#hasSharedConfig = config !== undefined || first !== undefined
 		this.#config = {
 			schemaVersion,
 			depth,
@@ -395,8 +413,35 @@ export class EthereumAssetRegistry {
 		return expected
 	}
 
-	public refresh(next: EthereumAssetRegistrySnapshot): EthereumAssetRegistry {
-		const refreshed = new EthereumAssetRegistry(next, this.#config)
+	public refresh(
+		next: EthereumAssetRegistrySnapshot,
+		authenticatedRuntime: EthereumAssetRegistryAnchor
+	): EthereumAssetRegistry {
+		const config = {
+			schemaVersion: authenticatedRuntime.schemaVersion,
+			depth: authenticatedRuntime.depth,
+			mftStandardVkId: word(authenticatedRuntime.mftStandardVkId, "MFT standard VK"),
+			vaultPublicKey: word(authenticatedRuntime.vaultPublicKey, "Shared vault public key"),
+			universalBridgeVkId: word(authenticatedRuntime.universalBridgeVkId, "Universal bridge VK")
+		}
+		if (
+			this.#hasSharedConfig &&
+			(config.schemaVersion !== this.#config.schemaVersion ||
+				config.depth !== this.#config.depth ||
+				config.mftStandardVkId !== this.#config.mftStandardVkId ||
+				config.vaultPublicKey !== this.#config.vaultPublicKey ||
+				config.universalBridgeVkId !== this.#config.universalBridgeVkId)
+		) {
+			throw new Error("Authenticated runtime changed an immutable registry identity")
+		}
+		const refreshed = new EthereumAssetRegistry(next, config)
+		if (
+			refreshed.root !== word(authenticatedRuntime.root, "Authenticated runtime root") ||
+			refreshed.count !== authenticatedRuntime.count ||
+			refreshed.schemaVersion !== authenticatedRuntime.schemaVersion
+		) {
+			throw new Error("Registry append does not match the authenticated runtime root/count/schema")
+		}
 		if (refreshed.count < this.count) {
 			throw new Error("Append-only Ethereum asset registry count cannot decrease")
 		}

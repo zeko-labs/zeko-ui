@@ -37,7 +37,8 @@ describe("Actions API - Ethereum asset registry", () => {
 				depth: 8,
 				blockHeight: 10,
 				timestamp: new Date("2026-07-24T00:00:00Z"),
-				txnHash: "tx-0"
+				txnHash: "tx-0",
+				finalityStatus: "canonical"
 			},
 			{
 				root: word(102),
@@ -46,7 +47,8 @@ describe("Actions API - Ethereum asset registry", () => {
 				depth: 8,
 				blockHeight: 11,
 				timestamp: new Date("2026-07-24T00:01:00Z"),
-				txnHash: "tx-1"
+				txnHash: "tx-1",
+				finalityStatus: "pending"
 			}
 		])
 		await db.insert(ethereumAssetRecords).values([
@@ -65,7 +67,8 @@ describe("Actions API - Ethereum asset registry", () => {
 				registeredRoot: word(101),
 				blockHeight: 10,
 				timestamp: new Date("2026-07-24T00:00:00Z"),
-				txnHash: "tx-0"
+				txnHash: "tx-0",
+				finalityStatus: "canonical"
 			},
 			{
 				registryIndex: 1,
@@ -82,7 +85,8 @@ describe("Actions API - Ethereum asset registry", () => {
 				registeredRoot: word(102),
 				blockHeight: 11,
 				timestamp: new Date("2026-07-24T00:01:00Z"),
-				txnHash: "tx-1"
+				txnHash: "tx-1",
+				finalityStatus: "pending"
 			}
 		])
 		await db.insert(ethereumAssetRegistryMemberships).values([
@@ -103,7 +107,12 @@ describe("Actions API - Ethereum asset registry", () => {
 		const snapshot = await queryEthereumAssetRegistry(testDb, {})
 		expect(snapshot?.root).toBe(word(102))
 		expect(snapshot?.count).toBe(2)
+		expect(snapshot?.finalityStatus).toBe("pending")
 		expect(snapshot?.records.map((entry) => entry.record.registryIndex)).toEqual([0, 1])
+		expect(snapshot?.records.map((entry) => entry.record.finalityStatus)).toEqual([
+			"canonical",
+			"pending"
+		])
 		expect(snapshot?.records[0].path).toEqual(path(2))
 	})
 

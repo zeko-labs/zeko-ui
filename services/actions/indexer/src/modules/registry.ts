@@ -27,13 +27,16 @@ export async function fetchRegistryEvents(): Promise<RegistryArchiveEvent[]> {
 		if (result.error) throw result.error
 		for (const block of filterArchiveActionsToRange(result.data?.events ?? [], from, to)) {
 			if (!block?.blockInfo) continue
+			const finalityStatus = block.blockInfo.chainStatus
+			if (finalityStatus !== "canonical" && finalityStatus !== "pending") continue
 			for (const item of block.eventData ?? []) {
 				if (!item?.transactionInfo) continue
 				events.push({
 					fields: (item.data ?? []).filter((value): value is string => value !== null),
 					blockHeight: Number(block.blockInfo.height ?? 0),
 					timestamp: new Date(Number(block.blockInfo.timestamp ?? 0)),
-					txnHash: item.transactionInfo.hash
+					txnHash: item.transactionInfo.hash,
+					finalityStatus
 				})
 			}
 		}
@@ -62,7 +65,8 @@ export async function replaceRegistryFromEvents(
 				depth: snapshot.depth,
 				blockHeight: events[index].blockHeight,
 				timestamp: events[index].timestamp,
-				txnHash: events[index].txnHash
+				txnHash: events[index].txnHash,
+				finalityStatus: snapshots[index].finalityStatus
 			}))
 		})
 		await batchInsert({

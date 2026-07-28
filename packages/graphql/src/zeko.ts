@@ -22,6 +22,13 @@ export const fetchConfigQuery = graphql(`
         holderAccountL2
         verificationKeyHash
       }
+    }
+  }
+`)
+
+export const fetchEthereumAssetsConfigQuery = graphql(`
+  query FetchEthereumAssetsConfig {
+    circuitsConfig {
       ethereumAssets {
         registryPublicKey
         registrationAuthority

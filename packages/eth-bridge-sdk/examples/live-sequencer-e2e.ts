@@ -7,6 +7,7 @@ import {
 	type EthereumAssetRecord,
 	EthereumBridgeClient,
 	ethereumAssetRecordBatchMembership,
+	ethereumTokenDepositSelection,
 	packZekoAddress
 } from "../dist/index.js"
 
@@ -241,14 +242,31 @@ for (const asset of assets) {
 await writeFile(harness.registrationCompletionMarker, "registered\n")
 await waitForFile(harness.operationsReadyMarker)
 
+const indexedTokenDeposits = bridgeAsset === "erc20" ? await client.listDeposits({ recipient }) : []
+const tokenDepositByRegistryIndex = new Map(
+	assets.map((asset) => {
+		const deposit = [...indexedTokenDeposits]
+			.reverse()
+			.find(
+				(candidate) =>
+					candidate.assetId !== null &&
+					getAddress(candidate.token) === getAddress(asset.ethereumTokenAddress)
+			)
+		if (!deposit) {
+			throw new Error(`No indexed deposit found for registry asset ${asset.registryIndex}`)
+		}
+		ethereumTokenDepositSelection(deposit)
+		return [asset.registryIndex, deposit] as const
+	})
+)
+
 const preparations = await Promise.all(
 	assets.length > 0
 		? assets.map((asset) =>
 				retry(`deposit preparation ${asset.registryIndex}`, async () => {
-					const preparation = await client.prepareTokenDepositFinalization(
-						recipient,
-						asset.ethereumTokenAddress
-					)
+					const deposit = tokenDepositByRegistryIndex.get(asset.registryIndex)
+					if (!deposit) throw new Error(`Missing deposit for registry asset ${asset.registryIndex}`)
+					const preparation = await client.prepareTokenDepositFinalization(recipient, deposit)
 					if (!preparation.available) {
 						throw new Error(preparation.reason ?? "Deposit finalization is not available")
 					}
@@ -297,6 +315,9 @@ if (bridgeAsset === "erc20") {
 
 	for (const asset of assets) {
 		const index = asset.registryIndex
+		const indexedDeposit = tokenDepositByRegistryIndex.get(index)
+		if (!indexedDeposit) throw new Error(`Missing deposit for registry asset ${index}`)
+		const { encodingVersion } = ethereumTokenDepositSelection(indexedDeposit)
 		const { config } = await client.getZekoAsset(asset.ethereumTokenAddress)
 		const tokenOwnerKey = PrivateKey.fromBase58(required(`ERC20_TOKEN_${index}_OWNER_PRIVATE_KEY`))
 		const adminContractKey = PrivateKey.fromBase58(
@@ -355,6 +376,7 @@ if (bridgeAsset === "erc20") {
 				feePayer: { sender: recipient, fee: 100_000_000 },
 				recipient,
 				token: asset.ethereumTokenAddress,
+				encodingVersion,
 				signTransaction
 			})
 		)

@@ -33,6 +33,7 @@ type EthereumAssetRecord {
   blockHeight: Int
   decimals: Int
   ethereumTokenAddress: String
+  finalityStatus: String
   inventoryCap: String
   mftStandardVkId: String
   registryIndex: Int
@@ -56,6 +57,7 @@ type EthereumAssetRegistrySnapshot {
   blockHeight: Int
   count: Int
   depth: Int
+  finalityStatus: String
   records: [EthereumAssetEntry!]
   root: String
   schemaVersion: Int
@@ -119,9 +121,7 @@ input OuterWitnessesFromAuxesInput {
 
 type Query {
   commitAsePastSlot(slot: Int!): CommitAsePastSlotResult
-  ethereumAssetRegistry(
-    input: EthereumAssetRegistryInput
-  ): EthereumAssetRegistrySnapshot
+  ethereumAssetRegistry(input: EthereumAssetRegistryInput): EthereumAssetRegistrySnapshot
   innerActions(input: InnerActionsInput!): [InnerAction!]
   innerWitnessesFromAuxes(input: InnerWitnessesFromAuxesInput!): [InnerAction!]
   outerActions(input: OuterActionsInput!): [OuterActionUnion!]

@@ -49,7 +49,7 @@ describe("Actions Indexer basic tests", () => {
 			autostart: false,
 			loopDeps: {
 				outer: async () => ({ lastFetchedBlock: 1 }),
-				inner: async () => ({ lastFetchedBlock: 2 }),
+				inner: async () => ({ lastFetchedBlock: 2, registryLastFetchedBlock: 3 }),
 				wait: async () => {}
 			}
 		})
@@ -66,7 +66,7 @@ describe("Actions Indexer basic tests", () => {
 		const state = {
 			isRunning: true,
 			lastRunTimestamp: null,
-			lastFetchedBlock: { outer: 4, inner: 9 },
+			lastFetchedBlock: { outer: 4, inner: 9, registry: 12 },
 			consecutiveErrors: 2,
 			config: { intervalSeconds: 3 }
 		}
@@ -85,14 +85,16 @@ describe("Actions Indexer basic tests", () => {
 
 		expect(outer).toHaveBeenCalledOnce()
 		expect(inner).toHaveBeenCalledOnce()
-		expect(state.lastFetchedBlock).toEqual({ outer: 11, inner: 9 })
+		expect(state.lastFetchedBlock).toEqual({ outer: 11, inner: 9, registry: 12 })
 		expect(state.lastRunTimestamp).toBe(123456)
 		expect(state.consecutiveErrors).toBe(0)
 		expect(waitCalls).toEqual([3])
 		expect(logger.warn).toHaveBeenCalledWith(
 			"[runIndexingLoop] inner iteration failed: inner failed"
 		)
-		expect(logger.info).toHaveBeenCalledWith("runIndexingLoop: finished run (outer=11, inner=9)")
+		expect(logger.info).toHaveBeenCalledWith(
+			"runIndexingLoop: finished run (outer=11, inner=9, registry=12)"
+		)
 	})
 
 	it("keeps successful inner progress when outer fails with missing parents", async () => {
@@ -100,7 +102,7 @@ describe("Actions Indexer basic tests", () => {
 		const state = {
 			isRunning: true,
 			lastRunTimestamp: null,
-			lastFetchedBlock: { outer: 6, inner: 2 },
+			lastFetchedBlock: { outer: 6, inner: 2, registry: 8 },
 			consecutiveErrors: 1,
 			config: { intervalSeconds: 5 }
 		}
@@ -108,7 +110,7 @@ describe("Actions Indexer basic tests", () => {
 			missingParents: ["a", "b", "c"]
 		})
 		const outer = vi.fn().mockRejectedValue(outerError)
-		const inner = vi.fn().mockResolvedValue({ lastFetchedBlock: 14 })
+		const inner = vi.fn().mockResolvedValue({ lastFetchedBlock: 14, registryLastFetchedBlock: 21 })
 
 		await runIndexingLoop(db, state, new AbortController().signal, {
 			outer,
@@ -120,7 +122,7 @@ describe("Actions Indexer basic tests", () => {
 			}
 		})
 
-		expect(state.lastFetchedBlock).toEqual({ outer: 6, inner: 14 })
+		expect(state.lastFetchedBlock).toEqual({ outer: 6, inner: 14, registry: 21 })
 		expect(state.lastRunTimestamp).toBe(654321)
 		expect(state.consecutiveErrors).toBe(0)
 		expect(waitCalls).toEqual([5])
@@ -136,7 +138,7 @@ describe("Actions Indexer basic tests", () => {
 		const state = {
 			isRunning: true,
 			lastRunTimestamp: null,
-			lastFetchedBlock: { outer: 1, inner: 2 },
+			lastFetchedBlock: { outer: 1, inner: 2, registry: 3 },
 			consecutiveErrors: 0,
 			config: { intervalSeconds: 4 }
 		}
@@ -153,7 +155,7 @@ describe("Actions Indexer basic tests", () => {
 			}
 		})
 
-		expect(state.lastFetchedBlock).toEqual({ outer: 1, inner: 2 })
+		expect(state.lastFetchedBlock).toEqual({ outer: 1, inner: 2, registry: 3 })
 		expect(state.lastRunTimestamp).toBeNull()
 		expect(state.consecutiveErrors).toBe(1)
 		expect(waitCalls).toEqual([5])

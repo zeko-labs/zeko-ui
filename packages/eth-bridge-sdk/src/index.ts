@@ -5,6 +5,8 @@ export {
 	type EthereumAssetStatus,
 	EthereumBridgeClient,
 	type EthereumBridgeClientConfig,
+	ethereumAssetRegistryRuntimeAnchor,
+	ethereumTokenDepositSelection,
 	type NativeDepositResult,
 	type TokenDepositResult
 } from "./client"
@@ -30,6 +32,7 @@ export {
 	type EthereumAssetRecord,
 	type EthereumAssetRecordBatchMembership,
 	EthereumAssetRegistry,
+	type EthereumAssetRegistryAnchor,
 	type EthereumAssetRegistryConfig,
 	type EthereumAssetRegistryEntry,
 	type EthereumAssetRegistrySnapshot,

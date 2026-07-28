@@ -16,6 +16,7 @@ import { ethereumZekoBridgeAbi } from "../src/abi"
 import {
 	buildEthereumBridgeDeposit,
 	EthereumBridgeClient,
+	ethereumTokenDepositSelection,
 	mergeDepositActivity
 } from "../src/client"
 import { ethereumAddressToZekoPublicKey, packZekoAddress } from "../src/codecs"
@@ -128,6 +129,17 @@ describe("deposit activity", () => {
 })
 
 describe("versioned gateway deposits", () => {
+	it("requires the indexed encoding version when selecting a token deposit", () => {
+		const token = "0x00000000000000000000000000000000000000a1"
+		expect(ethereumTokenDepositSelection({ token, encodingVersion: 1 })).toMatchObject({
+			encodingVersion: 1,
+			asset: { ethereumTokenAddress: getAddress(token) }
+		})
+		expect(() => ethereumTokenDepositSelection({ token, encodingVersion: null })).toThrow(
+			/encoding version/i
+		)
+	})
+
 	it("keeps a registered historical V1 deposit on the asset-only encoding", async () => {
 		const deposit = {
 			...gatewayDeposit(4),

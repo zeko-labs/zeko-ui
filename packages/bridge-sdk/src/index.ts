@@ -9,9 +9,14 @@ import {
 	finalizeDeposit,
 	submitDeposit
 } from "./deposits"
-import { fetchEthereumAsset, fetchEthereumAssetRegistry } from "./ethereum-assets"
+import {
+	type AuthenticatedEthereumAsset,
+	fetchEthereumAsset,
+	fetchEthereumAssetRegistry
+} from "./ethereum-assets"
 import {
 	canFinalizeEthereumTokenDeposit,
+	fetchEthereumTokenDepositsWithStates,
 	finalizeEthereumTokenDeposit,
 	registerEthereumAsset,
 	submitEthereumTokenWithdrawal
@@ -26,12 +31,12 @@ import type {
 	Action,
 	Config,
 	Deposit,
-	DepositWithState,
+	DepositStateSnapshot,
 	EthereumAssetLookup,
-	EthereumAssetMembership,
 	EthereumAssetRecord,
 	EthereumAssetsConfig,
 	EthereumTokenBridgeConfig,
+	EthereumTokenDepositSelection,
 	SubmitWithdrawalParams,
 	Withdrawal,
 	WithdrawalFinalizationResult,
@@ -166,15 +171,11 @@ export class Bridge {
 		return this.runtime.ethereumAssets
 	}
 
-	public fetchEthereumAsset(
-		lookup: EthereumAssetLookup
-	): Promise<{ membership: EthereumAssetMembership; config: EthereumTokenBridgeConfig }> {
+	public fetchEthereumAsset(lookup: EthereumAssetLookup): Promise<AuthenticatedEthereumAsset> {
 		return fetchEthereumAsset(this.runtime, lookup)
 	}
 
-	public fetchEthereumAssetRegistry(): Promise<
-		Array<{ membership: EthereumAssetMembership; config: EthereumTokenBridgeConfig }>
-	> {
+	public fetchEthereumAssetRegistry(): Promise<AuthenticatedEthereumAsset[]> {
 		return fetchEthereumAssetRegistry(this.runtime)
 	}
 
@@ -257,14 +258,14 @@ export class Bridge {
 	public finalizeEthereumTokenDeposit(
 		feePayer: Mina.FeePayerSpec,
 		recipient: PublicKey,
-		asset: EthereumAssetLookup,
+		asset: EthereumTokenDepositSelection | EthereumAssetLookup,
 		signTxn: SignTransaction,
 		options?: number | RetryableTransactionOptions
 	): Promise<string>
 	public finalizeEthereumTokenDeposit(
 		feePayer: Mina.FeePayerSpec,
 		recipient: PublicKey,
-		assetOrSignTxn: EthereumAssetLookup | SignTransaction,
+		assetOrSignTxn: EthereumTokenDepositSelection | EthereumAssetLookup | SignTransaction,
 		signTxnOrOptions?: SignTransaction | number | RetryableTransactionOptions,
 		options?: number | RetryableTransactionOptions
 	): Promise<string> {
@@ -290,7 +291,7 @@ export class Bridge {
 
 	public canFinalizeEthereumTokenDeposit(
 		recipient: PublicKey,
-		asset?: EthereumAssetLookup
+		asset?: EthereumTokenDepositSelection | EthereumAssetLookup
 	): Promise<{ available: boolean; reason: string | null; index?: number }> {
 		return canFinalizeEthereumTokenDeposit(this.runtime, recipient, asset)
 	}
@@ -349,15 +350,18 @@ export class Bridge {
 		return canFinalizeWithdrawal(this.runtime, pk)
 	}
 
-	public fetchDepositsWithStates(pk: PublicKey): Promise<{
-		deposits: DepositWithState[]
-		syncedIndex: number
-		acceptedIndex: number
-		confirmedIndex: number
-		finalisedIndex: number
-		cancelledIndex: number
-	}> {
-		return fetchDepositsWithStates(this.runtime, pk)
+	public fetchDepositsWithStates(
+		pk: PublicKey,
+		acceptDeposit?: (deposit: Deposit) => boolean
+	): Promise<DepositStateSnapshot> {
+		return fetchDepositsWithStates(this.runtime, pk, { acceptDeposit })
+	}
+
+	public fetchEthereumTokenDepositsWithStates(
+		pk: PublicKey,
+		selection: EthereumTokenDepositSelection
+	): Promise<DepositStateSnapshot> {
+		return fetchEthereumTokenDepositsWithStates(this.runtime, pk, selection)
 	}
 
 	public fetchWithdrawalsWithStates(pk: PublicKey): Promise<{

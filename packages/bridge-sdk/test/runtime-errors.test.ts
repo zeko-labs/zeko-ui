@@ -77,6 +77,12 @@ const mockSuccessfulRuntimeQueries = (
 		switch (operationName(query)) {
 			case "FetchConfig":
 				return { data: { circuitsConfig } }
+			case "FetchEthereumAssetsConfig":
+				return {
+					data: {
+						circuitsConfig: { ethereumAssets: circuitsConfig.ethereumAssets }
+					}
+				}
 			case "SequencerPK":
 				return { data: { sequencerPk: PrivateKey.random().toPublicKey().toBase58() } }
 			case "GenesisConstants":
@@ -164,6 +170,15 @@ describe("Bridge runtime errors", () => {
 			switch (operationName(query)) {
 				case "FetchConfig":
 					return { data: { circuitsConfig } }
+				case "FetchEthereumAssetsConfig":
+					return {
+						error: {
+							message: 'Cannot query field "ethereumAssets" on type "CircuitsConfig"',
+							graphQLErrors: [
+								new Error('Cannot query field "ethereumAssets" on type "CircuitsConfig"')
+							]
+						}
+					}
 				case "SequencerPK":
 					return { data: { sequencerPk: PrivateKey.random().toPublicKey().toBase58() } }
 				case "GenesisConstants":
@@ -181,5 +196,32 @@ describe("Bridge runtime errors", () => {
 			ethereumTokenAddress: legacy.ethereumTokenAddress
 		})
 		expect(runtime.ethereumToken?.tokenOwnerL2.equals(tokenOwnerL2).toBoolean()).toBe(true)
+	})
+
+	it("does not hide extension transport failures behind the legacy fallback", async () => {
+		const circuitsConfig = runtimeConfig(Field(1234).toString())
+		mocks.queryByUrl.mockImplementation(async (_url: string, query: unknown) => {
+			switch (operationName(query)) {
+				case "FetchConfig":
+					return { data: { circuitsConfig } }
+				case "FetchEthereumAssetsConfig":
+					return {
+						error: {
+							message: "extension transport failed",
+							networkError: new Error("connection reset")
+						}
+					}
+				case "SequencerPK":
+					return { data: { sequencerPk: PrivateKey.random().toPublicKey().toBase58() } }
+				case "GenesisConstants":
+					return { data: { genesisConstants: { accountCreationFee: "1000000000" } } }
+				default:
+					throw new Error("Unexpected runtime query")
+			}
+		})
+
+		await expect(createBridgeRuntime(config)).rejects.toThrow(
+			"GraphQL query FetchEthereumAssetsConfig failed"
+		)
 	})
 })

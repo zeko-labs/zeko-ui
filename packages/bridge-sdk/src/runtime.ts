@@ -1,5 +1,6 @@
 import {
 	fetchConfigQuery,
+	fetchEthereumAssetsConfigQuery,
 	genesisConstantsQueryL1,
 	genesisConstantsQueryL2,
 	sequencerPkQuery
@@ -62,6 +63,18 @@ const assertQuerySucceeded = ({
 
 	throw new Error(
 		`GraphQL query ${queryName} failed at ${endpoint}: ${formatQueryError(result.error)}`
+	)
+}
+
+const isUnsupportedEthereumAssetsQuery = (error: RuntimeQueryError | undefined): boolean => {
+	if (!error || error.networkError) return false
+	const messages = [error.message, ...(error.graphQLErrors?.map(formatUnknownError) ?? [])].filter(
+		(message): message is string => message !== undefined
+	)
+	return messages.some(
+		(message) =>
+			message.includes("ethereumAssets") &&
+			(message.includes("Cannot query field") || message.includes("Unknown field"))
 	)
 }
 
@@ -141,19 +154,32 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 	const l2Client = createGraphqlClient(config.zekoUrl, "l2")
 	const l2ArchiveClient = createGraphqlClient(config.zekoArchiveUrl, "l2-archive")
 
-	const [fetchConfigResult, genesisConstantL2Result, genesisConstantL1Result, sequencerPkResult] =
-		await Promise.all([
-			l2Client().query(fetchConfigQuery, {}),
-			l2Client().query(genesisConstantsQueryL2, {}),
-			l1Client().query(genesisConstantsQueryL1, {}),
-			l2Client().query(sequencerPkQuery, {})
-		])
+	const [
+		fetchConfigResult,
+		fetchEthereumAssetsConfigResult,
+		genesisConstantL2Result,
+		genesisConstantL1Result,
+		sequencerPkResult
+	] = await Promise.all([
+		l2Client().query(fetchConfigQuery, {}),
+		l2Client().query(fetchEthereumAssetsConfigQuery, {}),
+		l2Client().query(genesisConstantsQueryL2, {}),
+		l1Client().query(genesisConstantsQueryL1, {}),
+		l2Client().query(sequencerPkQuery, {})
+	])
 
 	assertQuerySucceeded({
 		endpoint: config.zekoUrl,
 		queryName: "FetchConfig",
 		result: fetchConfigResult
 	})
+	if (!isUnsupportedEthereumAssetsQuery(fetchEthereumAssetsConfigResult.error)) {
+		assertQuerySucceeded({
+			endpoint: config.zekoUrl,
+			queryName: "FetchEthereumAssetsConfig",
+			result: fetchEthereumAssetsConfigResult
+		})
+	}
 	assertQuerySucceeded({
 		endpoint: config.zekoUrl,
 		queryName: "GenesisConstants",
@@ -221,17 +247,17 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 			})
 		: null
 	const ethereumAssets = (() => {
-		const assets = circuitsConfig.ethereumAssets
+		const assets = fetchEthereumAssetsConfigResult.data?.circuitsConfig?.ethereumAssets
 		if (!assets) return null
 		const registryRoot = requireQueryValue({
 			endpoint: config.zekoUrl,
-			queryName: "FetchConfig",
+			queryName: "FetchEthereumAssetsConfig",
 			field: "circuitsConfig.ethereumAssets.registryRoot",
 			value: assets.registryRoot
 		})
 		const registryCount = requireQueryValue({
 			endpoint: config.zekoUrl,
-			queryName: "FetchConfig",
+			queryName: "FetchEthereumAssetsConfig",
 			field: "circuitsConfig.ethereumAssets.registryCount",
 			value: assets.registryCount
 		})

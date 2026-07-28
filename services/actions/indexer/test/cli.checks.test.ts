@@ -19,7 +19,8 @@ const healthPayload = {
 	indexer: {
 		lastFetchedBlock: {
 			outer: 100,
-			inner: 200
+			inner: 200,
+			registry: 250
 		}
 	}
 }

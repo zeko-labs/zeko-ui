@@ -8,7 +8,10 @@ import {
 	verifyEthereumAssetRegistryMembership
 } from "@zeko-labs/bridge-sdk"
 import { Field } from "o1js"
-import { type Address, getAddress, type Hex } from "viem"
+
+type Hex = `0x${string}`
+type Address = `0x${string}`
+export type RegistryFinalityStatus = "pending" | "canonical"
 
 const U32_MAX = (1n << 32n) - 1n
 const U64_MAX = (1n << 64n) - 1n
@@ -21,6 +24,7 @@ export type RegistryArchiveEvent = {
 	blockHeight: number
 	timestamp: Date
 	txnHash: string
+	finalityStatus: RegistryFinalityStatus
 }
 
 export type IndexedEthereumAssetRecord = {
@@ -38,6 +42,7 @@ export type IndexedEthereumAssetRecord = {
 	blockHeight: number
 	timestamp: Date
 	txnHash: string
+	finalityStatus: RegistryFinalityStatus
 }
 
 export type IndexedEthereumAssetEntry = {
@@ -50,6 +55,7 @@ export type IndexedEthereumAssetRegistrySnapshot = {
 	depth: number
 	root: Hex
 	count: number
+	finalityStatus: RegistryFinalityStatus
 	records: IndexedEthereumAssetEntry[]
 }
 
@@ -76,6 +82,13 @@ const parseBoolean = (value: string, label: string): boolean => {
 
 const toHex = (value: bigint, bytes = 32): Hex =>
 	`0x${value.toString(16).padStart(bytes * 2, "0")}` as Hex
+
+const normalizeEthereumAddress = (value: string): Address => {
+	if (!/^0x[0-9a-fA-F]{40}$/.test(value)) {
+		throw new Error("Ethereum token address must be a 20-byte hex value")
+	}
+	return value.toLowerCase() as Address
+}
 
 const fieldHex = (value: Field): Hex => ethereumAssetRegistryFieldHex(value) as Hex
 
@@ -147,7 +160,7 @@ const parseEvent = (
 		schemaVersion,
 		registryIndex,
 		assetId: toHex(assetId),
-		ethereumTokenAddress: getAddress(toHex(tokenValue, 20)),
+		ethereumTokenAddress: normalizeEthereumAddress(toHex(tokenValue, 20)),
 		tokenOwnerL2: packedOwner,
 		tokenIdL2: toHex(tokenIdValue),
 		decimals: Number(decimalsValue),
@@ -157,7 +170,8 @@ const parseEvent = (
 		universalBridgeVkId: toHex(bridgeVkValue),
 		blockHeight: event.blockHeight,
 		timestamp: event.timestamp,
-		txnHash: event.txnHash
+		txnHash: event.txnHash,
+		finalityStatus: event.finalityStatus
 	}
 }
 
@@ -194,6 +208,7 @@ export const buildRegistrySnapshot = (
 		depth: ETHEREUM_ASSET_REGISTRY_DEPTH,
 		root: fieldHex(tree.root),
 		count: records.length,
+		finalityStatus: events.at(-1)?.finalityStatus ?? "canonical",
 		records: records.map((record) => ({
 			record,
 			path: tree.path(record.registryIndex).map(fieldHex)
@@ -236,7 +251,8 @@ export const findRegistryAsset = (
 						({ record }) => record.assetId.toLowerCase() === lookup.assetId.toLowerCase()
 					)
 				: snapshot.records.find(
-						({ record }) => record.ethereumTokenAddress === getAddress(lookup.ethereumTokenAddress)
+						({ record }) =>
+							record.ethereumTokenAddress === normalizeEthereumAddress(lookup.ethereumTokenAddress)
 					)
 	if (!entry) throw new Error("Unknown Ethereum asset registry record")
 	return entry

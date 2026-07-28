@@ -23,6 +23,7 @@ import {
 	countMissingEthereumTokenAccounts,
 	graftEthereumTokenDepositHelperSignature,
 	parseProvedAccountUpdates,
+	resolveEthereumTokenDepositAsset,
 	resolveEthereumTokenAsset,
 	validateAndGraftEthereumAssetRegistrationAuthority,
 	validateEthereumTokenBridgeConfig,
@@ -86,6 +87,26 @@ describe("Ethereum token bridge configuration", () => {
 		)
 
 		expect(resolved).toMatchObject({ encodingVersion: 1, config: legacy })
+	})
+
+	it("routes dual-runtime deposits only from immutable action encoding metadata", async () => {
+		const legacy = config()
+		const runtime = {
+			ethereumAssets: {},
+			ethereumToken: legacy
+		} as never
+
+		await expect(
+			resolveEthereumTokenDepositAsset(runtime, {
+				encodingVersion: 1,
+				asset: { ethereumTokenAddress: legacy.ethereumTokenAddress }
+			})
+		).resolves.toMatchObject({ encodingVersion: 1, config: legacy })
+		await expect(
+			resolveEthereumTokenDepositAsset(runtime, {
+				ethereumTokenAddress: legacy.ethereumTokenAddress
+			})
+		).rejects.toThrow(/encoding metadata/i)
 	})
 })
 

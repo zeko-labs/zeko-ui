@@ -65,7 +65,8 @@ const record = (
 			inventoryCap: "1000000",
 			mftStandardVkId: fieldHex(mftStandardVkId.toBigInt()),
 			vaultPublicKey: packedKey(vaultPublicKey),
-			universalBridgeVkId: fieldHex(universalBridgeVkId.toBigInt())
+			universalBridgeVkId: fieldHex(universalBridgeVkId.toBigInt()),
+			finalityStatus: index === 0 ? "canonical" : "pending"
 		},
 		fields: [
 			Field(1),
@@ -138,6 +139,7 @@ const fixture = () => {
 			depth: 8,
 			root: fieldHex(levels.at(-1)?.[0].toBigInt() ?? 0n),
 			count: 2,
+			finalityStatus: "pending" as const,
 			records: records.map(({ api }) => ({ record: api, path: path(api.registryIndex) }))
 		}
 	}
@@ -197,6 +199,9 @@ describe("universal Ethereum asset memberships", () => {
 		const assets = parseEthereumAssetRegistrySnapshot(runtime, snapshot)
 
 		expect(assets).toHaveLength(2)
+		expect(assets[0]?.checkpointFinality).toBe("pending")
+		expect(assets[0]?.registrationFinality).toBe("canonical")
+		expect(assets[1]?.registrationFinality).toBe("pending")
 		expect(assets[0]?.config.verificationKeyHash.equals(Field(9003)).toBoolean()).toBe(true)
 		expect(assets[1]?.config.verificationKeyHash.equals(Field(9003)).toBoolean()).toBe(true)
 		expect(assets[0]?.config.tokenOwnerL2.equals(assets[1].config.tokenOwnerL2).toBoolean()).toBe(

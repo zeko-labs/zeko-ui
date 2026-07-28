@@ -162,11 +162,67 @@ describe("universal Ethereum asset registry", () => {
 		const registry = new EthereumAssetRegistry(snapshot([first]))
 		const oldPath = registry.byIndex(0).path
 		const appended = snapshot([first, record(1, "02")])
-		const refreshed = registry.refresh(appended)
+		const refreshed = registry.refresh(appended, {
+			schemaVersion: 1,
+			depth: 8,
+			root: appended.root,
+			count: appended.count,
+			mftStandardVkId: first.mftStandardVkId,
+			vaultPublicKey: first.vaultPublicKey,
+			universalBridgeVkId: first.universalBridgeVkId
+		})
 
 		expect(refreshed.root).toBe(appended.root)
 		expect(refreshed.byIndex(0).record).toEqual(first)
 		expect(refreshed.byIndex(0).path).not.toEqual(oldPath)
+		expect(() =>
+			registry.refresh(appended, {
+				schemaVersion: 1,
+				depth: 8,
+				root: word(999n),
+				count: appended.count,
+				mftStandardVkId: first.mftStandardVkId,
+				vaultPublicKey: first.vaultPublicKey,
+				universalBridgeVkId: first.universalBridgeVkId
+			})
+		).toThrow(/authenticated runtime root/i)
+	})
+
+	it("lets an authenticated first append establish empty shared identities", () => {
+		const empty = new EthereumAssetRegistry(snapshot([]))
+		const first = record(0, "01")
+		const appended = snapshot([first])
+		const refreshed = empty.refresh(appended, {
+			schemaVersion: 1,
+			depth: 8,
+			root: appended.root,
+			count: 1,
+			mftStandardVkId: first.mftStandardVkId,
+			vaultPublicKey: first.vaultPublicKey,
+			universalBridgeVkId: first.universalBridgeVkId
+		})
+
+		expect(refreshed.byIndex(0).record).toEqual(first)
+	})
+
+	it("compares records independently of object property insertion order", () => {
+		const first = record(0, "01")
+		const registry = new EthereumAssetRegistry(snapshot([first]))
+		const reordered: EthereumAssetRecord = {
+			inventoryCap: first.inventoryCap,
+			universalBridgeVkId: first.universalBridgeVkId,
+			vaultPublicKey: first.vaultPublicKey,
+			mftStandardVkId: first.mftStandardVkId,
+			decimals: first.decimals,
+			tokenIdL2: first.tokenIdL2,
+			tokenOwnerL2: first.tokenOwnerL2,
+			ethereumTokenAddress: first.ethereumTokenAddress,
+			assetId: first.assetId,
+			registryIndex: first.registryIndex,
+			schemaVersion: first.schemaVersion
+		}
+
+		expect(registry.membership(reordered).record).toEqual(first)
 	})
 
 	it("rejects a wrong Poseidon root, path, or record while accepting odd compressed keys", () => {

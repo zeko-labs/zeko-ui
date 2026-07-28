@@ -29,6 +29,8 @@ const PUBLIC_KEY_X_MASK = PUBLIC_KEY_SIGN_BIT - 1n
 const U64_MAX = (1n << 64n) - 1n
 const BRIDGE_CALL_PREFIX = "Ethereum asset bridge call V1"
 
+export type EthereumAssetFinalityStatus = "pending" | "canonical"
+
 export type EthereumAssetRegistryApiRecord = {
 	readonly schemaVersion: number
 	readonly registryIndex: number
@@ -41,7 +43,10 @@ export type EthereumAssetRegistryApiRecord = {
 	readonly mftStandardVkId: string
 	readonly vaultPublicKey: string
 	readonly universalBridgeVkId: string
+	readonly finalityStatus: EthereumAssetFinalityStatus
 }
+
+type EthereumAssetRegistryApiRecordData = Omit<EthereumAssetRegistryApiRecord, "finalityStatus">
 
 export type EthereumAssetRegistryApiEntry = {
 	readonly path: readonly string[]
@@ -53,12 +58,27 @@ export type EthereumAssetRegistryApiSnapshot = {
 	readonly depth: number
 	readonly root: string
 	readonly count: number
+	readonly finalityStatus: EthereumAssetFinalityStatus
 	readonly records: readonly EthereumAssetRegistryApiEntry[]
+}
+
+export type AuthenticatedEthereumAsset = {
+	readonly membership: EthereumAssetMembership
+	readonly config: EthereumTokenBridgeConfig
+	readonly checkpointFinality: EthereumAssetFinalityStatus
+	readonly registrationFinality: EthereumAssetFinalityStatus
 }
 
 const requireInteger = (value: number, label: string, maximum: number): number => {
 	if (!Number.isSafeInteger(value) || value < 0 || value > maximum) {
 		throw new Error(`${label} is outside its canonical range`)
+	}
+	return value
+}
+
+const requireFinalityStatus = (value: string, label: string): EthereumAssetFinalityStatus => {
+	if (value !== "pending" && value !== "canonical") {
+		throw new Error(`${label} is not pending or canonical`)
 	}
 	return value
 }
@@ -156,7 +176,7 @@ const membershipWitnessJson = (
 
 const parseRecord = (
 	runtime: Pick<BridgeRuntime, "ethereumAssets">,
-	input: EthereumAssetRegistryApiRecord
+	input: EthereumAssetRegistryApiRecordData
 ): { record: EthereumAssetRecord; config: EthereumTokenBridgeConfig } => {
 	const assets = runtime.ethereumAssets
 	if (!assets) throw new Error("Universal Ethereum asset bridging is not configured")
@@ -222,7 +242,7 @@ const parseRecord = (
 	}
 }
 
-const recordAsApi = (record: EthereumAssetRecord): EthereumAssetRegistryApiRecord => ({
+const recordAsApi = (record: EthereumAssetRecord): EthereumAssetRegistryApiRecordData => ({
 	schemaVersion: record.schemaVersion,
 	registryIndex: record.registryIndex,
 	assetId: record.assetId,
@@ -239,7 +259,7 @@ const recordAsApi = (record: EthereumAssetRecord): EthereumAssetRegistryApiRecor
 export const parseEthereumAssetRegistrySnapshot = (
 	runtime: Pick<BridgeRuntime, "ethereumAssets">,
 	snapshot: EthereumAssetRegistryApiSnapshot
-): Array<{ membership: EthereumAssetMembership; config: EthereumTokenBridgeConfig }> => {
+): AuthenticatedEthereumAsset[] => {
 	const schemaVersion = requireInteger(
 		snapshot.schemaVersion,
 		"Registry schema version",
@@ -253,6 +273,10 @@ export const parseEthereumAssetRegistrySnapshot = (
 		throw new Error("Ethereum asset registry root/count/schema is unsupported")
 	}
 	const root = parseEthereumAssetRegistryField(snapshot.root, "Ethereum asset registry root")
+	const checkpointFinality = requireFinalityStatus(
+		snapshot.finalityStatus,
+		"Registry checkpoint finality"
+	)
 	const assets = runtime.ethereumAssets
 	if (!assets) throw new Error("Universal Ethereum asset bridging is not configured")
 	if (
@@ -266,6 +290,10 @@ export const parseEthereumAssetRegistrySnapshot = (
 	}
 	return snapshot.records.map((entry) => {
 		const { record, config } = parseRecord(runtime, entry.record)
+		const registrationFinality = requireFinalityStatus(
+			entry.record.finalityStatus,
+			"Registry record finality"
+		)
 		if (record.registryIndex >= count) {
 			throw new Error("Ethereum asset registry record is outside the committed count")
 		}
@@ -277,6 +305,8 @@ export const parseEthereumAssetRegistrySnapshot = (
 		}
 		return {
 			config,
+			checkpointFinality,
+			registrationFinality,
 			membership: {
 				root,
 				count,
@@ -290,6 +320,7 @@ export const parseEthereumAssetRegistrySnapshot = (
 }
 
 const lookupVariables = (
+	root: string,
 	lookup?: EthereumAssetLookup
 ): {
 	root?: string
@@ -297,10 +328,12 @@ const lookupVariables = (
 	assetId?: string
 	ethereumTokenAddress?: string
 } => {
-	if (!lookup) return {}
-	if ("index" in lookup) return { index: lookup.index }
-	if ("assetId" in lookup) return { assetId: normalizeEthereumAssetId(lookup.assetId) }
-	return { ethereumTokenAddress: lookup.ethereumTokenAddress }
+	if (!lookup) return { root }
+	if ("index" in lookup) return { root, index: lookup.index }
+	if ("assetId" in lookup) {
+		return { root, assetId: normalizeEthereumAssetId(lookup.assetId) }
+	}
+	return { root, ethereumTokenAddress: lookup.ethereumTokenAddress }
 }
 
 const matchesLookup = (record: EthereumAssetRecord, lookup: EthereumAssetLookup): boolean => {
@@ -308,18 +341,18 @@ const matchesLookup = (record: EthereumAssetRecord, lookup: EthereumAssetLookup)
 	if ("assetId" in lookup) {
 		return record.assetId === normalizeEthereumAssetId(lookup.assetId)
 	}
-	return (
-		record.ethereumTokenAddress.toLowerCase() === lookup.ethereumTokenAddress.toLowerCase()
-	)
+	return record.ethereumTokenAddress.toLowerCase() === lookup.ethereumTokenAddress.toLowerCase()
 }
 
 export async function fetchEthereumAssetRegistry(
 	runtime: BridgeRuntime,
 	lookup?: EthereumAssetLookup
-): Promise<Array<{ membership: EthereumAssetMembership; config: EthereumTokenBridgeConfig }>> {
+): Promise<AuthenticatedEthereumAsset[]> {
+	const assets = runtime.ethereumAssets
+	if (!assets) throw new Error("Universal Ethereum asset bridging is not configured")
 	const result = await runtime
 		.actionsApiClient()
-		.query(fetchEthereumAssetRegistryQuery, lookupVariables(lookup))
+		.query(fetchEthereumAssetRegistryQuery, lookupVariables(fieldJson(assets.registryRoot), lookup))
 	if (result.error) {
 		throw new Error(`Failed to fetch the Ethereum asset registry: ${result.error.message}`)
 	}
@@ -344,7 +377,8 @@ export async function fetchEthereumAssetRegistry(
 			record.inventoryCap === null ||
 			record.mftStandardVkId === null ||
 			record.vaultPublicKey === null ||
-			record.universalBridgeVkId === null
+			record.universalBridgeVkId === null ||
+			record.finalityStatus === null
 		) {
 			throw new Error("The Ethereum asset registry API returned an incomplete record")
 		}
@@ -361,7 +395,8 @@ export async function fetchEthereumAssetRegistry(
 				inventoryCap: record.inventoryCap,
 				mftStandardVkId: record.mftStandardVkId,
 				vaultPublicKey: record.vaultPublicKey,
-				universalBridgeVkId: record.universalBridgeVkId
+				universalBridgeVkId: record.universalBridgeVkId,
+				finalityStatus: requireFinalityStatus(record.finalityStatus, "Registry record finality")
 			}
 		}
 	})
@@ -369,7 +404,8 @@ export async function fetchEthereumAssetRegistry(
 		snapshot.schemaVersion === null ||
 		snapshot.depth === null ||
 		snapshot.root === null ||
-		snapshot.count === null
+		snapshot.count === null ||
+		snapshot.finalityStatus === null
 	) {
 		throw new Error("The Ethereum asset registry API returned an incomplete checkpoint")
 	}
@@ -378,6 +414,7 @@ export async function fetchEthereumAssetRegistry(
 		depth: snapshot.depth,
 		root: snapshot.root,
 		count: snapshot.count,
+		finalityStatus: requireFinalityStatus(snapshot.finalityStatus, "Registry checkpoint finality"),
 		records
 	})
 	if (lookup && parsed.length !== 1) {
@@ -397,9 +434,7 @@ export async function fetchEthereumAssetRegistry(
 				indices.has(index)
 			)
 		if (!dense) {
-			throw new Error(
-				"The indexed Ethereum asset registry does not contain unique dense indices"
-			)
+			throw new Error("The indexed Ethereum asset registry does not contain unique dense indices")
 		}
 	}
 	return parsed
@@ -408,7 +443,7 @@ export async function fetchEthereumAssetRegistry(
 export async function fetchEthereumAsset(
 	runtime: BridgeRuntime,
 	lookup: EthereumAssetLookup
-): Promise<{ membership: EthereumAssetMembership; config: EthereumTokenBridgeConfig }> {
+): Promise<AuthenticatedEthereumAsset> {
 	const [asset] = await fetchEthereumAssetRegistry(runtime, lookup)
 	if (!asset) throw new Error("The requested Ethereum asset is not registered")
 	return asset

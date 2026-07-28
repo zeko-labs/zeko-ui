@@ -27,8 +27,7 @@
 		"p-limit": "catalog:",
 		"postgres": "catalog:",
 		"urql": "^4.2.2",
-		"valibot": "catalog:",
-		"viem": "^2.55.2"
+		"valibot": "catalog:"
 	},
 	"devDependencies": {
 		"@northflank/cli": "^0.10.16",

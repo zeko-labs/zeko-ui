@@ -24,7 +24,8 @@ const IndexerStatusSchema = v.object({
 	lastRunTimestamp: v.nullable(v.number()),
 	lastFetchedBlock: v.object({
 		outer: v.nullable(v.number()),
-		inner: v.nullable(v.number())
+		inner: v.nullable(v.number()),
+		registry: v.nullable(v.number())
 	}),
 	canonicalProgress: v.optional(
 		v.object({

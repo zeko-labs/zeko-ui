@@ -29,6 +29,7 @@ import {
 import type {
 	Account,
 	Deposit,
+	DepositStateSnapshot,
 	DepositWithState,
 	ExtractInput,
 	OuterAction,
@@ -927,21 +928,21 @@ export function buildDepositCancellationWitnessInput(
 
 export async function fetchDepositsWithStates(
 	runtime: BridgeRuntime,
-	pk: PublicKey
-): Promise<{
-	deposits: DepositWithState[]
-	syncedIndex: number
-	acceptedIndex: number
-	confirmedIndex: number
-	finalisedIndex: number
-	cancelledIndex: number
-}> {
-	const context = await fetchDepositStateContext(runtime, pk)
+	pk: PublicKey,
+	options: {
+		helperTokenId?: Field
+		acceptDeposit?: (deposit: Deposit) => boolean
+	} = {}
+): Promise<DepositStateSnapshot> {
+	const context = await fetchDepositStateContext(runtime, pk, options.helperTokenId)
+	const acceptDeposit = options.acceptDeposit ?? (() => true)
+	const witnesses = getSortedDepositWitnesses(context).filter((witness) => {
+		const depositParams = context.depositsByAux.get(witness.aux.toBigInt())
+		return depositParams !== undefined && acceptDeposit(depositParams.deposit)
+	})
 
 	return {
-		deposits: getSortedDepositWitnesses(context).map((witness) =>
-			buildDepositWithState(context, witness)
-		),
+		deposits: witnesses.map((witness) => buildDepositWithState(context, witness)),
 		syncedIndex: +safeDecrement(context.syncedOuterActionState.length).toString(),
 		acceptedIndex: context.lastCommit?.index ?? -1,
 		confirmedIndex:

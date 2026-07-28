@@ -103,6 +103,7 @@ export const fetchEthereumAssetRegistryQuery = graphql(`
       blockHeight
       timestamp
       txnHash
+      finalityStatus
       records {
         path
         record {
@@ -120,6 +121,7 @@ export const fetchEthereumAssetRegistryQuery = graphql(`
           blockHeight
           timestamp
           txnHash
+          finalityStatus
         }
       }
     }

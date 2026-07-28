@@ -32,7 +32,8 @@ const HealthResponseSchema = v.object({
 	indexer: v.object({
 		lastFetchedBlock: v.object({
 			outer: v.nullable(v.number()),
-			inner: v.nullable(v.number())
+			inner: v.nullable(v.number()),
+			registry: v.nullable(v.number())
 		}),
 		canonicalProgress: v.optional(
 			v.object({

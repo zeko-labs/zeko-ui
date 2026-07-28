@@ -90,6 +90,11 @@ export type EthereumAssetLookup =
 	| { assetId: string }
 	| { ethereumTokenAddress: string }
 
+export type EthereumTokenDepositSelection = {
+	readonly encodingVersion: 1 | 2
+	readonly asset: EthereumAssetLookup
+}
+
 export type Withdrawal = {
 	recipient: PublicKey
 	amount: UInt64
@@ -145,6 +150,15 @@ export type DepositWithState = Action &
 		cancellable: boolean
 		bridgeVersion: BridgeVersion
 	}
+
+export type DepositStateSnapshot = {
+	deposits: DepositWithState[]
+	syncedIndex: number
+	acceptedIndex: number
+	confirmedIndex: number
+	finalisedIndex: number
+	cancelledIndex: number
+}
 
 export const DepositStateProgress = {
 	SYNCED: 0,

@@ -29,6 +29,7 @@ type EthereumAssetRecord = {
 	blockHeight: number
 	timestamp: string
 	txnHash: string
+	finalityStatus: string
 }
 
 type EthereumAssetEntry = {
@@ -44,6 +45,7 @@ type EthereumAssetRegistrySnapshot = {
 	blockHeight: number
 	timestamp: string
 	txnHash: string
+	finalityStatus: string
 	records: EthereumAssetEntry[]
 }
 
@@ -97,6 +99,7 @@ export async function queryEthereumAssetRegistry(
 		blockHeight: checkpoint.blockHeight,
 		timestamp: checkpoint.timestamp.toISOString(),
 		txnHash: checkpoint.txnHash,
+		finalityStatus: checkpoint.finalityStatus,
 		records: rows.map(({ record, membership }) => ({
 			record: {
 				schemaVersion: record.schemaVersion,
@@ -112,7 +115,8 @@ export async function queryEthereumAssetRegistry(
 				universalBridgeVkId: record.universalBridgeVkId,
 				blockHeight: record.blockHeight,
 				timestamp: record.timestamp.toISOString(),
-				txnHash: record.txnHash
+				txnHash: record.txnHash,
+				finalityStatus: record.finalityStatus
 			},
 			path: membership.path
 		}))
@@ -136,7 +140,8 @@ const EthereumAssetRecordObject = builder
 			universalBridgeVkId: t.exposeString("universalBridgeVkId"),
 			blockHeight: t.exposeInt("blockHeight"),
 			timestamp: t.exposeString("timestamp"),
-			txnHash: t.exposeString("txnHash")
+			txnHash: t.exposeString("txnHash"),
+			finalityStatus: t.exposeString("finalityStatus")
 		})
 	})
 
@@ -160,6 +165,7 @@ const EthereumAssetRegistrySnapshotObject = builder
 			blockHeight: t.exposeInt("blockHeight"),
 			timestamp: t.exposeString("timestamp"),
 			txnHash: t.exposeString("txnHash"),
+			finalityStatus: t.exposeString("finalityStatus"),
 			records: t.field({ type: [EthereumAssetEntryObject], resolve: (value) => value.records })
 		})
 	})
