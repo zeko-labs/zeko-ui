@@ -299,6 +299,7 @@ describe("authenticated registry refresh", () => {
 			.mockResolvedValueOnce(runtimeWithRegistry(initial))
 			.mockResolvedValueOnce(runtimeWithRegistry(appended))
 			.mockResolvedValueOnce(runtimeWithRegistry(initial))
+			.mockResolvedValueOnce(runtimeWithRegistry(appended))
 		const { provider } = recordingProvider()
 		const client = await EthereumBridgeClient.init({
 			gatewayUrl: "https://gateway.test",
@@ -333,6 +334,54 @@ describe("authenticated registry refresh", () => {
 		expect(
 			(await client.getZekoAsset(second.ethereumTokenAddress)).membership.record.registryIndex
 		).toBe(1)
+		await expect(client.refreshAssetRegistry(appended)).resolves.toMatchObject({
+			root: appended.root,
+			count: 2
+		})
+	})
+
+	it("serializes overlapping refreshes before installing their checkpoints", async () => {
+		const first = registryRecord(0, 1)
+		const second = registryRecord(1, 2)
+		const third = registryRecord(2, 3)
+		const initial = registrySnapshot([first])
+		const intermediate = registrySnapshot([first, second])
+		const latest = registrySnapshot([first, second, third])
+		let resolveIntermediate!: (runtime: ReturnType<typeof runtimeWithRegistry>) => void
+		const pendingIntermediate = new Promise<ReturnType<typeof runtimeWithRegistry>>((resolve) => {
+			resolveIntermediate = resolve
+		})
+		createBridgeRuntimeMock
+			.mockResolvedValueOnce(runtimeWithRegistry(initial))
+			.mockReturnValueOnce(pendingIntermediate)
+			.mockResolvedValueOnce(runtimeWithRegistry(latest))
+		const { provider } = recordingProvider()
+		const client = await EthereumBridgeClient.init({
+			gatewayUrl: "https://gateway.test",
+			provider,
+			fetch: async () => Response.json(gatewayConfig),
+			zeko: {
+				zekoUrl: "https://zeko.test/graphql",
+				zekoArchiveUrl: "https://zeko-archive.test/graphql",
+				l1Network: "devnet",
+				l2Network: "devnet",
+				actionsApi: "https://actions.test/graphql"
+			},
+			assets: { snapshot: initial }
+		})
+
+		const intermediateRefresh = client.refreshAssetRegistry(intermediate)
+		const latestRefresh = client.refreshAssetRegistry(latest)
+		await Promise.resolve()
+		await Promise.resolve()
+		expect(createBridgeRuntimeMock).toHaveBeenCalledTimes(2)
+
+		resolveIntermediate(runtimeWithRegistry(intermediate))
+		await expect(Promise.all([intermediateRefresh, latestRefresh])).resolves.toHaveLength(2)
+		expect(client.assetRegistry).toMatchObject({ root: latest.root, count: 3 })
+		expect(
+			(await client.getZekoAsset(third.ethereumTokenAddress)).membership.record.registryIndex
+		).toBe(2)
 	})
 })
 

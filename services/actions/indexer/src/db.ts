@@ -303,11 +303,19 @@ export async function assertActionIndexIntegritySnapshot(db: PostgresJsDatabase)
 	assertActionIndexIntegrity(snapshot.inner)
 }
 
-export async function clearActionTables(tx: PostgresJsDatabase) {
+export async function clearOuterActionTables(tx: PostgresJsDatabase) {
 	await tx.delete(witnessActions)
 	await tx.delete(commitActions)
 	await tx.delete(outerActions)
+}
+
+export async function clearInnerActionTables(tx: PostgresJsDatabase) {
 	await tx.delete(innerActions)
+}
+
+export async function clearActionTables(tx: PostgresJsDatabase) {
+	await clearOuterActionTables(tx)
+	await clearInnerActionTables(tx)
 }
 
 export async function clearAllTables(tx: PostgresJsDatabase) {

@@ -287,6 +287,7 @@ export class EthereumBridgeClient {
 		snapshot: EthereumAssetRegistrySnapshot,
 		currentAssets?: EthereumAssetRegistry
 	) => Promise<Required<EthereumBridgeRuntimeState>>
+	#assetRefreshTail: Promise<void> = Promise.resolve()
 	#runtimeState: EthereumBridgeRuntimeState
 	readonly #walletClient: ReturnType<typeof createWalletClient>
 
@@ -411,12 +412,20 @@ export class EthereumBridgeClient {
 	public async refreshAssetRegistry(
 		snapshot: EthereumAssetRegistrySnapshot
 	): Promise<EthereumAssetRegistry> {
-		if (!this.#refreshRuntime) {
+		const refreshRuntime = this.#refreshRuntime
+		if (!refreshRuntime) {
 			throw new Error("Registry refresh requires an authenticated Zeko runtime")
 		}
-		const refreshed = await this.#refreshRuntime(snapshot, this.#runtimeState.assets)
-		this.#runtimeState = refreshed
-		return refreshed.assets
+		const refresh = this.#assetRefreshTail.then(async () => {
+			const refreshed = await refreshRuntime(snapshot, this.#runtimeState.assets)
+			this.#runtimeState = refreshed
+			return refreshed.assets
+		})
+		this.#assetRefreshTail = refresh.then(
+			() => undefined,
+			() => undefined
+		)
+		return refresh
 	}
 
 	public getAssetMembership(token: Address): EthereumAssetMembership {

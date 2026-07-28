@@ -475,3 +475,4 @@
 - T489 | done | fix-universal-registry-review-findings | done/T489-fix-universal-registry-review-findings.md
 - T490 | done | fix-universal-registry-compatibility-gaps | done/T490-fix-universal-registry-compatibility-gaps.md
 - T491 | done | fix-universal-registry-runtime-refresh | done/T491-fix-universal-registry-runtime-refresh.md
+- T492 | done | preserve-rebuild-and-refresh-ordering | done/T492-preserve-rebuild-and-refresh-ordering.md
