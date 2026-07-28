@@ -14,6 +14,14 @@ export const fetchConfigQuery = graphql(`
       bridgeFeeRecipientL1
       bridgeFeeRecipientL2
       bridgeProofFee
+      ethereumToken {
+        assetId
+        ethereumTokenAddress
+        tokenOwnerL2
+        tokenIdL2
+        holderAccountL2
+        verificationKeyHash
+      }
       ethereumAssets {
         registryPublicKey
         registrationAuthority

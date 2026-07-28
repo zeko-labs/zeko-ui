@@ -251,16 +251,46 @@ export class Bridge {
 	public finalizeEthereumTokenDeposit(
 		feePayer: Mina.FeePayerSpec,
 		recipient: PublicKey,
+		signTxn: SignTransaction,
+		options?: number | RetryableTransactionOptions
+	): Promise<string>
+	public finalizeEthereumTokenDeposit(
+		feePayer: Mina.FeePayerSpec,
+		recipient: PublicKey,
 		asset: EthereumAssetLookup,
 		signTxn: SignTransaction,
 		options?: number | RetryableTransactionOptions
+	): Promise<string>
+	public finalizeEthereumTokenDeposit(
+		feePayer: Mina.FeePayerSpec,
+		recipient: PublicKey,
+		assetOrSignTxn: EthereumAssetLookup | SignTransaction,
+		signTxnOrOptions?: SignTransaction | number | RetryableTransactionOptions,
+		options?: number | RetryableTransactionOptions
 	): Promise<string> {
-		return finalizeEthereumTokenDeposit(this.runtime, feePayer, recipient, asset, signTxn, options)
+		if (typeof assetOrSignTxn === "function") {
+			return finalizeEthereumTokenDeposit(
+				this.runtime,
+				feePayer,
+				recipient,
+				undefined,
+				assetOrSignTxn,
+				signTxnOrOptions as number | RetryableTransactionOptions | undefined
+			)
+		}
+		return finalizeEthereumTokenDeposit(
+			this.runtime,
+			feePayer,
+			recipient,
+			assetOrSignTxn,
+			signTxnOrOptions as SignTransaction,
+			options
+		)
 	}
 
 	public canFinalizeEthereumTokenDeposit(
 		recipient: PublicKey,
-		asset: EthereumAssetLookup
+		asset?: EthereumAssetLookup
 	): Promise<{ available: boolean; reason: string | null; index?: number }> {
 		return canFinalizeEthereumTokenDeposit(this.runtime, recipient, asset)
 	}
@@ -298,7 +328,7 @@ export class Bridge {
 			sender: PublicKey
 			recipient: PublicKey
 			amount: UInt64
-			asset: EthereumAssetLookup
+			asset?: EthereumAssetLookup
 		},
 		signTxn: SignTransaction,
 		options?: RetryableTransactionOptions

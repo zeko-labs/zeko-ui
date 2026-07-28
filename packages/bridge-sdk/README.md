@@ -105,12 +105,17 @@ Finalization time depends on the size of the witness data the bridge must prove.
 
 ### Canonical Ethereum ERC-20
 
-An Ethereum-enabled sequencer can expose one immutable ERC-20 asset configuration. The SDK's
-`finalizeEthereumTokenDeposit` and `submitEthereumTokenWithdrawal` methods request the
-asset-specific bridge proof, verify the returned forest, compose it with the unmodified
-`mina-fungible-token` owner's `approveBase` proof, and submit the complete L2 transaction.
-The withdrawal request binds the complete token-owner account-update body, so the sequencer proof
-cannot be reused under a different standard-token approval.
+An Ethereum-enabled sequencer can expose a shared immutable ERC-20 registry. The SDK authenticates
+the registry root and count from the runtime, verifies each selected record's depth-8 membership,
+and binds the record index and commitment into V2 deposit and withdrawal actions. Legacy runtimes
+remain available through `bridge.ethereumToken`; universal runtimes resolve assets with
+`bridge.fetchEthereumAsset`.
+
+The SDK's `finalizeEthereumTokenDeposit` and `submitEthereumTokenWithdrawal` methods request the
+asset proof, verify the returned forest, compose it with the unmodified `mina-fungible-token`
+owner's `approveBase` proof, and submit the complete L2 transaction. The withdrawal request binds
+the complete token-owner account-update body, so the sequencer proof cannot be reused under a
+different standard-token approval.
 
 Operators can deploy and provision the matching L2 mirror with `deployEthereumTokenMirror`:
 
@@ -118,18 +123,20 @@ Operators can deploy and provision the matching L2 mirror with `deployEthereumTo
 import { deployEthereumTokenMirror } from "@zeko-labs/bridge-sdk"
 
 bridge.setL2()
-const config = bridge.ethereumToken
-if (!config) throw new Error("The sequencer has no configured Ethereum token")
+const { config } = await bridge.fetchEthereumAsset({
+	ethereumTokenAddress
+})
 
 const manifest = await deployEthereumTokenMirror({
 	config,
 	registration, // Read with EthereumBridgeClient.getTokenRegistration(token).
-	bridgeVerificationKey, // The VK for this immutable asset-specific Zeko circuit.
+	bridgeVerificationKey, // The shared universal bridge VK.
 	decimals: registration.zekoDecimals,
 	inventory: registration.depositCap,
 	feePayer,
-	adminContractL2,
+	adminContractL2, // Bootstrap admin used only for the exact inventory mint.
 	adminAuthorityL2,
+	finalAdminContractL2, // Stock admin whose authority is PublicKey.empty().
 	symbol: "zERC",
 	sourceUri: "https://example.invalid/contracts/zerc20",
 	allowUpdates: false,
@@ -139,10 +146,12 @@ const manifest = await deployEthereumTokenMirror({
 ```
 
 The helper rejects registry, owner, derived token ID, asset ID, address, decimal, cap, inventory,
-or bridge-VK mismatches before submission. It deploys the stock `FungibleToken` and
-`FungibleTokenAdmin`, installs a separate proof-controlled vault, and mints exactly the registered
-Solidity deposit cap. The returned manifest contains public identifiers and transaction hashes
-only. Each additional ERC-20 needs a separately configured circuit and verification key.
+or bridge-VK mismatches before submission. It deploys the stock `FungibleToken` and bootstrap
+`FungibleTokenAdmin`, installs a separate proof-controlled vault, mints exactly the registered
+Solidity deposit cap, then rotates the token to a second stock admin controlled by
+`PublicKey.empty()`. The returned manifest includes both admin identities and the rotation
+transaction hash. Multiple registered ERC-20s share the universal bridge circuit and verification
+key while retaining separate token owners and immutable registry records.
 
 ## Development
 

@@ -6,7 +6,7 @@ import {
 	Field,
 	Mina,
 	Permissions,
-	type PublicKey,
+	PublicKey,
 	TokenId,
 	UInt8,
 	UInt64,
@@ -44,6 +44,8 @@ export type EthereumTokenDeploymentManifest = {
 	tokenIdL2: string
 	adminContractL2: string
 	adminAuthorityL2: string
+	finalAdminContractL2: string
+	finalAdminAuthorityL2: string
 	holderAccountL2: string
 	bridgeVerificationKeyHash: string
 	decimals: number
@@ -51,12 +53,14 @@ export type EthereumTokenDeploymentManifest = {
 	deploymentTransactionHash: string
 	vaultInstallationTransactionHash: string
 	inventoryMintTransactionHash: string
+	adminRotationTransactionHash: string
 }
 
 export type DeployEthereumTokenMirrorInput = EthereumTokenDeploymentPlan & {
 	feePayer: PublicKey
 	adminContractL2: PublicKey
 	adminAuthorityL2: PublicKey
+	finalAdminContractL2: PublicKey
 	symbol: string
 	sourceUri: string
 	allowUpdates?: boolean
@@ -199,14 +203,56 @@ const assertInstalledAccount = async (
 	}
 }
 
+const assertFrozenAdmin = async (
+	plan: EthereumTokenDeploymentPlan,
+	finalAdminContractL2: PublicKey,
+	standard: {
+		adminVerificationKey: VerificationKey
+	}
+): Promise<void> => {
+	await Promise.all([
+		refreshCache(plan.config.tokenOwnerL2),
+		refreshCache(finalAdminContractL2)
+	])
+	const finalAdmin = Mina.getAccount(finalAdminContractL2)
+	if (
+		!finalAdmin.zkapp?.verificationKey?.hash ||
+		!Field(finalAdmin.zkapp.verificationKey.hash)
+			.equals(standard.adminVerificationKey.hash)
+			.toBoolean()
+	) {
+		throw new Error("Frozen ERC20 admin is not the standard FungibleTokenAdmin contract")
+	}
+	const [authorityX, authorityOdd] = finalAdmin.zkapp.appState
+	if (!authorityX || !authorityOdd) {
+		throw new Error("Frozen ERC20 admin authority state is missing")
+	}
+	const authority = PublicKey.fromFields([Field(authorityX), Field(authorityOdd)])
+	if (!authority.equals(PublicKey.empty()).toBoolean()) {
+		throw new Error("Frozen ERC20 admin authority is not PublicKey.empty")
+	}
+	const installedAdmin = await new FungibleToken(plan.config.tokenOwnerL2).admin.fetch()
+	if (!installedAdmin || !installedAdmin.equals(finalAdminContractL2).toBoolean()) {
+		throw new Error("ERC20 token owner did not rotate to the frozen final admin")
+	}
+}
+
 export const deployEthereumTokenMirror = async (
 	input: DeployEthereumTokenMirrorInput
 ): Promise<EthereumTokenDeploymentManifest> => {
 	const plan = validateEthereumTokenDeployment(input)
+	if (
+		input.finalAdminContractL2.equals(input.adminContractL2).toBoolean() ||
+		input.finalAdminContractL2.equals(plan.config.tokenOwnerL2).toBoolean() ||
+		input.finalAdminContractL2.equals(plan.config.holderAccountL2).toBoolean()
+	) {
+		throw new Error("Frozen ERC20 admin must use a distinct account")
+	}
 	const standard = await compileEthereumTokenDeployment()
 	const fee = UInt64.from(input.feeNanomina ?? 1_000_000_000)
 	const token = new FungibleToken(plan.config.tokenOwnerL2)
 	const admin = new FungibleTokenAdmin(input.adminContractL2)
+	const finalAdmin = new FungibleTokenAdmin(input.finalAdminContractL2)
 
 	const deployment = await Mina.transaction({ sender: input.feePayer, fee }, async () => {
 		AccountUpdate.fundNewAccount(input.feePayer, 3)
@@ -269,6 +315,18 @@ export const deployEthereumTokenMirror = async (
 	)
 	await assertInstalledAccount(plan, input.adminContractL2, plan.inventory, standard)
 
+	const adminRotation = await Mina.transaction({ sender: input.feePayer, fee }, async () => {
+		AccountUpdate.fundNewAccount(input.feePayer, 1)
+		await finalAdmin.deploy({ adminPublicKey: PublicKey.empty() })
+		await token.setAdmin(input.finalAdminContractL2)
+	})
+	const adminRotationTransactionHash = await proveSignAndSend(
+		adminRotation,
+		input.signProvisioning,
+		input.waitForInclusion
+	)
+	await assertFrozenAdmin(plan, input.finalAdminContractL2, standard)
+
 	return {
 		assetId: plan.config.assetId,
 		ethereumTokenAddress: plan.config.ethereumTokenAddress,
@@ -276,12 +334,15 @@ export const deployEthereumTokenMirror = async (
 		tokenIdL2: TokenId.toBase58(plan.config.tokenIdL2),
 		adminContractL2: input.adminContractL2.toBase58(),
 		adminAuthorityL2: input.adminAuthorityL2.toBase58(),
+		finalAdminContractL2: input.finalAdminContractL2.toBase58(),
+		finalAdminAuthorityL2: PublicKey.empty().toBase58(),
 		holderAccountL2: plan.config.holderAccountL2.toBase58(),
 		bridgeVerificationKeyHash: plan.config.verificationKeyHash.toString(),
 		decimals: plan.decimals,
 		inventory: plan.inventory.toString(),
 		deploymentTransactionHash,
 		vaultInstallationTransactionHash,
-		inventoryMintTransactionHash
+		inventoryMintTransactionHash,
+		adminRotationTransactionHash
 	}
 }

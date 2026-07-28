@@ -1,6 +1,8 @@
 import { Field, Poseidon } from "o1js"
 import type { Hex } from "viem"
 import { describe, expect, it } from "vitest"
+import { authenticateEthereumAssetRegistrySnapshot } from "../src/client"
+import { unpackZekoAddress } from "../src/codecs"
 import {
 	type EthereumAssetRecord,
 	EthereumAssetRegistry,
@@ -116,6 +118,43 @@ describe("universal Ethereum asset registry", () => {
 		expect(registry.byEthereumToken(second.ethereumTokenAddress).record).toEqual(second)
 		expect(registry.membership(first).path).toHaveLength(8)
 		expect(hashEthereumAssetRecord(first)).toMatch(/^0x[0-9a-f]{64}$/)
+	})
+
+	it("returns frozen copies without exposing authenticated internal entries", () => {
+		const first = record(0, "01")
+		const registry = new EthereumAssetRegistry(snapshot([first]))
+		const entry = registry.byIndex(0)
+
+		expect(Object.isFrozen(entry)).toBe(true)
+		expect(Object.isFrozen(entry.record)).toBe(true)
+		expect(Object.isFrozen(entry.path)).toBe(true)
+		expect(Reflect.set(entry.record, "inventoryCap", 2_000_000n)).toBe(false)
+		expect(Reflect.set(entry.path, "0", word(999n))).toBe(false)
+		expect(registry.membership(first).record).toEqual(first)
+	})
+
+	it("requires a caller snapshot to be anchored to all authenticated runtime identities", () => {
+		const first = record(0, "01")
+		const input = { snapshot: snapshot([first]) }
+		const runtimeAssets = {
+			registrySchemaVersion: 1,
+			registryRoot: Field(BigInt(input.snapshot.root)),
+			registryCount: 1,
+			approvedMftStandardVkId: Field(BigInt(first.mftStandardVkId)),
+			vaultPublicKey: unpackZekoAddress(first.vaultPublicKey),
+			universalBridgeVkId: Field(BigInt(first.universalBridgeVkId))
+		}
+
+		expect(() => authenticateEthereumAssetRegistrySnapshot(input, null)).toThrow(
+			"authenticated Zeko runtime"
+		)
+		expect(() => authenticateEthereumAssetRegistrySnapshot(input, runtimeAssets)).not.toThrow()
+		expect(() =>
+			authenticateEthereumAssetRegistrySnapshot(input, {
+				...runtimeAssets,
+				vaultPublicKey: unpackZekoAddress(packedKey(0x74n, false))
+			})
+		).toThrow(/vault|configuration/i)
 	})
 
 	it("refreshes paths after append without changing historical records", () => {

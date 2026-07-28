@@ -25,38 +25,38 @@ const RECORD_BATCH_LEAF_DOMAIN = keccak256(toBytes("ZEKO_ASSET_RECORD_BATCH_LEAF
 const RECORD_BATCH_NODE_DOMAIN = keccak256(toBytes("ZEKO_ASSET_RECORD_BATCH_NODE_V1"))
 
 export type EthereumAssetRecord = {
-	schemaVersion: number
-	registryIndex: number
-	assetId: Hex
-	ethereumTokenAddress: Address
-	tokenOwnerL2: Hex
-	tokenIdL2: Hex
-	decimals: number
-	inventoryCap: bigint
-	mftStandardVkId: Hex
-	vaultPublicKey: Hex
-	universalBridgeVkId: Hex
+	readonly schemaVersion: number
+	readonly registryIndex: number
+	readonly assetId: Hex
+	readonly ethereumTokenAddress: Address
+	readonly tokenOwnerL2: Hex
+	readonly tokenIdL2: Hex
+	readonly decimals: number
+	readonly inventoryCap: bigint
+	readonly mftStandardVkId: Hex
+	readonly vaultPublicKey: Hex
+	readonly universalBridgeVkId: Hex
 }
 
 export type EthereumAssetRegistryEntry = {
-	record: EthereumAssetRecord
-	path: readonly Hex[]
+	readonly record: EthereumAssetRecord
+	readonly path: readonly Hex[]
 }
 
 export type EthereumAssetRegistrySnapshot = {
-	schemaVersion: number
-	root: Hex
-	count: number
-	depth: number
-	records: readonly EthereumAssetRegistryEntry[]
+	readonly schemaVersion: number
+	readonly root: Hex
+	readonly count: number
+	readonly depth: number
+	readonly records: readonly EthereumAssetRegistryEntry[]
 }
 
 export type EthereumAssetRegistryConfig = {
-	schemaVersion: number
-	depth: number
-	mftStandardVkId: Hex
-	vaultPublicKey: Hex
-	universalBridgeVkId: Hex
+	readonly schemaVersion: number
+	readonly depth: number
+	readonly mftStandardVkId: Hex
+	readonly vaultPublicKey: Hex
+	readonly universalBridgeVkId: Hex
 }
 
 export type EthereumAssetMembership = EthereumAssetRegistryEntry & {
@@ -128,6 +128,18 @@ const recordKey = (record: EthereumAssetRecord): string =>
 
 const samePath = (left: readonly Hex[], right: readonly Hex[]): boolean =>
 	left.length === right.length && left.every((value, index) => value === right[index])
+
+const immutableRecord = (record: EthereumAssetRecord): EthereumAssetRecord =>
+	Object.freeze({ ...record })
+
+const immutableEntry = (
+	record: EthereumAssetRecord,
+	path: readonly Hex[]
+): EthereumAssetRegistryEntry =>
+	Object.freeze({
+		record: immutableRecord(record),
+		path: Object.freeze([...path])
+	})
 
 export const hashEthereumAssetRecord = (input: EthereumAssetRecord): Hex => {
 	const record = normalizeRecord(input)
@@ -238,10 +250,10 @@ export class EthereumAssetRegistry {
 			if (normalized.registryIndex !== index || path.length !== depth) {
 				throw new Error("Ethereum asset registry is not a dense list or has a wrong path width")
 			}
-			return {
-				record: normalized,
-				path: path.map((sibling) => word(sibling, "Registry path sibling"))
-			}
+			return immutableEntry(
+				normalized,
+				path.map((sibling) => word(sibling, "Registry path sibling"))
+			)
 		})
 		const rootField = parseEthereumAssetRegistryField(root, "Registry root")
 		const tree = buildEthereumAssetRegistryTree(entries.map(({ record }) => record))
@@ -313,7 +325,13 @@ export class EthereumAssetRegistry {
 			owners.add(record.tokenOwnerL2)
 			tokenIds.add(record.tokenIdL2)
 		}
-		this.#snapshot = { schemaVersion, root, count: input.count, depth, records: entries }
+		this.#snapshot = Object.freeze({
+			schemaVersion,
+			root,
+			count: input.count,
+			depth,
+			records: Object.freeze([...entries])
+		})
 	}
 
 	public get root(): Hex {
@@ -331,20 +349,20 @@ export class EthereumAssetRegistry {
 	public byIndex(index: number): EthereumAssetRegistryEntry {
 		const entry = this.#byIndex.get(index)
 		if (!entry) throw new Error(`Unknown Ethereum asset registry index ${index}`)
-		return entry
+		return immutableEntry(entry.record, entry.path)
 	}
 
 	public byAssetId(assetId: Hex): EthereumAssetRegistryEntry {
 		const entry = this.#byAssetId.get(word(assetId, "Asset ID"))
 		if (!entry) throw new Error(`Unknown Ethereum asset ID ${assetId}`)
-		return entry
+		return immutableEntry(entry.record, entry.path)
 	}
 
 	public byEthereumToken(token: Address): EthereumAssetRegistryEntry {
 		const normalized = getAddress(token)
 		const entry = this.#byToken.get(normalized)
 		if (!entry) throw new Error(`Unknown Ethereum asset token ${normalized}`)
-		return entry
+		return immutableEntry(entry.record, entry.path)
 	}
 
 	public membership(record: EthereumAssetRecord): EthereumAssetMembership {
@@ -353,12 +371,12 @@ export class EthereumAssetRegistry {
 		if (recordKey(entry.record) !== recordKey(normalized)) {
 			throw new Error("Asset record does not match the authenticated registry snapshot")
 		}
-		return {
+		return Object.freeze({
 			...entry,
 			root: this.root,
 			count: this.count,
 			schemaVersion: this.schemaVersion
-		}
+		})
 	}
 
 	public verifyMembership(input: EthereumAssetMembership): EthereumAssetMembership {

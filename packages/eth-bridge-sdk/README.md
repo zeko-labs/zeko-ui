@@ -50,7 +50,7 @@ const registration = await bridge.getTokenRegistration(
 await bridge.activateAssetFromBatch({
 	token: record.ethereumTokenAddress,
 	settlementSequence,
-	siblings
+	batchRecords
 })
 ```
 

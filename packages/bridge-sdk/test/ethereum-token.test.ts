@@ -23,6 +23,7 @@ import {
 	countMissingEthereumTokenAccounts,
 	graftEthereumTokenDepositHelperSignature,
 	parseProvedAccountUpdates,
+	resolveEthereumTokenAsset,
 	validateAndGraftEthereumAssetRegistrationAuthority,
 	validateEthereumTokenBridgeConfig,
 	validateEthereumTokenDepositForest
@@ -72,6 +73,19 @@ describe("Ethereum token bridge configuration", () => {
 				ethereumTokenAddress: `0x${"0".repeat(40)}`
 			})
 		).toThrow("nonzero canonical")
+	})
+
+	it("routes a legacy runtime without consulting the universal registry", async () => {
+		const legacy = config()
+		const resolved = await resolveEthereumTokenAsset(
+			{
+				ethereumAssets: null,
+				ethereumToken: legacy
+			} as never,
+			{ ethereumTokenAddress: legacy.ethereumTokenAddress }
+		)
+
+		expect(resolved).toMatchObject({ encodingVersion: 1, config: legacy })
 	})
 })
 

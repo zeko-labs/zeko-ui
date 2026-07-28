@@ -1,4 +1,4 @@
-import { Field, PrivateKey } from "o1js"
+import { Field, PrivateKey, TokenId } from "o1js"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createBridgeRuntime } from "../src/runtime"
 import type { Config } from "../src/types"
@@ -142,5 +142,44 @@ describe("Bridge runtime errors", () => {
 		expect(runtime.ethereumAssets?.approvedMftTokenVkHash.equals(Field(105)).toBoolean()).toBe(true)
 		expect(runtime.ethereumAssets?.approvedMftAdminVkHash.equals(Field(106)).toBoolean()).toBe(true)
 		expect(runtime.ethereumAssets?.universalBridgeVkHash.equals(Field(103)).toBoolean()).toBe(true)
+	})
+
+	it("restores the explicit legacy ERC20 runtime when no universal registry is configured", async () => {
+		const tokenOwnerL2 = PrivateKey.random().toPublicKey()
+		const holderAccountL2 = PrivateKey.random().toPublicKey()
+		const legacy = {
+			assetId: `0x${"44".repeat(32)}`,
+			ethereumTokenAddress: `0x${"12".repeat(20)}`,
+			tokenOwnerL2: tokenOwnerL2.toBase58(),
+			tokenIdL2: TokenId.toBase58(TokenId.derive(tokenOwnerL2)),
+			holderAccountL2: holderAccountL2.toBase58(),
+			verificationKeyHash: "109"
+		}
+		const circuitsConfig = {
+			...runtimeConfig(Field(1234).toString()),
+			ethereumAssets: null,
+			ethereumToken: legacy
+		}
+		mocks.queryByUrl.mockImplementation(async (_url: string, query: unknown) => {
+			switch (operationName(query)) {
+				case "FetchConfig":
+					return { data: { circuitsConfig } }
+				case "SequencerPK":
+					return { data: { sequencerPk: PrivateKey.random().toPublicKey().toBase58() } }
+				case "GenesisConstants":
+					return { data: { genesisConstants: { accountCreationFee: "1000000000" } } }
+				default:
+					throw new Error("Unexpected runtime query")
+			}
+		})
+
+		const runtime = await createBridgeRuntime(config)
+
+		expect(runtime.ethereumAssets).toBeNull()
+		expect(runtime.ethereumToken).toMatchObject({
+			assetId: legacy.assetId,
+			ethereumTokenAddress: legacy.ethereumTokenAddress
+		})
+		expect(runtime.ethereumToken?.tokenOwnerL2.equals(tokenOwnerL2).toBoolean()).toBe(true)
 	})
 })

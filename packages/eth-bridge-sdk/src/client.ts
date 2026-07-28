@@ -2,10 +2,13 @@ import {
 	Bridge,
 	type Config,
 	createBridgeRuntime,
+	type Deposit,
 	type DepositWithState,
+	type EthereumAssetsConfig,
 	type EthereumTokenBridgeConfig,
 	type EthereumTokenSolidityRegistration,
 	ethereumAssetRecordCommitment,
+	ethereumAssetRegistryFieldHex,
 	ethereumAssetRegistryLeaf,
 	ethereumDepositAux,
 	fetchEthereumAsset,
@@ -128,6 +131,73 @@ export const mergeDepositActivity = (
 	})
 }
 
+export const buildEthereumBridgeDeposit = async (input: {
+	deposit: DepositStatus
+	holderAccountL1: PublicKey
+	resolveV2Asset: (
+		assetId: Hex
+	) => Promise<{ registryIndex: number; recordCommitment: Field }>
+}): Promise<Deposit> => {
+	const { deposit } = input
+	const assetId = deposit.assetId ?? undefined
+	const registry =
+		assetId && deposit.encodingVersion === 2
+			? await input.resolveV2Asset(assetId)
+			: undefined
+	return {
+		recipient: unpackZekoAddress(deposit.zekoRecipient),
+		amount: UInt64.from(deposit.zekoAmount),
+		timeout: UInt32.from(deposit.timeout),
+		holderAccountL1: input.holderAccountL1,
+		assetId,
+		encodingVersion: registry ? 2 : undefined,
+		registryIndex: registry?.registryIndex,
+		recordCommitment: registry?.recordCommitment
+	}
+}
+
+type AuthenticatedEthereumAssets = Pick<
+	EthereumAssetsConfig,
+	| "approvedMftStandardVkId"
+	| "registryCount"
+	| "registryRoot"
+	| "registrySchemaVersion"
+	| "universalBridgeVkId"
+	| "vaultPublicKey"
+>
+
+export const authenticateEthereumAssetRegistrySnapshot = (
+	input: NonNullable<EthereumBridgeClientConfig["assets"]>,
+	runtimeAssets: AuthenticatedEthereumAssets | null
+): EthereumAssetRegistry => {
+	if (!runtimeAssets) {
+		throw new Error(
+			"Ethereum asset snapshot requires an authenticated Zeko runtime registry configuration"
+		)
+	}
+	const registry = new EthereumAssetRegistry(input.snapshot, {
+		schemaVersion: runtimeAssets.registrySchemaVersion,
+		depth: input.snapshot.depth,
+		mftStandardVkId: ethereumAssetRegistryFieldHex(
+			runtimeAssets.approvedMftStandardVkId
+		) as Hex,
+		vaultPublicKey: packZekoAddress(runtimeAssets.vaultPublicKey),
+		universalBridgeVkId: ethereumAssetRegistryFieldHex(runtimeAssets.universalBridgeVkId) as Hex
+	})
+	if (
+		!runtimeAssets.registryRoot
+			.equals(parseEthereumAssetRegistryField(registry.root, "Registry root"))
+			.toBoolean() ||
+		runtimeAssets.registryCount !== registry.count ||
+		runtimeAssets.registrySchemaVersion !== registry.schemaVersion
+	) {
+		throw new Error(
+			"Ethereum asset snapshot does not match the authenticated Zeko runtime root/count/schema"
+		)
+	}
+	return registry
+}
+
 export class EthereumBridgeClient {
 	readonly #account: Address
 	readonly #bridge?: Bridge
@@ -173,7 +243,7 @@ export class EthereumBridgeClient {
 		}
 		const account = input.account ?? (await walletClient.getAddresses())[0]
 		if (!account) throw new Error("Ethereum wallet has no selected account")
-		const assets = input.assets
+		let assets = input.assets
 			? new EthereumAssetRegistry(input.assets.snapshot, input.assets.config)
 			: undefined
 
@@ -188,18 +258,8 @@ export class EthereumBridgeClient {
 			})
 			const ethereumHolder = ethereumAddressToZekoPublicKey(config.bridgeAddress)
 			const runtimeAssets = runtime.ethereumAssets
-			if (
-				assets &&
-				runtimeAssets &&
-				(!runtimeAssets.registryRoot
-					.equals(parseEthereumAssetRegistryField(assets.root, "Registry root"))
-					.toBoolean() ||
-					runtimeAssets.registryCount !== assets.count ||
-					runtimeAssets.registrySchemaVersion !== assets.schemaVersion)
-			) {
-				throw new Error(
-					"Ethereum asset snapshot does not match the authenticated Zeko runtime root/count/schema"
-				)
+			if (input.assets) {
+				assets = authenticateEthereumAssetRegistrySnapshot(input.assets, runtimeAssets)
 			}
 			const ethereumRuntime = {
 				...runtime,
@@ -211,35 +271,35 @@ export class EthereumBridgeClient {
 							zekoRecipient: packZekoAddress(recipient)
 						})
 						return Promise.all(
-							deposits.map(async (deposit) => {
-								const localAsset =
-									deposit.assetId && assets ? assets.byAssetId(deposit.assetId).record : undefined
-								const indexedAsset =
-									deposit.assetId && runtimeAssets && !localAsset
-										? (
-												await fetchEthereumAsset(runtime, {
-													assetId: deposit.assetId
-												})
-											).membership.record
-										: undefined
-								const registryIndex = localAsset?.registryIndex ?? indexedAsset?.registryIndex
-								const recordCommitment = localAsset
-									? ethereumAssetRegistryLeaf(localAsset)
-									: indexedAsset
-										? ethereumAssetRecordCommitment(indexedAsset)
-										: undefined
-								return {
-									recipient: unpackZekoAddress(deposit.zekoRecipient),
-									amount: UInt64.from(deposit.zekoAmount),
-									timeout: UInt32.from(deposit.timeout),
+							deposits.map((deposit) =>
+								buildEthereumBridgeDeposit({
+									deposit,
 									holderAccountL1: ethereumHolder,
-									assetId: deposit.assetId ?? undefined,
-									encodingVersion:
-										registryIndex !== undefined && recordCommitment ? (2 as const) : undefined,
-									registryIndex,
-									recordCommitment
-								}
-							})
+									resolveV2Asset: async (assetId) => {
+										const localAsset = assets?.byAssetId(assetId).record
+										if (localAsset) {
+											return {
+												registryIndex: localAsset.registryIndex,
+												recordCommitment: ethereumAssetRegistryLeaf(localAsset)
+											}
+										}
+										if (!runtimeAssets) {
+											throw new Error(
+												"Ethereum ERC20 V2 deposit requires an authenticated registry record"
+											)
+										}
+										const indexedAsset = (
+											await fetchEthereumAsset(runtime, {
+												assetId
+											})
+										).membership.record
+										return {
+											registryIndex: indexedAsset.registryIndex,
+											recordCommitment: ethereumAssetRecordCommitment(indexedAsset)
+										}
+									}
+								})
+							)
 						)
 					}
 				}

@@ -303,6 +303,16 @@ const lookupVariables = (
 	return { ethereumTokenAddress: lookup.ethereumTokenAddress }
 }
 
+const matchesLookup = (record: EthereumAssetRecord, lookup: EthereumAssetLookup): boolean => {
+	if ("index" in lookup) return record.registryIndex === lookup.index
+	if ("assetId" in lookup) {
+		return record.assetId === normalizeEthereumAssetId(lookup.assetId)
+	}
+	return (
+		record.ethereumTokenAddress.toLowerCase() === lookup.ethereumTokenAddress.toLowerCase()
+	)
+}
+
 export async function fetchEthereumAssetRegistry(
 	runtime: BridgeRuntime,
 	lookup?: EthereumAssetLookup
@@ -373,8 +383,24 @@ export async function fetchEthereumAssetRegistry(
 	if (lookup && parsed.length !== 1) {
 		throw new Error("The requested Ethereum asset is not present in the indexed registry")
 	}
+	if (lookup && parsed[0] && !matchesLookup(parsed[0].membership.record, lookup)) {
+		throw new Error("The indexed Ethereum asset does not match the requested selector")
+	}
 	if (!lookup && parsed.length !== snapshot.count) {
 		throw new Error("The indexed Ethereum asset registry is not exhaustive")
+	}
+	if (!lookup) {
+		const indices = new Set(parsed.map(({ membership }) => membership.record.registryIndex))
+		const dense =
+			indices.size === snapshot.count &&
+			Array.from({ length: snapshot.count }, (_, index) => index).every((index) =>
+				indices.has(index)
+			)
+		if (!dense) {
+			throw new Error(
+				"The indexed Ethereum asset registry does not contain unique dense indices"
+			)
+		}
 	}
 	return parsed
 }

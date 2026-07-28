@@ -5,6 +5,7 @@ import {
 } from "@zeko/actions-api"
 import { fetchEventsQuery } from "@zeko-labs/graphql/mina-archive"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
+import { filterArchiveActionsToRange } from "../archive-range"
 import { buildRegistrySnapshot, type RegistryArchiveEvent } from "../asset-registry"
 import { batchInsert } from "../db"
 import { env } from "../env"
@@ -24,7 +25,7 @@ export async function fetchRegistryEvents(): Promise<RegistryArchiveEvent[]> {
 			to
 		})
 		if (result.error) throw result.error
-		for (const block of result.data?.events ?? []) {
+		for (const block of filterArchiveActionsToRange(result.data?.events ?? [], from, to)) {
 			if (!block?.blockInfo) continue
 			for (const item of block.eventData ?? []) {
 				if (!item?.transactionInfo) continue

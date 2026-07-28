@@ -472,3 +472,4 @@
 - T486 | done | index-universal-erc20-registry | done/T486-index-universal-erc20-registry.md
 - T487 | done | two-token-universal-erc20-roundtrip | done/T487-two-token-universal-erc20-roundtrip.md
 - T488 | done | resolve-universal-registry-review-findings | done/T488-resolve-universal-registry-review-findings.md
+- T489 | done | fix-universal-registry-review-findings | done/T489-fix-universal-registry-review-findings.md

@@ -72,9 +72,9 @@ input FinalizeDepositInput {
 }
 
 input EthereumTokenDepositParamsInput {
-  encodingVersion: UInt32!
-  registryIndex: UInt32!
-  recordCommitment: String!
+  encodingVersion: UInt32
+  registryIndex: UInt32
+  recordCommitment: String
   assetIdHigh: String!
   assetIdLow: String!
   base: DepositParamsInput!
@@ -98,16 +98,16 @@ input CheckAcceptedEthereumTokenInput {
 input FinalizeEthereumTokenDepositInput {
   ase: AseWithLengthInput!
   checkAccepted: CheckAcceptedEthereumTokenInput!
-  asset: EthereumAssetMembershipInput!
+  asset: EthereumAssetMembershipInput
   prevNextDeposit: UInt32!
   prevNonce: UInt32!
   helperAccountNew: Boolean!
 }
 
 input EthereumTokenWithdrawalParamsInput {
-  encodingVersion: UInt32!
-  registryIndex: UInt32!
-  recordCommitment: String!
+  encodingVersion: UInt32
+  registryIndex: UInt32
+  recordCommitment: String
   assetIdHigh: String!
   assetIdLow: String!
   tokenOwner: String!
@@ -118,7 +118,7 @@ input EthereumTokenWithdrawalParamsInput {
 
 input EthereumTokenWithdrawalRequestInput {
   withdrawalParams: EthereumTokenWithdrawalParamsInput!
-  asset: EthereumAssetMembershipInput!
+  asset: EthereumAssetMembershipInput
 }
 
 input WithdrawalParamsInput {
@@ -860,7 +860,17 @@ type ZekoCircuitsConfig {
   bridgeFeeRecipientL1: PublicKey!
   bridgeFeeRecipientL2: PublicKey!
   bridgeProofFee: Amount!
+  ethereumToken: ZekoEthereumTokenConfig
   ethereumAssets: ZekoEthereumAssetsConfig
+}
+
+type ZekoEthereumTokenConfig {
+  assetId: String!
+  ethereumTokenAddress: String!
+  tokenOwnerL2: PublicKey!
+  tokenIdL2: String!
+  holderAccountL2: PublicKey!
+  verificationKeyHash: String!
 }
 
 type ZekoEthereumAssetsConfig {

@@ -11,9 +11,13 @@ import {
 	parseAbiParameters,
 	toHex
 } from "viem"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { ethereumZekoBridgeAbi } from "../src/abi"
-import { EthereumBridgeClient, mergeDepositActivity } from "../src/client"
+import {
+	buildEthereumBridgeDeposit,
+	EthereumBridgeClient,
+	mergeDepositActivity
+} from "../src/client"
 import { ethereumAddressToZekoPublicKey, packZekoAddress } from "../src/codecs"
 import type { DepositStatus, TokenWithdrawalProof } from "../src/gateway"
 import { type EthereumAssetRecord, ethereumAssetRecordBatchMembership } from "../src/registry"
@@ -29,6 +33,7 @@ const gatewayDeposit = (outerActionSequence: number | null): DepositStatus => ({
 	timeout: 100,
 	ethereumTransactionHash: `0x${"12".repeat(32)}`,
 	ethereumFinalized: true,
+	encodingVersion: null,
 	bridgeJobId: "job",
 	bridgeJobStatus: "confirmed",
 	outerActionSequence,
@@ -119,6 +124,53 @@ describe("deposit activity", () => {
 				status: "synchronized"
 			}
 		])
+	})
+})
+
+describe("versioned gateway deposits", () => {
+	it("keeps a registered historical V1 deposit on the asset-only encoding", async () => {
+		const deposit = {
+			...gatewayDeposit(4),
+			token: "0x00000000000000000000000000000000000000a1",
+			assetId: `0x${"44".repeat(32)}` as Hex,
+			encodingVersion: 1 as const
+		}
+		const resolveV2Asset = vi.fn()
+
+		const result = await buildEthereumBridgeDeposit({
+			deposit,
+			holderAccountL1: PrivateKey.random().toPublicKey(),
+			resolveV2Asset
+		})
+
+		expect(result.assetId).toBe(deposit.assetId)
+		expect(result.encodingVersion).toBeUndefined()
+		expect(resolveV2Asset).not.toHaveBeenCalled()
+	})
+
+	it("resolves registry identity only for an explicitly V2 deposit", async () => {
+		const deposit = {
+			...gatewayDeposit(5),
+			token: "0x00000000000000000000000000000000000000a1",
+			assetId: `0x${"44".repeat(32)}` as Hex,
+			encodingVersion: 2 as const
+		}
+		const recordCommitment = Field(99)
+		const resolveV2Asset = vi.fn(async () => ({ registryIndex: 7, recordCommitment }))
+
+		await expect(
+			buildEthereumBridgeDeposit({
+				deposit,
+				holderAccountL1: PrivateKey.random().toPublicKey(),
+				resolveV2Asset
+			})
+		).resolves.toMatchObject({
+			assetId: deposit.assetId,
+			encodingVersion: 2,
+			registryIndex: 7,
+			recordCommitment
+		})
+		expect(resolveV2Asset).toHaveBeenCalledWith(deposit.assetId)
 	})
 })
 

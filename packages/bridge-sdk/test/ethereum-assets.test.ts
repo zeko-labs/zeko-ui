@@ -281,6 +281,57 @@ describe("universal Ethereum asset memberships", () => {
 		).resolves.toEqual([])
 	})
 
+	it("binds lookup responses to the requested selector", async () => {
+		const { runtime, snapshot } = fixture()
+		const substituted = {
+			...snapshot,
+			records: [snapshot.records[0]]
+		}
+		const substitutedRuntime = {
+			...runtime,
+			actionsApiClient: () => ({
+				query: async () => ({
+					data: { ethereumAssetRegistry: substituted }
+				})
+			})
+		} as unknown as BridgeRuntime
+
+		await expect(fetchEthereumAssetRegistry(substitutedRuntime, { index: 1 })).rejects.toThrow(
+			"requested selector"
+		)
+		await expect(
+			fetchEthereumAssetRegistry(substitutedRuntime, {
+				assetId: snapshot.records[1].record.assetId
+			})
+		).rejects.toThrow("requested selector")
+		await expect(
+			fetchEthereumAssetRegistry(substitutedRuntime, {
+				ethereumTokenAddress: snapshot.records[1].record.ethereumTokenAddress
+			})
+		).rejects.toThrow("requested selector")
+	})
+
+	it("rejects repeated valid members in an exhaustive response", async () => {
+		const { runtime, snapshot } = fixture()
+		const duplicateRuntime = {
+			...runtime,
+			actionsApiClient: () => ({
+				query: async () => ({
+					data: {
+						ethereumAssetRegistry: {
+							...snapshot,
+							records: [snapshot.records[0], snapshot.records[0]]
+						}
+					}
+				})
+			})
+		} as unknown as BridgeRuntime
+
+		await expect(fetchEthereumAssetRegistry(duplicateRuntime)).rejects.toThrow(
+			"unique dense indices"
+		)
+	})
+
 	it("builds an exhaustive append witness for the next record", () => {
 		const { runtime, snapshot } = fixture()
 		const current = parseEthereumAssetRegistrySnapshot(runtime, snapshot)

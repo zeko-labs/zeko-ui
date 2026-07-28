@@ -132,6 +132,7 @@ const deposits: DepositStatus[] = assets.map((asset, index) => ({
 	timeout: 4_294_967_295,
 	ethereumTransactionHash: `0x${(index + 1).toString(16).padStart(2, "0").repeat(32)}`,
 	ethereumFinalized: true,
+	encodingVersion: 2,
 	bridgeJobId: `live-ocaml-witness-${index}`,
 	bridgeJobStatus: "confirmed",
 	outerActionSequence: index,
@@ -152,6 +153,7 @@ if (bridgeAsset === "native") {
 		timeout: 4_294_967_295,
 		ethereumTransactionHash: `0x${"01".repeat(32)}`,
 		ethereumFinalized: true,
+		encodingVersion: null,
 		bridgeJobId: "live-ocaml-witness",
 		bridgeJobStatus: "confirmed",
 		outerActionSequence: 0,
@@ -303,6 +305,7 @@ if (bridgeAsset === "erc20") {
 		const adminAuthorityKey = PrivateKey.fromBase58(
 			required(`ERC20_TOKEN_${index}_ADMIN_AUTHORITY_PRIVATE_KEY`)
 		)
+		const finalAdminContractKey = PrivateKey.random()
 		if (!tokenOwnerKey.toPublicKey().equals(config.tokenOwnerL2).toBoolean()) {
 			throw new Error(`Token ${index} owner key does not match its registry record`)
 		}
@@ -313,7 +316,13 @@ if (bridgeAsset === "erc20") {
 		const signDeployment = async (transaction: Parameters<typeof signTransaction>[0]) =>
 			transaction.sign([privateKey, tokenOwnerKey, adminContractKey])
 		const signProvisioning = async (transaction: Parameters<typeof signTransaction>[0]) =>
-			transaction.sign([privateKey, tokenVaultKey, adminContractKey, adminAuthorityKey])
+			transaction.sign([
+				privateKey,
+				tokenVaultKey,
+				adminContractKey,
+				adminAuthorityKey,
+				finalAdminContractKey
+			])
 		const deployment = await deployEthereumTokenMirror({
 			config,
 			registration: {
@@ -333,6 +342,7 @@ if (bridgeAsset === "erc20") {
 			feePayer: recipient,
 			adminContractL2: adminContractKey.toPublicKey(),
 			adminAuthorityL2: adminAuthorityKey.toPublicKey(),
+			finalAdminContractL2: finalAdminContractKey.toPublicKey(),
 			symbol: `ZP2${index}`,
 			sourceUri: `https://zeko.invalid/local-erc20/${index}`,
 			signDeployment,
