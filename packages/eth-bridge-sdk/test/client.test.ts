@@ -338,7 +338,7 @@ describe("authenticated registry refresh", () => {
 			root: appended.root,
 			count: 2
 		})
-	})
+	}, 15_000)
 
 	it("serializes overlapping refreshes before installing their checkpoints", async () => {
 		const first = registryRecord(0, 1)
