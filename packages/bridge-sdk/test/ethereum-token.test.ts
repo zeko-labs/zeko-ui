@@ -24,8 +24,8 @@ import {
 	ethereumAssetProofBinding,
 	graftEthereumTokenDepositHelperSignature,
 	parseProvedAccountUpdates,
-	resolveEthereumTokenDepositAsset,
 	resolveEthereumTokenAsset,
+	resolveEthereumTokenDepositAsset,
 	validateAndGraftEthereumAssetRegistrationAuthority,
 	validateEthereumTokenBridgeConfig,
 	validateEthereumTokenDepositForest

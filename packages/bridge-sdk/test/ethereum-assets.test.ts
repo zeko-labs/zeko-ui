@@ -7,8 +7,8 @@ import {
 	parseEthereumAssetRegistrySnapshot,
 	prepareEthereumAssetRegistrationFromRegistry
 } from "../src/ethereum-assets"
-import type { BridgeRuntime } from "../src/runtime"
 import { buildEthereumTokenWithdrawalApproval } from "../src/ethereum-token"
+import type { BridgeRuntime } from "../src/runtime"
 import type { EthereumAssetRecord } from "../src/types"
 
 const SIGN_BIT = 1n << 255n

@@ -121,7 +121,9 @@ input OuterWitnessesFromAuxesInput {
 
 type Query {
   commitAsePastSlot(slot: Int!): CommitAsePastSlotResult
-  ethereumAssetRegistry(input: EthereumAssetRegistryInput): EthereumAssetRegistrySnapshot
+  ethereumAssetRegistry(
+    input: EthereumAssetRegistryInput
+  ): EthereumAssetRegistrySnapshot
   innerActions(input: InnerActionsInput!): [InnerAction!]
   innerWitnessesFromAuxes(input: InnerWitnessesFromAuxesInput!): [InnerAction!]
   outerActions(input: OuterActionsInput!): [OuterActionUnion!]

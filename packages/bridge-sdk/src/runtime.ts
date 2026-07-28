@@ -6,9 +6,9 @@ import {
 	sequencerPkQuery
 } from "@zeko-labs/graphql"
 import { Field, PublicKey, TokenId, UInt32, UInt64 } from "o1js"
-import { ETHEREUM_ASSET_REGISTRY_CAPACITY } from "./ethereum-asset-registry"
 import type { fetchDepositFinalizationWitnesses } from "./deposits"
 import { validateEthereumTokenBridgeConfig } from "./ethereum"
+import { ETHEREUM_ASSET_REGISTRY_CAPACITY } from "./ethereum-asset-registry"
 import { createGraphqlClient, type GqlClient } from "./graphql"
 import type {
 	Account,

@@ -20,7 +20,7 @@ import { Actions, Events, fromList } from "./actions"
 import { ensureBridgeTransferAmountCanCoverFees } from "./errors"
 import { fetchAccount, setL1, setL2 } from "./network"
 import { pollProvingResult } from "./prover"
-import { debug, type BridgeRuntime } from "./runtime"
+import { type BridgeRuntime, debug } from "./runtime"
 import {
 	normalizeRetryableTransactionOptions,
 	type RetryableTransactionOptions,

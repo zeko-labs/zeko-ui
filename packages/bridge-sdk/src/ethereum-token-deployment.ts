@@ -210,10 +210,7 @@ const assertFrozenAdmin = async (
 		adminVerificationKey: VerificationKey
 	}
 ): Promise<void> => {
-	await Promise.all([
-		refreshCache(plan.config.tokenOwnerL2),
-		refreshCache(finalAdminContractL2)
-	])
+	await Promise.all([refreshCache(plan.config.tokenOwnerL2), refreshCache(finalAdminContractL2)])
 	const finalAdmin = Mina.getAccount(finalAdminContractL2)
 	if (
 		!finalAdmin.zkapp?.verificationKey?.hash ||

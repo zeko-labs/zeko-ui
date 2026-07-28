@@ -1,5 +1,5 @@
 import { provedResultQuery } from "@zeko-labs/graphql"
-import { debug, type BridgeRuntime } from "./runtime"
+import { type BridgeRuntime, debug } from "./runtime"
 
 const parseProvingResult = (
 	key: string,

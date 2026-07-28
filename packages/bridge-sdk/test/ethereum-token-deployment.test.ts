@@ -1,13 +1,12 @@
 import { FungibleToken } from "mina-fungible-token"
-// biome-ignore lint/style/useImportType: o1js @method reads PublicKey from decorator metadata.
-import { PublicKey } from "o1js"
 import {
 	AccountUpdate,
 	AccountUpdateForest,
 	Field,
-	method,
 	Mina,
+	method,
 	PrivateKey,
+	PublicKey,
 	SmartContract,
 	TokenId,
 	UInt64,
@@ -16,8 +15,8 @@ import {
 import { describe, expect, it, vi } from "vitest"
 import {
 	deployEthereumTokenMirror,
-	validateEthereumTokenDeployment,
-	type EthereumTokenDeploymentPlan
+	type EthereumTokenDeploymentPlan,
+	validateEthereumTokenDeployment
 } from "../src/ethereum-token-deployment"
 import * as utils from "../src/utils"
 
@@ -182,12 +181,7 @@ describe("ERC20 mirror token local roundtrip", () => {
 			signDeployment: async (transaction) =>
 				transaction.sign([feePayer.key, ownerKey, adminContractKey]),
 			signProvisioning: async (transaction) =>
-				transaction.sign([
-					feePayer.key,
-					adminAuthorityKey,
-					finalAdminContractKey,
-					vaultKey
-				]),
+				transaction.sign([feePayer.key, adminAuthorityKey, finalAdminContractKey, vaultKey]),
 			waitForInclusion: async (transactionHash) => {
 				inclusionHashes.push(transactionHash)
 			}

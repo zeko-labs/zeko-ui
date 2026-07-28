@@ -55,8 +55,8 @@ export * from "./actions"
 export * from "./diagnostics"
 export * from "./errors"
 export {
-	ethereumDepositAux,
 	type EthereumTokenWithdrawalAction,
+	ethereumDepositAux,
 	ethereumTokenWithdrawalAux
 } from "./ethereum"
 export * from "./ethereum-asset-registry"

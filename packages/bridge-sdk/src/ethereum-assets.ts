@@ -1,21 +1,21 @@
 import { fetchEthereumAssetRegistryQuery } from "@zeko-labs/graphql"
 import { Field, Poseidon, PublicKey, TokenId, UInt64 } from "o1js"
 import {
-	buildEthereumAssetRegistryTree,
-	ETHEREUM_ASSET_REGISTRY_CAPACITY,
-	ETHEREUM_ASSET_REGISTRY_DEPTH,
-	ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION,
-	ethereumAssetRegistryLeaf,
-	ethereumAssetRegistryRecordFields,
-	parseEthereumAssetRegistryField,
-	type EthereumAssetRegistryPoseidonRecord,
-	verifyEthereumAssetRegistryMembership
-} from "./ethereum-asset-registry"
-import {
 	normalizeEthereumAssetId,
 	splitEthereumAssetId,
 	validateEthereumTokenBridgeConfig
 } from "./ethereum"
+import {
+	buildEthereumAssetRegistryTree,
+	ETHEREUM_ASSET_REGISTRY_CAPACITY,
+	ETHEREUM_ASSET_REGISTRY_DEPTH,
+	ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION,
+	type EthereumAssetRegistryPoseidonRecord,
+	ethereumAssetRegistryLeaf,
+	ethereumAssetRegistryRecordFields,
+	parseEthereumAssetRegistryField,
+	verifyEthereumAssetRegistryMembership
+} from "./ethereum-asset-registry"
 import type { BridgeRuntime } from "./runtime"
 import type {
 	EthereumAssetLookup,

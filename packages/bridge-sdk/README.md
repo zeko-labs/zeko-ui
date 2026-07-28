@@ -106,10 +106,24 @@ Finalization time depends on the size of the witness data the bridge must prove.
 ### Canonical Ethereum ERC-20
 
 An Ethereum-enabled sequencer can expose a shared immutable ERC-20 registry. The SDK authenticates
-the registry root and count from the runtime, verifies each selected record's depth-8 membership,
-and binds the record index and commitment into V2 deposit and withdrawal actions. Legacy runtimes
-remain available through `bridge.ethereumToken`; universal runtimes resolve assets with
-`bridge.fetchEthereumAsset`.
+the registry root, count, and schema from the runtime, verifies each selected record's depth-8
+Poseidon membership, and binds the encoding version, registry index, and record commitment into V2
+deposit and withdrawal actions. `bridge.ethereumAssets` exposes the authenticated checkpoint,
+registry and registration-authority public keys, the registry verification-key hash, the universal
+bridge verification-key identifier and hash, and the approved Mina FungibleToken identifiers and
+hashes.
+
+Indexed lookups are accepted only when the snapshot matches that runtime checkpoint and every
+record and path recomputes the authenticated root. Returned assets preserve
+`checkpointFinality` and `registrationFinality` as `pending` or `canonical`; neither status is
+hidden from finalization-oriented lookup. Registration is governed: the transaction fee payer must
+be `bridge.ethereumAssets.registrationAuthority`, and the proof must contain that authority's
+exact full-commitment signed child update.
+
+Legacy V1 runtime configuration and action decoding remain available through
+`bridge.ethereumToken`; universal runtimes resolve assets with `bridge.fetchEthereumAsset`. When a
+runtime exposes both configurations, deposit finalization must include the deposit's original
+encoding version and asset selector so V1 and V2 actions cannot be confused.
 
 The SDK's `finalizeEthereumTokenDeposit` and `submitEthereumTokenWithdrawal` methods request the
 asset proof, verify the returned forest, compose it with the unmodified `mina-fungible-token`

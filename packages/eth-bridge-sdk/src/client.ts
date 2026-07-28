@@ -1,8 +1,8 @@
 import {
 	Bridge,
+	type BridgeRuntime,
 	type Config,
 	createBridgeRuntime,
-	type BridgeRuntime,
 	type Deposit,
 	type DepositWithState,
 	type EthereumAssetsConfig,

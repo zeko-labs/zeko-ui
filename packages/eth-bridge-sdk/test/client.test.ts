@@ -70,8 +70,8 @@ import { ethereumAddressToZekoPublicKey, packZekoAddress, unpackZekoAddress } fr
 import type { DepositStatus, TokenWithdrawalProof } from "../src/gateway"
 import {
 	type EthereumAssetRecord,
-	ethereumAssetRecordBatchMembership,
-	type EthereumAssetRegistrySnapshot
+	type EthereumAssetRegistrySnapshot,
+	ethereumAssetRecordBatchMembership
 } from "../src/registry"
 
 const gatewayDeposit = (outerActionSequence: number | null): DepositStatus => ({
