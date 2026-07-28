@@ -16,6 +16,7 @@ import { ethereumZekoBridgeAbi } from "../src/abi"
 import { EthereumBridgeClient, mergeDepositActivity } from "../src/client"
 import { ethereumAddressToZekoPublicKey, packZekoAddress } from "../src/codecs"
 import type { DepositStatus, TokenWithdrawalProof } from "../src/gateway"
+import { type EthereumAssetRecord, ethereumAssetRecordBatchMembership } from "../src/registry"
 
 const gatewayDeposit = (outerActionSequence: number | null): DepositStatus => ({
 	nonce: 4,
@@ -330,6 +331,79 @@ describe("ERC20 bridge transactions", () => {
 				withdrawal.actionFieldsHash,
 				withdrawal.siblings
 			]
+		})
+	})
+
+	it("binds the Mina record commitment into batch activation", async () => {
+		const recorded = recordingProvider()
+		const token = "0x00000000000000000000000000000000000000a1"
+		const word = (value: bigint): Hex => toHex(value, { size: 32 })
+		const record: EthereumAssetRecord = {
+			schemaVersion: 1,
+			registryIndex: 0,
+			assetId: `0x${"44".repeat(32)}`,
+			ethereumTokenAddress: token,
+			tokenOwnerL2: word((1n << 255n) | 111n),
+			tokenIdL2: word(222n),
+			decimals: 9,
+			inventoryCap: 1_000_000n,
+			mftStandardVkId: word(333n),
+			vaultPublicKey: word(444n),
+			universalBridgeVkId: word(555n)
+		}
+		const provider: EIP1193Provider = {
+			request: async (request) => {
+				if (request.method === "eth_call") {
+					const call = (request.params as [{ data: Hex }])[0]
+					const decoded = decodeFunctionData({ abi: ethereumZekoBridgeAbi, data: call.data })
+					if (decoded.functionName === "assetRecord") {
+						return encodeFunctionResult({
+							abi: ethereumZekoBridgeAbi,
+							functionName: "assetRecord",
+							result: {
+								schemaVersion: record.schemaVersion,
+								registryIndex: record.registryIndex,
+								assetId: record.assetId,
+								ethereumToken: record.ethereumTokenAddress,
+								tokenOwnerL2: record.tokenOwnerL2,
+								tokenIdL2: record.tokenIdL2,
+								decimals: record.decimals,
+								inventoryCap: record.inventoryCap,
+								mftStandardVkId: record.mftStandardVkId,
+								vaultPublicKey: record.vaultPublicKey,
+								universalBridgeVkId: record.universalBridgeVkId
+							}
+						})
+					}
+					if (decoded.functionName === "assetStatusByToken") {
+						return encodeFunctionResult({
+							abi: ethereumZekoBridgeAbi,
+							functionName: "assetStatusByToken",
+							result: 1
+						})
+					}
+				}
+				return recorded.provider.request(request)
+			}
+		}
+		const client = await EthereumBridgeClient.init({
+			gatewayUrl: "https://gateway.test",
+			provider,
+			fetch: async () => Response.json(gatewayConfig)
+		})
+		const membership = ethereumAssetRecordBatchMembership([record], record)
+
+		await client.activateAssetFromBatch({
+			token,
+			settlementSequence: 4n,
+			batchRecords: [record]
+		})
+
+		expect(
+			decodeFunctionData({ abi: ethereumZekoBridgeAbi, data: recorded.transactions[0].data })
+		).toEqual({
+			functionName: "activateAssetFromBatch",
+			args: [getAddress(token), 4n, membership.recordCommitment, membership.proof]
 		})
 	})
 })

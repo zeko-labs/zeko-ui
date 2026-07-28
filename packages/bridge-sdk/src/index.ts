@@ -49,7 +49,12 @@ import {
 export * from "./actions"
 export * from "./diagnostics"
 export * from "./errors"
-export { ethereumDepositAux } from "./ethereum"
+export {
+	ethereumDepositAux,
+	type EthereumTokenWithdrawalAction,
+	ethereumTokenWithdrawalAux
+} from "./ethereum"
+export * from "./ethereum-asset-registry"
 export * from "./ethereum-assets"
 export * from "./ethereum-token"
 export * from "./ethereum-token-deployment"

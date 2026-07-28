@@ -1,12 +1,29 @@
-import { AccountUpdate, Bool, Field, Int64, Mina, PrivateKey, TokenId, UInt64 } from "o1js"
+import {
+	AccountUpdate,
+	Bool,
+	Field,
+	Int64,
+	Mina,
+	Poseidon,
+	PrivateKey,
+	TokenId,
+	UInt32,
+	UInt64
+} from "o1js"
 import { describe, expect, it } from "vitest"
-import { ethereumAssetBridgeCallData } from "../src/ethereum-assets"
+import {
+	ethereumDepositAux,
+	ethereumTokenWithdrawalAux,
+	splitEthereumAssetId
+} from "../src/ethereum"
+import { ethereumAssetBridgeCallData, ethereumAssetRecordCommitment } from "../src/ethereum-assets"
 import {
 	assertMatchingFungibleTokenOwner,
 	buildEthereumTokenWithdrawalApproval,
 	countMissingEthereumTokenAccounts,
 	graftEthereumTokenDepositHelperSignature,
 	parseProvedAccountUpdates,
+	validateAndGraftEthereumAssetRegistrationAuthority,
 	validateEthereumTokenBridgeConfig,
 	validateEthereumTokenDepositForest
 } from "../src/ethereum-token"
@@ -55,6 +72,187 @@ describe("Ethereum token bridge configuration", () => {
 				ethereumTokenAddress: `0x${"0".repeat(40)}`
 			})
 		).toThrow("nonzero canonical")
+	})
+})
+
+describe("versioned Ethereum token actions", () => {
+	it("binds the V2 encoding version, registry index, record commitment, and asset ID", () => {
+		const bridge = config()
+		const recipient = key()
+		const holderAccountL1 = key()
+		const amount = UInt64.from(25)
+		const timeout = UInt32.from(30)
+		const record = {
+			schemaVersion: 1,
+			registryIndex: 7,
+			assetId: bridge.assetId,
+			ethereumTokenAddress: bridge.ethereumTokenAddress,
+			tokenOwnerL2: bridge.tokenOwnerL2,
+			tokenIdL2: bridge.tokenIdL2,
+			decimals: 9,
+			inventoryCap: UInt64.from(1000),
+			mftStandardVkId: Field(77),
+			vaultPublicKey: bridge.holderAccountL2,
+			universalBridgeVkId: Field(78)
+		}
+		const recordCommitment = ethereumAssetRecordCommitment(record)
+		const deposit = {
+			encodingVersion: 2 as const,
+			registryIndex: record.registryIndex,
+			recordCommitment,
+			assetId: record.assetId,
+			holderAccountL1,
+			amount,
+			recipient,
+			timeout
+		}
+		const withdrawal = {
+			encodingVersion: 2 as const,
+			registryIndex: record.registryIndex,
+			recordCommitment,
+			assetId: record.assetId,
+			amount,
+			recipient
+		}
+		const [assetIdHigh, assetIdLow] = splitEthereumAssetId(record.assetId)
+		const expectedDeposit = Poseidon.hashWithPrefix("Ethereum ERC20 deposit V2", [
+			Field(2),
+			Field(record.registryIndex),
+			recordCommitment,
+			assetIdHigh,
+			assetIdLow,
+			Field(0),
+			...holderAccountL1.toFields(),
+			...amount.toFields(),
+			...recipient.toFields(),
+			...timeout.toFields()
+		])
+		const expectedWithdrawal = Poseidon.hashWithPrefix("Ethereum ERC20 withdrawal V2", [
+			Field(2),
+			Field(record.registryIndex),
+			recordCommitment,
+			assetIdHigh,
+			assetIdLow,
+			Field(0),
+			...amount.toFields(),
+			...recipient.toFields()
+		])
+
+		expect(ethereumDepositAux(deposit).equals(expectedDeposit).toBoolean()).toBe(true)
+		expect(ethereumTokenWithdrawalAux(withdrawal).equals(expectedWithdrawal).toBoolean()).toBe(true)
+		expect(
+			ethereumDepositAux({ ...deposit, registryIndex: record.registryIndex + 1 })
+				.equals(ethereumDepositAux(deposit))
+				.toBoolean()
+		).toBe(false)
+		expect(
+			ethereumDepositAux({ ...deposit, recordCommitment: recordCommitment.add(1) })
+				.equals(ethereumDepositAux(deposit))
+				.toBoolean()
+		).toBe(false)
+		expect(
+			ethereumTokenWithdrawalAux({ ...withdrawal, registryIndex: record.registryIndex + 1 })
+				.equals(ethereumTokenWithdrawalAux(withdrawal))
+				.toBoolean()
+		).toBe(false)
+		expect(
+			ethereumTokenWithdrawalAux({ ...withdrawal, recordCommitment: recordCommitment.add(1) })
+				.equals(ethereumTokenWithdrawalAux(withdrawal))
+				.toBoolean()
+		).toBe(false)
+	})
+
+	it("keeps the asset-only V1 deposit encoding explicit and rejects partial V2 metadata", () => {
+		const bridge = config()
+		const legacy = {
+			assetId: bridge.assetId,
+			holderAccountL1: key(),
+			amount: UInt64.from(25),
+			recipient: key(),
+			timeout: UInt32.from(30)
+		}
+
+		expect(() => ethereumDepositAux(legacy)).not.toThrow()
+		expect(() => ethereumDepositAux({ ...legacy, encodingVersion: 2, registryIndex: 0 })).toThrow(
+			/record commitment|metadata/i
+		)
+		expect(() =>
+			ethereumDepositAux({
+				...legacy,
+				assetId: undefined,
+				encodingVersion: 2,
+				registryIndex: 0,
+				recordCommitment: Field(1)
+			})
+		).toThrow(/asset ID/i)
+	})
+})
+
+describe("Ethereum asset registration authority", () => {
+	const registrationForest = () => {
+		const registryPublicKey = key()
+		const registrationAuthority = key()
+		const registryVerificationKeyHash = Field(777)
+		const registry = AccountUpdate.default(registryPublicKey)
+		proofAuthorize(registry, registryVerificationKeyHash)
+		const authority = AccountUpdate.default(registrationAuthority)
+		authority.body.callDepth = 1
+		authority.body.callData = Field(123)
+		authority.body.authorizationKind.isSigned = Bool(true)
+		authority.body.useFullCommitment = Bool(true)
+		return {
+			assets: {
+				registryPublicKey,
+				registrationAuthority,
+				registryVerificationKeyHash
+			},
+			authority,
+			registry,
+			updates: [registry, authority]
+		}
+	}
+
+	it("accepts only the configured full-commitment child and grafts its signature", () => {
+		const { assets, authority, updates } = registrationForest()
+
+		expect(
+			validateAndGraftEthereumAssetRegistrationAuthority(
+				updates,
+				assets,
+				assets.registrationAuthority
+			)
+		).toEqual({ registry: updates[0], authority })
+		expect(authority.lazyAuthorization).toEqual({ kind: "lazy-signature" })
+	})
+
+	it("rejects a different fee payer, a mutated authority body, or extra proof children", () => {
+		const wrongFeePayer = registrationForest()
+		expect(() =>
+			validateAndGraftEthereumAssetRegistrationAuthority(
+				wrongFeePayer.updates,
+				wrongFeePayer.assets,
+				key()
+			)
+		).toThrow(/fee payer.*registration authority/i)
+
+		const mutated = registrationForest()
+		mutated.authority.balance.addInPlace(UInt64.from(1))
+		expect(() =>
+			validateAndGraftEthereumAssetRegistrationAuthority(
+				mutated.updates,
+				mutated.assets,
+				mutated.assets.registrationAuthority
+			)
+		).toThrow(/authority body/i)
+
+		const extraChild = registrationForest()
+		expect(() =>
+			validateAndGraftEthereumAssetRegistrationAuthority(
+				[...extraChild.updates, AccountUpdate.default(key())],
+				extraChild.assets,
+				extraChild.assets.registrationAuthority
+			)
+		).toThrow(/exactly.*authority child/i)
 	})
 })
 

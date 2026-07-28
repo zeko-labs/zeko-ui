@@ -20,6 +20,7 @@ import { fetchDepositFinalizationWitnesses } from "./deposits"
 import { normalizeEthereumAssetId, splitEthereumAssetId } from "./ethereum"
 import {
 	ethereumAssetBridgeCallData,
+	ethereumAssetRecordCommitment,
 	fetchEthereumAsset,
 	prepareEthereumAssetRegistration
 } from "./ethereum-assets"
@@ -35,6 +36,7 @@ import type {
 	EthereumAssetLookup,
 	EthereumAssetMembership,
 	EthereumAssetRecord,
+	EthereumAssetsConfig,
 	EthereumTokenBridgeConfig
 } from "./types"
 import { getVkHash, refreshCache } from "./utils"
@@ -226,6 +228,55 @@ export const graftEthereumTokenDepositHelperSignature = (helper: AccountUpdate):
 	helper.lazyAuthorization = { kind: "lazy-signature" }
 }
 
+export const validateAndGraftEthereumAssetRegistrationAuthority = (
+	updates: AccountUpdate[],
+	assets: Pick<
+		EthereumAssetsConfig,
+		"registryPublicKey" | "registrationAuthority" | "registryVerificationKeyHash"
+	>,
+	feePayer: Mina.FeePayerSpec
+): { registry: AccountUpdate; authority: AccountUpdate } => {
+	if (updates.length !== 2) {
+		throw new Error(
+			"Ethereum asset registration proof must contain exactly the registry root and authority child"
+		)
+	}
+	const registry = updates[0]
+	const authority = updates[1]
+	if (!registry || !authority) {
+		throw new Error("Ethereum asset registration proof forest is incomplete")
+	}
+	const feePayerPublicKey = feePayer instanceof PublicKey ? feePayer : feePayer?.sender
+	if (!feePayerPublicKey || !feePayerPublicKey.equals(assets.registrationAuthority).toBoolean()) {
+		throw new Error(
+			"Ethereum asset registration fee payer must be the configured registration authority"
+		)
+	}
+	requireAccount(registry, assets.registryPublicKey, TokenId.default, "Ethereum asset registry")
+	requireProof(registry, assets.registryVerificationKeyHash, "Ethereum asset registry")
+	requireAccount(
+		authority,
+		assets.registrationAuthority,
+		TokenId.default,
+		"Ethereum asset registration authority"
+	)
+	if (authority.body.callDepth !== 1) {
+		throw new Error("Ethereum asset registration authority is not a direct registry child")
+	}
+	const expectedAuthority = AccountUpdate.default(assets.registrationAuthority)
+	expectedAuthority.body.callDepth = 1
+	expectedAuthority.body.callData = authority.body.callData
+	expectedAuthority.body.authorizationKind.isSigned = Bool(true)
+	expectedAuthority.body.useFullCommitment = Bool(true)
+	if (!authority.hash().equals(expectedAuthority.hash()).toBoolean()) {
+		throw new Error(
+			"Ethereum asset registration authority body is not the expected full-commitment no-op"
+		)
+	}
+	authority.lazyAuthorization = { kind: "lazy-signature" }
+	return { registry, authority }
+}
+
 const attachFlatForest = (updates: AccountUpdate[]): void => {
 	const parents: AccountUpdate[] = []
 	for (const update of updates) {
@@ -326,6 +377,7 @@ export async function finalizeEthereumTokenDeposit(
 	const { config, membership } = await fetchEthereumAsset(runtime, asset)
 	const { attempts, fee } = normalizeRetryableTransactionOptions(options)
 	const [assetIdHigh, assetIdLow] = splitEthereumAssetId(config.assetId)
+	const recordCommitment = ethereumAssetRecordCommitment(membership.record)
 	const witnesses = await fetchDepositFinalizationWitnesses(
 		runtime,
 		recipient,
@@ -357,6 +409,9 @@ export async function finalizeEthereumTokenDeposit(
 					depositIndex: witness.checkAccepted.init.depositIndex,
 					originalActionState: witness.checkAccepted.init.orignalActionState,
 					params: {
+						encodingVersion: "2",
+						registryIndex: membership.record.registryIndex.toString(),
+						recordCommitment: recordCommitment.toString(),
 						assetIdHigh: assetIdHigh.toString(),
 						assetIdLow: assetIdLow.toString(),
 						base: witness.checkAccepted.init.params
@@ -411,6 +466,7 @@ export async function submitEthereumTokenWithdrawal(
 	const { config, membership } = await fetchEthereumAsset(runtime, input.asset)
 	const { fee } = normalizeRetryableTransactionOptions(options)
 	const [assetIdHigh, assetIdLow] = splitEthereumAssetId(config.assetId)
+	const recordCommitment = ethereumAssetRecordCommitment(membership.record)
 	setL2(runtime)
 	await compileEthereumTokenStandard(runtime)
 	await refreshEthereumTokenAccounts(config, feePayer, input.sender)
@@ -448,6 +504,9 @@ export async function submitEthereumTokenWithdrawal(
 			input: {
 				asset: membership.witnessJson,
 				withdrawalParams: {
+					encodingVersion: "2",
+					registryIndex: membership.record.registryIndex.toString(),
+					recordCommitment: recordCommitment.toString(),
 					assetIdHigh: assetIdHigh.toString(),
 					assetIdLow: assetIdLow.toString(),
 					tokenOwner: accountUpdateAsRootJson(templateOwner),
@@ -515,10 +574,7 @@ export async function registerEthereumAsset(
 		throw new Error(error?.message ?? "No Ethereum asset registration proof key returned")
 	}
 	const updates = parseProvedAccountUpdates(await pollProvedForest(runtime, data.request.key))
-	const registry = updates[0]
-	if (!registry) throw new Error("Ethereum asset registration proof has no registry root")
-	requireAccount(registry, assets.registryPublicKey, TokenId.default, "Ethereum asset registry")
-	requireProof(registry, assets.registryVerificationKeyHash, "Ethereum asset registry")
+	validateAndGraftEthereumAssetRegistrationAuthority(updates, assets, feePayer)
 	setL2(runtime)
 	await Promise.all([refreshCache(feePayer), refreshEthereumTokenForestAccounts(updates)])
 	const transaction = await Mina.transaction(feePayerWithFee(feePayer, fee), async () =>

@@ -5,6 +5,7 @@ import {
 	sequencerPkQuery
 } from "@zeko-labs/graphql"
 import { Field, PublicKey, UInt32, UInt64 } from "o1js"
+import { ETHEREUM_ASSET_REGISTRY_CAPACITY } from "./ethereum-asset-registry"
 import type { fetchDepositFinalizationWitnesses } from "./deposits"
 import { createGraphqlClient, type GqlClient } from "./graphql"
 import type {
@@ -208,19 +209,51 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 				? UInt32.from(10529)
 				: UInt32.from(0)
 			: UInt32.from(config.v2WithdrawalsStartIndex)
-	const ethereumAssets = circuitsConfig.ethereumAssets
-		? {
-				registryPublicKey: PublicKey.fromBase58(circuitsConfig.ethereumAssets.registryPublicKey),
-				vaultPublicKey: PublicKey.fromBase58(circuitsConfig.ethereumAssets.vaultPublicKey),
-				registrySchemaVersion: circuitsConfig.ethereumAssets.registrySchemaVersion,
-				approvedMftStandardVkId: Field(circuitsConfig.ethereumAssets.approvedMftStandardVkId),
-				universalBridgeVkId: Field(circuitsConfig.ethereumAssets.universalBridgeVkId),
-				bridgeVerificationKeyHash: Field(circuitsConfig.ethereumAssets.bridgeVerificationKeyHash),
-				registryVerificationKeyHash: Field(
-					circuitsConfig.ethereumAssets.registryVerificationKeyHash
-				)
-			}
-		: null
+	const ethereumAssets = (() => {
+		const assets = circuitsConfig.ethereumAssets
+		if (!assets) return null
+		const registryRoot = requireQueryValue({
+			endpoint: config.zekoUrl,
+			queryName: "FetchConfig",
+			field: "circuitsConfig.ethereumAssets.registryRoot",
+			value: assets.registryRoot
+		})
+		const registryCount = requireQueryValue({
+			endpoint: config.zekoUrl,
+			queryName: "FetchConfig",
+			field: "circuitsConfig.ethereumAssets.registryCount",
+			value: assets.registryCount
+		})
+		if (
+			!Number.isSafeInteger(registryCount) ||
+			registryCount < 0 ||
+			registryCount > ETHEREUM_ASSET_REGISTRY_CAPACITY
+		) {
+			throw new Error("Ethereum asset registry runtime count is outside its depth-8 range")
+		}
+		const universalBridgeVkHash = Field(assets.universalBridgeVkHash)
+		const bridgeVerificationKeyHash = Field(assets.bridgeVerificationKeyHash)
+		if (!universalBridgeVkHash.equals(bridgeVerificationKeyHash).toBoolean()) {
+			throw new Error(
+				"Ethereum asset universal bridge VK hash does not match the compiled bridge VK hash"
+			)
+		}
+		return {
+			registryPublicKey: PublicKey.fromBase58(assets.registryPublicKey),
+			registrationAuthority: PublicKey.fromBase58(assets.registrationAuthority),
+			vaultPublicKey: PublicKey.fromBase58(assets.vaultPublicKey),
+			registrySchemaVersion: assets.registrySchemaVersion,
+			registryRoot: Field(registryRoot),
+			registryCount,
+			approvedMftStandardVkId: Field(assets.approvedMftStandardVkId),
+			approvedMftTokenVkHash: Field(assets.approvedMftTokenVkHash),
+			approvedMftAdminVkHash: Field(assets.approvedMftAdminVkHash),
+			universalBridgeVkId: Field(assets.universalBridgeVkId),
+			universalBridgeVkHash,
+			bridgeVerificationKeyHash,
+			registryVerificationKeyHash: Field(assets.registryVerificationKeyHash)
+		}
+	})()
 
 	return {
 		config,

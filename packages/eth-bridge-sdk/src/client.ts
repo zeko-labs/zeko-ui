@@ -5,7 +5,11 @@ import {
 	type DepositWithState,
 	type EthereumTokenBridgeConfig,
 	type EthereumTokenSolidityRegistration,
+	ethereumAssetRecordCommitment,
+	ethereumAssetRegistryLeaf,
 	ethereumDepositAux,
+	fetchEthereumAsset,
+	parseEthereumAssetRegistryField,
 	type RetryableTransactionOptions,
 	type SignTransaction,
 	type EthereumAssetRecord as ZekoEthereumAssetRecord
@@ -169,6 +173,9 @@ export class EthereumBridgeClient {
 		}
 		const account = input.account ?? (await walletClient.getAddresses())[0]
 		if (!account) throw new Error("Ethereum wallet has no selected account")
+		const assets = input.assets
+			? new EthereumAssetRegistry(input.assets.snapshot, input.assets.config)
+			: undefined
 
 		let bridge: Bridge | undefined
 		if (input.zeko) {
@@ -180,6 +187,20 @@ export class EthereumBridgeClient {
 				v2WithdrawalsStartIndex: input.zeko.v2WithdrawalsStartIndex ?? 0
 			})
 			const ethereumHolder = ethereumAddressToZekoPublicKey(config.bridgeAddress)
+			const runtimeAssets = runtime.ethereumAssets
+			if (
+				assets &&
+				runtimeAssets &&
+				(!runtimeAssets.registryRoot
+					.equals(parseEthereumAssetRegistryField(assets.root, "Registry root"))
+					.toBoolean() ||
+					runtimeAssets.registryCount !== assets.count ||
+					runtimeAssets.registrySchemaVersion !== assets.schemaVersion)
+			) {
+				throw new Error(
+					"Ethereum asset snapshot does not match the authenticated Zeko runtime root/count/schema"
+				)
+			}
 			const ethereumRuntime = {
 				...runtime,
 				bridge: {
@@ -189,13 +210,37 @@ export class EthereumBridgeClient {
 						const deposits = await gateway.deposits({
 							zekoRecipient: packZekoAddress(recipient)
 						})
-						return deposits.map((deposit) => ({
-							recipient: unpackZekoAddress(deposit.zekoRecipient),
-							amount: UInt64.from(deposit.zekoAmount),
-							timeout: UInt32.from(deposit.timeout),
-							holderAccountL1: ethereumHolder,
-							assetId: deposit.assetId ?? undefined
-						}))
+						return Promise.all(
+							deposits.map(async (deposit) => {
+								const localAsset =
+									deposit.assetId && assets ? assets.byAssetId(deposit.assetId).record : undefined
+								const indexedAsset =
+									deposit.assetId && runtimeAssets && !localAsset
+										? (
+												await fetchEthereumAsset(runtime, {
+													assetId: deposit.assetId
+												})
+											).membership.record
+										: undefined
+								const registryIndex = localAsset?.registryIndex ?? indexedAsset?.registryIndex
+								const recordCommitment = localAsset
+									? ethereumAssetRegistryLeaf(localAsset)
+									: indexedAsset
+										? ethereumAssetRecordCommitment(indexedAsset)
+										: undefined
+								return {
+									recipient: unpackZekoAddress(deposit.zekoRecipient),
+									amount: UInt64.from(deposit.zekoAmount),
+									timeout: UInt32.from(deposit.timeout),
+									holderAccountL1: ethereumHolder,
+									assetId: deposit.assetId ?? undefined,
+									encodingVersion:
+										registryIndex !== undefined && recordCommitment ? (2 as const) : undefined,
+									registryIndex,
+									recordCommitment
+								}
+							})
+						)
 					}
 				}
 			}
@@ -208,9 +253,7 @@ export class EthereumBridgeClient {
 			config,
 			gateway,
 			provider: input.provider,
-			assets: input.assets
-				? new EthereumAssetRegistry(input.assets.snapshot, input.assets.config)
-				: undefined
+			assets
 		})
 	}
 
@@ -517,6 +560,7 @@ export class EthereumBridgeClient {
 			args: [
 				getAddress(input.token),
 				input.settlementSequence,
+				membership.recordCommitment,
 				membership.proof as readonly [Hex, Hex, Hex, Hex, Hex, Hex, Hex, Hex]
 			],
 			chain: null

@@ -31,6 +31,10 @@ export type Deposit = {
 	holderAccountL1: PublicKey
 	/** Ethereum ERC20 asset identifier. Absent for native-token deposits. */
 	assetId?: string
+	/** Registry-bound Ethereum ERC20 action encoding. Absent only for native and legacy V1 actions. */
+	encodingVersion?: 2
+	registryIndex?: number
+	recordCommitment?: Field
 }
 
 export type EthereumTokenBridgeConfig = {
@@ -44,10 +48,16 @@ export type EthereumTokenBridgeConfig = {
 
 export type EthereumAssetsConfig = {
 	registryPublicKey: PublicKey
+	registrationAuthority: PublicKey
 	vaultPublicKey: PublicKey
 	registrySchemaVersion: number
+	registryRoot: Field
+	registryCount: number
 	approvedMftStandardVkId: Field
+	approvedMftTokenVkHash: Field
+	approvedMftAdminVkHash: Field
 	universalBridgeVkId: Field
+	universalBridgeVkHash: Field
 	bridgeVerificationKeyHash: Field
 	registryVerificationKeyHash: Field
 }

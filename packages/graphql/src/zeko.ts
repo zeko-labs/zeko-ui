@@ -16,10 +16,16 @@ export const fetchConfigQuery = graphql(`
       bridgeProofFee
       ethereumAssets {
         registryPublicKey
+        registrationAuthority
         vaultPublicKey
         registrySchemaVersion
+        registryRoot
+        registryCount
         approvedMftStandardVkId
+        approvedMftTokenVkHash
+        approvedMftAdminVkHash
         universalBridgeVkId
+        universalBridgeVkHash
         bridgeVerificationKeyHash
         registryVerificationKeyHash
       }

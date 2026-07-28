@@ -72,6 +72,9 @@ input FinalizeDepositInput {
 }
 
 input EthereumTokenDepositParamsInput {
+  encodingVersion: UInt32!
+  registryIndex: UInt32!
+  recordCommitment: String!
   assetIdHigh: String!
   assetIdLow: String!
   base: DepositParamsInput!
@@ -102,6 +105,9 @@ input FinalizeEthereumTokenDepositInput {
 }
 
 input EthereumTokenWithdrawalParamsInput {
+  encodingVersion: UInt32!
+  registryIndex: UInt32!
+  recordCommitment: String!
   assetIdHigh: String!
   assetIdLow: String!
   tokenOwner: String!
@@ -859,10 +865,16 @@ type ZekoCircuitsConfig {
 
 type ZekoEthereumAssetsConfig {
   registryPublicKey: PublicKey!
+  registrationAuthority: PublicKey!
   vaultPublicKey: PublicKey!
   registrySchemaVersion: Int!
+  registryRoot: String!
+  registryCount: Int!
   approvedMftStandardVkId: String!
+  approvedMftTokenVkHash: String!
+  approvedMftAdminVkHash: String!
   universalBridgeVkId: String!
+  universalBridgeVkHash: String!
   bridgeVerificationKeyHash: String!
   registryVerificationKeyHash: String!
 }

@@ -5,7 +5,7 @@ export const ethereumZekoBridgeAbi = parseAbi([
 	"function submitDeposit(address token, uint256 amount, uint256 zekoRecipient) returns (uint64 nonce, bytes32 depositLeaf, bytes32 newDepositState)",
 	"function proposeAsset((uint32 schemaVersion,uint32 registryIndex,bytes32 assetId,address ethereumToken,bytes32 tokenOwnerL2,bytes32 tokenIdL2,uint8 decimals,uint64 inventoryCap,bytes32 mftStandardVkId,bytes32 vaultPublicKey,bytes32 universalBridgeVkId) record) returns (bytes32 recordHash)",
 	"function activateAsset(address token, bytes32 expectedRegistryRoot, uint32 expectedRegistryCount)",
-	"function activateAssetFromBatch(address token, uint64 settlementSequence, bytes32[8] siblings)",
+	"function activateAssetFromBatch(address token, uint64 settlementSequence, bytes32 recordCommitment, bytes32[8] siblings)",
 	"function assetRecord(address token) view returns ((uint32 schemaVersion,uint32 registryIndex,bytes32 assetId,address ethereumToken,bytes32 tokenOwnerL2,bytes32 tokenIdL2,uint8 decimals,uint64 inventoryCap,bytes32 mftStandardVkId,bytes32 vaultPublicKey,bytes32 universalBridgeVkId))",
 	"function assetStatusByToken(address token) view returns (uint8)",
 	"function proposedAssetCount() view returns (uint32)",

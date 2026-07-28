@@ -1,20 +1,80 @@
 import { Field, Poseidon, TokenId } from "o1js"
-import type { Deposit, EthereumTokenBridgeConfig } from "./types"
+import type { Deposit, EthereumTokenBridgeConfig, Withdrawal } from "./types"
 
 const ETHEREUM_ADDRESS = /^0x[0-9a-f]{40}$/
 const ZERO_ETHEREUM_ADDRESS = `0x${"0".repeat(40)}`
 
 export function ethereumDepositAux(deposit: Deposit): Field {
 	const assetFields = deposit.assetId ? splitEthereumAssetId(deposit.assetId) : []
+	const registryFields = ethereumAssetActionRegistryFields(deposit)
 	return Poseidon.hashWithPrefix(
-		deposit.assetId ? "Ethereum ERC20 deposit V1" : "Ethereum deposit V1",
+		registryFields
+			? "Ethereum ERC20 deposit V2"
+			: deposit.assetId
+				? "Ethereum ERC20 deposit V1"
+				: "Ethereum deposit V1",
 		[
+			...(registryFields ?? []),
 			...assetFields,
 			Field(0), // Empty children
 			...deposit.holderAccountL1.toFields(),
 			...deposit.amount.toFields(),
 			...deposit.recipient.toFields(),
 			...deposit.timeout.toFields()
+		]
+	)
+}
+
+type EthereumAssetActionIdentity = {
+	readonly assetId: string
+	readonly encodingVersion?: 2
+	readonly registryIndex?: number
+	readonly recordCommitment?: Field
+}
+
+const ethereumAssetActionRegistryFields = (
+	action: Partial<EthereumAssetActionIdentity>
+): readonly [Field, Field, Field] | null => {
+	const hasRegistryMetadata =
+		action.encodingVersion !== undefined ||
+		action.registryIndex !== undefined ||
+		action.recordCommitment !== undefined
+	if (!hasRegistryMetadata) return null
+	if (!action.assetId) {
+		throw new Error("Ethereum ERC20 V2 action metadata requires an asset ID")
+	}
+	if (
+		action.encodingVersion !== 2 ||
+		action.registryIndex === undefined ||
+		action.recordCommitment === undefined
+	) {
+		throw new Error(
+			"Ethereum ERC20 V2 action metadata requires encoding version, registry index, and record commitment"
+		)
+	}
+	if (
+		!Number.isSafeInteger(action.registryIndex) ||
+		action.registryIndex < 0 ||
+		action.registryIndex >= 1 << 8
+	) {
+		throw new Error("Ethereum ERC20 registry index is outside its depth-8 range")
+	}
+	return [Field(2), Field(action.registryIndex), action.recordCommitment]
+}
+
+export type EthereumTokenWithdrawalAction = Withdrawal & EthereumAssetActionIdentity
+
+export function ethereumTokenWithdrawalAux(withdrawal: EthereumTokenWithdrawalAction): Field {
+	const registryFields = ethereumAssetActionRegistryFields(withdrawal)
+	const assetFields = splitEthereumAssetId(withdrawal.assetId)
+	return Poseidon.hashWithPrefix(
+		registryFields ? "Ethereum ERC20 withdrawal V2" : "Ethereum ERC20 withdrawal V1",
+		[
+			...(registryFields ?? []),
+			...assetFields,
+			Field(0), // Empty children
+			...withdrawal.amount.toFields(),
+			...withdrawal.recipient.toFields()
 		]
 	)
 }

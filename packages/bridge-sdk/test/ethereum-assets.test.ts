@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest"
 import {
 	type EthereumAssetRegistryApiRecord,
 	ethereumAssetBridgeCallData,
+	fetchEthereumAssetRegistry,
 	parseEthereumAssetRegistrySnapshot,
 	prepareEthereumAssetRegistrationFromRegistry
 } from "../src/ethereum-assets"
+import type { BridgeRuntime } from "../src/runtime"
 import { buildEthereumTokenWithdrawalApproval } from "../src/ethereum-token"
 import type { EthereumAssetRecord } from "../src/types"
 
@@ -120,8 +122,13 @@ const fixture = () => {
 				registryPublicKey: PrivateKey.random().toPublicKey(),
 				vaultPublicKey,
 				registrySchemaVersion: 1,
+				registryRoot: levels.at(-1)?.[0] ?? Field(0),
+				registryCount: records.length,
 				approvedMftStandardVkId: mftStandardVkId,
+				approvedMftTokenVkHash: Field(9005),
+				approvedMftAdminVkHash: Field(9006),
 				universalBridgeVkId,
+				universalBridgeVkHash: Field(9003),
 				bridgeVerificationKeyHash: Field(9003),
 				registryVerificationKeyHash: Field(9004)
 			}
@@ -224,6 +231,54 @@ describe("universal Ethereum asset memberships", () => {
 		expect(() => parseEthereumAssetRegistrySnapshot(runtime, overCapacity)).toThrow(
 			"Registry index is outside its canonical range"
 		)
+
+		expect(() =>
+			parseEthereumAssetRegistrySnapshot(
+				{
+					ethereumAssets: {
+						...runtime.ethereumAssets,
+						registryRoot: runtime.ethereumAssets.registryRoot.add(1)
+					}
+				},
+				snapshot
+			)
+		).toThrow("authenticated runtime root/count/schema")
+		expect(() =>
+			parseEthereumAssetRegistrySnapshot(
+				{
+					ethereumAssets: {
+						...runtime.ethereumAssets,
+						registryCount: runtime.ethereumAssets.registryCount + 1
+					}
+				},
+				snapshot
+			)
+		).toThrow("authenticated runtime root/count/schema")
+	})
+
+	it("rejects a missing indexed checkpoint when runtime authenticates records", async () => {
+		const { runtime } = fixture()
+		const missingSnapshotRuntime = {
+			...runtime,
+			actionsApiClient: () => ({
+				query: async () => ({
+					data: { ethereumAssetRegistry: null }
+				})
+			})
+		} as unknown as BridgeRuntime
+
+		await expect(fetchEthereumAssetRegistry(missingSnapshotRuntime)).rejects.toThrow(
+			"no indexed checkpoint"
+		)
+		await expect(
+			fetchEthereumAssetRegistry({
+				...missingSnapshotRuntime,
+				ethereumAssets: {
+					...missingSnapshotRuntime.ethereumAssets,
+					registryCount: 0
+				}
+			})
+		).resolves.toEqual([])
 	})
 
 	it("builds an exhaustive append witness for the next record", () => {

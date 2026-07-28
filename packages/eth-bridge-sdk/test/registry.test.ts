@@ -1,3 +1,4 @@
+import { Field, Poseidon } from "o1js"
 import type { Hex } from "viem"
 import { describe, expect, it } from "vitest"
 import {
@@ -8,37 +9,94 @@ import {
 	hashEthereumAssetRecord
 } from "../src/registry"
 
-const word = (byte: string) => `0x${byte.repeat(32)}` as Hex
+const U128_MAX = (1n << 128n) - 1n
+const PUBLIC_KEY_SIGN_BIT = 1n << 255n
+const word = (value: bigint) => `0x${value.toString(16).padStart(64, "0")}` as Hex
 const address = (suffix: string) => `0x${"00".repeat(19)}${suffix}` as `0x${string}`
+const packedKey = (x: bigint, isOdd: boolean) => word(x | (isOdd ? PUBLIC_KEY_SIGN_BIT : 0n))
 
 const record = (registryIndex: number, suffix: string): EthereumAssetRecord => ({
 	schemaVersion: 1,
 	registryIndex,
-	assetId: word(suffix),
+	assetId: word(BigInt(`0x${suffix.repeat(32)}`)),
 	ethereumTokenAddress: address(suffix),
-	tokenOwnerL2: word(`${Number.parseInt(suffix, 16) + 16}`.padStart(2, "0")),
-	tokenIdL2: word(`${Number.parseInt(suffix, 16) + 32}`.padStart(2, "0")),
+	tokenOwnerL2: packedKey(BigInt(Number.parseInt(suffix, 16) + 16), registryIndex % 2 === 0),
+	tokenIdL2: word(BigInt(Number.parseInt(suffix, 16) + 32)),
 	decimals: 9,
 	inventoryCap: 1_000_000n,
-	mftStandardVkId: word("71"),
-	vaultPublicKey: word("72"),
-	universalBridgeVkId: word("73")
+	mftStandardVkId: word(0x71n),
+	vaultPublicKey: packedKey(0x72n, true),
+	universalBridgeVkId: word(0x73n)
 })
 
-const path = (byte: string) => Array.from({ length: 8 }, () => word(byte))
+const recordFields = (record: EthereumAssetRecord): Field[] => {
+	const assetId = BigInt(record.assetId)
+	const unpackKey = (value: Hex): [Field, Field] => {
+		const packed = BigInt(value)
+		return [Field(packed & (PUBLIC_KEY_SIGN_BIT - 1n)), Field(packed & PUBLIC_KEY_SIGN_BIT ? 1 : 0)]
+	}
+	const [ownerX, ownerOdd] = unpackKey(record.tokenOwnerL2)
+	const [vaultX, vaultOdd] = unpackKey(record.vaultPublicKey)
+	return [
+		Field(record.schemaVersion),
+		Field(record.registryIndex),
+		Field(assetId >> 128n),
+		Field(assetId & U128_MAX),
+		Field(BigInt(record.ethereumTokenAddress)),
+		ownerX,
+		ownerOdd,
+		Field(BigInt(record.tokenIdL2)),
+		Field(record.decimals),
+		Field(record.inventoryCap),
+		Field(BigInt(record.mftStandardVkId)),
+		vaultX,
+		vaultOdd,
+		Field(BigInt(record.universalBridgeVkId))
+	]
+}
 
-const snapshot = (
-	records: EthereumAssetRecord[],
-	root = word("80")
-): EthereumAssetRegistrySnapshot => ({
-	schemaVersion: 1,
-	root,
-	count: records.length,
-	depth: 8,
-	records: records.map((asset, index) => ({
-		record: asset,
-		path: path(`${index + 1}`.padStart(2, "0"))
-	}))
+const registryNode = (left: Field, right: Field): Field =>
+	Poseidon.hashWithPrefix("Ethereum asset registry node V1", [left, right])
+
+const registryLevels = (records: readonly EthereumAssetRecord[]): readonly (readonly Field[])[] => {
+	const leaves = Array.from({ length: 256 }, (_, index) => {
+		const asset = records.find((candidate) => candidate.registryIndex === index)
+		return asset
+			? Poseidon.hashWithPrefix("Ethereum asset registry leaf V1", recordFields(asset))
+			: Field(0)
+	})
+	const build = (level: readonly Field[]): readonly (readonly Field[])[] =>
+		level.length === 1
+			? [level]
+			: [
+					level,
+					...build(
+						Array.from({ length: level.length / 2 }, (_, index) =>
+							registryNode(level[index * 2], level[index * 2 + 1])
+						)
+					)
+				]
+	return build(leaves)
+}
+
+const snapshot = (records: EthereumAssetRecord[]): EthereumAssetRegistrySnapshot => ({
+	...(() => {
+		const levels = registryLevels(records)
+		const root = levels.at(-1)?.[0]
+		if (!root) throw new Error("Missing test registry root")
+		return {
+			schemaVersion: 1,
+			root: word(root.toBigInt()),
+			count: records.length,
+			depth: 8,
+			records: records.map((asset) => ({
+				record: asset,
+				path: levels
+					.slice(0, -1)
+					.map((level, height) => word(level[(asset.registryIndex >> height) ^ 1].toBigInt()))
+			}))
+		}
+	})()
 })
 
 describe("universal Ethereum asset registry", () => {
@@ -48,9 +106,9 @@ describe("universal Ethereum asset registry", () => {
 		const registry = new EthereumAssetRegistry(snapshot([first, second]), {
 			schemaVersion: 1,
 			depth: 8,
-			mftStandardVkId: word("71"),
-			vaultPublicKey: word("72"),
-			universalBridgeVkId: word("73")
+			mftStandardVkId: word(0x71n),
+			vaultPublicKey: packedKey(0x72n, true),
+			universalBridgeVkId: word(0x73n)
 		})
 
 		expect(registry.byIndex(0).record).toEqual(first)
@@ -62,17 +120,48 @@ describe("universal Ethereum asset registry", () => {
 
 	it("refreshes paths after append without changing historical records", () => {
 		const first = record(0, "01")
-		const registry = new EthereumAssetRegistry(snapshot([first], word("80")))
+		const registry = new EthereumAssetRegistry(snapshot([first]))
 		const oldPath = registry.byIndex(0).path
-		const appended = snapshot([first, record(1, "02")], word("81"))
-		const refreshed = registry.refresh({
-			...appended,
-			records: [{ ...appended.records[0], path: path("09") }, appended.records[1]]
-		})
+		const appended = snapshot([first, record(1, "02")])
+		const refreshed = registry.refresh(appended)
 
-		expect(refreshed.root).toBe(word("81"))
+		expect(refreshed.root).toBe(appended.root)
 		expect(refreshed.byIndex(0).record).toEqual(first)
 		expect(refreshed.byIndex(0).path).not.toEqual(oldPath)
+	})
+
+	it("rejects a wrong Poseidon root, path, or record while accepting odd compressed keys", () => {
+		const first = record(0, "01")
+		const valid = snapshot([first])
+		expect(BigInt(first.tokenOwnerL2) & PUBLIC_KEY_SIGN_BIT).toBe(PUBLIC_KEY_SIGN_BIT)
+		expect(() => new EthereumAssetRegistry(valid)).not.toThrow()
+		expect(() => new EthereumAssetRegistry({ ...valid, root: word(123n) })).toThrow(
+			/registry root|membership/i
+		)
+		expect(
+			() =>
+				new EthereumAssetRegistry({
+					...valid,
+					records: [
+						{
+							...valid.records[0],
+							path: [word(456n), ...valid.records[0].path.slice(1)]
+						}
+					]
+				})
+		).toThrow(/registry root|membership|path/i)
+		expect(
+			() =>
+				new EthereumAssetRegistry({
+					...valid,
+					records: [
+						{
+							...valid.records[0],
+							record: { ...first, inventoryCap: first.inventoryCap + 1n }
+						}
+					]
+				})
+		).toThrow(/registry root|membership|record/i)
 	})
 
 	it("builds one exact settlement batch root with asset-specific depth-8 proofs", () => {
@@ -85,6 +174,7 @@ describe("universal Ethereum asset registry", () => {
 		expect(firstMembership.proof).toHaveLength(8)
 		expect(secondMembership.proof).toHaveLength(8)
 		expect(firstMembership.recordHash).not.toBe(secondMembership.recordHash)
+		expect(firstMembership.recordCommitment).not.toBe(secondMembership.recordCommitment)
 		expect(firstMembership.proof).not.toEqual(secondMembership.proof)
 		expect(() => ethereumAssetRecordBatchMembership([first], second)).toThrow(
 			/not in the settlement batch/i
@@ -129,9 +219,9 @@ describe("universal Ethereum asset registry", () => {
 		const registry = new EthereumAssetRegistry(snapshot([first]), {
 			schemaVersion: 1,
 			depth: 8,
-			mftStandardVkId: word("71"),
-			vaultPublicKey: word("72"),
-			universalBridgeVkId: word("73")
+			mftStandardVkId: word(0x71n),
+			vaultPublicKey: packedKey(0x72n, true),
+			universalBridgeVkId: word(0x73n)
 		})
 		expect(() => registry.membership({ ...first, inventoryCap: first.inventoryCap + 1n })).toThrow(
 			/record/i
@@ -141,9 +231,9 @@ describe("universal Ethereum asset registry", () => {
 				new EthereumAssetRegistry(snapshot([first]), {
 					schemaVersion: 1,
 					depth: 8,
-					mftStandardVkId: word("71"),
-					vaultPublicKey: word("72"),
-					universalBridgeVkId: word("74")
+					mftStandardVkId: word(0x71n),
+					vaultPublicKey: packedKey(0x72n, true),
+					universalBridgeVkId: word(0x74n)
 				})
 		).toThrow(/bridge VK/i)
 	})

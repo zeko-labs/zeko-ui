@@ -1,6 +1,17 @@
 import { fetchEthereumAssetRegistryQuery } from "@zeko-labs/graphql"
 import { Field, Poseidon, PublicKey, TokenId, UInt64 } from "o1js"
 import {
+	buildEthereumAssetRegistryTree,
+	ETHEREUM_ASSET_REGISTRY_CAPACITY,
+	ETHEREUM_ASSET_REGISTRY_DEPTH,
+	ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION,
+	ethereumAssetRegistryLeaf,
+	ethereumAssetRegistryRecordFields,
+	parseEthereumAssetRegistryField,
+	type EthereumAssetRegistryPoseidonRecord,
+	verifyEthereumAssetRegistryMembership
+} from "./ethereum-asset-registry"
+import {
 	normalizeEthereumAssetId,
 	splitEthereumAssetId,
 	validateEthereumTokenBridgeConfig
@@ -13,13 +24,9 @@ import type {
 	EthereumTokenBridgeConfig
 } from "./types"
 
-const REGISTRY_DEPTH = 8
-const REGISTRY_SCHEMA_VERSION = 1
 const PUBLIC_KEY_SIGN_BIT = 1n << 255n
 const PUBLIC_KEY_X_MASK = PUBLIC_KEY_SIGN_BIT - 1n
 const U64_MAX = (1n << 64n) - 1n
-const LEAF_PREFIX = "Ethereum asset registry leaf V1"
-const NODE_PREFIX = "Ethereum asset registry node V1"
 const BRIDGE_CALL_PREFIX = "Ethereum asset bridge call V1"
 
 export type EthereumAssetRegistryApiRecord = {
@@ -63,12 +70,6 @@ const parseHex = (value: string, bytes: number, label: string): bigint => {
 	return BigInt(value)
 }
 
-const parseFieldHex = (value: string, label: string): Field => {
-	const parsed = parseHex(value, 32, label)
-	if (parsed >= Field.ORDER) throw new Error(`${label} is not a canonical Pasta field`)
-	return Field(parsed)
-}
-
 const unpackPublicKey = (value: string, label: string): PublicKey => {
 	const packed = parseHex(value, 32, label)
 	const x = packed & PUBLIC_KEY_X_MASK
@@ -96,84 +97,28 @@ const packPublicKey = (publicKey: PublicKey, label: string): string => {
 	return wordJson(x.toBigInt() | (odd.toBigInt() === 0n ? 0n : PUBLIC_KEY_SIGN_BIT))
 }
 
-const recordFields = (record: EthereumAssetRecord): Field[] => {
-	const [assetIdHigh, assetIdLow] = splitEthereumAssetId(record.assetId)
-	const [ownerX, ownerOdd] = record.tokenOwnerL2.toFields()
-	const [vaultX, vaultOdd] = record.vaultPublicKey.toFields()
-	if (!ownerX || !ownerOdd || !vaultX || !vaultOdd) {
-		throw new Error("Invalid compressed public key in Ethereum asset record")
-	}
-	return [
-		Field(record.schemaVersion),
-		Field(record.registryIndex),
-		assetIdHigh,
-		assetIdLow,
-		Field(BigInt(record.ethereumTokenAddress)),
-		ownerX,
-		ownerOdd,
-		record.tokenIdL2,
-		Field(record.decimals),
-		Field(record.inventoryCap.toBigInt()),
-		record.mftStandardVkId,
-		vaultX,
-		vaultOdd,
-		record.universalBridgeVkId
-	]
-}
+const poseidonRecord = (record: EthereumAssetRecord): EthereumAssetRegistryPoseidonRecord => ({
+	schemaVersion: record.schemaVersion,
+	registryIndex: record.registryIndex,
+	assetId: record.assetId,
+	ethereumTokenAddress: record.ethereumTokenAddress,
+	tokenOwnerL2: packPublicKey(record.tokenOwnerL2, "L2 token owner"),
+	tokenIdL2: fieldJson(record.tokenIdL2),
+	decimals: record.decimals,
+	inventoryCap: record.inventoryCap.toBigInt(),
+	mftStandardVkId: fieldJson(record.mftStandardVkId),
+	vaultPublicKey: packPublicKey(record.vaultPublicKey, "shared vault public key"),
+	universalBridgeVkId: fieldJson(record.universalBridgeVkId)
+})
 
 export const ethereumAssetBridgeCallData = (record: EthereumAssetRecord, amount: UInt64): Field =>
-	Poseidon.hashWithPrefix(BRIDGE_CALL_PREFIX, [...recordFields(record), Field(amount.toBigInt())])
+	Poseidon.hashWithPrefix(BRIDGE_CALL_PREFIX, [
+		...ethereumAssetRegistryRecordFields(poseidonRecord(record)),
+		Field(amount.toBigInt())
+	])
 
-const registryLeaf = (record: EthereumAssetRecord): Field =>
-	Poseidon.hashWithPrefix(LEAF_PREFIX, recordFields(record))
-
-const registryNode = (left: Field, right: Field): Field =>
-	Poseidon.hashWithPrefix(NODE_PREFIX, [left, right])
-
-const registryLevels = (records: readonly EthereumAssetRecord[]): Field[][] => {
-	const leaves = Array.from({ length: 1 << REGISTRY_DEPTH }, () => Field(0))
-	for (const record of records) leaves[record.registryIndex] = registryLeaf(record)
-	const levels = [leaves]
-	while (levels.at(-1)?.length !== 1) {
-		const current = levels.at(-1)
-		if (!current) throw new Error("Ethereum asset registry has no Merkle level")
-		levels.push(
-			Array.from({ length: current.length / 2 }, (_, index) =>
-				registryNode(current[index * 2], current[index * 2 + 1])
-			)
-		)
-	}
-	return levels
-}
-
-const pathAt = (levels: readonly Field[][], index: number): Field[] =>
-	levels.slice(0, -1).map((level, height) => {
-		const sibling = level[(index >> height) ^ 1]
-		if (!sibling) throw new Error("Ethereum asset registry Merkle path is incomplete")
-		return sibling
-	})
-
-const verifyMembership = (
-	root: Field,
-	record: EthereumAssetRecord,
-	path: readonly Field[]
-): void => {
-	if (path.length !== REGISTRY_DEPTH) {
-		throw new Error(`Ethereum asset membership path must have depth ${REGISTRY_DEPTH}`)
-	}
-	let node = registryLeaf(record)
-	for (let height = 0; height < REGISTRY_DEPTH; height++) {
-		const sibling = path[height]
-		if (!sibling) throw new Error("Ethereum asset membership path is incomplete")
-		node =
-			record.registryIndex & (1 << height)
-				? registryNode(sibling, node)
-				: registryNode(node, sibling)
-	}
-	if (!node.equals(root).toBoolean()) {
-		throw new Error("Ethereum asset membership does not match the indexed registry root")
-	}
-}
+export const ethereumAssetRecordCommitment = (record: EthereumAssetRecord): Field =>
+	ethereumAssetRegistryLeaf(poseidonRecord(record))
 
 const recordWitnessJson = (record: EthereumAssetRecord) => {
 	const [assetIdHigh, assetIdLow] = splitEthereumAssetId(record.assetId)
@@ -219,7 +164,7 @@ const parseRecord = (
 	const registryIndex = requireInteger(
 		input.registryIndex,
 		"Registry index",
-		(1 << REGISTRY_DEPTH) - 1
+		ETHEREUM_ASSET_REGISTRY_CAPACITY - 1
 	)
 	const decimals = requireInteger(input.decimals, "Ethereum asset decimals", 9)
 	const inventoryCap = BigInt(input.inventoryCap)
@@ -234,14 +179,20 @@ const parseRecord = (
 		assetId: normalizeEthereumAssetId(input.assetId),
 		ethereumTokenAddress: input.ethereumTokenAddress,
 		tokenOwnerL2,
-		tokenIdL2: parseFieldHex(input.tokenIdL2, "L2 token ID"),
+		tokenIdL2: parseEthereumAssetRegistryField(input.tokenIdL2, "L2 token ID"),
 		decimals,
 		inventoryCap: UInt64.from(inventoryCap),
-		mftStandardVkId: parseFieldHex(input.mftStandardVkId, "MFT standard VK ID"),
+		mftStandardVkId: parseEthereumAssetRegistryField(input.mftStandardVkId, "MFT standard VK ID"),
 		vaultPublicKey,
-		universalBridgeVkId: parseFieldHex(input.universalBridgeVkId, "Universal bridge VK ID")
+		universalBridgeVkId: parseEthereumAssetRegistryField(
+			input.universalBridgeVkId,
+			"Universal bridge VK ID"
+		)
 	}
-	if (schemaVersion !== REGISTRY_SCHEMA_VERSION || schemaVersion !== assets.registrySchemaVersion) {
+	if (
+		schemaVersion !== ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION ||
+		schemaVersion !== assets.registrySchemaVersion
+	) {
 		throw new Error(`Unsupported Ethereum asset registry schema ${schemaVersion}`)
 	}
 	if (!record.mftStandardVkId.equals(assets.approvedMftStandardVkId).toBoolean()) {
@@ -259,7 +210,7 @@ const parseRecord = (
 		tokenOwnerL2: record.tokenOwnerL2,
 		tokenIdL2: record.tokenIdL2,
 		holderAccountL2: record.vaultPublicKey,
-		verificationKeyHash: assets.bridgeVerificationKeyHash
+		verificationKeyHash: assets.universalBridgeVkHash
 	})
 	return {
 		record: {
@@ -294,20 +245,36 @@ export const parseEthereumAssetRegistrySnapshot = (
 		"Registry schema version",
 		0xffffffff
 	)
-	const count = requireInteger(snapshot.count, "Registry count", 1 << REGISTRY_DEPTH)
-	if (schemaVersion !== REGISTRY_SCHEMA_VERSION || snapshot.depth !== REGISTRY_DEPTH) {
+	const count = requireInteger(snapshot.count, "Registry count", ETHEREUM_ASSET_REGISTRY_CAPACITY)
+	if (
+		schemaVersion !== ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION ||
+		snapshot.depth !== ETHEREUM_ASSET_REGISTRY_DEPTH
+	) {
 		throw new Error("Ethereum asset registry root/count/schema is unsupported")
 	}
-	const root = parseFieldHex(snapshot.root, "Ethereum asset registry root")
+	const root = parseEthereumAssetRegistryField(snapshot.root, "Ethereum asset registry root")
+	const assets = runtime.ethereumAssets
+	if (!assets) throw new Error("Universal Ethereum asset bridging is not configured")
+	if (
+		!root.equals(assets.registryRoot).toBoolean() ||
+		count !== assets.registryCount ||
+		schemaVersion !== assets.registrySchemaVersion
+	) {
+		throw new Error(
+			"Indexed Ethereum asset registry checkpoint does not match the authenticated runtime root/count/schema"
+		)
+	}
 	return snapshot.records.map((entry) => {
 		const { record, config } = parseRecord(runtime, entry.record)
 		if (record.registryIndex >= count) {
 			throw new Error("Ethereum asset registry record is outside the committed count")
 		}
 		const path = entry.path.map((value) =>
-			parseFieldHex(value, "Ethereum asset registry path sibling")
+			parseEthereumAssetRegistryField(value, "Ethereum asset registry path sibling")
 		)
-		verifyMembership(root, record, path)
+		if (!verifyEthereumAssetRegistryMembership(root, poseidonRecord(record), path)) {
+			throw new Error("Ethereum asset membership does not match the indexed registry root")
+		}
 		return {
 			config,
 			membership: {
@@ -348,7 +315,7 @@ export async function fetchEthereumAssetRegistry(
 	}
 	const snapshot = result.data?.ethereumAssetRegistry
 	if (!snapshot) {
-		if (!lookup) return []
+		if (!lookup && (runtime.ethereumAssets?.registryCount ?? 0) === 0) return []
 		throw new Error("The Ethereum asset registry has no indexed checkpoint")
 	}
 	const records = (snapshot.records ?? []).map((entry) => {
@@ -437,7 +404,7 @@ export function prepareEthereumAssetRegistrationFromRegistry(
 	}>,
 	input: EthereumAssetRecord
 ): PreparedEthereumAssetRegistration {
-	if (current.length >= 1 << REGISTRY_DEPTH) {
+	if (current.length >= ETHEREUM_ASSET_REGISTRY_CAPACITY) {
 		throw new Error("The Ethereum asset registry is full")
 	}
 	const { record: candidate } = parseRecord(runtime, recordAsApi(input))
@@ -462,14 +429,24 @@ export function prepareEthereumAssetRegistrationFromRegistry(
 			throw new Error("Ethereum asset candidate duplicates an immutable registry identity")
 		}
 	}
-	const levels = registryLevels(records)
-	const oldRoot = levels.at(-1)?.[0]
-	if (!oldRoot) throw new Error("The Ethereum asset registry root is missing")
+	const tree = buildEthereumAssetRegistryTree(records.map(poseidonRecord))
+	const oldRoot = tree.root
+	const assets = runtime.ethereumAssets
+	if (!assets) throw new Error("Universal Ethereum asset bridging is not configured")
+	if (
+		!assets.registryRoot.equals(oldRoot).toBoolean() ||
+		assets.registryCount !== records.length ||
+		assets.registrySchemaVersion !== candidate.schemaVersion
+	) {
+		throw new Error(
+			"Exhaustive Ethereum asset registry does not match the authenticated runtime root/count/schema"
+		)
+	}
 	const indexedRoot = current[0]?.membership.root
 	if (indexedRoot && !indexedRoot.equals(oldRoot).toBoolean()) {
 		throw new Error("The exhaustive indexed registry does not match its committed root")
 	}
-	const appendPath = pathAt(levels, candidate.registryIndex)
+	const appendPath = tree.path(candidate.registryIndex)
 	return {
 		oldRoot,
 		oldCount: records.length,

@@ -1,11 +1,15 @@
-import { Field, Poseidon } from "o1js"
+import {
+	buildEthereumAssetRegistryTree,
+	ETHEREUM_ASSET_REGISTRY_CAPACITY,
+	ETHEREUM_ASSET_REGISTRY_DEPTH,
+	ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION,
+	ethereumAssetRegistryFieldHex,
+	parseEthereumAssetRegistryField,
+	verifyEthereumAssetRegistryMembership
+} from "@zeko-labs/bridge-sdk"
+import { Field } from "o1js"
 import { type Address, getAddress, type Hex } from "viem"
 
-const REGISTRY_SCHEMA_VERSION = 1
-const REGISTRY_DEPTH = 8
-const REGISTRY_CAPACITY = 1 << REGISTRY_DEPTH
-const LEAF_PREFIX = "Ethereum asset registry leaf V1"
-const NODE_PREFIX = "Ethereum asset registry node V1"
 const U32_MAX = (1n << 32n) - 1n
 const U64_MAX = (1n << 64n) - 1n
 const U128_MAX = (1n << 128n) - 1n
@@ -73,59 +77,10 @@ const parseBoolean = (value: string, label: string): boolean => {
 const toHex = (value: bigint, bytes = 32): Hex =>
 	`0x${value.toString(16).padStart(bytes * 2, "0")}` as Hex
 
-const fieldHex = (value: Field): Hex => toHex(value.toBigInt())
+const fieldHex = (value: Field): Hex => ethereumAssetRegistryFieldHex(value) as Hex
 
 const packPublicKey = (x: bigint, isOdd: boolean): Hex =>
 	toHex(x | (isOdd ? COMPRESSED_KEY_ODD_BIT : 0n))
-
-const unpackPublicKey = (value: Hex): [bigint, bigint] => {
-	const packed = BigInt(value)
-	return [packed & (COMPRESSED_KEY_ODD_BIT - 1n), packed & COMPRESSED_KEY_ODD_BIT ? 1n : 0n]
-}
-
-const recordFields = (record: IndexedEthereumAssetRecord): Field[] => {
-	const assetId = BigInt(record.assetId)
-	const [ownerX, ownerIsOdd] = unpackPublicKey(record.tokenOwnerL2)
-	const [vaultX, vaultIsOdd] = unpackPublicKey(record.vaultPublicKey)
-	return [
-		Field(record.schemaVersion),
-		Field(record.registryIndex),
-		Field(assetId >> 128n),
-		Field(assetId & U128_MAX),
-		Field(BigInt(record.ethereumTokenAddress)),
-		Field(ownerX),
-		Field(ownerIsOdd),
-		Field(BigInt(record.tokenIdL2)),
-		Field(record.decimals),
-		Field(record.inventoryCap),
-		Field(BigInt(record.mftStandardVkId)),
-		Field(vaultX),
-		Field(vaultIsOdd),
-		Field(BigInt(record.universalBridgeVkId))
-	]
-}
-
-const leafHash = (record: IndexedEthereumAssetRecord): Field =>
-	Poseidon.hashWithPrefix(LEAF_PREFIX, recordFields(record))
-
-const nodeHash = (left: Field, right: Field): Field =>
-	Poseidon.hashWithPrefix(NODE_PREFIX, [left, right])
-
-const levelsFromLeaves = (leaves: Field[]): Field[][] => {
-	const levels = [leaves]
-	let level = leaves
-	while (level.length > 1) {
-		const next = Array.from({ length: level.length / 2 }, (_, index) =>
-			nodeHash(level[index * 2], level[index * 2 + 1])
-		)
-		levels.push(next)
-		level = next
-	}
-	return levels
-}
-
-const pathAt = (levels: Field[][], index: number): Hex[] =>
-	levels.slice(0, -1).map((level, height) => fieldHex(level[(index >> height) ^ 1]))
 
 const parseEvent = (
 	event: RegistryArchiveEvent,
@@ -152,10 +107,10 @@ const parseEvent = (
 	] = event.fields
 	const schemaVersion = Number(parseUnsigned(schema, "Schema version", U32_MAX))
 	const registryIndex = Number(parseUnsigned(index, "Registry index", U32_MAX))
-	if (schemaVersion !== REGISTRY_SCHEMA_VERSION) {
+	if (schemaVersion !== ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION) {
 		throw new Error(`Unsupported registry schema version ${schemaVersion}`)
 	}
-	if (registryIndex !== expectedIndex || registryIndex >= REGISTRY_CAPACITY) {
+	if (registryIndex !== expectedIndex || registryIndex >= ETHEREUM_ASSET_REGISTRY_CAPACITY) {
 		throw new Error(
 			`Registry is not a dense append-only list: expected index ${expectedIndex}, got ${registryIndex}`
 		)
@@ -207,7 +162,7 @@ const parseEvent = (
 }
 
 export const buildRegistrySnapshot = (
-	events: RegistryArchiveEvent[]
+	events: readonly RegistryArchiveEvent[]
 ): IndexedEthereumAssetRegistrySnapshot => {
 	const records = events.map(parseEvent)
 	const tokens = new Set<Address>()
@@ -233,17 +188,15 @@ export const buildRegistrySnapshot = (
 		owners.add(record.tokenOwnerL2)
 		tokenIds.add(record.tokenIdL2)
 	}
-	const leaves = Array.from({ length: REGISTRY_CAPACITY }, () => Field(0))
-	for (const record of records) leaves[record.registryIndex] = leafHash(record)
-	const levels = levelsFromLeaves(leaves)
+	const tree = buildEthereumAssetRegistryTree(records)
 	return {
-		schemaVersion: REGISTRY_SCHEMA_VERSION,
-		depth: REGISTRY_DEPTH,
-		root: fieldHex(levels.at(-1)?.[0] ?? Field(0)),
+		schemaVersion: ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION,
+		depth: ETHEREUM_ASSET_REGISTRY_DEPTH,
+		root: fieldHex(tree.root),
 		count: records.length,
 		records: records.map((record) => ({
 			record,
-			path: pathAt(levels, record.registryIndex)
+			path: tree.path(record.registryIndex).map(fieldHex)
 		}))
 	}
 }
@@ -253,20 +206,22 @@ export const verifyRegistryMembership = (
 	entry: IndexedEthereumAssetEntry
 ): boolean => {
 	if (
-		snapshot.schemaVersion !== REGISTRY_SCHEMA_VERSION ||
-		snapshot.depth !== REGISTRY_DEPTH ||
-		entry.path.length !== REGISTRY_DEPTH ||
+		snapshot.schemaVersion !== ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION ||
+		snapshot.depth !== ETHEREUM_ASSET_REGISTRY_DEPTH ||
+		entry.path.length !== ETHEREUM_ASSET_REGISTRY_DEPTH ||
 		entry.record.registryIndex >= snapshot.count
 	) {
 		return false
 	}
-	let node = leafHash(entry.record)
-	for (let height = 0; height < REGISTRY_DEPTH; height++) {
-		const sibling = Field(BigInt(entry.path[height]))
-		node =
-			entry.record.registryIndex & (1 << height) ? nodeHash(sibling, node) : nodeHash(node, sibling)
+	try {
+		const root = parseEthereumAssetRegistryField(snapshot.root, "Registry root")
+		const path = entry.path.map((sibling) =>
+			parseEthereumAssetRegistryField(sibling, "Registry path sibling")
+		)
+		return verifyEthereumAssetRegistryMembership(root, entry.record, path)
+	} catch {
+		return false
 	}
-	return fieldHex(node) === snapshot.root.toLowerCase()
 }
 
 export const findRegistryAsset = (

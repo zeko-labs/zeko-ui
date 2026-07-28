@@ -1,4 +1,11 @@
 import {
+	buildEthereumAssetRegistryTree,
+	ethereumAssetRegistryFieldHex,
+	ethereumAssetRegistryLeaf,
+	parseEthereumAssetRegistryField,
+	verifyEthereumAssetRegistryMembership
+} from "@zeko-labs/bridge-sdk"
+import {
 	type Address,
 	concatHex,
 	encodeAbiParameters,
@@ -33,7 +40,7 @@ export type EthereumAssetRecord = {
 
 export type EthereumAssetRegistryEntry = {
 	record: EthereumAssetRecord
-	path: Hex[]
+	path: readonly Hex[]
 }
 
 export type EthereumAssetRegistrySnapshot = {
@@ -41,7 +48,7 @@ export type EthereumAssetRegistrySnapshot = {
 	root: Hex
 	count: number
 	depth: number
-	records: EthereumAssetRegistryEntry[]
+	records: readonly EthereumAssetRegistryEntry[]
 }
 
 export type EthereumAssetRegistryConfig = {
@@ -62,6 +69,7 @@ export type EthereumAssetRecordBatchMembership = {
 	root: Hex
 	count: number
 	recordHash: Hex
+	recordCommitment: Hex
 	registryIndex: number
 	proof: readonly Hex[]
 }
@@ -118,7 +126,7 @@ const recordKey = (record: EthereumAssetRecord): string =>
 		inventoryCap: record.inventoryCap.toString()
 	})
 
-const samePath = (left: Hex[], right: Hex[]): boolean =>
+const samePath = (left: readonly Hex[], right: readonly Hex[]): boolean =>
 	left.length === right.length && left.every((value, index) => value === right[index])
 
 export const hashEthereumAssetRecord = (input: EthereumAssetRecord): Hex => {
@@ -195,6 +203,9 @@ export const ethereumAssetRecordBatchMembership = (
 		root: level[0] ?? ZERO_WORD,
 		count: records.length,
 		recordHash: targetHash,
+		recordCommitment: ethereumAssetRegistryFieldHex(
+			ethereumAssetRegistryLeaf(normalizedTarget)
+		) as Hex,
 		registryIndex: normalizedTarget.registryIndex,
 		proof
 	}
@@ -232,6 +243,27 @@ export class EthereumAssetRegistry {
 				path: path.map((sibling) => word(sibling, "Registry path sibling"))
 			}
 		})
+		const rootField = parseEthereumAssetRegistryField(root, "Registry root")
+		const tree = buildEthereumAssetRegistryTree(entries.map(({ record }) => record))
+		if (ethereumAssetRegistryFieldHex(tree.root) !== root) {
+			throw new Error("Ethereum asset registry records do not match the advertised registry root")
+		}
+		for (const entry of entries) {
+			const path = entry.path.map((sibling) =>
+				parseEthereumAssetRegistryField(sibling, "Registry path sibling")
+			)
+			const expectedPath = tree
+				.path(entry.record.registryIndex)
+				.map((sibling) => ethereumAssetRegistryFieldHex(sibling))
+			if (
+				!samePath(entry.path, expectedPath) ||
+				!verifyEthereumAssetRegistryMembership(rootField, entry.record, path)
+			) {
+				throw new Error(
+					"Ethereum asset registry membership does not match the advertised registry root"
+				)
+			}
+		}
 		const first = entries[0]?.record
 		this.#config = {
 			schemaVersion,
