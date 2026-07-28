@@ -306,10 +306,7 @@ describe("universal Ethereum asset registry", () => {
 		["wrong count", () => ({ ...snapshot([record(0, "01")]), count: 2 })],
 		[
 			"zero Ethereum token address",
-			() =>
-				snapshot([
-					{ ...record(0, "01"), ethereumTokenAddress: address("00") }
-				])
+			() => snapshot([{ ...record(0, "01"), ethereumTokenAddress: address("00") }])
 		],
 		["unsupported decimals", () => snapshot([{ ...record(0, "01"), decimals: 10 }])]
 	])("rejects %s", (_name, malformed) => {
