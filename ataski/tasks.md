@@ -471,3 +471,4 @@
 - T485 | done | universal-erc20-registry-sdk | done/T485-universal-erc20-registry-sdk.md
 - T486 | done | index-universal-erc20-registry | done/T486-index-universal-erc20-registry.md
 - T487 | done | two-token-universal-erc20-roundtrip | done/T487-two-token-universal-erc20-roundtrip.md
+- T488 | in-progress | resolve-universal-registry-review-findings | in-progress/T488-resolve-universal-registry-review-findings.md
