@@ -363,12 +363,12 @@ export class EthereumBridgeClient {
 			refreshRuntime = async (snapshot, currentAssets) => {
 				const freshRuntime = await fetchRuntime()
 				const freshRuntimeAssets = freshRuntime.ethereumAssets
-				const authenticated = authenticateEthereumAssetRegistrySnapshot(
-					{ snapshot },
-					freshRuntimeAssets
-				)
-				const anchor = ethereumAssetRegistryRuntimeAnchor(freshRuntimeAssets, snapshot.depth)
-				const refreshed = currentAssets ? currentAssets.refresh(snapshot, anchor) : authenticated
+				const refreshed = currentAssets
+					? currentAssets.refresh(
+							snapshot,
+							ethereumAssetRegistryRuntimeAnchor(freshRuntimeAssets, snapshot.depth)
+						)
+					: authenticateEthereumAssetRegistrySnapshot({ snapshot }, freshRuntimeAssets)
 				return {
 					assets: refreshed,
 					bridge: createEthereumGatewayBridge({

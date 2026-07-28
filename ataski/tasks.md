@@ -476,3 +476,4 @@
 - T490 | done | fix-universal-registry-compatibility-gaps | done/T490-fix-universal-registry-compatibility-gaps.md
 - T491 | done | fix-universal-registry-runtime-refresh | done/T491-fix-universal-registry-runtime-refresh.md
 - T492 | done | preserve-rebuild-and-refresh-ordering | done/T492-preserve-rebuild-and-refresh-ordering.md
+- T493 | done | fix-registry-validation-and-refresh | done/T493-fix-registry-validation-and-refresh.md

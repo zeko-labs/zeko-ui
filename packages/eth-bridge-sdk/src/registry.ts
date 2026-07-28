@@ -16,7 +16,8 @@ import {
 	type Hex,
 	keccak256,
 	parseAbiParameters,
-	toBytes
+	toBytes,
+	zeroAddress
 } from "viem"
 
 const U64_MAX = 2n ** 64n - 1n
@@ -114,6 +115,7 @@ const normalizeRecord = (record: EthereumAssetRecord): EthereumAssetRecord => {
 	}
 	if (
 		normalized.assetId === ZERO_WORD ||
+		normalized.ethereumTokenAddress === zeroAddress ||
 		normalized.tokenOwnerL2 === ZERO_WORD ||
 		normalized.tokenIdL2 === ZERO_WORD ||
 		normalized.mftStandardVkId === ZERO_WORD ||

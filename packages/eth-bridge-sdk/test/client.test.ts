@@ -55,6 +55,7 @@ vi.mock("@zeko-labs/bridge-sdk", async (importOriginal) => {
 	return {
 		...actual,
 		Bridge: MockBridge,
+		buildEthereumAssetRegistryTree: vi.fn(actual.buildEthereumAssetRegistryTree),
 		createBridgeRuntime: createBridgeRuntimeMock
 	}
 })
@@ -319,16 +320,18 @@ describe("authenticated registry refresh", () => {
 			(await client.getZekoAsset(first.ethereumTokenAddress)).membership.record.registryIndex
 		).toBe(0)
 
+		vi.mocked(buildEthereumAssetRegistryTree).mockClear()
 		await expect(client.refreshAssetRegistry(appended)).resolves.toMatchObject({
 			root: appended.root,
 			count: 2
 		})
+		expect(buildEthereumAssetRegistryTree).toHaveBeenCalledTimes(1)
 		expect(
 			(await client.getZekoAsset(second.ethereumTokenAddress)).membership.record.registryIndex
 		).toBe(1)
 
 		await expect(client.refreshAssetRegistry(appended)).rejects.toThrow(
-			/authenticated Zeko runtime root|authenticated Zeko runtime root\/count\/schema/i
+			/authenticated (?:Zeko )?runtime root/i
 		)
 		expect(client.assetRegistry).toMatchObject({ root: appended.root, count: 2 })
 		expect(

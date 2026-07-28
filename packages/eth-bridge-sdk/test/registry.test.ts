@@ -304,6 +304,13 @@ describe("universal Ethereum asset registry", () => {
 			() => ({ ...snapshot([record(0, "01")]), records: [{ record: record(0, "01"), path: [] }] })
 		],
 		["wrong count", () => ({ ...snapshot([record(0, "01")]), count: 2 })],
+		[
+			"zero Ethereum token address",
+			() =>
+				snapshot([
+					{ ...record(0, "01"), ethereumTokenAddress: address("00") }
+				])
+		],
 		["unsupported decimals", () => snapshot([{ ...record(0, "01"), decimals: 10 }])]
 	])("rejects %s", (_name, malformed) => {
 		expect(() => new EthereumAssetRegistry(malformed())).toThrow()
