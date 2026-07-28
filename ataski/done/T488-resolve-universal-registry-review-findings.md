@@ -1,11 +1,11 @@
 ---
 id: T488
 title: "Resolve universal ERC20 registry review findings"
-status: in-progress
+status: done
 blockedBy: [T487]
 owner: codex
 created_at: 2026-07-28T13:30:39Z
-updated_at: 2026-07-28T13:30:39Z
+updated_at: 2026-07-28T14:16:15Z
 ---
 
 ## Requirements
@@ -45,8 +45,20 @@ updated_at: 2026-07-28T13:30:39Z
 
 ## RED Evidence
 
-- Pending.
+- The Ethereum SDK accepted arbitrary registry roots and paths because it only
+  compared snapshot fields without reconstructing the Poseidon root.
+- Runtime configuration did not authenticate the current registry checkpoint or
+  registration authority.
+- Registration and bridge actions did not bind the governed authority, registry
+  index, or record commitment.
 
 ## GREEN Evidence
 
-- Pending.
+- Commit `c1b850b6` centralizes immutable registry hashing, verifies complete
+  membership paths, adds governed registration signing, exposes authenticated
+  runtime fields, and binds V2 bridge actions to registry records.
+- Focused validation passed: bridge SDK 107 tests, Ethereum bridge SDK 27 tests,
+  Actions indexer registry 4 tests, plus lint, typecheck, and build for all four
+  affected projects.
+- Repository-wide `moon ci` passed 34 actions (4 cached) with 6 setup actions
+  skipped. Log: `/root/zeko/logs/ui-moon-ci-20260728T141633Z.log`.
