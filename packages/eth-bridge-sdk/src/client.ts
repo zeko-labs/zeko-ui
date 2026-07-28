@@ -2,6 +2,7 @@ import {
 	Bridge,
 	type Config,
 	createBridgeRuntime,
+	type BridgeRuntime,
 	type Deposit,
 	type DepositWithState,
 	type EthereumAssetsConfig,
@@ -219,39 +220,94 @@ export const authenticateEthereumAssetRegistrySnapshot = (
 	return registry
 }
 
+type EthereumBridgeRuntimeState = Readonly<{
+	assets?: EthereumAssetRegistry
+	bridge?: Bridge
+}>
+
+const createEthereumGatewayBridge = (input: {
+	assets?: EthereumAssetRegistry
+	config: BridgeConfig
+	gateway: GatewayClient
+	runtime: BridgeRuntime
+}): Bridge => {
+	const { assets, config, gateway, runtime } = input
+	const ethereumHolder = ethereumAddressToZekoPublicKey(config.bridgeAddress)
+	const runtimeAssets = runtime.ethereumAssets
+	return new Bridge({
+		...runtime,
+		bridge: {
+			depositAux: ethereumDepositAux,
+			fetchCurrentSlot: async () => UInt32.from((await gateway.config()).currentVirtualSlot),
+			fetchUserDeposits: async (recipient: PublicKey) => {
+				const deposits = await gateway.deposits({
+					zekoRecipient: packZekoAddress(recipient)
+				})
+				return Promise.all(
+					deposits.map((deposit) =>
+						buildEthereumBridgeDeposit({
+							deposit,
+							holderAccountL1: ethereumHolder,
+							resolveV2Asset: async (assetId) => {
+								const localAsset = assets?.byAssetId(assetId).record
+								if (localAsset) {
+									return {
+										registryIndex: localAsset.registryIndex,
+										recordCommitment: ethereumAssetRegistryLeaf(localAsset)
+									}
+								}
+								if (!runtimeAssets) {
+									throw new Error(
+										"Ethereum ERC20 V2 deposit requires an authenticated registry record"
+									)
+								}
+								const indexedAsset = (
+									await fetchEthereumAsset(runtime, {
+										assetId
+									})
+								).membership.record
+								return {
+									registryIndex: indexedAsset.registryIndex,
+									recordCommitment: ethereumAssetRecordCommitment(indexedAsset)
+								}
+							}
+						})
+					)
+				)
+			}
+		}
+	})
+}
+
 export class EthereumBridgeClient {
 	readonly #account: Address
-	readonly #bridge?: Bridge
 	readonly #gateway: GatewayClient
-	#assets?: EthereumAssetRegistry
-	readonly #refreshAssets?: (
-		snapshot: EthereumAssetRegistrySnapshot
-	) => Promise<{ registry: EthereumAssetRegistry; anchor: EthereumAssetRegistryAnchor }>
-	readonly #onAssetsRefreshed?: (registry: EthereumAssetRegistry) => void
 	readonly #publicClient: ReturnType<typeof createPublicClient>
+	readonly #refreshRuntime?: (
+		snapshot: EthereumAssetRegistrySnapshot,
+		currentAssets?: EthereumAssetRegistry
+	) => Promise<Required<EthereumBridgeRuntimeState>>
+	#runtimeState: EthereumBridgeRuntimeState
 	readonly #walletClient: ReturnType<typeof createWalletClient>
 
 	public readonly config: BridgeConfig
 
 	private constructor(input: {
 		account: Address
-		bridge?: Bridge
 		config: BridgeConfig
 		gateway: GatewayClient
 		provider: EIP1193Provider
-		assets?: EthereumAssetRegistry
-		refreshAssets?: (
-			snapshot: EthereumAssetRegistrySnapshot
-		) => Promise<{ registry: EthereumAssetRegistry; anchor: EthereumAssetRegistryAnchor }>
-		onAssetsRefreshed?: (registry: EthereumAssetRegistry) => void
+		refreshRuntime?: (
+			snapshot: EthereumAssetRegistrySnapshot,
+			currentAssets?: EthereumAssetRegistry
+		) => Promise<Required<EthereumBridgeRuntimeState>>
+		runtimeState: EthereumBridgeRuntimeState
 	}) {
 		this.#account = input.account
-		this.#bridge = input.bridge
 		this.config = input.config
 		this.#gateway = input.gateway
-		this.#assets = input.assets
-		this.#refreshAssets = input.refreshAssets
-		this.#onAssetsRefreshed = input.onAssetsRefreshed
+		this.#refreshRuntime = input.refreshRuntime
+		this.#runtimeState = input.runtimeState
 		const transport = custom(input.provider)
 		this.#publicClient = createPublicClient({ transport })
 		this.#walletClient = createWalletClient({ transport })
@@ -278,11 +334,12 @@ export class EthereumBridgeClient {
 			? new EthereumAssetRegistry(input.assets.snapshot, input.assets.config)
 			: undefined
 
-		let bridge: Bridge | undefined
-		let refreshAssets:
+		let runtimeState: EthereumBridgeRuntimeState = { assets }
+		let refreshRuntime:
 			| ((
-					snapshot: EthereumAssetRegistrySnapshot
-			  ) => Promise<{ registry: EthereumAssetRegistry; anchor: EthereumAssetRegistryAnchor }>)
+					snapshot: EthereumAssetRegistrySnapshot,
+					currentAssets?: EthereumAssetRegistry
+			  ) => Promise<Required<EthereumBridgeRuntimeState>>)
 			| undefined
 		if (input.zeko) {
 			const runtimeConfig = {
@@ -294,75 +351,42 @@ export class EthereumBridgeClient {
 			}
 			const fetchRuntime = () => createBridgeRuntime(runtimeConfig)
 			const runtime = await fetchRuntime()
-			const ethereumHolder = ethereumAddressToZekoPublicKey(config.bridgeAddress)
 			const runtimeAssets = runtime.ethereumAssets
 			if (input.assets) {
 				assets = authenticateEthereumAssetRegistrySnapshot(input.assets, runtimeAssets)
 			}
-			refreshAssets = async (snapshot) => {
-				const freshRuntimeAssets = (await fetchRuntime()).ethereumAssets
+			runtimeState = {
+				assets,
+				bridge: createEthereumGatewayBridge({ assets, config, gateway, runtime })
+			}
+			refreshRuntime = async (snapshot, currentAssets) => {
+				const freshRuntime = await fetchRuntime()
+				const freshRuntimeAssets = freshRuntime.ethereumAssets
+				const authenticated = authenticateEthereumAssetRegistrySnapshot(
+					{ snapshot },
+					freshRuntimeAssets
+				)
+				const anchor = ethereumAssetRegistryRuntimeAnchor(freshRuntimeAssets, snapshot.depth)
+				const refreshed = currentAssets ? currentAssets.refresh(snapshot, anchor) : authenticated
 				return {
-					registry: authenticateEthereumAssetRegistrySnapshot({ snapshot }, freshRuntimeAssets),
-					anchor: ethereumAssetRegistryRuntimeAnchor(freshRuntimeAssets, snapshot.depth)
+					assets: refreshed,
+					bridge: createEthereumGatewayBridge({
+						assets: refreshed,
+						config,
+						gateway,
+						runtime: freshRuntime
+					})
 				}
 			}
-			const ethereumRuntime = {
-				...runtime,
-				bridge: {
-					depositAux: ethereumDepositAux,
-					fetchCurrentSlot: async () => UInt32.from((await gateway.config()).currentVirtualSlot),
-					fetchUserDeposits: async (recipient: PublicKey) => {
-						const deposits = await gateway.deposits({
-							zekoRecipient: packZekoAddress(recipient)
-						})
-						return Promise.all(
-							deposits.map((deposit) =>
-								buildEthereumBridgeDeposit({
-									deposit,
-									holderAccountL1: ethereumHolder,
-									resolveV2Asset: async (assetId) => {
-										const localAsset = assets?.byAssetId(assetId).record
-										if (localAsset) {
-											return {
-												registryIndex: localAsset.registryIndex,
-												recordCommitment: ethereumAssetRegistryLeaf(localAsset)
-											}
-										}
-										if (!runtimeAssets) {
-											throw new Error(
-												"Ethereum ERC20 V2 deposit requires an authenticated registry record"
-											)
-										}
-										const indexedAsset = (
-											await fetchEthereumAsset(runtime, {
-												assetId
-											})
-										).membership.record
-										return {
-											registryIndex: indexedAsset.registryIndex,
-											recordCommitment: ethereumAssetRecordCommitment(indexedAsset)
-										}
-									}
-								})
-							)
-						)
-					}
-				}
-			}
-			bridge = new Bridge(ethereumRuntime)
 		}
 
 		return new EthereumBridgeClient({
 			account: getAddress(account),
-			bridge,
 			config,
 			gateway,
 			provider: input.provider,
-			assets,
-			refreshAssets,
-			onAssetsRefreshed: (registry) => {
-				assets = registry
-			}
+			refreshRuntime,
+			runtimeState
 		})
 	}
 
@@ -371,7 +395,7 @@ export class EthereumBridgeClient {
 	}
 
 	public get ethereumToken(): EthereumTokenBridgeConfig | null {
-		return this.#bridge?.ethereumToken ?? null
+		return this.#runtimeState.bridge?.ethereumToken ?? null
 	}
 
 	public getZekoAsset(token: Address) {
@@ -381,26 +405,24 @@ export class EthereumBridgeClient {
 	}
 
 	public get assetRegistry(): EthereumAssetRegistry | null {
-		return this.#assets ?? null
+		return this.#runtimeState.assets ?? null
 	}
 
 	public async refreshAssetRegistry(
 		snapshot: EthereumAssetRegistrySnapshot
 	): Promise<EthereumAssetRegistry> {
-		if (!this.#refreshAssets) {
+		if (!this.#refreshRuntime) {
 			throw new Error("Registry refresh requires an authenticated Zeko runtime")
 		}
-		const authenticated = await this.#refreshAssets(snapshot)
-		this.#assets = this.#assets
-			? this.#assets.refresh(snapshot, authenticated.anchor)
-			: authenticated.registry
-		this.#onAssetsRefreshed?.(this.#assets)
-		return this.#assets
+		const refreshed = await this.#refreshRuntime(snapshot, this.#runtimeState.assets)
+		this.#runtimeState = refreshed
+		return refreshed.assets
 	}
 
 	public getAssetMembership(token: Address): EthereumAssetMembership {
-		if (!this.#assets) throw new Error("Universal Ethereum asset registry is not configured")
-		return this.#assets.membership(this.#assets.byEthereumToken(token).record)
+		const assets = this.#runtimeState.assets
+		if (!assets) throw new Error("Universal Ethereum asset registry is not configured")
+		return assets.membership(assets.byEthereumToken(token).record)
 	}
 
 	public async depositNative(input: {
@@ -442,16 +464,16 @@ export class EthereumBridgeClient {
 		recipient: PublicKey
 		amount: bigint
 	}): Promise<TokenDepositResult> {
-		if (this.#assets) {
+		if (this.#runtimeState.assets) {
 			this.getAssetMembership(input.token)
-		} else if (this.#bridge?.ethereumAssets) {
-			await this.#bridge.fetchEthereumAsset({
+		} else if (this.#runtimeState.bridge?.ethereumAssets) {
+			await this.#runtimeState.bridge.fetchEthereumAsset({
 				ethereumTokenAddress: getAddress(input.token)
 			})
 		}
-		const configuredToken = this.#bridge?.ethereumAssets
+		const configuredToken = this.#runtimeState.bridge?.ethereumAssets
 			? undefined
-			: this.#bridge?.ethereumToken?.ethereumTokenAddress
+			: this.#runtimeState.bridge?.ethereumToken?.ethereumTokenAddress
 		if (configuredToken && getAddress(configuredToken) !== getAddress(input.token)) {
 			throw new Error("Ethereum token does not match the ERC20 asset configured on Zeko")
 		}
@@ -962,9 +984,9 @@ export class EthereumBridgeClient {
 	}
 
 	private requireZekoBridge(): Bridge {
-		if (!this.#bridge) {
+		if (!this.#runtimeState.bridge) {
 			throw new Error("This operation requires the Zeko sequencer configuration")
 		}
-		return this.#bridge
+		return this.#runtimeState.bridge
 	}
 }

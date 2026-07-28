@@ -105,7 +105,7 @@ const nullableString = (value: unknown, field: string): string | null =>
 	value === null ? null : requireString(value, field)
 
 const nullableHex = (value: unknown, field: string): Hex | null =>
-	value === null ? null : requireHex(value, field)
+	value === null || value === undefined ? null : requireHex(value, field)
 
 const nullableNumber = (value: unknown, field: string): number | null =>
 	value === null ? null : requireNumber(value, field)
@@ -136,10 +136,7 @@ const parseDeposit = (value: unknown): DepositStatus => {
 	if (!isAddress(token) || !isAddress(sender)) throw new Error("Invalid deposit Ethereum address")
 	const assetId = nullableHex(row.assetId, "deposit.assetId")
 	const encodingVersion = nullableEncodingVersion(row.encodingVersion)
-	const outerActionSequence = nullableNumber(
-		row.outerActionSequence,
-		"deposit.outerActionSequence"
-	)
+	const outerActionSequence = nullableNumber(row.outerActionSequence, "deposit.outerActionSequence")
 	if (assetId === null && encodingVersion !== null) {
 		throw new Error("Invalid deposit.encodingVersion for a native deposit")
 	}

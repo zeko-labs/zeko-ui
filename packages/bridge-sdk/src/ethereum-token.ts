@@ -440,6 +440,33 @@ const feePayerWithFee = (
 	return { ...feePayer, fee }
 }
 
+export type EthereumAssetProofBinding =
+	| {
+			readonly asset: string
+			readonly params: {
+				readonly encodingVersion: "2"
+				readonly registryIndex: string
+				readonly recordCommitment: string
+			}
+	  }
+	| {
+			readonly params: Record<string, never>
+	  }
+
+export const ethereumAssetProofBinding = (
+	membership?: Pick<EthereumAssetMembership, "record" | "witnessJson">
+): EthereumAssetProofBinding =>
+	membership
+		? {
+				asset: membership.witnessJson,
+				params: {
+					encodingVersion: "2" as const,
+					registryIndex: membership.record.registryIndex.toString(),
+					recordCommitment: ethereumAssetRecordCommitment(membership.record).toString()
+				}
+			}
+		: { params: {} }
+
 const matchesResolvedDeposit = (
 	deposit: { assetId?: string; encodingVersion?: 2 },
 	resolved: ResolvedEthereumTokenAsset
@@ -482,6 +509,9 @@ export async function finalizeEthereumTokenDeposit(
 	const { config } = resolved
 	const { attempts, fee } = normalizeRetryableTransactionOptions(options)
 	const [assetIdHigh, assetIdLow] = splitEthereumAssetId(config.assetId)
+	const assetBinding = ethereumAssetProofBinding(
+		resolved.encodingVersion === 2 ? resolved.membership : undefined
+	)
 	const witnesses = await fetchDepositFinalizationWitnesses(
 		runtime,
 		recipient,
@@ -501,7 +531,7 @@ export async function finalizeEthereumTokenDeposit(
 
 	const { data, error } = await runtime.l2Client().mutation(finalizeEthereumTokenDepositMutation, {
 		input: {
-			...(resolved.encodingVersion === 2 ? { asset: resolved.membership.witnessJson } : {}),
+			...("asset" in assetBinding ? { asset: assetBinding.asset } : {}),
 			ase: witness.ase,
 			prevNextDeposit: witness.prevNextDeposit,
 			prevNonce: helperAccount?.nonce ?? "0",
@@ -512,15 +542,7 @@ export async function finalizeEthereumTokenDeposit(
 					depositIndex: witness.checkAccepted.init.depositIndex,
 					originalActionState: witness.checkAccepted.init.orignalActionState,
 					params: {
-						...(resolved.encodingVersion === 2
-							? {
-									encodingVersion: "2",
-									registryIndex: resolved.membership.record.registryIndex.toString(),
-									recordCommitment: ethereumAssetRecordCommitment(
-										resolved.membership.record
-									).toString()
-								}
-							: {}),
+						...assetBinding.params,
 						assetIdHigh: assetIdHigh.toString(),
 						assetIdLow: assetIdLow.toString(),
 						base: witness.checkAccepted.init.params
@@ -589,6 +611,9 @@ export async function submitEthereumTokenWithdrawal(
 	const { config } = resolved
 	const { fee } = normalizeRetryableTransactionOptions(options)
 	const [assetIdHigh, assetIdLow] = splitEthereumAssetId(config.assetId)
+	const assetBinding = ethereumAssetProofBinding(
+		resolved.encodingVersion === 2 ? resolved.membership : undefined
+	)
 	setL2(runtime)
 	await compileEthereumTokenStandard(runtime)
 	await refreshEthereumTokenAccounts(config, feePayer, input.sender)
@@ -644,17 +669,9 @@ export async function submitEthereumTokenWithdrawal(
 		.l2Client()
 		.mutation(proveEthereumTokenWithdrawalRequestMutation, {
 			input: {
-				...(resolved.encodingVersion === 2 ? { asset: resolved.membership.witnessJson } : {}),
+				...("asset" in assetBinding ? { asset: assetBinding.asset } : {}),
 				withdrawalParams: {
-					...(resolved.encodingVersion === 2
-						? {
-								encodingVersion: "2",
-								registryIndex: resolved.membership.record.registryIndex.toString(),
-								recordCommitment: ethereumAssetRecordCommitment(
-									resolved.membership.record
-								).toString()
-							}
-						: {}),
+					...assetBinding.params,
 					assetIdHigh: assetIdHigh.toString(),
 					assetIdLow: assetIdLow.toString(),
 					tokenOwner: accountUpdateAsRootJson(templateOwner),

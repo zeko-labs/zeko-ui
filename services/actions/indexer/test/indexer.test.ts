@@ -27,6 +27,11 @@ vi.mock("../src/modules/outer", () => ({
 	rebuild: vi.fn()
 }))
 
+vi.mock("../src/modules/registry", () => ({
+	handler: vi.fn(),
+	rebuild: vi.fn()
+}))
+
 import { Indexer, runIndexingLoop } from "../src/indexer"
 
 describe("Actions Indexer basic tests", () => {
@@ -49,7 +54,8 @@ describe("Actions Indexer basic tests", () => {
 			autostart: false,
 			loopDeps: {
 				outer: async () => ({ lastFetchedBlock: 1 }),
-				inner: async () => ({ lastFetchedBlock: 2, registryLastFetchedBlock: 3 }),
+				inner: async () => ({ lastFetchedBlock: 2 }),
+				registry: async () => ({ lastFetchedBlock: 3 }),
 				wait: async () => {}
 			}
 		})
@@ -72,10 +78,12 @@ describe("Actions Indexer basic tests", () => {
 		}
 		const outer = vi.fn().mockResolvedValue({ lastFetchedBlock: 11 })
 		const inner = vi.fn().mockRejectedValue(new Error("inner failed"))
+		const registry = vi.fn().mockResolvedValue({ lastFetchedBlock: 18 })
 
 		await runIndexingLoop(db, state, new AbortController().signal, {
 			outer,
 			inner,
+			registry,
 			now: () => 123456,
 			wait: async (seconds) => {
 				waitCalls.push(seconds)
@@ -85,19 +93,17 @@ describe("Actions Indexer basic tests", () => {
 
 		expect(outer).toHaveBeenCalledOnce()
 		expect(inner).toHaveBeenCalledOnce()
-		expect(state.lastFetchedBlock).toEqual({ outer: 11, inner: 9, registry: 12 })
+		expect(registry).toHaveBeenCalledOnce()
+		expect(state.lastFetchedBlock).toEqual({ outer: 11, inner: 9, registry: 18 })
 		expect(state.lastRunTimestamp).toBe(123456)
-		expect(state.consecutiveErrors).toBe(0)
+		expect(state.consecutiveErrors).toBe(3)
 		expect(waitCalls).toEqual([3])
 		expect(logger.warn).toHaveBeenCalledWith(
 			"[runIndexingLoop] inner iteration failed: inner failed"
 		)
-		expect(logger.info).toHaveBeenCalledWith(
-			"runIndexingLoop: finished run (outer=11, inner=9, registry=12)"
-		)
 	})
 
-	it("keeps successful inner progress when outer fails with missing parents", async () => {
+	it("keeps successful inner and registry progress when outer fails with missing parents", async () => {
 		const waitCalls: number[] = []
 		const state = {
 			isRunning: true,
@@ -110,11 +116,13 @@ describe("Actions Indexer basic tests", () => {
 			missingParents: ["a", "b", "c"]
 		})
 		const outer = vi.fn().mockRejectedValue(outerError)
-		const inner = vi.fn().mockResolvedValue({ lastFetchedBlock: 14, registryLastFetchedBlock: 21 })
+		const inner = vi.fn().mockResolvedValue({ lastFetchedBlock: 14 })
+		const registry = vi.fn().mockResolvedValue({ lastFetchedBlock: 21 })
 
 		await runIndexingLoop(db, state, new AbortController().signal, {
 			outer,
 			inner,
+			registry,
 			now: () => 654321,
 			wait: async (seconds) => {
 				waitCalls.push(seconds)
@@ -124,7 +132,7 @@ describe("Actions Indexer basic tests", () => {
 
 		expect(state.lastFetchedBlock).toEqual({ outer: 6, inner: 14, registry: 21 })
 		expect(state.lastRunTimestamp).toBe(654321)
-		expect(state.consecutiveErrors).toBe(0)
+		expect(state.consecutiveErrors).toBe(2)
 		expect(waitCalls).toEqual([5])
 		expect(logger.error).toHaveBeenCalledWith("runIndexingLoop outer error:", outerError)
 		expect(logger.warn).toHaveBeenCalledWith(
@@ -133,7 +141,42 @@ describe("Actions Indexer basic tests", () => {
 		)
 	})
 
-	it("backs off only when both handlers fail", async () => {
+	it("attributes a registry failure without discarding inner progress", async () => {
+		const waitCalls: number[] = []
+		const state = {
+			isRunning: true,
+			lastRunTimestamp: null,
+			lastFetchedBlock: { outer: 1, inner: 2, registry: 3 },
+			consecutiveErrors: 0,
+			config: { intervalSeconds: 4 }
+		}
+		const outer = vi.fn().mockResolvedValue({ lastFetchedBlock: 5 })
+		const inner = vi.fn().mockResolvedValue({ lastFetchedBlock: 6 })
+		const registryError = new Error("registry failed")
+		const registry = vi.fn().mockRejectedValue(registryError)
+
+		await runIndexingLoop(db, state, new AbortController().signal, {
+			outer,
+			inner,
+			registry,
+			now: () => 999999,
+			wait: async (seconds) => {
+				waitCalls.push(seconds)
+				state.isRunning = false
+			}
+		})
+
+		expect(state.lastFetchedBlock).toEqual({ outer: 5, inner: 6, registry: 3 })
+		expect(state.lastRunTimestamp).toBe(999999)
+		expect(state.consecutiveErrors).toBe(1)
+		expect(waitCalls).toEqual([4])
+		expect(logger.error).toHaveBeenCalledWith("runIndexingLoop registry error:", registryError)
+		expect(logger.warn).toHaveBeenCalledWith(
+			"[runIndexingLoop] registry iteration failed: registry failed"
+		)
+	})
+
+	it("backs off only when all enabled handlers fail", async () => {
 		const waitCalls: number[] = []
 		const state = {
 			isRunning: true,
@@ -144,10 +187,12 @@ describe("Actions Indexer basic tests", () => {
 		}
 		const outer = vi.fn().mockRejectedValue(new Error("outer failed"))
 		const inner = vi.fn().mockRejectedValue(new Error("inner failed"))
+		const registry = vi.fn().mockRejectedValue(new Error("registry failed"))
 
 		await runIndexingLoop(db, state, new AbortController().signal, {
 			outer,
 			inner,
+			registry,
 			now: () => 999999,
 			wait: async (seconds) => {
 				waitCalls.push(seconds)
@@ -165,6 +210,9 @@ describe("Actions Indexer basic tests", () => {
 		)
 		expect(logger.warn).toHaveBeenCalledWith(
 			"[runIndexingLoop] inner iteration failed: inner failed"
+		)
+		expect(logger.warn).toHaveBeenCalledWith(
+			"[runIndexingLoop] registry iteration failed: registry failed"
 		)
 	})
 })

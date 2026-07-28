@@ -138,5 +138,17 @@ describe("GatewayClient", () => {
 				})
 			).deposit(7)
 		).resolves.toMatchObject({ encodingVersion: null })
+
+		const { assetId: _assetId, ...legacyDeposit } = deposit
+		await expect(
+			new GatewayClient("https://gateway.test", async (input) =>
+				Response.json(String(input).includes("?") ? [legacyDeposit] : legacyDeposit)
+			).deposit(7)
+		).resolves.toMatchObject({ assetId: null, encodingVersion: null })
+		await expect(
+			new GatewayClient("https://gateway.test", async () =>
+				Response.json([legacyDeposit])
+			).deposits()
+		).resolves.toMatchObject([{ assetId: null, encodingVersion: null }])
 	})
 })

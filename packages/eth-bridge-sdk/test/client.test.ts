@@ -1,4 +1,9 @@
-import type { DepositWithState } from "@zeko-labs/bridge-sdk"
+import {
+	buildEthereumAssetRegistryTree,
+	type DepositWithState,
+	ETHEREUM_ASSET_REGISTRY_DEPTH,
+	ethereumAssetRegistryFieldHex
+} from "@zeko-labs/bridge-sdk"
 import { Field, PrivateKey, TokenId } from "o1js"
 import {
 	decodeFunctionData,
@@ -11,7 +16,49 @@ import {
 	parseAbiParameters,
 	toHex
 } from "viem"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+
+const { createBridgeRuntimeMock } = vi.hoisted(() => ({
+	createBridgeRuntimeMock: vi.fn()
+}))
+
+vi.mock("@zeko-labs/bridge-sdk", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@zeko-labs/bridge-sdk")>()
+	class MockBridge {
+		private readonly runtime: {
+			ethereumAssets: { registryCount: number } | null
+			ethereumToken: null
+		}
+
+		public constructor(runtime: unknown) {
+			this.runtime = runtime as typeof this.runtime
+		}
+
+		public get ethereumAssets() {
+			return this.runtime.ethereumAssets
+		}
+
+		public get ethereumToken() {
+			return this.runtime.ethereumToken
+		}
+
+		public async fetchEthereumAsset() {
+			return {
+				membership: {
+					record: {
+						registryIndex: (this.runtime.ethereumAssets?.registryCount ?? 0) - 1
+					}
+				}
+			}
+		}
+	}
+	return {
+		...actual,
+		Bridge: MockBridge,
+		createBridgeRuntime: createBridgeRuntimeMock
+	}
+})
+
 import { ethereumZekoBridgeAbi } from "../src/abi"
 import {
 	buildEthereumBridgeDeposit,
@@ -19,9 +66,13 @@ import {
 	ethereumTokenDepositSelection,
 	mergeDepositActivity
 } from "../src/client"
-import { ethereumAddressToZekoPublicKey, packZekoAddress } from "../src/codecs"
+import { ethereumAddressToZekoPublicKey, packZekoAddress, unpackZekoAddress } from "../src/codecs"
 import type { DepositStatus, TokenWithdrawalProof } from "../src/gateway"
-import { type EthereumAssetRecord, ethereumAssetRecordBatchMembership } from "../src/registry"
+import {
+	type EthereumAssetRecord,
+	ethereumAssetRecordBatchMembership,
+	type EthereumAssetRegistrySnapshot
+} from "../src/registry"
 
 const gatewayDeposit = (outerActionSequence: number | null): DepositStatus => ({
 	nonce: 4,
@@ -58,6 +109,58 @@ const gatewayConfig = {
 	withdrawalDelaySlots: 5,
 	currentVirtualSlot: 20
 }
+
+const registryWord = (value: bigint): Hex => toHex(value, { size: 32 })
+
+const registryRecord = (registryIndex: number, suffix: number): EthereumAssetRecord => ({
+	schemaVersion: 1,
+	registryIndex,
+	assetId: registryWord(BigInt(1_000 + suffix)),
+	ethereumTokenAddress: getAddress(`0x${suffix.toString(16).padStart(40, "0")}` as `0x${string}`),
+	tokenOwnerL2: registryWord((1n << 255n) | BigInt(2_000 + suffix)),
+	tokenIdL2: registryWord(BigInt(3_000 + suffix)),
+	decimals: 9,
+	inventoryCap: 1_000_000n,
+	mftStandardVkId: registryWord(4_000n),
+	vaultPublicKey: registryWord((1n << 255n) | 5_000n),
+	universalBridgeVkId: registryWord(6_000n)
+})
+
+const registrySnapshot = (
+	records: readonly EthereumAssetRecord[]
+): EthereumAssetRegistrySnapshot => {
+	const tree = buildEthereumAssetRegistryTree(records)
+	return {
+		schemaVersion: 1,
+		root: ethereumAssetRegistryFieldHex(tree.root),
+		count: records.length,
+		depth: ETHEREUM_ASSET_REGISTRY_DEPTH,
+		records: records.map((record) => ({
+			record,
+			path: tree.path(record.registryIndex).map(ethereumAssetRegistryFieldHex)
+		}))
+	}
+}
+
+const runtimeWithRegistry = (snapshot: EthereumAssetRegistrySnapshot) => {
+	const first = snapshot.records[0]?.record
+	if (!first) throw new Error("Test runtime requires an asset record")
+	return {
+		ethereumAssets: {
+			registrySchemaVersion: snapshot.schemaVersion,
+			registryRoot: Field(BigInt(snapshot.root)),
+			registryCount: snapshot.count,
+			approvedMftStandardVkId: Field(BigInt(first.mftStandardVkId)),
+			vaultPublicKey: unpackZekoAddress(first.vaultPublicKey),
+			universalBridgeVkId: Field(BigInt(first.universalBridgeVkId))
+		},
+		ethereumToken: null
+	}
+}
+
+afterEach(() => {
+	createBridgeRuntimeMock.mockReset()
+})
 
 const recordingProvider = () => {
 	const transactions: Record<string, Hex>[] = []
@@ -183,6 +286,53 @@ describe("versioned gateway deposits", () => {
 			recordCommitment
 		})
 		expect(resolveV2Asset).toHaveBeenCalledWith(deposit.assetId)
+	})
+})
+
+describe("authenticated registry refresh", () => {
+	it("atomically replaces the local registry and Bridge runtime checkpoint", async () => {
+		const first = registryRecord(0, 1)
+		const second = registryRecord(1, 2)
+		const initial = registrySnapshot([first])
+		const appended = registrySnapshot([first, second])
+		createBridgeRuntimeMock
+			.mockResolvedValueOnce(runtimeWithRegistry(initial))
+			.mockResolvedValueOnce(runtimeWithRegistry(appended))
+			.mockResolvedValueOnce(runtimeWithRegistry(initial))
+		const { provider } = recordingProvider()
+		const client = await EthereumBridgeClient.init({
+			gatewayUrl: "https://gateway.test",
+			provider,
+			fetch: async () => Response.json(gatewayConfig),
+			zeko: {
+				zekoUrl: "https://zeko.test/graphql",
+				zekoArchiveUrl: "https://zeko-archive.test/graphql",
+				l1Network: "devnet",
+				l2Network: "devnet",
+				actionsApi: "https://actions.test/graphql"
+			},
+			assets: { snapshot: initial }
+		})
+
+		expect(
+			(await client.getZekoAsset(first.ethereumTokenAddress)).membership.record.registryIndex
+		).toBe(0)
+
+		await expect(client.refreshAssetRegistry(appended)).resolves.toMatchObject({
+			root: appended.root,
+			count: 2
+		})
+		expect(
+			(await client.getZekoAsset(second.ethereumTokenAddress)).membership.record.registryIndex
+		).toBe(1)
+
+		await expect(client.refreshAssetRegistry(appended)).rejects.toThrow(
+			/authenticated Zeko runtime root|authenticated Zeko runtime root\/count\/schema/i
+		)
+		expect(client.assetRegistry).toMatchObject({ root: appended.root, count: 2 })
+		expect(
+			(await client.getZekoAsset(second.ethereumTokenAddress)).membership.record.registryIndex
+		).toBe(1)
 	})
 })
 

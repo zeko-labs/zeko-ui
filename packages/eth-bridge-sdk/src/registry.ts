@@ -1,5 +1,8 @@
 import {
 	buildEthereumAssetRegistryTree,
+	ETHEREUM_ASSET_REGISTRY_CAPACITY,
+	ETHEREUM_ASSET_REGISTRY_DEPTH,
+	ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION,
 	ethereumAssetRegistryFieldHex,
 	ethereumAssetRegistryLeaf,
 	parseEthereumAssetRegistryField,
@@ -16,8 +19,6 @@ import {
 	toBytes
 } from "viem"
 
-const RECORD_SCHEMA_V1 = 1
-const DEFAULT_DEPTH = 8
 const U64_MAX = 2n ** 64n - 1n
 const ZERO_WORD = `0x${"00".repeat(32)}` as Hex
 const RECORD_DOMAIN = keccak256(toBytes("ZEKO_ERC20_ASSET_RECORD_V1"))
@@ -89,10 +90,10 @@ const word = (value: Hex, label: string): Hex => {
 const normalizeRecord = (record: EthereumAssetRecord): EthereumAssetRecord => {
 	if (
 		!Number.isSafeInteger(record.schemaVersion) ||
-		record.schemaVersion !== RECORD_SCHEMA_V1 ||
+		record.schemaVersion !== ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION ||
 		!Number.isSafeInteger(record.registryIndex) ||
 		record.registryIndex < 0 ||
-		record.registryIndex >= 2 ** DEFAULT_DEPTH ||
+		record.registryIndex >= ETHEREUM_ASSET_REGISTRY_CAPACITY ||
 		!Number.isSafeInteger(record.decimals) ||
 		record.decimals < 0 ||
 		record.decimals > 9 ||
@@ -186,13 +187,13 @@ export const ethereumAssetRecordBatchMembership = (
 	records: readonly EthereumAssetRecord[],
 	target: EthereumAssetRecord
 ): EthereumAssetRecordBatchMembership => {
-	if (records.length === 0 || records.length > 2 ** DEFAULT_DEPTH) {
+	if (records.length === 0 || records.length > ETHEREUM_ASSET_REGISTRY_CAPACITY) {
 		throw new Error("Asset record settlement batch must contain between 1 and 256 records")
 	}
 	const normalizedTarget = normalizeRecord(target)
 	const targetHash = hashEthereumAssetRecord(normalizedTarget)
 	let targetFound = false
-	let level = Array.from({ length: 2 ** DEFAULT_DEPTH }, (): Hex => ZERO_WORD)
+	let level = Array.from({ length: ETHEREUM_ASSET_REGISTRY_CAPACITY }, (): Hex => ZERO_WORD)
 	for (const input of records) {
 		const record = normalizeRecord(input)
 		if (record.registryIndex >= level.length || level[record.registryIndex] !== ZERO_WORD) {
@@ -210,7 +211,7 @@ export const ethereumAssetRecordBatchMembership = (
 
 	const proof: Hex[] = []
 	let index = normalizedTarget.registryIndex
-	for (let depth = 0; depth < DEFAULT_DEPTH; depth++) {
+	for (let depth = 0; depth < ETHEREUM_ASSET_REGISTRY_DEPTH; depth++) {
 		proof.push(level[index ^ 1] ?? ZERO_WORD)
 		const parents: Hex[] = []
 		for (let cursor = 0; cursor < level.length; cursor += 2) {
@@ -251,13 +252,13 @@ export class EthereumAssetRegistry {
 		const schemaVersion = input.schemaVersion
 		const depth = input.depth
 		if (
-			schemaVersion !== RECORD_SCHEMA_V1 ||
+			schemaVersion !== ETHEREUM_ASSET_REGISTRY_SCHEMA_VERSION ||
 			!Number.isSafeInteger(input.count) ||
 			input.count < 0 ||
 			input.count !== input.records.length ||
 			!Number.isSafeInteger(depth) ||
-			depth !== DEFAULT_DEPTH ||
-			input.count > 2 ** depth
+			depth !== ETHEREUM_ASSET_REGISTRY_DEPTH ||
+			input.count > ETHEREUM_ASSET_REGISTRY_CAPACITY
 		) {
 			throw new Error("Invalid Ethereum asset registry root/count/schema")
 		}

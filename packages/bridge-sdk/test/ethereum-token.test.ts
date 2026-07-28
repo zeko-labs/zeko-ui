@@ -21,6 +21,7 @@ import {
 	assertMatchingFungibleTokenOwner,
 	buildEthereumTokenWithdrawalApproval,
 	countMissingEthereumTokenAccounts,
+	ethereumAssetProofBinding,
 	graftEthereumTokenDepositHelperSignature,
 	parseProvedAccountUpdates,
 	resolveEthereumTokenDepositAsset,
@@ -111,6 +112,34 @@ describe("Ethereum token bridge configuration", () => {
 })
 
 describe("versioned Ethereum token actions", () => {
+	it("serializes one shared V2 proof binding for deposits and withdrawals", () => {
+		const bridge = config()
+		const record = {
+			schemaVersion: 1,
+			registryIndex: 7,
+			assetId: bridge.assetId,
+			ethereumTokenAddress: bridge.ethereumTokenAddress,
+			tokenOwnerL2: bridge.tokenOwnerL2,
+			tokenIdL2: bridge.tokenIdL2,
+			decimals: 9,
+			inventoryCap: UInt64.from(1000),
+			mftStandardVkId: Field(77),
+			vaultPublicKey: bridge.holderAccountL2,
+			universalBridgeVkId: Field(78)
+		}
+		const witnessJson = '{"root":"123"}'
+
+		expect(ethereumAssetProofBinding()).toEqual({ params: {} })
+		expect(ethereumAssetProofBinding({ record, witnessJson })).toEqual({
+			asset: witnessJson,
+			params: {
+				encodingVersion: "2",
+				registryIndex: "7",
+				recordCommitment: ethereumAssetRecordCommitment(record).toString()
+			}
+		})
+	})
+
 	it("binds the V2 encoding version, registry index, record commitment, and asset ID", () => {
 		const bridge = config()
 		const recipient = key()
