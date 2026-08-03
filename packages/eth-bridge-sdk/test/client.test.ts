@@ -113,19 +113,22 @@ const gatewayConfig = {
 
 const registryWord = (value: bigint): Hex => toHex(value, { size: 32 })
 
-const registryRecord = (registryIndex: number, suffix: number): EthereumAssetRecord => ({
-	schemaVersion: 1,
-	registryIndex,
-	assetId: registryWord(BigInt(1_000 + suffix)),
-	ethereumTokenAddress: getAddress(`0x${suffix.toString(16).padStart(40, "0")}` as `0x${string}`),
-	tokenOwnerL2: registryWord((1n << 255n) | BigInt(2_000 + suffix)),
-	tokenIdL2: registryWord(BigInt(3_000 + suffix)),
-	decimals: 9,
-	inventoryCap: 1_000_000n,
-	mftStandardVkId: registryWord(4_000n),
-	vaultPublicKey: registryWord((1n << 255n) | 5_000n),
-	universalBridgeVkId: registryWord(6_000n)
-})
+const registryRecord = (registryIndex: number, suffix: number): EthereumAssetRecord => {
+	const tokenOwnerL2 = registryWord((1n << 255n) | BigInt(2_000 + suffix))
+	return {
+		schemaVersion: 1,
+		registryIndex,
+		assetId: registryWord(BigInt(1_000 + suffix)),
+		ethereumTokenAddress: getAddress(`0x${suffix.toString(16).padStart(40, "0")}` as `0x${string}`),
+		tokenOwnerL2,
+		tokenIdL2: registryWord(TokenId.derive(unpackZekoAddress(tokenOwnerL2)).toBigInt()),
+		decimals: 9,
+		inventoryCap: 1_000_000n,
+		mftStandardVkId: registryWord(4_000n),
+		vaultPublicKey: registryWord((1n << 255n) | 5_000n),
+		universalBridgeVkId: registryWord(6_000n)
+	}
+}
 
 const registrySnapshot = (
 	records: readonly EthereumAssetRecord[]
@@ -389,6 +392,85 @@ describe("authenticated registry refresh", () => {
 })
 
 describe("ERC20 bridge transactions", () => {
+	it("rejects circuit-invalid proposals before wallet submission and preserves valid proposals", async () => {
+		const existing = registryRecord(0, 1)
+		const candidate = registryRecord(1, 2)
+		const initial = registrySnapshot([existing])
+		createBridgeRuntimeMock.mockResolvedValueOnce(runtimeWithRegistry(initial))
+		const recorded = recordingProvider()
+		const provider: EIP1193Provider = {
+			request: async (request) => {
+				if (request.method === "eth_call") {
+					const call = (request.params as [{ data: Hex }])[0]
+					const decoded = decodeFunctionData({ abi: ethereumZekoBridgeAbi, data: call.data })
+					if (decoded.functionName === "proposedAssetCount") {
+						return encodeFunctionResult({
+							abi: ethereumZekoBridgeAbi,
+							functionName: "proposedAssetCount",
+							result: 1
+						})
+					}
+				}
+				return recorded.provider.request(request)
+			}
+		}
+		const client = await EthereumBridgeClient.init({
+			gatewayUrl: "https://gateway.test",
+			provider,
+			fetch: async () => Response.json(gatewayConfig),
+			zeko: {
+				zekoUrl: "https://zeko.test/graphql",
+				zekoArchiveUrl: "https://zeko-archive.test/graphql",
+				l1Network: "devnet",
+				l2Network: "devnet",
+				actionsApi: "https://actions.test/graphql"
+			},
+			assets: { snapshot: initial }
+		})
+
+		const invalidProposals: [string, EthereumAssetRecord][] = [
+			[
+				"canonical token owner",
+				{
+					...candidate,
+					tokenOwnerL2: registryWord((1n << 255n) | Field.ORDER),
+					tokenIdL2: registryWord(
+						TokenId.derive(unpackZekoAddress(registryWord((1n << 255n) | Field.ORDER))).toBigInt()
+					)
+				}
+			],
+			["derived token ID", { ...candidate, tokenIdL2: registryWord(999_999n) }],
+			["MFT standard VK", { ...candidate, mftStandardVkId: registryWord(999_999n) }],
+			["shared vault", { ...candidate, vaultPublicKey: registryWord(999_999n) }],
+			["universal bridge VK", { ...candidate, universalBridgeVkId: registryWord(999_999n) }]
+		]
+		for (const [label, invalid] of invalidProposals) {
+			await expect(client.proposeAsset(invalid), label).rejects.toThrow()
+		}
+		expect(recorded.transactions).toHaveLength(0)
+
+		await expect(client.proposeAsset(candidate)).resolves.toBe(`0x${"99".repeat(32)}`)
+		expect(recorded.transactions).toHaveLength(1)
+		const proposed = decodeFunctionData({
+			abi: ethereumZekoBridgeAbi,
+			data: recorded.transactions[0]?.data ?? "0x"
+		})
+		expect(proposed.functionName).toBe("proposeAsset")
+
+		await expect(client.cancelLastPendingAsset(candidate.ethereumTokenAddress)).resolves.toBe(
+			`0x${"99".repeat(32)}`
+		)
+		expect(recorded.transactions).toHaveLength(2)
+		const cancelled = decodeFunctionData({
+			abi: ethereumZekoBridgeAbi,
+			data: recorded.transactions[1]?.data ?? "0x"
+		})
+		expect(cancelled).toMatchObject({
+			functionName: "cancelLastPendingAsset",
+			args: [candidate.ethereumTokenAddress]
+		})
+	})
+
 	it("reads the immutable Solidity registration used to provision the L2 token", async () => {
 		const token = "0x00000000000000000000000000000000000000a1"
 		const owner = PrivateKey.random().toPublicKey()

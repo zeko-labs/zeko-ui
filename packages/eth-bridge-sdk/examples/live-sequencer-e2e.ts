@@ -6,7 +6,6 @@ import {
 	type DepositStatus,
 	type EthereumAssetRecord,
 	EthereumBridgeClient,
-	ethereumAssetRecordBatchMembership,
 	ethereumTokenDepositSelection,
 	packZekoAddress
 } from "../dist/index.js"
@@ -105,23 +104,6 @@ const assetRecord = (index: number): EthereumAssetRecord => {
 }
 
 const assets = bridgeAsset === "erc20" ? [assetRecord(0), assetRecord(1)] : []
-let crossAssetRejected = assets.length === 0
-if (assets.length === 2) {
-	const [first, second] = assets
-	if (!first || !second) throw new Error("Two-token scenario is incomplete")
-	try {
-		ethereumAssetRecordBatchMembership(assets, {
-			...first,
-			tokenOwnerL2: second.tokenOwnerL2,
-			tokenIdL2: second.tokenIdL2
-		})
-	} catch {
-		crossAssetRejected = true
-	}
-	if (!crossAssetRejected) {
-		throw new Error("Cross-asset registry identity was accepted before L2 balance movement")
-	}
-}
 const deposits: DepositStatus[] = assets.map((asset, index) => ({
 	nonce: index + 1,
 	token: asset.ethereumTokenAddress,
@@ -446,8 +428,7 @@ const output = {
 	bridgeAsset,
 	tokenDeployments,
 	tokenBalances,
-	registryRecords: assets,
-	crossAssetRejected
+	registryRecords: assets
 }
 const outputJson = JSON.stringify(output, (_, value) =>
 	typeof value === "bigint" ? value.toString() : value

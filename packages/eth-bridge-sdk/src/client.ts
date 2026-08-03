@@ -5,6 +5,7 @@ import {
 	createBridgeRuntime,
 	type Deposit,
 	type DepositWithState,
+	ETHEREUM_ASSET_REGISTRY_DEPTH,
 	type EthereumAssetsConfig,
 	type EthereumTokenBridgeConfig,
 	type EthereumTokenDepositSelection,
@@ -53,7 +54,8 @@ import {
 	type EthereumAssetRegistryConfig,
 	type EthereumAssetRegistrySnapshot,
 	ethereumAssetRecordBatchMembership,
-	hashEthereumAssetRecord
+	hashEthereumAssetRecord,
+	validateEthereumAssetProposal
 } from "./registry"
 
 export type EthereumBridgeClientConfig = {
@@ -594,15 +596,20 @@ export class EthereumBridgeClient {
 	}
 
 	public async proposeAsset(record: EthereumAssetRecord): Promise<Hash> {
-		hashEthereumAssetRecord(record)
+		const anchor = ethereumAssetRegistryRuntimeAnchor(
+			this.#runtimeState.bridge?.ethereumAssets ?? null,
+			ETHEREUM_ASSET_REGISTRY_DEPTH
+		)
+		const validatedRecord = validateEthereumAssetProposal(record, anchor)
+		hashEthereumAssetRecord(validatedRecord)
 		const expectedIndex = await this.#publicClient.readContract({
 			abi: ethereumZekoBridgeAbi,
 			address: this.config.bridgeAddress,
 			functionName: "proposedAssetCount"
 		})
-		if (record.registryIndex !== expectedIndex) {
+		if (validatedRecord.registryIndex !== expectedIndex) {
 			throw new Error(
-				`Ethereum asset proposal index ${record.registryIndex} does not match next index ${expectedIndex}`
+				`Ethereum asset proposal index ${validatedRecord.registryIndex} does not match next index ${expectedIndex}`
 			)
 		}
 		const hash = await this.#walletClient.writeContract({
@@ -612,23 +619,40 @@ export class EthereumBridgeClient {
 			functionName: "proposeAsset",
 			args: [
 				{
-					schemaVersion: record.schemaVersion,
-					registryIndex: record.registryIndex,
-					assetId: record.assetId,
-					ethereumToken: getAddress(record.ethereumTokenAddress),
-					tokenOwnerL2: record.tokenOwnerL2,
-					tokenIdL2: record.tokenIdL2,
-					decimals: record.decimals,
-					inventoryCap: record.inventoryCap,
-					mftStandardVkId: record.mftStandardVkId,
-					vaultPublicKey: record.vaultPublicKey,
-					universalBridgeVkId: record.universalBridgeVkId
+					schemaVersion: validatedRecord.schemaVersion,
+					registryIndex: validatedRecord.registryIndex,
+					assetId: validatedRecord.assetId,
+					ethereumToken: getAddress(validatedRecord.ethereumTokenAddress),
+					tokenOwnerL2: validatedRecord.tokenOwnerL2,
+					tokenIdL2: validatedRecord.tokenIdL2,
+					decimals: validatedRecord.decimals,
+					inventoryCap: validatedRecord.inventoryCap,
+					mftStandardVkId: validatedRecord.mftStandardVkId,
+					vaultPublicKey: validatedRecord.vaultPublicKey,
+					universalBridgeVkId: validatedRecord.universalBridgeVkId
 				}
 			],
 			chain: null
 		})
 		const receipt = await this.#publicClient.waitForTransactionReceipt({ hash })
 		if (receipt.status !== "success") throw new Error(`Ethereum asset proposal ${hash} reverted`)
+		return hash
+	}
+
+	public async cancelLastPendingAsset(token: Address): Promise<Hash> {
+		const ethereumTokenAddress = getAddress(token)
+		const hash = await this.#walletClient.writeContract({
+			abi: ethereumZekoBridgeAbi,
+			account: this.#account,
+			address: this.config.bridgeAddress,
+			functionName: "cancelLastPendingAsset",
+			args: [ethereumTokenAddress],
+			chain: null
+		})
+		const receipt = await this.#publicClient.waitForTransactionReceipt({ hash })
+		if (receipt.status !== "success") {
+			throw new Error(`Ethereum asset proposal cancellation ${hash} reverted`)
+		}
 		return hash
 	}
 

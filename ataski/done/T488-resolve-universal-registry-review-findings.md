@@ -61,4 +61,4 @@ updated_at: 2026-07-28T14:16:15Z
   Actions indexer registry 4 tests, plus lint, typecheck, and build for all four
   affected projects.
 - Repository-wide `moon ci` passed 34 actions (4 cached) with 6 setup actions
-  skipped. Log: `/root/zeko/logs/ui-moon-ci-20260728T141633Z.log`.
+  skipped. Log: `logs/ui-moon-ci-20260728T141633Z.log`.

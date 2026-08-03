@@ -50,7 +50,9 @@ updated_at: 2026-07-24T23:29:11Z
 
 - Zeko OCaml builds and vectors passed from the pinned Nix shell, including
   `asset_registry_vectors.exe` append/membership/registration coverage and its
-  maximum-capacity run: 256 assets in 6,734 ms with 3,082,752 top heap words.
+  fake/vector capacity run: 256 assets in 6,734 ms with 3,082,752 top heap
+  words. This is circuit-capacity coverage, not real maximum-size Pickles
+  proving time or memory evidence.
   The settlement calldata and registry-body compatibility vectors also matched
   the exact Rust fixtures.
 - The final locked Rust matrix passed: Pickles verifier 27/27, settlement
@@ -65,14 +67,15 @@ updated_at: 2026-07-24T23:29:11Z
   actions skipped), including the Actions API/indexer, bridge SDK, and Ethereum
   bridge SDK tests, typechecks, builds, lint, and formatting.
 - The proof-backed live Zeko phase passed in
-  `/root/zeko/logs/universal-erc20-full-roundtrip-20260725-retry19.log`: two
+  `logs/universal-erc20-full-roundtrip-20260725-retry19.log`: two
   distinct MFT owners/token IDs used one shared vault and universal bridge VK;
   both registration proofs, both deposit finalizations, both withdrawals, live
   sequencer GraphQL, and the Actions preparation API passed; independent final
   balances were 95,000,000,000/5,000,000,000 and
-  195,000,000,000/5,000,000,000; cross-asset movement was rejected.
+  195,000,000,000/5,000,000,000. The run asserted distinct cross-asset
+  identities but did not submit a deliberately mixed transaction.
 - The exact Anvil custody replay passed in
-  `/root/zeko/logs/universal-erc20-custody-20260725-retry22.log`: both pending
+  `logs/universal-erc20-custody-20260725-retry22.log`: both pending
   assets activated from the registry settlement, both deposits were witness
   indexed and synchronized, both delayed claims returned the matching ERC-20,
   and all registration/deposit-sync/withdrawal settlements confirmed.
@@ -81,3 +84,12 @@ updated_at: 2026-07-24T23:29:11Z
 - `tools/test-workspace-paths.sh`, Rust formatting checks, shell syntax checks,
   and `git diff --check` passed. All three feature worktrees were clean before
   this completion-only board update.
+
+## Evidence correction (2026-08-03)
+
+- The former `crossAssetRejected` live-harness flag exercised only an off-chain
+  registry lookup failure; it did not submit an A-identity/B-owner transaction.
+  That misleading check was removed in T494. The full submitted cross-stack
+  negative case, including unchanged L2 balances and L1 custody, remains a
+  separate acceptance gap because the public client exposes no mixed-identity
+  transaction path.

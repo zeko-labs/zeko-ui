@@ -1,5 +1,5 @@
-import { Field, Poseidon } from "o1js"
-import type { Hex } from "viem"
+import { Field, Poseidon, TokenId } from "o1js"
+import { concatHex, type Hex, keccak256, toBytes } from "viem"
 import { describe, expect, it } from "vitest"
 import { authenticateEthereumAssetRegistrySnapshot } from "../src/client"
 import { unpackZekoAddress } from "../src/codecs"
@@ -7,6 +7,7 @@ import {
 	type EthereumAssetRecord,
 	EthereumAssetRegistry,
 	type EthereumAssetRegistrySnapshot,
+	ethereumAssetRecordBatchLeaf,
 	ethereumAssetRecordBatchMembership,
 	hashEthereumAssetRecord
 } from "../src/registry"
@@ -23,7 +24,13 @@ const record = (registryIndex: number, suffix: string): EthereumAssetRecord => (
 	assetId: word(BigInt(`0x${suffix.repeat(32)}`)),
 	ethereumTokenAddress: address(suffix),
 	tokenOwnerL2: packedKey(BigInt(Number.parseInt(suffix, 16) + 16), registryIndex % 2 === 0),
-	tokenIdL2: word(BigInt(Number.parseInt(suffix, 16) + 32)),
+	tokenIdL2: word(
+		TokenId.derive(
+			unpackZekoAddress(
+				packedKey(BigInt(Number.parseInt(suffix, 16) + 16), registryIndex % 2 === 0)
+			)
+		).toBigInt()
+	),
 	decimals: 9,
 	inventoryCap: 1_000_000n,
 	mftStandardVkId: word(0x71n),
@@ -274,6 +281,35 @@ describe("universal Ethereum asset registry", () => {
 		expect(() => ethereumAssetRecordBatchMembership([first], second)).toThrow(
 			/not in the settlement batch/i
 		)
+	})
+
+	it("matches the canonical V2 settlement-batch leaf and root", () => {
+		const first = record(0, "01")
+		const membership = ethereumAssetRecordBatchMembership([first], first)
+		const leafDomain = keccak256(toBytes("ZEKO_ASSET_RECORD_BATCH_LEAF_V2"))
+		const nodeDomain = keccak256(toBytes("ZEKO_ASSET_RECORD_BATCH_NODE_V1"))
+		let computed = keccak256(
+			concatHex([leafDomain, membership.recordHash, membership.recordCommitment])
+		)
+		for (const sibling of membership.proof) {
+			computed = keccak256(concatHex([nodeDomain, computed, sibling]))
+		}
+
+		expect(membership.root).toBe(computed)
+	})
+
+	it("matches the shared V2 settlement-batch golden vector", () => {
+		const recordHash = `0x${"11".repeat(32)}` as Hex
+		const recordCommitment = `0x${"22".repeat(32)}` as Hex
+		const nodeDomain = keccak256(toBytes("ZEKO_ASSET_RECORD_BATCH_NODE_V1"))
+		let root = ethereumAssetRecordBatchLeaf(recordHash, recordCommitment)
+		let zero = `0x${"00".repeat(32)}` as Hex
+		expect(root).toBe("0xd3c4982b15c04f3dc43bb070575355bb0155b6298b01f5858a51431c9dabd1fc")
+		for (let level = 0; level < 8; level += 1) {
+			root = keccak256(concatHex([nodeDomain, root, zero]))
+			zero = keccak256(concatHex([nodeDomain, zero, zero]))
+		}
+		expect(root).toBe("0x3585343cc90a5d46ee8d6fa33b86040ea6ff3845175e8fb64640469392a10a3b")
 	})
 
 	it.each([

@@ -8,6 +8,7 @@ import {
 	parseEthereumAssetRegistryField,
 	verifyEthereumAssetRegistryMembership
 } from "@zeko-labs/bridge-sdk"
+import { TokenId } from "o1js"
 import {
 	type Address,
 	concatHex,
@@ -19,11 +20,12 @@ import {
 	toBytes,
 	zeroAddress
 } from "viem"
+import { packZekoAddress, unpackZekoAddress } from "./codecs"
 
 const U64_MAX = 2n ** 64n - 1n
 const ZERO_WORD = `0x${"00".repeat(32)}` as Hex
 const RECORD_DOMAIN = keccak256(toBytes("ZEKO_ERC20_ASSET_RECORD_V1"))
-const RECORD_BATCH_LEAF_DOMAIN = keccak256(toBytes("ZEKO_ASSET_RECORD_BATCH_LEAF_V1"))
+const RECORD_BATCH_LEAF_DOMAIN = keccak256(toBytes("ZEKO_ASSET_RECORD_BATCH_LEAF_V2"))
 const RECORD_BATCH_NODE_DOMAIN = keccak256(toBytes("ZEKO_ASSET_RECORD_BATCH_NODE_V1"))
 
 export type EthereumAssetRecord = {
@@ -128,6 +130,34 @@ const normalizeRecord = (record: EthereumAssetRecord): EthereumAssetRecord => {
 	return normalized
 }
 
+export const validateEthereumAssetProposal = (
+	input: EthereumAssetRecord,
+	config: EthereumAssetRegistryConfig
+): EthereumAssetRecord => {
+	const record = normalizeRecord(input)
+	const tokenOwner = unpackZekoAddress(record.tokenOwnerL2)
+	if (packZekoAddress(tokenOwner) !== record.tokenOwnerL2) {
+		throw new Error("L2 token owner is not a canonical packed Mina public key")
+	}
+	const derivedTokenId = TokenId.derive(tokenOwner).toBigInt()
+	if (BigInt(record.tokenIdL2) !== derivedTokenId) {
+		throw new Error("L2 token ID is not derived from the proposed token owner")
+	}
+	if (record.schemaVersion !== config.schemaVersion) {
+		throw new Error("Asset proposal uses the wrong registry schema version")
+	}
+	if (record.mftStandardVkId !== word(config.mftStandardVkId, "MFT standard VK")) {
+		throw new Error("Asset proposal uses the wrong MFT standard VK")
+	}
+	if (record.vaultPublicKey !== word(config.vaultPublicKey, "Shared vault public key")) {
+		throw new Error("Asset proposal uses the wrong shared vault public key")
+	}
+	if (record.universalBridgeVkId !== word(config.universalBridgeVkId, "Universal bridge VK")) {
+		throw new Error("Asset proposal uses the wrong universal bridge VK")
+	}
+	return record
+}
+
 const recordKey = (record: EthereumAssetRecord): string => {
 	const normalized = normalizeRecord(record)
 	return JSON.stringify([
@@ -185,6 +215,15 @@ export const hashEthereumAssetRecord = (input: EthereumAssetRecord): Hex => {
 	)
 }
 
+export const ethereumAssetRecordBatchLeaf = (recordHash: Hex, recordCommitment: Hex): Hex =>
+	keccak256(
+		concatHex([
+			RECORD_BATCH_LEAF_DOMAIN,
+			word(recordHash, "Asset record hash"),
+			word(recordCommitment, "Asset record commitment")
+		])
+	)
+
 export const ethereumAssetRecordBatchMembership = (
 	records: readonly EthereumAssetRecord[],
 	target: EthereumAssetRecord
@@ -194,6 +233,9 @@ export const ethereumAssetRecordBatchMembership = (
 	}
 	const normalizedTarget = normalizeRecord(target)
 	const targetHash = hashEthereumAssetRecord(normalizedTarget)
+	const targetCommitment = ethereumAssetRegistryFieldHex(
+		ethereumAssetRegistryLeaf(normalizedTarget)
+	) as Hex
 	let targetFound = false
 	let level = Array.from({ length: ETHEREUM_ASSET_REGISTRY_CAPACITY }, (): Hex => ZERO_WORD)
 	for (const input of records) {
@@ -202,7 +244,8 @@ export const ethereumAssetRecordBatchMembership = (
 			throw new Error("Asset record settlement batch contains a duplicate or invalid index")
 		}
 		const recordHash = hashEthereumAssetRecord(record)
-		level[record.registryIndex] = keccak256(concatHex([RECORD_BATCH_LEAF_DOMAIN, recordHash]))
+		const recordCommitment = ethereumAssetRegistryFieldHex(ethereumAssetRegistryLeaf(record)) as Hex
+		level[record.registryIndex] = ethereumAssetRecordBatchLeaf(recordHash, recordCommitment)
 		if (recordHash === targetHash && record.registryIndex === normalizedTarget.registryIndex) {
 			targetFound = true
 		}
@@ -234,9 +277,7 @@ export const ethereumAssetRecordBatchMembership = (
 		root: level[0] ?? ZERO_WORD,
 		count: records.length,
 		recordHash: targetHash,
-		recordCommitment: ethereumAssetRegistryFieldHex(
-			ethereumAssetRegistryLeaf(normalizedTarget)
-		) as Hex,
+		recordCommitment: targetCommitment,
 		registryIndex: normalizedTarget.registryIndex,
 		proof
 	}
