@@ -22,6 +22,7 @@ const identity = {
 	tokenIdBase58: TokenId.toBase58(tokenId),
 	tokenIdHex: toHex(tokenId.toBigInt(), { size: 32 }),
 	tokenVault: tokenVault.toBase58(),
+	tokenVaultPacked: packZekoAddress(tokenVault),
 	adminContract: adminContract.toBase58(),
 	adminAuthority: adminAuthority.toBase58()
 }

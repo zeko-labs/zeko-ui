@@ -72,6 +72,9 @@ input FinalizeDepositInput {
 }
 
 input EthereumTokenDepositParamsInput {
+  encodingVersion: UInt32
+  registryIndex: UInt32
+  recordCommitment: String
   assetIdHigh: String!
   assetIdLow: String!
   base: DepositParamsInput!
@@ -95,12 +98,16 @@ input CheckAcceptedEthereumTokenInput {
 input FinalizeEthereumTokenDepositInput {
   ase: AseWithLengthInput!
   checkAccepted: CheckAcceptedEthereumTokenInput!
+  asset: EthereumAssetMembershipInput
   prevNextDeposit: UInt32!
   prevNonce: UInt32!
   helperAccountNew: Boolean!
 }
 
 input EthereumTokenWithdrawalParamsInput {
+  encodingVersion: UInt32
+  registryIndex: UInt32
+  recordCommitment: String
   assetIdHigh: String!
   assetIdLow: String!
   tokenOwner: String!
@@ -111,6 +118,7 @@ input EthereumTokenWithdrawalParamsInput {
 
 input EthereumTokenWithdrawalRequestInput {
   withdrawalParams: EthereumTokenWithdrawalParamsInput!
+  asset: EthereumAssetMembershipInput
 }
 
 input WithdrawalParamsInput {
@@ -126,6 +134,10 @@ input WithdrawalRequestInput {
 
 """A single pre-signed account update encoded as accountUpdates JSON"""
 scalar BridgeTransferrerInput
+
+scalar EthereumAssetMembershipInput
+
+scalar RegisterEthereumAssetInput
 
 input DepositParamsInput {
   timeout: Int!
@@ -762,6 +774,9 @@ type mutation {
   proveEthereumTokenWithdrawalRequest(
     input: EthereumTokenWithdrawalRequestInput!
   ): ProofKeyPayload!
+
+  """Prove an exhaustive append-only Ethereum asset registration"""
+  registerEthereumAsset(input: RegisterEthereumAssetInput!): ProofKeyPayload!
 }
 
 input EventFilterOptionsInput {
@@ -846,6 +861,7 @@ type ZekoCircuitsConfig {
   bridgeFeeRecipientL2: PublicKey!
   bridgeProofFee: Amount!
   ethereumToken: ZekoEthereumTokenConfig
+  ethereumAssets: ZekoEthereumAssetsConfig
 }
 
 type ZekoEthereumTokenConfig {
@@ -855,6 +871,22 @@ type ZekoEthereumTokenConfig {
   tokenIdL2: String!
   holderAccountL2: PublicKey!
   verificationKeyHash: String!
+}
+
+type ZekoEthereumAssetsConfig {
+  registryPublicKey: PublicKey!
+  registrationAuthority: PublicKey!
+  vaultPublicKey: PublicKey!
+  registrySchemaVersion: Int!
+  registryRoot: String!
+  registryCount: Int!
+  approvedMftStandardVkId: String!
+  approvedMftTokenVkHash: String!
+  approvedMftAdminVkHash: String!
+  universalBridgeVkId: String!
+  universalBridgeVkHash: String!
+  bridgeVerificationKeyHash: String!
+  registryVerificationKeyHash: String!
 }
 
 type StateHashes {

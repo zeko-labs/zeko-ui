@@ -81,6 +81,53 @@ export const fetchInnerActionsQueryIndexer = graphql(`
   }
 `)
 
+export const fetchEthereumAssetRegistryQuery = graphql(`
+  query FetchEthereumAssetRegistry(
+    $root: String
+    $index: Int
+    $assetId: String
+    $ethereumTokenAddress: String
+  ) {
+    ethereumAssetRegistry(
+      input: {
+        root: $root
+        index: $index
+        assetId: $assetId
+        ethereumTokenAddress: $ethereumTokenAddress
+      }
+    ) {
+      schemaVersion
+      depth
+      root
+      count
+      blockHeight
+      timestamp
+      txnHash
+      finalityStatus
+      records {
+        path
+        record {
+          schemaVersion
+          registryIndex
+          assetId
+          ethereumTokenAddress
+          tokenOwnerL2
+          tokenIdL2
+          decimals
+          inventoryCap
+          mftStandardVkId
+          vaultPublicKey
+          universalBridgeVkId
+          blockHeight
+          timestamp
+          txnHash
+          finalityStatus
+        }
+      }
+    }
+  }
+`)
+
 export const fetchCommitAsePastSlotQuery = graphql(`
   query FetchCommitAsePastSlot($slot: Int!) {
     commitAsePastSlot(slot: $slot) {

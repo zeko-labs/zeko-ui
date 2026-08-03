@@ -2,10 +2,14 @@
 
 Actions Indexer is a service that indexes actions from the Zeko blockchain and stores them in a database for easy retrieval and querying.
 
-`INDEX_OUTER` and `INDEX_INNER` independently enable the two streams and
-default to `true`. The Ethereum bridge local roundtrip runs outer-only against
-the gateway's Mina archive API; a testnet deployment normally enables both and
-points the inner stream at the Zeko archive.
+`INDEX_OUTER`, `INDEX_INNER`, and `INDEX_REGISTRY` independently enable the
+outer-action, inner-action, and Ethereum asset-registry streams. The first two
+default to `true`; registry indexing is opt-in and requires `REGISTRY_PK` to be
+the configured registry zkApp public key. Registry events are replayed into the
+canonical depth-8 Poseidon tree, preserving immutable records and historical
+checkpoints while refreshing current membership paths after every append.
+Registry records and checkpoints retain `pending` or `canonical` finality
+metadata, and the registry query keeps both visible.
 
 ## CLI
 

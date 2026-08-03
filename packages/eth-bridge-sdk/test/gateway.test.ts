@@ -82,6 +82,7 @@ describe("GatewayClient", () => {
 			timeout: 4_294_967_295,
 			ethereumTransactionHash: `0x${"66".repeat(32)}`,
 			ethereumFinalized: true,
+			encodingVersion: null,
 			bridgeJobId: null,
 			bridgeJobStatus: null,
 			outerActionSequence: null,
@@ -94,5 +95,60 @@ describe("GatewayClient", () => {
 		await expect(
 			new GatewayClient("https://gateway.test", fetcher).deposit(7)
 		).resolves.toMatchObject({ assetId: tokenWithdrawal.assetId })
+	})
+
+	it("requires immutable encoding metadata once an ERC20 outer action exists", async () => {
+		const deposit = {
+			nonce: 7,
+			token: tokenWithdrawal.token,
+			assetId: tokenWithdrawal.assetId,
+			sender: withdrawal.recipient,
+			zekoRecipient: `0x${"55".repeat(32)}`,
+			ethereumAmount: "2000000",
+			zekoAmount: "2000000",
+			timeout: 4_294_967_295,
+			ethereumTransactionHash: `0x${"66".repeat(32)}`,
+			ethereumFinalized: true,
+			encodingVersion: null,
+			bridgeJobId: "job",
+			bridgeJobStatus: "confirmed",
+			outerActionSequence: 5,
+			outerActionStateAfter: "state",
+			synchronizedSettlementSequence: 2,
+			status: "synchronized",
+			nextAction: "finalizeDepositOnZeko"
+		}
+		const fetcher: typeof fetch = async () => Response.json(deposit)
+
+		await expect(new GatewayClient("https://gateway.test", fetcher).deposit(7)).rejects.toThrow(
+			"encodingVersion"
+		)
+		await expect(
+			new GatewayClient("https://gateway.test", async () =>
+				Response.json({ ...deposit, encodingVersion: 1 })
+			).deposit(7)
+		).resolves.toMatchObject({ encodingVersion: 1 })
+		await expect(
+			new GatewayClient("https://gateway.test", async () =>
+				Response.json({
+					...deposit,
+					token: "0x0000000000000000000000000000000000000000",
+					assetId: null,
+					encodingVersion: undefined
+				})
+			).deposit(7)
+		).resolves.toMatchObject({ encodingVersion: null })
+
+		const { assetId: _assetId, ...legacyDeposit } = deposit
+		await expect(
+			new GatewayClient("https://gateway.test", async (input) =>
+				Response.json(String(input).includes("?") ? [legacyDeposit] : legacyDeposit)
+			).deposit(7)
+		).resolves.toMatchObject({ assetId: null, encodingVersion: null })
+		await expect(
+			new GatewayClient("https://gateway.test", async () =>
+				Response.json([legacyDeposit])
+			).deposits()
+		).resolves.toMatchObject([{ assetId: null, encodingVersion: null }])
 	})
 })

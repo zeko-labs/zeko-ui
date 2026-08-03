@@ -23,6 +23,48 @@ type CommitAsePastSlotResult {
   commit: Commit
 }
 
+type EthereumAssetEntry {
+  path: [String!]
+  record: EthereumAssetRecord
+}
+
+type EthereumAssetRecord {
+  assetId: String
+  blockHeight: Int
+  decimals: Int
+  ethereumTokenAddress: String
+  finalityStatus: String
+  inventoryCap: String
+  mftStandardVkId: String
+  registryIndex: Int
+  schemaVersion: Int
+  timestamp: String
+  tokenIdL2: String
+  tokenOwnerL2: String
+  txnHash: String
+  universalBridgeVkId: String
+  vaultPublicKey: String
+}
+
+input EthereumAssetRegistryInput {
+  assetId: String
+  ethereumTokenAddress: String
+  index: Int
+  root: String
+}
+
+type EthereumAssetRegistrySnapshot {
+  blockHeight: Int
+  count: Int
+  depth: Int
+  finalityStatus: String
+  records: [EthereumAssetEntry!]
+  root: String
+  schemaVersion: Int
+  timestamp: String
+  txnHash: String
+}
+
 type InnerAction {
   accountUpdateId: String
   afterState: String
@@ -79,6 +121,9 @@ input OuterWitnessesFromAuxesInput {
 
 type Query {
   commitAsePastSlot(slot: Int!): CommitAsePastSlotResult
+  ethereumAssetRegistry(
+    input: EthereumAssetRegistryInput
+  ): EthereumAssetRegistrySnapshot
   innerActions(input: InnerActionsInput!): [InnerAction!]
   innerWitnessesFromAuxes(input: InnerWitnessesFromAuxesInput!): [InnerAction!]
   outerActions(input: OuterActionsInput!): [OuterActionUnion!]

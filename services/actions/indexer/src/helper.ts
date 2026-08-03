@@ -7,6 +7,7 @@ import * as v from "valibot"
 import { selectCanonicalBlocks } from "./action-processing/core"
 import { runActionProcessing } from "./action-processing/runtime"
 import type { ArchiveAction, ArchiveEvent } from "./action-processing/types"
+import { filterArchiveActionsToRange } from "./archive-range"
 import { env } from "./env"
 import type { InnerItem } from "./modules/inner"
 import type { OuterItem } from "./modules/outer"
@@ -59,24 +60,25 @@ export async function fetchActions({
 			logger.error(`[fetchActions ${client.label}] query error: ${String(error)}`)
 			throw error
 		}
-		const rawActions = (data?.actions ?? []).filter((a) => a != null)
+		const archiveActions = (data?.actions ?? []).filter((a) => a != null)
+		const rawActions = filterArchiveActionsToRange(archiveActions, from, to)
 		logger.info(
-			`[fetchActions ${client.label}] archive returned ${rawActions.length} raw actions for range ${from}-${to}`
+			`[fetchActions ${client.label}] archive returned ${archiveActions.length} raw actions and ${rawActions.length} in-range actions for range ${from}-${to}`
 		)
-		if (rawActions.length > 0) {
-			const heights = rawActions.map((a) => Number(a.blockInfo?.height ?? 0))
+		if (archiveActions.length > 0) {
+			const heights = archiveActions.map((a) => Number(a.blockInfo?.height ?? 0))
 			const minH = Math.min(...heights)
 			const maxH = Math.max(...heights)
 			if (minH < from)
 				logger.warn(
 					`[fetchActions ${client.label}] archive returned block below requested from: min=${minH} < from=${from}`
 				)
-			if (maxH > to)
+			if (maxH >= to)
 				logger.warn(
-					`[fetchActions ${client.label}] archive returned block above requested to: max=${maxH} > to=${to}`
+					`[fetchActions ${client.label}] archive returned block at or above exclusive requested to: max=${maxH} >= to=${to}`
 				)
-			const firstAction = rawActions[0]
-			const lastAction = rawActions[rawActions.length - 1]
+			const firstAction = archiveActions[0]
+			const lastAction = archiveActions[archiveActions.length - 1]
 			const firstHash = firstAction?.actionData?.[0]?.transactionInfo?.hash ?? "<no-hash>"
 			const lastHash =
 				lastAction?.actionData?.[lastAction.actionData?.length - 1]?.transactionInfo?.hash ??

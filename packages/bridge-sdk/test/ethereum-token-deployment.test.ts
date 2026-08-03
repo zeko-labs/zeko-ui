@@ -1,13 +1,12 @@
 import { FungibleToken } from "mina-fungible-token"
-// biome-ignore lint/style/useImportType: o1js @method reads PublicKey from decorator metadata.
-import { PublicKey } from "o1js"
 import {
 	AccountUpdate,
 	AccountUpdateForest,
 	Field,
-	method,
 	Mina,
+	method,
 	PrivateKey,
+	PublicKey,
 	SmartContract,
 	TokenId,
 	UInt64,
@@ -16,8 +15,8 @@ import {
 import { describe, expect, it, vi } from "vitest"
 import {
 	deployEthereumTokenMirror,
-	validateEthereumTokenDeployment,
-	type EthereumTokenDeploymentPlan
+	type EthereumTokenDeploymentPlan,
+	validateEthereumTokenDeployment
 } from "../src/ethereum-token-deployment"
 import * as utils from "../src/utils"
 
@@ -139,6 +138,7 @@ describe("ERC20 mirror token local roundtrip", () => {
 		const ownerKey = PrivateKey.random()
 		const adminContractKey = PrivateKey.random()
 		const adminAuthorityKey = PrivateKey.random()
+		const finalAdminContractKey = PrivateKey.random()
 		const vaultKey = PrivateKey.random()
 		const userKey = PrivateKey.random()
 		const tokenId = TokenId.derive(ownerKey.toPublicKey())
@@ -175,12 +175,13 @@ describe("ERC20 mirror token local roundtrip", () => {
 			feePayer,
 			adminContractL2: adminContractKey.toPublicKey(),
 			adminAuthorityL2: adminAuthorityKey.toPublicKey(),
+			finalAdminContractL2: finalAdminContractKey.toPublicKey(),
 			symbol: "zERC",
 			sourceUri: "https://example.invalid/zeko-erc20",
 			signDeployment: async (transaction) =>
 				transaction.sign([feePayer.key, ownerKey, adminContractKey]),
 			signProvisioning: async (transaction) =>
-				transaction.sign([feePayer.key, adminAuthorityKey, vaultKey]),
+				transaction.sign([feePayer.key, adminAuthorityKey, finalAdminContractKey, vaultKey]),
 			waitForInclusion: async (transactionHash) => {
 				inclusionHashes.push(transactionHash)
 			}
@@ -190,8 +191,11 @@ describe("ERC20 mirror token local roundtrip", () => {
 		expect(inclusionHashes).toEqual([
 			manifest.deploymentTransactionHash,
 			manifest.vaultInstallationTransactionHash,
-			manifest.inventoryMintTransactionHash
+			manifest.inventoryMintTransactionHash,
+			manifest.adminRotationTransactionHash
 		])
+		expect(manifest.finalAdminContractL2).toBe(finalAdminContractKey.toPublicKey().toBase58())
+		expect(manifest.finalAdminAuthorityL2).toBe(PublicKey.empty().toBase58())
 		expect(refreshCache).toHaveBeenCalledWith(ownerKey.toPublicKey(), tokenId)
 		refreshCache.mockRestore()
 		expect(Mina.getBalance(vaultKey.toPublicKey(), tokenId).toBigInt()).toBe(1_000n)

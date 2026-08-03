@@ -24,6 +24,7 @@ tasks:
   typecheck:
     deps:
       - ^:build
+      - build
     command: tsgo --noEmit --declaration false --declarationMap false
     inputs:
       - "@globs(src)"
@@ -68,5 +69,12 @@ tasks:
     command: bun examples/erc20-identity.ts
     deps:
       - ^:build
+    options:
+      cache: false
+  asset-record-batch:
+    command: bun examples/asset-record-batch.ts
+    deps:
+      - ^:build
+      - build
     options:
       cache: false

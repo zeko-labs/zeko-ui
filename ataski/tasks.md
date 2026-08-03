@@ -468,3 +468,13 @@
 - T482 | done | prove-and-compose-erc20-l2-bridge | done/T482-prove-and-compose-erc20-l2-bridge.md
 - T483 | done | deploy-erc20-mirror-token | done/T483-deploy-erc20-mirror-token.md
 - T484 | done | prove-cross-repo-erc20-roundtrip | done/T484-prove-cross-repo-erc20-roundtrip.md
+- T485 | done | universal-erc20-registry-sdk | done/T485-universal-erc20-registry-sdk.md
+- T486 | done | index-universal-erc20-registry | done/T486-index-universal-erc20-registry.md
+- T487 | done | two-token-universal-erc20-roundtrip | done/T487-two-token-universal-erc20-roundtrip.md
+- T488 | done | resolve-universal-registry-review-findings | done/T488-resolve-universal-registry-review-findings.md
+- T489 | done | fix-universal-registry-review-findings | done/T489-fix-universal-registry-review-findings.md
+- T490 | done | fix-universal-registry-compatibility-gaps | done/T490-fix-universal-registry-compatibility-gaps.md
+- T491 | done | fix-universal-registry-runtime-refresh | done/T491-fix-universal-registry-runtime-refresh.md
+- T492 | done | preserve-rebuild-and-refresh-ordering | done/T492-preserve-rebuild-and-refresh-ordering.md
+- T493 | done | fix-registry-validation-and-refresh | done/T493-fix-registry-validation-and-refresh.md
+- T494 | done | fix-registry-proof-and-proposal-admission | done/T494-fix-registry-proof-and-proposal-admission.md

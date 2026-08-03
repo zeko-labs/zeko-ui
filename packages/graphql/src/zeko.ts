@@ -26,6 +26,28 @@ export const fetchConfigQuery = graphql(`
   }
 `)
 
+export const fetchEthereumAssetsConfigQuery = graphql(`
+  query FetchEthereumAssetsConfig {
+    circuitsConfig {
+      ethereumAssets {
+        registryPublicKey
+        registrationAuthority
+        vaultPublicKey
+        registrySchemaVersion
+        registryRoot
+        registryCount
+        approvedMftStandardVkId
+        approvedMftTokenVkHash
+        approvedMftAdminVkHash
+        universalBridgeVkId
+        universalBridgeVkHash
+        bridgeVerificationKeyHash
+        registryVerificationKeyHash
+      }
+    }
+  }
+`)
+
 export const sequencerPkQuery = graphql(`
   query SequencerPK {
     sequencerPk
@@ -88,6 +110,14 @@ export const finalizeEthereumTokenDepositMutation = graphql(`
 export const proveEthereumTokenWithdrawalRequestMutation = graphql(`
   mutation ProveEthereumTokenWithdrawalRequest($input: EthereumTokenWithdrawalRequestInput!) {
     request: proveEthereumTokenWithdrawalRequest(input: $input) {
+      key
+    }
+  }
+`)
+
+export const registerEthereumAssetMutation = graphql(`
+  mutation RegisterEthereumAsset($input: RegisterEthereumAssetInput!) {
+    request: registerEthereumAsset(input: $input) {
       key
     }
   }

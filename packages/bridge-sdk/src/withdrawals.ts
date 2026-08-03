@@ -20,7 +20,7 @@ import {
 } from "./errors"
 import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
 import { pollProvingResult } from "./prover"
-import { debug, type BridgeRuntime } from "./runtime"
+import { type BridgeRuntime, debug } from "./runtime"
 import {
 	normalizeRetryableTransactionOptions,
 	type RetryableTransactionOptions,
@@ -42,6 +42,7 @@ type WithdrawalFinalizationWitness = Omit<
 	ExtractInput<typeof finalizeWithdrawalMutation>,
 	"helperAccountNew" | "helperAccountSignature" | "prevNonce"
 >
+
 import {
 	bridgeVersionForActionIndex,
 	fetchActions,

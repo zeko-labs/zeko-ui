@@ -1,7 +1,7 @@
 {
 	"name": "@zeko-labs/eth-bridge-sdk",
 	"version": "0.1.0",
-	"description": "Browser SDK for the Zeko native Ethereum bridge PoC.",
+	"description": "Browser SDK for the Zeko native and canonical ERC-20 Ethereum bridge.",
 	"type": "module",
 	"license": "MIT",
 	"publishConfig": { "access": "public" },

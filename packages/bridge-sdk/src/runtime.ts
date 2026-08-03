@@ -1,21 +1,24 @@
 import {
 	fetchConfigQuery,
+	fetchEthereumAssetsConfigQuery,
 	genesisConstantsQueryL1,
 	genesisConstantsQueryL2,
 	sequencerPkQuery
 } from "@zeko-labs/graphql"
 import { Field, PublicKey, TokenId, UInt32, UInt64 } from "o1js"
+import type { fetchDepositFinalizationWitnesses } from "./deposits"
+import { validateEthereumTokenBridgeConfig } from "./ethereum"
+import { ETHEREUM_ASSET_REGISTRY_CAPACITY } from "./ethereum-asset-registry"
 import { createGraphqlClient, type GqlClient } from "./graphql"
 import type {
-	Action,
 	Account,
+	Action,
 	Config,
 	Deposit,
+	EthereumAssetsConfig,
 	EthereumTokenBridgeConfig,
 	Withdrawal
 } from "./types"
-import type { fetchDepositFinalizationWitnesses } from "./deposits"
-import { validateEthereumTokenBridgeConfig } from "./ethereum"
 
 type RuntimeQueryError = {
 	readonly message?: string
@@ -63,6 +66,18 @@ const assertQuerySucceeded = ({
 	)
 }
 
+const isUnsupportedEthereumAssetsQuery = (error: RuntimeQueryError | undefined): boolean => {
+	if (!error || error.networkError) return false
+	const messages = [error.message, ...(error.graphQLErrors?.map(formatUnknownError) ?? [])].filter(
+		(message): message is string => message !== undefined
+	)
+	return messages.some(
+		(message) =>
+			message.includes("ethereumAssets") &&
+			(message.includes("Cannot query field") || message.includes("Unknown field"))
+	)
+}
+
 const requireQueryValue = <T>({
 	endpoint,
 	field,
@@ -98,6 +113,7 @@ export type BridgeRuntime = {
 	readonly bridgeFeeRecipientL1: PublicKey
 	readonly bridgeFeeRecipientL2: PublicKey
 	readonly bridgeProofFee: UInt64
+	readonly ethereumAssets: EthereumAssetsConfig | null
 	readonly ethereumToken: EthereumTokenBridgeConfig | null
 	readonly V2_DEPOSITS_START_INDEX: UInt32
 	readonly V2_WITHDRAWALS_START_INDEX: UInt32
@@ -138,19 +154,32 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 	const l2Client = createGraphqlClient(config.zekoUrl, "l2")
 	const l2ArchiveClient = createGraphqlClient(config.zekoArchiveUrl, "l2-archive")
 
-	const [fetchConfigResult, genesisConstantL2Result, genesisConstantL1Result, sequencerPkResult] =
-		await Promise.all([
-			l2Client().query(fetchConfigQuery, {}),
-			l2Client().query(genesisConstantsQueryL2, {}),
-			l1Client().query(genesisConstantsQueryL1, {}),
-			l2Client().query(sequencerPkQuery, {})
-		])
+	const [
+		fetchConfigResult,
+		fetchEthereumAssetsConfigResult,
+		genesisConstantL2Result,
+		genesisConstantL1Result,
+		sequencerPkResult
+	] = await Promise.all([
+		l2Client().query(fetchConfigQuery, {}),
+		l2Client().query(fetchEthereumAssetsConfigQuery, {}),
+		l2Client().query(genesisConstantsQueryL2, {}),
+		l1Client().query(genesisConstantsQueryL1, {}),
+		l2Client().query(sequencerPkQuery, {})
+	])
 
 	assertQuerySucceeded({
 		endpoint: config.zekoUrl,
 		queryName: "FetchConfig",
 		result: fetchConfigResult
 	})
+	if (!isUnsupportedEthereumAssetsQuery(fetchEthereumAssetsConfigResult.error)) {
+		assertQuerySucceeded({
+			endpoint: config.zekoUrl,
+			queryName: "FetchEthereumAssetsConfig",
+			result: fetchEthereumAssetsConfigResult
+		})
+	}
 	assertQuerySucceeded({
 		endpoint: config.zekoUrl,
 		queryName: "GenesisConstants",
@@ -217,6 +246,51 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 				verificationKeyHash: Field(circuitsConfig.ethereumToken.verificationKeyHash)
 			})
 		: null
+	const ethereumAssets = (() => {
+		const assets = fetchEthereumAssetsConfigResult.data?.circuitsConfig?.ethereumAssets
+		if (!assets) return null
+		const registryRoot = requireQueryValue({
+			endpoint: config.zekoUrl,
+			queryName: "FetchEthereumAssetsConfig",
+			field: "circuitsConfig.ethereumAssets.registryRoot",
+			value: assets.registryRoot
+		})
+		const registryCount = requireQueryValue({
+			endpoint: config.zekoUrl,
+			queryName: "FetchEthereumAssetsConfig",
+			field: "circuitsConfig.ethereumAssets.registryCount",
+			value: assets.registryCount
+		})
+		if (
+			!Number.isSafeInteger(registryCount) ||
+			registryCount < 0 ||
+			registryCount > ETHEREUM_ASSET_REGISTRY_CAPACITY
+		) {
+			throw new Error("Ethereum asset registry runtime count is outside its depth-8 range")
+		}
+		const universalBridgeVkHash = Field(assets.universalBridgeVkHash)
+		const bridgeVerificationKeyHash = Field(assets.bridgeVerificationKeyHash)
+		if (!universalBridgeVkHash.equals(bridgeVerificationKeyHash).toBoolean()) {
+			throw new Error(
+				"Ethereum asset universal bridge VK hash does not match the compiled bridge VK hash"
+			)
+		}
+		return {
+			registryPublicKey: PublicKey.fromBase58(assets.registryPublicKey),
+			registrationAuthority: PublicKey.fromBase58(assets.registrationAuthority),
+			vaultPublicKey: PublicKey.fromBase58(assets.vaultPublicKey),
+			registrySchemaVersion: assets.registrySchemaVersion,
+			registryRoot: Field(registryRoot),
+			registryCount,
+			approvedMftStandardVkId: Field(assets.approvedMftStandardVkId),
+			approvedMftTokenVkHash: Field(assets.approvedMftTokenVkHash),
+			approvedMftAdminVkHash: Field(assets.approvedMftAdminVkHash),
+			universalBridgeVkId: Field(assets.universalBridgeVkId),
+			universalBridgeVkHash,
+			bridgeVerificationKeyHash,
+			registryVerificationKeyHash: Field(assets.registryVerificationKeyHash)
+		}
+	})()
 
 	return {
 		config,
@@ -237,6 +311,7 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 		bridgeFeeRecipientL1: PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL1),
 		bridgeFeeRecipientL2: PublicKey.fromBase58(circuitsConfig.bridgeFeeRecipientL2),
 		bridgeProofFee: UInt64.from(circuitsConfig.bridgeProofFee),
+		ethereumAssets,
 		ethereumToken,
 		V2_DEPOSITS_START_INDEX,
 		V2_WITHDRAWALS_START_INDEX

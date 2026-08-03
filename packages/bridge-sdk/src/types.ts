@@ -31,6 +31,10 @@ export type Deposit = {
 	holderAccountL1: PublicKey
 	/** Ethereum ERC20 asset identifier. Absent for native-token deposits. */
 	assetId?: string
+	/** Registry-bound Ethereum ERC20 action encoding. Absent only for native and legacy V1 actions. */
+	encodingVersion?: 2
+	registryIndex?: number
+	recordCommitment?: Field
 }
 
 export type EthereumTokenBridgeConfig = {
@@ -40,6 +44,55 @@ export type EthereumTokenBridgeConfig = {
 	tokenIdL2: Field
 	holderAccountL2: PublicKey
 	verificationKeyHash: Field
+}
+
+export type EthereumAssetsConfig = {
+	registryPublicKey: PublicKey
+	registrationAuthority: PublicKey
+	vaultPublicKey: PublicKey
+	registrySchemaVersion: number
+	registryRoot: Field
+	registryCount: number
+	approvedMftStandardVkId: Field
+	approvedMftTokenVkHash: Field
+	approvedMftAdminVkHash: Field
+	universalBridgeVkId: Field
+	universalBridgeVkHash: Field
+	bridgeVerificationKeyHash: Field
+	registryVerificationKeyHash: Field
+}
+
+export type EthereumAssetRecord = {
+	schemaVersion: number
+	registryIndex: number
+	assetId: string
+	ethereumTokenAddress: string
+	tokenOwnerL2: PublicKey
+	tokenIdL2: Field
+	decimals: number
+	inventoryCap: UInt64
+	mftStandardVkId: Field
+	vaultPublicKey: PublicKey
+	universalBridgeVkId: Field
+}
+
+export type EthereumAssetMembership = {
+	root: Field
+	count: number
+	schemaVersion: number
+	record: EthereumAssetRecord
+	path: Field[]
+	witnessJson: string
+}
+
+export type EthereumAssetLookup =
+	| { index: number }
+	| { assetId: string }
+	| { ethereumTokenAddress: string }
+
+export type EthereumTokenDepositSelection = {
+	readonly encodingVersion: 1 | 2
+	readonly asset: EthereumAssetLookup
 }
 
 export type Withdrawal = {
@@ -97,6 +150,15 @@ export type DepositWithState = Action &
 		cancellable: boolean
 		bridgeVersion: BridgeVersion
 	}
+
+export type DepositStateSnapshot = {
+	deposits: DepositWithState[]
+	syncedIndex: number
+	acceptedIndex: number
+	confirmedIndex: number
+	finalisedIndex: number
+	cancelledIndex: number
+}
 
 export const DepositStateProgress = {
 	SYNCED: 0,

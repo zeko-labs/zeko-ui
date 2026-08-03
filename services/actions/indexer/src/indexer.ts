@@ -5,6 +5,7 @@ import { env } from "./env"
 import { logger } from "./helper"
 import { handler as innerHandler, rebuild as innerRebuild } from "./modules/inner"
 import { handler as outerHandler, rebuild as outerRebuild } from "./modules/outer"
+import { handler as registryHandler, rebuild as registryRebuild } from "./modules/registry"
 
 interface IndexerConfig {
 	intervalSeconds: number
@@ -13,7 +14,7 @@ interface IndexerConfig {
 interface IndexerState {
 	isRunning: boolean
 	lastRunTimestamp: number | null
-	lastFetchedBlock: { outer: number | null; inner: number | null }
+	lastFetchedBlock: { outer: number | null; inner: number | null; registry: number | null }
 	config: IndexerConfig
 	consecutiveErrors: number
 }
@@ -25,9 +26,12 @@ interface HandlerResult {
 interface IndexingLoopDependencies {
 	outer: (db: PostgresJsDatabase) => Promise<HandlerResult>
 	inner: (db: PostgresJsDatabase) => Promise<HandlerResult>
+	registry: (db: PostgresJsDatabase) => Promise<HandlerResult>
 	now: () => number
 	wait: (seconds: number, signal: AbortSignal) => Promise<void>
 }
+
+type IndexStream = keyof IndexerState["lastFetchedBlock"]
 
 const waitForDelay = async (seconds: number, signal: AbortSignal): Promise<void> => {
 	try {
@@ -39,9 +43,6 @@ const waitForDelay = async (seconds: number, signal: AbortSignal): Promise<void>
 	}
 }
 
-const disabledHandler = async (): Promise<HandlerResult> => ({ lastFetchedBlock: null })
-const disabledRebuild = async () => ({ data: [], lastFetchedBlock: null })
-
 export async function runIndexingLoop(
 	db: PostgresJsDatabase,
 	state: IndexerState,
@@ -49,40 +50,55 @@ export async function runIndexingLoop(
 	deps: Partial<IndexingLoopDependencies> = {}
 ): Promise<void> {
 	const baseDelay = Math.max(1, state.config.intervalSeconds)
-	const outer = deps.outer ?? (env.INDEX_OUTER ? outerHandler : disabledHandler)
-	const inner = deps.inner ?? (env.INDEX_INNER ? innerHandler : disabledHandler)
+	const handlers: Array<{
+		stream: IndexStream
+		run: (db: PostgresJsDatabase) => Promise<HandlerResult>
+	}> = [
+		...(deps.outer || env.INDEX_OUTER
+			? [{ stream: "outer" as const, run: deps.outer ?? outerHandler }]
+			: []),
+		...(deps.inner || env.INDEX_INNER
+			? [{ stream: "inner" as const, run: deps.inner ?? innerHandler }]
+			: []),
+		...(deps.registry || env.INDEX_REGISTRY
+			? [{ stream: "registry" as const, run: deps.registry ?? registryHandler }]
+			: [])
+	]
 	const now = deps.now ?? Date.now
 	const wait = deps.wait ?? waitForDelay
 
 	while (state.isRunning) {
-		const [outerResult, innerResult] = await Promise.allSettled([outer(db), inner(db)])
-		const hasSuccess = outerResult.status === "fulfilled" || innerResult.status === "fulfilled"
+		const settled = await Promise.allSettled(handlers.map(({ run }) => run(db)))
+		const failures: Array<{
+			stream: IndexStream
+			result: PromiseRejectedResult
+		}> = []
+		let successCount = 0
 
-		if (outerResult.status === "fulfilled") {
-			state.lastFetchedBlock.outer =
-				outerResult.value.lastFetchedBlock ?? state.lastFetchedBlock.outer
+		for (const [index, handler] of handlers.entries()) {
+			const result = settled[index]
+			if (!result) continue
+			if (result.status === "fulfilled") {
+				successCount += 1
+				state.lastFetchedBlock[handler.stream] =
+					result.value.lastFetchedBlock ?? state.lastFetchedBlock[handler.stream]
+			} else {
+				failures.push({ stream: handler.stream, result })
+			}
 		}
 
-		if (innerResult.status === "fulfilled") {
-			state.lastFetchedBlock.inner =
-				innerResult.value.lastFetchedBlock ?? state.lastFetchedBlock.inner
-		}
-
-		if (hasSuccess) {
+		if (successCount > 0 || handlers.length === 0) {
 			state.lastRunTimestamp = now()
+		}
+
+		if (failures.length === 0) {
 			state.consecutiveErrors = 0
 			logger.info(
-				`runIndexingLoop: finished run (outer=${state.lastFetchedBlock.outer ?? 0}, inner=${state.lastFetchedBlock.inner ?? 0})`
+				`runIndexingLoop: finished run (outer=${state.lastFetchedBlock.outer ?? 0}, inner=${state.lastFetchedBlock.inner ?? 0}, registry=${state.lastFetchedBlock.registry ?? 0})`
 			)
+		} else {
+			state.consecutiveErrors += 1
 		}
-
-		const failures = [
-			{ stream: "outer", result: outerResult },
-			{ stream: "inner", result: innerResult }
-		].filter(
-			(entry): entry is { stream: "outer" | "inner"; result: PromiseRejectedResult } =>
-				entry.result.status === "rejected"
-		)
 
 		for (const failure of failures) {
 			const error = failure.result.reason
@@ -100,10 +116,9 @@ export async function runIndexingLoop(
 			}
 		}
 
-		if (failures.length === 2) {
+		if (handlers.length > 0 && failures.length === handlers.length) {
 			if (!state.isRunning || signal.aborted) break
 
-			state.consecutiveErrors += 1
 			const retryDelay = Math.min(45, baseDelay * state.consecutiveErrors + 1)
 			logger.info(`Linear backoff: retrying in ${retryDelay}s`)
 			await wait(retryDelay, signal)
@@ -132,7 +147,7 @@ export class Indexer {
 		this.#state = {
 			isRunning: false,
 			lastRunTimestamp: null,
-			lastFetchedBlock: { outer: null, inner: null },
+			lastFetchedBlock: { outer: null, inner: null, registry: null },
 			consecutiveErrors: 0,
 			config: { intervalSeconds: 15 }
 		}
@@ -246,7 +261,11 @@ export class Indexer {
 			lastFetchedBlock: this.#state.lastFetchedBlock,
 			config: this.#state.config,
 			consecutiveErrors: this.#state.consecutiveErrors,
-			streams: { outer: env.INDEX_OUTER, inner: env.INDEX_INNER }
+			streams: {
+				outer: env.INDEX_OUTER,
+				inner: env.INDEX_INNER,
+				registry: env.INDEX_REGISTRY
+			}
 		}
 	}
 
@@ -259,24 +278,54 @@ export class Indexer {
 		}
 
 		try {
-			const [outerResult, innerResult] = await Promise.all([
-				env.INDEX_OUTER ? outerRebuild(this.#db) : disabledRebuild(),
-				env.INDEX_INNER ? innerRebuild(this.#db) : disabledRebuild()
-			])
+			const rebuilds: Array<{
+				stream: IndexStream
+				run: () => Promise<{ data?: unknown[]; lastFetchedBlock: number | null }>
+			}> = [
+				...(env.INDEX_OUTER
+					? [{ stream: "outer" as const, run: () => outerRebuild(this.#db) }]
+					: []),
+				...(env.INDEX_INNER
+					? [{ stream: "inner" as const, run: () => innerRebuild(this.#db) }]
+					: []),
+				...(env.INDEX_REGISTRY
+					? [{ stream: "registry" as const, run: () => registryRebuild(this.#db) }]
+					: [])
+			]
+			const settled = await Promise.allSettled(rebuilds.map(({ run }) => run()))
+			const failures: string[] = []
+			let actionsProcessed = 0
 
-			this.#state.lastFetchedBlock = {
-				outer: outerResult.lastFetchedBlock ?? null,
-				inner: innerResult.lastFetchedBlock ?? null
+			for (const [index, rebuild] of rebuilds.entries()) {
+				const result = settled[index]
+				if (!result) continue
+				if (result.status === "fulfilled") {
+					this.#state.lastFetchedBlock[rebuild.stream] = result.value.lastFetchedBlock ?? null
+					actionsProcessed += result.value.data?.length ?? 0
+					continue
+				}
+				const message =
+					result.reason instanceof Error ? result.reason.message : String(result.reason)
+				logger.error(`Error during ${rebuild.stream} rebuild:`, result.reason)
+				failures.push(`${rebuild.stream}: ${message}`)
 			}
 
 			if (wasRunning) {
 				this.#start(previousConfig)
 			}
 
+			if (failures.length > 0) {
+				return {
+					success: false,
+					message: `Indexer rebuild failed (${failures.join("; ")})`,
+					status: this.getStatus()
+				}
+			}
+
 			return {
 				success: true,
 				message: "Indexer rebuilt from archive data",
-				actionsProcessed: outerResult.data.length + innerResult.data.length,
+				actionsProcessed,
 				status: this.getStatus()
 			}
 		} catch (error) {
@@ -310,7 +359,7 @@ export class Indexer {
 			})
 
 			this.#state.lastRunTimestamp = null
-			this.#state.lastFetchedBlock = { outer: null, inner: null }
+			this.#state.lastFetchedBlock = { outer: null, inner: null, registry: null }
 			this.#state.consecutiveErrors = 0
 
 			const startResult = this.#start(previousConfig)

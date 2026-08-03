@@ -32,6 +32,25 @@ export const fetchActionsQuery = graphql(`
   }
 `)
 
+export const fetchEventsQuery = graphql(`
+  query FetchEvents($pk: String!, $from: Int, $to: Int) {
+    events(input: { address: $pk, from: $from, to: $to, status: ALL }) {
+      blockInfo {
+        timestamp
+        height
+        distanceFromMaxBlockHeight
+        chainStatus
+      }
+      eventData {
+        data
+        transactionInfo {
+          hash
+        }
+      }
+    }
+  }
+`)
+
 export const networkStateQuery = graphql(`
   query NetworkState {
     networkState {

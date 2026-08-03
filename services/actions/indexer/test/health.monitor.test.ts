@@ -31,7 +31,7 @@ describe("health monitor", () => {
 			},
 			indexerStatus: {
 				isRunning: true,
-				lastFetchedBlock: { outer: 1, inner: 1 },
+				lastFetchedBlock: { outer: 1, inner: 1, registry: 1 },
 				consecutiveErrors: 0
 			},
 			staleAfterMs: 500
@@ -143,7 +143,7 @@ describe("health monitor", () => {
 			canonicalProgress,
 			indexerStatus: {
 				isRunning: true,
-				lastFetchedBlock: { outer: 1, inner: 1 },
+				lastFetchedBlock: { outer: 1, inner: 1, registry: 1 },
 				consecutiveErrors: 0
 			},
 			staleAfterMs: 500
