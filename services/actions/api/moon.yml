@@ -28,6 +28,14 @@ tasks:
       - "@group(sources)"
     outputs:
       - dist/**
+  unit:
+    command: vitest
+    args:
+      - run
+      - --config
+      - vitest.unit.config.ts
+    options:
+      cache: false
   manual-db-test:
     description: Manual local Postgres integration test. Starts Docker, prepares schema, runs test, and tears down.
     script: |
@@ -71,6 +79,17 @@ tasks:
       - tests/actions.live-e2e.test.ts
     env:
       ACTIONS_API_E2E_BASE_URL: https://api.actions.zeko.io
+    options:
+      cache: false
+      runInCI: false
+  live-e2e-sepolia:
+    description: Live smoke test against the deployed Sepolia actions-api endpoint.
+    command: vitest
+    args:
+      - run
+      - tests/actions.live-e2e.test.ts
+    env:
+      ACTIONS_API_E2E_BASE_URL: https://sepolia.api.actions.zeko.io
     options:
       cache: false
       runInCI: false
@@ -154,6 +173,12 @@ tasks:
       runInCI: false
   deploy-mainnet:
     command: wrangler deploy
+    deps:
+      - ^:build
+    options:
+      runInCI: false
+  deploy-sepolia:
+    command: wrangler deploy --env sepolia
     deps:
       - ^:build
     options:

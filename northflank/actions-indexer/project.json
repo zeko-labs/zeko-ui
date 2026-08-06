@@ -191,6 +191,65 @@
 								"ref": "actions-indexer-mainnet-deployment"
 							},
 							{
+								"kind": "DeploymentService",
+								"spec": {
+									"deployment": {
+										"instances": 1,
+										"storage": {
+											"ephemeralStorage": {
+												"storageSize": 1024
+											},
+											"shmSize": 64
+										},
+										"docker": {
+											"configType": "default"
+										},
+										"type": "deployment",
+										"releaseFlowControlled": true
+									},
+									"loadBalancing": {
+										"mode": "leastConnection"
+									},
+									"name": "actions-indexer-sepolia-deployment",
+									"infrastructure": {
+										"architecture": "x86"
+									},
+									"billing": {
+										"deploymentPlan": "nf-compute-100-1"
+									},
+									"ports": [
+										{
+											"internalPort": 3000,
+											"public": true,
+											"protocol": "HTTP",
+											"name": "p01",
+											"domains": ["sepolia.indexer.actions.zeko.io"],
+											"security": {
+												"sso": {},
+												"policies": [],
+												"credentials": [],
+												"verificationMode": "or"
+											},
+											"disableNfDomain": false
+										}
+									],
+									"runtimeEnvironment": {
+										"DATABASE_URL": "${args.SEPOLIA_DATABASE_URL}",
+										"AUTH_TOKEN": "${args.SEPOLIA_AUTH_TOKEN}",
+										"PORT": "${args.PORT}",
+										"L1_ARCHIVE_URL": "${args.SEPOLIA_L1_ARCHIVE_URL}",
+										"L2_ARCHIVE_URL": "${args.SEPOLIA_L2_ARCHIVE_URL}",
+										"OUTER_PK": "${args.SEPOLIA_OUTER_PK}",
+										"INNER_PK": "${args.SEPOLIA_INNER_PK}",
+										"ENVIRONMENT": "sepolia",
+										"L1_FINALITY": "${args.SEPOLIA_L1_FINALITY}",
+										"L2_FINALITY_TIME_H": "${args.SEPOLIA_L2_FINALITY_TIME_H}"
+									},
+									"runtimeFiles": {}
+								},
+								"ref": "actions-indexer-sepolia-deployment"
+							},
+							{
 								"kind": "Pipeline",
 								"spec": {
 									"stages": [
@@ -278,7 +337,67 @@
 											}
 										},
 										{
-											"name": "Production",
+											"name": "Staging",
+											"nfObjects": [
+												{
+													"id": "${refs.actions-indexer-sepolia-deployment.id}",
+													"type": "service"
+												}
+											],
+											"releaseFlow": {
+												"kind": "ReleaseFlow",
+												"spec": {
+													"apiVersion": "v1.2",
+													"spec": {
+														"kind": "Workflow",
+														"spec": {
+															"type": "sequential",
+															"steps": [
+																{
+																	"kind": "Build",
+																	"spec": {
+																		"reuseExistingBuilds": true,
+																		"buildRuleFallThroughHandling": "fail",
+																		"buildOverrides": {
+																			"buildArguments": {},
+																			"buildFiles": {},
+																			"dockerSecretMounts": {}
+																		},
+																		"branch": "main",
+																		"id": "${template.refs.actions-indexer-build.id}",
+																		"type": "service"
+																	},
+																	"condition": "success",
+																	"ref": "actions-indexer-sepolia-pipeline-build"
+																},
+																{
+																	"kind": "Release",
+																	"spec": {
+																		"type": "build",
+																		"origin": {
+																			"id": "${refs.actions-indexer-sepolia-pipeline-build.nfObjectId}",
+																			"branch": "${refs.actions-indexer-sepolia-pipeline-build.branch}",
+																			"build": "${refs.actions-indexer-sepolia-pipeline-build.id}"
+																		},
+																		"target": {
+																			"id": "${template.refs.actions-indexer-sepolia-deployment.id}",
+																			"type": "service"
+																		}
+																	},
+																	"ref": "actions-indexer-sepolia-deployment-release"
+																}
+																]
+															}
+													}
+											},
+											"triggers": [],
+											"options": {
+												"concurrencyPolicy": "allow"
+											}
+										}
+									},
+									{
+										"name": "Production",
 											"nfObjects": [
 												{
 													"id": "${refs.actions-indexer-mainnet-deployment.id}",
@@ -488,7 +607,15 @@
 		"MAINNET_OUTER_PK": "",
 		"MAINNET_INNER_PK": "",
 		"MAINNET_L1_FINALITY": "",
-		"MAINNET_L2_FINALITY_TIME_H": ""
+		"MAINNET_L2_FINALITY_TIME_H": "",
+		"SEPOLIA_DATABASE_URL": "",
+		"SEPOLIA_AUTH_TOKEN": "",
+		"SEPOLIA_L1_ARCHIVE_URL": "https://sepolia-gateway.zeko.io/graphql",
+		"SEPOLIA_L2_ARCHIVE_URL": "https://archive.sepolia.zeko.io/graphql",
+		"SEPOLIA_OUTER_PK": "B62qpggUSofPZcWqtgbmLVnSAzzjAqSXjyckLJaBeGmXiPnc2mGUfhf",
+		"SEPOLIA_INNER_PK": "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1",
+		"SEPOLIA_L1_FINALITY": "290",
+		"SEPOLIA_L2_FINALITY_TIME_H": "72"
 	},
 	"options": {
 		"autorun": false,

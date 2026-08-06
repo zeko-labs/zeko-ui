@@ -464,3 +464,5 @@
 - T478 | done | simplify-bridge-operation-hash-cell | done/T478-simplify-bridge-operation-hash-cell.md
 - T479 | done | guard-clipboard-hash-copy | done/T479-guard-clipboard-hash-copy.md
 - T480 | done | make-pending-transaction-load-pure | done/T480-make-pending-transaction-load-pure.md
+- T481 | done | add-sepolia-actions-api-environment-and-cors-policy | done/T481-actions-api-sepolia-environment.md
+- T482 | in-progress | add-northflank-sepolia-indexer-deployment | in-progress/T482-northflank-sepolia-indexer-deployment.md

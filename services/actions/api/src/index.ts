@@ -1,27 +1,34 @@
-import { createYoga } from "graphql-yoga"
+import { createYoga as createGraphqlYoga } from "graphql-yoga"
 import type { Context } from "./builder"
+import { getActionsApiCorsOptions } from "./cors"
 import { type CloudflareContext, checkDatabaseHealth, rc, useDatabase } from "./db"
 import { schema } from "./graphql"
 
-const yoga = createYoga<{ cloudflare: CloudflareContext }>({
-	schema,
-	healthCheckEndpoint: "live",
-	cors: (request) => ({
-		origin: request.headers.get("Origin") ?? "localhost:4000",
-		credentials: true,
-		allowedHeaders: [request.headers.get("Access-Control-Request-Headers") ?? "Content-Type"],
-		methods: ["*"],
-		exposedHeaders: ["*"]
-	}),
-	context: ({ cloudflare }) => {
-		const { env, context: cloudflareContext } = cloudflare
-		return {
-			env,
-			cloudflareContext,
-			database: useDatabase(cloudflare)
-		} satisfies Context
-	}
-})
+const createYoga = (environment: string) =>
+	createGraphqlYoga<{ cloudflare: CloudflareContext }>({
+		schema,
+		healthCheckEndpoint: "live",
+		cors: (request) => getActionsApiCorsOptions(environment, request),
+		context: ({ cloudflare }) => {
+			const { env, context: cloudflareContext } = cloudflare
+			return {
+				env,
+				cloudflareContext,
+				database: useDatabase(cloudflare)
+			} satisfies Context
+		}
+	})
+
+const yogaByEnvironment = new Map<string, ReturnType<typeof createYoga>>()
+
+const getYoga = (environment: string) => {
+	const existingYoga = yogaByEnvironment.get(environment)
+	if (existingYoga) return existingYoga
+
+	const yoga = createYoga(environment)
+	yogaByEnvironment.set(environment, yoga)
+	return yoga
+}
 
 const releaseDb = ({ request, context }: { request: Request; context: ExecutionContext }) => {
 	const C = rc.get(request)
@@ -55,7 +62,7 @@ export default {
 			releaseDb({ request, context })
 			return Response.json(response, { status: dbHealth.healthy ? 200 : 503 })
 		}
-		const response = await yoga(request, { cloudflare })
+		const response = await getYoga(env.ENVIRONMENT || "unknown")(request, { cloudflare })
 		releaseDb({ request, context })
 		return response
 	}

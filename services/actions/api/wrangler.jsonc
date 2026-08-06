@@ -54,6 +54,24 @@
 					"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
 				}
 			]
+		},
+		"sepolia": {
+			"vars": {
+				"ENVIRONMENT": "sepolia"
+			},
+			"routes": [{ "custom_domain": true, "pattern": "sepolia.api.actions.zeko.io" }],
+			"hyperdrive": [
+				{
+					"binding": "HYPERDRIVE_NO_CACHE",
+					"id": "7fb4470db72746ee8078f65bd031bb3c",
+					"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
+				},
+				{
+					"binding": "HYPERDRIVE",
+					"id": "b87682614aa74131a3754b90fd1c815d",
+					"localConnectionString": "postgresql://postgres:postgres@localhost:5434/actions"
+				}
+			]
 		}
 	}
 }
