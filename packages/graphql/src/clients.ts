@@ -7,10 +7,12 @@ import type { introspection as zekoArchiveSchema } from "./generated/zeko-archiv
 import type { introspection as zekoSchema } from "./generated/zeko-env"
 
 type Scalars = {
+	AccountNonce: string
+	Amount: string
 	UInt64: string
 	UInt32: string
 	PublicKey: string
-	TokenID: string
+	TokenId: string
 	Fee: string
 	FieldElem: string
 }

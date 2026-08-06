@@ -20,7 +20,7 @@ export interface CanonicalProgressSnapshot {
 
 export interface IndexerStatusSnapshot {
 	isRunning: boolean
-	lastFetchedBlock: { outer: number | null; inner: number | null }
+	lastFetchedBlock: { outer: number | null; inner: number | null; registry: number | null }
 	consecutiveErrors: number
 }
 
@@ -51,7 +51,7 @@ export interface HealthComputationResult {
 		}
 		indexer: {
 			status: "running" | "stopped"
-			lastFetchedBlock: { outer: number | null; inner: number | null }
+			lastFetchedBlock: { outer: number | null; inner: number | null; registry: number | null }
 			consecutiveErrors: number
 			canonicalProgress: {
 				checkedAt: string | null

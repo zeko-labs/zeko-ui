@@ -1,4 +1,12 @@
-import { commitActions, innerActions, outerActions, witnessActions } from "@zeko/actions-api"
+import {
+	commitActions,
+	ethereumAssetRecords,
+	ethereumAssetRegistryCheckpoints,
+	ethereumAssetRegistryMemberships,
+	innerActions,
+	outerActions,
+	witnessActions
+} from "@zeko/actions-api"
 import { and, desc, gte, type InferInsertModel, inArray, isNull, lt, not, sql } from "drizzle-orm"
 import type { AnyPgTable } from "drizzle-orm/pg-core"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
@@ -295,11 +303,26 @@ export async function assertActionIndexIntegritySnapshot(db: PostgresJsDatabase)
 	assertActionIndexIntegrity(snapshot.inner)
 }
 
-export async function clearAllTables(tx: PostgresJsDatabase) {
+export async function clearOuterActionTables(tx: PostgresJsDatabase) {
 	await tx.delete(witnessActions)
 	await tx.delete(commitActions)
 	await tx.delete(outerActions)
+}
+
+export async function clearInnerActionTables(tx: PostgresJsDatabase) {
 	await tx.delete(innerActions)
+}
+
+export async function clearActionTables(tx: PostgresJsDatabase) {
+	await clearOuterActionTables(tx)
+	await clearInnerActionTables(tx)
+}
+
+export async function clearAllTables(tx: PostgresJsDatabase) {
+	await clearActionTables(tx)
+	await tx.delete(ethereumAssetRegistryMemberships)
+	await tx.delete(ethereumAssetRecords)
+	await tx.delete(ethereumAssetRegistryCheckpoints)
 }
 
 export async function getLastFinalOuterAction(db: PostgresJsDatabase) {

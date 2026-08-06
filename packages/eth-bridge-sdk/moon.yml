@@ -24,6 +24,7 @@ tasks:
   typecheck:
     deps:
       - ^:build
+      - build
     command: tsgo --noEmit --declaration false --declarationMap false
     inputs:
       - "@globs(src)"
@@ -58,8 +59,22 @@ tasks:
     options:
       cache: false
   live-sequencer-e2e:
-    command: bun examples/live-sequencer-e2e.ts
+    command: node examples/live-sequencer-e2e.ts
     deps:
       - ^:build
+      - build
+    options:
+      cache: false
+  erc20-identity:
+    command: bun examples/erc20-identity.ts
+    deps:
+      - ^:build
+    options:
+      cache: false
+  asset-record-batch:
+    command: bun examples/asset-record-batch.ts
+    deps:
+      - ^:build
+      - build
     options:
       cache: false

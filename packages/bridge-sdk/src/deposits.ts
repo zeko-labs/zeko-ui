@@ -20,7 +20,7 @@ import { Actions, Events, fromList } from "./actions"
 import { ensureBridgeTransferAmountCanCoverFees } from "./errors"
 import { fetchAccount, setL1, setL2 } from "./network"
 import { pollProvingResult } from "./prover"
-import { debug, type BridgeRuntime } from "./runtime"
+import { type BridgeRuntime, debug } from "./runtime"
 import {
 	normalizeRetryableTransactionOptions,
 	type RetryableTransactionOptions,
@@ -29,6 +29,7 @@ import {
 import type {
 	Account,
 	Deposit,
+	DepositStateSnapshot,
 	DepositWithState,
 	ExtractInput,
 	OuterAction,
@@ -57,6 +58,11 @@ export type DepositParams = {
 	deposit: Deposit
 	aux: Field
 }
+
+type DepositFinalizationWitness = Omit<
+	ExtractInput<typeof finalizeDepositMutation>,
+	"helperAccountNew" | "helperAccountSignature" | "prevNonce"
+>
 
 const NO_OUTER_COMMIT_REASON = "No outer commit available yet"
 
@@ -165,7 +171,8 @@ export async function fetchSyncedOuterActionState(
 
 export async function fetchDepositStateContext(
 	runtime: BridgeRuntime,
-	pk: PublicKey
+	pk: PublicKey,
+	helperTokenId: Field = TokenId.derive(runtime.innerHolder)
 ): Promise<DepositStateContext> {
 	const deposits = (
 		await (runtime.bridge?.fetchUserDeposits?.(pk) ?? fetchUserDeposits(runtime, pk))
@@ -194,11 +201,7 @@ export async function fetchDepositStateContext(
 			pk,
 			TokenId.derive(runtime.outerTokenOwner)
 		),
-		(runtime.bridge?.fetchAccount ?? fetchAccount)(
-			runtime.l2Client,
-			pk,
-			TokenId.derive(runtime.innerHolder)
-		),
+		(runtime.bridge?.fetchAccount ?? fetchAccount)(runtime.l2Client, pk, helperTokenId),
 		runtime.bridge?.fetchSyncedOuterActionState?.() ?? fetchSyncedOuterActionState(runtime)
 	])
 
@@ -407,7 +410,9 @@ export async function submitDeposit(
 
 export async function fetchDepositFinalizationWitnesses(
 	runtime: BridgeRuntime,
-	pk: PublicKey
+	pk: PublicKey,
+	acceptDeposit: (deposit: Deposit) => boolean = () => true,
+	helperTokenId: Field = TokenId.derive(runtime.innerHolder)
 ): Promise<
 	WitnessFetchResult<{
 		aseTarget: {
@@ -419,12 +424,12 @@ export async function fetchDepositFinalizationWitnesses(
 			aux: Field
 		}
 		helperAccount: Account | null
-		witness: ExtractInput<typeof finalizeDepositMutation>
+		witness: DepositFinalizationWitness
 	}>
 > {
 	setL2(runtime)
 
-	const context = await fetchDepositStateContext(runtime, pk)
+	const context = await fetchDepositStateContext(runtime, pk, helperTokenId)
 
 	if (context.depositsByAux.size === 0) {
 		return { ok: false, msg: "No deposits found" }
@@ -441,6 +446,8 @@ export async function fetchDepositFinalizationWitnesses(
 	const minDepositIndex = uint32Max(context.v2DepositsStartIndex, context.prevNextDeposit)
 
 	for (const witness of getSortedDepositWitnesses(context)) {
+		const depositParams = context.depositsByAux.get(witness.aux.toBigInt())
+		if (!depositParams || !acceptDeposit(depositParams.deposit)) continue
 		if (
 			isDepositCancelled(context, witness) ||
 			isDepositFinalised(context, witness) ||
@@ -502,7 +509,11 @@ export async function finalizeDeposit(
 	const prove = async (attempts: number) => {
 		if (attempts === 0) throw new Error("Failed to prove deposit finalization")
 
-		const witnesses = await fetchDepositFinalizationWitnesses(runtime, pk)
+		const witnesses = await fetchDepositFinalizationWitnesses(
+			runtime,
+			pk,
+			(deposit) => deposit.assetId === undefined
+		)
 
 		if (!witnesses.ok) throw new Error(witnesses.msg)
 
@@ -657,7 +668,11 @@ export async function canFinalizeDeposit(
 	pk: PublicKey
 ): Promise<{ available: boolean; reason: string | null; index?: number }> {
 	debug(runtime, "canFinalizeDeposit start", { pk: pk.toBase58() })
-	const result = await fetchDepositFinalizationWitnesses(runtime, pk)
+	const result = await fetchDepositFinalizationWitnesses(
+		runtime,
+		pk,
+		(deposit) => deposit.assetId === undefined
+	)
 	debug(runtime, "canFinalizeDeposit result", result)
 	return {
 		available: result.ok,
@@ -679,7 +694,7 @@ function buildDepositFinalizationWitnessValue(
 		aux: Field
 	}
 	helperAccount: Account | null
-	witness: ExtractInput<typeof finalizeDepositMutation>
+	witness: DepositFinalizationWitness
 } | null {
 	const depositParams = getDepositParamsForWitness(context, witness)
 	const minDepositIndex = uint32Max(context.v2DepositsStartIndex, context.prevNextDeposit)
@@ -913,21 +928,21 @@ export function buildDepositCancellationWitnessInput(
 
 export async function fetchDepositsWithStates(
 	runtime: BridgeRuntime,
-	pk: PublicKey
-): Promise<{
-	deposits: DepositWithState[]
-	syncedIndex: number
-	acceptedIndex: number
-	confirmedIndex: number
-	finalisedIndex: number
-	cancelledIndex: number
-}> {
-	const context = await fetchDepositStateContext(runtime, pk)
+	pk: PublicKey,
+	options: {
+		helperTokenId?: Field
+		acceptDeposit?: (deposit: Deposit) => boolean
+	} = {}
+): Promise<DepositStateSnapshot> {
+	const context = await fetchDepositStateContext(runtime, pk, options.helperTokenId)
+	const acceptDeposit = options.acceptDeposit ?? (() => true)
+	const witnesses = getSortedDepositWitnesses(context).filter((witness) => {
+		const depositParams = context.depositsByAux.get(witness.aux.toBigInt())
+		return depositParams !== undefined && acceptDeposit(depositParams.deposit)
+	})
 
 	return {
-		deposits: getSortedDepositWitnesses(context).map((witness) =>
-			buildDepositWithState(context, witness)
-		),
+		deposits: witnesses.map((witness) => buildDepositWithState(context, witness)),
 		syncedIndex: +safeDecrement(context.syncedOuterActionState.length).toString(),
 		acceptedIndex: context.lastCommit?.index ?? -1,
 		confirmedIndex:

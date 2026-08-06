@@ -1,5 +1,5 @@
 ---
-id: T482
+id: T496
 title: "Add Northflank Sepolia indexer deployment"
 status: in-progress
 blockedBy: []
@@ -7,6 +7,7 @@ owner: unassigned
 created_at: 2026-08-06T00:00:00Z
 updated_at: 2026-08-06T00:01:00Z
 ---
+
 ## Requirements
 
 - Extend `northflank/actions-indexer/project.json` with a third deployment service ref/name `actions-indexer-sepolia-deployment` in the existing `actions-indexer` project.

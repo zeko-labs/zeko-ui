@@ -1,5 +1,5 @@
 import { provedResultQuery } from "@zeko-labs/graphql"
-import { debug, type BridgeRuntime } from "./runtime"
+import { type BridgeRuntime, debug } from "./runtime"
 
 const parseProvingResult = (
 	key: string,
@@ -13,11 +13,12 @@ const parseProvingResult = (
 	}
 }
 
-export const pollProvingResult = async (
+const poll = async <T>(
 	runtime: BridgeRuntime,
 	key: string,
-	pollPeriod = 5_000
-): Promise<string> => {
+	pollPeriod: number,
+	resolve: (result: { proved?: unknown; executed?: string }) => T | undefined
+): Promise<T> => {
 	debug(runtime, "pollQuery", { key })
 
 	let attempts = 0
@@ -41,16 +42,33 @@ export const pollProvingResult = async (
 
 		if (!result) continue
 
-		const resultObject = parseProvingResult(key, result)
-
-		if (resultObject.proved) {
-			continue
-		}
-
-		if (resultObject.executed) {
-			return resultObject.executed
-		}
-
-		throw new Error(`Unsupported proving result payload for key ${key}`)
+		const resolved = resolve(parseProvingResult(key, result))
+		if (resolved !== undefined) return resolved
 	}
 }
+
+export const pollProvingResult = async (
+	runtime: BridgeRuntime,
+	key: string,
+	pollPeriod = 5_000
+): Promise<string> => {
+	return await poll(runtime, key, pollPeriod, (result) => {
+		if (result.proved) return undefined
+		if (result.executed) return result.executed
+		throw new Error(`Unsupported proving result payload for key ${key}`)
+	})
+}
+
+export const pollProvedForest = async (
+	runtime: BridgeRuntime,
+	key: string,
+	pollPeriod = 5_000
+): Promise<unknown[]> =>
+	await poll(runtime, key, pollPeriod, (result) => {
+		if (result.executed) throw new Error(`Proof key ${key} was already executed`)
+		if (result.proved === undefined) {
+			throw new Error(`Unsupported proving result payload for key ${key}`)
+		}
+		if (!Array.isArray(result.proved)) throw new Error(`Invalid proved forest for key ${key}`)
+		return result.proved
+	})

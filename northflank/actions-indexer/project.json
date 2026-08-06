@@ -386,18 +386,18 @@
 																	},
 																	"ref": "actions-indexer-sepolia-deployment-release"
 																}
-																]
-															}
+															]
+														}
 													}
-											},
-											"triggers": [],
-											"options": {
-												"concurrencyPolicy": "allow"
+												},
+												"triggers": [],
+												"options": {
+													"concurrencyPolicy": "allow"
+												}
 											}
-										}
-									},
-									{
-										"name": "Production",
+										},
+										{
+											"name": "Production",
 											"nfObjects": [
 												{
 													"id": "${refs.actions-indexer-mainnet-deployment.id}",

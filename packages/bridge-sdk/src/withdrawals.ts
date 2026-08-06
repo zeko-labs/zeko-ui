@@ -20,7 +20,7 @@ import {
 } from "./errors"
 import { fetchAccount, fetchCurrentSlot, setL1, setL2 } from "./network"
 import { pollProvingResult } from "./prover"
-import { debug, type BridgeRuntime } from "./runtime"
+import { type BridgeRuntime, debug } from "./runtime"
 import {
 	normalizeRetryableTransactionOptions,
 	type RetryableTransactionOptions,
@@ -37,6 +37,12 @@ import type {
 	WithdrawalWithState,
 	WitnessFetchResult
 } from "./types"
+
+type WithdrawalFinalizationWitness = Omit<
+	ExtractInput<typeof finalizeWithdrawalMutation>,
+	"helperAccountNew" | "helperAccountSignature" | "prevNonce"
+>
+
 import {
 	bridgeVersionForActionIndex,
 	fetchActions,
@@ -269,7 +275,7 @@ export async function fetchWithdrawalFinalizationWitnesses(
 			aux: Field
 		}
 		helperAccount: Account | null
-		witness: ExtractInput<typeof finalizeWithdrawalMutation>
+		witness: WithdrawalFinalizationWitness
 	}>
 > {
 	const [recipientAccount, helperAccount] = await Promise.all([

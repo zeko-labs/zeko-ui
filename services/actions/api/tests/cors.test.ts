@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-	ACTIONS_API_SEPOLIA_CORS_ORIGIN,
-	getActionsApiCorsOptions
-} from "../src/cors"
+import { ACTIONS_API_SEPOLIA_CORS_ORIGIN, getActionsApiCorsOptions } from "../src/cors"
 
 describe("Actions API CORS policy", () => {
 	it("allows the standalone Sepolia bridge origin without reflecting arbitrary origins", () => {

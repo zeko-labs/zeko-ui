@@ -1,5 +1,5 @@
 ---
-id: T481
+id: T495
 title: "Add Sepolia Actions API environment and CORS policy"
 status: done
 blockedBy: []
@@ -7,6 +7,7 @@ owner: unassigned
 created_at: 2026-08-05T00:00:00Z
 updated_at: 2026-08-06T05:30:00Z
 ---
+
 ## Requirements
 
 - Add an isolated `sepolia` Wrangler environment to `services/actions/api/wrangler.jsonc`.

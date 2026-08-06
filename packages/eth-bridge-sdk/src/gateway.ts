@@ -15,6 +15,7 @@ export type BridgeConfig = {
 export type DepositStatus = {
 	nonce: number
 	token: Address
+	assetId: Hex | null
 	sender: Address
 	zekoRecipient: Hex
 	ethereumAmount: string
@@ -22,6 +23,7 @@ export type DepositStatus = {
 	timeout: number
 	ethereumTransactionHash: Hex
 	ethereumFinalized: boolean
+	encodingVersion: 1 | 2 | null
 	bridgeJobId: string | null
 	bridgeJobStatus: string | null
 	outerActionSequence: number | null
@@ -46,6 +48,11 @@ export type WithdrawalProof = {
 	recipientCursor: number
 	status: string
 	nextAction: string
+}
+
+export type TokenWithdrawalProof = WithdrawalProof & {
+	token: Address
+	assetId: Hex
 }
 
 export type WithdrawalRequest = {
@@ -97,8 +104,18 @@ const requireHex = (value: unknown, field: string): Hex => {
 const nullableString = (value: unknown, field: string): string | null =>
 	value === null ? null : requireString(value, field)
 
+const nullableHex = (value: unknown, field: string): Hex | null =>
+	value === null || value === undefined ? null : requireHex(value, field)
+
 const nullableNumber = (value: unknown, field: string): number | null =>
 	value === null ? null : requireNumber(value, field)
+
+const nullableEncodingVersion = (value: unknown): 1 | 2 | null => {
+	if (value === null || value === undefined) return null
+	const version = requireNumber(value, "deposit.encodingVersion")
+	if (version !== 1 && version !== 2) throw new Error("Invalid deposit.encodingVersion")
+	return version
+}
 
 const requestJson = async (fetcher: Fetch, url: string): Promise<unknown> => {
 	const response = await fetcher(url, { headers: { accept: "application/json" } })
@@ -117,9 +134,19 @@ const parseDeposit = (value: unknown): DepositStatus => {
 	const token = requireString(row.token, "deposit.token")
 	const sender = requireString(row.sender, "deposit.sender")
 	if (!isAddress(token) || !isAddress(sender)) throw new Error("Invalid deposit Ethereum address")
+	const assetId = nullableHex(row.assetId, "deposit.assetId")
+	const encodingVersion = nullableEncodingVersion(row.encodingVersion)
+	const outerActionSequence = nullableNumber(row.outerActionSequence, "deposit.outerActionSequence")
+	if (assetId === null && encodingVersion !== null) {
+		throw new Error("Invalid deposit.encodingVersion for a native deposit")
+	}
+	if (assetId !== null && outerActionSequence !== null && encodingVersion === null) {
+		throw new Error("Invalid deposit.encodingVersion for an indexed ERC20 action")
+	}
 	return {
 		nonce: requireNumber(row.nonce, "deposit.nonce"),
 		token: getAddress(token),
+		assetId,
 		sender: getAddress(sender),
 		zekoRecipient: requireHex(row.zekoRecipient, "deposit.zekoRecipient"),
 		ethereumAmount: requireString(row.ethereumAmount, "deposit.ethereumAmount"),
@@ -135,9 +162,10 @@ const parseDeposit = (value: unknown): DepositStatus => {
 				: (() => {
 						throw new Error("Invalid deposit.ethereumFinalized")
 					})(),
+		encodingVersion,
 		bridgeJobId: nullableString(row.bridgeJobId, "deposit.bridgeJobId"),
 		bridgeJobStatus: nullableString(row.bridgeJobStatus, "deposit.bridgeJobStatus"),
-		outerActionSequence: nullableNumber(row.outerActionSequence, "deposit.outerActionSequence"),
+		outerActionSequence,
 		outerActionStateAfter: nullableString(
 			row.outerActionStateAfter,
 			"deposit.outerActionStateAfter"
@@ -148,6 +176,18 @@ const parseDeposit = (value: unknown): DepositStatus => {
 		),
 		status: requireString(row.status, "deposit.status"),
 		nextAction: requireString(row.nextAction, "deposit.nextAction")
+	}
+}
+
+const parseTokenWithdrawal = (value: unknown): TokenWithdrawalProof => {
+	const row = asRecord(value, "token withdrawal")
+	const withdrawal = parseWithdrawal(value)
+	const token = requireString(row.token, "withdrawal.token")
+	if (!isAddress(token)) throw new Error("Invalid withdrawal.token")
+	return {
+		...withdrawal,
+		token: getAddress(token),
+		assetId: requireHex(row.assetId, "withdrawal.assetId")
 	}
 }
 
@@ -303,6 +343,18 @@ export class GatewayClient {
 			await requestJson(
 				this.#fetch,
 				`${this.#baseUrl}/v1/bridge/withdrawals/${settlementSequence}/${offset}`
+			)
+		)
+	}
+
+	public async tokenWithdrawal(
+		settlementSequence: number,
+		offset: number
+	): Promise<TokenWithdrawalProof> {
+		return parseTokenWithdrawal(
+			await requestJson(
+				this.#fetch,
+				`${this.#baseUrl}/v1/bridge/token-withdrawals/${settlementSequence}/${offset}`
 			)
 		)
 	}

@@ -71,6 +71,56 @@ input FinalizeDepositInput {
   ase: AseWithLengthInput!
 }
 
+input EthereumTokenDepositParamsInput {
+  encodingVersion: UInt32
+  registryIndex: UInt32
+  recordCommitment: String
+  assetIdHigh: String!
+  assetIdLow: String!
+  base: DepositParamsInput!
+}
+
+input CheckAcceptedEthereumTokenInitInput {
+  params: EthereumTokenDepositParamsInput!
+  originalActionState: String!
+  depositIndex: UInt32!
+}
+
+input CheckAcceptedEthereumTokenElemInput {
+  actions: [String!]!
+}
+
+input CheckAcceptedEthereumTokenInput {
+  init: CheckAcceptedEthereumTokenInitInput!
+  elems: [CheckAcceptedEthereumTokenElemInput!]!
+}
+
+input FinalizeEthereumTokenDepositInput {
+  ase: AseWithLengthInput!
+  checkAccepted: CheckAcceptedEthereumTokenInput!
+  asset: EthereumAssetMembershipInput
+  prevNextDeposit: UInt32!
+  prevNonce: UInt32!
+  helperAccountNew: Boolean!
+}
+
+input EthereumTokenWithdrawalParamsInput {
+  encodingVersion: UInt32
+  registryIndex: UInt32
+  recordCommitment: String
+  assetIdHigh: String!
+  assetIdLow: String!
+  tokenOwner: String!
+  senderDebit: String!
+  amount: UInt64!
+  recipient: PublicKey!
+}
+
+input EthereumTokenWithdrawalRequestInput {
+  withdrawalParams: EthereumTokenWithdrawalParamsInput!
+  asset: EthereumAssetMembershipInput
+}
+
 input WithdrawalParamsInput {
   recipient: PublicKey!
   amount: UInt64!
@@ -84,6 +134,10 @@ input WithdrawalRequestInput {
 
 """A single pre-signed account update encoded as accountUpdates JSON"""
 scalar BridgeTransferrerInput
+
+scalar EthereumAssetMembershipInput
+
+scalar RegisterEthereumAssetInput
 
 input DepositParamsInput {
   timeout: Int!
@@ -710,6 +764,19 @@ type mutation {
 
   """Cancel a deposit"""
   cancelDeposit(input: FinalizeCancelledDepositInput!): ProofKeyPayload!
+
+  """Prove an ERC20 vault-to-recipient deposit forest for standard token approval"""
+  finalizeEthereumTokenDeposit(
+    input: FinalizeEthereumTokenDepositInput!
+  ): ProofKeyPayload!
+
+  """Prove an ERC20 withdrawal witness forest for standard token approval"""
+  proveEthereumTokenWithdrawalRequest(
+    input: EthereumTokenWithdrawalRequestInput!
+  ): ProofKeyPayload!
+
+  """Prove an exhaustive append-only Ethereum asset registration"""
+  registerEthereumAsset(input: RegisterEthereumAssetInput!): ProofKeyPayload!
 }
 
 input EventFilterOptionsInput {
@@ -793,6 +860,33 @@ type ZekoCircuitsConfig {
   bridgeFeeRecipientL1: PublicKey!
   bridgeFeeRecipientL2: PublicKey!
   bridgeProofFee: Amount!
+  ethereumToken: ZekoEthereumTokenConfig
+  ethereumAssets: ZekoEthereumAssetsConfig
+}
+
+type ZekoEthereumTokenConfig {
+  assetId: String!
+  ethereumTokenAddress: String!
+  tokenOwnerL2: PublicKey!
+  tokenIdL2: String!
+  holderAccountL2: PublicKey!
+  verificationKeyHash: String!
+}
+
+type ZekoEthereumAssetsConfig {
+  registryPublicKey: PublicKey!
+  registrationAuthority: PublicKey!
+  vaultPublicKey: PublicKey!
+  registrySchemaVersion: Int!
+  registryRoot: String!
+  registryCount: Int!
+  approvedMftStandardVkId: String!
+  approvedMftTokenVkHash: String!
+  approvedMftAdminVkHash: String!
+  universalBridgeVkId: String!
+  universalBridgeVkHash: String!
+  bridgeVerificationKeyHash: String!
+  registryVerificationKeyHash: String!
 }
 
 type StateHashes {

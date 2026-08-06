@@ -6,6 +6,7 @@ import { runActionProcessingStress } from "../benchmark/action-processing-stress
 import { asString, readCliBooleanArg, readCliNumberArg } from "./args"
 import { runHealthCheck, runSyncCheck } from "./checks"
 import { runNorthflankLogs, runNorthflankResources } from "./resources"
+import { indexerStatusFields } from "./status"
 
 const printOutput = ({ json, table }: { json: boolean; table: Record<string, unknown>[] }) => {
 	if (json) {
@@ -24,7 +25,8 @@ const IndexerStatusSchema = v.object({
 	lastRunTimestamp: v.nullable(v.number()),
 	lastFetchedBlock: v.object({
 		outer: v.nullable(v.number()),
-		inner: v.nullable(v.number())
+		inner: v.nullable(v.number()),
+		registry: v.nullable(v.number())
 	}),
 	canonicalProgress: v.optional(
 		v.object({
@@ -117,21 +119,6 @@ const requireIndexerStatus = (payload: unknown, commandName: string): IndexerSta
 	}
 }
 
-const statusFields = (status?: IndexerStatus) => ({
-	isRunning: status?.isRunning ?? null,
-	lastRunTimestamp: status?.lastRunTimestamp ?? null,
-	lastFetchedOuter: status?.lastFetchedBlock.outer ?? null,
-	lastFetchedInner: status?.lastFetchedBlock.inner ?? null,
-	outerLastFinalIndex: status?.canonicalProgress?.outer.lastFinalIndex ?? null,
-	outerLastFinalBlock: status?.canonicalProgress?.outer.lastFinalBlockHeight ?? null,
-	outerNonCanonicalTail: status?.canonicalProgress?.outer.nonCanonicalTailCount ?? null,
-	innerLastFinalIndex: status?.canonicalProgress?.inner.lastFinalIndex ?? null,
-	innerLastFinalBlock: status?.canonicalProgress?.inner.lastFinalBlockHeight ?? null,
-	innerNonCanonicalTail: status?.canonicalProgress?.inner.nonCanonicalTailCount ?? null,
-	intervalSeconds: status?.config.intervalSeconds ?? null,
-	consecutiveErrors: status?.consecutiveErrors ?? null
-})
-
 const controlRequest = async ({
 	args,
 	commandName,
@@ -199,7 +186,7 @@ const printControlResult = ({
 				httpStatus,
 				message: payload.message,
 				actionsProcessed: payload.actionsProcessed ?? null,
-				...statusFields(payload.status),
+				...indexerStatusFields(payload.status),
 				intervalSeconds:
 					payload.config?.intervalSeconds ?? payload.status?.config.intervalSeconds ?? null
 			}
@@ -222,7 +209,7 @@ const runStatusFromArgs = async (args: Record<string, unknown>) => {
 			{
 				command: "status",
 				httpStatus: result.httpStatus,
-				...statusFields(payload)
+				...indexerStatusFields(payload)
 			}
 		]
 	})

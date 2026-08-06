@@ -646,6 +646,9 @@ importers:
       '@zeko-labs/graphql':
         specifier: workspace:^
         version: link:../graphql
+      mina-fungible-token:
+        specifier: ^1.1.0
+        version: 1.1.0(o1js@2.8.0)
       mina-signer:
         specifier: ^4.0.0
         version: 4.0.0
@@ -7039,10 +7042,12 @@ packages:
 
   drizzle-kit@1.0.0-beta.22:
     resolution: {integrity: sha512-9HTZuQRljQKTgCx4UhiGn8KYYfHGk4+B/bRR1714W67kz0qgJvdrG527i8rQD8uUyET9UTGR1u8syySJD4znGw==}
+    deprecated: The 1.0.0-beta line is superseded by the 1.0 release candidate. Install drizzle-kit@rc instead.
     hasBin: true
 
   drizzle-orm@1.0.0-beta.22:
     resolution: {integrity: sha512-F+DZyVIvH0oVKa/w08Cle1xfoH+pc+htIXHG/frnMLG72aby9NYYr9oc+9XvghnoO4umxFItduz0OMmQJMnenw==}
+    deprecated: The 1.0.0-beta line is superseded by the 1.0 release candidate. Install drizzle-orm@rc instead.
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -7162,6 +7167,7 @@ packages:
 
   drizzle-seed@1.0.0-beta.22:
     resolution: {integrity: sha512-T3wJVOy0es3hHnxgE2fMWrrTVWmwfCryBR9/xIh5hLErvU6QjPFcUX4m0L2Rj0+aLs6RShabQ8j9LYXGm/WVZA==}
+    deprecated: The 1.0.0-beta line is superseded by the 1.0 release candidate. Install drizzle-seed@rc instead.
     peerDependencies:
       drizzle-orm: '>=1.0.0-beta.2'
 

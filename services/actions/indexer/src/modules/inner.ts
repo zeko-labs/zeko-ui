@@ -5,7 +5,7 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { checkAndRepairActionIndexDrift } from "../action-repair"
 import {
 	batchInsert,
-	clearAllTables,
+	clearInnerActionTables,
 	deleteInnerActionsFromIndex,
 	getInnerActionIndexIntegrity,
 	getInnerActionRepairAnchor,
@@ -171,7 +171,7 @@ export async function rebuild(db: PostgresJsDatabase) {
 	}
 
 	await db.transaction(async (tx) => {
-		await clearAllTables(tx)
+		await clearInnerActionTables(tx)
 		await insertInner(tx, dataToInsert)
 	})
 

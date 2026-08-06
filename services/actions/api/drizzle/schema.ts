@@ -7,6 +7,7 @@ import {
 	integer,
 	jsonb,
 	pgTable,
+	primaryKey,
 	text,
 	timestamp
 } from "drizzle-orm/pg-core"
@@ -90,6 +91,86 @@ export const innerActions = pgTable(
 		check(
 			"actions_before_not_after|inner_actions_check",
 			sql`${table.beforeState} IS NULL OR ${table.beforeState} <> ${table.afterState}`
+		)
+	]
+)
+
+export const ethereumAssetRegistryCheckpoints = pgTable(
+	"ethereum_asset_registry_checkpoints",
+	{
+		root: text("root").primaryKey(),
+		count: integer("count").notNull().unique(),
+		schemaVersion: integer("schema_version").notNull(),
+		depth: integer("depth").notNull(),
+		blockHeight: integer("block_height").notNull(),
+		timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+		txnHash: text("txn_hash").notNull(),
+		finalityStatus: text("finality_status").default("canonical").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+	},
+	(table) => [
+		check(
+			"ethereum_asset_registry_checkpoint_shape",
+			sql`${table.count} > 0 AND ${table.count} <= 256 AND ${table.schemaVersion} = 1 AND ${table.depth} = 8`
+		),
+		check(
+			"ethereum_asset_registry_checkpoint_finality",
+			sql`${table.finalityStatus} IN ('pending', 'canonical')`
+		)
+	]
+)
+
+export const ethereumAssetRecords = pgTable(
+	"ethereum_asset_records",
+	{
+		registryIndex: integer("registry_index").primaryKey(),
+		schemaVersion: integer("schema_version").notNull(),
+		assetId: text("asset_id").notNull().unique(),
+		ethereumTokenAddress: text("ethereum_token_address").notNull().unique(),
+		tokenOwnerL2: text("token_owner_l2").notNull().unique(),
+		tokenIdL2: text("token_id_l2").notNull().unique(),
+		decimals: integer("decimals").notNull(),
+		inventoryCap: bigint("inventory_cap", { mode: "bigint" }).notNull(),
+		mftStandardVkId: text("mft_standard_vk_id").notNull(),
+		vaultPublicKey: text("vault_public_key").notNull(),
+		universalBridgeVkId: text("universal_bridge_vk_id").notNull(),
+		registeredRoot: text("registered_root")
+			.notNull()
+			.references(() => ethereumAssetRegistryCheckpoints.root, { onDelete: "restrict" }),
+		blockHeight: integer("block_height").notNull(),
+		timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+		txnHash: text("txn_hash").notNull(),
+		finalityStatus: text("finality_status").default("canonical").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+	},
+	(table) => [
+		check(
+			"ethereum_asset_record_shape",
+			sql`${table.registryIndex} >= 0 AND ${table.registryIndex} < 256 AND ${table.schemaVersion} = 1 AND ${table.decimals} >= 0 AND ${table.decimals} <= 9 AND ${table.inventoryCap} > 0`
+		),
+		check(
+			"ethereum_asset_record_finality",
+			sql`${table.finalityStatus} IN ('pending', 'canonical')`
+		)
+	]
+)
+
+export const ethereumAssetRegistryMemberships = pgTable(
+	"ethereum_asset_registry_memberships",
+	{
+		root: text("root")
+			.notNull()
+			.references(() => ethereumAssetRegistryCheckpoints.root, { onDelete: "cascade" }),
+		registryIndex: integer("registry_index")
+			.notNull()
+			.references(() => ethereumAssetRecords.registryIndex, { onDelete: "restrict" }),
+		path: jsonb("path").$type<string[]>().notNull()
+	},
+	(table) => [
+		primaryKey({ columns: [table.root, table.registryIndex] }),
+		check(
+			"ethereum_asset_registry_membership_path_width",
+			sql`jsonb_array_length(${table.path}) = 8`
 		)
 	]
 )

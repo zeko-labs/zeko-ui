@@ -103,6 +103,70 @@ await bridge.finalizeWithdrawal(
 
 Finalization time depends on the size of the witness data the bridge must prove. Longer gaps between submission and finalization generally mean more proof work and slower completion.
 
+### Canonical Ethereum ERC-20
+
+An Ethereum-enabled sequencer can expose a shared immutable ERC-20 registry. The SDK authenticates
+the registry root, count, and schema from the runtime, verifies each selected record's depth-8
+Poseidon membership, and binds the encoding version, registry index, and record commitment into V2
+deposit and withdrawal actions. `bridge.ethereumAssets` exposes the authenticated checkpoint,
+registry and registration-authority public keys, the registry verification-key hash, the universal
+bridge verification-key identifier and hash, and the approved Mina FungibleToken identifiers and
+hashes.
+
+Indexed lookups are accepted only when the snapshot matches that runtime checkpoint and every
+record and path recomputes the authenticated root. Returned assets preserve
+`checkpointFinality` and `registrationFinality` as `pending` or `canonical`; neither status is
+hidden from finalization-oriented lookup. Registration is governed: the transaction fee payer must
+be `bridge.ethereumAssets.registrationAuthority`, and the proof must contain that authority's
+exact full-commitment signed child update.
+
+Legacy V1 runtime configuration and action decoding remain available through
+`bridge.ethereumToken`; universal runtimes resolve assets with `bridge.fetchEthereumAsset`. When a
+runtime exposes both configurations, deposit finalization must include the deposit's original
+encoding version and asset selector so V1 and V2 actions cannot be confused.
+
+The SDK's `finalizeEthereumTokenDeposit` and `submitEthereumTokenWithdrawal` methods request the
+asset proof, verify the returned forest, compose it with the unmodified `mina-fungible-token`
+owner's `approveBase` proof, and submit the complete L2 transaction. The withdrawal request binds
+the complete token-owner account-update body, so the sequencer proof cannot be reused under a
+different standard-token approval.
+
+Operators can deploy and provision the matching L2 mirror with `deployEthereumTokenMirror`:
+
+```typescript
+import { deployEthereumTokenMirror } from "@zeko-labs/bridge-sdk"
+
+bridge.setL2()
+const { config } = await bridge.fetchEthereumAsset({
+	ethereumTokenAddress
+})
+
+const manifest = await deployEthereumTokenMirror({
+	config,
+	registration, // Read with EthereumBridgeClient.getTokenRegistration(token).
+	bridgeVerificationKey, // The shared universal bridge VK.
+	decimals: registration.zekoDecimals,
+	inventory: registration.depositCap,
+	feePayer,
+	adminContractL2, // Bootstrap admin used only for the exact inventory mint.
+	adminAuthorityL2,
+	finalAdminContractL2, // Stock admin whose authority is PublicKey.empty().
+	symbol: "zERC",
+	sourceUri: "https://example.invalid/contracts/zerc20",
+	allowUpdates: false,
+	signDeployment,
+	signProvisioning
+})
+```
+
+The helper rejects registry, owner, derived token ID, asset ID, address, decimal, cap, inventory,
+or bridge-VK mismatches before submission. It deploys the stock `FungibleToken` and bootstrap
+`FungibleTokenAdmin`, installs a separate proof-controlled vault, mints exactly the registered
+Solidity deposit cap, then rotates the token to a second stock admin controlled by
+`PublicKey.empty()`. The returned manifest includes both admin identities and the rotation
+transaction hash. Multiple registered ERC-20s share the universal bridge circuit and verification
+key while retaining separate token owners and immutable registry records.
+
 ## Development
 
 These commands are maintainer workflows and only run from the private zeko-ui monorepo.
