@@ -77,6 +77,12 @@ const mockSuccessfulRuntimeQueries = (
 		switch (operationName(query)) {
 			case "FetchConfig":
 				return { data: { circuitsConfig } }
+			case "FetchEthereumTokenConfig":
+				return {
+					error: {
+						message: "Field 'ethereumToken' is not defined on type 'ZekoCircuitsConfig'"
+					}
+				}
 			case "FetchEthereumAssetsConfig":
 				return {
 					data: {
@@ -170,6 +176,8 @@ describe("Bridge runtime errors", () => {
 			switch (operationName(query)) {
 				case "FetchConfig":
 					return { data: { circuitsConfig } }
+				case "FetchEthereumTokenConfig":
+					return { data: { circuitsConfig: { ethereumToken: legacy } } }
 				case "FetchEthereumAssetsConfig":
 					return {
 						error: {
@@ -204,6 +212,8 @@ describe("Bridge runtime errors", () => {
 			switch (operationName(query)) {
 				case "FetchConfig":
 					return { data: { circuitsConfig } }
+				case "FetchEthereumTokenConfig":
+					return { data: { circuitsConfig: { ethereumToken: null } } }
 				case "FetchEthereumAssetsConfig":
 					return {
 						error: {

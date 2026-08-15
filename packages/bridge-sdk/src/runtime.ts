@@ -1,6 +1,7 @@
 import {
 	fetchConfigQuery,
 	fetchEthereumAssetsConfigQuery,
+	fetchEthereumTokenConfigQuery,
 	genesisConstantsQueryL1,
 	genesisConstantsQueryL2,
 	sequencerPkQuery
@@ -66,15 +67,20 @@ const assertQuerySucceeded = ({
 	)
 }
 
-const isUnsupportedEthereumAssetsQuery = (error: RuntimeQueryError | undefined): boolean => {
+const isUnsupportedCircuitsConfigFieldQuery = (
+	error: RuntimeQueryError | undefined,
+	fieldName: string
+): boolean => {
 	if (!error || error.networkError) return false
 	const messages = [error.message, ...(error.graphQLErrors?.map(formatUnknownError) ?? [])].filter(
 		(message): message is string => message !== undefined
 	)
 	return messages.some(
 		(message) =>
-			message.includes("ethereumAssets") &&
-			(message.includes("Cannot query field") || message.includes("Unknown field"))
+			message.includes(fieldName) &&
+			(message.includes("Cannot query field") ||
+				message.includes("Unknown field") ||
+				message.includes("is not defined on type"))
 	)
 }
 
@@ -156,12 +162,14 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 
 	const [
 		fetchConfigResult,
+		fetchEthereumTokenConfigResult,
 		fetchEthereumAssetsConfigResult,
 		genesisConstantL2Result,
 		genesisConstantL1Result,
 		sequencerPkResult
 	] = await Promise.all([
 		l2Client().query(fetchConfigQuery, {}),
+		l2Client().query(fetchEthereumTokenConfigQuery, {}),
 		l2Client().query(fetchEthereumAssetsConfigQuery, {}),
 		l2Client().query(genesisConstantsQueryL2, {}),
 		l1Client().query(genesisConstantsQueryL1, {}),
@@ -173,7 +181,18 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 		queryName: "FetchConfig",
 		result: fetchConfigResult
 	})
-	if (!isUnsupportedEthereumAssetsQuery(fetchEthereumAssetsConfigResult.error)) {
+	if (
+		!isUnsupportedCircuitsConfigFieldQuery(fetchEthereumTokenConfigResult.error, "ethereumToken")
+	) {
+		assertQuerySucceeded({
+			endpoint: config.zekoUrl,
+			queryName: "FetchEthereumTokenConfig",
+			result: fetchEthereumTokenConfigResult
+		})
+	}
+	if (
+		!isUnsupportedCircuitsConfigFieldQuery(fetchEthereumAssetsConfigResult.error, "ethereumAssets")
+	) {
 		assertQuerySucceeded({
 			endpoint: config.zekoUrl,
 			queryName: "FetchEthereumAssetsConfig",
@@ -236,14 +255,15 @@ export const createBridgeRuntime = async (config: Config): Promise<BridgeRuntime
 				? UInt32.from(10529)
 				: UInt32.from(0)
 			: UInt32.from(config.v2WithdrawalsStartIndex)
-	const ethereumToken = circuitsConfig.ethereumToken
+	const ethereumTokenConfig = fetchEthereumTokenConfigResult.data?.circuitsConfig?.ethereumToken
+	const ethereumToken = ethereumTokenConfig
 		? validateEthereumTokenBridgeConfig({
-				assetId: circuitsConfig.ethereumToken.assetId,
-				ethereumTokenAddress: circuitsConfig.ethereumToken.ethereumTokenAddress,
-				tokenOwnerL2: PublicKey.fromBase58(circuitsConfig.ethereumToken.tokenOwnerL2),
-				tokenIdL2: TokenId.fromBase58(circuitsConfig.ethereumToken.tokenIdL2),
-				holderAccountL2: PublicKey.fromBase58(circuitsConfig.ethereumToken.holderAccountL2),
-				verificationKeyHash: Field(circuitsConfig.ethereumToken.verificationKeyHash)
+				assetId: ethereumTokenConfig.assetId,
+				ethereumTokenAddress: ethereumTokenConfig.ethereumTokenAddress,
+				tokenOwnerL2: PublicKey.fromBase58(ethereumTokenConfig.tokenOwnerL2),
+				tokenIdL2: TokenId.fromBase58(ethereumTokenConfig.tokenIdL2),
+				holderAccountL2: PublicKey.fromBase58(ethereumTokenConfig.holderAccountL2),
+				verificationKeyHash: Field(ethereumTokenConfig.verificationKeyHash)
 			})
 		: null
 	const ethereumAssets = (() => {

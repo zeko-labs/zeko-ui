@@ -14,6 +14,13 @@ export const fetchConfigQuery = graphql(`
       bridgeFeeRecipientL1
       bridgeFeeRecipientL2
       bridgeProofFee
+    }
+  }
+`)
+
+export const fetchEthereumTokenConfigQuery = graphql(`
+  query FetchEthereumTokenConfig {
+    circuitsConfig {
       ethereumToken {
         assetId
         ethereumTokenAddress
