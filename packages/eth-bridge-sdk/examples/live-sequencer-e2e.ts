@@ -222,6 +222,90 @@ const signTransaction: Parameters<EthereumBridgeClient["finalizeDeposit"]>[1] = 
 	transaction
 ) => transaction.sign([privateKey])
 
+const tokenDeployments: Awaited<ReturnType<typeof deployEthereumTokenMirror>>[] = []
+const deployRegisteredAsset =
+	bridgeAsset === "erc20"
+		? (() => {
+				const verificationKeyData = harness.ethereumTokenBridgeVerificationKey
+				const verificationKeyHash = harness.ethereumTokenBridgeVerificationKeyHash
+				if (!verificationKeyData || !verificationKeyHash) {
+					throw new Error(
+						"Live sequencer did not publish its universal ERC20 bridge verification key"
+					)
+				}
+				const bridgeVerificationKey = new VerificationKey({
+					data: verificationKeyData,
+					hash: Field(verificationKeyHash)
+				})
+				const tokenVaultKey = PrivateKey.fromBase58(required("ERC20_SHARED_VAULT_PRIVATE_KEY"))
+				Mina.setActiveInstance(
+					Mina.Network({
+						mina: harness.sequencerGraphqlUrl,
+						archive: harness.sequencerGraphqlUrl,
+						networkId: l2Network
+					})
+				)
+
+				return async (asset: EthereumAssetRecord, authenticatedClient: EthereumBridgeClient) => {
+					const index = asset.registryIndex
+					const { config } = await authenticatedClient.getZekoAsset(asset.ethereumTokenAddress)
+					const tokenOwnerKey = PrivateKey.fromBase58(
+						required(`ERC20_TOKEN_${index}_OWNER_PRIVATE_KEY`)
+					)
+					const adminContractKey = PrivateKey.fromBase58(
+						required(`ERC20_TOKEN_${index}_ADMIN_CONTRACT_PRIVATE_KEY`)
+					)
+					const adminAuthorityKey = PrivateKey.fromBase58(
+						required(`ERC20_TOKEN_${index}_ADMIN_AUTHORITY_PRIVATE_KEY`)
+					)
+					const finalAdminContractKey = PrivateKey.random()
+					if (!tokenOwnerKey.toPublicKey().equals(config.tokenOwnerL2).toBoolean()) {
+						throw new Error(`Token ${index} owner key does not match its registry record`)
+					}
+					if (!tokenVaultKey.toPublicKey().equals(config.holderAccountL2).toBoolean()) {
+						throw new Error("Shared vault key does not match universal registry configuration")
+					}
+					const inventory = UInt64.from(asset.inventoryCap)
+					const signDeployment = async (transaction: Parameters<typeof signTransaction>[0]) =>
+						transaction.sign([privateKey, tokenOwnerKey, adminContractKey])
+					const signProvisioning = async (transaction: Parameters<typeof signTransaction>[0]) =>
+						transaction.sign([
+							privateKey,
+							tokenVaultKey,
+							adminContractKey,
+							adminAuthorityKey,
+							finalAdminContractKey
+						])
+					return deployEthereumTokenMirror({
+						config,
+						registration: {
+							registered: true,
+							allowed: true,
+							assetId: asset.assetId,
+							ethereumTokenAddress: asset.ethereumTokenAddress,
+							zekoTokenOwnerL2: config.tokenOwnerL2,
+							zekoTokenIdL2: config.tokenIdL2,
+							zekoDecimals: 9,
+							ethereumDecimals: 9,
+							depositCap: inventory
+						},
+						bridgeVerificationKey,
+						decimals: 9,
+						inventory,
+						feePayer: recipient,
+						adminContractL2: adminContractKey.toPublicKey(),
+						adminAuthorityL2: adminAuthorityKey.toPublicKey(),
+						finalAdminContractL2: finalAdminContractKey.toPublicKey(),
+						symbol: `ZP2${index}`,
+						sourceUri: `https://zeko.invalid/local-erc20/${index}`,
+						signDeployment,
+						signProvisioning,
+						waitForInclusion: async () => {}
+					})
+				}
+			})()
+		: undefined
+
 const registrationRequestMarkers = harness.registrationRequestMarkers ?? []
 const registrationCommittedMarkers = harness.registrationCommittedMarkers ?? []
 const coordinatedRegistrations =
@@ -248,6 +332,9 @@ for (const [index, asset] of assets.entries()) {
 		await refreshed.getZekoAsset(asset.ethereumTokenAddress)
 		return refreshed
 	})
+	if (deployRegisteredAsset) {
+		tokenDeployments.push(await deployRegisteredAsset(asset, client))
+	}
 	if (coordinatedRegistrations) {
 		const requestMarker = registrationRequestMarkers[index]
 		const committedMarker = registrationCommittedMarkers[index]
@@ -311,88 +398,18 @@ for (const preparation of preparations) {
 	}
 }
 
-const tokenDeployments: Awaited<ReturnType<typeof deployEthereumTokenMirror>>[] = []
 const tokenBalances: Array<{ token: Address; vault: string; recipient: string }> = []
 const depositTransactionHashes: string[] = []
 const withdrawalTransactionHashes: string[] = []
 
 if (bridgeAsset === "erc20") {
-	const verificationKeyData = harness.ethereumTokenBridgeVerificationKey
-	const verificationKeyHash = harness.ethereumTokenBridgeVerificationKeyHash
-	if (!verificationKeyData || !verificationKeyHash) {
-		throw new Error("Live sequencer did not publish its universal ERC20 bridge verification key")
-	}
-	const bridgeVerificationKey = new VerificationKey({
-		data: verificationKeyData,
-		hash: Field(verificationKeyHash)
-	})
-	const tokenVaultKey = PrivateKey.fromBase58(required("ERC20_SHARED_VAULT_PRIVATE_KEY"))
-	Mina.setActiveInstance(
-		Mina.Network({
-			mina: harness.sequencerGraphqlUrl,
-			archive: harness.sequencerGraphqlUrl,
-			networkId: l2Network
-		})
-	)
-
 	for (const asset of assets) {
 		const index = asset.registryIndex
 		const indexedDeposit = tokenDepositByRegistryIndex.get(index)
 		if (!indexedDeposit) throw new Error(`Missing deposit for registry asset ${index}`)
 		const { encodingVersion } = ethereumTokenDepositSelection(indexedDeposit)
 		const { config } = await client.getZekoAsset(asset.ethereumTokenAddress)
-		const tokenOwnerKey = PrivateKey.fromBase58(required(`ERC20_TOKEN_${index}_OWNER_PRIVATE_KEY`))
-		const adminContractKey = PrivateKey.fromBase58(
-			required(`ERC20_TOKEN_${index}_ADMIN_CONTRACT_PRIVATE_KEY`)
-		)
-		const adminAuthorityKey = PrivateKey.fromBase58(
-			required(`ERC20_TOKEN_${index}_ADMIN_AUTHORITY_PRIVATE_KEY`)
-		)
-		const finalAdminContractKey = PrivateKey.random()
-		if (!tokenOwnerKey.toPublicKey().equals(config.tokenOwnerL2).toBoolean()) {
-			throw new Error(`Token ${index} owner key does not match its registry record`)
-		}
-		if (!tokenVaultKey.toPublicKey().equals(config.holderAccountL2).toBoolean()) {
-			throw new Error("Shared vault key does not match universal registry configuration")
-		}
 		const inventory = UInt64.from(asset.inventoryCap)
-		const signDeployment = async (transaction: Parameters<typeof signTransaction>[0]) =>
-			transaction.sign([privateKey, tokenOwnerKey, adminContractKey])
-		const signProvisioning = async (transaction: Parameters<typeof signTransaction>[0]) =>
-			transaction.sign([
-				privateKey,
-				tokenVaultKey,
-				adminContractKey,
-				adminAuthorityKey,
-				finalAdminContractKey
-			])
-		const deployment = await deployEthereumTokenMirror({
-			config,
-			registration: {
-				registered: true,
-				allowed: true,
-				assetId: asset.assetId,
-				ethereumTokenAddress: asset.ethereumTokenAddress,
-				zekoTokenOwnerL2: config.tokenOwnerL2,
-				zekoTokenIdL2: config.tokenIdL2,
-				zekoDecimals: 9,
-				ethereumDecimals: 9,
-				depositCap: inventory
-			},
-			bridgeVerificationKey,
-			decimals: 9,
-			inventory,
-			feePayer: recipient,
-			adminContractL2: adminContractKey.toPublicKey(),
-			adminAuthorityL2: adminAuthorityKey.toPublicKey(),
-			finalAdminContractL2: finalAdminContractKey.toPublicKey(),
-			symbol: `ZP2${index}`,
-			sourceUri: `https://zeko.invalid/local-erc20/${index}`,
-			signDeployment,
-			signProvisioning,
-			waitForInclusion: async () => {}
-		})
-		tokenDeployments.push(deployment)
 		depositTransactionHashes.push(
 			await client.finalizeTokenDeposit({
 				feePayer: { sender: recipient, fee: 100_000_000 },
