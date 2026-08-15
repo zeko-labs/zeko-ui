@@ -11,12 +11,14 @@ import {
 } from "../dist/index.js"
 
 type LiveHarness = {
-	schemaVersion: 3
+	schemaVersion: 3 | 4
 	sequencerGraphqlUrl: string
 	l1GraphqlUrl: string
 	outerPublicKey: string
 	recipientPublicKey: string
 	registrationCompletionMarker: string
+	registrationRequestMarkers?: string[]
+	registrationCommittedMarkers?: string[]
 	operationsReadyMarker: string
 	completionMarker: string
 	ethereumTokenBridgeVerificationKey?: string
@@ -68,7 +70,9 @@ const retry = async <T>(label: string, operation: () => Promise<T>): Promise<T> 
 
 const readyPath = required("LIVE_SEQUENCER_READY_FILE")
 const harness = JSON.parse(await readFile(readyPath, "utf8")) as LiveHarness
-if (harness.schemaVersion !== 3) throw new Error("Unsupported live sequencer harness schema")
+if (harness.schemaVersion !== 3 && harness.schemaVersion !== 4) {
+	throw new Error("Unsupported live sequencer harness schema")
+}
 
 const privateKey = PrivateKey.fromBase58(required("MINA_PRIVATE_KEY"))
 const recipient = privateKey.toPublicKey()
@@ -218,7 +222,22 @@ const signTransaction: Parameters<EthereumBridgeClient["finalizeDeposit"]>[1] = 
 	transaction
 ) => transaction.sign([privateKey])
 
-for (const asset of assets) {
+const registrationRequestMarkers = harness.registrationRequestMarkers ?? []
+const registrationCommittedMarkers = harness.registrationCommittedMarkers ?? []
+const coordinatedRegistrations =
+	registrationRequestMarkers.length > 0 || registrationCommittedMarkers.length > 0
+if (
+	coordinatedRegistrations &&
+	(registrationRequestMarkers.length !== assets.length ||
+		registrationCommittedMarkers.length !== assets.length)
+) {
+	throw new Error("Live sequencer registration markers do not match the configured assets")
+}
+if (harness.schemaVersion === 4 && assets.length > 0 && !coordinatedRegistrations) {
+	throw new Error("Live sequencer harness schema 4 requires per-asset registration markers")
+}
+
+for (const [index, asset] of assets.entries()) {
 	await client.registerAssetRecord({
 		record: asset,
 		feePayer: { sender: recipient, fee: 100_000_000 },
@@ -229,9 +248,20 @@ for (const asset of assets) {
 		await refreshed.getZekoAsset(asset.ethereumTokenAddress)
 		return refreshed
 	})
+	if (coordinatedRegistrations) {
+		const requestMarker = registrationRequestMarkers[index]
+		const committedMarker = registrationCommittedMarkers[index]
+		if (!requestMarker || !committedMarker) {
+			throw new Error(`Missing registration markers for asset ${asset.registryIndex}`)
+		}
+		await writeFile(requestMarker, "registered\n")
+		await waitForFile(committedMarker)
+	}
 	console.log(`[live-sequencer-e2e] Registered asset ${asset.registryIndex}`)
 }
-await writeFile(harness.registrationCompletionMarker, "registered\n")
+if (!coordinatedRegistrations) {
+	await writeFile(harness.registrationCompletionMarker, "registered\n")
+}
 await waitForFile(harness.operationsReadyMarker)
 
 const indexedTokenDeposits = bridgeAsset === "erc20" ? await client.listDeposits({ recipient }) : []
