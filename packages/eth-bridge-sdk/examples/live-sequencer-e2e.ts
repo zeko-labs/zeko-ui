@@ -193,22 +193,25 @@ const provider = {
 	}
 } as EIP1193Provider
 
-const client = await EthereumBridgeClient.init({
-	gatewayUrl: gatewayOrigin,
-	provider,
-	account: ethereumAccount,
-	expectedChainId: chainId,
-	fetch: gatewayFetch,
-	zeko: {
-		zekoUrl: harness.sequencerGraphqlUrl,
-		zekoArchiveUrl: harness.sequencerGraphqlUrl,
-		actionsApi: required("ACTIONS_API_URL"),
-		l1Network,
-		l2Network,
-		pollTimeout: 30 * 60 * 1_000,
-		verbose: process.env.VERBOSE === "true"
-	}
-})
+const createClient = () =>
+	EthereumBridgeClient.init({
+		gatewayUrl: gatewayOrigin,
+		provider,
+		account: ethereumAccount,
+		expectedChainId: chainId,
+		fetch: gatewayFetch,
+		zeko: {
+			zekoUrl: harness.sequencerGraphqlUrl,
+			zekoArchiveUrl: harness.sequencerGraphqlUrl,
+			actionsApi: required("ACTIONS_API_URL"),
+			l1Network,
+			l2Network,
+			pollTimeout: 30 * 60 * 1_000,
+			verbose: process.env.VERBOSE === "true"
+		}
+	})
+
+let client = await createClient()
 console.log("[live-sequencer-e2e] Ethereum bridge client initialized")
 
 const signTransaction: Parameters<EthereumBridgeClient["finalizeDeposit"]>[1] = async (
@@ -221,9 +224,11 @@ for (const asset of assets) {
 		feePayer: { sender: recipient, fee: 100_000_000 },
 		signTransaction
 	})
-	await retry(`registry index ${asset.registryIndex}`, () =>
-		client.getZekoAsset(asset.ethereumTokenAddress)
-	)
+	client = await retry(`registry index ${asset.registryIndex}`, async () => {
+		const refreshed = await createClient()
+		await refreshed.getZekoAsset(asset.ethereumTokenAddress)
+		return refreshed
+	})
 	console.log(`[live-sequencer-e2e] Registered asset ${asset.registryIndex}`)
 }
 await writeFile(harness.registrationCompletionMarker, "registered\n")
