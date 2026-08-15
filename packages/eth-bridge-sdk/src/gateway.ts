@@ -113,6 +113,7 @@ const nullableNumber = (value: unknown, field: string): number | null =>
 const nullableEncodingVersion = (value: unknown): 1 | 2 | null => {
 	if (value === null || value === undefined) return null
 	const version = requireNumber(value, "deposit.encodingVersion")
+	if (version === 0) return null
 	if (version !== 1 && version !== 2) throw new Error("Invalid deposit.encodingVersion")
 	return version
 }

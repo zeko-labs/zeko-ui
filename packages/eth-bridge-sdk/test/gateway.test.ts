@@ -134,7 +134,7 @@ describe("GatewayClient", () => {
 					...deposit,
 					token: "0x0000000000000000000000000000000000000000",
 					assetId: null,
-					encodingVersion: undefined
+					encodingVersion: 0
 				})
 			).deposit(7)
 		).resolves.toMatchObject({ encodingVersion: null })
