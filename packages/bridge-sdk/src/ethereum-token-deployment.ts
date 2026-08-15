@@ -251,6 +251,7 @@ export const deployEthereumTokenMirror = async (
 	const admin = new FungibleTokenAdmin(input.adminContractL2)
 	const finalAdmin = new FungibleTokenAdmin(input.finalAdminContractL2)
 
+	await refreshCache(input.feePayer)
 	const deployment = await Mina.transaction({ sender: input.feePayer, fee }, async () => {
 		AccountUpdate.fundNewAccount(input.feePayer, 3)
 		await admin.deploy({ adminPublicKey: input.adminAuthorityL2 })
@@ -278,6 +279,7 @@ export const deployEthereumTokenMirror = async (
 		setVerificationKey: Permissions.VerificationKey.impossibleDuringCurrentVersion(),
 		setPermissions: Permissions.impossible()
 	})
+	await refreshCache(input.feePayer)
 	const vaultInstallation = await Mina.transaction({ sender: input.feePayer, fee }, async () => {
 		AccountUpdate.fundNewAccount(input.feePayer, 1)
 		await token.approveBase(AccountUpdateForest.fromFlatArray([vault]))
@@ -300,6 +302,7 @@ export const deployEthereumTokenMirror = async (
 		throw new Error("ERC20 circulation account was not initialized")
 	}
 
+	await refreshCache(input.feePayer)
 	const inventoryMint = await Mina.transaction({ sender: input.feePayer, fee }, async () => {
 		// The first standard mint materializes its token-balance bookkeeping account.
 		AccountUpdate.fundNewAccount(input.feePayer, 1)
@@ -312,6 +315,7 @@ export const deployEthereumTokenMirror = async (
 	)
 	await assertInstalledAccount(plan, input.adminContractL2, plan.inventory, standard)
 
+	await refreshCache(input.feePayer)
 	const adminRotation = await Mina.transaction({ sender: input.feePayer, fee }, async () => {
 		AccountUpdate.fundNewAccount(input.feePayer, 1)
 		await finalAdmin.deploy({ adminPublicKey: PublicKey.empty() })
