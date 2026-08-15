@@ -3,6 +3,7 @@ import {
 	buildRegistrySnapshot,
 	findRegistryAsset,
 	type RegistryArchiveEvent,
+	registryFinalityStatus,
 	verifyRegistryMembership
 } from "../src/asset-registry"
 
@@ -39,6 +40,14 @@ const event = (
 })
 
 describe("universal Ethereum asset registry indexing", () => {
+	it("preserves archive finality and treats live sequencer events as pending", () => {
+		expect(registryFinalityStatus("canonical")).toBe("canonical")
+		expect(registryFinalityStatus("pending")).toBe("pending")
+		expect(registryFinalityStatus("")).toBe("pending")
+		expect(registryFinalityStatus("orphaned")).toBeNull()
+		expect(registryFinalityStatus("unknown")).toBeNull()
+	})
+
 	it("builds one current checkpoint and resolves two immutable assets by every key", () => {
 		const snapshot = buildRegistrySnapshot([event(0), event(1)])
 

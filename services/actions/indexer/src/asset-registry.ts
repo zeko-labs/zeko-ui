@@ -13,6 +13,12 @@ type Hex = `0x${string}`
 type Address = `0x${string}`
 export type RegistryFinalityStatus = "pending" | "canonical"
 
+export const registryFinalityStatus = (chainStatus: string): RegistryFinalityStatus | null => {
+	if (chainStatus === "canonical" || chainStatus === "pending") return chainStatus
+	if (chainStatus === "") return "pending"
+	return null
+}
+
 const U32_MAX = (1n << 32n) - 1n
 const U64_MAX = (1n << 64n) - 1n
 const U128_MAX = (1n << 128n) - 1n

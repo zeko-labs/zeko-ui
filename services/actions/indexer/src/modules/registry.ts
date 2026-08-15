@@ -6,7 +6,11 @@ import {
 import { fetchEventsQuery } from "@zeko-labs/graphql/mina-archive"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { filterArchiveActionsToRange } from "../archive-range"
-import { buildRegistrySnapshot, type RegistryArchiveEvent } from "../asset-registry"
+import {
+	buildRegistrySnapshot,
+	type RegistryArchiveEvent,
+	registryFinalityStatus
+} from "../asset-registry"
 import { batchInsert } from "../db"
 import { env } from "../env"
 import { getNetworkTip, l2Client, logger } from "../helper"
@@ -27,8 +31,8 @@ export async function fetchRegistryEvents(): Promise<RegistryArchiveEvent[]> {
 		if (result.error) throw result.error
 		for (const block of filterArchiveActionsToRange(result.data?.events ?? [], from, to)) {
 			if (!block?.blockInfo) continue
-			const finalityStatus = block.blockInfo.chainStatus
-			if (finalityStatus !== "canonical" && finalityStatus !== "pending") continue
+			const finalityStatus = registryFinalityStatus(block.blockInfo.chainStatus)
+			if (!finalityStatus) continue
 			for (const item of block.eventData ?? []) {
 				if (!item?.transactionInfo) continue
 				events.push({

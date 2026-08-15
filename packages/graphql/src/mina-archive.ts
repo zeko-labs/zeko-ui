@@ -34,7 +34,7 @@ export const fetchActionsQuery = graphql(`
 
 export const fetchEventsQuery = graphql(`
   query FetchEvents($pk: String!, $from: Int, $to: Int) {
-    events(input: { address: $pk, from: $from, to: $to, status: ALL }) {
+    events(input: { address: $pk, from: $from, to: $to }) {
       blockInfo {
         timestamp
         height
