@@ -71,6 +71,12 @@ tasks:
       - ^:build
     options:
       cache: false
+  erc20-standard-vks:
+    command: bun examples/erc20-standard-vks.ts
+    deps:
+      - ^:build
+    options:
+      cache: false
   asset-record-batch:
     command: bun examples/asset-record-batch.ts
     deps:
