@@ -202,6 +202,14 @@ describe("ERC20 mirror token local roundtrip", () => {
 				([publicKey, token]) => publicKey === feePayer && token === undefined
 			)
 		).toHaveLength(4)
+		expect(
+			refreshCache.mock.calls.filter(
+				([publicKey, token]) =>
+					publicKey instanceof PublicKey &&
+					publicKey.equals(adminAuthorityKey.toPublicKey()).toBoolean() &&
+					token === undefined
+			)
+		).toHaveLength(2)
 		refreshCache.mockRestore()
 		expect(Mina.getBalance(vaultKey.toPublicKey(), tokenId).toBigInt()).toBe(1_000n)
 		expect(
