@@ -47,8 +47,13 @@ const waitForFile = async (path: string): Promise<void> => {
 	throw new Error(`Timed out waiting for ${path}`)
 }
 
+const retryTimeoutMs = Number(process.env.LIVE_E2E_RETRY_TIMEOUT_MS ?? 10 * 60 * 1_000)
+if (!Number.isSafeInteger(retryTimeoutMs) || retryTimeoutMs <= 0) {
+	throw new Error("LIVE_E2E_RETRY_TIMEOUT_MS must be a positive integer")
+}
+
 const retry = async <T>(label: string, operation: () => Promise<T>): Promise<T> => {
-	const deadline = Date.now() + 2 * 60 * 1_000
+	const deadline = Date.now() + retryTimeoutMs
 	let lastError: unknown
 	while (Date.now() < deadline) {
 		try {
