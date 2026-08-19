@@ -42,7 +42,7 @@ await bridge.proposeAsset(record)
 
 await bridge.registerAssetRecord({
 	record,
-	feePayer: { sender: registrationAuthority, fee: 100_000_000 },
+	feePayer: { sender: registrationAuthority, fee: 2_500 },
 	signTransaction
 })
 
@@ -55,6 +55,9 @@ await bridge.activateAssetFromBatch({
 	batchRecords
 })
 ```
+
+The `2_500`-nanounit example is the Ethereum-backed Sepolia transaction fee;
+applications should supply the fee from their deployed runtime configuration.
 
 Every supplied snapshot is checked by rebuilding its depth-8 Poseidon tree and verifying every
 membership path. With the optional Zeko configuration, initialization additionally authenticates

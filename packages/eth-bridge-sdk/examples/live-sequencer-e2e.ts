@@ -94,6 +94,7 @@ const bridgeAsset = process.env.BRIDGE_ASSET ?? "native"
 if (bridgeAsset !== "native" && bridgeAsset !== "erc20") {
 	throw new Error(`Unsupported BRIDGE_ASSET: ${bridgeAsset}`)
 }
+const zekoTransactionFeeNanomina = 2_500
 
 const assetRecord = (index: number): EthereumAssetRecord => {
 	const prefix = `ERC20_TOKEN_${index}_`
@@ -324,7 +325,7 @@ if (harness.schemaVersion === 4 && assets.length > 0 && !coordinatedRegistration
 for (const [index, asset] of assets.entries()) {
 	await client.registerAssetRecord({
 		record: asset,
-		feePayer: { sender: recipient, fee: 100_000_000 },
+		feePayer: { sender: recipient, fee: zekoTransactionFeeNanomina },
 		signTransaction
 	})
 	client = await retry(`registry index ${asset.registryIndex}`, async () => {
@@ -412,7 +413,7 @@ if (bridgeAsset === "erc20") {
 		const inventory = UInt64.from(asset.inventoryCap)
 		depositTransactionHashes.push(
 			await client.finalizeTokenDeposit({
-				feePayer: { sender: recipient, fee: 100_000_000 },
+				feePayer: { sender: recipient, fee: zekoTransactionFeeNanomina },
 				recipient,
 				token: asset.ethereumTokenAddress,
 				encodingVersion,
@@ -421,7 +422,7 @@ if (bridgeAsset === "erc20") {
 		)
 		withdrawalTransactionHashes.push(
 			await client.requestTokenWithdrawal({
-				feePayer: { sender: recipient, fee: 100_000_000 },
+				feePayer: { sender: recipient, fee: zekoTransactionFeeNanomina },
 				sender: recipient,
 				recipient: withdrawalRecipient,
 				token: asset.ethereumTokenAddress,
@@ -452,7 +453,7 @@ if (bridgeAsset === "erc20") {
 	depositTransactionHashes.push(await client.finalizeDeposit(recipient, signTransaction))
 	withdrawalTransactionHashes.push(
 		await client.requestWithdrawal({
-			feePayer: { sender: recipient, fee: 100_000_000 },
+			feePayer: { sender: recipient, fee: zekoTransactionFeeNanomina },
 			sender: recipient,
 			recipient: withdrawalRecipient,
 			amount: UInt64.from(withdrawalAmount),
