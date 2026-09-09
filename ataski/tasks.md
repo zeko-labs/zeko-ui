@@ -480,3 +480,6 @@
 - T494 | done | fix-registry-proof-and-proposal-admission | done/T494-fix-registry-proof-and-proposal-admission.md
 - T495 | done | add-sepolia-actions-api-environment-and-cors-policy | done/T495-actions-api-sepolia-environment.md
 - T496 | in-progress | add-northflank-sepolia-indexer-deployment | in-progress/T496-northflank-sepolia-indexer-deployment.md
+- T497 | done | configure-actions-dashboard-for-sepolia | done/T497-actions-dashboard-sepolia.md
+- T498 | done | make-actions-dashboard-sepolia-only | done/T498-actions-dashboard-sepolia-only.md
+- T499 | done | fix-actions-dashboard-node-typecheck | done/T499-fix-actions-dashboard-node-types.md

@@ -148,18 +148,16 @@ describe("actions dashboard utilities", () => {
 		)
 	})
 
-	it("resolves supported networks and falls back to mainnet", () => {
-		expect(resolveOpsNetwork("testnet")).toBe("testnet")
-		expect(resolveOpsNetwork("mainnet")).toBe("mainnet")
-		expect(resolveOpsNetwork("unexpected")).toBe("mainnet")
-		expect(resolveOpsNetwork(undefined)).toBe("mainnet")
+	it("resolves every dashboard request to Sepolia", () => {
+		expect(resolveOpsNetwork("sepolia")).toBe("sepolia")
+		expect(resolveOpsNetwork("unexpected")).toBe("sepolia")
+		expect(resolveOpsNetwork(undefined)).toBe("sepolia")
 	})
 
-	it("requires an explicit supported network for control requests", () => {
-		expect(resolveControlNetwork("testnet")).toBe("testnet")
-		expect(resolveControlNetwork("mainnet")).toBe("mainnet")
-		expect(() => resolveControlNetwork(undefined)).toThrow("Unsupported control network")
-		expect(() => resolveControlNetwork("devnet")).toThrow("Unsupported control network")
+	it("requires Sepolia for control requests", () => {
+		expect(resolveControlNetwork("sepolia")).toBe("sepolia")
+		expect(() => resolveControlNetwork(undefined)).toThrow("Unsupported network")
+		expect(() => resolveControlNetwork("other")).toThrow("Unsupported network")
 	})
 
 	it("reads database status age from database health details", () => {
@@ -175,82 +173,79 @@ describe("actions dashboard utilities", () => {
 	})
 
 	it("uses network-specific endpoint defaults", () => {
-		expect(getOpsConfig("mainnet")).toMatchObject({
-			network: "mainnet",
-			actionsIndexerUrl: "https://indexer.actions.zeko.io",
-			l2DaemonUrl: "https://mainnet.zeko.io/graphql",
-			outerActionsPublicKey: "B62qm46jqHb9HAYiyGJeYkWgqNtPQEiTcssuoiua8VvKJGDStFsRcyC",
+		expect(getOpsConfig("sepolia")).toMatchObject({
+			network: "sepolia",
+			actionsIndexerUrl: "https://sepolia.indexer.actions.zeko.io",
+			actionsApiUrl: "https://sepolia.api.actions.zeko.io/graphql",
+			l1ArchiveUrl: "https://sepolia-gateway.zeko.io/graphql",
+			l2ArchiveUrl: "https://archive.sepolia.zeko.io/graphql",
+			l1DaemonUrl: null,
+			l2DaemonUrl: "https://sepolia.zeko.io/graphql",
+			outerActionsPublicKey: "B62qpggUSofPZcWqtgbmLVnSAzzjAqSXjyckLJaBeGmXiPnc2mGUfhf",
 			innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 		})
-		expect(getOpsConfig("testnet")).toMatchObject({
-			network: "testnet",
-			actionsIndexerUrl: "https://testnet.indexer.actions.zeko.io",
-			l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
-			l1DaemonUrl: "https://gateway.mina.devnet.zeko.io",
-			l2DaemonUrl: "https://testnet.zeko.io/graphql",
-			outerActionsPublicKey: "B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2",
-			innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
-		})
-		expect(getActionsIndexerRequestUrl("mainnet")).toBe("https://indexer.actions.zeko.io")
-		expect(getActionsIndexerRequestUrl("testnet")).toBe("https://testnet.indexer.actions.zeko.io")
+		expect(getActionsIndexerRequestUrl("sepolia")).toBe("https://sepolia.indexer.actions.zeko.io")
 	})
 
-	it("prefers request-scoped Cloudflare env bindings over process env", () => {
+	it("prefers Sepolia request-scoped environment bindings", () => {
 		expect(
-			getOpsConfig("testnet", {
-				TESTNET_ACTIONS_INDEXER_URL: "https://private.testnet-indexer.example",
-				TESTNET_L1_ARCHIVE_URL: "https://private.l1-archive.example/graphql",
-				TESTNET_L2_ARCHIVE_URL: "https://private.l2-archive.example/graphql",
-				TESTNET_L1_DAEMON_URL: "https://private.l1-daemon.example/graphql",
-				TESTNET_L2_DAEMON_URL: "https://private.l2-daemon.example/graphql",
-				TESTNET_OUTER_ACTIONS_PUBLIC_KEY: "testnet-outer",
-				TESTNET_INNER_ACTIONS_PUBLIC_KEY: "testnet-inner"
+			getOpsConfig("sepolia", {
+				SEPOLIA_ACTIONS_INDEXER_URL: "https://private.sepolia-indexer.example",
+				SEPOLIA_L1_ARCHIVE_URL: "https://private.l1-archive.example/graphql",
+				SEPOLIA_L2_ARCHIVE_URL: "https://private.l2-archive.example/graphql",
+				SEPOLIA_L1_DAEMON_URL: "https://private.l1-daemon.example/graphql",
+				SEPOLIA_L2_DAEMON_URL: "https://private.l2-daemon.example/graphql",
+				SEPOLIA_OUTER_ACTIONS_PUBLIC_KEY: "sepolia-outer",
+				SEPOLIA_INNER_ACTIONS_PUBLIC_KEY: "sepolia-inner"
 			})
 		).toMatchObject({
-			actionsIndexerUrl: "https://private.testnet-indexer.example",
+			actionsIndexerUrl: "https://private.sepolia-indexer.example",
 			l1ArchiveUrl: "https://private.l1-archive.example/graphql",
 			l2ArchiveUrl: "https://private.l2-archive.example/graphql",
 			l1DaemonUrl: "https://private.l1-daemon.example/graphql",
 			l2DaemonUrl: "https://private.l2-daemon.example/graphql",
-			outerActionsPublicKey: "testnet-outer",
-			innerActionsPublicKey: "testnet-inner"
+			outerActionsPublicKey: "sepolia-outer",
+			innerActionsPublicKey: "sepolia-inner"
 		})
-		expect(
-			getActionsIndexerRequestUrl("testnet", {
-				TESTNET_L1_ARCHIVE_URL: "https://private.l1-archive.example/graphql"
-			})
-		).toBe("https://testnet.indexer.actions.zeko.io")
 	})
 
-	it("merges process env for local route execution while preserving Cloudflare precedence", () => {
-		const original = process.env.MAINNET_ACTIONS_INDEXER_TOKEN
-		process.env.MAINNET_ACTIONS_INDEXER_TOKEN = "local-token"
+	it("merges request-scoped environment over local environment", () => {
+		const original = process.env.SEPOLIA_ACTIONS_INDEXER_TOKEN
+		process.env.SEPOLIA_ACTIONS_INDEXER_TOKEN = "local-token"
 
 		try {
 			expect(
 				resolveRouteEnv({
-					MAINNET_ACTIONS_INDEXER_TOKEN: "cloudflare-token"
-				}).MAINNET_ACTIONS_INDEXER_TOKEN
+					SEPOLIA_ACTIONS_INDEXER_TOKEN: "cloudflare-token"
+				}).SEPOLIA_ACTIONS_INDEXER_TOKEN
 			).toBe("cloudflare-token")
-			expect(resolveRouteEnv().MAINNET_ACTIONS_INDEXER_TOKEN).toBe("local-token")
+			expect(resolveRouteEnv().SEPOLIA_ACTIONS_INDEXER_TOKEN).toBe("local-token")
 		} finally {
-			if (original === undefined) delete process.env.MAINNET_ACTIONS_INDEXER_TOKEN
-			else process.env.MAINNET_ACTIONS_INDEXER_TOKEN = original
+			if (original === undefined) delete process.env.SEPOLIA_ACTIONS_INDEXER_TOKEN
+			else process.env.SEPOLIA_ACTIONS_INDEXER_TOKEN = original
 		}
 	})
 
-	it("reads network-specific indexer tokens from request-scoped env bindings", () => {
+	it("reads the Sepolia indexer token from request-scoped env bindings", () => {
 		expect(
-			readActionsIndexerToken("testnet", {
-				ACTIONS_INDEXER_TOKEN: "global-token",
-				TESTNET_ACTIONS_INDEXER_TOKEN: "testnet-token"
+			readActionsIndexerToken("sepolia", {
+				SEPOLIA_ACTIONS_INDEXER_TOKEN: "sepolia-token"
 			})
-		).toBe("testnet-token")
-		expect(
-			readActionsIndexerToken("mainnet", {
-				ACTIONS_INDEXER_TOKEN: "global-token"
-			})
-		).toBe("global-token")
+		).toBe("sepolia-token")
+		expect(readActionsIndexerToken("sepolia", {})).toBeUndefined()
+	})
+
+	it("reports the unsupported Sepolia L1 daemon explicitly", async () => {
+		const result = await probeDaemon({
+			id: "l1-daemon",
+			label: "L1 daemon",
+			endpoint: null,
+			supportsBestChain: true
+		})
+
+		expect(result.status).toBe("unknown")
+		expect(result.endpoint).toBe("not configured")
+		expect(result.error).toContain("No Sepolia L1 daemon endpoint is configured")
 	})
 
 	it("uses request-scoped indexer token for status probes and controls", async () => {
@@ -281,7 +276,7 @@ describe("actions dashboard utilities", () => {
 			if (url.endsWith("/health")) {
 				return Response.json({
 					status: "healthy",
-					service: { environment: "testnet" },
+					service: { environment: "sepolia" },
 					database: { status: "up" },
 					indexer: {
 						status: "running",
@@ -311,19 +306,19 @@ describe("actions dashboard utilities", () => {
 		}) as typeof fetch
 
 		try {
-			await createOpsSnapshot("testnet", {
-				TESTNET_ACTIONS_INDEXER_TOKEN: "testnet-token"
+			await createOpsSnapshot("sepolia", {
+				SEPOLIA_ACTIONS_INDEXER_TOKEN: "sepolia-token"
 			})
-			await runIndexerControl("reset", "testnet", {
-				TESTNET_ACTIONS_INDEXER_TOKEN: "testnet-token"
+			await runIndexerControl("reset", "sepolia", {
+				SEPOLIA_ACTIONS_INDEXER_TOKEN: "sepolia-token"
 			})
 		} finally {
 			globalThis.fetch = originalFetch
 		}
 
-		expect(calls.filter((call) => call.url.includes("testnet.indexer.actions.zeko.io"))).toEqual([
+		expect(calls.filter((call) => call.url.includes("sepolia.indexer.actions.zeko.io"))).toEqual([
 			expect.objectContaining({
-				url: "https://testnet.indexer.actions.zeko.io/health",
+				url: "https://sepolia.indexer.actions.zeko.io/health",
 				authorization: null,
 				forwarded: null,
 				forwardedHost: null,
@@ -333,8 +328,8 @@ describe("actions dashboard utilities", () => {
 				redirect: "follow"
 			}),
 			expect.objectContaining({
-				url: "https://testnet.indexer.actions.zeko.io/status",
-				authorization: "Bearer testnet-token",
+				url: "https://sepolia.indexer.actions.zeko.io/status",
+				authorization: "Bearer sepolia-token",
 				forwarded: null,
 				forwardedHost: null,
 				forwardedPort: null,
@@ -343,8 +338,8 @@ describe("actions dashboard utilities", () => {
 				redirect: "follow"
 			}),
 			expect.objectContaining({
-				url: "https://testnet.indexer.actions.zeko.io/reset",
-				authorization: "Bearer testnet-token",
+				url: "https://sepolia.indexer.actions.zeko.io/reset",
+				authorization: "Bearer sepolia-token",
 				forwarded: null,
 				forwardedHost: null,
 				forwardedPort: null,
@@ -365,7 +360,7 @@ describe("actions dashboard utilities", () => {
 				return Response.json({
 					data: {
 						syncStatus: "SYNCED",
-						daemonStatus: { syncStatus: "SYNCED", chainId: "zeko-mainnet" }
+						daemonStatus: { syncStatus: "SYNCED", chainId: "zeko-sepolia" }
 					}
 				})
 			}
@@ -409,8 +404,8 @@ describe("actions dashboard utilities", () => {
 		try {
 			await expect(
 				probeActionsIndexer({
-					endpoint: "https://testnet.indexer.actions.zeko.io",
-					token: "testnet-token"
+					endpoint: "https://sepolia.indexer.actions.zeko.io",
+					token: "sepolia-token"
 				})
 			).resolves.toMatchObject({
 				status: "error",
@@ -428,7 +423,7 @@ describe("actions dashboard utilities", () => {
 			if (url.endsWith("/health")) {
 				return Response.json({
 					status: "healthy",
-					service: { environment: "testnet" },
+					service: { environment: "sepolia" },
 					database: { status: "up" },
 					indexer: {
 						status: "running",
@@ -447,7 +442,7 @@ describe("actions dashboard utilities", () => {
 		try {
 			await expect(
 				probeActionsIndexer({
-					endpoint: "https://testnet.indexer.actions.zeko.io",
+					endpoint: "https://sepolia.indexer.actions.zeko.io",
 					token: "bad-token"
 				})
 			).resolves.toMatchObject({
@@ -468,7 +463,7 @@ describe("actions dashboard utilities", () => {
 			if (url.endsWith("/health")) {
 				return Response.json({
 					status: "healthy",
-					service: { environment: "testnet" },
+					service: { environment: "sepolia" },
 					database: { status: "up" },
 					indexer: {
 						status: "running",
@@ -498,8 +493,8 @@ describe("actions dashboard utilities", () => {
 		try {
 			await expect(
 				probeActionsIndexer({
-					endpoint: "https://testnet.indexer.actions.zeko.io",
-					token: "testnet-token"
+					endpoint: "https://sepolia.indexer.actions.zeko.io",
+					token: "sepolia-token"
 				})
 			).resolves.toMatchObject({
 				status: "warn",
@@ -535,7 +530,7 @@ describe("actions dashboard utilities", () => {
 		try {
 			await expect(
 				probeActionsApi({
-					endpoint: "https://testnet.api.actions.zeko.io/graphql"
+					endpoint: "https://sepolia.api.actions.zeko.io/graphql"
 				})
 			).resolves.toMatchObject({
 				id: "actions-api",
@@ -617,7 +612,7 @@ describe("actions dashboard utilities", () => {
 		try {
 			await expect(
 				probeActionsApi({
-					endpoint: "https://testnet.api.actions.zeko.io/graphql"
+					endpoint: "https://sepolia.api.actions.zeko.io/graphql"
 				})
 			).resolves.toMatchObject({
 				id: "actions-api",
@@ -689,7 +684,7 @@ describe("actions dashboard utilities", () => {
 		try {
 			await expect(
 				probeActionsApi({
-					endpoint: "https://testnet.api.actions.zeko.io/graphql"
+					endpoint: "https://sepolia.api.actions.zeko.io/graphql"
 				})
 			).resolves.toMatchObject({
 				id: "actions-api",
@@ -721,7 +716,7 @@ describe("actions dashboard utilities", () => {
 			if (url.endsWith("/health")) {
 				return Response.json({
 					status: "healthy",
-					service: { environment: "testnet" },
+					service: { environment: "sepolia" },
 					database: { status: "up" },
 					indexer: {
 						status: "running",
@@ -781,8 +776,8 @@ describe("actions dashboard utilities", () => {
 
 		try {
 			await expect(
-				createOpsSnapshot("testnet", {
-					TESTNET_ACTIONS_INDEXER_TOKEN: "testnet-token"
+				createOpsSnapshot("sepolia", {
+					SEPOLIA_ACTIONS_INDEXER_TOKEN: "sepolia-token"
 				})
 			).resolves.toMatchObject({
 				summary: { warn: 1 },
@@ -847,8 +842,8 @@ describe("actions dashboard utilities", () => {
 
 		try {
 			await expect(
-				runIndexerControl("reset", "testnet", {
-					TESTNET_ACTIONS_INDEXER_TOKEN: "testnet-token"
+				runIndexerControl("reset", "sepolia", {
+					SEPOLIA_ACTIONS_INDEXER_TOKEN: "sepolia-token"
 				})
 			).rejects.toThrow("reset failed with HTTP 503")
 		} finally {
@@ -1067,16 +1062,16 @@ describe("actions dashboard utilities", () => {
 		try {
 			await expect(
 				createActionCoverageSnapshot(
-					"testnet",
+					"sepolia",
 					{
 						lastFetchedOuter: 526_837,
 						lastFetchedInner: 1_095_349
 					},
 					{
-						TESTNET_L1_ARCHIVE_URL: "https://l1.example/graphql",
-						TESTNET_L2_ARCHIVE_URL: "https://l2.example/graphql",
-						TESTNET_OUTER_ACTIONS_PUBLIC_KEY: "outer-pk",
-						TESTNET_INNER_ACTIONS_PUBLIC_KEY: "inner-pk"
+						SEPOLIA_L1_ARCHIVE_URL: "https://l1.example/graphql",
+						SEPOLIA_L2_ARCHIVE_URL: "https://l2.example/graphql",
+						SEPOLIA_OUTER_ACTIONS_PUBLIC_KEY: "outer-pk",
+						SEPOLIA_INNER_ACTIONS_PUBLIC_KEY: "inner-pk"
 					}
 				)
 			).resolves.toMatchObject({
@@ -1142,16 +1137,16 @@ describe("actions dashboard utilities", () => {
 		try {
 			await expect(
 				createActionCoverageSnapshot(
-					"testnet",
+					"sepolia",
 					{
 						lastFetchedOuter: 600,
 						lastFetchedInner: 1_000
 					},
 					{
-						TESTNET_L1_ARCHIVE_URL: "https://l1.example/graphql",
-						TESTNET_L2_ARCHIVE_URL: "https://l2.example/graphql",
-						TESTNET_OUTER_ACTIONS_PUBLIC_KEY: "outer-pk",
-						TESTNET_INNER_ACTIONS_PUBLIC_KEY: "inner-pk"
+						SEPOLIA_L1_ARCHIVE_URL: "https://l1.example/graphql",
+						SEPOLIA_L2_ARCHIVE_URL: "https://l2.example/graphql",
+						SEPOLIA_OUTER_ACTIONS_PUBLIC_KEY: "outer-pk",
+						SEPOLIA_INNER_ACTIONS_PUBLIC_KEY: "inner-pk"
 					}
 				)
 			).resolves.toMatchObject({
@@ -1173,7 +1168,7 @@ describe("actions dashboard utilities", () => {
 			extractActionsIndexerDetails({
 				healthPayload: {
 					status: "healthy",
-					service: { environment: "testnet" },
+					service: { environment: "sepolia" },
 					database: {
 						status: "up",
 						latency_ms: 14,
@@ -1210,7 +1205,7 @@ describe("actions dashboard utilities", () => {
 			})
 		).toMatchObject({
 			health: "healthy",
-			environment: "testnet",
+			environment: "sepolia",
 			databaseStatus: "up",
 			databaseLatencyMs: 14,
 			databaseCheckedAt: "2026-06-10T12:35:08.177Z",

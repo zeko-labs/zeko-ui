@@ -26,7 +26,7 @@ import { postControlRefreshOptions } from "~/utils/refresh-options"
 
 type ServiceStatus = "ok" | "warn" | "error" | "unknown"
 type ServiceKind = "actions-indexer" | "actions-api" | "archive" | "daemon"
-type OpsNetwork = "mainnet" | "testnet"
+type OpsNetwork = "sepolia"
 
 interface ServiceProbe {
 	id: string
@@ -49,8 +49,8 @@ interface OpsSnapshot {
 		actionsApiUrl: string
 		l1ArchiveUrl: string
 		l2ArchiveUrl: string
-		l1DaemonUrl: string
-		l2DaemonUrl: string
+		l1DaemonUrl: string | null
+		l2DaemonUrl: string | null
 		outerActionsPublicKey: string
 		innerActionsPublicKey: string
 	}
@@ -68,7 +68,7 @@ const route = useRoute()
 const router = useRouter()
 const resolveNetworkFromQuery = (value: unknown): OpsNetwork => {
 	const raw = Array.isArray(value) ? value[0] : value
-	return raw === "testnet" || raw === "mainnet" ? raw : "mainnet"
+	return raw === "sepolia" ? raw : "sepolia"
 }
 
 const snapshot = ref<OpsSnapshot | null>(null)
@@ -493,17 +493,10 @@ watch(
       <div class="NetworkTabs" aria-label="Network selector">
         <button
           type="button"
-          :aria-pressed='selectedNetwork === "mainnet"'
-          :data-active='selectedNetwork === "mainnet"'
-          @click='switchNetwork("mainnet")'>
-          Mainnet
-        </button>
-        <button
-          type="button"
-          :aria-pressed='selectedNetwork === "testnet"'
-          :data-active='selectedNetwork === "testnet"'
-          @click='switchNetwork("testnet")'>
-          Testnet
+          aria-pressed="true"
+          data-active="true"
+          @click='switchNetwork("sepolia")'>
+          Sepolia
         </button>
       </div>
       <button

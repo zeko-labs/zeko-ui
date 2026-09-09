@@ -1,6 +1,6 @@
 export type ServiceKind = "actions-indexer" | "actions-api" | "archive" | "daemon"
 export type ServiceStatus = "ok" | "warn" | "error" | "unknown"
-export type OpsNetwork = "mainnet" | "testnet"
+export type OpsNetwork = "sepolia"
 export type OpsEnv = Record<string, unknown>
 
 export interface OpsEndpointConfig {
@@ -9,8 +9,8 @@ export interface OpsEndpointConfig {
 	actionsApiUrl: string
 	l1ArchiveUrl: string
 	l2ArchiveUrl: string
-	l1DaemonUrl: string
-	l2DaemonUrl: string
+	l1DaemonUrl: string | null
+	l2DaemonUrl: string | null
 	outerActionsPublicKey: string
 	innerActionsPublicKey: string
 }
@@ -57,26 +57,15 @@ const actionScanRangeSize = 10_000
 const maxActionScanRanges = 6
 
 const opsDefaults: Record<OpsNetwork, OpsEndpointConfig> = {
-	mainnet: {
-		network: "mainnet",
-		actionsIndexerUrl: "https://indexer.actions.zeko.io",
-		actionsApiUrl: "https://api.actions.zeko.io/graphql",
-		l1ArchiveUrl: "https://gateway.mina.archive.mainnet.zeko.io",
-		l2ArchiveUrl: "https://archive.mainnet.zeko.io/graphql",
-		l1DaemonUrl: "https://gateway.mina.mainnet.zeko.io",
-		l2DaemonUrl: "https://mainnet.zeko.io/graphql",
-		outerActionsPublicKey: "B62qm46jqHb9HAYiyGJeYkWgqNtPQEiTcssuoiua8VvKJGDStFsRcyC",
-		innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
-	},
-	testnet: {
-		network: "testnet",
-		actionsIndexerUrl: "https://testnet.indexer.actions.zeko.io",
-		actionsApiUrl: "https://testnet.api.actions.zeko.io/graphql",
-		l1ArchiveUrl: "https://gateway.mina.archive.devnet.zeko.io",
-		l2ArchiveUrl: "https://archive.testnet.zeko.io/graphql",
-		l1DaemonUrl: "https://gateway.mina.devnet.zeko.io",
-		l2DaemonUrl: "https://testnet.zeko.io/graphql",
-		outerActionsPublicKey: "B62qkekmS9273D1EsFfMSJMMDAmgvh1WyoYE2vs1r7k4GtGBqVYABn2",
+	sepolia: {
+		network: "sepolia",
+		actionsIndexerUrl: "https://sepolia.indexer.actions.zeko.io",
+		actionsApiUrl: "https://sepolia.api.actions.zeko.io/graphql",
+		l1ArchiveUrl: "https://sepolia-gateway.zeko.io/graphql",
+		l2ArchiveUrl: "https://archive.sepolia.zeko.io/graphql",
+		l1DaemonUrl: null,
+		l2DaemonUrl: "https://sepolia.zeko.io/graphql",
+		outerActionsPublicKey: "B62qpggUSofPZcWqtgbmLVnSAzzjAqSXjyckLJaBeGmXiPnc2mGUfhf",
 		innerActionsPublicKey: "B62qjDedeP9617oTUeN8JGhdiqWg4t64NtQkHaoZB9wyvgSjAyupPU1"
 	}
 }
@@ -103,12 +92,11 @@ const publicKeyEnvKeys = {
 	innerActionsPublicKey: "INNER_ACTIONS_PUBLIC_KEY"
 } as const
 
-export const resolveOpsNetwork = (value: unknown): OpsNetwork =>
-	value === "testnet" || value === "mainnet" ? value : "mainnet"
+export const resolveOpsNetwork = (_value?: unknown): OpsNetwork => "sepolia"
 
 export const resolveControlNetwork = (value: unknown): OpsNetwork => {
-	if (value === "testnet" || value === "mainnet") return value
-	throw new Error("Unsupported control network")
+	if (value === "sepolia") return value
+	throw new Error("Unsupported network")
 }
 
 const normalizeOrigin = (value?: string | null): string | null => {
@@ -169,12 +157,23 @@ const readNetworkEndpoint = (
 	network: OpsNetwork,
 	key: keyof typeof endpointEnvKeys,
 	env: OpsEnv
-): string => {
+): string | null => {
 	const envKey = endpointEnvKeys[key]
 	const networkEnvKey = `${network.toUpperCase()}_${envKey}`
 	const defaultValue = opsDefaults[network][key]
-	const globalOverride = network === "mainnet" ? readEnv(env, envKey) : undefined
-	return normalizeEndpoint(readEnv(env, networkEnvKey) ?? globalOverride ?? defaultValue)
+	const networkOverride = readEnv(env, networkEnvKey)
+	if (networkOverride !== undefined) return normalizeEndpoint(networkOverride)
+	return defaultValue === null ? null : normalizeEndpoint(defaultValue)
+}
+
+const requireNetworkEndpoint = (
+	network: OpsNetwork,
+	key: keyof typeof endpointEnvKeys,
+	env: OpsEnv
+): string => {
+	const endpoint = readNetworkEndpoint(network, key, env)
+	if (endpoint === null) throw new Error(`No ${network} ${key} endpoint is configured`)
+	return endpoint
 }
 
 const readNetworkPublicKey = (
@@ -185,8 +184,7 @@ const readNetworkPublicKey = (
 	const envKey = publicKeyEnvKeys[key]
 	const networkEnvKey = `${network.toUpperCase()}_${envKey}`
 	const defaultValue = opsDefaults[network][key]
-	const globalOverride = network === "mainnet" ? readEnv(env, envKey) : undefined
-	return readEnv(env, networkEnvKey) ?? globalOverride ?? defaultValue
+	return readEnv(env, networkEnvKey) ?? defaultValue
 }
 
 export const getOpsConfig = (
@@ -196,10 +194,10 @@ export const getOpsConfig = (
 	const network = resolveOpsNetwork(networkInput)
 	return {
 		network,
-		actionsIndexerUrl: readNetworkEndpoint(network, "actionsIndexerUrl", env),
-		actionsApiUrl: readNetworkEndpoint(network, "actionsApiUrl", env),
-		l1ArchiveUrl: readNetworkEndpoint(network, "l1ArchiveUrl", env),
-		l2ArchiveUrl: readNetworkEndpoint(network, "l2ArchiveUrl", env),
+		actionsIndexerUrl: requireNetworkEndpoint(network, "actionsIndexerUrl", env),
+		actionsApiUrl: requireNetworkEndpoint(network, "actionsApiUrl", env),
+		l1ArchiveUrl: requireNetworkEndpoint(network, "l1ArchiveUrl", env),
+		l2ArchiveUrl: requireNetworkEndpoint(network, "l2ArchiveUrl", env),
 		l1DaemonUrl: readNetworkEndpoint(network, "l1DaemonUrl", env),
 		l2DaemonUrl: readNetworkEndpoint(network, "l2DaemonUrl", env),
 		outerActionsPublicKey: readNetworkPublicKey(network, "outerActionsPublicKey", env),
@@ -767,9 +765,24 @@ export const probeDaemon = async ({
 }: {
 	id: string
 	label: string
-	endpoint: string
+	endpoint: string | null
 	supportsBestChain: boolean
 }): Promise<ServiceProbe> => {
+	if (endpoint === null) {
+		return {
+			id,
+			label,
+			kind: "daemon",
+			status: "unknown",
+			endpoint: "not configured",
+			checkedAt: new Date().toISOString(),
+			latencyMs: null,
+			httpStatus: null,
+			details: { supported: false },
+			error: "No Sepolia L1 daemon endpoint is configured."
+		}
+	}
+
 	try {
 		const daemonTimeoutMs = 5_000
 		const statusResult = await graphQlRequest(
@@ -1123,11 +1136,9 @@ export const probeActionsApi = async ({
 }
 
 export const readActionsIndexerToken = (
-	network: OpsNetwork,
+	_network: OpsNetwork,
 	env: OpsEnv = defaultEnv()
-): string | undefined =>
-	readEnv(env, `${network.toUpperCase()}_ACTIONS_INDEXER_TOKEN`) ??
-	readEnv(env, "ACTIONS_INDEXER_TOKEN")
+): string | undefined => readEnv(env, "SEPOLIA_ACTIONS_INDEXER_TOKEN")
 
 export const createOpsSnapshot = async (
 	networkInput?: unknown,
@@ -1200,7 +1211,7 @@ export const runIndexerControl = async (
 	const token = readActionsIndexerToken(config.network, env)
 	if (!token) {
 		throw new Error(
-			`${config.network.toUpperCase()}_ACTIONS_INDEXER_TOKEN or ACTIONS_INDEXER_TOKEN is required for indexer control actions`
+			"SEPOLIA_ACTIONS_INDEXER_TOKEN is required for indexer control actions"
 		)
 	}
 

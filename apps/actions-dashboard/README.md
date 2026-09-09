@@ -10,20 +10,16 @@ Run from the repository root:
 moon run actions-dashboard:dev
 ```
 
-The dashboard defaults to mainnet and can switch to testnet from the page header. To enable authenticated indexer status and controls locally, set `ACTIONS_INDEXER_TOKEN` for both networks or `MAINNET_ACTIONS_INDEXER_TOKEN` / `TESTNET_ACTIONS_INDEXER_TOKEN` for network-specific control tokens in the shell or in an untracked `.env` file before starting the dev server.
+The dashboard is dedicated to Sepolia. To enable authenticated indexer status and controls locally, set `SEPOLIA_ACTIONS_INDEXER_TOKEN` in the shell or in an untracked `.env` file before starting the dev server.
 
 Endpoint overrides:
 
-- `MAINNET_ACTIONS_INDEXER_URL`
-- `MAINNET_L1_ARCHIVE_URL`
-- `MAINNET_L2_ARCHIVE_URL`
-- `MAINNET_L1_DAEMON_URL`
-- `MAINNET_L2_DAEMON_URL`
-- `TESTNET_ACTIONS_INDEXER_URL`
-- `TESTNET_L1_ARCHIVE_URL`
-- `TESTNET_L2_ARCHIVE_URL`
-- `TESTNET_L1_DAEMON_URL`
-- `TESTNET_L2_DAEMON_URL`
+- `SEPOLIA_ACTIONS_INDEXER_URL`
+- `SEPOLIA_ACTIONS_API_URL`
+- `SEPOLIA_L1_ARCHIVE_URL`
+- `SEPOLIA_L2_ARCHIVE_URL`
+- `SEPOLIA_L1_DAEMON_URL` (optional; Sepolia currently has no separate L1 daemon endpoint)
+- `SEPOLIA_L2_DAEMON_URL`
 
 `*_ACTIONS_INDEXER_URL` is the public URL shown in the dashboard and used by
 server-side probes and controls. The Worker enables Cloudflare's
@@ -61,8 +57,7 @@ moon run actions-dashboard:deploy
 Set the indexer control token as Cloudflare Worker secrets:
 
 ```sh
-pnpm --dir apps/actions-dashboard exec wrangler secret put MAINNET_ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
-pnpm --dir apps/actions-dashboard exec wrangler secret put TESTNET_ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
+pnpm --dir apps/actions-dashboard exec wrangler secret put SEPOLIA_ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
 ```
 
 Publish the Workers Builds trigger config through the project task:

@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
 		return { success: false, message: "Unsupported control action" }
 	}
 
-	let network: "mainnet" | "testnet"
+	let network: "sepolia"
 	try {
 		network = resolveControlNetwork(body.network)
 	} catch (error) {

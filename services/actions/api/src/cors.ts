@@ -1,4 +1,4 @@
-export const ACTIONS_API_SEPOLIA_CORS_ORIGIN = "https://sepolia.bridge.zeko.io"
+export const ACTIONS_API_SEPOLIA_CORS_ORIGIN = "https://bridge.sepolia.zeko.io"
 
 export type ActionsApiCorsOptions = {
 	origin: string

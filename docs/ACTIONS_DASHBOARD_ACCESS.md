@@ -43,12 +43,10 @@ Cloudflare requests GitHub read-only organization/team and email permissions for
 
 ## Secrets
 
-Set actions indexer control tokens as Worker secrets, not checked-in variables. Use network-specific secrets when mainnet and testnet have different tokens; otherwise `ACTIONS_INDEXER_TOKEN` is still accepted as a shared fallback.
+Set the Sepolia actions indexer control token as a Worker secret, not a checked-in variable.
 
 ```sh
-pnpm --dir apps/actions-dashboard exec wrangler secret put ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
-pnpm --dir apps/actions-dashboard exec wrangler secret put MAINNET_ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
-pnpm --dir apps/actions-dashboard exec wrangler secret put TESTNET_ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
+pnpm --dir apps/actions-dashboard exec wrangler secret put SEPOLIA_ACTIONS_INDEXER_TOKEN --config wrangler.jsonc
 ```
 
 ## Workers Builds
