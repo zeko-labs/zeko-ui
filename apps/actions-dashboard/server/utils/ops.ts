@@ -1210,9 +1210,7 @@ export const runIndexerControl = async (
 	const actionsIndexerRequestUrl = getActionsIndexerRequestUrl(config.network, env)
 	const token = readActionsIndexerToken(config.network, env)
 	if (!token) {
-		throw new Error(
-			"SEPOLIA_ACTIONS_INDEXER_TOKEN is required for indexer control actions"
-		)
+		throw new Error("SEPOLIA_ACTIONS_INDEXER_TOKEN is required for indexer control actions")
 	}
 
 	const { response } = await timedFetch(

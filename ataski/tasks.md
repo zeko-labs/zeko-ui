@@ -483,3 +483,4 @@
 - T497 | done | configure-actions-dashboard-for-sepolia | done/T497-actions-dashboard-sepolia.md
 - T498 | done | make-actions-dashboard-sepolia-only | done/T498-actions-dashboard-sepolia-only.md
 - T499 | done | fix-actions-dashboard-node-typecheck | done/T499-fix-actions-dashboard-node-types.md
+- T500 | done | skip-unavailable-mainnet-skill-link | done/T500-skip-unavailable-mainnet-skill-link.md

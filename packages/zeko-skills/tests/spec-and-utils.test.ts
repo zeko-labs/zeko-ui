@@ -1,6 +1,10 @@
 import path from "node:path"
 import { describe, expect, it } from "vitest"
-import { endpointChecks, forbiddenMarkdownPatterns } from "../src/spec.js"
+import {
+	endpointChecks,
+	forbiddenMarkdownPatterns,
+	skippedExternalLinkChecks
+} from "../src/spec.js"
 import { endsWithPathSegment, normalizePath } from "../src/utils.js"
 
 describe("zeko-skills spec and utils", () => {
@@ -13,6 +17,11 @@ describe("zeko-skills spec and utils", () => {
 		expect(forbiddenMarkdownPatterns[0]?.test("docs/another-private-page.md")).toBe(true)
 		expect(forbiddenMarkdownPatterns[1]?.test("../outside-skill")).toBe(true)
 		expect(forbiddenMarkdownPatterns[2]?.test("/Users/example/project")).toBe(true)
+	})
+
+	it("skips the currently unavailable mainnet and testnet GraphQL endpoints", () => {
+		expect(skippedExternalLinkChecks.has("https://mainnet.zeko.io/graphql")).toBe(true)
+		expect(skippedExternalLinkChecks.has("https://testnet.zeko.io/graphql")).toBe(true)
 	})
 
 	it("matches absolute skill paths against repo-relative suffixes", () => {
