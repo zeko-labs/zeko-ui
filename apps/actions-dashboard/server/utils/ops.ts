@@ -52,6 +52,7 @@ export interface ControlRequestSecurity {
 type HeaderMap = Record<string, string | string[] | undefined>
 
 const requestTimeoutMs = 12_000
+export const indexerControlTimeoutMs = 300_000
 const retryDelaysMs = [0, 350, 1_000]
 const actionScanRangeSize = 10_000
 const maxActionScanRanges = 6
@@ -1219,6 +1220,7 @@ export const runIndexerControl = async (
 			...indexerRequestInit(token, { method: "POST" })
 		},
 		{
+			timeoutMs: indexerControlTimeoutMs,
 			retryDelays: [0]
 		}
 	)

@@ -21,6 +21,7 @@ import {
 	extractActionsIndexerDetails,
 	getActionsIndexerRequestUrl,
 	getOpsConfig,
+	indexerControlTimeoutMs,
 	isControlRequestAllowed,
 	normalizeEndpoint,
 	probeDaemon,
@@ -830,6 +831,10 @@ describe("actions dashboard utilities", () => {
 		} finally {
 			globalThis.fetch = originalFetch
 		}
+	})
+
+	it("allows synchronous indexer rebuilds enough time to complete", () => {
+		expect(indexerControlTimeoutMs).toBe(300_000)
 	})
 
 	it("does not retry non-idempotent indexer controls", async () => {
