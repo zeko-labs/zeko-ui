@@ -1,6 +1,6 @@
 {
-  "name": "Zeko",
-  "short_name": "Zeko",
+  "name": "Zeko Legacy Bridge",
+  "short_name": "Legacy Bridge",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",

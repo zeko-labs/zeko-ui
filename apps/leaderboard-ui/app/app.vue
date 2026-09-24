@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 const title = "ZekoBoom Leaderboard"
-const description = "ZekoBoom Testnet Contest"
+const description = "ZekoBOOM contest on the legacy Zeko-M testnet"
 const url = "https://zekoboom.zeko.io"
 const image = `${url}/og-image.png`
 const imageAlt = "Zeko Logo on a black background."

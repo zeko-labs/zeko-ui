@@ -128,7 +128,7 @@ const chainRows = computed<ChainRow[]>(() => {
 		{
 			...buildChainInsight({
 				id: "l1",
-				label: "L1 Mina actions",
+				label: "L1 bridge actions",
 				indexerLabel: "L1",
 				indexer,
 				archive: l1Archive,

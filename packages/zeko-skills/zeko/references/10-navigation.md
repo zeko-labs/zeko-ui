@@ -30,7 +30,8 @@ Start with public Zeko docs, not internal repo assumptions.
 
 ## Routing
 
-- Need an unattended bridge command that can run with a local key: read `references/30-bridge-and-faucet.md`.
+- Need an Ethereum bridge flow: start with `https://docs.zeko.io/users/guides/using-zeko-bridge`.
+- Need an explicitly requested legacy bridge command with a local key: read `references/30-bridge-and-faucet.md`.
 - Need exact endpoints or something runnable right now: read `references/40-endpoints-and-curl.md`.
 - Need bridge or faucet workflow guidance: read `references/30-bridge-and-faucet.md`.
 - Need zkApp or contract guidance: read `references/50-build-on-zeko.md`.

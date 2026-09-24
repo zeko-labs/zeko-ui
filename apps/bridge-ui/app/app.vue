@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-const title = "Zeko Bridge"
-const description = "Bridge between MINA L1 and Zeko L2"
+const title = "Zeko Legacy Bridge"
+const description =
+	"Legacy bridge between Mina and Zeko-M. See Zeko Docs for the Ethereum bridge."
 const url = "https://bridge.zeko.io"
 const image = `${url}/og-image.png`
 const imageAlt = "Zeko Logo on a black background."

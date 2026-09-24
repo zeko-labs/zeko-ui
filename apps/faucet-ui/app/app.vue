@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-const title = "Zeko Faucet"
-const description = "Zeko is a zero-knowledge cross-chain scaling protocol"
+const title = "Zeko Legacy Testnet Faucet"
+const description =
+	"Test tokens for the legacy Zeko-M network. See Zeko Docs for Ethereum-backed Zeko testnet funding."
 const url = "https://faucet.zeko.io"
 const image = `${url}/og-image.png`
 const imageAlt = "Zeko Logo on a black background."

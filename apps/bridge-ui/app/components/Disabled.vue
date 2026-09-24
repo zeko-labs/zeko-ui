@@ -48,8 +48,8 @@ onMounted(async () => {
 <template>
   <div class="Disabled">
     <p>
-      The Rollup Bridge is a trustless bridge for transferring tokens from Mina
-      L1 Devnet to Zeko L2 Testnet.
+      This legacy bridge transfers MINA between Mina and Zeko-M. For the
+      Ethereum rollup and ETH or ERC-20 bridging, follow the current Zeko Docs.
     </p>
     <p>
       Please check <a href="https://docs.zeko.io">Zeko Docs</a> for more
