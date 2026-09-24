@@ -1,11 +1,11 @@
 ---
 id: T503
 title: "ethereum-facing-app-copy"
-status: in-progress
+status: done
 blockedBy: []
 owner: root
 created_at: 2026-09-24T13:58:01Z
-updated_at: 2026-09-24T13:58:01Z
+updated_at: 2026-09-24T14:07:02Z
 ---
 ## Requirements
 
@@ -27,4 +27,9 @@ Pre-edit scan found current product descriptions of Zeko as a Mina L2 and Mina-o
 
 ## GREEN Evidence
 
-Pending validation.
+- `moon run actions-dashboard:test faucet-ui:test zeko-skills:test --concurrency 1`: 62 tests passed (40 dashboard, 1 faucet configuration, 21 skill tests).
+- `moon run actions-dashboard:typecheck faucet-ui:typecheck --concurrency 1`: passed with pinned Moon-managed Node 24.5.0.
+- Vue compiler parsed and compiled templates for all 10 changed Vue components; passed.
+- Repository dprint applied to changed UI files; `git diff --check` passed.
+- Reviewed preserved Mina route/token labels against `@zeko/networks`, faucet chain configuration and SDK/CLI supported routes. The Sepolia dashboard now labels outer data as L1 bridge actions.
+- No execution, signing, key, route, balance conversion, finality, network endpoint or protocol identifiers changed. Browser wallet transactions were not performed; these are static copy and metadata edits.
