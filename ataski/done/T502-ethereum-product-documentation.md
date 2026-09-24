@@ -1,11 +1,11 @@
 ---
 id: T502
 title: "ethereum-product-documentation"
-status: in-progress
+status: done
 blockedBy: []
 owner: docs_agent
 created_at: 2026-09-24T13:58:01Z
-updated_at: 2026-09-24T13:58:01Z
+updated_at: 2026-09-24T14:12:47Z
 ---
 ## Requirements
 
@@ -27,4 +27,10 @@ Pre-edit scan found current product descriptions of Zeko as a Mina L2 and Mina-o
 
 ## GREEN Evidence
 
-Pending validation.
+- `moon run docs:test docs:build`: passed; 41 HTML pages rendered.
+- `CI=1 moon run docs:test -f`: all 9 tests passed, including external URLs.
+- Independent rendered HTML link/anchor check: 0 broken internal targets, including package README transclusions.
+- Browser review: homepage, Ethereum overview, bridge guide and legacy CLI notice render and navigate correctly.
+- `git diff --check`: passed. Existing VitePress/Rolldown generateBundle warnings do not fail the build.
+- Copy and navigation only; executable examples and protocol identifiers preserved. Source facts checked against Ethereum integration docs and UI. Existing legacy runbooks remain labeled and accessible.
+- Repaired an existing demo URL after its publisher moved it to a standalone repository.
