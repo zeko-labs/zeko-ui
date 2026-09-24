@@ -18,19 +18,20 @@ This repository installs one skill:
 
 The skill is tuned for:
 
-- bridging with Bridge CLI or Bridge SDK
+- ETH and ERC-20 bridging with the Ethereum bridge SDK
+- explicitly requested legacy bridge operations with Bridge CLI or Bridge SDK
 - faucet flows and testnet funding
-- Zeko and Mina endpoint discovery
+- Ethereum and Zeko endpoint selection, with legacy Mina references kept separate
 - GraphQL and `curl` examples for live and archive data
 - sequencer, archive node, and DA-layer orientation
 - zkApp building on Zeko with `o1js` or OCaml
 
 ## Example Prompts
 
-- `How do I get tMINA on Zeko-M testnet?`
-- `Bridge 2 MINA from Mina to Zeko using the Bridge CLI.`
+- `How do I bridge Sepolia ETH to Zeko?`
+- `How do I connect MetaMask and the Zeko Snap?`
 - `Which GraphQL endpoints should I use for Zeko live data and archive data?`
-- `Show me a curl example to send 1.25 MINA from one address to another.`
+- `What is the difference between my Ethereum address and my Zeko address?`
 - `I want to build a zkApp on Zeko. What should I read first?`
 - `Explain the sequencer, archive node, and DA layer on Zeko.`
 

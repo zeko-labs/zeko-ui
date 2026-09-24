@@ -120,30 +120,34 @@ const submitDisabled = computed(
               </div>
             </li>
 
-            <li>Switch Network to Zeko Testnet</li>
+            <li>Switch Network to the legacy Zeko-M Testnet</li>
             <li>Use Faucet to get testnet tokens</li>
           </ul>
         </section>
         <section class="Faucet">
           <div class="TitleWrapper">
             <SvgNumbersTwo />
-            <h3>Faucet</h3>
+            <h3>Legacy Testnet Faucet</h3>
           </div>
 
           <div class="Form">
             <p>
-              Enter your Zeko address to receive testnet MINA (tMINA) on Zeko L2
+              Enter your Zeko-M address to receive legacy testnet MINA (tMINA).
+              For ETH on the Ethereum-backed Zeko testnet, see the
+              <a
+                href="https://docs.zeko.io/users/guides/getting-started">current
+                getting-started guide</a>.
             </p>
             <Field.Root :id>
-              <Field.Label>MINA Address</Field.Label>
+              <Field.Label>Zeko-M Address</Field.Label>
 
               <div class="InputButtonWrapper">
                 <div class="InputWrapper">
-                  <SvgMinaToken width="24" height="24" />
+                  <SvgZekoToken width="24" height="24" />
                   <Field.Input
                     v-model="minaAddress"
                     type="text"
-                    placeholder="Enter Zeko/MINA address"
+                    placeholder="Enter Zeko-M address (B62...)"
                   />
                 </div>
                 <div class="Submit">

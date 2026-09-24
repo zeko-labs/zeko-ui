@@ -65,10 +65,10 @@
 
       <p>
         <strong>Note:</strong>
-        Our Services may link to the Mina Protocol ecosystem (e.g.,
-        documentation, explorers, community forums) and to third-party tools
-        (e.g., GitHub, Discord, analytics). Those sites or services are governed
-        by their own policies - not this one.
+        Our Services may link to blockchain ecosystems (e.g., documentation,
+        explorers, community forums) and to third-party tools (e.g., GitHub,
+        Discord, analytics). Those sites or services are governed by their own
+        policies - not this one.
       </p>
     </section>
 
@@ -146,14 +146,14 @@
       </section>
 
       <section>
-        <h3>C. Public Blockchain Information (Mina &amp; Zeko)</h3>
+        <h3>C. Public Blockchain Information</h3>
         <p>
-          If you use Zeko Products that interface with the Mina L1 or the Zeko
-          L2, we may process public blockchain information that you make
-          available - e.g., public wallet addresses, on-chain transaction data,
-          smart-contract interactions, and publicly visible metadata associated
-          with your address. Public blockchain data is inherently public and may
-          be accessible to anyone.
+          If you use Zeko Products that interface with Ethereum, legacy Mina
+          networks, or the Zeko L2, we may process public blockchain information
+          that you make available - e.g., public wallet addresses, on-chain
+          transaction data, smart-contract interactions, and publicly visible
+          metadata associated with your address. Public blockchain data is
+          inherently public and may be accessible to anyone.
         </p>
       </section>
 
@@ -194,7 +194,8 @@
         <li>
           <strong>Provide &amp; Operate the Services,</strong>
           including enabling features, processing your submissions, and
-          supporting on-chain interactions visible on Mina/Zeko.
+          supporting on-chain interactions visible on the connected public
+          networks.
         </li>
         <li>
           <strong>Maintain, Secure &amp; Improve the Services</strong>
@@ -288,10 +289,10 @@
     <section>
       <h2>7. Third-Party Links</h2>
       <p>
-        The Services may link to third-party sites and services (e.g., Mina
-        explorers, developer tools, social platforms). We are not responsible
-        for their privacy practices. Review their policies before providing
-        personal information.
+        The Services may link to third-party sites and services (e.g.,
+        blockchain explorers, developer tools, social platforms). We are not
+        responsible for their privacy practices. Review their policies before
+        providing personal information.
       </p>
     </section>
 
@@ -434,9 +435,9 @@
     </section>
 
     <aside>
-      <h2>Mina &amp; On-Chain Transparency Reminder</h2>
+      <h2>On-Chain Transparency Reminder</h2>
       <p>
-        Interactions with Mina L1 and Zeko L2 are recorded on public,
+        Interactions with the connected L1 and Zeko L2 are recorded on public,
         append-only ledgers. Public wallet addresses and transaction data may be
         visible to anyone and may be analyzed by third parties. Exercise care
         when associating public addresses with personal identities.

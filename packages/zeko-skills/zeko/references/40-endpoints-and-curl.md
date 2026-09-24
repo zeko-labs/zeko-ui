@@ -1,5 +1,7 @@
 # Endpoints And Curl
 
+> **Legacy network examples:** The Mina and Zeko-M endpoints, faucet and Bridge CLI commands in this reference target the earlier Mina-backed deployment. For Ethereum-backed Zeko, start with the [current bridge guide](https://docs.zeko.io/users/guides/using-zeko-bridge) and use the selected deployment configuration. Keep `o1js` API names and B62 key formats unchanged.
+
 Use this file when you need exact public endpoints, Bridge SDK config values, or directly runnable queries.
 
 ## Common agent use
@@ -8,7 +10,7 @@ Use this file when you need exact public endpoints, Bridge SDK config values, or
 - If the user asks for a query they can run right now with `curl`, start here.
 - If the user asks to actually execute a bridge end to end, do not reconstruct the full protocol with raw `curl`; use the Bridge CLI or SDK instead.
 
-## Testnet defaults
+## Legacy testnet endpoints
 
 - Zeko GraphQL: `https://testnet.zeko.io/graphql`
 - Zeko archive: `https://archive.testnet.zeko.io/graphql`
@@ -22,7 +24,7 @@ Use this file when you need exact public endpoints, Bridge SDK config values, or
 - Faucet UI: `https://faucet.zeko.io`
 - Explorer: `https://zekoscan.io/testnet`
 
-## Mainnet endpoints
+## Legacy mainnet endpoints
 
 - Zeko GraphQL: `https://mainnet.zeko.io/graphql`
 - Zeko archive: `https://archive.mainnet.zeko.io/graphql`

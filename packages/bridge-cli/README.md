@@ -1,6 +1,8 @@
 # Bridge CLI
 
-Command-line tool for bridging assets between Mina and Zeko.
+Command-line tool for the legacy Mina-backed Zeko bridge.
+
+For the current Ethereum rollup, use the [Ethereum bridge guide](https://docs.zeko.io/users/guides/using-zeko-bridge) and `@zeko-labs/eth-bridge-sdk`. The routes and MINA amounts below apply only to the legacy bridge.
 
 Use the `zeko-bridge` binary from the npm package.
 

@@ -1,6 +1,8 @@
 # Faucet CLI
 
-Command-line client for the Zeko-M testnet faucet. Claim devnet tokens and verify your GitHub authentication from the terminal.
+Command-line client for the legacy Zeko-M testnet faucet. Claim legacy test tokens and verify your GitHub authentication from the terminal.
+
+This faucet does not fund Ethereum Sepolia or the Ethereum-backed Zeko testnet. See the [current getting-started guide](https://docs.zeko.io/users/guides/getting-started) for ETH funding.
 
 Written in Rust for fast startup and single-binary distribution. Distributed via npm with platform-specific packages.
 

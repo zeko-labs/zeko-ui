@@ -26,10 +26,13 @@ const pointsBreakdown = [
   <aside class="Instructions">
     <section class="WelcomeSection">
       <div class="WelcomeContent">
-        <h2 class="Title">Welcome to the ZekoBOOM Ignition Phase!</h2>
+        <h2 class="Title">ZekoBOOM Legacy Sprints</h2>
         <p class="Description">
-          Get ready for Zeko launch by participating in exciting Sprints where
-          you can earn big points and compete for a top spot on the leaderboard.
+          These sprints use the legacy Zeko-M network and MINA. For the current
+          Ethereum-backed Zeko network, follow the
+          <a
+            href="https://docs.zeko.io/users/guides/getting-started">getting-started
+            guide</a>.
         </p>
       </div>
 

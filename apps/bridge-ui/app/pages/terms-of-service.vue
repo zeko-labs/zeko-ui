@@ -45,17 +45,17 @@
     <section>
       <h2>4. What Zeko Is (and Isn't)</h2>
       <p>
-        Zeko is software that helps applications interact with a Mina
-        L1-anchored Layer-2 scaling network. Zeko is not a wallet, exchange,
-        broker, custodian, money transmitter, or advisor. Zeko does not take
-        custody of digital assets, does not execute trades on your behalf, and
-        does not provide investment or legal advice. You are solely responsible
-        for your wallets, keys, and on-chain actions.
+        Zeko is software for a Layer-2 network that settles on Ethereum. This
+        legacy bridge serves the earlier Mina-backed Zeko network. Zeko is not a
+        wallet, exchange, broker, custodian, money transmitter, or advisor. Zeko
+        does not take custody of digital assets, does not execute trades on your
+        behalf, and does not provide investment or legal advice. You are solely
+        responsible for your wallets, keys, and on-chain actions.
       </p>
       <ul>
         <li>
           <strong>Public ledgers.</strong>
-          Interactions with Mina L1 and Zeko L2 are recorded on public,
+          Interactions with the connected L1 and Zeko L2 are recorded on public,
           append-only ledgers viewable by anyone.
         </li>
         <li>
@@ -81,7 +81,7 @@
         </li>
         <li>
           Fees and taxes associated with your use (e.g., network gas/fees on
-          Mina or Zeko);
+          Ethereum, Zeko, or legacy Mina networks);
         </li>
         <li>
           Compliance with applicable laws, including sanctions, export controls,
@@ -123,7 +123,7 @@
       <h2>7. Third-Party Services and Links</h2>
       <p>
         The Services may reference or link to third-party sites, tools, or
-        protocols (e.g., Mina explorers, GitHub, package registries, RPC
+        protocols (e.g., blockchain explorers, GitHub, package registries, RPC
         providers). Those are governed by their own terms and policies, and Zeko
         is not responsible for them.
       </p>

@@ -2,7 +2,9 @@
 
 This package is developed in the private `zeko-ui` monorepo and mirrored here for public releases. The docs site reuses this README so package docs and website docs stay aligned.
 
-TypeScript SDK for interacting with the Zeko bridge and coordinating deposits and withdrawals between Mina (L1) and Zeko (L2).
+TypeScript SDK for Zeko bridge transactions, witnesses, and proof requests. For Ethereum deposits and withdrawals, use `@zeko-labs/eth-bridge-sdk`, which builds on this package.
+
+The `Bridge.init` example and Mina L1 workflows below describe the legacy Mina-backed bridge. See the [current Ethereum bridge guide](https://docs.zeko.io/users/guides/using-zeko-bridge) for ETH and ERC-20 flows.
 
 ## Installation
 

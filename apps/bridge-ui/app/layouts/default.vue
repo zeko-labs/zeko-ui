@@ -10,7 +10,14 @@
     </video>
     <div class="Layout">
       <Header />
-      <slot />
+      <div>
+        <p class="LegacyNotice">
+          Legacy Mina bridge. For Ethereum and Zeko, see the
+          <a href="https://docs.zeko.io/users/guides/using-zeko-bridge">current
+            bridge guide</a>.
+        </p>
+        <slot />
+      </div>
       <Footer />
     </div>
     <AppUpdateNotice />
@@ -46,6 +53,16 @@
 }
 .desktop {
   display: block;
+}
+
+.LegacyNotice {
+  margin: 1rem var(--page-padding);
+  text-align: center;
+  color: white;
+  a {
+    color: inherit;
+    text-decoration: underline;
+  }
 }
 
 .Layout {
