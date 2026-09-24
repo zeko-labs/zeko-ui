@@ -1,4 +1,8 @@
-# Launch a Rollup
+# Legacy: Launch a Mina-backed Rollup
+
+::: warning Legacy deployment guide
+This runbook deploys the older Mina-backed Zeko stack. Its Mina node, zkApp, wallet, network, and fee instructions do not deploy the Ethereum rollup. Start with [Ethereum Operator Getting Started](../getting-started.md) for the current deployment path.
+:::
 
 In this guide we will create a `betternet` - an L2 Zeko Rollup for Mina Devnet.
 

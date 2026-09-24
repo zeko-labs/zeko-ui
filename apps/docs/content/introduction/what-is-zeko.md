@@ -1,21 +1,21 @@
 # What is Zeko?
 
-_Zeko is a zk-rollup protocol built on Mina, designed for scalable, private, and secure blockchain applications._
+Zeko is an Ethereum rollup for zero-knowledge applications. Developers build zkApps in TypeScript with o1js, execute application logic off-chain, and submit proofs and account updates to Zeko. Zeko batches transactions and settles the resulting state on Ethereum through SP1 proofs.
 
-## High-Level Summary
+## Execution on Zeko, settlement on Ethereum
 
-[Zeko](https://zeko.io/) is a cross-chain, zero-knowledge scaling protocol built on Mina that enables developers to launch fast, private, and scalable decentralized applications. It combines the privacy guarantees of zero-knowledge proofs with the efficiency of off-chain computation and the security of Mina’s succinct L1, creating a modular, universal operating system for the new internet.
+The Zeko sequencer orders transactions and applies them to the L2 ledger. Recursive proofs establish the validity of the resulting state changes. The Ethereum settlement integration verifies those proofs inside SP1, and Ethereum contracts verify the resulting proof and record the accepted state.
 
-<NetworkLabel network="zeko-m:testnet" /> launch represents a preview of Zeko Protocol capabilities and functionalities to come. While this version will continue to evolve over time, it provides a foundation for developers to start building and assess how to deploy more scalable, feature-rich applications on Zeko. With the release of our protocol, developers gain access to all the existing tooling and features built for Mina, plus many unique to Zeko designed to simplify the zero-knowledge development process. From proof generation, recursion, smart contract creation to decentralized storage solutions, our platform offers everything developers need to realize the potential to bring your dApp ideas to life.
+The bridge holds ETH and registered ERC-20 assets on Ethereum. Deposits are synchronized into Zeko, while withdrawals become claimable on Ethereum after settlement and the configured delay. See [the bridge guide](../users/guides/zeko-bridge.md).
 
-The Zeko team and community are passionate about decentralization and user-owned data, and their combined potential to revolutionize industries across the globe. Zeko is all about amplifying your potential as a developer; and with our launch you now have the opportunity to dive into the protocol, explore its features, and unlock the magic of zero-knowledge technology.
+## The application stack
 
-![Zeko Architecture](./zeko-architecture.png)
+Zeko retains the Mina-derived ledger, Pickles/Kimchi proof system, and o1js zkApp model. Those technical foundations support the Ethereum rollup; Mina is no longer its settlement chain. A Zeko L2 account still uses a `B62...` address, distinct from an Ethereum `0x...` address.
 
-## Purpose of Zeko
+Ethereum settlement does not make Zeko an EVM execution environment. Solidity contracts handle settlement and custody on Ethereum; applications on Zeko use zkApps and o1js.
 
-Zeko builds upon the most decentralised ZK settlement layer, Mina, to provide a platform for fast, cheap and versatile zkApps. Zeko places zero-knowledge proof (ZKP) capabilities into the hands of developers, massively expanding the design space for blockchain applications as we know them today. ZKPs are no longer theoretical, and now through Zeko, application developers are empowered to innovate and explore new types of decentralized applications bridging Web2 and Web3 whilst optimizing performance and user experience. Moreover, through the upcoming release of the Aligned Layer bridge and future bridges, proofs that verify on Zeko can be consumed by the EVM, dramatically upending existing paradigms for blockchain applications.
+## Current stage
 
-Zeko allows developers to create zkRollups specifically designed for zero-knowledge applications (zkApps) that support both end user privacy and recursive proof aggregation. zkApps on Zeko are written in Typescript using o1js, an efficient and extensible zkDSL. Developers can recursively prove unlimited off-chain computation whilst also maintaining privacy over user data.
+The Ethereum integration is experimental and targets Sepolia. Its current DA design uses a 2-of-3 committee. Ethereum blob publication and complete blob-to-batch-root binding remain future work. Read the [security model](../architecture/security-model.md) before using a deployment.
 
-Developers can write and deploy applications today to a Zeko L2 that is isomorphic to the Mina L1, or spin up their own custom zkAppChains. What makes Zeko so powerful is it’s built using o1js programming language built by the o1Labs team, which means Zeko chains will enjoy easy composability between each other and Mina itself using recursive proofs.
+Start with the [user guide](../users/getting-started.md), [developer guide](../developers/getting-started.md), or [technical architecture](../architecture/technical-architecture.md).

@@ -1,29 +1,21 @@
 # Core Blockchain Concepts
 
-_This section provides a brief overview of fundamental blockchain concepts that are helpful to understand Zeko and zkApps. If you are already familiar with how blockchain technology works, you can skip this part._
-
 ## What is a blockchain?
 
-At its core, a **blockchain is a special kind of database**. It functions as a **decentralised digital ledger** that securely records transaction data across a distributed network of computers. Data on a blockchain is organised into **blocks**, which are arranged chronologically and secured using **cryptography**. This structure ensures that the data is **transparent, secure, and immutable**. Once data is added to a block and that block is confirmed and added to the chain, it is virtually impossible to change it.
+A blockchain records transactions in a sequence of cryptographically linked blocks. Consensus rules determine which chain and state participants accept. Finality describes when an accepted block is no longer expected to be replaced under the protocol's assumptions.
 
-The decentralised structure means there is **no single central authority** controlling the flow of data or transactions; instead, a distributed network of computers works together to maintain the integrity of the network. This decentralisation makes large networks highly resistant to attacks. Consensus mechanisms are sets of rules that govern how nodes on the network agree on the state of the blockchain and the validity of transactions.
+Ethereum is the Layer 1 settlement chain for Zeko. Zeko executes transactions on Layer 2 and commits proof-backed state transitions to Ethereum.
 
-> [!TIP] 💡 Consensus 💡
-> **Bitcoin** was the first cryptocurrency powered by blockchain technology and uses the **Proof of Work** consensus mechanism. In contrast, **Mina Protocol** is known for being a lightweight blockchain that uses a **Proof of Stake**-based consensus mechanism called **Ouroboros**. Find more about it in the [o1js documentation](https://docs.o1labs.org/o1js/).
+## Wallets and keys
 
-## Wallets & Keys (Public/Private)
+A wallet manages keys and asks you to approve signatures. Public addresses can be shared; private keys and recovery phrases must remain secret.
 
-The security and verifiability of transactions on a blockchain rely heavily on cryptography. **Public-key cryptography**, also known as asymmetric cryptography, helps establish secure and verifiable transactions between users. This involves using pairs of keys: a **public key** (which can be shared) and a **private key** (which must be kept secret).
+The Ethereum bridge uses an Ethereum `0x...` account and a Zeko `B62...` account. The Zeko Snap lets MetaMask provide Zeko signatures. These accounts serve different networks even when accessed through the same wallet application.
 
-Digital signatures are used in blockchain cryptography, and verifying these signatures is part of the process nodes use to authenticate a transaction. Wallets are typically used to manage these keys and interact with the blockchain.
+## Transactions and account updates
 
-> [!TIP] 💡 Wallets 💡
-> In the Mina and Zeko ecosystems, wallets such as [Auro wallet](https://www.aurowallet.com/) are used to manage your public and private keys. These keys are essential for signing transactions and interacting with zkApps using public-key cryptography. Refer to the [Auro Wallet documentation](https://docs.aurowallet.com/) for more information on Mina-compatible wallets.
+A transaction requests a state change, such as a payment or a smart-contract update. Zeko zkApp transactions contain `AccountUpdate` values describing changes, preconditions, balance movements, and required authorization.
 
-## Blockchain Transactions
+The sequencer checks and applies valid transactions. Recursive proofs establish the batch's validity before Ethereum settlement. A transaction's L2 inclusion and its batch's Ethereum finality are distinct states.
 
-A transaction on a blockchain is essentially a record of interaction or value transfer between two parties. When a transaction is initiated, it is **broadcast to a network of nodes**. Each node validates the transaction based on predefined rules, verifying digital signatures and other data. Validated transactions are then grouped together into a block. On Mina and Zeko, the fundamental data structure that transactions are built from is called an **account update**.
-
-::: details More on Account Updates
-Each zkApp transaction constructed using o1js is composed of one or more `AccountUpdate` classes, which represent a set of instructions for the network, such as altering on-chain state or emitting an event. An `AccountUpdate` can include preconditions that must be met, apply updates to an account, and include assertions about its child account updates. Transactions can consist of multiple account updates, for example, one to subtract a fee and another to add a token balance.
-:::
+See [User Concepts](../users/user-concepts-explained.md) for accounts, fees, and bridge progress.

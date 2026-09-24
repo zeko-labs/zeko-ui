@@ -1,4 +1,6 @@
-# Zeko Documentation
+# Historical Documentation Outline
+
+> This is the archived outline for the earlier Mina-backed product. Current Ethereum rollup documentation lives in `content/`; do not use this outline as current onboarding or architecture guidance.
 
 Welcome to the Zeko documentation! This guide provides information for everyone interested in Zeko, from new users and developers to network operators.
 

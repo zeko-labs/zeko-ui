@@ -1,35 +1,34 @@
 # Getting Started
 
-Getting started with Zeko is designed to be straightforward, leveraging familiar tools from the Mina ecosystem. This section covers setting up your wallet, obtaining the necessary tokens, and connecting to the Zeko network.
+Use the bridge and explorer supplied for the Ethereum-backed Zeko deployment. The current integration targets Ethereum Sepolia; use test assets and confirm the network shown by the application before connecting.
 
-## Setting up a Wallet
+## Connect your wallets
 
-Zeko is **mostly isomorphic to Mina**, meaning you can use the same tools and libraries as you would for Mina development. This includes using existing front-end browser wallets like **Auro Wallet**. To use Auro Wallet with Zeko, you need to [install it](https://www.aurowallet.com/) and create a wallet.
+The Ethereum bridge uses two accounts:
 
-:::danger
-When creating a new wallet, you will be given a seed phrase. This seed phrase is crucial for accessing your wallet and funds. Write it down and store it in a safe place. _Do not share it with anyone._ Having access to your seed phrase means having access to your funds.
+| Account | Address | Used for |
+| --- | --- | --- |
+| Ethereum | `0x...` | Depositing ETH or ERC-20s, approving tokens, and claiming withdrawals. |
+| Zeko L2 | `B62...` | Receiving bridged assets and signing Zeko transfers or withdrawal requests. |
 
-- If you lose your seed phrase, you will lose access to your wallet and funds.
-- If someone else gains access to your seed phrase, they can steal your funds.
-  :::
+1. Open the deployment's Ethereum bridge and connect an Ethereum wallet on the network it requests.
+2. Choose **MetaMask** with the **Zeko Snap** for your Zeko account. Review the Snap installation or connection request and approve access to the selected Zeko network.
+3. Confirm both the Ethereum address and the Zeko address shown in the bridge.
 
-Auro Wallet already supports Zeko, so you can use it to interact with Zeko dApps and the network without any additional setup.
+The Snap's availability in ordinary MetaMask depends on its release and allowlisting status. Local Snap development uses MetaMask Flask. Use the wallet option supported by your deployment; the bridge also supports Auro as a compatible Zeko signer. Auro's existing Mina network presets do not select the Ethereum-backed Zeko deployment automatically.
 
-Select the Zeko network within your Auro Wallet to interact with Zeko dApps and the network.
+Keep your wallet recovery phrase private and backed up. The bridge never needs it.
 
-### Adding the Zeko Network to Other Wallets
+## Fund the account
 
-If you are using a different wallet that supports custom networks, you can add the Zeko network manually
+Obtain Sepolia ETH for Ethereum transactions, then use the bridge's **Deposit** flow to move ETH to your Zeko account. Registered ERC-20 assets appear in the bridge's asset selector when the deployment publishes its registry. Keep ETH available for fees on both sides.
 
-- **Testnet URL**: `https://testnet.zeko.io`
+A deposit progresses through Ethereum finality, bridge processing, synchronization with Zeko, and L2 finalization. Follow the application's progress until the funds are available. See [Using the Ethereum Bridge](./guides/zeko-bridge.md).
 
-:::warning
-<NetworkLabel network="zeko-m:mainnet" /> is not yet available. Stay tuned for updates on the mainnet launch.
-:::
+## Use Zeko
 
-## Obtaining MINA Tokens
+Use the Zeko account for [L2 transfers](./guides/sending-tokens.md) and [zkApps](./guides/dapp.md). Open transaction and settlement details in the [Zeko explorer](./guides/zekoscan-explorer.md).
 
-To perform transactions and interact with dApps on Zeko, you will need tMINA tokens.
+## Existing Mina-backed deployments
 
-- **Testnet**: For testing purposes on <NetworkLabel network="zeko-m:testnet" />, you can obtain tMina tokens from the [Zeko Faucet](https://zeko.io/faucet).
-- **Mainnet**: Obtain Mina from a cryptocurrency exchange that supports MINA, or from other users.
+Older Zeko faucets, Mina bridge links, and wallet presets serve separate Mina-backed networks. Their MINA balances are not ETH on the Ethereum rollup. Do not reuse an old endpoint as an Ethereum endpoint; use the configuration supplied by the current deployment.

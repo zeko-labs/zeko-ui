@@ -1,4 +1,8 @@
-# Running Zeko's Archive Node
+# Legacy: Running an Archive Node
+
+::: warning Legacy deployment guide
+This guide preserves archive setup for the older Mina-backed deployment. Zeko still uses Mina-derived archive schemas, but the Ethereum deployment requires its own endpoints and service configuration. Start with [Ethereum Operator Getting Started](../getting-started.md).
+:::
 
 This guide explains how to add the archive stack on top of an existing Zeko DA node so you can index and query historical data.
 

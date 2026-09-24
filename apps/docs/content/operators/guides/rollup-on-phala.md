@@ -1,4 +1,8 @@
-# Launch a rollup on Phala
+# Legacy: Mina-backed Rollup on Phala
+
+::: warning Legacy deployment guide
+This guide launches the older Mina-backed stack and uses its wallet and funding assumptions. It is not an Ethereum deployment runbook. Start with [Ethereum Operator Getting Started](../getting-started.md).
+:::
 
 In this guide we will cover how to launch your rollup on [Phala](https://docs.phala.com/phala-cloud).
 

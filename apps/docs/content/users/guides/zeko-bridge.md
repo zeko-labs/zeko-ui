@@ -1,76 +1,42 @@
-# Zeko Bridge
+# Using the Ethereum Bridge
 
-The Zeko Bridge moves assets between Mina (L1) and Zeko (L2).
+The Ethereum ↔ Zeko bridge moves native ETH and registered ERC-20 assets between Ethereum custody and Zeko execution. Open the bridge provided for your deployment and verify the Ethereum network, connected accounts, and asset before proceeding.
 
-Use the interface that matches your job:
+## Before you start
 
-- [Mainnet Bridge UI](https://bridge.zeko.io) for interactive mainnet bridging in the browser
-- [Testnet Bridge UI](https://testnet.bridge.zeko.io) for interactive testnet bridging in the browser
-- [Bridge CLI](/developers/tools/bridge-cli) for unattended and agent-driven bridging
-- [Bridge SDK](/developers/tools/bridge-sdk) for custom applications and automation
+- Connect an Ethereum `0x...` account for deposits and claims.
+- Connect a Zeko `B62...` account with the Zeko Snap in MetaMask, or the deployment's supported Auro option.
+- Keep ETH for Ethereum gas and Zeko transaction fees.
+- Use only assets listed by the bridge's registry. A token symbol alone does not establish its identity.
 
-## High-Level Protocol Behavior
+The current Ethereum integration is experimental. Deposits have no cancellation or refund flow. Read the [security model](../../architecture/security-model.md).
 
-At the protocol level, bridging is a two-step process:
+## Deposit from Ethereum to Zeko
 
-1. Submit the bridge action on the source chain.
-2. Claim the bridged asset on the destination chain once the protocol state makes that claim valid.
+1. Select **Deposit**, choose ETH or a registered ERC-20, and enter an amount.
+2. Check the destination Zeko address and fee information.
+3. For ERC-20s, approve the token allowance when requested, then sign the deposit transaction. For ETH, sign the deposit directly in the Ethereum wallet.
+4. Wait for Ethereum finality and bridge processing. The gateway processes finalized deposit logs, and a later Zeko settlement synchronizes the deposit into L2.
+5. Follow the bridge's remaining finalization step and wait for the Zeko balance to update.
 
-The waiting time between those two steps can be long. That is normal. The bridge has to wait for chain progress, sequencer processing, archive/indexer availability, and the proof or witness data required to safely claim the asset.
+An Ethereum deposit receipt is the start of this process. It does not by itself mean the funds are spendable on Zeko.
 
-## Mina To Zeko Deposits
+## Withdraw from Zeko to Ethereum
 
-For a deposit from Mina to Zeko, the flow is:
+1. Select **Withdraw**, choose the asset, and enter the amount and Ethereum recipient.
+2. Review and sign the withdrawal request with your Zeko wallet.
+3. Wait for the request to be included in Zeko, settled on Ethereum, and past the configured withdrawal delay.
+4. When **Claim** becomes available, submit the claim from your Ethereum wallet and pay Ethereum gas.
+5. Check the Ethereum receipt and destination balance.
 
-1. Submit the deposit on Mina.
-2. Wait for the deposit to settle into the bridge state.
-3. Check both `canFinalizeDeposit` and `canCancelDeposit`.
-4. If the deposit becomes finalizable, finalize it on Zeko.
-5. If the deposit becomes cancellable, cancel it on Mina.
+The settlement prover binds the withdrawal to an accepted root. The claim uses a Merkle inclusion proof supplied by the gateway; the user does not generate an SP1 proof.
 
-Important protocol rules:
+## Amounts and progress
 
-- A cancellable deposit can never later be finalized.
-- Deposit claims are queue-ordered.
-- Cancellable deposits are skippable.
-- Finalizable deposits must never be skipped, because skipping them would strand user funds in the queue.
+Ethereum ETH uses 18 decimals; native ETH on Zeko uses 9. The bridge constrains amounts to the supported Zeko precision and performs the conversion. ERC-20 precision follows the registered asset mapping. Do not reinterpret Zeko base units as Ethereum wei.
 
-This is why queue handling matters so much in both the CLI and any application built on the SDK.
+The activity view recovers deposits and pending withdrawals after a reload. Keep transaction hashes for support. L2 inclusion, Ethereum settlement, and a completed claim are separate milestones; use the status shown for the step you are waiting on.
 
-## Zeko To Mina Withdrawals
+## Legacy Mina bridge
 
-For a withdrawal from Zeko to Mina, the flow is:
-
-1. Submit the withdrawal on Zeko.
-2. Wait for the sequencer and indexer pipeline to make the withdrawal witnessable.
-3. Finalize the withdrawal on Mina.
-
-Withdrawals are also queue-ordered, but unlike deposits they are not cancellable. The earliest pending withdrawal for the account must be finalized first.
-
-## Why A Bridge Can Take So Long
-
-Long waits usually come from bridge state propagation rather than from the local wallet:
-
-- Mina-side settlement and finality can take time.
-- The Zeko sequencer can see a new action before the archive or actions API can serve the corresponding witness data.
-- Finalization proof generation can take a long time.
-
-As a result, a good bridge client must tolerate long unattended waits and keep following the queue until the requested operation reaches a real terminal outcome.
-
-## Operational Model
-
-The Bridge UI, Bridge CLI, and Bridge SDK all model the same protocol:
-
-- submit first
-- wait for the earliest actionable queue item
-- finalize when finalizable
-- cancel immediately when cancellable
-- never skip a finalizable deposit
-
-The main difference is the signing model:
-
-- the Bridge UI waits for interactive wallet approvals on [mainnet](https://bridge.zeko.io) or [testnet](https://testnet.bridge.zeko.io)
-- the [Bridge CLI](/developers/tools/bridge-cli) is designed for unattended execution with local keys
-- the [Bridge SDK](/developers/tools/bridge-sdk) exposes the underlying operations so other applications can build their own orchestration
-
-For operator debugging, the Bridge CLI supports `--actions-api`, `--l1-url`, and `--l1-archive-url` endpoint overrides so a run can target a local Actions API/indexer stack or alternate Mina endpoints without source changes.
+The older Mina ↔ Zeko bridge and Bridge CLI operate against Mina-backed deployments. Their MINA operations cannot be used as ETH bridge operations by changing a label or network URL. See the [legacy CLI reference](../../developers/tools/bridge-cli.md) only when using that deployment.

@@ -1,30 +1,27 @@
 # User Concepts Explained
 
-_This section helps end users understand some key concepts when interacting with the Zeko network._
+## Two accounts, two networks
 
-#### Testnet vs Mainnet
+Ethereum uses `0x...` addresses. Zeko's L2 uses `B62...` addresses and the zkApp transaction model. MetaMask can hold the Ethereum account and, through the Zeko Snap, provide the Zeko account. The accounts are not interchangeable.
 
-Zeko's architecture is **mostly isomorphic to Mina**. This means the experience of using Zeko on a test network (like devnet) is **analogous** to using Mina's own testnet compared to its Mainnet.
+## ETH and tokens
 
-- **Testnets** (like <NetworkLabel network="zeko-m:testnet" /> and <NetworkLabel network="zeko-m:alphanet" />) are environments provided for developers and users to **test applications and features** in a setting that mimics the Mainnet, but without using real-world value. They often have faucets to obtain free test tokens, for example, the faucet on `https://zeko.io/faucet` is for the <NetworkLabel network="zeko-m:testnet" /> instance.
-- **Mainnet** will be the primary, live Zeko network where transactions involve real value.
+ETH is the native asset of the Ethereum-backed Zeko deployment. Ethereum amounts use 18 decimals and Zeko native amounts use 9. Registered ERC-20 assets have an authenticated mapping to their L2 token; other custom Zeko tokens are not automatically bridgeable.
 
-Starting out on a testnet like <NetworkLabel network="zeko-m:testnet" /> is recommended to become familiar with the network and its interactions before using the Mainnet.
+## Inclusion and finality
 
-#### Understanding Transaction Fees
+**L2 inclusion** means the sequencer applied a transaction. **Settlement** means the batch has been accepted by the Ethereum settlement contract. **Ethereum finality** means its block has reached the deployment's finalized chain view. A fast sequencer response does not collapse these steps into instant finality.
 
-When you perform transactions or interact with zkApps on Zeko, you will incur fees. These fees play a crucial role in the network's operation and are typically paid to the **sequencer**.
+## Deposits and withdrawals
 
-Key points about Zeko transaction fees:
+Deposits start on Ethereum and become usable on Zeko after bridge processing, synchronization, and L2 finalization. Withdrawals start with a Zeko request and require Ethereum settlement, a delay, and an Ethereum claim transaction.
 
-- Fees on Zeko are cheaper than equivalent complex transactions on Layer 1 Mina, aiming to improve the economics of using zkApps.
-- The amount of the fee for Layer 2 transactions is related to the **complexity of the circuit/computation** involved in the transaction. There's an upper limit on how much complexity can be included in a batch, which limits the number of account updates per batch.
-- For cross-layer operations like bridging assets from L1 to L2 (deposits), the fees can be potentially higher due to the requirement for an L1 inclusion proof pool.
-- Fees are charged in **L1 tokens** (MINA).
-- Fees cover various aspects of the ZK Rollup operation, including data availability storage, batch creation, proof aggregation, and posting the batch to Layer 1.
+## Fees
 
-:::warning
-Creating a new account on Mina and on Zeko also involves paying an account creation fee of 0.1 MINA (or 0.1 tMINA on testnets).
-:::
+Ethereum deposits, approvals, and claims require Ethereum gas. Zeko transfers and zkApp operations require L2 fees. Use the fee displayed by the deployment; historical MINA fee examples do not describe the current ETH fee schedule.
 
-Zeko aims to make the fee structure competitive within the wider rollup space.
+## Proofs and privacy
+
+Proofs verify valid execution without rerunning all application work on Ethereum. A proof can hide private inputs, but it does not automatically hide public balances or bridge transfers.
+
+See the [security model](../architecture/security-model.md) for the experimental deployment's trust assumptions.

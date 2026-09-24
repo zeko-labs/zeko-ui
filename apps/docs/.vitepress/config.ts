@@ -7,7 +7,7 @@ import { networkLabelsForLlms } from "./llmsNetworkLabels"
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
 	title: "Zeko Docs",
-	description: "Documentation for Zeko",
+	description: "Zeko Ethereum rollup documentation: zkApps, ETH bridging, wallets, and settlement",
 	srcDir: "content",
 	vite: {
 		plugins: [llmstxt({ stripHTML: false }), networkLabelsForLlms()]
@@ -62,7 +62,7 @@ export default defineConfig({
 					{ text: "Smart Contracts", link: "/background/smart-contracts" },
 					{ text: "Zero-Knowledge Proofs", link: "/background/zero-knowledge-proofs" },
 					{ text: "Layer 2 Scaling Solutions", link: "/background/layer-2-scaling" },
-					{ text: "Mina Protocol", link: "/background/mina-protocol" }
+					{ text: "Proof-System Heritage", link: "/background/mina-protocol" }
 				]
 			},
 			{
@@ -84,8 +84,7 @@ export default defineConfig({
 						link: "/developers/guides-tutorials",
 						collapsed: true,
 						items: [
-							{ text: "Custom Network", link: "/developers/guides/custom-network" },
-							{ text: "Creating a Faucet", link: "/developers/guides/create-faucet" }
+							{ text: "Custom Network", link: "/developers/guides/custom-network" }
 						]
 					},
 					{
@@ -93,9 +92,7 @@ export default defineConfig({
 						collapsed: true,
 						items: [
 							{ text: "Agent Skills", link: "/developers/tools/agent-skills" },
-							{ text: "Bridge SDK", link: "/developers/tools/bridge-sdk" },
-							{ text: "Bridge CLI", link: "/developers/tools/bridge-cli" },
-							{ text: "Faucet CLI", link: "/developers/tools/faucet-cli" }
+							{ text: "Base Bridge SDK", link: "/developers/tools/bridge-sdk" }
 						]
 					},
 					{ text: "Examples & Boilerplates", link: "/developers/examples-boilerplates" },
@@ -115,8 +112,8 @@ export default defineConfig({
 						items: [
 							{ text: "Sending Tokens", link: "/users/guides/sending-tokens" },
 							{ text: "Interacting with a Dapp", link: "/users/guides/dapp" },
-							{ text: "Using Zeko Bridge", link: "/users/guides/zeko-bridge" },
-							{ text: "Using Zekoscan Explorer", link: "/users/guides/zekoscan-explorer" }
+							{ text: "Ethereum Bridge", link: "/users/guides/zeko-bridge" },
+							{ text: "Zeko Explorer", link: "/users/guides/zekoscan-explorer" }
 						]
 					},
 
@@ -130,16 +127,22 @@ export default defineConfig({
 					{ text: "Getting Started", link: "/operators/getting-started" },
 					{
 						text: "Guides & Tutorials",
-						link: "/operators/guides-tutorials",
-						collapsed: true,
-						items: [
-							{ text: "Launch a Rollup", link: "/operators/guides/launch-rollup.md" },
-							{ text: "Run a DA layer", link: "/operators/guides/da-layer.md" },
-							{ text: "Run an archive node", link: "/operators/guides/archive-node.md" },
-							{ text: "Rollup on Phala", link: "/operators/guides/rollup-on-phala.md" }
-						]
+						link: "/operators/guides-tutorials"
 					},
 					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" }
+				]
+			},
+			{
+				text: "Legacy Mina-backed Deployments",
+				collapsed: true,
+				items: [
+					{
+						text: "Legacy Operator Guides",
+						link: "/operators/guides-tutorials#legacy-mina-backed-deployments"
+					},
+					{ text: "Legacy Bridge CLI", link: "/developers/tools/bridge-cli" },
+					{ text: "Legacy Faucet CLI", link: "/developers/tools/faucet-cli" },
+					{ text: "Legacy Faucet Tutorial", link: "/developers/guides/create-faucet" }
 				]
 			},
 			{

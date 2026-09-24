@@ -1,30 +1,15 @@
-# Interacting with a Dapp
+# Interacting with a zkApp
 
-Zeko dapps use Mina-style wallet connections and zkApp transactions. The exact interface differs by application, but the safety checks are the same.
+Zeko applications use the zkApp execution model. A website prepares account updates and may generate a proof of application logic before requesting a wallet signature.
 
-## Connect A Wallet
+1. Open the application's supported Zeko deployment and connect your Zeko wallet.
+2. Confirm the selected network and `B62...` account. In MetaMask, Zeko operations are handled by the Zeko Snap; Ethereum operations use the Ethereum account.
+3. Choose the application action and allow any client-side proof generation to finish.
+4. Review the recipient, balance changes, and fee in the wallet before approving.
+5. Follow the submitted transaction in the deployment's explorer.
 
-1. Open the dapp.
-2. Select the Zeko network in your wallet.
-3. Connect the wallet account you want the dapp to use.
-4. Review the requested permissions before approving the connection.
+Keep native ETH available on the Ethereum-backed Zeko network for fees. Connecting a wallet does not grant a website permission to spend funds without the applicable signature or account authorization.
 
-If a dapp expects a different network, switch networks in the wallet before signing anything.
+A zkApp can use private inputs, but its public account updates, fees, and bridge activity remain visible. Read the application's own privacy model before providing sensitive information.
 
-## Review Transactions
-
-Before approving a transaction, check:
-
-- the account that will sign
-- the network name
-- the requested action
-- the fee
-- any token amount or account update shown by the wallet
-
-Reject the request if the wallet prompt does not match the action you intended to take.
-
-## Confirm Results
-
-After signing, wait for the dapp to show the transaction result. You can also check account and transaction activity in [Zekoscan](./zekoscan-explorer.md).
-
-Some zkApp actions take longer than a simple token transfer because they depend on proving, sequencing, or bridge state. Avoid refreshing or submitting the same action repeatedly unless the dapp explicitly tells you the previous attempt failed.
+For funding, see [Using the Ethereum Bridge](./zeko-bridge.md). For transaction status, see [Using the Zeko Explorer](./zekoscan-explorer.md).

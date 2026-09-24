@@ -1,32 +1,21 @@
 # Layer 2 Scaling Solutions
 
-_Blockchain technology, while revolutionary, faces challenges related to **scalability and throughput** on the base layer (Layer 1). As networks grow and usage increases, transaction speeds can slow down and fees can rise. This can limit the types of applications that can be practically built and used._
+A Layer 2 processes transactions outside a base chain and commits results back to it. Zeko's settlement chain is Ethereum; its execution layer uses zkApps and a Mina-derived ledger.
 
-## The Need for Layer 2 Solutions
+## Batches and validity proofs
 
-**Layer 2 (L2) scaling solutions** are designed to address these limitations by handling transactions off the main blockchain and submitting proofs or summaries back to Layer 1. Zeko is a Layer 2 (L2) ecosystem specifically designed for Mina's zero-knowledge applications (zkApps).It provides developers with a platform to build and deploy zkApps with **improved throughput and quick confirmation times**.
+A sequencer orders transactions and applies them to the L2 state. Proof workers establish the validity of the resulting state transitions and aggregate them into a batch proof. Ethereum contracts verify the proof-backed settlement and advance the accepted state.
 
-> [!TIP] 💡 Zeko vs Mina 💡
-> Building on Zeko offers **enhanced scalability** (faster throughput than Layer 1 Mina) and **rapid finality** (instant confirmation compared to Mina). Zeko leverages the security and tooling of Mina while offering these performance benefits.
+Zeko uses Pickles recursion for its execution proofs and SP1 to verify those proofs for Ethereum settlement. See [Technical Architecture](../architecture/technical-architecture.md).
 
-## Introduction to Rollups
+## Inclusion and finality
 
-Rollups are a category of Layer 2 scaling solutions. They operate by **bundling or "rolling up" many off-chain transactions** into a single transaction. This aggregated transaction is then verified and recorded on the main chain (Layer 1). This significantly reduces the amount of data that needs to be processed and stored on Layer 1, leading to faster and cheaper transactions.
+An L2 transaction can be included before its batch reaches Ethereum. Ethereum acceptance, Ethereum finality, and bridge withdrawal eligibility are later milestones. Applications should show these stages separately rather than promising instant finality.
 
-There are different types of rollups, including Optimistic Rollups and Zero-Knowledge (ZK) Rollups. **Zeko is a ZK Rollup**. ZK-Rollups utilize **Zero-Knowledge Proofs (ZKPs)** to ensure that **all transactions within the bundled batch are valid. The process involves processing transactions off-chain.
+## Data availability
 
-A **sequencer** acts as a transaction collector, gathering these transactions and applying them to the current state. The sequencer efficiently groups transactions into **batches** and proves their validity using zero-knowledge proofs.
+A validity proof establishes correct execution; it does not supply all the data needed to reconstruct the ledger. The current Zeko testnet uses a 2-of-3 DA committee. Full Ethereum blob publication and binding to the Zeko batch root remain future production work.
 
-The transaction data itself is posted to a **Data Availability (DA) layer**. The sequencer then sends the aggregated proof of the batch to the Layer 1 via a smart contract. The ZK proof compresses the validation of the whole batch of transactions into the verification of a single zk-SNARK, which is of constant size.
+## Privacy
 
-> [!TIP] 💡 zk-SNARK 💡
-> A zero knowledge proof. zk-SNARK is the acronym for zero knowledge succinct non-interactive argument of knowledge.
-
-ZK-Rollups offer several key advantages:
-
-- **Increased Throughput:** Batching transactions processed off-chain boosts overall transaction capacity.
-- **Lower Gas Fees:** A single entity verifies the transactions, which is cheaper than verifying on every node in the network.
-- **Privacy:** ZKPs can enhance privacy by proving validity without revealing transaction details.
-
-> [!TIP] 💡 Zeko's Architecture 💡
-> Zeko leverages Mina's recursive ZK technology, specifically the [Pickles](https://o1-labs.github.io/proof-systems/pickles/overview) recursive system, as the foundation for its ZK Rollup. Zeko's modular architecture further allows for the creation of custom zkRollups, providing developers with flexibility in choosing components like the data availability solution.
+Zero-knowledge programs can hide private inputs. Public transactions and bridge activity are not automatically private merely because the system uses validity proofs.

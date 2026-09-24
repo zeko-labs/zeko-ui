@@ -1,4 +1,8 @@
-# Creating a MINA Faucet on Zeko
+# Legacy: Creating a Faucet
+
+::: warning Legacy deployment guide
+This tutorial targets a Mina-compatible faucet and the older Mina-backed Zeko network. Its MINA amounts and endpoints do not fund ETH on the Ethereum rollup. For current testnet funding, see [User Getting Started](../../users/getting-started.md).
+:::
 
 > ⚠️ **Warning**: This guide is for educational purposes only. Do NOT deploy a faucet to mainnet as it gives away free MINA to anyone. Use only on testnets for learning purposes.
 

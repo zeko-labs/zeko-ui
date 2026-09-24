@@ -1,4 +1,8 @@
-# Running Zeko's DA Node
+# Legacy: Running a DA Node
+
+::: warning Legacy deployment guide
+This guide preserves the DA setup for the older Mina-backed deployment. The Ethereum testnet also uses committee DA, but its node identities, circuit configuration, and service wiring must come from the matching Ethereum release. Start with [Ethereum Operator Getting Started](../getting-started.md).
+:::
 
 A critical component of any rollup system is the data availability layer. This layer is responsible for storing all the transaction data that occurs on the rollup.
 
