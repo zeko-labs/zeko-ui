@@ -1,25 +1,17 @@
-# Mina Protocol
+# Proof-System Heritage
 
-_This section is a brief overview of the Mina Protocol, you can find more information in the [o1js documentation](https://docs.o1labs.org/o1js/)._
+Zeko's Ethereum rollup retains technical foundations developed in the Mina ecosystem: the ledger and account-update model, `B62...` addresses, zkApps built with o1js, and the Pickles/Kimchi proof system.
 
-## Overview of Mina's Unique Architecture
+## Pickles and Kimchi
 
-Mina Protocol distinguishes itself with a unique architecture designed to be a **succinct blockchain**. At its core, Mina leverages zero-knowledge proofs (ZKPs), specifically using the **Kimchi proof system** and the **Pickles recursive system**. This allows for advanced cryptographic functions and efficient verification.
+Kimchi supplies the underlying proof system, and Pickles supports recursive verification. Zeko uses these foundations to prove transaction state transitions and aggregate proofs. The Ethereum integration verifies the exported Pickles proof inside SP1 and settles its result through Ethereum contracts.
 
-> [!TIP] 💡 Kimchi and Pickles 💡
-> Find more about Kimchi and Pickles in this [o1Labs article](https://www.o1labs.org/blog/reintroducing-kimchi) and in the [Mina Book](https://o1-labs.github.io/proof-systems/kimchi/overview).
+For technical details, see the [proof-systems book](https://o1-labs.github.io/proof-systems/) and [o1js documentation](https://docs.o1labs.org/o1js/).
 
-A hallmark of Mina's design is its support for **arbitrary infinite recursive proof construction**. Mina is noted as being the only blockchain currently offering this capability. Recursion is fundamental to how Mina operates, being used to compress the historical blockchain data into a constant, small size. It also utilizes **tree-based recursive proofs** (described as "rollup-like") to compress transactions within blocks.
+## Compatibility is not settlement
 
-Developers on Mina build **zkApps**, which are zero-knowledge smart contracts. Interactions and state changes on Mina are expressed through **Account Updates**, the fundamental data structure for transactions. These updates contain instructions for the network and require specific authorization, which can be a signature or a proof derived from executing zkApp logic.
+Mina-derived API names, signing domains, schemas, and token formats remain meaningful implementation contracts. They should not be renamed as a cosmetic branding change. They do not mean that the Ethereum-backed Zeko deployment settles on Mina.
 
-## How Zeko Leverages Mina
+Earlier versions of Zeko did settle through a zkApp account on Mina L1. Those networks and their operational runbooks are retained as [legacy deployment documentation](../operators/guides-tutorials.md#legacy-mina-backed-deployments).
 
-Zeko is a Layer 2 (L2) ecosystem purpose-built for Mina's zkApps.
-
-It operates **on top of the Mina Layer 1 (L1)** chain, providing enhanced throughput and quicker transaction confirmation times while offering a **fully Mina-equivalent application layer**.
-
-The Zeko rollup is implemented as a **zkApp account on the Mina L1 chain**, leveraging Mina's recursive capabilities and existing infrastructure. This design enables **seamless tooling integration** with existing Mina developer tools and wallets.
-
-> [!TIP] 💡 Zeko's Architecture 💡
-> For detailed information about Zeko's architecture, see the [dedicated Zeko section](../architecture/zeko-core-concepts.md).
+See [Technical Architecture](../architecture/technical-architecture.md) for the current Ethereum path.

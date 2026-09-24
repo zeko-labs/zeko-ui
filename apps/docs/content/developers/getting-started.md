@@ -1,105 +1,33 @@
 # Getting Started
 
-Developers from all backgrounds are using **Zeko** to power their zkApps and reimagine what’s possible in the zkInternet era.
+Build Zeko applications with TypeScript and o1js. The Ethereum rollup keeps the zkApp account and proof model while settling state and holding bridge custody on Ethereum.
 
-You already know [What is Zeko](../introduction/what-is-zeko.md) and [Why you should Build with Zeko](../introduction/why-zeko.md), so let’s get started launching your own zkApp or front-end on Zeko today.
+## Learn the execution model
 
-**Zeko provides a fully Mina-equivalent application layer** for building and deploying zkApps, meaning you can use the same tools and libraries and your development environment setup for building zkApps on Zeko will largely follow the standard setup for Mina zkApp development.
+Start with the [o1js documentation](https://docs.o1labs.org/o1js/) for `SmartContract`, `AccountUpdate`, `ZkProgram`, and client-side proof generation. Mina examples remain useful for these APIs, but their network endpoints, asset names, fees, and L1 bridge assumptions do not describe the Ethereum-backed Zeko deployment.
 
-## Step 1 – Intro and Education
+Zeko is not an EVM execution environment. Solidity is used for Ethereum settlement and custody contracts; Zeko applications execute through zkApps.
 
-> For developers new to Zeko, ZK, and Mina
+## Select the deployment
 
-If you are new to building on Mina or with zkApps, it is highly recommended to **start with the official [o1js documentation](https://docs.o1labs.org/o1js/)**. Zeko is an _isomorphic zkRollup on Mina_, so we reference the deep library of Mina resources wherever relevant.
+Obtain the sequencer GraphQL, archive, Actions API, gateway, bridge, and explorer URLs from your deployment's configuration. Use a matching set of endpoints and contract identities. Do not substitute a legacy Mina-backed Zeko preset.
 
-> [!TIP] 💡 Developer Environment Setup 💡
->
-> Follow the [o1js Getting Started guide](https://docs.o1labs.org/o1js/getting-started/what-is-a-zk-constraint-system) to set up your development environment for building zkApps.
+The current Ethereum integration targets Sepolia. Its bridge application loads public configuration from `/runtime-config.json`, including the Ethereum chain ID, endpoints, and Zeko signing domain. See [Custom Network Configuration](./guides/custom-network.md).
 
-Visit the [**Zeko GitHub repo**](https://github.com/zeko-labs/zeko/tree/compatible/src/app/zeko), the source code for the Zeko protocol, including the sequencer and data availability components.
+## Connect and fund a wallet
 
-### o1js Smart Contract Language Intro
+Use the deployment's Ethereum bridge to connect an Ethereum `0x...` account and a Zeko `B62...` account. The Zeko Snap in MetaMask handles L2 signatures where supported; Auro remains an alternative compatible signer. Local Snap development requires MetaMask Flask.
 
-**o1js** is a general-purpose zero-knowledge framework that gives you the tools to create zk proofs and write arbitrary zk programs (zkApps), leveraging a rich set of built-in provable operations. The o1js framework is packaged as a single TypeScript library that can be used in major web browsers and Node.js.
+Bridge Sepolia ETH for L2 fees and keep Ethereum ETH for deposits and withdrawal claims. Use the displayed fee schedule rather than MINA amounts from older examples. Native ETH has 9 decimals on Zeko and 18 on Ethereum.
 
-> [!TIP] 💡 o1js 💡
->
-> Refer to [introduction to o1js](https://docs.o1labs.org/o1js/) and the [o1js GitHub repo](https://github.com/o1-labs/o1js).
+## Integrate the bridge
 
-### Advantages of Using Zeko
+`@zeko-labs/eth-bridge-sdk` supplies the Ethereum gateway and custody integration. It reuses the base Bridge SDK for Zeko transactions, witnesses, and sequencer proof requests. ERC-20 assets require the deployment's canonical registry mapping.
 
-Zeko is different from Mina in several ways for developers and users:
+The older `zeko-bridge` CLI and its Mina L1 bridge presets are legacy workflows. Changing their labels does not make them Ethereum bridge commands. See [API Reference](./api-reference.md) for the implementation boundaries.
 
-- **Near-instant confirmation of transactions**
-- **Dynamic parallel prover scaling** for higher throughput
-- **Data-availability layer** for higher storage
-- **Increased account updates** for greater app complexity
-- **Framework for launching new zkRollups and AppChains**
-- **Delegated zkApp and AppChain proving** _(future)_
+## Verify the user flow
 
-### Power of zkApps
+Test wallet authorization, fees and precision, L2 inclusion, and the relevant Ethereum settlement or claim status. Keep these statuses distinct in your application. The [explorer guide](../users/guides/zekoscan-explorer.md) explains what each view establishes.
 
-zkApps are zero-knowledge programs that are **Turing complete**, and offer enhanced privacy with client-side execution and private inputs, have off-chain computation and composability with **no gas fees**.
-
-> [!TIP] 💡 zkApps 💡
-> Refer to [zkApps Overview for new zk-Devs](https://docs.o1labs.org/o1js/zkapps/intro) and [zkApps for Ethereum Devs](https://docs.o1labs.org/o1js/zkapps/intro).
-
-## Step 2 – Demo zkApps and UIs
-
-> For Mina-native or ZK-adjacent devs
-
-- [**Write and Deploy a zkApp Today**](https://docs.o1labs.org/o1js/zkapps/intro)
-- Make sure to **[get a wallet & faucet tMINA](https://zeko.io/faucet) on Zeko** or **[Bridge tMINA](https://testnet.bridge.zeko.io) from Mina to Zeko**, and check your activity on **[ZekoScan testnet explorer](https://zekoscan.io/testnet/home)**. _(Auro wallet browser extension v2.4.1 or mobile app v2.2.0 or later are required)_
-- Mina devnet [faucet](https://minascan.io/devnet/home) and [MinaScan](https://minascan.io/mainnet/home) explorer may also be helpful resources
-- **Write your smart contract using the [zkApp CLI](https://github.com/o1-labs/zkapp-cli)**
-
-### Taking zkApps to the Next Level
-
-> Useful links and code examples
-
-- **LuminaDex SDK for front-end swaps on Zeko and Mina**
-  - The [SDK library](https://sdk.luminadex.com/) is designed to simplify the integration of the [LuminaDex contracts](https://github.com/Lumina-DEX/lumina/tree/main/packages/contracts) in a website.
-  - [Beta Website](https://lumina-devnet.netlify.app/) using SDK and Lumina audited contracts. View the [Source Code on GitHub](https://github.com/Lumina-DEX/lumina/tree/main/packages/dex-ui).
-- [Mina Fungible token standard](https://github.com/MinaFoundation/mina-fungible-token): example code for custom token implementations
-- Other examples / demos:
-  - [Prove you know the answer to a question (10 / 2 + 2 = ?)](https://github.com/RaidasGrisk/zkapp-ui)
-  - [Off-chain voting Proof of Concept (POC)](https://github.com/Trivo25/offchain-voting-poc)
-  - [Cryptographic Proof of NFT Endorsement](https://github.com/racampos/cpone)
-  - [easy-mina-deploy](https://github.com/MinaPlayground/easy-mina-deploy) (deploy with one command by specifying your smart contract and keys)
-
-## Step 3 – Accelerated Growth
-
-> For experienced developers and teams
-
-### Advanced Tools & Tutorials
-
-Find out more about advanced tools and tutorials for zkApps development.
-
-#### Intelligence Tools and AI
-
-- [Mina Arbitrated Contracts](https://mac.sqrtxx.com/) (MAC) – a zkApp that creates zkApps
-- [o1js MCP server](https://github.com/o1-labs/mcp-o1js/tree/main/packages/mcp-server-o1js#usage-with-claude-desktop) (search o1js docs, codebase, Mina Discord forums with Claude & Cursor)
-- [zkApps AI Chatbot](https://zkappsumstad.com/) (GPT language model, extensively trained on Mina, zkApps, and o1js)
-
-#### zkApp Developer In-Depth [Tutorials](https://docs.o1labs.org/o1js/tutorials/hmac/hmac-basics)
-
-- [Deploy to a Network](https://docs.o1labs.org/o1js/zkapps/intro)
-- [zkApp Browser UI](https://docs.o1labs.org/o1js/zkapps/intro)
-
-#### Cross-chain signing and modular zkApp deployment using TEE
-
-- [Silvana](https://login.silvana.dev/)
-- [Silvana docs](https://docs.silvana.one/)
-
-### Community
-
-The Zeko community is mostly active on Discord :
-
-- [**Zeko Discord**](https://discord.gg/edF9vzD7en)
-- [**Mina Discord**](https://discord.com/invite/minaprotocol)
-
-### Production zkApps
-
-- [**ZekoTokens**](https://zekotokens.com/): Deploy tokens on Zeko
-- **Solis, powered by LuminaDex:** _link TBD_
-- **Obirium:** _link TBD_
+Explore [examples and tooling](./examples-boilerplates.md) after checking each example's network assumptions. Read the [security model](../architecture/security-model.md) before integrating an experimental deployment.

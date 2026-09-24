@@ -1,35 +1,31 @@
 # Concepts for Operators
 
-This section provides an overview of the key concepts network operators should understand when running infrastructure for Zeko.
+## Execution and settlement
 
-## Network Topology
+The sequencer orders Zeko transactions and applies them to the L2 ledger. Zeko proof workers produce recursive Pickles proofs. The Ethereum gateway verifies exported proofs and coordinates SP1 proof jobs; Ethereum contracts verify the resulting proof and accept a state checkpoint.
 
-Zeko operates as a Layer 2 (L2) ecosystem built on top of Mina Protocol (Layer 1). The network topology involves several interconnected components and roles:
+The gateway's Mina-compatible API lets the sequencer retain its existing transaction and action interface. This compatibility does not imply a live Mina L1 dependency.
 
-- **Sequencer**: This is a server that acts as the transaction collector and processor for the Zeko L2. The sequencer accepts transactions from users, typically via a GraphQL API. It applies these transactions to the Zeko ledger. The sequencer then posts the transaction data on the Data Availability (DA) layer and sends them to provers. It is responsible for proving the validity of transactions using zero-knowledge proofs and efficiently grouping transactions into batches. Sequencers generate a queue of pending transfer requests. They select and prove bridge transfer requests, aggregating the proofs. Once a batch is finalized, the sequencer posts the batch and receipts to the DA layer and then commits the final batch proof to the L1 zkApp (rollup contract). Currently, it's not possible to run multiple sequencers.
-- **Prover**: This component receives transactions from the sequencer and generates proofs for their validity. In the transaction snark binary tree, provers prove individual transactions or account updates, which are then merged.
-- **Data Availability (DA) Layer Nodes**: This layer is responsible for storing all the transaction data that occurs on the rollup. DA layer nodes are described as a bunch of nodes, each replicating the same storage. The sequencer sends the transaction data to the DA layer.
-- **L1 ZkApp (Verifier Contract)**: This is a smart contract deployed on the Mina Protocol L1. It acts as a bridge between L1 and L2. The L1 zkApp's state stores the current ledger hash of the Zeko rollup. The sequencer sends aggregated proofs of transaction batches to this L1 contract. The L1 contract verifies these proofs and updates its state to the new ledger hash. Communication from L2 to L1 also happens via posting actions to an inner account on L2, which synchronizes with the outer L1 zkApp account on commit.
-- **L1 Mina Nodes**: These are the standard nodes of the Mina Protocol Layer 1 network. The sequencer ultimately sends aggregated batch proofs to the L1, which update the state of the L1 zkApp.
-- **Archive Nodes**: These nodes index the history of the blockchain. Mina archive nodes can be used to index the history of the Zeko rollup by running a Zeko archive relay adapter that subscribes to the sequencer and relays new blocks to the archive.
+## Data availability
 
-The overall flow involves transactions being sent to the sequencer, processed off-chain, data being stored on the DA layer, proofs being generated and aggregated, and finally, a single aggregated proof being committed to the L1 Mina zkApp to update the rollup's state.
+The current Ethereum testnet retains three DA nodes with quorum two. Availability of batch data is separate from proof validity. Operators must preserve ordered diffs and restore enough state to serve and reconstruct the ledger.
 
-## Role of the ZkApp (Verifier Contract) on Mina L1
+Ethereum blob DA is the intended production direction. Full payload publication, root binding, and archival are not complete in the current integration.
 
-The Zeko rollup is implemented as a **zkApp account** on the Mina Layer 1 blockchain. This L1 zkApp serves as the **verifier contract**. Its primary role is to act as the authoritative state anchor for the Zeko L2.
+## Bridge progress
 
-- The L1 zkApp's state holds the current, verified hash of the Zeko L2 ledger.
-- The Zeko sequencer processes batches of transactions and generates a single, aggregated proof that represents the transition from the previous L2 ledger state (hash A) to the new L2 ledger state (hash D).
-- This aggregated proof (e.g., A->D) is then sent to the L1 and verified by the Zeko zkApp contract.
-- If the proof is valid, the L1 zkApp's state is updated to the new ledger hash (D).
-- This process effectively compresses the validation of a batch of transactions on L2 into the verification of a single constant-sized proof on L1.
+Ethereum deposits must reach the gateway's finalized chain view before bridge processing. The derived outer actions become usable on L2 after a later settlement synchronizes them. Withdrawals start with inner actions on L2, then require a settlement-bound claim root, the configured delay, and an Ethereum claim.
 
-The L1 zkApp also plays a role in the bridging process, receiving actions posted on L1 for deposits and synchronizing action states with the inner L2 account on commit.
+Do not treat a submitted proof, L2 archive row, or pending Ethereum receipt as a completed bridge operation. Equally, do not change the sequencer or Actions API's inclusion gates just to simplify a status label.
 
-## Operator Economics
+## Fees and identities
 
-- **Fees**: Users pay fees in MINA to the sequencer. The fees users pay are based on factors like computational work, DA, networking, and storage. The sequencer is paid fees for batch creation and proof aggregation work.
-- **Costs**: Operators should plan for compute, persistent storage, network bandwidth, and monitoring. The heaviest requirements are usually prover and sequencer workloads, while DA and archive services need reliable storage.
-- **Reliability**: Downtime can delay transaction inclusion, archive indexing, or bridge progress. Runbooks should include backup, log retention, and restart procedures for each service.
-- **Decentralization Roadmap**: Some operator roles are still evolving. The current guides focus on the components that can be run today and call out assumptions where a role is not yet open to multiple independent operators.
+The Ethereum-backed deployment uses ETH as its native asset. Zeko amounts use nine decimal places, while Ethereum ETH uses eighteen. Native fee values and account-creation costs come from the deployment configuration.
+
+Release identity includes the bridge address embedded in circuits, proof verification keys, genesis and action checkpoints, DA keys, registry identities, and signing domain. These must be upgraded coherently; user-facing naming changes do not authorize changing cryptographic identifiers.
+
+## Reliability and trust
+
+Track inclusion, proof jobs, Ethereum finality, archive freshness, and claims as separate operational signals. Gateway and sequencer downtime affect liveness. Contract administration and upgrades remain powerful trust assumptions in the experimental deployment.
+
+See [Getting Started](./getting-started.md) for the deployment runbooks and [Security Model](../architecture/security-model.md) for limitations.

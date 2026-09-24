@@ -1,27 +1,23 @@
 # Why Zeko?
 
-_Zeko is a next-generation zero-knowledge (ZK) infrastructure designed to power scalable, private, and interoperable blockchain applications. Built from the ground up as Layer 2 on top of the Mina Protocol, Zeko combines the privacy-preserving capabilities of zk-SNARKs with a modular and developer-friendly design._
+Zeko combines an application model built around zero-knowledge proofs with Ethereum settlement.
 
-## Key Benefits
+## Prove application logic off-chain
 
-Zeko is _Zero-Knowledge Native_, meaning its architecture is inherently private by design. Leveraging zk-SNARKs and `o1js`, it allows developers to build applications with encrypted logic and data confidentiality. This supports **confidential computation**, like private smart contract execution and compliance reporting.
+Developers write zkApps with [o1js](https://docs.o1labs.org/o1js/), a TypeScript library for zero-knowledge programs and smart contracts. Applications can prove a computation's result without publishing its private inputs. Privacy depends on the application's design: public balances, bridge transfers, and on-chain account updates are not automatically confidential.
 
-In terms of _Scalability and Performance_, Zeko offloads computation off-chain, significantly reducing costs and latency. Its recursive proof system and modular **zkAppChains** architecture support both general-purpose and app-specific rollups, enabling high throughput without sacrificing privacy or decentralization.
+## Aggregate verification
 
-Zeko’s _Cross-Chain Interoperability_ is a defining feature. Designed with cross-chain compatibility from the outset, Zeko **proofs can be verified** on other major ecosystems such as the Ethereum Virtual Machine (EVM), allowing developers to extend zero-knowledge functionality beyond the limitations of single-chain solutions.
+The sequencer batches L2 transactions, and recursive proofs establish the batch's validity. SP1 verifies the Zeko proof for Ethereum settlement. This separates application execution from the work Ethereum needs to verify an accepted state transition.
 
-By inheriting _Mina’s succinct, decentralized architecture_, Zeko also benefits from a **lightweight** and energy-efficient infrastructure, making it ideal for sustainable scaling.
+Fast L2 inclusion and Ethereum finality are different milestones. A transaction can appear in the Zeko explorer before its batch settles on Ethereum.
 
-Zeko further distinguishes itself with a _Developer-Friendly Stack_. With [o1js](https://docs.o1labs.org/o1js/), developers can use **Typescript** to develop smart-contracts and enjoy a low learning curve, supported by prebuilt SDKs, templates, and customizable ZKPs. This streamlines development for a wide range of use cases, including AI, DeFi, NFTs, identity, and gaming.
+## Connect to Ethereum assets
 
-## Core Use Cases & Applications
+The Ethereum bridge supports native ETH and registered ERC-20 assets. Users connect an Ethereum wallet for deposits and claims, and a Zeko wallet for L2 signatures. The Zeko Snap brings that L2 account into MetaMask where the deployment supports it.
 
-In _Decentralized Finance (DeFi)_, Zeko enables **private credit systems** that verify borrower credentials without revealing sensitive financial data. It powers fast, cost-efficient, and confidential **global payments** via zkRollups and supports scalable, private tokenized **RWAs**. It also allows institutions to submit regulatory **compliance proofs** without disclosing user data.
+## Build with the zkApp ecosystem
 
-For _AI and Verifiable Computation_, Zeko provides mechanisms for verifiable model execution without exposing internal logic. It facilitates **federated learning** with built-in privacy for training models, and enables secure querying of **private knowledge bases** by AI agents. Zeko also enables **Decentralized AI agents**, who can execute off-chain logic with cryptographic proof of correctness.
+Zeko preserves its Mina-derived account and proof model, so o1js concepts such as `SmartContract`, `AccountUpdate`, and recursive `ZkProgram` proofs remain relevant. Developers can apply these tools to identity, verifiable computation, private application inputs, and programmable asset flows.
 
-In _Gaming and NFTs_, Zeko’s zkRollups infrastructure supports scalable, **low-latency** gameplay and **private in-game transactions**, while **zkProofs** enable fair play verification.
-
-For _Identity and Governance_, Zeko enables **ZK-based identity verification**, such as proving age or citizenship without revealing personally identifiable information. **Governance** is handled via the upcoming `$ZEKO` token, which supports protocol upgrades, sequencer elections, and gas configuration.
-
-Finally, Zeko’s support for both _zkApp Chains and modular infrastructure_ means developers can build **custom L2s and L3s** optimized for specific application needs—balancing privacy, scalability, and user experience.
+The current Ethereum deployment is experimental. Its permissioned operation and committee DA have explicit [security assumptions](../architecture/security-model.md); production blob DA is still under development.

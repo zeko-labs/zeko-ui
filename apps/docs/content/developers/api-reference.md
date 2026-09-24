@@ -1,21 +1,25 @@
 # API Reference
 
-Zeko uses the Mina developer stack, with Zeko-specific packages for bridge and faucet workflows.
-Use this page as the stable index for API surfaces that are maintained outside the prose guides.
+Zeko combines a zkApp execution API with Ethereum settlement and bridge APIs.
 
-## Zeko Packages
+## Ethereum bridge and explorer
 
-- [Bridge SDK](./tools/bridge-sdk.md) - programmatic deposit, withdrawal, status, and claim flows for applications and automation.
-- [Bridge CLI](./tools/bridge-cli.md) - command-line bridge operations built on the SDK.
-- [Faucet CLI](./tools/faucet-cli.md) - testnet faucet administration and funding workflows.
-- [Agent Skills](./tools/agent-skills.md) - agent-facing workflow instructions for bridge, faucet, endpoint, and GraphQL usage.
+The Ethereum integration's [gateway reference](https://github.com/zeko-labs/ethereum-settlement/blob/main/docs/content/gateway/api.md) documents public deposit, withdrawal, and registry views. Its [explorer reference](https://github.com/zeko-labs/ethereum-settlement/blob/main/docs/content/explorer.md) documents L2 and settlement views. `@zeko-labs/eth-bridge-sdk` is the Ethereum bridge client; it composes the base Bridge SDK's Zeko transaction and witness logic with Ethereum custody operations.
 
-## Mina And zkApp APIs
+The deployment's bridge configuration supplies the gateway, sequencer, archive, and Actions endpoints. Operator proof-approval routes and their credentials must remain server-side.
 
-- [o1js API Reference](https://docs.o1labs.org/o1js/api-reference/Introduction) - complete API reference for the TypeScript framework used to build zkApps on Mina and Zeko.
-- [o1js documentation](https://docs.o1labs.org/o1js/) - guides for writing zkApps, zkPrograms, proofs, and account updates.
+## Zeko execution APIs
 
-## Network Interfaces
+- [o1js API reference](https://docs.o1labs.org/o1js/api-reference/Introduction): zkApps, proofs, account updates, and transaction construction.
+- Sequencer GraphQL: live L2 state and transaction submission.
+- Archive GraphQL: indexed L2 transaction history.
+- Actions API: bridge actions, witnesses, and canonical asset mappings.
 
-- [Custom Network](./guides/custom-network.md) - wallet network metadata for adding and switching Zeko networks.
-- [Examples & Boilerplates](./examples-boilerplates.md) - example applications and integration patterns.
+The Mina-derived API names and schemas remain compatibility interfaces. `Mina`, `sendZkapp`, and related identifiers in executable examples are not statements that Mina is the settlement chain.
+
+## Existing package references
+
+- [Base Bridge SDK](./tools/bridge-sdk.md): shared Zeko bridge primitives, with legacy Mina L1 examples clearly scoped.
+- [Legacy Bridge CLI](./tools/bridge-cli.md): Mina-backed bridge operations.
+- [Legacy Faucet CLI](./tools/faucet-cli.md): funding for the documented Mina-backed network.
+- [Agent Skills](./tools/agent-skills.md): installable workflow guidance, with deployment assumptions to check before use.

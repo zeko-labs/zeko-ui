@@ -1,25 +1,21 @@
-# Sending Tokens
+# Sending Tokens on Zeko
 
-Zeko wallets use familiar Mina-style accounts. Before sending tokens, confirm that your wallet is connected to the intended Zeko network and that the recipient address is correct.
+A Zeko transfer stays on L2. To move funds to an Ethereum address, use the [withdrawal flow](./zeko-bridge.md#withdraw-from-zeko-to-ethereum).
 
-## Before You Send
+## Native ETH transfers
 
-- Use a wallet that supports Zeko, such as Auro Wallet.
-- Check that the wallet network matches the dapp or explorer you are using.
-- Keep enough MINA or tMINA in the account to cover the transfer and transaction fee.
-- Send a small amount first when using a new address or network.
+1. Open the wallet view supplied by the Ethereum bridge, or the Zeko Snap home page.
+2. Check that the selected network is your Ethereum-backed Zeko deployment.
+3. Enter the recipient's Zeko `B62...` address and the ETH amount.
+4. Review the amount, fee, and recipient in the wallet confirmation, then sign.
+5. Follow the transaction link in the [Zeko explorer](./zekoscan-explorer.md).
 
-## Send From A Wallet
+Your Ethereum `0x...` account and Zeko `B62...` account are different addresses. Native ETH on Zeko uses nine decimal places. Leave enough balance for the displayed fee and any account-creation cost.
 
-1. Open your wallet and select the Zeko network.
-2. Choose the account that holds the tokens.
-3. Enter the recipient Mina address.
-4. Enter the amount and review the fee.
-5. Confirm the transaction in the wallet.
-6. Track the transaction in [Zekoscan](./zekoscan-explorer.md).
+## Token transfers
 
-Transactions are final only after the network has included and processed them. If the wallet shows a pending transaction, wait for the explorer state to catch up before sending another transfer from the same account.
+The bridge wallet view also supports standard MFT token transfers on Zeko. The application constructs and proves the token transaction, then asks the wallet to sign it. The first transfer can take longer while the token contract compiles.
 
-## Moving Tokens Between Mina And Zeko
+Where the wallet lacks trusted decimal metadata, it displays and accepts exact token base units. Follow the displayed unit rather than assuming it matches an ERC-20's Ethereum decimals. Only registry-mapped tokens are eligible for the Ethereum bridge.
 
-Use the [Zeko Bridge](./zeko-bridge.md) when the source and destination are on different layers. A normal wallet transfer only moves tokens within the currently selected network.
+A transfer visible on L2 may still be awaiting Ethereum settlement. Check the relevant transaction and settlement views when finality matters.

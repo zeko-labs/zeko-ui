@@ -1,6 +1,6 @@
 # Agent Skills
 
-Zeko publishes a public agent skill for assistants that need to help users actually use Zeko.
+Zeko publishes an installable skill for assistants working with its tools and execution stack.
 
 ## Install
 
@@ -10,31 +10,23 @@ Install the public skill from [skills.sh](https://skills.sh/) with the `skills` 
 npx skills add https://github.com/zeko-labs/zeko-skills --skill zeko
 ```
 
-This installs the `zeko` skill.
+## Select the right deployment
 
-## What The Skill Covers
+Tell the assistant whether you are working with the Ethereum-backed Zeko deployment or a legacy Mina-backed network. Existing skill resources include Bridge CLI, faucet, and network-preset examples for the legacy deployment; those commands must not be repurposed for ETH by changing labels.
 
-The skill is designed for real Zeko user and builder workflows:
+For Ethereum bridging, use the deployment's Ethereum bridge and `@zeko-labs/eth-bridge-sdk` integration. Preserve `Mina` API names, signing domains, address formats, and other compatibility identifiers when working with the zkApp stack.
 
-- bridge flows with Bridge CLI or Bridge SDK
-- faucet flows and testnet funding
-- endpoint discovery for Zeko, Mina gateways, and archive access
-- GraphQL and `curl` examples for network inspection and native transfers
-- sequencer, archive-node, and DA-layer orientation
-- zkApp development on Zeko with `o1js` or OCaml
+## Example uses
 
-## Example Uses
+- Explain Ethereum deposits, Zeko synchronization, and withdrawal claims.
+- Find the sequencer, archive, Actions API, and gateway endpoints in this deployment's configuration.
+- Distinguish L2 inclusion from Ethereum settlement in explorer data.
+- Build a Zeko zkApp with o1js.
+- Identify which commands in an older example are specific to a Mina-backed network.
 
-- How do I get tMINA on <NetworkLabel network="zeko-m:testnet" />?
-- `Bridge 2 MINA from Mina to Zeko using the Bridge CLI.`
-- `Which endpoints should I use for live data and archive data?`
-- `Show me a curl example to send 1.25 MINA from one address to another.`
-- `Explain the sequencer, archive node, and DA layer on Zeko.`
+## Related docs
 
-## Related Docs
-
-- [Public Zeko skill repo](https://github.com/zeko-labs/zeko-skills)
+- [Public Zeko skill repository](https://github.com/zeko-labs/zeko-skills)
 - [skills.sh CLI docs](https://skills.sh/docs/cli)
-- [Bridge CLI](https://docs.zeko.io/developers/tools/bridge-cli)
-- [Bridge SDK](https://docs.zeko.io/developers/tools/bridge-sdk)
-- [Faucet CLI](https://docs.zeko.io/developers/tools/faucet-cli)
+- [Developer Getting Started](../getting-started.md)
+- [API Reference](../api-reference.md)
