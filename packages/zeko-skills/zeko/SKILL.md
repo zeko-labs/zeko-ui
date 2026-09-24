@@ -32,7 +32,7 @@ metadata:
 
 Use this skill when the user wants to use Zeko, inspect the network, bridge assets, get faucet funds, or build on Zeko.
 
-Zeko is an Ethereum-settled rollup. Use the current [bridge guide](https://docs.zeko.io/users/guides/using-zeko-bridge) and `@zeko-labs/eth-bridge-sdk` for ETH and ERC-20 flows. MetaMask signs Ethereum transactions; the Zeko Snap manages the separate B62 Zeko account. Development Snap installs may require MetaMask Flask until distribution is approved.
+Zeko is an Ethereum-settled rollup. Use the current [bridge guide](https://docs.zeko.io/users/guides/zeko-bridge) and `@zeko-labs/eth-bridge-sdk` for ETH and ERC-20 flows. MetaMask signs Ethereum transactions; the Zeko Snap manages the separate B62 Zeko account. Development Snap installs may require MetaMask Flask until distribution is approved.
 
 The Bridge CLI, faucet, Mina endpoints, and Zeko-M commands retained in this bundle are **legacy Mina-backed workflows**. Use them only when the user explicitly targets those networks; do not treat them as Ethereum bridge commands or relabel MINA as ETH.
 
@@ -46,7 +46,7 @@ Defaults:
 - Use the public docs pages behind `https://docs.zeko.io` through the targeted references below.
 - Resolve Ethereum and Zeko endpoints from the selected deployment configuration. The Mina and Zeko-M endpoints in `references/40-endpoints-and-curl.md` are legacy examples.
 - Use the live node for current chain config and the archive node for historical actions and events.
-- For bridge debugging, distinguish chain visibility, pending inclusion, and canonical finality; do not treat canonical finality as the default requirement for seeing or finalizing a bridge result.
+- Distinguish L2 action visibility, pending inclusion, and canonical finality. Preserve pending-row visibility where the selected bridge workflow supports it; Ethereum deposits must still satisfy the gateway requirement for finalized Ethereum logs before bridge processing.
 
 Load only what you need:
 

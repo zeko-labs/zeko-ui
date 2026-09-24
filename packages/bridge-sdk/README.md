@@ -4,7 +4,7 @@ This package is developed in the private `zeko-ui` monorepo and mirrored here fo
 
 TypeScript SDK for Zeko bridge transactions, witnesses, and proof requests. For Ethereum deposits and withdrawals, use `@zeko-labs/eth-bridge-sdk`, which builds on this package.
 
-The `Bridge.init` example and Mina L1 workflows below describe the legacy Mina-backed bridge. See the [current Ethereum bridge guide](https://docs.zeko.io/users/guides/using-zeko-bridge) for ETH and ERC-20 flows.
+The `Bridge.init` example and Mina L1 workflows below describe the legacy Mina-backed bridge. See the [current Ethereum bridge guide](https://docs.zeko.io/users/guides/zeko-bridge) for ETH and ERC-20 flows.
 
 ## Installation
 

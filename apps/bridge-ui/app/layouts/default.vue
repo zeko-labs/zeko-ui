@@ -13,7 +13,7 @@
       <div>
         <p class="LegacyNotice">
           Legacy Mina bridge. For Ethereum and Zeko, see the
-          <a href="https://docs.zeko.io/users/guides/using-zeko-bridge">current
+          <a href="https://docs.zeko.io/users/guides/zeko-bridge">current
             bridge guide</a>.
         </p>
         <slot />

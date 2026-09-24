@@ -4,9 +4,9 @@ Use this file when the user is trying to do something on Zeko, not build infrast
 
 ## Start here
 
-- Wallet and network basics: `https://docs.zeko.io/users/guides/getting-started`
-- App connection flow: `https://docs.zeko.io/users/guides/interacting-with-a-dapp`
-- Bridging flow: `https://docs.zeko.io/users/guides/using-zeko-bridge`
+- Wallet and network basics: `https://docs.zeko.io/users/getting-started`
+- App connection flow: `https://docs.zeko.io/users/guides/dapp`
+- Bridging flow: `https://docs.zeko.io/users/guides/zeko-bridge`
 - Sending tokens: `https://docs.zeko.io/users/guides/sending-tokens`
 
 ## Agent interpretation

@@ -5,7 +5,7 @@ Use this file when the user asks how Zeko works or which endpoint role matters f
 ## Official docs
 
 - Core concepts: `https://docs.zeko.io/architecture/zeko-core-concepts`
-- Sequencer guide: `https://docs.zeko.io/operators/guides/sequencer`
+- Sequencer guide: `https://docs.zeko.io/operators/getting-started`
 - DA layer guide: `https://docs.zeko.io/operators/guides/da-layer`
 
 ## Sequencer
