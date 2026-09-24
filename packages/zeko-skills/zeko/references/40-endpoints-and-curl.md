@@ -1,6 +1,6 @@
 # Endpoints And Curl
 
-> **Legacy network examples:** The Mina and Zeko-M endpoints, faucet and Bridge CLI commands in this reference target the earlier Mina-backed deployment. For Ethereum-backed Zeko, start with the [current bridge guide](https://docs.zeko.io/users/guides/using-zeko-bridge) and use the selected deployment configuration. Keep `o1js` API names and B62 key formats unchanged.
+> **Legacy network examples:** The Mina and Zeko-M endpoints, faucet and Bridge CLI commands in this reference target the earlier Mina-backed deployment. For Ethereum-backed Zeko, start with the [current bridge guide](https://docs.zeko.io/users/guides/zeko-bridge) and use the selected deployment configuration. Keep `o1js` API names and B62 key formats unchanged.
 
 Use this file when you need exact public endpoints, Bridge SDK config values, or directly runnable queries.
 

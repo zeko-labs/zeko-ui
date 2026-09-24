@@ -19,7 +19,7 @@ Use this file first for practical agent behavior.
 ## Operational defaults
 
 - Start with the smallest matching public docs page, not `llms-full.txt`.
-- Start Ethereum bridge work with `https://docs.zeko.io/users/guides/using-zeko-bridge`; use the Ethereum bridge SDK for programmatic flows.
+- Start Ethereum bridge work with `https://docs.zeko.io/users/guides/zeko-bridge`; use the Ethereum bridge SDK for programmatic flows.
 - Use `https://docs.zeko.io/developers/tools/bridge-cli` and gateway-backed Mina endpoints only for explicitly requested legacy routes.
 - Use the live Zeko GraphQL endpoint for current config and the archive endpoint for history.
 - Use `references/40-endpoints-and-curl.md` when you need something directly runnable.
