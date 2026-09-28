@@ -488,3 +488,4 @@
 - T502 | done | ethereum-product-documentation | done/T502-ethereum-product-documentation.md
 - T503 | done | ethereum-facing-app-copy | done/T503-ethereum-facing-app-copy.md
 - T504 | done | correct-ethereum-guide-links | done/T504-correct-ethereum-guide-links.md
+- T505 | done | replace-retired-zeko-skills-networks-with-sepolia | done/T505-replace-retired-zeko-skills-networks-with-sepolia.md

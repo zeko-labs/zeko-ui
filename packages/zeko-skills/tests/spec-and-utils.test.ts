@@ -19,9 +19,40 @@ describe("zeko-skills spec and utils", () => {
 		expect(forbiddenMarkdownPatterns[2]?.test("/Users/example/project")).toBe(true)
 	})
 
-	it("skips the currently unavailable mainnet and testnet GraphQL endpoints", () => {
+	it("configures endpoint validation only for retained Sepolia services", () => {
+		expect(
+			endpointChecks.map(({ name, documentedUrl, deployedSources }) => ({
+				name,
+				documentedUrl,
+				deployedSources
+			}))
+		).toEqual([
+			{
+				name: "zeko sepolia graphql",
+				documentedUrl: "https://sepolia-gateway.zeko.io/graphql",
+				deployedSources: ["northflank/actions-indexer/project.json"]
+			},
+			{
+				name: "zeko sepolia archive graphql",
+				documentedUrl: "https://archive.sepolia.zeko.io/graphql",
+				deployedSources: ["northflank/actions-indexer/project.json"]
+			},
+			{
+				name: "sepolia actions api",
+				documentedUrl: "https://sepolia.api.actions.zeko.io/graphql",
+				deployedSources: ["services/actions/api/wrangler.jsonc"]
+			}
+		])
+	})
+
+	it("skips the currently unavailable legacy mainnet and testnet GraphQL endpoints", () => {
 		expect(skippedExternalLinkChecks.has("https://mainnet.zeko.io/graphql")).toBe(true)
+		expect(skippedExternalLinkChecks.has("https://api.actions.zeko.io/graphql")).toBe(true)
+		expect(skippedExternalLinkChecks.has("https://api.faucet.zeko.io/claim")).toBe(true)
 		expect(skippedExternalLinkChecks.has("https://testnet.zeko.io/graphql")).toBe(true)
+		expect(skippedExternalLinkChecks.has("https://archive.testnet.zeko.io/graphql")).toBe(true)
+		expect(skippedExternalLinkChecks.has("https://bridge.zeko.io")).toBe(true)
+		expect(skippedExternalLinkChecks.has("https://faucet.zeko.io")).toBe(true)
 	})
 
 	it("matches absolute skill paths against repo-relative suffixes", () => {
@@ -60,66 +91,21 @@ describe("zeko-skills spec and utils", () => {
 		).toBe(false)
 	})
 
-	it("tracks Mina gateway documentation against deployed routes only", () => {
-		const minaGatewayChecks = endpointChecks.filter((check) => check.name.includes("mina gateway"))
-		const minaArchiveGatewayChecks = endpointChecks.filter((check) =>
-			check.name.includes("mina archive gateway")
-		)
-
-		expect(minaGatewayChecks).toEqual([
-			expect.objectContaining({
-				name: "mina gateway devnet",
-				documentedUrl: "https://gateway.mina.devnet.zeko.io",
-				documentedSources: [
-					"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-					"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
-				],
-				deployedSources: ["services/mina-proxy-devnet/wrangler.jsonc"]
-			}),
-			expect.objectContaining({
-				name: "mina gateway mainnet",
-				documentedUrl: "https://gateway.mina.mainnet.zeko.io",
-				documentedSources: [
-					"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-					"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
-				],
-				deployedSources: ["services/mina-proxy-mainnet/wrangler.jsonc"]
-			})
-		])
-
-		expect(minaArchiveGatewayChecks).toEqual([
-			expect.objectContaining({
-				name: "mina archive gateway devnet",
-				documentedUrl: "https://gateway.mina.archive.devnet.zeko.io",
-				documentedSources: [
-					"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-					"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
-				],
-				deployedSources: ["services/mina-archive-proxy-devnet/wrangler.jsonc"]
-			}),
-			expect.objectContaining({
-				name: "mina archive gateway mainnet",
-				documentedUrl: "https://gateway.mina.archive.mainnet.zeko.io",
-				documentedSources: [
-					"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-					"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
-				],
-				deployedSources: ["services/mina-archive-proxy-mainnet/wrangler.jsonc"]
-			})
-		])
-
+	it("tracks Sepolia endpoints against their current deployment configuration", () => {
 		const checkedSources = endpointChecks.flatMap((check) => [
 			...check.documentedSources,
 			...(check.deployedSources ?? [])
 		])
+
+		expect(checkedSources).toContain("northflank/actions-indexer/project.json")
+		expect(checkedSources).toContain("services/actions/api/wrangler.jsonc")
 		expect(
 			checkedSources.every(
 				(source) =>
 					source.startsWith("packages/zeko-skills/zeko/references/") ||
-					source.endsWith("/wrangler.jsonc")
+					source === "northflank/actions-indexer/project.json" ||
+					source === "services/actions/api/wrangler.jsonc"
 			)
 		).toBe(true)
-		expect(checkedSources.some((source) => source.endsWith("moon.yml"))).toBe(false)
-		expect(checkedSources.some((source) => source.includes("/machines/"))).toBe(false)
 	})
 })

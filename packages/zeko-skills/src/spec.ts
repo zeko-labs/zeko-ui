@@ -41,79 +41,22 @@ export type EndpointCheck = {
 
 export const endpointChecks: EndpointCheck[] = [
 	{
-		name: "zeko testnet graphql",
-		documentedUrl: "https://testnet.zeko.io/graphql",
-		documentedSources: [
-			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md",
-			"packages/zeko-skills/zeko/references/50-build-on-zeko.md"
-		]
+		name: "zeko sepolia graphql",
+		documentedUrl: "https://sepolia-gateway.zeko.io/graphql",
+		documentedSources: ["packages/zeko-skills/zeko/references/40-endpoints-and-curl.md"],
+		deployedSources: ["northflank/actions-indexer/project.json"]
 	},
 	{
-		name: "zeko archive graphql",
-		documentedUrl: "https://archive.testnet.zeko.io/graphql",
-		documentedSources: [
-			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md",
-			"packages/zeko-skills/zeko/references/50-build-on-zeko.md"
-		]
+		name: "zeko sepolia archive graphql",
+		documentedUrl: "https://archive.sepolia.zeko.io/graphql",
+		documentedSources: ["packages/zeko-skills/zeko/references/40-endpoints-and-curl.md"],
+		deployedSources: ["northflank/actions-indexer/project.json"]
 	},
 	{
-		name: "mina gateway devnet",
-		documentedUrl: "https://gateway.mina.devnet.zeko.io",
-		documentedSources: [
-			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
-		],
-		deployedSources: ["services/mina-proxy-devnet/wrangler.jsonc"]
-	},
-	{
-		name: "mina gateway mainnet",
-		documentedUrl: "https://gateway.mina.mainnet.zeko.io",
-		documentedSources: [
-			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
-		],
-		deployedSources: ["services/mina-proxy-mainnet/wrangler.jsonc"]
-	},
-	{
-		name: "mina archive gateway devnet",
-		documentedUrl: "https://gateway.mina.archive.devnet.zeko.io",
-		documentedSources: [
-			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
-		],
-		deployedSources: ["services/mina-archive-proxy-devnet/wrangler.jsonc"]
-	},
-	{
-		name: "mina archive gateway mainnet",
-		documentedUrl: "https://gateway.mina.archive.mainnet.zeko.io",
-		documentedSources: [
-			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
-		],
-		deployedSources: ["services/mina-archive-proxy-mainnet/wrangler.jsonc"]
-	},
-	{
-		name: "testnet actions api",
-		documentedUrl: "https://testnet.api.actions.zeko.io/graphql",
-		documentedSources: [
-			"packages/zeko-skills/zeko/references/40-endpoints-and-curl.md",
-			"packages/zeko-skills/zeko/references/30-bridge-and-faucet.md"
-		],
-		deployedSources: ["services/actions/api/wrangler.jsonc"]
-	},
-	{
-		name: "mainnet actions api",
-		documentedUrl: "https://api.actions.zeko.io/graphql",
+		name: "sepolia actions api",
+		documentedUrl: "https://sepolia.api.actions.zeko.io/graphql",
 		documentedSources: ["packages/zeko-skills/zeko/references/40-endpoints-and-curl.md"],
 		deployedSources: ["services/actions/api/wrangler.jsonc"]
-	},
-	{
-		name: "faucet claim api",
-		documentedUrl: "https://api.faucet.zeko.io/claim",
-		documentedSources: ["packages/zeko-skills/zeko/references/40-endpoints-and-curl.md"],
-		deployedSources: ["apps/faucet/wrangler.jsonc"]
 	}
 ] as const
 
@@ -124,12 +67,18 @@ export const forbiddenMarkdownPatterns = [
 ]
 export const skippedExternalLinkChecks = new Set<string>([
 	"https://testnet.api.actions.zeko.io/graphql",
+	"https://api.actions.zeko.io/graphql",
+	"https://api.faucet.zeko.io/claim",
 	"https://testnet.zeko.io/graphql",
+	"https://archive.testnet.zeko.io/graphql",
 	"https://testnet.bridge.zeko.io",
+	"https://bridge.zeko.io",
+	"https://faucet.zeko.io",
 	"https://gateway.mina.devnet.zeko.io",
 	"https://gateway.mina.archive.devnet.zeko.io",
 	"https://gateway.mina.mainnet.zeko.io",
 	"https://gateway.mina.archive.mainnet.zeko.io",
+	"https://archive.mainnet.zeko.io/graphql",
 	"https://mainnet.zeko.io/graphql"
 ])
 
