@@ -23,6 +23,8 @@ jobs:
           fetch-depth: 0
 
       - name: Install D2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           curl -fsSL https://d2lang.com/install.sh | sh -s --
 
