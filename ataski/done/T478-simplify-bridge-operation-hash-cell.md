@@ -7,6 +7,7 @@ owner: pi
 created_at: 2026-07-20T10:34:12Z
 updated_at: 2026-07-20T10:36:00Z
 ---
+
 ## Requirements
 
 - Address review feedback in `apps/bridge-ui/app/components/BridgeOperations.vue`.

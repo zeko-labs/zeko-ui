@@ -7,6 +7,7 @@ owner: pi
 created_at: 2026-07-17T00:00:00Z
 updated_at: 2026-07-17T12:32:00Z
 ---
+
 ## Requirements
 
 - Bugfix: after a claim/finalize transaction has already been submitted and is pending, refreshing/opening another tab must not produce another claim prompt for the same operation.

@@ -7,6 +7,7 @@ owner: docs_agent
 created_at: 2026-09-24T13:58:01Z
 updated_at: 2026-09-24T14:12:47Z
 ---
+
 ## Requirements
 
 Update apps/docs public site content and navigation for Zeko as an Ethereum rollup. Rewrite current introductory, user, developer, architecture and operator product explanations to reflect Ethereum settlement, ETH and ERC-20 bridging, MetaMask with the Zeko Snap, and Zeko L2 addresses. Preserve accurate Mina-derived proof/transaction technical references and executable API/CLI identifiers. Clearly identify legacy Mina network operations rather than relabeling real Mina routes as Ethereum. Audit published agent-skill docs only if needed for consistent product descriptions, preserving existing executable commands. Do not change internal identifiers, network endpoints or protocol behavior. Own apps/docs/ only initially; report other needed docs changes to coordinator.

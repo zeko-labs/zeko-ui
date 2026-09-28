@@ -30,8 +30,7 @@ const pointsBreakdown = [
         <p class="Description">
           These sprints use the legacy Zeko-M network and MINA. For the current
           Ethereum-backed Zeko network, follow the
-          <a
-            href="https://docs.zeko.io/users/getting-started">getting-started
+          <a href="https://docs.zeko.io/users/getting-started">getting-started
             guide</a>.
         </p>
       </div>

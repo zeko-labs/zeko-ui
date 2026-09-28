@@ -7,6 +7,7 @@ owner: codex
 created_at: 2026-09-09T10:10:00Z
 updated_at: 2026-09-09T10:30:00Z
 ---
+
 ## Requirements
 
 - Prevent `zeko-skills:check` from failing on the currently unavailable `https://mainnet.zeko.io/graphql` endpoint returning HTTP 502.

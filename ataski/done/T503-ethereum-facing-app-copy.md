@@ -7,6 +7,7 @@ owner: root
 created_at: 2026-09-24T13:58:01Z
 updated_at: 2026-09-24T14:07:02Z
 ---
+
 ## Requirements
 
 Audit remaining zeko-ui user-facing app surfaces, SDK/CLI help and docs, and distinguish actual legacy Mina routes from Ethereum surfaces. Update Ethereum-facing presentation, remove stale product positioning, mark legacy UI clearly without changing route semantics or variables. Preserve genuine Mina token labels on legacy networks. Do not rename packages, methods, environment names or generated schemas. Own non-apps/docs paths; no source internals changes.

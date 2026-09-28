@@ -7,6 +7,7 @@ owner: codex
 created_at: 2026-09-09T09:35:00Z
 updated_at: 2026-09-09T09:55:00Z
 ---
+
 ## Requirements
 
 - Make `apps/actions-dashboard:typecheck` resolve the Node built-in imports used by `apps/actions-dashboard/nuxt.config.ts`.
