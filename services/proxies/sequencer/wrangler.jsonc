@@ -1,0 +1,43 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "sequencer-proxy",
+	"compatibility_date": "2025-10-21",
+	"main": "src/index.ts",
+	"preview_urls": true,
+	"vars": {
+		"SPAM_THRESHOLD": "12",
+		"SPAM_WINDOW_SECONDS": "3600",
+		"BAN_TTL_SECONDS": "86400"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "SEQUENCER_SHADOW_BANNED_IPS",
+			"id": "foo",
+			"remote": true
+		},
+		{
+			"binding": "SEQUENCER_IP_SPAM",
+			"id": "bar",
+			"remote": true
+		}
+	],
+	"ratelimits": [
+		{
+			"name": "SEQUENCER_RATE_LIMIT",
+			"namespace_id": "101",
+			"simple": {
+				"limit": 3,
+				"period": 60
+			}
+		}
+	],
+	"routes": [
+		{
+			"pattern": "gateway.zeko.testnet.zeko.io",
+			"custom_domain": true
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
+}

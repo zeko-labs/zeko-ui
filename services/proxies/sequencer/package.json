@@ -1,0 +1,7 @@
+{
+	"name": "@zeko/sequencer-proxy",
+	"private": true,
+	"devDependencies": {
+		"wrangler": "catalog:"
+	}
+}
