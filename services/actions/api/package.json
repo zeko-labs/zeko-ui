@@ -9,6 +9,9 @@
 		".": "./dist/module.js",
 		"./package.json": "./package.json"
 	},
+	"scripts": {
+		"standalone": "node dist/standalone.js"
+	},
 	"dependencies": {
 		"@pothos/core": "catalog:graphql",
 		"@urql/core": "catalog:graphql",

@@ -28,6 +28,14 @@ tasks:
       - "@group(sources)"
     outputs:
       - dist/**
+  start-standalone:
+    description: Run the API as a standalone Node.js server (DATABASE_URL required; PORT defaults to 9100).
+    deps:
+      - build
+    command: node dist/standalone.js
+    preset: server
+    options:
+      envFile: true
   unit:
     command: vitest
     args:

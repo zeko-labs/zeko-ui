@@ -19,6 +19,14 @@
           ];
         };
       in {
+        # x86_64-linux Docker images for the standalone Actions API and the
+        # Actions Indexer (nix/docker.nix). `source = ./.` hands the whole
+        # checkout to nix/docker.nix, which filters it down to the pnpm
+        # workspace inputs before any derivation sees it.
+        packages = nixpkgs.lib.optionalAttrs (system == "x86_64-linux") (
+          pkgs.callPackage ./nix/docker.nix { source = ./.; }
+        );
+
         devShells.default = pkgs.mkShell {
           packages = [ pkgs.nodejs pkgs.pnpm pkgs.dprint pkgs.lefthook ];
 

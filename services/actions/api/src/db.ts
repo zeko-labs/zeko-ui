@@ -25,10 +25,14 @@ const formatDatabaseError = (error: unknown): string => {
 	return `${error.message} | cause: ${causeText}`
 }
 
+// The direct DATABASE_URL client serves local development and the standalone
+// Node process (src/standalone.ts), which has no Hyperdrive bindings. Deployed
+// Workers keep using their Hyperdrive bindings.
 const initializeDrizzle = ({ cache, env }: { cache: boolean; env: Env }) => {
-	const isLocal = env.ENVIRONMENT === "local"
 	const hyperdrive = cache ? env.HYPERDRIVE : env.HYPERDRIVE_NO_CACHE
-	const client = isLocal
+	const useDirectConnection =
+		env.ENVIRONMENT === "local" || (Boolean(env.DATABASE_URL) && !hyperdrive)
+	const client = useDirectConnection
 		? postgres(env.DATABASE_URL, {
 				max: 5,
 				fetch_types: false
