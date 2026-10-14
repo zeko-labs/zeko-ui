@@ -127,7 +127,11 @@ export default defineConfig({
 					{ text: "Getting Started", link: "/operators/getting-started" },
 					{
 						text: "Guides & Tutorials",
-						link: "/operators/guides-tutorials"
+						link: "/operators/guides-tutorials",
+						collapsed: true,
+						items: [
+							{ text: "Launch a Zeko Rollup on Sepolia", link: "/operators/guides/launch-sepolia-rollup" }
+						]
 					},
 					{ text: "Concepts for Operators", link: "/operators/concepts-for-operators" }
 				]
