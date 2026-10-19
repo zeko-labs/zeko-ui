@@ -1,16 +1,14 @@
 # Launch an Independent Rollup on Ethereum Sepolia
 
 ::: warning Independent, operator-owned rollup
-This runbook launches a **fresh** Zeko L2 that settles on Ethereum Sepolia. Every key, contract, genesis ledger and configuration file is created by you and belongs to your rollup. It does not connect to, and is not operated by, the Zeko-run network. For the older Mina-backed stack, use the unchanged [Legacy: Launch a Mina-backed Rollup](./launch-rollup.md) guide instead.
+This runbook launches a **fresh** Zeko L2 that settles on Ethereum Sepolia. Every key, contract, genesis ledger and configuration file is created by you and belongs to your rollup. It does not connect to, and is not operated by, the Zeko-run network. For the Mina-backed stack, use [Legacy: Launch a Mina-backed Rollup](./launch-rollup.md).
 :::
 
-In this guide we create an independent Zeko rollup on Sepolia. The rollup posts settlement proofs through a **gateway** that speaks the Mina-compatible GraphQL the sequencer expects and submits SP1 proofs to the `ZekoSettlement` and `EthereumZekoBridge` contracts you deploy.
+The rollup posts settlement proofs through a **gateway** that speaks the Mina-compatible GraphQL the sequencer expects and submits SP1 proofs to the `ZekoSettlement` and `EthereumZekoBridge` contracts you deploy.
 
-At a minimum you run: `Sequencer`, `Sequencer signer`, `Prover`, one `DA node` (quorum 1) with its `DA signer`, the `Gateway` (Ethereum settlement, bridge and Mina-compatible L1 façade), `Archive`, `Archive relay`, `Archive node API`, `Actions API`, `Actions indexer`, `Bridge UI`, `Explorer UI`, `PostgreSQL` and `RabbitMQ`. The [service configuration table](#service-configuration) lists the image of each.
+You run: `Sequencer`, `Sequencer signer`, `Prover`, one `DA node` (quorum 1) with its `DA signer`, the `Gateway` (Ethereum settlement, bridge and Mina-compatible L1 façade), `Archive`, `Archive relay`, `Archive node API`, `Actions API`, `Actions indexer`, `Bridge UI`, `Explorer UI`, `PostgreSQL` and `RabbitMQ`. The [service configuration table](#service-configuration) lists the image of each.
 
-We use [docker compose](https://docs.docker.com/reference/cli/docker/compose/) to define the whole stack in a single file. One-time preparation steps live in the same file under the `bootstrap` profile.
-
-TL;DR skip to the [Bootstrap process](#bootstrap-process)
+The whole stack is one [docker compose](https://docs.docker.com/reference/cli/docker/compose/) file; one-time preparation steps live in the same file under the `bootstrap` profile. Skip to the [Bootstrap process](#bootstrap-process) if you only want the commands.
 
 ::: danger `docker compose down -v` erases your rollup
 The named volumes hold the DA database, the sequencer ledger, PostgreSQL and the prover state. Removing them deletes state that cannot be regenerated. Never run `docker compose down -v` without a backup; see [Stopping the stack](#stopping-the-stack).
@@ -18,12 +16,12 @@ The named volumes hold the DA database, the sequencer ledger, PostgreSQL and the
 
 ## Prerequisites
 
-> **Matching generations.** The gateway (`zeko-gateway`, from `ethereum-settlement`) and the sequencer (`zeko`) must come from matching revisions: since settlement commit `fdee833` the gateway refuses settlements without a *preparation reservation*, and only zeko sequencers that include commit `29ebfeff57` (`fix(sequencer): recover Ethereum settlements durably`) acquire one. The `sepolia-poc` images satisfy this; if you rebuild one side, rebuild the other from the same generation.
+> **Matching generations.** The gateway image and the sequencer image must come from matching revisions. The `sepolia-poc` images do; if you rebuild one side, rebuild the other from the same generation.
 
 ### System requirements
 
 - Linux `x86_64` host (the published images are `x86_64-linux` only)
-- **RAM: 64 GB minimum for the whole stack on one host.** The prover holds about 23 GB resident after compiling the circuits, the genesis export (step 5) compiles the same circuits a second time in its own container while the prover is running, and `build-guests` (step 6, one-time) needs 16 GB+; on the 64 GB test host the export completed with little headroom. The prover compiles the Zeko circuits at every start: minutes on a fast host (2.6 to 4.5 min on the test host), hours on a small one; the health check allows 8 h. Splitting the prover onto its own host halves the per-host need.
+- **RAM: 64 GB minimum for the whole stack on one host.** The prover holds about 23 GB resident after compiling the circuits; the genesis export (step 5) and `build-guests` (step 6) each need 16 GB+ on top while the prover runs. The prover compiles the Zeko circuits at every start: minutes on a fast host, hours on a small one; the health check allows 8 h. Running the prover on its own host halves the per-host need.
 - Disk for PostgreSQL (four databases), the DA database and the sequencer ledger.
 - A host that stays awake. Suspend freezes every container; nothing is lost, but settlement stops until the host wakes and the gateway has re-indexed the missed blocks (see Troubleshooting).
 
@@ -31,9 +29,29 @@ The named volumes hold the DA database, the sequencer ledger, PostgreSQL and the
 
 - `Docker` with Docker Compose **v2.24 or newer** (`docker compose`; the `env_file` `required: false` attribute used below needs v2.24+)
 - `jq`, `sha256sum`, `curl`, `git`, `setfacl` (the `acl` package) on the host for the bootstrap recipes below
-- `openssl` for the random tokens in step 1. It may be absent, for example on a NixOS host: run it ad hoc with `nix shell nixpkgs#openssl`, or replace each `openssl rand -hex 32` with `head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32`, which is an acceptable generator for every random token and password in this guide
+- `openssl` for the random tokens in step 1. If it is absent (for example on NixOS), run it ad hoc with `nix shell nixpkgs#openssl`, or replace each `openssl rand -hex 32` with `head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32`
 
 No Foundry, Rust, OCaml or Node toolchain is needed on the host: `forge` and `cast` ship in the `zeko-bootstrap` image and every other binary ships in its service image.
+
+### Tested release
+
+The `sepolia-poc` tag is mutable; this guide expects the image set below. Verify your pulls against it (`docker images --digests 'zekolabs/*:sepolia-poc'`) and keep the table with your deployment record. Source revisions: `zeko-labs/zeko` `b9ee412c3f` (sequencer, DA, archive, archive-node-api, bootstrap roles), `zeko-labs/ethereum-settlement` `15c93d0` (gateway, bridge UI, explorer UI, bootstrap tooling), `zeko-labs/zeko-ui` `d666735e` (Actions API and indexer). Put the zeko revision into `ZEKO_SOURCE_REVISION`.
+
+| Image | Digest |
+| --- | --- |
+| `zekolabs/zeko-actions-api:sepolia-poc` | `sha256:6c002cb9ad345db2ba71c73f8b57bccd5854660e42eb406deb1501eebb77b26b` |
+| `zekolabs/zeko-actions-indexer:sepolia-poc` | `sha256:f4e05eace346ff766805302403c8189c6b9b13db4bcb5f5f05cc02f4c3aca161` |
+| `zekolabs/zeko-archive-node-api:sepolia-poc` | `sha256:3ec68e5c69fcd28c4636c10c7a4c51dd480df5093e12858e3ddda1ed90bd2734` |
+| `zekolabs/zeko-archive-relay:sepolia-poc` | `sha256:eef12467345b361634d8e84bbc59e66b82a7ac3c6bcd6eea3c242cb9d4aa99f5` |
+| `zekolabs/zeko-archive:sepolia-poc` | `sha256:42dcf98b2e6601381e669df334131a8d108acbc1753bc82b48ae4273b1cdadc5` |
+| `zekolabs/zeko-bootstrap:sepolia-poc` | `sha256:8c88809da19c3dbb7ea09c05ef02dbd375c1f6dcddea6d7f122c9f3b4af7f0e8` |
+| `zekolabs/zeko-bridge-ui:sepolia-poc` | `sha256:1475b70afe67da6a07c7d549aa11dfde03282e56203227e1b6a1685c5ff468ed` |
+| `zekolabs/zeko-da:sepolia-poc` | `sha256:d09c969e0e5259dae26ef715eb7537a25e2d705b9ff6d39a61c7dab12f36d539` |
+| `zekolabs/zeko-explorer-ui:sepolia-poc` | `sha256:0b240bb34af42d122c117e0e8d853996d9a4d2e24700a7dfcc574b454e4fdbed` |
+| `zekolabs/zeko-gateway:sepolia-poc` | `sha256:f1125f3e5c815999fc18aa7e78526b1f1c39bb743bc2036befe5623ee4c7b85c` |
+| `zekolabs/zeko:sepolia-poc` | `sha256:fc309de2be12416f3a7bf42785658d64c9ab21f13b595acd89265985d5582c67` |
+
+Supporting images: `postgres:16` and `rabbitmq:4` (major-pinned official images).
 
 ### Operator-provided external inputs
 
@@ -44,26 +62,26 @@ No Foundry, Rust, OCaml or Node toolchain is needed on the host: `forge` and `ca
 | Funded Sepolia **gateway prover** wallet | Submits settlement and bridge transactions | Receives `PROVER_ROLE`. Must differ from admin. |
 | **Upgrader** address | `UPGRADER_ROLE` on both proxies | Address only; keep the key offline. |
 | Browser wallet for the lifecycle test | Deposits, L2 payments, withdrawals | [MetaMask Flask (Development)](https://chromewebstore.google.com/detail/metamask-flask-developmen/ljfoeinjpaedjfecbmggjgodbgkmjkjk) from the Chrome Web Store with a fresh seed; it installs the Zeko Snap and serves both the Sepolia and the Zeko side. Alternative for the Zeko side: Auro. See Lifecycle examples. |
-| Proving mode | See below | This guide deploys the **mock verifier** path: no SP1 proof is verified on L1. Real proving is a variant, not the default. |
+| Proving mode | See [Proving](#proving) | This guide deploys the **mock verifier**: no SP1 proof is verified on L1. |
 
 ### Proving
 
-The gateway runs the current **no-blob PoC** settlement path. From source (`api/src/main.rs`):
+This demo deploys with the **mock SP1 verifier**: the contracts are deployed with `LOCAL_MOCK_VERIFIER=true` and the gateway runs with `API_LOCAL_MOCK_SUBMIT=true` and `API_UNSAFE_ALLOW_MOCK_ON_SEPOLIA=true`. The gateway executes the SP1 guests locally for their public values and submits them with empty proof bytes, which the mock verifier accepts. This shows the whole bridge and settlement loop without a proving service, but nothing is verified on Ethereum: use it only for disposable test deployments. The Zeko-side prover (`zeko-prover`) is not mock; it compiles the real circuits and proves every commit locally.
 
-- `PROOF_SYSTEM` defaults to `groth16`; `plonk` is also accepted. Proofs are requested from the Succinct Prover Network. Paid proving uses the SP1 SDK network client, whose requester key is `NETWORK_PRIVATE_KEY` (named in `api/src/prover.rs` and `TESTNET_POC.md`). You fund that requester account with PROVE yourself.
-- `API_REQUIRE_PROOF_APPROVAL=true` makes every network proof an explicit, capped approval step and requires `PROVER_GAS_LIMIT` and `PROVER_MAX_PRICE_PER_PGU` hard caps.
-- `API_EXECUTE_ONLY=true` executes the guests locally and never submits anything (variant: nothing lands on L1).
-- **This guide's default:** `API_LOCAL_MOCK_SUBMIT=true` with `API_UNSAFE_ALLOW_MOCK_ON_SEPOLIA=true` and contracts deployed with `LOCAL_MOCK_VERIFIER=true`. The gateway still executes the guests locally for their public values, then submits them with empty proof bytes to a `LocalSP1Verifier` that accepts anything (`DeployPoc.s.sol:29-30,58-62`; `api/src/ethereum.rs:462-487` checks on chain that the configured verifier is that mock). This gives **no** on-chain proof security and is only for disposable test deployments.
+**Real proving is out of scope of this demo.** A deployment whose settlements are verified on Ethereum differs only in these knobs:
 
-The Zeko-side prover (`zeko-prover`) is **not** mock: it compiles the real circuits from your configuration and proves every commit locally.
+- Choose the commit validity window before the genesis export (step 5): `ZEKO_ETHEREUM_COMMIT_VALIDITY_PERIOD` on the exporter and `--commit-validity-period` on the sequencer, same value; the settlement tooling default is `2400` slots (8 hours), and the window cannot be changed after the export.
+- In `config/deploy.env` (step 7) write `SP1_VERIFIER_ADDRESS=0xb69f2584CBcFf99a58C4e7002E8b89Af54a6f4e2` (the official SP1 v6.1.0 Groth16 verifier on Sepolia) instead of `LOCAL_MOCK_VERIFIER=true`; admin, gateway prover and upgrader must then be three distinct addresses.
+- Start the gateway with `API_EXECUTE_ONLY=true`, `API_LOCAL_MOCK_SUBMIT=false` and `API_UNSAFE_ALLOW_MOCK_ON_SEPOLIA=false`, and confirm one job reaches `executed` in `GET /v1/proofs`.
+- Then fund a Succinct Prover Network requester, write its key into `secrets/sp1_network_key` in place (so the ACL survives), set `API_EXECUTE_ONLY=false`, `API_REQUIRE_PROOF_APPROVAL=true`, `PROVER_GAS_LIMIT` and `PROVER_MAX_PRICE_PER_PGU`, run `docker compose up -d gateway`, and approve each job through `GET /v1/proofs/:id/quote` and `POST /v1/proofs/:id/approve`.
 
 ## Overview
 
 ![Sepolia rollup architecture: every service of the Compose file and the direction of each connection](./sepolia-rollup-architecture.png)
 
-Legend: blue arrows are writes (send), green arrows are reads (receive), red arrows carry traffic both ways; orange boxes are the Zeko core components, black boxes are the supporting services. The sequencer is the hub: it reads the outer-account state and actions from the gateway's `/graphql` (labelled "L1/archive graphql"), signs through its signer, stores diffs in the DA layer and its PostgreSQL database, and hands proving work to the provers through RabbitMQ. The gateway is the only service that talks to Sepolia (JSON-RPC) and the only one that submits settlements. The archive relay copies DA diffs into the archive database that `archive-node-api` serves to the Actions indexer, while the bridge UI reaches the gateway, the sequencer and the Actions API directly from the browser.
+Legend: blue arrows are writes, green arrows are reads, red arrows carry traffic both ways; orange boxes are the Zeko core components, black boxes the supporting services. The sequencer reads outer-account state from the gateway, signs through its signer, stores diffs in DA and PostgreSQL, and hands proving work to the prover through RabbitMQ. The gateway is the only service that talks to Sepolia. The archive relay copies DA diffs into the archive database that `archive-node-api` serves to the Actions indexer; the bridge UI reaches the gateway, the sequencer and the Actions API from the browser.
 
-We are going to:
+The steps:
 
 - Create the Ethereum admin wallet and predict the deterministic contract addresses.
 - Create the Zeko sequencer and DA keys, signer TLS material and the circuit/deploy configuration bound to the predicted bridge address.
@@ -71,7 +89,7 @@ We are going to:
 - Compile the SP1 guests against that VK, compute the program vkeys and deploy the contracts (dry run, then `--broadcast`).
 - Start the gateway with the artifacts mounted, then the sequencer, archive stack, Actions services and UIs.
 
-Nothing here builds images. Image references use the single fixed tag `docker.io/zekolabs/<name>:sepolia-poc`, published on Docker Hub by the Zeko release process; `docker compose up` pulls them. If your host has no access to Docker Hub, load the eleven images under that tag yourself before you start.
+Nothing here builds images. Every image reference is `docker.io/zekolabs/<name>:sepolia-poc`; `docker compose up` pulls them from Docker Hub. If your host has no access to Docker Hub, load the eleven images under that tag yourself before you start.
 
 ### Wallets and keys
 
@@ -89,7 +107,7 @@ Nothing here builds images. Image references use the single fixed tag `docker.io
 | indexer auth token | random string | you | Actions indexer `AUTH_TOKEN` (control endpoints) |
 | circuit/deploy config | JSON with fresh private keys | `zeko-bootstrap-generate-config` role | prover, sequencer, exporter |
 
-> **Note:** some variable names are source-defined and keep Mina wording (`MINA_PRIVATE_KEY`, `MINA_SIGNING_NETWORK_ID`, `VIRTUAL_MINA_*`). The signing network id of this stack is `testnet`; the bridge UI refuses anything else.
+> **Note:** some variable names keep Mina wording (`MINA_PRIVATE_KEY`, `MINA_SIGNING_NETWORK_ID`, `VIRTUAL_MINA_*`). The signing network id of this stack is `testnet`; the bridge UI refuses anything else.
 
 ### Project structure
 
@@ -150,7 +168,18 @@ zeko-sepolia/
 | `da1` | `8555` / `8558` | – | DA RPC / health |
 | `postgres` / `rabbitmq` | `5432` / `5672` | – | Internal only |
 
-This guide targets a single Docker host without domain names. Every published port is bound to `127.0.0.1`, so the services are reachable only from that host and you use them in the browser as `http://localhost:<port>`; the same `http://localhost:<port>` URLs go into the UI runtime configs and `API_CORS_ALLOWED_ORIGINS`. The sequencer GraphQL endpoint answers CORS as well (`OPTIONS /graphql` → `204`, `Access-Control-Allow-Origin` on every `/graphql` response) and must stay open to any origin (`*`, the default): wallet Snaps query it from inside MetaMask's execution sandbox, whose origin is MetaMask's and not the bridge UI's, so an allow-list (`ZEKO_GRAPHQL_CORS_ALLOWED_ORIGINS`) breaks "Connect Zeko wallet" with `Failed to fetch`. The endpoint is public and credential-free, so `*` costs nothing. Compose service names (`gateway`, `sequencer`, …) are only resolvable between containers and stay backend-only. For a public host you would put a TLS reverse proxy in front of the browser-facing ports and replace the `http://localhost:<port>` values in the runtime configs and in `API_CORS_ALLOWED_ORIGINS` with the public origins; nothing else in this guide changes.
+Every published port is bound to `127.0.0.1`; use the services in the browser as `http://localhost:<port>`, and put the same URLs into the UI runtime configs and `API_CORS_ALLOWED_ORIGINS`. The sequencer GraphQL endpoint stays open to any origin (`ZEKO_GRAPHQL_CORS_ALLOWED_ORIGINS` unset) because wallet Snaps query it from MetaMask's own origin. Compose service names resolve only between containers.
+
+### Reaching a remote host
+
+When the Docker host is a remote machine, keep the same configuration and bring the ports to your laptop with an SSH tunnel; the browser then sees the `localhost` origins the runtime configs name:
+
+```bash
+ssh -N -L 4174:127.0.0.1:4174 -L 4175:127.0.0.1:4175 -L 8080:127.0.0.1:8080 \
+       -L 1923:127.0.0.1:1923 -L 9100:127.0.0.1:9100 -L 3600:127.0.0.1:3600 <user>@<host>
+```
+
+For public access (not covered here), put a TLS reverse proxy in front of ports `4174`, `4175`, `8080`, `1923` and `9100`, use the public names in both runtime configs and in `API_CORS_ALLOWED_ORIGINS`, and keep `3600` private.
 
 ---
 
@@ -166,9 +195,9 @@ mkdir -p secrets config/postgres-init/actions config/postgres-init/archive tls/c
 chmod 0755 tls/ca artifacts config/postgres-init config/postgres-init/actions config/postgres-init/archive
 ```
 
-`umask 077` keeps everything you create private. The three `postgres-init` directories are the exception: the `postgres:16` container runs its initialization as its own `postgres` user, so that directory and the public SQL in it must be traversable and readable (`0755` / `0644`). `config/` itself stays `0700`; bind mounts do not need the container to traverse the host parent directory.
+`umask 077` keeps everything you create private; the `postgres-init` directories are read by the container's `postgres` user and stay `0755` / `0644`.
 
-Copy `docker-compose.yaml` (below) into the workspace verbatim and create `.env` (mode `0600`). Values carry no quotes and no inline comments, so that the host shell can read single values back verbatim:
+Copy `docker-compose.yaml` (below) into the workspace verbatim and create `.env` (mode `0600`). Values carry no quotes and no inline comments, so that the host shell can read them back verbatim:
 
 ```bash
 cat > .env <<EOF
@@ -207,13 +236,13 @@ EOF
 chmod 0600 .env
 ```
 
-Compose reads `.env` for interpolation only; it does not export anything into your shell. The host commands below therefore read single values with this helper. Define it in **every** new shell you open in the workspace:
+Compose does not export `.env` into your shell. The host commands below read single values with this helper; define it in **every** new shell you open in the workspace:
 
 ```bash
 envget() { grep -m1 "^$1=" .env | cut -d= -f2-; }
 ```
 
-The Compose file tolerates the empty later-phase values (`${VAR:-}`), so every bootstrap command works with this initial file. Each consuming service refuses to start while a value it needs is still empty: the `predict-address` and `deploy` roles exit on an empty `ADMIN_ADDRESS` (`nix/bootstrap/zeko-bootstrap`), and the gateway, sequencer and indexer shims below check their inputs before `exec`.
+Every bootstrap command works with the empty later-phase values; each service refuses to start while a value it needs is still empty.
 
 ::: details Click to expand `docker-compose.yaml`
 ```yaml
@@ -236,7 +265,7 @@ services:
       retries: 60
 
   rabbitmq:
-    image: rabbitmq:latest
+    image: rabbitmq:4
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: ${ZEKO_RABBITMQ_USER:?}
@@ -797,13 +826,15 @@ volumes:
 ```
 :::
 
-The bootstrap profile has four one-shot services. Two of them are multi-role: `bootstrap` runs the `zeko-bootstrap` image's entrypoint with the role you pass as the first argument (`cast`, `predict-address`, `build-guests`, `vkey`, `deploy`), and `zeko-tools` runs the named binary from the `zeko` image (`zeko-cli`, `zeko-bootstrap-signer-tls`, `zeko-bootstrap-generate-config`). `bootstrap-l1` and `exporter` keep their fixed entrypoints because the exporter depends on `bootstrap-l1` by name. Accepted trade-offs of the merge: `build-guests` and `vkey` are no longer run with `network_mode: none` (the guest build is still offline by construction, `CARGO_NET_OFFLINE=true` and `--offline --frozen` in `nix/bootstrap/zeko-bootstrap`), and every `bootstrap` role sees `artifacts/` read-write, `config/deploy.env` and the `deployer_key` secret, not only the roles that need them. Likewise every `zeko-tools` binary sees `tls/` and `config/` read-write and shares `state/zeko-tools`.
+The bootstrap profile has four one-shot services: `bootstrap` runs the `zeko-bootstrap` image with the role you pass as the first argument (`cast`, `predict-address`, `build-guests`, `vkey`, `deploy`), `zeko-tools` runs the named binary from the `zeko` image, and `bootstrap-l1` and `exporter` have fixed entrypoints.
 
-> **Note:** `$$` is a literal `$` for the in-container shell (Compose interpolates single `$`). The signer, DA, sequencer, exporter, gateway and indexer containers read their `/run/secrets` files into the environment variables the binaries expect, because those binaries read secrets from the environment and Compose cannot map a file to a variable by itself. Flag values and `.env` entries would be visible in `docker inspect`; the file shim keeps them out. The same shims check the later-phase `.env` values, because the gateway accepts an empty string for its required variables (`required_env` in `api/src/main.rs`) and the indexer schema accepts empty strings (`services/actions/indexer/src/env.ts`).
+> **Note:** `$$` is a literal `$` for the in-container shell. The entrypoint shims read the `/run/secrets` files into the environment variables the binaries expect, which keeps secrets out of `docker inspect`.
 
-> **Note:** Compose file secrets are bind mounts that keep the host file's owner and mode. The zeko images run as root and the one-shot roles run as you (`ZEKO_UID`), so they read your `0600` files directly. The gateway and the Actions indexer run as uid `65532` (`ethereum-settlement/nix/docker.nix`, `zeko-ui/nix/docker.nix`), so step 1 grants that uid read access to exactly the four files they consume with an ACL; the files stay `0600` for everyone else.
+> **Note:** Secret files keep the host owner and mode. The zeko images run as root and the one-shot roles run as you (`ZEKO_UID`); the gateway and the Actions indexer run as uid `65532`, so step 1 grants that uid read access with an ACL.
 
 ### Step 1: Admin wallet and other secrets
+
+Create the three Ethereum wallets and the random tokens; expect the admin, gateway prover and upgrader addresses to be printed.
 
 ```bash
 cd ~/zeko-sepolia && umask 077
@@ -832,26 +863,30 @@ setfacl -m u:65532:r secrets/gateway_api_key secrets/gateway_ethereum_key \
 getfacl --omit-header secrets/gateway_api_key            # expect: user:65532:r--
 ```
 
-`-T` disables the pseudo-terminal so that captured output has no terminal line endings. When you later fill `secrets/sp1_network_key`, edit it in place (`>`), which keeps the ACL; recreating the file drops it.
+`-T` disables the pseudo-terminal so that captured output has no terminal line endings. When you later fill `secrets/sp1_network_key`, edit it in place (`>`), which keeps the ACL.
 
-Fund `ADMIN_ADDRESS` (one-time deployment gas) and the gateway prover address (ongoing settlement gas) with Sepolia ETH. If you have no Sepolia ETH, the proof-of-work faucet at <https://sepolia-faucet.pk910.de/> mines it in your browser; a few hours of mining covers the deployment. The upgrader wallet needs no funds now; it only holds `UPGRADER_ROLE`. Nothing on this host uses its key, so move `secrets/upgrader-wallet.json` to offline storage once the contracts are deployed.
+Write the admin address into `ADMIN_ADDRESS` in `.env`. Fund `ADMIN_ADDRESS` (one-time deployment gas) and the gateway prover address (ongoing settlement gas) with Sepolia ETH; the proof-of-work faucet at <https://sepolia-faucet.pk910.de/> covers the deployment in a few hours. The upgrader wallet needs no funds; move `secrets/upgrader-wallet.json` to offline storage once the contracts are deployed.
 
 ### Step 2: Predict the contract addresses
 
-The PoC factory uses CREATE2, so the proxy addresses depend only on `ADMIN_ADDRESS`. The bridge proxy address is a **circuit input**: it must be known before the Zeko configuration is generated.
+The proxy addresses are CREATE2 addresses derived from `ADMIN_ADDRESS`; the bridge address is a circuit input, so it must be known before the Zeko configuration is generated.
 
 ```bash
 docker compose --profile bootstrap run --rm bootstrap predict-address
 ```
 
-The role prints `SETTLEMENT_CONTRACT_ADDRESS 0x…` and `BRIDGE_CONTRACT_ADDRESS 0x…` (plus the factory and the local verifier). **Copy the two addresses by hand** into the matching empty lines of `.env`, replacing the placeholders below with the printed values:
+The role prints `SETTLEMENT_CONTRACT_ADDRESS 0x…` and `BRIDGE_CONTRACT_ADDRESS 0x…` (plus the factory and the local verifier). Copy the two addresses into `.env`, replacing the placeholders below with the printed values:
 
 ```bash
 sed -i "s#^SETTLEMENT_CONTRACT_ADDRESS=.*#SETTLEMENT_CONTRACT_ADDRESS=<printed settlement address>#; s#^BRIDGE_CONTRACT_ADDRESS=.*#BRIDGE_CONTRACT_ADDRESS=<printed bridge address>#" .env
 grep -E '^(SETTLEMENT|BRIDGE)_CONTRACT_ADDRESS=0x' .env     # both lines must show a real 0x address
-``` Forge fetches `solc` into `state/bootstrap` on first use.
+```
+
+Forge fetches `solc` into `state/bootstrap` on first use.
 
 ### Step 3: Zeko keys, signer TLS and circuit configuration
+
+Generate the sequencer and DA keys, the signer TLS material and the circuit configuration bound to the predicted bridge address. Only the public keys are printed.
 
 ```bash
 umask 077
@@ -869,11 +904,11 @@ docker compose --profile bootstrap run --rm zeko-tools zeko-bootstrap-signer-tls
 docker compose --profile bootstrap run --rm zeko-tools zeko-bootstrap-generate-config "$(envget BRIDGE_CONTRACT_ADDRESS)"
 ```
 
-`generate-even-key` prints `Private key: …` and `Public key: …` (`sequencer/cli.ml`); the output is captured into a private file and only the public keys are displayed, so the private keys never reach your terminal or shell history. `zeko-bootstrap-signer-tls` reports container paths under `/run/zeko/signer-tls`; that directory is the bind mount of `./tls`, so on the host the files are `tls/ca/signer.crt` and `tls/private/signer.key`, issued for the fixed name `zeko-signer`; all signer clients verify that name through `ZEKO_SIGNER_TLS_HOSTNAME`. `zeko-bootstrap-generate-config` runs `zeko-cli generate-circuits-config --ethereum-bridge-address …` and writes `config/circuits-config.json` and `config/deploy-config.json`. Both contain fresh private keys: back them up offline and never commit them.
+Write `DA1_PUBLIC_KEY` into `.env`. The TLS role writes `tls/ca/signer.crt` and `tls/private/signer.key` for the fixed name `zeko-signer`. The config role writes `config/circuits-config.json` and `config/deploy-config.json`; both contain fresh private keys, so back them up offline and never commit them.
 
 ### Step 4: Database initialization files
 
-The official `postgres:16` image runs the scripts in `/docker-entrypoint-initdb.d` once, on first start of an empty data volume. The sequencer and the gateway create their own tables; the archive and the Actions services do not, and the published images ship no migration runner. The `exporter` database is a scratch database for the one-shot genesis export: the exporter and the sequencer must not share one, because the sequencer re-applies the genesis diff from DA on its first start and would hit a duplicate `da_diff` row. The three files below are therefore part of this guide. Expand each block, copy its content verbatim into the named file, then apply the modes:
+PostgreSQL runs these files once, on first start of an empty data volume; they create the four extra databases and the archive and Actions schemas. Expand each block, copy its content verbatim into the named file, then apply the modes:
 
 ```bash
 # after creating the three files from the blocks below
@@ -1598,11 +1633,11 @@ ALTER TABLE "ethereum_asset_registry_checkpoints" ADD CONSTRAINT "ethereum_asset
 ```
 :::
 
-The Actions block concatenates the migration files in timestamp order; later statements `ALTER` tables created by earlier ones, so keep the order. The `--> statement-breakpoint` markers are SQL comments and are ignored by `psql`. If you publish images from a different revision, regenerate both SQL blocks from the sources named in their headings.
-
-> **Note:** one database role (`zeko`) owns all four databases in this example. The gateway sets its archive connections read-only itself. Per-service roles are an operator hardening step and are not required by source.
+Keep the statement order of the Actions block; the `--> statement-breakpoint` markers are SQL comments. If you publish images from a different revision, regenerate both SQL blocks from the sources named in their headings. One database role (`zeko`) owns all databases; per-service roles are an optional hardening step.
 
 ### Step 5: Start the long-lived Zeko services and export the genesis
+
+Start the supporting services and the prover, then wait until the prover is healthy. Expect `Compiling circuit` lines until `Compiled circuits in …`.
 
 ```bash
 docker compose up -d postgres rabbitmq sequencer-signer da1-signer da1 prover
@@ -1610,9 +1645,7 @@ docker compose ps            # wait until prover is healthy (circuit compilation
 docker compose logs -f prover
 ```
 
-Then run the export. It waits for the broker, signer, DA node and the bootstrap L1 stand-in, produces one real settlement proof, posts the genesis diff to `da1`, and writes into the empty `out/export/`:
-
-`ZEKO_ETHEREUM_COMMIT_VALIDITY_PERIOD` (exporter) and `--commit-validity-period` (sequencer) must carry the same value; it is the number of virtual slots (12 s each) a commit stays valid for settlement, and it also sets the withdrawal delay (claimable at the commit's upper slot plus `WITHDRAWAL_DELAY_SLOTS`). The settlement tooling defaults to `2400` (8 hours) to leave room for network proving; this guide uses `100` (20 minutes) so that withdrawals in the mock-verifier demo can be claimed the same hour. The window must exceed the time from a commit to its Ethereum inclusion (a few minutes in the mock profile); raise both values before the export if you move to network proving. Changing them later is untested.
+Then run the export. It produces one real settlement proof, posts the genesis diff to `da1`, and writes into the empty `out/export/`. The Compose sets the commit validity window (`ZEKO_ETHEREUM_COMMIT_VALIDITY_PERIOD` on the exporter, `--commit-validity-period` on the sequencer) to `100` virtual slots of 12 s; it also sets the withdrawal delay and cannot be changed after the export.
 
 ```bash
 docker compose --profile bootstrap run --rm exporter
@@ -1633,6 +1666,8 @@ The DA database (`da1_data`) now holds the genesis diff the rollup continues fro
 
 ### Step 6: Build the SP1 guests and compute the program vkeys
 
+Compile the SP1 guests against the exported VK and compute the two program vkeys. Expect the build to take about 5 minutes on a fast host.
+
 ```bash
 cp out/export/settlement-vk.serde.json artifacts/settlement-vk.serde.json
 chmod 0644 artifacts/settlement-vk.serde.json
@@ -1645,23 +1680,23 @@ BRIDGE_VKEY=$(docker compose --profile bootstrap run --rm -T bootstrap vkey --pr
 VK_HASH=0x$(sha256sum artifacts/settlement-vk.serde.json | cut -d' ' -f1)
 ```
 
-`artifacts/` must stay `0755` with `0644` files: the gateway runs as uid `65532` and reads it read-only. Steps 6 to 8 share shell variables (`SETTLEMENT_VKEY`, `BRIDGE_VKEY`, `VK_HASH`, `MANIFEST`, `SETTLEMENT`, `FORK_SLOT`, `envget`): run them in one shell, or repeat the assignments in a new one.
+`artifacts/` must stay `0755` with `0644` files; the gateway reads it as uid `65532`. Steps 6 to 8 share shell variables: run them in one shell, or repeat the assignments in a new one.
 
 ### Step 7: Deploy the contracts
 
-`DeployPoc.s.sol` reads every parameter from the environment. First derive `FORK_SLOT` from the export: it is the lower bound of the exported proof's slot range, `.proof.binding.actions[0][6]` in `settlement.json` (hex), cross-checked against the upper bound in `[7]` (`ethereum-settlement/tools/prepare-poc.sh`). The contract and the gateway must both use this value, otherwise a nonzero commit range would silently start at slot zero (`TESTNET_POC.md`).
+First derive `FORK_SLOT`, the lower bound of the exported proof's slot range; the contract and the gateway must both use this value.
 
 ```bash
 MANIFEST=out/export/deployment-manifest.json; SETTLEMENT=out/export/settlement.json
 FORK_SLOT=$(( $(jq -er '.proof.binding.actions[0][6]' $SETTLEMENT) ))
 SLOT_UPPER=$(( $(jq -er '.proof.binding.actions[0][7]' $SETTLEMENT) ))
-(( FORK_SLOT <= SLOT_UPPER )) && echo "FORK_SLOT=$FORK_SLOT" || echo "invalid slot range [$FORK_SLOT, $SLOT_UPPER]: stop here" >&2
+if (( FORK_SLOT > 0 && FORK_SLOT <= SLOT_UPPER )); then echo "FORK_SLOT=$FORK_SLOT"; else echo "invalid slot range [$FORK_SLOT, $SLOT_UPPER]: stop here" >&2; unset FORK_SLOT; fi
 ```
 
-Then write the public values to `config/deploy.env` (mode `0600`):
+Then write the public values to `config/deploy.env` (mode `0600`). If the check above failed, `FORK_SLOT` is unset, nothing is written and the deploy commands below refuse to run:
 
 ```bash
-{
+[[ -n ${FORK_SLOT:-} ]] && {
   echo "LOCAL_MOCK_VERIFIER=true"      # demo: deploys LocalSP1Verifier at the predicted LOCAL_SP1_VERIFIER_ADDRESS; accepts empty proofs
   echo "SETTLEMENT_PROGRAM_VKEY=$SETTLEMENT_VKEY"
   echo "BRIDGE_PROGRAM_VKEY=$BRIDGE_VKEY"
@@ -1675,33 +1710,34 @@ Then write the public values to `config/deploy.env` (mode `0600`):
   echo "SLOT_DURATION=12"
   echo "WITHDRAWAL_DELAY_SLOTS=5"
   echo "FORK_SLOT=$FORK_SLOT"
-} > config/deploy.env
-chmod 0600 config/deploy.env
+} > config/deploy.env || { echo "deploy.env not written: fix the slot range first" >&2; }
+[[ -s config/deploy.env ]] && chmod 0600 config/deploy.env
 ```
 
 Set `VIRTUAL_MINA_FORK_SLOT` in `.env` to the same `FORK_SLOT` value now.
 
-Deploy inputs and their source (`contracts/script/DeployPoc.s.sol`):
+Deploy inputs:
 
 | Variable | Meaning |
 | --- | --- |
 | `PRIVATE_KEY` | Deployer key; the `deploy` role reads it from `secrets/deployer_key`. Must belong to `ADMIN_ADDRESS`. |
-| `LOCAL_MOCK_VERIFIER` | `true` here: both proxies trust the `LocalSP1Verifier` the script deploys at the predicted `LOCAL_SP1_VERIFIER_ADDRESS` (insecure; demo only). Real proving instead sets `SP1_VERIFIER_ADDRESS` to the official SP1 v6.1.0 Groth16 verifier `0xb69f2584CBcFf99a58C4e7002E8b89Af54a6f4e2` (`V6_1_0_SP1_VERIFIER_GROTH16` in `sp1-contracts` `deployments/11155111.json`, as `tools/prepare-poc.sh:31` reads it; not the `V6_1_0_BROKEN_*` entries). |
+| `LOCAL_MOCK_VERIFIER` | `true` here: both proxies trust the `LocalSP1Verifier` the script deploys at the predicted `LOCAL_SP1_VERIFIER_ADDRESS` (insecure; demo only). Real proving sets `SP1_VERIFIER_ADDRESS` instead; see [Proving](#proving). |
 | `SETTLEMENT_PROGRAM_VKEY`, `BRIDGE_PROGRAM_VKEY` | SP1 program vkeys from step 6 |
 | `SETTLEMENT_VK_HASH` | SHA-256 of `settlement-vk.serde.json` (= manifest `settlementVkSha256`) |
 | `INITIAL_OUTER_STATE_0…7`, `INITIAL_OUTER_ACTION_STATE` | Genesis outer state from the export |
-| `GATEWAY_PROVER_ADDRESS`, `UPGRADER_ADDRESS` | Receive `PROVER_ROLE` and `UPGRADER_ROLE`. The script enforces three distinct addresses only with a real verifier; this guide keeps them distinct anyway |
+| `GATEWAY_PROVER_ADDRESS`, `UPGRADER_ADDRESS` | Receive `PROVER_ROLE` and `UPGRADER_ROLE`; kept distinct from the admin |
 | `GENESIS_TIMESTAMP`, `SLOT_DURATION`, `FORK_SLOT`, `WITHDRAWAL_DELAY_SLOTS` | Defaults: current block timestamp, `12`, `0`, `5`; `FORK_SLOT` is set to the export's lower slot above |
 
-Dry run first, then broadcast:
+Dry run first, then broadcast. Expect the printed proxy addresses to match step 2:
 
 ```bash
 SEPOLIA_RPC_URL=$(envget SEPOLIA_RPC_URL)
+[[ -s config/deploy.env ]] || { echo "config/deploy.env is missing; do not deploy" >&2; false; } &&
 docker compose --profile bootstrap run --rm bootstrap deploy --rpc-url "$SEPOLIA_RPC_URL"
 docker compose --profile bootstrap run --rm bootstrap deploy --rpc-url "$SEPOLIA_RPC_URL" --broadcast --slow --gas-estimate-multiplier 800
 ```
 
-`--slow` sends one transaction at a time and stops at the first failure; `--gas-estimate-multiplier 800` multiplies Forge's gas estimate by eight. Both are needed because Forge estimates gas with its bundled EVM, and Sepolia's fork of 2026-10-06 prices contract creation about 6.5 times higher than that EVM models (the node's `eth_estimateGas` for the factory creation returns about 3.4M gas against Forge's 527k). With a smaller margin the factory `CREATE2` fails with `contract creation code storage out of gas`, and without `--slow` Forge then sends every remaining call to the missing factory as a no-op. To check the margin before broadcasting, compare Forge's estimate for the first transaction with the chain's: `cast estimate 0x4e59b44847b379578588920cA78FbF26c0B4956C --from "$(envget ADMIN_ADDRESS)" --rpc-url "$SEPOLIA_RPC_URL" <input of transactions[0] in state/bootstrap/forge-workspace/broadcast/DeployPoc.s.sol/11155111/dry-run/run-latest.json>`. The CREATE2 addresses do not depend on the attempt, so a failed deployment is simply re-run. Compare the printed proxy addresses with step 2. Forge's records are in `state/bootstrap/forge-workspace/broadcast/`; set `ETHEREUM_INDEXER_START_BLOCK` in `.env` to the block of the first transaction (the factory creation; every later transaction is in that block or after), not to the current head:
+`--slow` stops at the first failed transaction; `--gas-estimate-multiplier 800` covers Sepolia pricing contract creation far above Forge's estimate (expect about 3.4M gas for the factory). A failed deployment is simply re-run; the addresses do not change. If the broadcast still fails on the first transaction, compare the chain's estimate with Forge's and raise the multiplier: `cast estimate 0x4e59b44847b379578588920cA78FbF26c0B4956C --from "$(envget ADMIN_ADDRESS)" --rpc-url "$SEPOLIA_RPC_URL" <input of transactions[0] in state/bootstrap/forge-workspace/broadcast/DeployPoc.s.sol/11155111/dry-run/run-latest.json>`. Then set `ETHEREUM_INDEXER_START_BLOCK` in `.env` to the block of the first transaction:
 
 ```bash
 START_BLOCK=$(( $(jq -r '.receipts[0].blockNumber' state/bootstrap/forge-workspace/broadcast/DeployPoc.s.sol/11155111/run-latest.json) ))
@@ -1711,7 +1747,7 @@ grep '^ETHEREUM_INDEXER_START_BLOCK=' .env
 
 ### Step 8: Gateway inputs: virtual accounts and public keys
 
-The gateway serves a Mina-compatible account view. Seed it from the export (`VIRTUAL_MINA_ACCOUNTS_PATH`, `api/src/main.rs initialize_gateway_config`):
+The gateway serves a Mina-compatible account view. Seed it from the export (`VIRTUAL_MINA_ACCOUNTS_PATH`):
 
 ```bash
 to_dec() { docker compose --profile bootstrap run --rm -T bootstrap cast to-dec "$1"; }
@@ -1731,7 +1767,7 @@ Then fill the remaining `.env` values:
 
 - `VIRTUAL_MINA_OUTER_PUBLIC_KEY` = manifest `outerPublicKey`
 - `VIRTUAL_MINA_FEE_PAYER_PUBLIC_KEY` = manifest `sequencerPublicKey` (= `secrets/sequencer_key.pub`)
-- `VIRTUAL_MINA_INNER_PUBLIC_KEY` = the inner account public key in `out/export/genesis-ledger.json`: the file is a list of `[index, account]` pairs and the inner account is index `0` (`zeko_constants.ml` `inner_account_index = 0`), so `jq -r '.[] | select(.[0]==0) | .[1].public_key' out/export/genesis-ledger.json`
+- `VIRTUAL_MINA_INNER_PUBLIC_KEY` = the inner account public key in `out/export/genesis-ledger.json`: the file is a list of `[index, account]` pairs and the inner account is index `0`, so `jq -r '.[] | select(.[0]==0) | .[1].public_key' out/export/genesis-ledger.json`
 - `VIRTUAL_MINA_GENESIS_TIMESTAMP` = the contract's genesis timestamp as RFC 3339:
   ```bash
   SETTLEMENT_CONTRACT_ADDRESS=$(envget SETTLEMENT_CONTRACT_ADDRESS); SEPOLIA_RPC_URL=$(envget SEPOLIA_RPC_URL)
@@ -1739,11 +1775,11 @@ Then fill the remaining `.env` values:
     'genesisTimestamp()(uint64)' --rpc-url "$SEPOLIA_RPC_URL" | awk '{print $1}')
   date -u -d "@$TS" +%Y-%m-%dT%H:%M:%SZ
   ```
-- `VIRTUAL_MINA_FORK_SLOT` = the `FORK_SLOT` derived in step 7 and deployed with (already set there).
+- `VIRTUAL_MINA_FORK_SLOT` = the `FORK_SLOT` from step 7 (already set there).
 
 ### Step 9: UI runtime configuration
 
-Both UIs fetch `/runtime-config.json` from their own origin at load time; the static server returns the mounted file. **Every URL in these files is used by the browser**, so use the `http://localhost:<published port>` addresses from the Ports table, never Compose service names.
+Both UIs fetch `/runtime-config.json` at load time. Every URL in these files is used by the browser, so use the `http://localhost:<published port>` addresses from the Ports table, never Compose service names.
 
 ```bash
 cat > config/bridge-runtime-config.json <<'EOF'
@@ -1775,9 +1811,11 @@ EOF
 chmod 0644 config/*-runtime-config.json
 ```
 
-Field rules come from `bridge-ui/src/lib/config.ts` and `explorer-ui/src/lib/runtime.ts`: `schemaVersion` must be `1`, `minaSigningNetworkId` must be `testnet`, `expectedEthereumChainId` must be `11155111` (Sepolia), `pollIntervalMs` between `1000` and `60000`. Set `API_CORS_ALLOWED_ORIGINS` in `.env` to the bridge and explorer origins, `http://localhost:4174,http://localhost:4175`. The sequencer is not on that list on purpose: it allows any origin (`ZEKO_GRAPHQL_CORS_ALLOWED_ORIGINS` unset), because the MetaMask Snap calls it from MetaMask's own origin. Leave the Actions API `ENVIRONMENT` at a value other than `sepolia` (that value pins CORS to Zeko's own bridge host); with any other value, such as `independent`, the API reflects the request origin (`services/actions/api/src/cors.ts:17`), so `http://localhost:4174` is accepted.
+Field rules: `schemaVersion` `1`, `minaSigningNetworkId` `testnet`, `expectedEthereumChainId` `11155111`, `pollIntervalMs` between `1000` and `60000`. `API_CORS_ALLOWED_ORIGINS` in `.env` already names the bridge and explorer origins. Leave the Actions API `ENVIRONMENT` at `independent` (any value other than `sepolia`), so the API reflects the request origin.
 
 ### Step 10: Start the stack
+
+Start everything and follow the gateway and sequencer logs.
 
 ```bash
 docker compose up -d
@@ -1785,7 +1823,7 @@ docker compose ps
 docker compose logs -f gateway sequencer
 ```
 
-The gateway logs `loaded settlement artifacts` with the VK hash, checks both SP1 program vkeys against the contracts and only then serves. If you start the stack within ~15 minutes of deploying, the sequencer logs `Commit is paused … programVKey returned no data` until Sepolia finalizes the deployment; harmless. The sequencer syncs its ledger from the DA genesis diff and then opens port `1923` (`/healthz`, `/readyz` and GraphQL; about a minute); `archive-relay` waits for that. `/readyz` answers `ready` once settlement is possible. The sequencer starts after the gateway is healthy. In the mock-verifier profile the gateway also checks on chain that the settlement verifier is the `LocalSP1Verifier` and refuses to start otherwise. Produce one commit and confirm its job in `GET /v1/proofs` (header `x-api-key: <gateway_api_key>`) is submitted and the settlement proxy's state advances on Sepolia. Real proving instead means: contracts deployed with the real verifier, `API_EXECUTE_ONLY=true` for a first executed-only commit, then `API_EXECUTE_ONLY=false`, `API_LOCAL_MOCK_SUBMIT=false`, `API_UNSAFE_ALLOW_MOCK_ON_SEPOLIA=false`, `API_REQUIRE_PROOF_APPROVAL=true`, `PROVER_GAS_LIMIT`, `PROVER_MAX_PRICE_PER_PGU`, `secrets/sp1_network_key` filled, then `docker compose up -d gateway`.
+Expect the gateway to log `loaded settlement artifacts`, check the program vkeys and the mock verifier against the contracts, and then serve. The sequencer starts once the gateway is healthy, syncs from the DA genesis diff and opens port `1923` within about a minute; `/readyz` answers `ready` once settlement is possible. For about 15 minutes after deploying, the sequencer logs `Commit is paused … programVKey returned no data` until Sepolia finalizes the deployment; harmless. The first commit's job in `GET /v1/proofs` (header `x-api-key: <gateway_api_key>`) should reach `submitted` and the settlement proxy's state should advance on Sepolia.
 
 Finally start the indexing loop (control endpoints need the bearer token):
 
@@ -1818,7 +1856,7 @@ curl -X POST -H "Authorization: Bearer $(cat secrets/indexer_auth_token)" http:/
 | Sequencer | PostgreSQL | `--postgres-uri postgres://…@postgres:5432/sequencer` |
 | Sequencer | RabbitMQ | `--mq-host rabbitmq:5672`, `RABBITMQ_USER/PASSWORD` |
 | Sequencer | Signer, DA | `--signer sequencer-signer:8600`; `--da-node da1:8555 --da-quorum 1 --da-keys <da1 public key>` |
-| Sequencer | Gateway | `--l1-uri http://gateway:8080/graphql` and `--archive-uri http://gateway:8080/graphql` (outer-account actions: deposits to synchronize; the gateway serves them on `/graphql`, not on `/archive/graphql`, which is the L2 archive) (settlement submission with `ZEKO_ETHEREUM_GATEWAY_TOKEN`); `--archive-uri http://gateway:8080/graphql` (L1 action reads) |
+| Sequencer | Gateway | `--l1-uri http://gateway:8080/graphql` (settlement submission with `ZEKO_ETHEREUM_GATEWAY_TOKEN`); `--archive-uri http://gateway:8080/graphql` (outer-account actions such as deposits; `/archive/graphql` is the L2 archive and serves none) |
 | Prover | RabbitMQ | `--mq-host rabbitmq:5672`, `RABBITMQ_USER/PASSWORD` |
 | DA node | DA signer | `--signer da1-signer:8601`, `ZEKO_SIGNER_AUTH_TOKEN`, TLS CA + hostname |
 | Archive | PostgreSQL | `--postgres-uri …/archive` |
@@ -1834,7 +1872,7 @@ curl -X POST -H "Authorization: Bearer $(cat secrets/indexer_auth_token)" http:/
 | Bridge UI (browser) | Gateway, sequencer, Actions API, explorer | public URLs in `bridge-runtime-config.json` |
 | Explorer UI (browser) | Gateway, bridge UI, Etherscan | public URLs in `explorer-runtime-config.json` |
 
-`L2_ARCHIVE_URL` must be the full GraphQL endpoint of the archive-node-api. The pinned upstream (`zeko-labs/archive-node-api`, `src/server/server.ts`) creates graphql-yoga with `graphqlEndpoint: '/'`, `healthCheckEndpoint: '/healthcheck'` and no landing page, and `src/index.ts` listens on `PORT` (default `8080`): GraphQL is served at the **root path only**, there is no `/graphql` route. The service is not published to the host; probe it from inside the Compose network (the image contains `curl`):
+The archive-node-api serves GraphQL at the root path only (no `/graphql` route). It is not published to the host; probe it from inside the Compose network:
 
 ```bash
 docker compose exec archive-node-api curl -s -X POST -H 'content-type: application/json' \
@@ -1847,16 +1885,16 @@ All browser steps happen in the bridge UI (`http://localhost:4174`); it uses onl
 
 ### Deposit ETH to the rollup
 
-1. In the bridge UI connect an Ethereum wallet on Sepolia and a Zeko wallet. The bridge configures the Zeko endpoint (`sequencerGraphqlUrl`) and uses signing network `testnet`. Two Zeko wallets work:
-   - **MetaMask Flask with the Zeko Snap** (one wallet for both sides). The bridge image is built with the Snap ID `npm:@mondejka/mina-snap` (`bridge-ui/README.md`); that package is published but not yet allowlisted by MetaMask, so ordinary MetaMask refuses it and you need MetaMask Flask, the developer build: install it from the Chrome Web Store as [MetaMask Flask (Development)](https://chromewebstore.google.com/detail/metamask-flask-developmen/ljfoeinjpaedjfecbmggjgodbgkmjkjk) (Firefox and other browsers: see [Install MetaMask Flask](https://docs.metamask.io/snaps/get-started/install-flask/)). Disable the regular MetaMask extension while Flask is active (both inject `window.ethereum`), create a fresh recovery phrase in Flask (never a funded production seed), switch it to Sepolia and send it a little Sepolia ETH. Then click **Connect Zeko wallet** → **MetaMask Snap**: Flask asks to install the Snap, then to "Contact network" (the Snap itself queries `sequencerGraphqlUrl`, which is why the sequencer must allow any origin), and the derived `B62…` account appears.
+1. In the bridge UI connect an Ethereum wallet on Sepolia and a Zeko wallet. Two Zeko wallets work:
+   - **MetaMask Flask with the Zeko Snap** (one wallet for both sides). The Snap is not yet allowlisted by MetaMask, so install the developer build [MetaMask Flask (Development)](https://chromewebstore.google.com/detail/metamask-flask-developmen/ljfoeinjpaedjfecbmggjgodbgkmjkjk) from the Chrome Web Store (other browsers: [Install MetaMask Flask](https://docs.metamask.io/snaps/get-started/install-flask/)). Disable the regular MetaMask extension while Flask is active, create a fresh recovery phrase (never a funded production seed), switch to Sepolia and fund it with a little Sepolia ETH. Click **Connect Zeko wallet** → **MetaMask Snap**: Flask installs the Snap, asks to "Contact network", and the derived `B62…` account appears.
    - **Auro**: add a custom network with GraphQL endpoint `http://localhost:1923/graphql` in Auro Settings → Networks, select it, then connect.
-2. Deposit ETH to your `B62…` account. The transaction calls `depositNative` on the bridge proxy; the gateway indexes the `BridgeDeposit` log once Sepolia reports it `finalized` (`ETHEREUM_FINALITY_MODE=finalized`). Follow it at `GET <gateway>/v1/bridge/deposits/:nonce` (nonces start at `1`; until the block is finalized the endpoint answers `canonical deposit not found`; then `status: locked`, `nextAction: requestBridgeProof`).
-3. The gateway queues the bridge proof itself (`BRIDGE_AUTO_PROVE_DEPOSITS=true` in the Compose; it polls every 5 s and admits the batch as soon as no settlement is queued or active). The manual alternative, `curl -X POST -H "x-api-key: $(cat secrets/gateway_api_key)" http://localhost:8080/v1/bridge/deposits/prove`, is refused with `a settlement is queued or active` whenever a settlement is in flight, and with the idle settlement cycle described below that is most of the time. In the mock-verifier profile the job executes the bridge guest locally and submits to the bridge proxy within a few minutes (`status: submitted`, deposit `nextAction: waitForEthereumSubmission`); that Sepolia transaction must itself become finalized before the next real commit synchronizes the deposit, after which the endpoint reports `finalizeDepositOnZeko`.
-4. Back in the bridge UI, finalize the deposit: the UI asks the Actions API for the witness, you sign the `finalizeDeposit` update in your Zeko wallet, and the UI submits it to the sequencer. The credit is immediate on L2: `account(publicKey: "B62…") { balance { total } }` on `http://localhost:1923/graphql` shows the amount in nine-decimal units minus the bridge fee (the guided run: 0.05 ETH deposit → `49990000`). The gateway's deposit view stays at `finalizeDepositOnZeko`; that is its terminal state, it does not observe the L2 claim.
+2. Deposit ETH to your `B62…` account. The gateway indexes the deposit once Sepolia reports the block `finalized`. Follow it at `GET <gateway>/v1/bridge/deposits/:nonce` (nonces start at `1`): first `canonical deposit not found`, then `status: locked`, `nextAction: requestBridgeProof`.
+3. The gateway queues the bridge proof itself (`BRIDGE_AUTO_PROVE_DEPOSITS=true`); to trigger it by hand instead: `curl -X POST -H "x-api-key: $(cat secrets/gateway_api_key)" http://localhost:8080/v1/bridge/deposits/prove` (refused with `a settlement is queued or active` while a settlement is in flight; retry after it finalizes). Expect `status: submitted` within a few minutes; once that Sepolia transaction is finalized and the next commit synchronizes the deposit, the endpoint reports `nextAction: finalizeDepositOnZeko`.
+4. Back in the bridge UI, finalize the deposit: sign the `finalizeDeposit` update in your Zeko wallet and the UI submits it to the sequencer. The credit is immediate on L2: `account(publicKey: "B62…") { balance { total } }` on `http://localhost:1923/graphql` shows the amount in nine-decimal units minus the bridge fee. `finalizeDepositOnZeko` is the gateway's terminal state for the deposit.
 
 ### Send an L2 transaction
 
-The bridge UI's **Wallet** tab sends native ETH (and bridged tokens) on Zeko with the connected Zeko wallet, Snap or Auro. With Auro directly, add your rollup as a custom network (name = `auroNetworkName`, GraphQL endpoint = `sequencerGraphqlUrl`), select your `B62…` account and send a payment. Zeko uses 9 decimals: 1 ETH = `1000000000` L2 base units. Query the sequencer directly:
+The bridge UI's **Wallet** tab sends native ETH (and bridged tokens) on Zeko with the connected Zeko wallet. With Auro directly, add your rollup as a custom network (name = `auroNetworkName`, GraphQL endpoint = `sequencerGraphqlUrl`) and send a payment. Zeko uses 9 decimals: 1 ETH = `1000000000` L2 base units. Query the sequencer directly:
 
 ```bash
 curl -s -H 'content-type: application/json' --data '{"query":"query { __typename }"}' http://localhost:1923/graphql
@@ -1864,13 +1902,13 @@ curl -s -H 'content-type: application/json' --data '{"query":"query { __typename
 
 ### Observe settlement
 
-Every `--commitment-period` with something to commit (a deposit action or L2 transactions), the sequencer applies it, posts the diff to DA, the prover proves the commit (about 20 s on the test host once circuits are compiled), and the sequencer sends the proof export to the gateway `/graphql` (`sendZkapp` with the gateway token, holding a settlement reservation). The gateway executes the settlement guest and, in the mock-verifier profile, submits within minutes; in the guided run the first settlement was on Sepolia three minutes after the sequencer picked up the deposit. Each settlement also emits a `Commit` action on the outer account, which the sequencer synchronizes into the inner account with an internal transaction, and the current sequencer then settles that transaction too: expect one settlement per Sepolia finality window (about 20 minutes, ~931k gas each) even with no user traffic. `--inner-sync-period` is meant to absorb such commit-only batches without a commit, but in the guided run it did not stop the cycle (the committer still settled the synchronization transaction), so the Compose leaves it unset; a sequencer-side fix is tracked as a follow-up. Watch the job: `curl -H "x-api-key: …" http://localhost:8080/v1/proofs` and `/v1/proofs/:id`. In approval mode inspect `GET /v1/proofs/:id/quote` and `POST /v1/proofs/:id/approve` with explicit PGU and price caps. The explorer UI lists settlements from `GET <gateway>/v1/explorer/settlements`; the Ethereum transaction is visible on Sepolia Etherscan under the settlement proxy.
+Every `--commitment-period` with something to commit, the sequencer posts the diff to DA, the prover proves the commit (about 20 s), and the gateway executes the settlement guest and submits to Sepolia within minutes. Each settlement emits a `Commit` action that the next commit absorbs, so expect one settlement per Sepolia finality window (about 20 minutes, about 931k gas each) even with no user traffic; keep the gateway wallet funded for that rate. Watch the jobs with `curl -H "x-api-key: …" http://localhost:8080/v1/proofs`; the explorer UI lists settlements, and the transactions are on Sepolia Etherscan under the settlement proxy.
 
 ### Withdraw to Ethereum
 
 1. In the bridge UI request a withdrawal from Zeko to your `0x…` address; the UI prepares the witness through the Actions API and you sign the L2 transaction.
 2. A later settlement binds the withdrawal into the V2 Keccak root. `GET <gateway>/v1/bridge/withdrawals?recipient=0x…` returns the Merkle path and delay status.
-3. The claimable slot is the binding settlement's upper commit slot plus `WITHDRAWAL_DELAY_SLOTS` (`EthereumZekoBridge.sol:701`), and the upper commit slot is the commit's slot plus the commit validity period (`--commit-validity-period 100` = `ZEKO_ETHEREUM_COMMIT_VALIDITY_PERIOD`). With the values in this guide a withdrawal therefore becomes `claimable` about 21 minutes (105 virtual slots of 12 s) after its settlement, not after 5 slots; `GET …/v1/bridge/withdrawals` shows `claimableSlot`, and `currentVirtualSlot()` on the settlement proxy shows the clock. Then claim in the bridge UI with your Ethereum wallet (`claimNativeWithdrawal`).
+3. The withdrawal becomes `claimable` at the commit's upper slot plus `WITHDRAWAL_DELAY_SLOTS`: with the values in this guide about 21 minutes (105 virtual slots) after its settlement. `GET …/v1/bridge/withdrawals` shows `claimableSlot`. Then claim in the bridge UI with your Ethereum wallet.
 
 ## Troubleshooting
 
@@ -1885,30 +1923,30 @@ curl -s http://localhost:3600/health          # actions-indexer
 curl -s -H "Authorization: Bearer $(cat secrets/indexer_auth_token)" http://localhost:3600/status
 ```
 
-| Symptom | Cause / fix |
+| Symptom | What to do |
 | --- | --- |
-| any `zeko*` image: `Unix_error "Permission denied" mkdir "((dirname /tmp) …"` | The zeko-side images ship no `/tmp`; a process running as your uid cannot create it. Every such service in the Compose above mounts `tmpfs: /tmp:mode=1777`; keep that when you edit the file. |
-| `deploy --broadcast`: `Transaction Failure: 0x…` on the first transaction; `debug_traceTransaction` shows `contract creation code storage out of gas` | Forge's gas estimate is below live Sepolia costs. Re-run the broadcast with `--slow --gas-estimate-multiplier 800` (the runbook command); if it still fails, compare `cast estimate` on the chain with Forge's estimate and raise the multiplier accordingly. Any no-op calls Forge already sent are harmless; the addresses are deterministic. |
-| `sequencer` loops on `Failed to send zkapp command: Graphql_error: RESERVATION_REQUIRED` | Gateway and sequencer generations do not match (see Prerequisites). Rebuild `zeko` from a revision that includes `29ebfeff57` and recreate the sequencer with an empty `sequencer` database and volume. |
-| `sequencer` exits once with `duplicate key value violates unique constraint "da_diff_target_ledger_hash_key"` | The exporter and the sequencer shared a database. Point `ZEKO_BOOTSTRAP_POSTGRES_URI` at the `exporter` database (default Compose) or start the sequencer with an empty `sequencer` database. |
-| `archive-node-api` logs `TypeError: Cannot read properties of undefined (reading 'height')` on `networkState`, and `actions-indexer` reports `inner iteration failed: [GraphQL] Unexpected error` | The archive has no block yet (`network-service.ts:36` indexes the first canonical row unconditionally). Harmless until the first L2 transaction produces a block; the indexer retries every interval. |
-| `sequencer` logs `All new actions: 0` forever although a deposit is `bridgeProven` (`outerActionSequence` set) | `--archive-uri` points at the gateway\'s `/archive/graphql` (the L2 archive). Outer-account actions are served by `/graphql`; set `--archive-uri http://gateway:8080/graphql` (runbook Compose) and recreate the sequencer. |
-| sequencer: `Commit is paused: Ethereum gateway /v1/settlement-reservations: HTTP 503 … contract call to \`programVKey\` returned no data ("0x")` right after the first start | The gateway reads the contracts at Sepolia's **finalized** block (`ETHEREUM_FINALITY_MODE=finalized`), and the deployment is not finalized yet. Clears by itself once finality passes the deployment blocks (10 to 15 minutes); the sequencer retries. |
-| After the host slept (laptop suspend): gateway `retrying transient Ethereum RPC read failure` bursts, then silence; sequencer `Commit is paused: Ethereum gateway /v1/settlement-reservations timed out`; a bridge or settlement job stays `submitted` with a stale `confirmations` count; `GET …/readyz` on the sequencer says `waiting_for_outer_writer` | Nothing is broken: containers were frozen with the host. On wake the gateway re-indexes every missed Sepolia block (about 3 blocks/s; an 11-hour sleep took 20 minutes) and only then advances its finality marker, confirms the pending job and releases the outer writer; the sequencer retries the reservation every 15 s and resumes by itself. Do not restart anything; if you must, restart the gateway only. A rollup that should keep settling needs a host that does not sleep. |
-| `exporter` prints nothing and never exits | It is waiting for `127.0.0.1:8080`: `bootstrap-l1` binds to localhost only, so the exporter must run with `network_mode: "service:bootstrap-l1"` (as in the Compose above). Check `docker top <exporter container>` for the `sleep 1` loop. |
-| `prover` unhealthy for a long time | Circuit compilation; `start_period` is 8 h. Compare with the log: compilation took 4.5 min on a 24 GB test host. Check memory. |
-| gateway exits naming the artifacts directory | `artifacts/` missing one of `settlement-program`, `bridge-program`, `settlement-vk.serde.json`, or not readable by uid 65532 |
-| gateway exits on program vkey mismatch | Guests/VK differ from what the contracts were initialized with: redo steps 6–7 consistently |
-| gateway warns `Zeko archive schema is not ready` | Normal until the archive has written its first blocks |
+| any `zeko*` image: `Unix_error "Permission denied" mkdir "((dirname /tmp) …"` | The zeko images ship no `/tmp`. Keep the `tmpfs: /tmp:mode=1777` mount on every zeko service when you edit the Compose file. |
+| `deploy --broadcast`: `Transaction Failure: 0x…` on the first transaction (`contract creation code storage out of gas`) | Forge's gas estimate is below live Sepolia costs. Re-run the broadcast with `--slow --gas-estimate-multiplier 800`; if it still fails, raise the multiplier. The addresses are deterministic, so a re-run is safe. |
+| `sequencer` loops on `Failed to send zkapp command: Graphql_error: RESERVATION_REQUIRED` | Gateway and sequencer images are from different generations. Use the Tested release set (or rebuild both from one revision) and recreate the sequencer with an empty `sequencer` database and volume. |
+| `sequencer` exits once with `duplicate key value violates unique constraint "da_diff_target_ledger_hash_key"` | The exporter and the sequencer shared a database. Point `ZEKO_BOOTSTRAP_POSTGRES_URI` at the `exporter` database (as in the Compose) or start the sequencer with an empty `sequencer` database. |
+| `archive-node-api` logs `TypeError: Cannot read properties of undefined (reading 'height')` and `actions-indexer` reports `inner iteration failed: [GraphQL] Unexpected error` | The archive has no block yet. Harmless until the first L2 transaction produces a block; the indexer retries every interval. |
+| `sequencer` logs `All new actions: 0` forever although a deposit is `bridgeProven` | `--archive-uri` must point at the gateway's `/graphql` (outer-account actions), not `/archive/graphql` (the L2 archive). Fix the Compose and recreate the sequencer. |
+| sequencer: `Commit is paused: Ethereum gateway /v1/settlement-reservations: HTTP 503 … contract call to \`programVKey\` returned no data ("0x")` right after the first start | The gateway reads the contracts at Sepolia's finalized block and the deployment is not finalized yet. Clears by itself within 10 to 15 minutes; the sequencer retries. |
+| After the host slept: gateway `retrying transient Ethereum RPC read failure` bursts, sequencer `Commit is paused: … timed out`, a job stays `submitted`, `/readyz` says `waiting_for_outer_writer` | Nothing is broken. The gateway re-indexes every missed Sepolia block (about 3 blocks/s), then confirms the pending job and releases the outer writer; the sequencer retries every 15 s. Do not restart anything; if you must, restart the gateway only. |
+| `exporter` prints nothing and never exits | It is waiting for `bootstrap-l1` on `127.0.0.1:8080` (`docker top <exporter container>` shows the `sleep 1` loop). Keep `network_mode: "service:bootstrap-l1"` on the exporter as in the Compose, then re-run. |
+| `prover` unhealthy for a long time | Circuit compilation; `start_period` is 8 h. Watch the `Compiling circuit` lines and check memory. |
+| gateway exits naming the artifacts directory | Re-run step 6 so `artifacts/` holds `settlement-program`, `bridge-program`, `settlement-vk.serde.json` and `SHA256SUMS`, then `chmod 0755 artifacts && chmod 0644 artifacts/*` and `docker compose up -d gateway` |
+| gateway exits on program vkey mismatch | Guests/VK differ from what the contracts were initialized with: redo steps 6 and 7 consistently |
+| gateway warns `Zeko archive schema is not ready` | Expected until the archive has written its first L2 block; no action |
 | exporter: `refusing to export into non-empty /out` | Empty `out/export/` yourself to re-run |
-| exporter: `ZEKO_DEPLOYMENT_SEQUENCER_PRIVATE_KEY does not match the signer endpoint` | `secrets/sequencer_key` is not the key the sequencer signer runs with |
-| `da1` exits at start | Its signer is unreachable; it fetches the signer key once at startup |
-| indexer GraphQL errors | Check `L1_ARCHIVE_URL` (gateway `/graphql`, which serves the outer-account actions; `/archive/graphql` is the L2 archive and returns none) and `L2_ARCHIVE_URL` (archive-node-api root path; probe in [Connection map](#connection-map)) |
+| exporter: `ZEKO_DEPLOYMENT_SEQUENCER_PRIVATE_KEY does not match the signer endpoint` | Make `secrets/sequencer_key` the key `sequencer-signer` runs with (re-run the step 3 key generation if unsure), then `docker compose up -d sequencer-signer` and re-run the exporter |
+| `da1` exits at start | Bring `da1-signer` to healthy first (`docker compose ps`; check the `tls/` mounts), then `docker compose up -d da1` |
+| indexer GraphQL errors | Check `L1_ARCHIVE_URL` (gateway `/graphql`) and `L2_ARCHIVE_URL` (archive-node-api root path; probe in [Connection map](#connection-map)) |
 | gateway or indexer logs `Permission denied` on `/run/secrets/…` | The ACL from step 1 is missing (`getfacl secrets/<file>` must list `user:65532:r--`); re-run the `setfacl` line |
-| postgres init fails with `Permission denied` or `No such file` | `config/postgres-init` and its subdirectories must be `0755` and the SQL files `0644`; re-run step 4 on an **empty** `postgres_data` volume |
-| bridge UI shows a config error | `/runtime-config.json` not mounted or fails validation (chain id, `testnet`, URLs) |
-| bridge UI requests to `:1923` fail CORS (preflight `OPTIONS /graphql` returns `404`, or no `Access-Control-Allow-Origin`) while host `curl` succeeds | A `404` on the preflight means the `zeko` image predates the sequencer CORS support (`src/app/cli/src/init/graphql_internal.ml`, `Cors` module and the `OPTIONS` arm); rebuild and retag it. A `204` without `Access-Control-Allow-Origin` means someone set `ZEKO_GRAPHQL_CORS_ALLOWED_ORIGINS` on the sequencer; remove it (the Snap needs `*`). Check with `curl -i -X OPTIONS -H 'Origin: http://localhost:4174' -H 'Access-Control-Request-Method: POST' http://localhost:1923/graphql`. |
-| "Connect Zeko wallet" with the MetaMask Snap fails with `Failed to fetch` right after the "Contact network" approval | The Snap fetches the sequencer from MetaMask\'s execution origin, which an allow-list on the sequencer rejects. Leave `ZEKO_GRAPHQL_CORS_ALLOWED_ORIGINS` unset (default `*`) and recreate the sequencer. |
+| postgres init fails with `Permission denied` or `No such file` | `config/postgres-init` and its subdirectories must be `0755` and the SQL files `0644`; re-run step 4 on an empty `postgres_data` volume |
+| bridge UI shows a config error | Fix `config/bridge-runtime-config.json` (`schemaVersion` 1, `expectedEthereumChainId` 11155111, `minaSigningNetworkId` `testnet`, `http://localhost:<port>` URLs), check the mount in the Compose, then `docker compose up -d bridge-ui` |
+| bridge UI requests to `:1923` fail CORS while host `curl` succeeds | Check with `curl -i -X OPTIONS -H 'Origin: http://localhost:4174' -H 'Access-Control-Request-Method: POST' http://localhost:1923/graphql`. A `404` means the `zeko` image lacks sequencer CORS support; use the Tested release image. A `204` without `Access-Control-Allow-Origin` means `ZEKO_GRAPHQL_CORS_ALLOWED_ORIGINS` is set; remove it and recreate the sequencer. |
+| "Connect Zeko wallet" with the MetaMask Snap fails with `Failed to fetch` after the "Contact network" approval | The Snap calls the sequencer from MetaMask's own origin. Leave `ZEKO_GRAPHQL_CORS_ALLOWED_ORIGINS` unset (default `*`) and recreate the sequencer. |
 
 ## Stopping the stack
 
@@ -1919,9 +1957,27 @@ docker compose stop          # keep containers
 docker compose down          # remove containers and network, keep volumes
 ```
 
+### Capacity, monitoring and recovery
+
+Sizing expectations for one host:
+
+| Item | Expect |
+| --- | --- |
+| Prover resident memory | 23 GB after circuit compilation, constant |
+| Peak host memory | export and `build-guests` each add 16 GB+ on top of the prover |
+| CPU | load 4 to 5 on 16 cores while proving a commit (about 20 s), near idle otherwise |
+| `postgres_data` | a few hundred MB; grows steadily, because the gateway indexes every Sepolia block from the start block |
+| `da1_data`, `sequencer_data`, `archive_relay_data` | under 1 MB each for the first L2 blocks |
+| `state/` | about 340 MB, almost all the Forge workspace of the bootstrap roles |
+| `artifacts/` | 13 MB |
+
+What to watch: `docker compose ps` health columns; the sequencer's `GET http://localhost:1923/readyz` (`ready`, or the blocking reason); the gateway's `GET /health` and `GET /v1/proofs` (a job stuck in `submitted` is waiting for Sepolia finality); the indexer's `GET http://localhost:3600/status` (`consecutiveErrors` should return to `0`); the gateway wallet's Sepolia balance; and the `postgres_data` volume. There is no metrics endpoint.
+
+Losing `da1_data` loses the rollup. To restore, run the backup below in reverse on a host with the same image digests: stop the stack, `tar xzf` each archive into a fresh named volume with the same name, restore the bind-mounted directories with their modes and ACLs, start the stack. Containers survive a host reboot; a host that suspends pauses the rollup (see Troubleshooting).
+
 ### Backup and export
 
-Back up, offline and encrypted: `secrets/`, `config/` (the circuit/deploy configuration holds private keys), `tls/`, `out/export/`, `artifacts/`, `state/bootstrap/forge-workspace/broadcast/`, `state/exporter/` (the exporter's sequencer `db-dir`, which together with `da1_data` is the state the L2 continues from; `zeko/nix/bootstrap-roles/README.md`), and all seven named volumes. `rabbitmq_data` (queues), `prover_state` (compiled circuits) and `gateway_state` (gateway home) could be rebuilt from the configuration, but restoring them avoids hours of recompilation, so back them up too:
+Back up, offline and encrypted: `secrets/`, `config/`, `tls/`, `out/export/`, `artifacts/`, `state/bootstrap/forge-workspace/broadcast/`, `state/exporter/`, and all seven named volumes. `rabbitmq_data`, `prover_state` and `gateway_state` could be rebuilt, but restoring them avoids hours of recompilation:
 
 ```bash
 docker compose stop
@@ -1935,7 +1991,7 @@ docker compose start
 ### Destroying the rollup
 
 ::: danger Irreversible
-`docker compose down -v` deletes every named volume: the DA database with your genesis diff, the sequencer ledger, PostgreSQL and the prover state. Combined with deleting the workspace it destroys every private key of the rollup. Only run it after a verified backup, and never on a rollup that still holds user funds.
+`docker compose down -v` deletes every named volume, including the DA database with your genesis diff and the sequencer ledger. Only run it after a verified backup, and never on a rollup that still holds user funds.
 :::
 
 ```bash
@@ -1944,6 +2000,6 @@ docker compose down -v        # only after a verified backup
 
 ## What this guide does not cover
 
-- Building, tagging or publishing the images. `sepolia-poc` is the one tag this guide expects; the companion walkthrough covers building, tagging and pushing it.
-- Verifying the Compose file, the runtime and the integration end to end: that is the operator's job on their own host. This guide was written from the service sources and has not been executed against a live Sepolia deployment.
-- Blob data availability, multi-node DA committees, high availability, monitoring, contract upgrades or emergency procedures.
+- Building, tagging or publishing the images; `sepolia-poc` is the one tag this guide expects.
+- Real proving (see [Proving](#proving)), restore from backup, a multi-node DA committee and a public-host deployment.
+- Blob data availability, high availability, monitoring, contract upgrades or emergency procedures.
