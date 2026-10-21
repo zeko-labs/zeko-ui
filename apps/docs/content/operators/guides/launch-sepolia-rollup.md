@@ -21,7 +21,7 @@ The named volumes hold the DA database, the sequencer ledger, PostgreSQL and the
 ### System requirements
 
 - Linux `x86_64` host (the published images are `x86_64-linux` only)
-- **RAM: 64 GB minimum for the whole stack on one host.** The prover holds about 23 GB resident after compiling the circuits; the genesis export (step 5) and `build-guests` (step 6) each need 16 GB+ on top while the prover runs. The prover compiles the Zeko circuits at every start: minutes on a fast host, hours on a small one; the health check allows 8 h. Running the prover on its own host halves the per-host need.
+- **RAM: 64 GB minimum for the whole stack on one host.** The prover holds about 23 GB resident after compiling the circuits; the genesis export (step 5) and `build-guests` (step 6) each need 16 GB+ on top while the prover runs. The prover compiles the Zeko circuits at every start: minutes on a fast host, hours on a small one; the health check allows 8 h. Running the prover on a separate host is possible (it needs only RabbitMQ and the signer) but is an advanced configuration not covered here; this guide is single-host.
 - Disk for PostgreSQL (four databases), the DA database and the sequencer ledger.
 - A host that stays awake. Suspend freezes every container; nothing is lost, but settlement stops until the host wakes and the gateway has re-indexed the missed blocks (see Troubleshooting).
 
@@ -51,7 +51,7 @@ The `sepolia-poc` tag is mutable; this guide expects the image set below. Verify
 | `zekolabs/zeko-gateway:sepolia-poc` | `sha256:f1125f3e5c815999fc18aa7e78526b1f1c39bb743bc2036befe5623ee4c7b85c` |
 | `zekolabs/zeko:sepolia-poc` | `sha256:fc309de2be12416f3a7bf42785658d64c9ab21f13b595acd89265985d5582c67` |
 
-Supporting images: `postgres:16` and `rabbitmq:4` (major-pinned official images).
+Supporting images: `postgres:16` and `rabbitmq:4` (major-pinned official images). To remove the manual match entirely, replace each `image:` in the Compose with its `docker.io/zekolabs/<name>@sha256:…` digest from this table.
 
 ### Operator-provided external inputs
 
@@ -197,7 +197,7 @@ chmod 0755 tls/ca artifacts config/postgres-init config/postgres-init/actions co
 
 `umask 077` keeps everything you create private; the `postgres-init` directories are read by the container's `postgres` user and stay `0755` / `0644`.
 
-Copy `docker-compose.yaml` (below) into the workspace verbatim and create `.env` (mode `0600`). Values carry no quotes and no inline comments, so that the host shell can read them back verbatim:
+Download the versioned bundle that matches the Tested release, or copy the blocks from this page: [docker-compose.yaml](/sepolia-poc/docker-compose.yaml) and the three `postgres-init` files (<a href="/sepolia-poc/postgres-init/01-databases.sh" target="_blank">01-databases.sh</a>, <a href="/sepolia-poc/postgres-init/archive/create_schema.sql" target="_blank">archive/create_schema.sql</a>, <a href="/sepolia-poc/postgres-init/actions/schema.sql" target="_blank">actions/schema.sql</a>) are byte-identical to the blocks embedded below. Copy `docker-compose.yaml` into the workspace verbatim and create `.env` (mode `0600`). Values carry no quotes and no inline comments, so that the host shell can read them back verbatim:
 
 ```bash
 cat > .env <<EOF
@@ -1690,10 +1690,10 @@ First derive `FORK_SLOT`, the lower bound of the exported proof's slot range; th
 MANIFEST=out/export/deployment-manifest.json; SETTLEMENT=out/export/settlement.json
 FORK_SLOT=$(( $(jq -er '.proof.binding.actions[0][6]' $SETTLEMENT) ))
 SLOT_UPPER=$(( $(jq -er '.proof.binding.actions[0][7]' $SETTLEMENT) ))
-if (( FORK_SLOT > 0 && FORK_SLOT <= SLOT_UPPER )); then echo "FORK_SLOT=$FORK_SLOT"; else echo "invalid slot range [$FORK_SLOT, $SLOT_UPPER]: stop here" >&2; unset FORK_SLOT; fi
+if (( FORK_SLOT > 0 && FORK_SLOT <= SLOT_UPPER )); then echo "FORK_SLOT=$FORK_SLOT"; else echo "invalid slot range [$FORK_SLOT, $SLOT_UPPER]: stop here" >&2; unset FORK_SLOT; rm -f config/deploy.env; fi
 ```
 
-Then write the public values to `config/deploy.env` (mode `0600`). If the check above failed, `FORK_SLOT` is unset, nothing is written and the deploy commands below refuse to run:
+Then write the public values to `config/deploy.env` (mode `0600`). If the check above failed, `FORK_SLOT` is unset, any older `config/deploy.env` is removed, nothing is written and the deploy chain below refuses to run:
 
 ```bash
 [[ -n ${FORK_SLOT:-} ]] && {
@@ -1733,7 +1733,7 @@ Dry run first, then broadcast. Expect the printed proxy addresses to match step 
 ```bash
 SEPOLIA_RPC_URL=$(envget SEPOLIA_RPC_URL)
 [[ -s config/deploy.env ]] || { echo "config/deploy.env is missing; do not deploy" >&2; false; } &&
-docker compose --profile bootstrap run --rm bootstrap deploy --rpc-url "$SEPOLIA_RPC_URL"
+docker compose --profile bootstrap run --rm bootstrap deploy --rpc-url "$SEPOLIA_RPC_URL" &&            # dry run (simulation only)
 docker compose --profile bootstrap run --rm bootstrap deploy --rpc-url "$SEPOLIA_RPC_URL" --broadcast --slow --gas-estimate-multiplier 800
 ```
 
@@ -1910,6 +1910,15 @@ Every `--commitment-period` with something to commit, the sequencer posts the di
 2. A later settlement binds the withdrawal into the V2 Keccak root. `GET <gateway>/v1/bridge/withdrawals?recipient=0x…` returns the Merkle path and delay status.
 3. The withdrawal becomes `claimable` at the commit's upper slot plus `WITHDRAWAL_DELAY_SLOTS`: with the values in this guide about 21 minutes (105 virtual slots) after its settlement. `GET …/v1/bridge/withdrawals` shows `claimableSlot`. Then claim in the bridge UI with your Ethereum wallet.
 
+## Demo completion checklist
+
+The mock-verifier demonstration is complete when all four hold; it does not establish real Ethereum proof verification.
+
+- [ ] Deposit credited on L2: `account(publicKey: "<your B62…>") { balance { total } }` on `http://localhost:1923/graphql` shows the deposit minus the bridge fee.
+- [ ] L2 payment observed: the recipient's balance on the same query increased and the explorer UI (`http://localhost:4175`) lists the L2 block.
+- [ ] Settlement recorded on Sepolia: `GET http://localhost:8080/v1/explorer/settlements` lists at least one `confirmed` item and its `ethereumTransactionHash` succeeds on Sepolia Etherscan.
+- [ ] Withdrawal claimed on Ethereum: `GET http://localhost:8080/v1/bridge/withdrawals?recipient=0x…` reports `processed` and the claim transaction succeeded on Etherscan.
+
 ## Troubleshooting
 
 ```bash
@@ -1939,7 +1948,7 @@ curl -s -H "Authorization: Bearer $(cat secrets/indexer_auth_token)" http://loca
 | gateway exits on program vkey mismatch | Guests/VK differ from what the contracts were initialized with: redo steps 6 and 7 consistently |
 | gateway warns `Zeko archive schema is not ready` | Expected until the archive has written its first L2 block; no action |
 | exporter: `refusing to export into non-empty /out` | Empty `out/export/` yourself to re-run |
-| exporter: `ZEKO_DEPLOYMENT_SEQUENCER_PRIVATE_KEY does not match the signer endpoint` | Make `secrets/sequencer_key` the key `sequencer-signer` runs with (re-run the step 3 key generation if unsure), then `docker compose up -d sequencer-signer` and re-run the exporter |
+| exporter: `ZEKO_DEPLOYMENT_SEQUENCER_PRIVATE_KEY does not match the signer endpoint` | `secrets/sequencer_key` and the key `sequencer-signer` started with differ. Restore the original file from your backup (its public key is `secrets/sequencer_key.pub`), then `docker compose up -d sequencer-signer` and re-run the exporter. Do not regenerate keys: `config/` and the genesis depend on them. If the original key cannot be recovered, abandon this disposable demo deployment and bootstrap a new instance in a fresh workspace, starting at step 1 with a new deployer wallet; preserve the old workspace for investigation |
 | `da1` exits at start | Bring `da1-signer` to healthy first (`docker compose ps`; check the `tls/` mounts), then `docker compose up -d da1` |
 | indexer GraphQL errors | Check `L1_ARCHIVE_URL` (gateway `/graphql`) and `L2_ARCHIVE_URL` (archive-node-api root path; probe in [Connection map](#connection-map)) |
 | gateway or indexer logs `Permission denied` on `/run/secrets/…` | The ACL from step 1 is missing (`getfacl secrets/<file>` must list `user:65532:r--`); re-run the `setfacl` line |

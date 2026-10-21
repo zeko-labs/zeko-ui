@@ -1,0 +1,577 @@
+name: zeko-sepolia
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zeko
+      POSTGRES_PASSWORD: ${ZEKO_POSTGRES_PASSWORD:?}
+      POSTGRES_DB: sequencer
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zeko -d sequencer"]
+      interval: 5s
+      retries: 60
+
+  rabbitmq:
+    image: rabbitmq:4
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${ZEKO_RABBITMQ_USER:?}
+      RABBITMQ_DEFAULT_PASS: ${ZEKO_RABBITMQ_PASSWORD:?}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+
+  # ---------------------------------------------------------------- signers / DA
+  sequencer-signer:
+    image: docker.io/zekolabs/zeko:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    restart: unless-stopped
+    environment:
+      ZEKO_SIGNATURE_KIND: ${MINA_SIGNING_NETWORK_ID}
+      MINA_SIGNING_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+      ZEKO_SIGNER_TLS_HOSTNAME: zeko-signer
+      ZEKO_SIGNER_TLS_CA_FILE: /run/zeko/signer-tls/ca/signer.crt
+      ZEKO_BOOTSTRAP_WORKSPACE_HOST: ${ZEKO_WORKSPACE}
+      ZEKO_BOOTSTRAP_SOURCE_REVISION: ${ZEKO_SOURCE_REVISION}
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -euo pipefail
+        export MINA_PRIVATE_KEY=$$(</run/secrets/sequencer_key)
+        export ZEKO_SIGNER_AUTH_TOKEN=$$(</run/secrets/signer_auth_token)
+        [[ -n $$MINA_PRIVATE_KEY && -n $$ZEKO_SIGNER_AUTH_TOKEN ]] || { echo "empty secret file" >&2; exit 1; }
+        exec /bin/zeko-signer run --host 0.0.0.0 --port 8600 --allow-zkapp-signing \
+          --max-fee 10 --max-balance-change 1000000 \
+          --tls-cert-file /run/zeko/signer-tls/ca/signer.crt \
+          --tls-key-file /run/zeko/signer-tls/private/signer.key
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "while read -r _ local _ st _; do [[ $$st == 0A && $$local == *:2198 ]] && exit 0; done </proc/net/tcp; exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    secrets: [sequencer_key, signer_auth_token]
+    volumes:
+      - ./tls/ca:/run/zeko/signer-tls/ca:ro
+      - ./tls/private:/run/zeko/signer-tls/private:ro
+
+  da1-signer:
+    image: docker.io/zekolabs/zeko-da:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    restart: unless-stopped
+    environment:
+      ZEKO_SIGNATURE_KIND: ${MINA_SIGNING_NETWORK_ID}
+      MINA_SIGNING_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+      ZEKO_SIGNER_TLS_HOSTNAME: zeko-signer
+      ZEKO_SIGNER_TLS_CA_FILE: /run/zeko/signer-tls/ca/signer.crt
+      ZEKO_BOOTSTRAP_WORKSPACE_HOST: ${ZEKO_WORKSPACE}
+      ZEKO_BOOTSTRAP_SOURCE_REVISION: ${ZEKO_SOURCE_REVISION}
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -euo pipefail
+        export MINA_PRIVATE_KEY=$$(</run/secrets/da1_key)
+        export ZEKO_SIGNER_AUTH_TOKEN=$$(</run/secrets/signer_auth_token)
+        [[ -n $$MINA_PRIVATE_KEY && -n $$ZEKO_SIGNER_AUTH_TOKEN ]] || { echo "empty secret file" >&2; exit 1; }
+        exec /bin/zeko-signer run --host 0.0.0.0 --port 8601 --allow-field-signing \
+          --tls-cert-file /run/zeko/signer-tls/ca/signer.crt \
+          --tls-key-file /run/zeko/signer-tls/private/signer.key
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "while read -r _ local _ st _; do [[ $$st == 0A && $$local == *:2199 ]] && exit 0; done </proc/net/tcp; exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    secrets: [da1_key, signer_auth_token]
+    volumes:
+      - ./tls/ca:/run/zeko/signer-tls/ca:ro
+      - ./tls/private:/run/zeko/signer-tls/private:ro
+
+  da1:
+    image: docker.io/zekolabs/zeko-da:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    restart: unless-stopped
+    environment:
+      ZEKO_SIGNATURE_KIND: ${MINA_SIGNING_NETWORK_ID}
+      MINA_SIGNING_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+      ZEKO_SIGNER_TLS_HOSTNAME: zeko-signer
+      ZEKO_SIGNER_TLS_CA_FILE: /run/zeko/signer-tls/ca/signer.crt
+      ZEKO_BOOTSTRAP_WORKSPACE_HOST: ${ZEKO_WORKSPACE}
+      ZEKO_BOOTSTRAP_SOURCE_REVISION: ${ZEKO_SOURCE_REVISION}
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -euo pipefail
+        export ZEKO_SIGNER_AUTH_TOKEN=$$(</run/secrets/signer_auth_token)
+        [[ -n $$ZEKO_SIGNER_AUTH_TOKEN ]] || { echo "empty secret file" >&2; exit 1; }
+        exec /bin/zeko-da run-node --port 8555 --healthcheck-port 8558 \
+          --network-id "$$MINA_SIGNING_NETWORK_ID" \
+          --db-dir /var/lib/zeko-da/db --signer da1-signer:8601
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8558/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    secrets: [signer_auth_token]
+    volumes:
+      - ./tls/ca:/run/zeko/signer-tls/ca:ro
+      - da1_data:/var/lib/zeko-da
+    depends_on:
+      da1-signer:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------- prover
+  prover:
+    image: docker.io/zekolabs/zeko:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    restart: unless-stopped
+    entrypoint: ["/bin/zeko-prover"]
+    command: ["run-server", "--mq-host", "rabbitmq:5672"]
+    environment:
+      ZEKO_SIGNATURE_KIND: ${MINA_SIGNING_NETWORK_ID}
+      MINA_SIGNING_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+      ZEKO_SIGNER_TLS_HOSTNAME: zeko-signer
+      ZEKO_SIGNER_TLS_CA_FILE: /run/zeko/signer-tls/ca/signer.crt
+      ZEKO_BOOTSTRAP_WORKSPACE_HOST: ${ZEKO_WORKSPACE}
+      ZEKO_BOOTSTRAP_SOURCE_REVISION: ${ZEKO_SOURCE_REVISION}
+      HOME: /var/lib/zeko-prover
+      ZEKO_CIRCUITS_CONFIG: /run/zeko/config/circuits-config.json
+      ZEKO_DEPLOY_CONFIG: /run/zeko/config/deploy-config.json
+      RABBITMQ_USER: ${ZEKO_RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${ZEKO_RABBITMQ_PASSWORD}
+    volumes:
+      - ./config:/run/zeko/config:ro
+      - prover_state:/var/lib/zeko-prover
+    # Ready once it holds an ESTABLISHED connection to the broker (5672 = 0x1628);
+    # circuit compilation before that takes minutes to hours.
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "for f in /proc/net/tcp /proc/net/tcp6; do [[ -r $$f ]] || continue; while read -r _ _ rem st _; do [[ $$st == 01 && $$rem == *:1628 ]] && exit 0; done <$$f; done; exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 8h
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------- gateway
+  gateway:
+    image: docker.io/zekolabs/zeko-gateway:sepolia-poc
+    restart: unless-stopped
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -euo pipefail
+        export PROOF_API_KEY=$$(</run/secrets/gateway_api_key)
+        export ETHEREUM_PRIVATE_KEY=$$(</run/secrets/gateway_ethereum_key)
+        [[ -s /run/secrets/sp1_network_key ]] && export NETWORK_PRIVATE_KEY=$$(</run/secrets/sp1_network_key)
+        [[ -n $$PROOF_API_KEY && -n $$ETHEREUM_PRIVATE_KEY ]] || { echo "empty secret file" >&2; exit 1; }
+        for v in RPC_URL SETTLEMENT_CONTRACT_ADDRESS BRIDGE_CONTRACT_ADDRESS ETHEREUM_INDEXER_START_BLOCK \
+                 VIRTUAL_MINA_OUTER_PUBLIC_KEY VIRTUAL_MINA_INNER_PUBLIC_KEY VIRTUAL_MINA_FEE_PAYER_PUBLIC_KEY \
+                 VIRTUAL_MINA_GENESIS_TIMESTAMP VIRTUAL_MINA_FORK_SLOT; do
+          [[ -n $${!v} ]] || { echo "$$v is empty: fill it in .env (steps 2, 7, 8)" >&2; exit 1; }
+        done
+        exec /bin/zeko-proof-api
+    environment:
+      API_BIND: 0.0.0.0:8080
+      DATABASE_URL: postgres://zeko:${ZEKO_POSTGRES_PASSWORD}@postgres:5432/gateway
+      ARCHIVE_DATABASE_URL: postgres://zeko:${ZEKO_POSTGRES_PASSWORD}@postgres:5432/archive
+      RPC_URL: ${SEPOLIA_RPC_URL:-}
+      SETTLEMENT_CONTRACT_ADDRESS: ${SETTLEMENT_CONTRACT_ADDRESS:-}
+      BRIDGE_CONTRACT_ADDRESS: ${BRIDGE_CONTRACT_ADDRESS:-}
+      ETHEREUM_FINALITY_MODE: finalized
+      ETHEREUM_INDEXER_START_BLOCK: ${ETHEREUM_INDEXER_START_BLOCK:-}
+      PROOF_SYSTEM: ${PROOF_SYSTEM}
+      API_EXECUTE_ONLY: ${API_EXECUTE_ONLY}
+      API_LOCAL_MOCK_SUBMIT: ${API_LOCAL_MOCK_SUBMIT:-false}
+      API_UNSAFE_ALLOW_MOCK_ON_SEPOLIA: ${API_UNSAFE_ALLOW_MOCK_ON_SEPOLIA:-false}
+      API_REQUIRE_PROOF_APPROVAL: ${API_REQUIRE_PROOF_APPROVAL}
+      PROVER_GAS_LIMIT: ${PROVER_GAS_LIMIT}
+      PROVER_MAX_PRICE_PER_PGU: ${PROVER_MAX_PRICE_PER_PGU}
+      SEQUENCER_GRAPHQL_URL: http://sequencer:1923/graphql
+      VIRTUAL_MINA_ACCOUNTS_PATH: /run/zeko/virtual-mina-accounts.json
+      VIRTUAL_MINA_OUTER_PUBLIC_KEY: ${VIRTUAL_MINA_OUTER_PUBLIC_KEY:-}
+      VIRTUAL_MINA_INNER_PUBLIC_KEY: ${VIRTUAL_MINA_INNER_PUBLIC_KEY:-}
+      VIRTUAL_MINA_FEE_PAYER_PUBLIC_KEY: ${VIRTUAL_MINA_FEE_PAYER_PUBLIC_KEY:-}
+      VIRTUAL_MINA_GENESIS_TIMESTAMP: ${VIRTUAL_MINA_GENESIS_TIMESTAMP:-}
+      VIRTUAL_MINA_FORK_SLOT: ${VIRTUAL_MINA_FORK_SLOT:-}
+      API_CORS_ALLOWED_ORIGINS: ${API_CORS_ALLOWED_ORIGINS}
+      # queue bridge proofs itself as soon as the outer writer is free; manual requests lose the race against the settlement cycle
+      BRIDGE_AUTO_PROVE_DEPOSITS: "true"
+    secrets: [gateway_api_key, gateway_ethereum_key, sp1_network_key]
+    volumes:
+      - ./artifacts:/var/lib/zeko-proof-api/artifacts:ro
+      - ./config/virtual-mina-accounts.json:/run/zeko/virtual-mina-accounts.json:ro
+      - gateway_state:/var/lib/zeko-proof-api
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      retries: 30
+      start_period: 2m
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------- sequencer
+  sequencer:
+    image: docker.io/zekolabs/zeko:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    restart: on-failure
+    # the GraphQL port opens once the sequencer has synced its ledger from the DA genesis diff
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/1923"]
+      interval: 30s
+      timeout: 5s
+      retries: 20
+      start_period: 1h
+    environment:
+      ZEKO_SIGNATURE_KIND: ${MINA_SIGNING_NETWORK_ID}
+      MINA_SIGNING_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+      ZEKO_SIGNER_TLS_HOSTNAME: zeko-signer
+      ZEKO_SIGNER_TLS_CA_FILE: /run/zeko/signer-tls/ca/signer.crt
+      ZEKO_BOOTSTRAP_WORKSPACE_HOST: ${ZEKO_WORKSPACE}
+      ZEKO_BOOTSTRAP_SOURCE_REVISION: ${ZEKO_SOURCE_REVISION}
+      ZEKO_PROGRESS_STYLE: percent
+      ZEKO_CIRCUITS_CONFIG: /run/zeko/config/circuits-config.json
+      RABBITMQ_USER: ${ZEKO_RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${ZEKO_RABBITMQ_PASSWORD}
+      DA1_PUBLIC_KEY: ${DA1_PUBLIC_KEY:-}
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -euo pipefail
+        export ZEKO_SIGNER_AUTH_TOKEN=$$(</run/secrets/signer_auth_token)
+        export ZEKO_ETHEREUM_GATEWAY_TOKEN=$$(</run/secrets/gateway_api_key)
+        [[ -n $$ZEKO_SIGNER_AUTH_TOKEN && -n $$ZEKO_ETHEREUM_GATEWAY_TOKEN ]] || { echo "empty secret file" >&2; exit 1; }
+        [[ -n $$DA1_PUBLIC_KEY ]] || { echo "DA1_PUBLIC_KEY is empty: fill it in .env (step 3)" >&2; exit 1; }
+        exec /bin/zeko-run -p 1923 \
+          --l1-uri http://gateway:8080/graphql \
+          --archive-uri http://gateway:8080/graphql \
+          --signer sequencer-signer:8600 \
+          --da-node da1:8555 --da-quorum 1 --da-keys "$$DA1_PUBLIC_KEY" \
+          --mq-host rabbitmq:5672 \
+          --postgres-uri postgres://zeko:${ZEKO_POSTGRES_PASSWORD}@postgres:5432/sequencer \
+          --db-dir /var/lib/zeko-sequencer/db \
+          --checkpoints-dir /var/lib/zeko-sequencer/checkpoints \
+          --slot-duration 12 --commit-validity-period 100 \
+          --commitment-period 300 --max-pool-size 20
+    secrets: [signer_auth_token, gateway_api_key]
+    volumes:
+      - ./config:/run/zeko/config:ro
+      - ./tls/ca:/run/zeko/signer-tls/ca:ro
+      - sequencer_data:/var/lib/zeko-sequencer
+    ports:
+      - "127.0.0.1:1923:1923"
+    depends_on:
+      gateway:
+        condition: service_healthy
+      sequencer-signer:
+        condition: service_healthy
+      da1:
+        condition: service_healthy
+      prover:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------- archive stack
+  archive:
+    image: docker.io/zekolabs/zeko-archive:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    restart: on-failure
+    environment:
+      ZEKO_SIGNATURE_KIND: ${MINA_SIGNING_NETWORK_ID}
+      MINA_SIGNING_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+      ZEKO_SIGNER_TLS_HOSTNAME: zeko-signer
+      ZEKO_SIGNER_TLS_CA_FILE: /run/zeko/signer-tls/ca/signer.crt
+      ZEKO_BOOTSTRAP_WORKSPACE_HOST: ${ZEKO_WORKSPACE}
+      ZEKO_BOOTSTRAP_SOURCE_REVISION: ${ZEKO_SOURCE_REVISION}
+    command: [run, --postgres-uri, "postgres://zeko:${ZEKO_POSTGRES_PASSWORD}@postgres:5432/archive", --server-port, "3086"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  archive-relay:
+    image: docker.io/zekolabs/zeko-archive-relay:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    restart: on-failure
+    environment:
+      ZEKO_SIGNATURE_KIND: ${MINA_SIGNING_NETWORK_ID}
+      MINA_SIGNING_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+      ZEKO_SIGNER_TLS_HOSTNAME: zeko-signer
+      ZEKO_SIGNER_TLS_CA_FILE: /run/zeko/signer-tls/ca/signer.crt
+      ZEKO_BOOTSTRAP_WORKSPACE_HOST: ${ZEKO_WORKSPACE}
+      ZEKO_BOOTSTRAP_SOURCE_REVISION: ${ZEKO_SOURCE_REVISION}
+    command: [--zeko-uri, http://sequencer:1923/graphql, --da-node, da1:8555, --archive-host, archive, --archive-port, "3086", --network-id, "${MINA_SIGNING_NETWORK_ID}", --db-dir, /archive-relay-db, --sync-period, "15"]
+    volumes:
+      - archive_relay_data:/archive-relay-db
+    depends_on:
+      archive:
+        condition: service_started
+      sequencer:
+        condition: service_healthy
+
+  archive-node-api:
+    image: docker.io/zekolabs/zeko-archive-node-api:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      PG_CONN: postgres://zeko:${ZEKO_POSTGRES_PASSWORD}@postgres:5432/archive
+    # graphql-yoga serves GraphQL at the root path and health at /healthcheck
+    # (archive-node-api src/server/server.ts).
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthcheck"]
+      interval: 10s
+      retries: 30
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------- actions
+  actions-api:
+    image: docker.io/zekolabs/zeko-actions-api:sepolia-poc
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://zeko:${ZEKO_POSTGRES_PASSWORD}@postgres:5432/actions
+      ENVIRONMENT: independent
+    ports:
+      - "127.0.0.1:9100:9100"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  actions-indexer:
+    image: docker.io/zekolabs/zeko-actions-indexer:sepolia-poc
+    restart: unless-stopped
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -euo pipefail
+        export AUTH_TOKEN=$$(</run/secrets/indexer_auth_token)
+        [[ -n $$AUTH_TOKEN ]] || { echo "empty secret file" >&2; exit 1; }
+        [[ -n $$OUTER_PK && -n $$INNER_PK ]] || { echo "OUTER_PK/INNER_PK are empty: fill VIRTUAL_MINA_*_PUBLIC_KEY in .env (step 8)" >&2; exit 1; }
+        exec /bin/node dist/index.js
+    environment:
+      DATABASE_URL: postgres://zeko:${ZEKO_POSTGRES_PASSWORD}@postgres:5432/actions
+      L1_ARCHIVE_URL: http://gateway:8080/graphql
+      L2_ARCHIVE_URL: http://archive-node-api:8080/
+      OUTER_PK: ${VIRTUAL_MINA_OUTER_PUBLIC_KEY:-}
+      INNER_PK: ${VIRTUAL_MINA_INNER_PUBLIC_KEY:-}
+      INDEX_OUTER: "true"
+      INDEX_INNER: "true"
+      INDEX_REGISTRY: "false"
+      ENVIRONMENT: independent
+    secrets: [indexer_auth_token]
+    ports:
+      - "127.0.0.1:3600:3600"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+      archive-node-api:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------- UIs
+  bridge-ui:
+    image: docker.io/zekolabs/zeko-bridge-ui:sepolia-poc
+    restart: unless-stopped
+    volumes:
+      - ./config/bridge-runtime-config.json:/run/zeko/runtime-config.json:ro
+    ports:
+      - "127.0.0.1:4174:4174"
+
+  explorer-ui:
+    image: docker.io/zekolabs/zeko-explorer-ui:sepolia-poc
+    restart: unless-stopped
+    volumes:
+      - ./config/explorer-runtime-config.json:/run/zeko/runtime-config.json:ro
+    ports:
+      - "127.0.0.1:4175:4175"
+
+  # ================================================================ bootstrap profile
+  # One-shot services: `profiles: ["bootstrap"]`, no restart, run as you
+  # (`user: "${ZEKO_UID}:${ZEKO_GID}"`) so that they write into your bind mounts.
+  # Two of them are multi-role; the first argument of `docker compose run`
+  # selects the tool, the rest are its arguments:
+  #   zeko-tools <binary> [args]  zeko-cli, zeko-bootstrap-signer-tls,
+  #                               zeko-bootstrap-generate-config (zekolabs/zeko)
+  #   bootstrap <role> [args]     cast, predict-address, build-guests, vkey,
+  #                               deploy (zekolabs/zeko-bootstrap entrypoint roles)
+  # Zeko half (zekolabs/zeko)
+  zeko-tools:
+    image: docker.io/zekolabs/zeko:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    profiles: ["bootstrap"]
+    restart: "no"
+    user: "${ZEKO_UID}:${ZEKO_GID}"
+    environment:
+      ZEKO_SIGNATURE_KIND: ${MINA_SIGNING_NETWORK_ID}
+      MINA_SIGNING_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+      ZEKO_SIGNER_TLS_HOSTNAME: zeko-signer
+      ZEKO_SIGNER_TLS_CA_FILE: /run/zeko/signer-tls/ca/signer.crt
+      ZEKO_BOOTSTRAP_WORKSPACE_HOST: ${ZEKO_WORKSPACE}
+      ZEKO_BOOTSTRAP_SOURCE_REVISION: ${ZEKO_SOURCE_REVISION}
+      ZEKO_SIGNER_TLS_DAYS: "3650"
+    # `run --rm zeko-tools <binary> [args]`: $0 is the binary under /bin, "$@" its arguments
+    entrypoint: ["/bin/sh", "-c", "exec \"/bin/$$0\" \"$$@\""]
+    volumes:
+      - ./tls:/run/zeko/signer-tls
+      - ./config:/run/zeko/config
+      - ./state/zeko-tools:/var/lib/zeko-bootstrap
+
+  bootstrap-l1:
+    image: docker.io/zekolabs/zeko:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    profiles: ["bootstrap"]
+    restart: "no"
+    user: "${ZEKO_UID}:${ZEKO_GID}"
+    environment:
+      ZEKO_SIGNATURE_KIND: ${MINA_SIGNING_NETWORK_ID}
+      MINA_SIGNING_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+      ZEKO_SIGNER_TLS_HOSTNAME: zeko-signer
+      ZEKO_SIGNER_TLS_CA_FILE: /run/zeko/signer-tls/ca/signer.crt
+      ZEKO_BOOTSTRAP_WORKSPACE_HOST: ${ZEKO_WORKSPACE}
+      ZEKO_BOOTSTRAP_SOURCE_REVISION: ${ZEKO_SOURCE_REVISION}
+      ZEKO_TEST_L1_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+    entrypoint: ["/bin/zeko-bootstrap-l1"]
+    command: ["8080"]
+    volumes:
+      - ./state/l1:/var/lib/zeko-bootstrap
+
+  exporter:
+    image: docker.io/zekolabs/zeko:sepolia-poc
+    tmpfs:
+      - /tmp:mode=1777
+    # zeko-testing-ledger (bootstrap-l1) listens on 127.0.0.1 only, so the exporter shares its network namespace
+    network_mode: "service:bootstrap-l1"
+    profiles: ["bootstrap"]
+    restart: "no"
+    user: "${ZEKO_UID}:${ZEKO_GID}"
+    # zeko-deployment-export additionally requires the sequencer private key in
+    # ZEKO_DEPLOYMENT_SEQUENCER_PRIVATE_KEY and checks it against the signer.
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -euo pipefail
+        export ZEKO_DEPLOYMENT_SEQUENCER_PRIVATE_KEY=$$(</run/secrets/sequencer_key)
+        [[ -n $$ZEKO_DEPLOYMENT_SEQUENCER_PRIVATE_KEY ]] || { echo "empty secret file" >&2; exit 1; }
+        exec /bin/zeko-bootstrap-export
+    environment:
+      ZEKO_SIGNATURE_KIND: ${MINA_SIGNING_NETWORK_ID}
+      MINA_SIGNING_NETWORK_ID: ${MINA_SIGNING_NETWORK_ID}
+      ZEKO_SIGNER_TLS_HOSTNAME: zeko-signer
+      ZEKO_SIGNER_TLS_CA_FILE: /run/zeko/signer-tls/ca/signer.crt
+      ZEKO_BOOTSTRAP_WORKSPACE_HOST: ${ZEKO_WORKSPACE}
+      ZEKO_BOOTSTRAP_SOURCE_REVISION: ${ZEKO_SOURCE_REVISION}
+      HOME: /var/lib/zeko-bootstrap
+      ZEKO_BOOTSTRAP_STATE_DIR: /var/lib/zeko-bootstrap
+      ZEKO_CIRCUITS_CONFIG: /run/zeko/config/circuits-config.json
+      ZEKO_DEPLOY_CONFIG: /run/zeko/config/deploy-config.json
+      ZEKO_BOOTSTRAP_L1: 127.0.0.1:8080
+      ZEKO_BOOTSTRAP_POSTGRES_URI: postgres://zeko:${ZEKO_POSTGRES_PASSWORD}@postgres:5432/exporter
+      ZEKO_BOOTSTRAP_MQ: rabbitmq:5672
+      RABBITMQ_USER: ${ZEKO_RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${ZEKO_RABBITMQ_PASSWORD}
+      ZEKO_BOOTSTRAP_SIGNER: sequencer-signer:8600
+      ZEKO_BOOTSTRAP_DA_NODES: da1:8555
+      ZEKO_BOOTSTRAP_DA_QUORUM: "1"
+      # commit validity window in virtual slots; must equal the sequencer's --commit-validity-period (see Step 5)
+      ZEKO_ETHEREUM_COMMIT_VALIDITY_PERIOD: "100"
+      ZEKO_BOOTSTRAP_OUTPUT_DIR: /out
+    secrets: [signer_auth_token, sequencer_key]
+    volumes:
+      - ./tls/ca:/run/zeko/signer-tls/ca:ro
+      - ./config:/run/zeko/config:ro
+      - ./out/export:/out
+      - ./state/exporter:/var/lib/zeko-bootstrap
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      prover:
+        condition: service_healthy
+      sequencer-signer:
+        condition: service_healthy
+      da1:
+        condition: service_healthy
+      bootstrap-l1:
+        condition: service_started
+
+  # Ethereum half (zekolabs/zeko-bootstrap): `run --rm bootstrap <role> [args]`
+  # runs `/bin/zeko-bootstrap <role> [args]`; with no arguments the image
+  # default `help` runs.
+  bootstrap:
+    image: docker.io/zekolabs/zeko-bootstrap:sepolia-poc
+    profiles: ["bootstrap"]
+    restart: "no"
+    user: "${ZEKO_UID}:${ZEKO_GID}"
+    entrypoint: ["/bin/zeko-bootstrap"]
+    # config/deploy.env only exists from step 7 on (Compose v2.24+ attribute)
+    env_file:
+      - path: ./config/deploy.env
+        required: false
+    environment:
+      ADMIN_ADDRESS: ${ADMIN_ADDRESS:-}
+      ZEKO_BOOTSTRAP_DEPLOYER_KEY_FILE: /run/secrets/deployer_key
+    secrets: [deployer_key]
+    volumes:
+      - ./state/bootstrap:/var/lib/zeko-bootstrap
+      - ./artifacts:/var/lib/zeko-proof-api/artifacts
+
+secrets:
+  sequencer_key:
+    file: ./secrets/sequencer_key
+  da1_key:
+    file: ./secrets/da1_key
+  signer_auth_token:
+    file: ./secrets/signer_auth_token
+  deployer_key:
+    file: ./secrets/deployer_key
+  gateway_api_key:
+    file: ./secrets/gateway_api_key
+  gateway_ethereum_key:
+    file: ./secrets/gateway_ethereum_key
+  sp1_network_key:
+    file: ./secrets/sp1_network_key
+  indexer_auth_token:
+    file: ./secrets/indexer_auth_token
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  da1_data:
+  sequencer_data:
+  prover_state:
+  gateway_state:
+  archive_relay_data:
