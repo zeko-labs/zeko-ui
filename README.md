@@ -2,6 +2,12 @@
 
 A pnpm + Moon monorepo for Zeko apps and packages.
 
+## License
+
+Zeko-authored code and documentation in this repository are licensed under the MIT License. See [LICENSE](./LICENSE).
+
+This repository also includes third-party and separately licensed materials. Existing component-level notices, including `.agents/skills/frontend-design/LICENSE.txt`, remain applicable to the materials they identify.
+
 [Moon](https://moonrepo.dev/moon) is a task runner and monorepo management tool for the web ecosystem, written in Rust.
 [Proto](https://moonrepo.dev/proto) is a version manager for all web languages and tools. A unified toolchain.
 
