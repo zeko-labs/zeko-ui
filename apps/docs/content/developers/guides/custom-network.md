@@ -4,14 +4,14 @@ Use the endpoint set supplied by the Ethereum-backed Zeko deployment. The legacy
 
 ## Connection information
 
-| Setting | Purpose |
-| --- | --- |
+| Setting                   | Purpose                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Ethereum chain ID and RPC | Deposit, token approval, and withdrawal claim transactions. The testnet integration targets Sepolia. |
-| Zeko sequencer GraphQL | L2 account reads and transaction submission. |
-| Zeko archive GraphQL | Indexed L2 history. |
-| Actions API | Indexed actions, witnesses, and registered asset mappings. |
-| Gateway | Ethereum bridge status, settlement data, and public explorer APIs. |
-| Explorer URLs | Links to the corresponding Zeko and Ethereum transactions. |
+| Zeko sequencer GraphQL    | L2 account reads and transaction submission.                                                         |
+| Zeko archive GraphQL      | Indexed L2 history.                                                                                  |
+| Actions API               | Indexed actions, witnesses, and registered asset mappings.                                           |
+| Gateway                   | Ethereum bridge status, settlement data, and public explorer APIs.                                   |
+| Explorer URLs             | Links to the corresponding Zeko and Ethereum transactions.                                           |
 
 The bridge application reads public connection values from `/runtime-config.json`. Use its wallet connection flow to select the configured Zeko endpoint. Keep API keys and operator signing credentials out of browser configuration.
 

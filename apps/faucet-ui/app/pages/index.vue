@@ -134,8 +134,7 @@ const submitDisabled = computed(
             <p>
               Enter your Zeko-M address to receive legacy testnet MINA (tMINA).
               For ETH on the Ethereum-backed Zeko testnet, see the
-              <a
-                href="https://docs.zeko.io/users/getting-started">current
+              <a href="https://docs.zeko.io/users/getting-started">current
                 getting-started guide</a>.
             </p>
             <Field.Root :id>

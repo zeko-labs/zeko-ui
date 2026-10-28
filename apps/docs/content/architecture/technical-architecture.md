@@ -4,17 +4,17 @@ Zeko executes zkApp transactions on L2 and settles proof-bound state transitions
 
 ## Components
 
-| Component | Responsibility |
-| --- | --- |
-| Sequencer | Accepts transactions, applies them to the L2 ledger, dispatches proving work, and prepares commits. |
-| Zeko provers | Produce and aggregate Pickles proofs of Zeko state transitions. |
-| DA nodes | Retain ordered ledger diffs and provide the current committee's availability attestations. |
-| Ethereum gateway | Validates exported proofs, manages proof jobs, submits Ethereum transactions, and indexes finalized chain state. |
-| SP1 settlement guest | Verifies the Pickles proof and derives the settlement receipt and withdrawal commitments. |
-| SP1 bridge guest | Replays finalized ETH and registered ERC-20 deposits into Zeko actions and checkpoints. |
-| Ethereum settlement contract | Verifies SP1 proofs and enforces state continuity, domain binding, and checkpoint rules. |
-| Ethereum bridge and asset registry | Hold custody, bind supported token identities, track deposits, and release eligible withdrawal claims. |
-| Archive and Actions services | Provide L2 history, indexed actions, witnesses, and registry data to clients. |
+| Component                          | Responsibility                                                                                                   |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Sequencer                          | Accepts transactions, applies them to the L2 ledger, dispatches proving work, and prepares commits.              |
+| Zeko provers                       | Produce and aggregate Pickles proofs of Zeko state transitions.                                                  |
+| DA nodes                           | Retain ordered ledger diffs and provide the current committee's availability attestations.                       |
+| Ethereum gateway                   | Validates exported proofs, manages proof jobs, submits Ethereum transactions, and indexes finalized chain state. |
+| SP1 settlement guest               | Verifies the Pickles proof and derives the settlement receipt and withdrawal commitments.                        |
+| SP1 bridge guest                   | Replays finalized ETH and registered ERC-20 deposits into Zeko actions and checkpoints.                          |
+| Ethereum settlement contract       | Verifies SP1 proofs and enforces state continuity, domain binding, and checkpoint rules.                         |
+| Ethereum bridge and asset registry | Hold custody, bind supported token identities, track deposits, and release eligible withdrawal claims.           |
+| Archive and Actions services       | Provide L2 history, indexed actions, witnesses, and registry data to clients.                                    |
 
 ## Transaction lifecycle
 

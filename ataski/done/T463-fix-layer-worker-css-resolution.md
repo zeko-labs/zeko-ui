@@ -7,6 +7,7 @@ owner: pi
 created_at: 2026-07-07T00:00:00Z
 updated_at: 2026-07-07T00:00:00Z
 ---
+
 ## Requirements
 
 - Evaluate and fix the Workers build failure caused by `packages/layer/nuxt.config.ts` not resolving layer CSS from consuming apps.

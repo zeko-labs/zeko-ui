@@ -7,6 +7,7 @@ owner: pi
 created_at: 2026-07-07T00:00:00Z
 updated_at: 2026-07-07T00:00:00Z
 ---
+
 ## Requirements
 
 - Bridge machine refresh guard must keep polling when locally persisted pending transactions exist for the current wallet and bridge network pair.

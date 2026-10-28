@@ -7,6 +7,7 @@ owner: root
 created_at: 2026-09-24T14:14:31Z
 updated_at: 2026-09-24T14:15:53Z
 ---
+
 ## Requirements
 
 Fix links introduced or retained in the app, package README and public agent-guide copy that use nonexistent current documentation routes. Preserve the existing docs route names. Use /users/guides/zeko-bridge, /users/getting-started, and /users/guides/dapp as appropriate. Work in the isolated ethereum-app-copy task worktree. Also scope public skill finality guidance to L2 action visibility, preserving the Ethereum gateway requirement for finalized L1 deposit logs. Do not change runtime logic or protocol identifiers.

@@ -6,10 +6,10 @@ Use the bridge and explorer supplied for the Ethereum-backed Zeko deployment. Th
 
 The Ethereum bridge uses two accounts:
 
-| Account | Address | Used for |
-| --- | --- | --- |
-| Ethereum | `0x...` | Depositing ETH or ERC-20s, approving tokens, and claiming withdrawals. |
-| Zeko L2 | `B62...` | Receiving bridged assets and signing Zeko transfers or withdrawal requests. |
+| Account  | Address  | Used for                                                                    |
+| -------- | -------- | --------------------------------------------------------------------------- |
+| Ethereum | `0x...`  | Depositing ETH or ERC-20s, approving tokens, and claiming withdrawals.      |
+| Zeko L2  | `B62...` | Receiving bridged assets and signing Zeko transfers or withdrawal requests. |
 
 1. Open the deployment's Ethereum bridge and connect an Ethereum wallet on the network it requests.
 2. Choose **MetaMask** with the **Zeko Snap** for your Zeko account. Review the Snap installation or connection request and approve access to the selected Zeko network.

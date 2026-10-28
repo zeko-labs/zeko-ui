@@ -7,6 +7,7 @@ owner: pi
 created_at: 2026-07-15T00:00:00Z
 updated_at: 2026-07-15T00:00:00Z
 ---
+
 ## Requirements
 
 - After a claim/finalize transaction is submitted, the UI must remain in `Finalizing` and must not prompt the user to claim/sign again while the indexer has not yet observed finalization.

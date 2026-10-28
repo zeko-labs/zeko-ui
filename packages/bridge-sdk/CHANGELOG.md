@@ -1,5 +1,25 @@
 # @zeko-labs/bridge-sdk
 
+## 0.4.0
+
+### Minor Changes
+
+- bc1b6ac: Add immutable ERC20 asset discovery, proof-only deposit/withdrawal operations, standard Mina FungibleToken proof composition, and a registry-validated mirror-token deployment helper with configurable transaction-inclusion waiting.
+- 89aa990: Add reusable Ethereum bridge preparation hooks, separate withdrawal senders from destinations,
+  and introduce a browser-facing Ethereum bridge SDK for deposits, status recovery, withdrawal
+  requests, and native claims.
+- bc1b6ac: Add the universal append-only ERC-20 asset registry model, governed registration signing, cryptographically verified membership preflight, V2 settlement-batch proofs, circuit-aligned proposal validation and tail cancellation, registry-bound action encoding, authenticated runtime checkpoint, deterministic asset lookup, and path refresh support.
+
+### Patch Changes
+
+- 89aa990: Bind Ethereum deposit finalization witnesses to the bridge contract address reported by the gateway, and construct browser bridge account updates consistently with the sequencer.
+- 43b16a0: Allow bridge runtimes to connect to sequencers that expose the universal Ethereum asset registry without the legacy single-token config field, accept the gateway's explicit native action encoding version, and index pending registry events from the live sequencer GraphQL API. Re-authenticate the live end-to-end client after each registry append, deploy its token mirror, and coordinate the required commit before registering the next asset. Refresh the remote fee-payer nonce between each mirror deployment transaction.
+- 89aa990: Use the latest indexed outer commit for deposit finalization without applying the withdrawal maturity delay.
+- Updated dependencies [bc1b6ac]
+- Updated dependencies [43b16a0]
+- Updated dependencies [bc1b6ac]
+  - @zeko-labs/graphql@0.4.0
+
 ## 0.3.4
 
 ### Patch Changes

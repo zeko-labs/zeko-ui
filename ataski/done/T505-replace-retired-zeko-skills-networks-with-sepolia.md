@@ -7,6 +7,7 @@ owner: main
 created_at: 2026-09-25T00:00:00Z
 updated_at: 2026-09-25T12:32:00Z
 ---
+
 ## Requirements
 
 - Remove retired Alphanet, testnet, and mainnet network declarations from the Zeko Skills package's active endpoint validation configuration.

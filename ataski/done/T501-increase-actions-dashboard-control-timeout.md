@@ -7,6 +7,7 @@ owner: codex
 created_at: 2026-09-09T11:00:00Z
 updated_at: 2026-09-09T11:20:00Z
 ---
+
 ## Requirements
 
 - Prevent the Sepolia Actions Dashboard `rebuild` control from returning 502 solely because the synchronous indexer rebuild exceeds the normal 12-second probe timeout.
